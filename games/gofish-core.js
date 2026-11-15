@@ -10,6 +10,14 @@
 // the deal too. A player whose hand runs out draws a card from the pond on their turn; with the pond empty as well,
 // they are out. When all 13 books are down, whoever made the most wins.
 //
+// Pairs (st.col 'pairs', the setup's Collect; Tim's family's way, and the common way to play with young players, as
+// the USPCC's and most family rule sheets give it): two of a rank make a pair, laid face up at once, so nobody can
+// fish for it in your hand. Everyone lays the pairs in their dealt hand before play starts. You ask for a rank you
+// hold one of; a player who has it hands over the one card they hold (a hand never holds two of a rank), which makes
+// your pair, and you ask again. A fished card that matches one in your hand makes a pair too; the turn goes on only
+// when it is the rank you asked for. The deal, an empty hand and who goes next are as for books. Each rank makes two
+// pairs, by one player or two, and the game ends when all 26 pairs are down: whoever laid the most wins.
+//
 // State (plain JSON: the saved game and the online table are the same object): see newGame().
 // Moves: apply(st, p, a) with a = {k:'ask', to, r} or {k:'fish', i} (the i-th card of the pond: which one you pick
 // doesn't change the odds). It returns the move (for drawing it) or null when it isn't allowed. bot(st, p) returns the
@@ -56,17 +64,20 @@
   function zeros(n, v) { var a = []; for (var i = 0; i < n; i++) a.push(v === undefined ? 0 : (typeof v === 'object' ? clone(v) : v)); return a; }
 
   // ── A new game ──
-  // o: {players: [{name, cpu, level}], level, next: 'left' | 'asked', dealer, theme (a themed deck's id, or none)}
+  // o: {players: [{name, cpu, level}], level, next: 'left' | 'asked', dealer, theme (a themed deck's id, or none),
+  // col: 'books' | 'pairs'}. st.books[p] is the ranks of the sets seat p has laid (books or pairs, in order); with
+  // pairs, st.pc[p] beside it holds each pair's two card ids ("c3.c16").
   function newGame(o) {
     var n = o.players.length;
     var st = {
-      v: 1, n: n, level: lv(o.level), next: o.next === 'asked' ? 'asked' : 'left', theme: theme(o.theme),
+      v: 1, n: n, level: lv(o.level), next: o.next === 'asked' ? 'asked' : 'left', theme: theme(o.theme), col: o.col === 'pairs' ? 'pairs' : 'books',
       players: o.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu ? lv(p.level || o.level) : undefined }; }),
       hands: zeros(n, []), pond: [], books: zeros(n, []), turn: 0, phase: 'ask', ask: null,
       tn: 1, asks: 0, streak: 0, kn: zeros(n, {}), no: zeros(n, {}), dr: zeros(n), log: [],
       stats: { lucky: zeros(n), big: zeros(n), best: zeros(n), got: zeros(n), fish: zeros(n), dealt: zeros(n) },
       ev: [], bo: [], catchBest: null, started: Date.now(), winner: null
     };
+    if (st.col === 'pairs') st.pc = zeros(n, []);
     var d = shuffle(deck()), k = dealCount(n);
     st.dealer = o.dealer != null ? o.dealer % n : Math.floor(rnd() * n);
     for (var i = 0; i < k * n; i++) st.hands[(st.dealer + 1 + i) % n].push(d.shift());
@@ -76,7 +87,11 @@
     st.dealtBooks = [];
     for (var p = 0; p < n; p++) {
       var b = layBooks(st, p, 'deal');
-      b.forEach(function (r) { st.dealtBooks.push({ p: p, r: r }); st.stats.dealt[p]++; st.ev.push({ k: 'dealt', p: p, r: r }); });
+      b.forEach(function (r, i) {
+        st.dealtBooks.push({ p: p, r: r }); st.stats.dealt[p]++;
+        // (with pairs nearly every hand has some, so the moment is a rank dealt whole: both its pairs)
+        if (!isPairs(st) || b.indexOf(r) < i) st.ev.push({ k: 'dealt', p: p, r: r });
+      });
     }
     advance(st, (st.dealer + 1) % n);
     return st;
@@ -84,7 +99,13 @@
 
   // Lay down every book in seat p's hand; returns their ranks. st.bo keeps every book in the order it went down: who,
   // which rank, on which turn, and how the last card came (an ask, a fish or the deal), for the game's history.
+  function isPairs(st) { return !!st && st.col === 'pairs'; }
+  function setSize(st) { return isPairs(st) ? 2 : 4; }
+  function need(st) { return isPairs(st) ? 26 : 13; }
+  // the cards of rank r already laid down, everyone's
+  function laidOf(st, r) { var k = 0; st.books.forEach(function (b) { b.forEach(function (x) { if (x === r) k++; }); }); return k * setSize(st); }
   function layBooks(st, p, how) {
+    if (isPairs(st)) return layPairs(st, p, how);
     var out = [], h = st.hands[p];
     ranksIn(h).forEach(function (r) {
       if (countOf(h, r) === 4) {
@@ -92,6 +113,23 @@
         st.books[p].push(r); out.push(r);
         st.bo.push({ p: p, r: r, t: st.tn, h: how || 'ask' });
         for (var q = 0; q < st.n; q++) { delete st.kn[q][r]; delete st.no[q][r]; }
+      }
+    });
+    return out;
+  }
+  // Pairs: every two of a rank in seat p's hand go down (the first two by suit), and everyone now knows p holds none
+  // of that rank. A player who lays the second pair of a rank in play has made both of its pairs (a 'both' moment).
+  var SO = { s: 0, h: 1, c: 2, d: 3 };
+  function layPairs(st, p, how) {
+    var out = [];
+    ranksIn(st.hands[p]).forEach(function (r) {
+      while (countOf(st.hands[p], r) >= 2) {
+        var two = st.hands[p].filter(function (c) { return c.r === r; }).sort(function (a, b) { return SO[a.s] - SO[b.s]; }).slice(0, 2);
+        st.hands[p] = st.hands[p].filter(function (c) { return c !== two[0] && c !== two[1]; });
+        st.books[p].push(r); st.pc[p].push(two[0].id + '.' + two[1].id); out.push(r);
+        st.bo.push({ p: p, r: r, t: st.tn, h: how || 'ask', s: two[0].s + two[1].s });
+        st.kn[p][r] = 0; st.no[p][r] = st.dr[p];
+        if (how !== 'deal' && st.books[p].filter(function (x) { return x === r; }).length === 2) st.ev.push({ k: 'both', p: p, r: r, t: st.tn });
       }
     });
     return out;
@@ -104,7 +142,7 @@
     if (p !== st.turn) { st.streak = 0; }
     for (var k = 0; k < st.n; k++) {
       var q = (p + k) % st.n;
-      if (booksDown(st) >= 13) break;
+      if (booksDown(st) >= need(st)) break;
       if (st.hands[q].length) {
         if (q !== st.turn) st.tn++;
         st.turn = q; st.phase = 'ask'; st.ask = null;
@@ -119,7 +157,7 @@
     var most = Math.max.apply(null, st.books.map(function (b) { return b.length; })), w = [];
     st.books.forEach(function (b, i) { if (b.length === most) w.push(i); });
     st.winner = w;
-    if (most === 13) st.ev.push({ k: 'sweep', p: w[0] });
+    if (most === need(st)) st.ev.push({ k: 'sweep', p: w[0] });
   }
   function turn(st) { return st && (st.phase === 'ask' || st.phase === 'fish') ? st.turn : -1; }
   function canAsk(st, p, to, r) {
@@ -209,14 +247,20 @@
     return { to: pick(tg), r: pick(st.hands[p]).r };
   }
   // What the asks of the last two rounds say: who has shown they hold a rank, and who has said "Go fish" for it
+  // (with pairs, an ask that got the card, or a fish that brought it, made the asker's pair: they hold none of it now)
   function recent(st, p) {
-    var hold = {}, none = {}, win = st.log.slice(-2 * st.n);
+    var hold = {}, none = {}, win = st.log.slice(-2 * st.n), pr = isPairs(st);
     win.forEach(function (e) {
       var k1 = e.p + ':' + e.r, k2 = e.to + ':' + e.r;
-      hold[k1] = 1; delete none[k1];
+      if (pr && (e.n || e.f)) { delete hold[k1]; none[k1] = 1; } else { hold[k1] = e.t; delete none[k1]; }
       if (e.n) { delete hold[k2]; none[k2] = 1; } else { none[k2] = 1; delete hold[k2]; }
     });
     return { hold: hold, none: none };
+  }
+  // a player shown to hold rank r on turn t may have laid it down since: a book of it (anyone's), or their own pair
+  function gone(st, q, r, t) {
+    if (!isPairs(st)) return booked(st, r) >= 0;
+    return st.bo.some(function (b) { return b.p === q && b.r === r && b.t >= t; });
   }
   function most(st, p, ranks) {
     var best = -1, out = [];
@@ -227,7 +271,7 @@
   // rank they just said "Go fish" to
   function normalAsk(st, p, mine, tg) {
     var m = recent(st, p), hits = [];
-    tg.forEach(function (q) { mine.forEach(function (r) { if (m.hold[q + ':' + r] && booked(st, r) < 0) hits.push({ to: q, r: r, k: countOf(st.hands[p], r) }); }); });
+    tg.forEach(function (q) { mine.forEach(function (r) { if (m.hold[q + ':' + r] && !gone(st, q, r, m.hold[q + ':' + r])) hits.push({ to: q, r: r, k: countOf(st.hands[p], r) }); }); });
     if (hits.length) { hits.sort(function (a, b) { return b.k - a.k; }); return { to: hits[0].to, r: hits[0].r }; }
     var r = most(st, p, mine), ok = tg.filter(function (q) { return !m.none[q + ':' + r]; });
     if (!ok.length) {   // everyone said no to that one lately: another rank
@@ -248,14 +292,14 @@
     mine.forEach(function (r) {
       var have = countOf(st.hands[p], r), seen = have;
       for (var q2 = 0; q2 < st.n; q2++) if (q2 !== p) seen += st.kn[q2][r] || 0;
-      var out = Math.max(0, 4 - seen), pr = unknown ? out / unknown : 0;
+      var out = Math.max(0, 4 - seen - laidOf(st, r)), pr = unknown ? out / unknown : 0;
       tg.forEach(function (q) {
         var known = st.kn[q][r] || 0, v;
         if (known) v = 10 + known;
         else {
           var slots = uq[q];
           if (st.no[q][r] != null) slots = Math.min(slots, st.dr[q] - st.no[q][r]);
-          v = slots > 0 ? (1 - Math.pow(1 - pr, slots)) * (1 - out * 0.2 + have * 0.5) : 0;
+          v = slots > 0 ? (1 - Math.pow(1 - pr, slots)) * (isPairs(st) ? 1 : (1 - out * 0.2 + have * 0.5)) : 0;
         }
         v += have * 0.04 + (st.kn[p][r] ? 0.02 : 0) + rnd() * 0.001;   // (closer to a book, and a rank it has already shown)
         if (v > bv) { bv = v; best = { to: q, r: r }; }
@@ -271,7 +315,8 @@
   function highlights(st) {
     var out = [], nm = function (p) { return st.players[p].name; }, by = {}, th = st.theme;
     st.ev.forEach(function (e) { (by[e.k] = by[e.k] || []).push(e); });
-    (by.sweep || []).forEach(function (e) { out.push(nm(e.p) + ' made all 13 books'); });
+    var pairs = isPairs(st);
+    (by.sweep || []).forEach(function (e) { out.push(nm(e.p) + (pairs ? ' laid down all 26 pairs' : ' made all 13 books')); });
     (by.dealt || []).forEach(function (e) { out.push(nm(e.p) + ' was dealt all four ' + plural(e.r, th)); });
     var bestS = {};
     (by.streak || []).forEach(function (e) { if (!bestS[e.p] || e.n > bestS[e.p].n) bestS[e.p] = e; });
@@ -284,22 +329,31 @@
       if (lk.length === 1) out.push(nm(p) + ' asked for ' + plural(lk[0].r, th) + ' and fished one up from the pond');
       else if (lk.length > 1) out.push(nm(p) + ' fished up the very rank just asked for ' + (lk.length === 2 ? 'twice' : numw(lk.length) + ' times') + ': ' + list(lk.map(function (e) { return plural(e.r, th); })));
     }
+    if (pairs) {   // (both pairs of one rank: kept when one player did it unusually often: 7 ranks of 13 with two players, 4 with five or six)
+      var bothBy = {};
+      (by.both || []).forEach(function (e) { (bothBy[e.p] = bothBy[e.p] || []).push(plural(e.r, th)); });
+      Object.keys(bothBy).forEach(function (p) { if (bothBy[p].length >= Math.ceil(10 / st.n) + 2) out.push(nm(+p) + ' laid down both pairs of ' + list(bothBy[p])); });
+      out.push('The game was played for pairs');
+    }
     out.push('The game took ' + st.asks + ' asks');
     return out;
   }
   // historyDetail(st): small and flat (strings, no arrays inside arrays) for Kit.record. o: the books in the order they
   // went down, "seat.rank.turn.how" joined by spaces (how: a ask, f fish, d deal); t: the last turn; s: each player's
   // best streak; lk, bg: fish you wished for and three-card catches, each player's; c: the biggest single catch
-  // "seat.from.rank.count"; nx: who went next after a Go fish; th: the themed deck's id (none for the standard deck)
+  // "seat.from.rank.count"; nx: who went next after a Go fish; th: the themed deck's id (none for the standard deck);
+  // cl: 'p' when the game was played for pairs, and then each entry of o is a pair with its two suits after it
+  // ("seat.rank.turn.how.suits", "0.7.3.a.sh")
   function historyDetail(st) {
     function rc(r) { return r === '10' ? 'T' : r; }
     var d = {
       names: st.players.map(function (p) { return p.name; }), cpu: st.players.map(function (p) { return p.cpu ? 1 : 0; }).join(''),
-      o: st.bo.map(function (b) { return b.p + '.' + rc(b.r) + '.' + b.t + '.' + b.h.charAt(0); }).join(' '),
+      o: st.bo.map(function (b) { return b.p + '.' + rc(b.r) + '.' + b.t + '.' + b.h.charAt(0) + (b.s ? '.' + b.s : ''); }).join(' '),
       t: st.tn, asks: st.asks, s: st.stats.best.join('.'), lk: st.stats.lucky.join('.'), bg: st.stats.big.join('.'),
       c: st.catchBest ? [st.catchBest.p, st.catchBest.to, rc(st.catchBest.r), st.catchBest.n].join('.') : '', nx: st.next
     };
     if (st.theme) d.th = st.theme;
+    if (isPairs(st)) d.cl = 'p';
     return d;
   }
 
@@ -309,7 +363,7 @@
   var API = {
     RANKS: RANKS, SUITS: SUITS, C: C, deck: deck, sortHand: sortHand, countOf: countOf, ranksIn: ranksIn, dealCount: dealCount,
     plural: plural, single: single, aOf: aOf, many: many, numw: numw, lv: lv, lvOf: lvOf, theme: theme, decks: function () { return DECKS; },
-    newGame: newGame, turn: turn, canAsk: canAsk, targets: targets, apply: apply, bot: bot, booksDown: booksDown, booked: booked,
+    isPairs: isPairs, setSize: setSize, need: need, laidOf: laidOf, newGame: newGame, turn: turn, canAsk: canAsk, targets: targets, apply: apply, bot: bot, booksDown: booksDown, booked: booked,
     scores: scores, over: over, clone: clone, highlights: highlights, historyDetail: historyDetail, list: list
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.GoFishCore = API;

@@ -76,6 +76,15 @@
 .bk b{position:absolute;inset:0;display:grid;place-items:center;border-radius:calc(var(--bw) * .14);background:linear-gradient(160deg,#ffffff,#f7f1e3);box-shadow:0 0 0 .5px rgba(0,0,0,.2),0 2px 3px rgba(0,0,0,.35);font-family:var(--display);font-weight:400;font-size:calc(var(--bw) * .62);color:#1d1b2e;line-height:1;letter-spacing:-.04em;}
 .bk.red b{color:#d81e3a;}
 .bk.new{animation:gfbook .7s var(--spring);}
+/* a pair: two cards of a rank laid overlapped, each in its own suit's ink (or, in a themed deck, its picture over its band) */
+.bk.pr{width:calc(var(--bw) * 1.34);}
+.bk.pr b{inset:0 auto 0 0;width:var(--bw);}
+.bk.pr b.p1{rotate:-8deg;translate:0 calc(var(--bw) * .04);}
+.bk.pr b.p2{left:calc(var(--bw) * .34);rotate:5deg;}
+.bk.pr b.rd{color:#d81e3a;}
+.bk.pr.th b{background:var(--pi) center/cover no-repeat;box-shadow:inset 0 calc(var(--bw) * -.13) 0 var(--band),0 0 0 .5px rgba(0,0,0,.2),0 2px 3px rgba(0,0,0,.35);}
+/* (a seat's pairs wrap in rows of seven, so a seat doesn't run across the table) */
+.gf.pairs .seat .books{max-width:calc((var(--bw) * 1.34 + 3px * var(--fz)) * 7);}
 @keyframes gfbook{0%{scale:.2;opacity:0;}60%{scale:1.3;opacity:1;}100%{scale:1;}}
 /* you, along the bottom of the felt: your tag and your books */
 .mine{position:absolute;z-index:4;left:50%;bottom:calc(6px * var(--fz));translate:-50% 0;display:flex;align-items:center;gap:calc(10px * var(--fz));max-width:calc(100% - 12px);}
@@ -185,10 +194,11 @@
   box-shadow:inset 0 0 0 calc(var(--cw) * .05) rgba(255,251,242,.92),inset 0 0 0 calc(var(--cw) * .075) var(--back-a),0 0 0 1px rgba(0,0,0,.12),0 2px 0 rgba(0,0,0,.15),0 6px 14px rgba(0,0,0,.3);}
 /* a themed book: the picture on top */
 .bk.th b{background:var(--pa) center/cover no-repeat;}
-.k-mo-sq.gfmo,.kmb-c.gfmb{background:var(--pa) center/cover no-repeat !important;min-width:52px;}
+.k-mo-sq.gfmo,.kmb-c.gfmb{background-color:var(--pa) !important;background-position:center !important;background-size:cover !important;background-repeat:no-repeat !important;min-width:52px;}
 /* the results card: the winner's books by their pictures */
 .gfwp{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 6px;margin:2px 0 14px;}
 .gfwp-t{display:flex;flex-direction:column;align-items:center;gap:4px;width:58px;}
+.gfwp-t.two .gfwp-p{box-shadow:0 0 0 1.5px rgba(255,255,255,.85),3px 3px 0 -1px #f3ead8,3px 3px 0 .5px rgba(0,0,0,.25),6px 6px 0 -1px #f3ead8,6px 6px 0 .5px rgba(0,0,0,.25),0 3px 8px rgba(0,0,0,.35);}
 .gfwp-p{display:block;width:44px;height:44px;border-radius:10px;background:var(--pa) center/cover no-repeat;box-shadow:0 0 0 1.5px rgba(255,255,255,.85),3px 3px 0 -1px #f3ead8,3px 3px 0 .5px rgba(0,0,0,.25),0 3px 8px rgba(0,0,0,.35);animation:gfbook .6s var(--spring) backwards;}
 .gfwp-t:nth-child(2) .gfwp-p{animation-delay:.08s}.gfwp-t:nth-child(3) .gfwp-p{animation-delay:.16s}.gfwp-t:nth-child(4) .gfwp-p{animation-delay:.24s}.gfwp-t:nth-child(5) .gfwp-p{animation-delay:.32s}.gfwp-t:nth-child(n+6) .gfwp-p{animation-delay:.4s}
 .gfwp-n{font-size:.66rem;font-weight:750;line-height:1.1;text-align:center;color:var(--text-2);text-wrap:balance;}
@@ -231,14 +241,15 @@
     id: 'gofish',
     onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } clearSave(); showSetup(); },
     menu: TurnNet.menu().concat([
-      { icon: 'chart', label: 'Books so far', onClick: function () { if (S && S.players) showBooks(); } },
+      { icon: 'chart', label: function () { return PR() ? 'Pairs so far' : 'Books so far'; }, onClick: function () { if (S && S.players) showBooks(); } },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Go Fish: past games' }); } }
     ]),
     // (the words follow the deck: the one on the table, or the one chosen in the setup)
     rules: function () {
-      var th = TH(); if (!th && !S) { try { th = Core.theme(((JSON.parse(localStorage.getItem('gn_setup_gofish')) || {}).options || {}).deck); } catch (e) {} }
+      var th = TH(), pr = PR(), so = {}; if (!S) { try { so = (JSON.parse(localStorage.getItem('gn_setup_gofish')) || {}).options || {}; } catch (e) {} th = th || Core.theme(so.deck); pr = so.col === 'pairs'; }
       var d = th && DK.get(th), w = function (r) { return Core.plural(r, th); };
       var kind = d ? 'picture' : 'rank', ex = d ? 'four ' + w('3') + ' or four ' + w('K') : 'four 7s or four Kings';
+      if (pr) return pairRules(d, w, kind);
       return '<p class="goal">Collect <b>books</b>: all four cards of a ' + kind + ', like ' + ex + '. When all 13 books are down, whoever made the most wins.</p>' +
       (d ? '<h3>The ' + Kit.esc(d.name) + ' deck</h3><p>This deck has 13 pictures in place of the 13 ranks, and four cards of each. The four cards of a picture are told apart by the color of the band under it, the way suits tell the cards of a rank apart. The deck plays exactly like a standard one.</p>' : '') +
       '<h3>The deal</h3><p>With 2 or 3 players everyone gets 7 cards; with 4 to 6 everyone gets 5. The rest of the deck is spread face down in the middle of the table. That is the <b>pond</b>.</p>' +
@@ -252,9 +263,28 @@
       '<h3>Who goes next</h3><p>The standard rule passes the turn to your left after a Go fish. Some families play that the player who said “Go fish!” takes the next turn instead, which you can choose in the setup.</p>' +
       '<h3>Decks</h3><p>Besides the standard deck there are ten themed decks: Space, Cats, Dogs, Zoo Animals, Food, Flowers, Sports, Jobs, US States and Countries. Choose one under Deck in the setup.</p>' +
       '<h3>Online</h3><ul><li><b>Play online</b>, beside the start button, opens a table, and the others join on their own devices. The computer plays any empty seat. Everyone plays with the deck the host chose.</li>' +
-      '<li>Take your turn whenever you like; the home screen shows when it’s your move.</li></ul>';
+      '<li>Take your turn whenever you like; the home screen shows when it’s your move.</li></ul>' +
+      '<h3>Pairs</h3><p>Some families collect pairs instead of books. Choose Pairs under Collect in the setup to play that way.</p>';
     }
   });
+  // How to play when the game is for pairs
+  function pairRules(d, w, kind) {
+    var ex = d ? 'two ' + w('3') : 'two 7s', any = d ? w('3') : '7s';
+    return '<p class="goal">Collect <b>pairs</b>: two cards of a ' + kind + ', like ' + ex + '. Each ' + kind + ' makes two pairs, so there are 26 in all. When all 26 pairs are down, whoever laid down the most wins.</p>' +
+      (d ? '<h3>The ' + Kit.esc(d.name) + ' deck</h3><p>This deck has 13 pictures in place of the 13 ranks, and four cards of each. The four cards of a picture are told apart by the color of the band under it, the way suits tell the cards of a rank apart. The deck plays exactly like a standard one.</p>' : '') +
+      '<h3>The deal</h3><p>With 2 or 3 players everyone gets 7 cards; with 4 to 6 everyone gets 5. The rest of the deck is spread face down in the middle of the table. That is the <b>pond</b>. Before anyone asks, everyone lays down the pairs in the hand they were dealt.</p>' +
+      '<h3>Your turn</h3><ul><li>A pair goes face up in front of you the moment you have it, so your hand never holds two of a ' + kind + ', and nobody can fish for a card you have paired.</li>' +
+      '<li>Ask one player for a ' + kind + ' you hold. Tap the player, then the card: “Pete, do you have any ' + Kit.esc(any) + '?”</li>' +
+      '<li>If they have one, they hand it over. That makes your pair, it goes down, and you ask again.</li>' +
+      '<li>If they have none, they say “Go fish!” and you draw a card from the pond. If it matches a card in your hand, that pair goes down too. If it is the ' + kind + ' you asked for, you ask again. Otherwise the turn passes to the player on your left.</li></ul>' +
+      '<h3>Running out</h3><ul><li>If your hand is empty when your turn comes, you draw a card from the pond first and then ask.</li>' +
+      '<li>If nobody else has any cards left to ask for, you draw a card from the pond and the turn passes.</li>' +
+      '<li>With the pond empty, a “Go fish!” just passes the turn, and a player with no cards left is out.</li></ul>' +
+      '<h3>Who goes next</h3><p>The standard rule passes the turn to your left after a Go fish. Some families play that the player who said “Go fish!” takes the next turn instead, which you can choose in the setup.</p>' +
+      '<h3>Books</h3><p>The standard game collects books, all four cards of a ' + kind + '. Choose Books of four under Collect in the setup to play that way.</p>' +
+      '<h3>Online</h3><ul><li><b>Play online</b>, beside the start button, opens a table, and the others join on their own devices. The computer plays any empty seat. Everyone plays with the deck and the way of collecting the host chose.</li>' +
+      '<li>Take your turn whenever you like; the home screen shows when it’s your move.</li></ul>';
+  }
 
   // ── State ─────────────────────────────────────────────────────────────────
   // ME: the seat drawn at the bottom with its hand face up (pass and play: whoever holds the device; online: your
@@ -277,7 +307,7 @@
   function save() {
     if (NET || !S) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
-    if (S.phase !== 'over') { var b = S.books[S.me || 0].length; Kit.resume.set(b === 1 ? 'You have 1 book' : 'You have ' + b + ' books'); }
+    if (S.phase !== 'over') { var b = S.books[S.me || 0].length, u = PR() ? 'pair' : 'book'; Kit.resume.set(b === 1 ? 'You have 1 ' + u : 'You have ' + b + ' ' + u + 's'); }
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); token++; busy = false; }
 
@@ -286,6 +316,10 @@
   // and a back of its own; every sentence names the subject ("any Tigers?"). TH(): the deck of the game on the table.
   var DK = window.GoFishDecks;
   function TH() { return S && S.theme && DK.get(S.theme) ? S.theme : null; }
+  // PR(): the game on the table is played for pairs (two of a rank) rather than books (all four). SET(n): "book",
+  // "books", "pair" or "pairs", for n of them
+  function PR() { return Core.isPairs(S); }
+  function SET(n) { return (PR() ? 'pair' : 'book') + (n === 1 ? '' : 's'); }
   function deckOf(th) { return th ? DK.get(th) : null; }
   function setDeckVars(n, d) {
     n.style.setProperty('--back-a', d.back[0]); n.style.setProperty('--back-b', d.back[1]);
@@ -391,13 +425,16 @@
       players: { min: 2, max: 6, count: 3, cpu: function (m) { return m === 'cpu' ? 'seats' : 'mix'; } },
       options: [
         { id: 'deck', value: 'std', render: deckPicker, reviewLabel: 'Deck', summary: function (v) { return deckName(v) + ' deck'; } },
+        { id: 'col', label: 'Collect', value: 'books', choices: [
+          ['books', 'Books of four\nStandard', 'A book is all four cards of a rank. It goes down when you have the fourth, and the most books wins.'],
+          ['pairs', 'Pairs', 'A pair is two cards of a rank, laid down as soon as you have them, so nobody can fish for them in your hand. The most pairs wins.']] },
         { id: 'next', label: 'After a Go fish', help: 'When a player goes fishing and doesn’t draw the rank they asked for, the turn passes. The standard rule passes it to their left; some families give it to the player who said “Go fish!”.',
           value: 'left', choices: [['left', 'Next player\nStandard'], ['asked', 'Whoever\nsaid it']] },
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }
       ],
       onStart: function (cfg) {
         var o = cfg.options;
-        S = Core.newGame({ players: cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu ? (p.level || o.level) : undefined }; }), level: o.level, next: o.next, theme: o.deck });
+        S = Core.newGame({ players: cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu ? (p.level || o.level) : undefined }; }), level: o.level, next: o.next, theme: o.deck, col: o.col });
         S.mode = cfg.mode; S.me = 0; ME = 0;
         Kit.gameStart(); startGame();
       }
@@ -410,7 +447,7 @@
   function build() {
     clearBubs(); warm(TH());
     app.innerHTML = ''; app.removeAttribute('style');
-    LAY = layoutFor(); app.className = 'gf k-hold ' + LAY + (isBig() ? ' big' : '');
+    LAY = layoutFor(); app.className = 'gf k-hold ' + LAY + (isBig() ? ' big' : '') + (PR() ? ' pairs' : '');
     tblEl = el('div', { class: 'tbl wood', 'data-flip': '1' }, [el('div', { class: 'felt-in' })]);
     layEl = el('div', { class: 'lay' }); tblEl.appendChild(layEl);
     sayEl = el('div', { class: 'say', role: 'status', 'aria-live': 'polite' });
@@ -435,7 +472,7 @@
     if (!tblEl || !tblEl.isConnected || seatEls.length !== N() - 1) build();
     var next = layoutFor();
     if (next !== LAY) { app.classList.remove(LAY); LAY = next; app.classList.add(LAY); }
-    app.classList.toggle('big', isBig());
+    app.classList.toggle('big', isBig()); app.classList.toggle('pairs', PR());
     paintSeats(); paintMine(); paintPond(); paintSay();
     fit(); paintHand();
   }
@@ -464,6 +501,7 @@
       else if (f[0] < 0.5) inL = Math.max(inL, x + w); else inR = Math.min(inR, x);
       allBottom = Math.max(allBottom, y + h);
     });
+    fitMine(W, fz);
     // the pond between the seats along the top and your books along the bottom
     var mineTop = H - mineEl.offsetHeight - 6 * fz, lblH = pondLbl.offsetHeight || 24;
     // (between the seats at the sides, or under them when that leaves the pond more room)
@@ -486,6 +524,20 @@
     placePond();
     pondLbl.style.left = Math.round(px0 + pw / 2) + 'px'; pondLbl.style.top = Math.round(py1 + 5 * fz) + 'px';
     bubs.forEach(function (b) { if (b.place) b.place(); });
+  }
+  // Your books or pairs along the bottom of the felt: in one row as large as fits, or, when that would make them too
+  // small, in two rows
+  function fitMine(W, fz) {
+    var bks = mineEl.querySelector('.books'), tg = mineEl.querySelector('.tg'); if (!bks || !tg) return;
+    bks.style.removeProperty('--bw'); bks.style.flexWrap = ''; bks.style.width = ''; bks.style.flex = '';
+    var n = bks.children.length; if (!n) return;
+    var k = PR() ? 1.34 : 1, gap = 3 * fz, base = 22 * fz, avail = W - 12 - tg.offsetWidth - 10 * fz;
+    if (n * (base * k + gap) <= avail) return;
+    var bw = (avail / n - gap) / k, cols = n;
+    if (bw < 15) { cols = Math.ceil(n / 2); bw = Math.min(base, (avail / cols - gap) / k); bks.style.flexWrap = 'wrap'; }
+    bw = Math.max(10, bw);
+    bks.style.setProperty('--bw', bw.toFixed(1) + 'px');
+    bks.style.flex = 'none'; bks.style.width = Math.ceil(cols * (bw * k + gap)) + 'px';
   }
   // How big your cards can be: upright the hand has a share of the screen's height under the table; sideways it has the
   // column at the right under what's happening
@@ -521,7 +573,20 @@
     return el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: isCpu(p) ? Kit.icon('bot') : Kit.esc(nm(p).charAt(0).toUpperCase()) });
   }
   function mostBooks() { return Math.max.apply(null, S.books.map(function (b) { return b.length; })); }
-  function bookEl(r) {
+  // a pair: ids "c3.c16", its two cards
+  function pairEl(r, ids) {
+    var th = TH(), cs = String(ids).split('.').map(cardOfId), w = Core.plural(r, th);
+    var b = el('span', { class: 'bk pr' + (th ? ' th' : ''), 'data-r': r, 'aria-label': 'A pair of ' + w });
+    cs.forEach(function (c, i) {
+      var f = el('b', { class: 'p' + (i + 1) + (c.s === 'h' || c.s === 'd' ? ' rd' : ''), text: th ? '' : r });
+      if (th) { f.style.setProperty('--pi', 'url("' + DK.pic(th, r, true) + '")'); f.style.setProperty('--band', DK.BAND[c.s]); }
+      b.appendChild(f);
+    });
+    if (th) setDeckVars(b, deckOf(th));
+    return b;
+  }
+  function bookEl(r, ids) {
+    if (ids) return pairEl(r, ids);
     var th = TH();
     if (th) {   // (a themed book: the subject's picture on top, on its deck's panel)
       var d = deckOf(th), b = el('span', { class: 'bk th', 'data-r': r, 'aria-label': 'A book of ' + Core.plural(r, th) }, [el('i'), el('i'), el('b', { style: { 'background-image': 'url("' + DK.pic(th, r, true) + '")' } })]);
@@ -529,8 +594,8 @@
     }
     return el('span', { class: 'bk', 'data-r': r, 'aria-label': 'A book of ' + Core.plural(r) }, [el('i'), el('i'), el('b', { text: r })]);
   }
-  function booksEl(p) { var w = el('div', { class: 'books' }); S.books[p].forEach(function (r, i) { var b = bookEl(r); if (i % 2) b.classList.add('red'); w.appendChild(b); }); return w; }
-  function countEl(p) { var k = S.books[p].length, m = mostBooks(); return el('span', { class: 'bkn' + (k && k === m ? ' lead' : ''), 'aria-label': k + (k === 1 ? ' book' : ' books'), text: String(k) }); }
+  function booksEl(p) { var w = el('div', { class: 'books' }); S.books[p].forEach(function (r, i) { var b = bookEl(r, PR() ? S.pc[p][i] : null); b.dataset.i = i; if (i % 2 && !PR()) b.classList.add('red'); w.appendChild(b); }); return w; }
+  function countEl(p) { var k = S.books[p].length, m = mostBooks(); return el('span', { class: 'bkn' + (k && k === m ? ' lead' : ''), 'aria-label': k + ' ' + SET(k), text: String(k) }); }
   function myTurn() { return S && S.turn === ME && !BLIND && !watching() && !busy && person(ME) && (!NET || NET.myTurn()); }
   function paintSeats() {
     var asking = myTurn() && S.phase === 'ask';
@@ -542,7 +607,7 @@
       s.classList.toggle('pick', asking && SEL.to === p);
       s.classList.toggle('out', !h && !S.pond.length && S.phase !== 'over');
       s.dataset.p = p;
-      s.setAttribute('aria-label', fn(p) + ', ' + h + (h === 1 ? ' card' : ' cards') + ', ' + S.books[p].length + (S.books[p].length === 1 ? ' book' : ' books'));
+      s.setAttribute('aria-label', fn(p) + ', ' + h + (h === 1 ? ' card' : ' cards') + ', ' + S.books[p].length + ' ' + SET(S.books[p].length));
       s.appendChild(el('span', { class: 'tg' }, [avatarOf(p), el('span', { class: 'nm', text: fn(p) }), countEl(p)]));
       var fan = el('div', { class: 'fan' + (h ? '' : ' none') });
       for (var k = 0; k < Math.min(h, 6); k++) fan.appendChild(backEl());
@@ -713,9 +778,44 @@
   function startGame() {
     warm(TH());
     if (!NET && people() > 1) { var p = S.turn; if (person(p)) { ME = p; S.me = p; } }
-    save(); build(); render();
+    save();
+    // (pairs: the hands are dealt with their pairs still in them, and then everyone lays theirs down)
+    var real = S, pr = PR(); if (pr) S = unlay(real);
+    build(); render();
     busy = true; var t = token;
-    dealIn(function () { if (t !== token) return; busy = false; dealtMoments(); next(); });
+    dealIn(function () {
+      if (t !== token) return;
+      var go = function () { if (t !== token) return; busy = false; dealtMoments(); next(); };
+      if (pr) openingPairs(real, go); else go();
+    });
+  }
+  // Pairs: the state with the pairs dealt to these seats (all, without a list) back in their hands
+  function dealtN(st, p) { return (st.dealtBooks || []).filter(function (b) { return b.p === p; }).length; }
+  function unlay(st, seats) {
+    var m = clone(st);
+    for (var p = 0; p < m.n; p++) {
+      if (seats && seats.indexOf(p) < 0) continue;
+      var k = dealtN(st, p); if (!k) continue;
+      m.books[p].splice(0, k);
+      m.pc[p].splice(0, k).forEach(function (two) { two.split('.').forEach(function (id) { m.hands[p].push(cardOfId(id)); }); });
+      Core.sortHand(m.hands[p]);
+    }
+    return m;
+  }
+  // Before anyone asks, everyone lays down the pairs they were dealt: one player after another round the table from
+  // whoever goes first, each pair sweeping out of the hand to its place
+  function openingPairs(real, done) {
+    var seats = [], n = real.n, t0 = real.turn >= 0 ? real.turn : 0;
+    for (var k = 0; k < n; k++) { var p = (t0 + k) % n; if (dealtN(real, p)) seats.push(p); }
+    if (!seats.length) { S = real; render(); done(); return; }
+    var cur = unlay(real, seats), t = token;
+    S = cur; render(); paintSay('Everyone lays down the pairs in their hand');
+    (function step(i) {
+      if (t !== token) return;
+      if (i >= seats.length) { S = real; render(); later(350, done); return; }
+      var p = seats[i], nx = unlay(real, seats.slice(i + 1));
+      books(cur, nx, p, real.books[p].slice(0, dealtN(real, p)), function () { cur = nx; step(i + 1); }, { open: 1, base: 0 });
+    })(0);
   }
   // The deal: cards fly from the middle to every hand
   function dealIn(done) {
@@ -726,6 +826,12 @@
     later(Math.max(500, 120 + cards.length * 55 + 360), done);
   }
   function dealtMoments() {
+    if (PR()) {   // (pairs: the moment is a rank dealt whole, both its pairs at once)
+      S.ev.filter(function (e) { return e.k === 'dealt'; }).forEach(function (b, i) {
+        later(300 + i * 1800, function () { Kit.moment({ chip: TH() ? ' ' : b.r, title: 'Dealt all four', line: (you(b.p) ? 'You were' : fn(b.p) + ' was') + ' dealt all four ' + Core.plural(b.r, TH()) + ', so both pairs went straight down.', pts: '+2' }); momentPic(b.r); Kit.sfx('sparkle'); });
+      });
+      return;
+    }
     (S.dealtBooks || []).forEach(function (b, i) {
       later(300 + i * 1800, function () { Kit.moment({ chip: TH() ? ' ' : b.r, title: 'Dealt a book', line: (you(b.p) ? 'You were' : fn(b.p) + ' was') + ' dealt all four ' + Core.plural(b.r, TH()) + ', so the book went straight down.', pts: '+1' }); momentPic(b.r); Kit.sfx('sparkle'); });
     });
@@ -786,6 +892,13 @@
   function withBooksUp(st, p, ranks) {
     if (!ranks || !ranks.length) return st;
     var m = clone(st);
+    if (Core.isPairs(st)) {   // (the new pairs are the last laid: their two cards go back in the hand)
+      var k = ranks.length;
+      m.books[p].splice(m.books[p].length - k, k);
+      m.pc[p].splice(m.pc[p].length - k, k).forEach(function (two) { two.split('.').forEach(function (id) { m.hands[p].push(cardOfId(id)); }); });
+      Core.sortHand(m.hands[p]);
+      return m;
+    }
     ranks.forEach(function (r) {
       var i = m.books[p].lastIndexOf(r); if (i >= 0) m.books[p].splice(i, 1);
       Core.SUITS.forEach(function (s, si) { m.hands[p].push({ r: r, s: s, id: 'c' + (si * 13 + Core.RANKS.indexOf(r)) }); });
@@ -861,34 +974,51 @@
       later(600, function () {
         if (mv.lucky) wished(mv);
         else if (mv.asked && !mv.asked.alone && st.turn !== p && p === ME && !BLIND && !watching()) { /* (nothing more: the turn passes) */ }
-        books(mid, st, p, mv.books, function () { S = st; render(); later(mv.lucky ? 500 : 250, done); });
+        books(mid, st, p, mv.books, function () { S = st; render(); later(mv.lucky ? 500 : 250, done); }, { pond: !mv.lucky });
       });
     });
   }
   // The new books go down: the four cards sweep from the hand to the player's books, and the count goes up
-  function books(mid, st, p, ranks, done) {
+  // With pairs (o: open, the pairs dealt; pond, a pair from the pond that wasn't the rank asked for; base, where in the
+  // seat's row the new ones are, the end by default) two cards sweep out for each pair, and the caption says it in a
+  // sentence: "Tim laid down a pair of 7s."
+  function books(mid, st, p, ranks, done, o) {
     if (!ranks || !ranks.length) { done(); return; }
-    var srcs = ranks.map(function (r) {
-      if (p === ME && !BLIND && !watching()) return [].slice.call(handEl.querySelectorAll('.grp[data-r="' + r + '"] .pcard')).map(function (n) { return n.getBoundingClientRect(); });
+    o = o || {};
+    var pr = Core.isPairs(st), base = o.base != null ? o.base : st.books[p].length - ranks.length, up = p === ME && !BLIND && !watching();
+    var ids = ranks.map(function (r, k) { return pr ? st.pc[p][base + k].split('.') : Core.SUITS.map(function (s, i) { return 'c' + (i * 13 + Core.RANKS.indexOf(r)); }); });
+    var srcs = ranks.map(function (r, k) {
+      if (pr) {
+        if (up) return ids[k].map(function (id) { var n = handEl.querySelector('[data-id="' + id + '"]'); return n ? n.getBoundingClientRect() : null; });
+        var f0 = fanRect(p); return [f0, f0];
+      }
+      if (up) return [].slice.call(handEl.querySelectorAll('.grp[data-r="' + r + '"] .pcard')).map(function (n) { return n.getBoundingClientRect(); });
       var f = fanRect(p); return [f, f, f, f];
     });
     S = st; render();
+    if (pr) paintSay(who(p) + ' laid down ' + Core.list(ranks.map(function (r) { return 'a pair of ' + Core.plural(r, TH()); })) + '.');
     ranks.forEach(function (r, k) {
-      var holder = p === ME ? mineEl : seatEl(p), bk = holder && holder.querySelector('.books .bk[data-r="' + r + '"]');
+      var holder = p === ME ? mineEl : seatEl(p), bk = holder && holder.querySelector('.books .bk[data-i="' + (base + k) + '"]');
       if (bk) { bk.style.visibility = 'hidden'; }
       var to = bk ? bk.getBoundingClientRect() : (holder ? holder.getBoundingClientRect() : null);
       if (!to) return;
+      var nc = srcs[k].length;
       srcs[k].forEach(function (fr, i) {
         if (!fr) return;
-        var c = cardOfId('c' + (i * 13 + Core.RANKS.indexOf(r)));
-        flyGhost(c, fr, to, { ms: 560, delay: k * 300 + i * 60, cw: Math.max(26, fr.width || 40), scale: Math.max(0.25, to.width / Math.max(26, fr.width || 40)), rot: (i - 1.5) * 6 });
+        var c = cardOfId(ids[k][i]);
+        flyGhost(c, fr, to, { ms: 560, delay: k * 300 + i * 60, cw: Math.max(26, fr.width || 40), scale: Math.max(0.25, to.width / Math.max(26, fr.width || 40) / (pr ? 1.34 : 1)), rot: (i - (nc - 1) / 2) * (pr ? 12 : 6) });
       });
       later(k * 300 + 620, function () {
         if (bk) { bk.style.visibility = ''; bk.classList.add('new'); }
         var cn = holder && holder.querySelector('.bkn');
         if (cn) { cn.classList.remove('bump'); void cn.offsetWidth; cn.classList.add('bump'); plusOne(cn); }
         Kit.sfx('sparkle'); if (you(p)) Kit.haptic('success');
-        if (!you(p)) bubble(p, 'That makes four ' + Core.plural(r, TH()) + '!', 'lucky', 1300);   // (yours: the book and the count say it)
+        if (!pr) { if (!you(p)) bubble(p, 'That makes four ' + Core.plural(r, TH()) + '!', 'lucky', 1300); return; }   // (yours: the book and the count say it)
+        if (o.open) return;
+        var both = st.books[p].filter(function (x) { return x === r; }).length === 2;
+        if (!you(p)) bubble(p, o.pond ? 'A pair from the pond!' : 'That makes a pair of ' + Core.plural(r, TH()) + '!', 'lucky', 1300);
+        else if (o.pond) Kit.callout('A pair from the pond');
+        if (both) later(o.pond && you(p) ? 900 : 200, function () { Kit.callout(you(p) ? 'Both pairs of ' + Core.plural(r, TH()) : fn(p) + ' has both pairs of ' + Core.plural(r, TH())); });
       });
     });
     later(ranks.length * 300 + 900, done);
@@ -902,7 +1032,7 @@
   function wished(mv) {
     var r = mv.c.r, g = mv.c.r + SUITG[mv.c.s];
     if (you(mv.p)) {
-      Kit.moment({ chip: TH() ? ' ' : g, color: TH() ? DK.BAND[mv.c.s] : mv.c.s === 'h' || mv.c.s === 'd' ? '#d81e3a' : '#1d1b2e', icon: null, title: 'The fish you wished for', line: 'You asked for ' + Core.plural(r, TH()) + ' and fished one up from the pond, so you ask again.', ms: 2200 });
+      Kit.moment({ chip: TH() ? ' ' : g, color: TH() ? DK.BAND[mv.c.s] : mv.c.s === 'h' || mv.c.s === 'd' ? '#d81e3a' : '#1d1b2e', icon: null, title: 'The fish you wished for', line: PR() ? 'You asked for ' + Core.plural(r, TH()) + ' and fished one up from the pond. That makes your pair, and you ask again.' : 'You asked for ' + Core.plural(r, TH()) + ' and fished one up from the pond, so you ask again.', ms: 2200 });
       momentPic(r);
       Kit.sfx('good'); Kit.haptic('success');
     } else {
@@ -945,11 +1075,15 @@
   }
   function winTitle(st, me) {
     var w = st.winner;
-    if (w.length > 1) return w.indexOf(me) >= 0 && onePerson() ? 'You tied for the most books' : 'It’s a tie';
+    if (w.length > 1) return w.indexOf(me) >= 0 && onePerson() ? 'You tied for the most ' + (Core.isPairs(st) ? 'pairs' : 'books') : 'It’s a tie';
     return w[0] === me && onePerson() && !watching() ? 'You win!' : fn(w[0]) + ' wins';
   }
   function winSub(st) {
     var w = st.winner, k = st.books[w[0]].length;
+    if (Core.isPairs(st)) {
+      if (w.length > 1) return names(w) + ' laid down ' + k + ' pairs each';
+      return (you(w[0]) ? 'You' : fn(w[0])) + ' laid down ' + k + ' of the 26 pairs';
+    }
     if (w.length > 1) return names(w) + ' made ' + k + ' books each';
     return (you(w[0]) ? 'You' : fn(w[0])) + ' made ' + k + ' of the 13 books';
   }
@@ -959,18 +1093,20 @@
   // A themed deck's results card shows the winner's books by their pictures, under the title
   function winPic(st) {
     var th = st.theme && DK.get(st.theme) ? st.theme : null; if (!th || st.winner.length !== 1) return null;   // (a tie: the sub line names them)
-    var p = st.winner[0], d = deckOf(th), row = el('div', { class: 'gfwp', role: 'list', 'aria-label': (you(p) ? 'Your' : fn(p) + '’s') + ' books' });
-    st.books[p].forEach(function (r) {
-      var t = el('div', { class: 'gfwp-t', role: 'listitem' }, [el('span', { class: 'gfwp-p', style: { 'background-image': 'url("' + DK.pic(th, r, true) + '")' } }), el('span', { class: 'gfwp-n', text: Core.plural(r, th) })]);
+    var p = st.winner[0], d = deckOf(th), pr = Core.isPairs(st), row = el('div', { class: 'gfwp', role: 'list', 'aria-label': (you(p) ? 'Your' : fn(p) + '’s') + (pr ? ' pairs' : ' books') });
+    st.books[p].forEach(function (r, i) {
+      if (st.books[p].indexOf(r) < i) return;   // (pairs: both pairs of a picture are one tile, stacked deeper)
+      var two = pr && st.books[p].lastIndexOf(r) > i;
+      var t = el('div', { class: 'gfwp-t' + (two ? ' two' : ''), role: 'listitem', 'aria-label': two ? 'Both pairs of ' + Core.plural(r, th) : null }, [el('span', { class: 'gfwp-p', style: { 'background-image': 'url("' + DK.pic(th, r, true) + '")' } }), el('span', { class: 'gfwp-n', text: Core.plural(r, th) })]);
       setDeckVars(t, d); row.appendChild(t);
     });
     return row.children.length ? row : null;
   }
   function sweepMoment(st, then) {
     var w = st.winner;
-    if (w.length !== 1 || st.books[w[0]].length !== 13) { then(); return; }
-    var mine = you(w[0]);
-    Kit.moment({ big: true, icon: 'fish', title: 'Every book', line: (mine ? 'You' : fn(w[0])) + ' made all 13 books, and nobody else made a single one.', pts: '13', tone: mine ? '' : 'bad', ms: 3200,
+    if (w.length !== 1 || st.books[w[0]].length !== Core.need(st)) { then(); return; }
+    var mine = you(w[0]), pr = Core.isPairs(st);
+    Kit.moment({ big: true, icon: 'fish', title: pr ? 'Every pair' : 'Every book', line: (mine ? 'You' : fn(w[0])) + (pr ? ' laid down all 26 pairs, and nobody else laid down a single one.' : ' made all 13 books, and nobody else made a single one.'), pts: String(Core.need(st)), tone: mine ? '' : 'bad', ms: 3200,
       cards: Core.RANKS.slice(-5).map(function (r, i) { return { r: r, s: Core.SUITS[i % 4] }; }) });
     var th = TH();
     if (th) [].forEach.call(document.querySelectorAll('.kmb-c'), function (c, i) { var r = Core.RANKS[8 + i], d = deckOf(th); c.innerHTML = ''; c.classList.add('gfmb'); c.style.setProperty('--pa', d.pan[0]); c.style.setProperty('--pb', d.pan[1]); c.style.backgroundImage = 'url("' + DK.pic(th, r, true) + '")'; });
@@ -982,7 +1118,7 @@
     if (st._done) return; st._done = 1;
     recordGame(st, st.mode === 'local' ? 'Pass & play' : 'vs Computer');
     clearSave();
-    var cfg = { players: st.players, level: st.level, next: st.next, mode: st.mode, theme: st.theme };
+    var cfg = { players: st.players, level: st.level, next: st.next, mode: st.mode, theme: st.theme, col: st.col };
     var t = token;
     later(500, function () {
       sweepMoment(st, function () {
@@ -992,7 +1128,7 @@
           title: winTitle(st, ME), sub: winSub(st), pic: winPic(st), rank: rankRows(st, ME), lose: lose, icon: lose ? 'bot' : 'trophy',
           again: function () { S = Core.newGame(cfg); S.mode = cfg.mode; S.me = 0; ME = 0; Kit.gameStart(); startGame(); },
           look: 'Look at the table',
-          extra: [{ label: 'Every book', onClick: showBooks }],
+          extra: [{ label: Core.isPairs(st) ? 'Every pair' : 'Every book', onClick: showBooks }],
           setup: function () { clearSave(); showSetup(); }
         });
       });
@@ -1005,14 +1141,14 @@
     standings(S).forEach(function (p) {
       var row = el('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: '1px solid var(--gl-line)' } }, [
         avatarOf(p), el('b', { style: { flex: '1 1 auto', minWidth: '0' }, text: S.players[p].name }),
-        el('div', { class: 'books', style: { '--fz': '1.2', justifyContent: 'flex-end', flex: '0 1 auto' } }, S.books[p].map(function (r) { return bookEl(r); })),
+        el('div', { class: 'books', style: { '--fz': '1.2', justifyContent: 'flex-end', flex: '0 1 auto' } }, S.books[p].map(function (r, i) { return bookEl(r, PR() ? S.pc[p][i] : null); })),
         el('span', { class: 'bkn', style: { '--fz': '1.1' }, text: String(S.books[p].length) })
       ]);
       box.appendChild(row);
     });
-    var left = 13 - Core.booksDown(S);
-    box.appendChild(el('p', { class: 'muted', style: { marginTop: '10px' }, text: left ? (left === 1 ? 'One book is still to be made.' : left + ' books are still to be made.') : 'All 13 books are down.' }));
-    Kit.sheet({ title: 'Books', node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+    var all = Core.need(S), left = all - Core.booksDown(S);
+    box.appendChild(el('p', { class: 'muted', style: { marginTop: '10px' }, text: left ? (left === 1 ? 'One ' + SET(1) + ' is still to be made.' : left + ' ' + SET(2) + ' are still to be made.') : 'All ' + all + ' ' + SET(2) + ' are down.' }));
+    Kit.sheet({ title: PR() ? 'Pairs' : 'Books', node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
   }
 
   // ═══ Turning the device: everything glides from where it was to its new place ═══════════════════════
@@ -1046,17 +1182,17 @@
   function netOpts() {
     var g = {}; try { g = JSON.parse(localStorage.getItem('gn_setup_gofish')) || {}; } catch (e) {}
     var o = g.options || {};
-    return { seats: Math.max(2, Math.min(6, +g.count || 3)), next: o.next === 'asked' ? 'asked' : 'left', level: Core.lv(o.level), theme: Core.theme(o.deck) };
+    return { seats: Math.max(2, Math.min(6, +g.count || 3)), next: o.next === 'asked' ? 'asked' : 'left', level: Core.lv(o.level), theme: Core.theme(o.deck), col: o.col === 'pairs' ? 'pairs' : 'books' };
   }
   function netStart(players, opts) {
-    var st = Core.newGame({ players: players.map(function (p) { return { name: p.name, cpu: !!p.bot, level: p.bot ? opts.level : undefined }; }), level: opts.level, next: opts.next, theme: opts.theme });
+    var st = Core.newGame({ players: players.map(function (p) { return { name: p.name, cpu: !!p.bot, level: p.bot ? opts.level : undefined }; }), level: opts.level, next: opts.next, theme: opts.theme, col: opts.col });
     st.online = 1;
     return st;
   }
   function netTurn(st) { var p = Core.turn(st); return p < 0 ? [] : [p]; }
   function netOver(st) {
     if (!st || st.phase !== 'over') return null;
-    return { win: st.winner.slice(), text: st.winner.map(function (i) { return st.players[i].name; }).join(' and ') + (st.winner.length > 1 ? ' tie with ' : ' wins with ') + st.books[st.winner[0]].length + ' books' };
+    return { win: st.winner.slice(), text: st.winner.map(function (i) { return st.players[i].name; }).join(' and ') + (st.winner.length > 1 ? ' tie with ' : ' wins with ') + st.books[st.winner[0]].length + (Core.isPairs(st) ? ' pairs' : ' books') };
   }
   function netBot(st, seat) { var a = Core.bot(st, seat); if (!a) return null; var mv = Core.apply(st, seat, a); return mv ? { state: st, mv: mv } : null; }
   function netCloseOver() { if (NOVER) { var o = NOVER; NOVER = null; try { o.close(); } catch (e) {} } }
@@ -1082,7 +1218,10 @@
       if (info.again) { Kit.gameStart(); Kit.callout('New game'); }
       else if (info.fresh) Kit.gameStart();
       if (st.phase === 'over') { setTimeout(function () { if (NET) netEnd(); }, 400); done(); return; }
-      if ((info.fresh || info.again) && st.asks === 0 && st.phase !== 'over') { dealIn(done); return; }
+      if ((info.fresh || info.again) && st.asks === 0 && st.phase !== 'over') {
+        if (Core.isPairs(st)) { S = unlay(st); render(); dealIn(function () { openingPairs(st, function () { dealtMoments(); done(); }); }); return; }
+        dealIn(done); return;
+      }
       done(); return;
     }
     it.prev.players = st.players;
@@ -1111,7 +1250,7 @@
       againLabel: left ? 'Back to the lobby' : 'Play again',
       again: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
       look: 'Look at the table',
-      extra: [{ label: 'Every book', onClick: showBooks }],
+      extra: [{ label: Core.isPairs(st) ? 'Every pair' : 'Every book', onClick: showBooks }],
       closeLabel: 'Back to games'
     });
   }

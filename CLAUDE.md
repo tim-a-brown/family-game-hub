@@ -356,6 +356,9 @@ Underlying principles for everything:
   three-player game in 8). In order and Shuffled are the other choices.
 - **Go Fish** `games/gofish.html`, `gofish-core.js`, `hist/gofish.js`, `scripts/gofish-sim.js`: 2 to 6; no undo (an
   answered ask shows another player's cards).
+  **Pairs** (Tim, 2026-11-15, his family's way) is the setup's Collect choice beside Books of four, the default, kept as
+  `col` in the state for online tables, saves and history: two of a rank go face up at once (the dealt hand's before
+  the first ask), the deal and turn rules are the books game's, and the most of the 26 pairs wins (`layPairs`, `st.pc`).
   **Ten themed decks** (Tim, 2026-11-15: Space, Cats, Dogs, Zoo Animals, Food, Flowers, Sports, Jobs, US States,
   Countries; the standard deck stays the default): `games/gofish/decks.js` (13 subjects stand in for the 13 ranks, so the
   core and robots are unchanged; each subject has its name for one, for many and with "a"; the four cards of a subject
