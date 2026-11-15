@@ -432,10 +432,11 @@
     ]) });
   }
   function askName(v0, done) {
-    var inp = el('input', { type: 'text', value: v0, maxlength: '48', class: 'k-input', style: { width: '100%' } });
-    Kit.sheet({ title: 'Rename', node: inp, actions: [
+    var inp = el('input', { type: 'text', value: v0, maxlength: '48', class: 'k-input', autocapitalize: 'words', enterkeyhint: 'done', 'aria-label': 'Game name', style: { width: '100%' } });
+    var sh = Kit.sheet({ title: 'Rename', node: inp, actions: [
       { label: 'Save', cls: 'btn-primary', onClick: function () { var v = inp.value.trim(); if (v) done(v); } },
       { label: 'Cancel', cls: 'btn-soft' }] });
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); var v = inp.value.trim(); if (v) { done(v); sh.close(); } } });   // (Done on the keyboard saves, as Save does)
     setTimeout(function () { inp.focus(); inp.select(); }, 120);
   }
   // Find cartridge art for a game already on the shelf (one added before, or one with a plain label)
