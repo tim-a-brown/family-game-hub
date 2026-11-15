@@ -217,6 +217,12 @@ Underlying principles for everything:
   could see at a real table (Bingo and Keno cards, score sheets), show them all at once on every screen size, never
   behind tabs: shrink them to fit, two to a row on a phone. Only things that are hidden in the real game (a hand of
   cards, a Battleship grid) are shown one player at a time.
+- **Every game keeps a good history** (Tim, 2026-11-15: "remember all games need good history recorded too"). A finished
+  game is recorded with `Kit.record` and a compact `detail` (hist-view.js's header has the rules: small, no arrays inside
+  arrays) that holds what made the game that game (the hands, the scores hand by hand, the board, the order of play), and
+  `highlights` for its rare moments as whole sentences; and the game has a view in `hist/` (`HistView.register`, its file
+  in hist-view.js's list) that draws it: a scoresheet, the final board or hands, a replay where it fits. A score line
+  alone is not a history. `hist/pinochle.js` and `hist/bridge.js` are the reference.
 - Player setup goes through `Kit.setup` (name picker, regulars, robot names for
   computer players). Every game passes `undo` to `Kit.init` when moves can be
   taken back. The game menu always has Frequent players.
