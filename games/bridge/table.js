@@ -466,7 +466,7 @@
     finishFlights();
     function go() { applyLayout(); paint(); }
     var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (anim && document.startViewTransition && !reduce && !document.hidden) { try { document.startViewTransition(go); return; } catch (e) {} }
+    if (anim && document.startViewTransition && !reduce && !document.hidden) { try { const t = document.startViewTransition(go); [t.ready, t.finished, t.updateCallbackDone].forEach(p => p && p.catch && p.catch(() => {})); return; } catch (e) {} }
     go();
   }
   function finishFlights() { (D && D.root.getAnimations ? D.root.getAnimations({ subtree: true }) : []).forEach(function (a) { if (a.id === 'fly') try { a.finish(); } catch (e) {} }); }
