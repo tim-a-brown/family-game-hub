@@ -1173,7 +1173,7 @@
   function roadDims(box) {
     const W = window.innerWidth, H = window.innerHeight, side = W > H * 1.15 && (H <= 560 || W >= 960), n = S ? roadOrd().length : 5, per = n > 7 ? Math.ceil(n / 2) : n;
     const w = box && box.clientWidth ? box.clientWidth : side ? (W - 16) / 2.15 - 20 : Math.min(W - 24, 640), gap = W < 500 ? 5 : 8;
-    const rw = Math.max(40, Math.min(side ? 84 : 124, Math.floor((w - (per - 1) * gap) / per))), rh = Math.round(rw * .62), rows = Math.ceil(n / per), chips = W < 500 || side ? 40 : 46;
+    const rw = Math.max(40, Math.min(side ? 84 : 124, Math.floor((w - (per - 1) * gap) / per))), rh = Math.round(rw * .62), rows = Math.ceil(n / per), chips = 52;   // (chips: the line under the tiles, as tall as its buttons, 50px since the bigger buttons; at 40 a Play button hung over the notes)
     return { rw: rw, rh: rh, gap: gap, per: per, h: rows * (rh + 22) + (rows - 1) * 4 + 8 + chips, chips: chips };
   }
   function paintRoad(box, R, it) {
@@ -1600,6 +1600,7 @@
     if (who === 'cpu') { const g = String(v || '').replace(/^guide:/, ''); return C.GUIDES[g] ? 'guide:' + g : 'any'; }
     const d = Coll.deck(String(v || '')); return d && d.ok ? d.id : starterId();
   }
+  const deckScroll = {};
   function deckPicker(label, value, set, who, many) {
     value = deckChoice(value, who);
     const box = el('div', { class: 'k-opt dk-pick' + (who === 'cpu' ? ' cpu' : '') }, [el('div', { class: 'label' }, [el('span', { text: label })])]);
@@ -1618,6 +1619,14 @@
     if (who !== 'cpu' && window.AnoriaDecks) row.appendChild(el('button', { type: 'button', class: 'dk dk-new', onclick: () => { Kit.sfx('tap'); window.AnoriaDecks.open(null, showSetup); } },
       [el('span', { class: 'dk-g back plus', html: Kit.icon('plus') }), el('span', { class: 'dk-n', text: 'Build a deck' })]));
     box.appendChild(row);
+    // (a row that runs on sideways, a phone on its side: it opens where it was left, with the chosen deck in view; the
+    // setup draws the row again on every choice, so without this a tap would send the row back to its start)
+    if (who !== 'cpu') {
+      const k = 'dk:' + label; row.addEventListener('scroll', () => { deckScroll[k] = row.scrollLeft; }, { passive: true });
+      queueMicrotask(() => { if (!row.isConnected || row.scrollWidth <= row.clientWidth + 1) return; row.scrollLeft = deckScroll[k] || 0;
+        const on = row.querySelector('.dk.on'); if (!on) return; const a = row.getBoundingClientRect(), b = on.getBoundingClientRect();
+        if (b.left < a.left) row.scrollLeft -= a.left - b.left + 4; else if (b.right > a.right) row.scrollLeft += b.right - a.right + 4; });
+    }
     const d = value === 'any' ? null : who === 'cpu' ? readyDeck(value.slice(6)) : Coll.deck(value);
     if (d) {
       const g = TXG[d.guide];
@@ -2496,7 +2505,7 @@
     // (the shape of the two-player table, for the style sheet: ln the battle line, up and short its upright and low
     // forms, rw the rows of a phone held upright; and the game bar folds down while a phone on its side plays)
     if (dom.felt) { const L = ui.lay, want = 'an-felt felt-in' + (dom.track ? ' has-trk' : '') + (M ? ' many' + (G.teams ? ' teams' : '') + (L.nbl ? ' bl' : '') : L.ln ? ' bl' + (L.up ? ' up' : '') + (L.short ? ' short' : '') : ' rw'); if (dom.felt.className !== want) dom.felt.className = want; }
-    document.documentElement.classList.toggle('an-low', !!(ui.lay.short && dom.root && dom.root.isConnected));
+    document.documentElement.classList.toggle('an-low', !!((ui.lay.short || (M && window.innerWidth > window.innerHeight && window.innerHeight < 520)) && dom.root && dom.root.isConnected));   // (and with more players too)
     if (M && !ui.lay.nbl && dom.go && dom.go.firstChild) dom.go.innerHTML = '';
     const T = targets();
     if (!M) paintMats();   // (only when a mat has been changed, or the view has changed hands)
@@ -3053,7 +3062,8 @@
       const rowH = H / R, pw = Math.round(Math.min(rimW * .3, 150));
       rim.forEach((o, k) => {
         const y0 = k * rowH, col = matN(o); col.className = 'an-pm wn-col wn-lane' + (V.turn === o && !G.over && G.ph !== 'setup' ? ' on' : '') + (S.P[o].out ? ' out' : ''); col.style.setProperty('--pc', 'var(--pc' + o + ')'); put(col, 0, y0 + 1, rimW, rowH - 2);
-        const pl = plateEl(o, rowH > 50 ? 'l' : 'w'); pl.style.fontSize = Math.max(9, Math.min(14, rowH * .2, (pw - 4) / (rowH > 50 ? 9 : 11.5))).toFixed(1) + 'px'; put(pl, 3, y0 + 3, pw - 4, rowH - 6);
+        // (a narrow plate, a phone on its side: the name on a line of its own over the Guide, where it reads at 8px or more)
+        const pl = plateEl(o, rowH > 50 ? (pw < 90 ? 'f' : 'l') : 'w'); pl.style.fontSize = Math.max(9, Math.min(14, rowH * .2, (pw - 4) / (rowH > 50 ? 9 : 11.5))).toFixed(1) + 'px'; put(pl, 3, y0 + 3, pw - 4, rowH - 6);
         const cellW = (rimW - pw) / 2; let th = Math.round(Math.min(rowH - 10, 110)), tw = Math.round(th / .74), ps = Math.round(Math.max(16, Math.min(th * .44, 30)));
         if (tw + ps + 12 > cellW) { tw = Math.round(cellW - ps - 12); th = Math.round(tw * .74); }
         [2 * o, 2 * o + 1].forEach((i, j) => { const x = pw + j * cellW + 4, y = y0 + rowH / 2 - th / 2; put(tileAt(i, tw, th), x, y, tw, th); stacks(i, x, y, tw, th, ps, 'r', o, x, pw + (j + 1) * cellW - 2); });
