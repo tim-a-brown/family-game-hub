@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Canasta</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../cards.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
+<script src="canasta-core.js"></script>
+<style>
+/* ── The page is laid out to the screen: four shapes, chosen by layoutFor() and sized by fit() ── */
+.cn{position:relative;display:grid;gap:8px;padding:4px 8px 0;box-sizing:border-box;margin:0 auto;width:100%;
+  height:var(--ph,calc(100dvh - var(--bar,64px)));padding-bottom:max(calc(var(--safe-b) + 6px),12px);}
+.cn.L-pu{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-areas:"top" "tbl" "act" "hand";gap:6px;}
+.cn.L-tu{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-areas:"top" "tbl" "act" "hand";max-width:900px;padding-left:14px;padding-right:14px;gap:10px;}
+.cn.L-ps{grid-template-columns:minmax(0,1fr) var(--side,380px);grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"tbl top" "tbl act" "tbl hand";column-gap:10px;row-gap:6px;
+  padding-left:max(var(--safe-l,0px),10px);padding-right:max(var(--safe-r,0px),17px);}
+.cn.L-ts{grid-template-columns:minmax(0,1fr) var(--side,360px);grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-areas:"tbl top" "tbl pad" "tbl act" "hand hand";column-gap:14px;row-gap:8px;padding-left:18px;padding-right:18px;}
+.cn > .tblw{grid-area:tbl;min-height:0;min-width:0;position:relative;}
+.cn > .top{grid-area:top;min-width:0;}
+.cn > .act{grid-area:act;min-width:0;}
+.cn > .hand{grid-area:hand;min-width:0;}
+.cn > .lpad{display:none;}
+.cn.L-ts > .lpad{display:block;grid-area:pad;min-height:0;overflow:auto;border-radius:6px 6px 14px 14px;-webkit-overflow-scrolling:touch;align-self:start;max-height:100%;}
+/* setup on an iPad held sideways: two columns, a little larger */
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
+  .stage:has(> .setup){max-width:min(1000px,94vw);display:flex;flex-direction:column;justify-content:center;min-height:calc(100dvh - var(--bar,64px) - 30px);}
+  .stage > .setup{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:32px;row-gap:22px;align-items:start;zoom:1.22;}
+  .stage > .setup > .setup-hero,.stage > .setup > .k-joins,.stage > .setup > .k-startdock{grid-column:1 / -1;}
+}
+
+/* ── The table: wood and felt, with each side's melds in its own band and the stock and pile between ── */
+.tblw{border-radius:26px;padding:8px;}
+.tblw > .felt-in{position:absolute;inset:8px;border-radius:19px;}
+.tbl{position:relative;z-index:1;height:100%;display:grid;grid-template-rows:auto minmax(0,1fr) auto minmax(0,1fr);gap:4px;padding:6px 8px 8px;box-sizing:border-box;--mw:40px;--tcw:58px;}
+.tbl.n3 .bands-them{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+/* a felt wider than tall: the stock and the pile stand in a column at the right, the two bands stacked beside them */
+.tbl.wide{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr) minmax(0,1fr);grid-template-areas:"seats seats" "them mid" "us mid";column-gap:8px;}
+.tbl.wide > .seats{grid-area:seats;} .tbl.wide > .bands-them{grid-area:them;} .tbl.wide > .bands-us{grid-area:us;}
+.tbl.wide > .mid{grid-area:mid;flex-direction:column;gap:6px;padding:0 2px;}
+.seats{display:flex;justify-content:space-between;align-items:flex-start;gap:6px;min-width:0;}
+.seats.one{justify-content:center;}
+.st{display:flex;align-items:center;gap:6px;min-width:0;padding:3px 10px 3px 3px;border-radius:10px;background:var(--plate-bg);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:var(--plate-line),0 2px 8px rgba(0,0,0,.3);color:#fff;position:relative;transition:box-shadow .25s,scale .3s var(--spring);}
+.st .avatar{width:26px;height:26px;font-size:.72rem;flex:none;}
+.st .avatar .ico{width:60%;height:60%;}
+.st .tx{display:flex;flex-direction:column;min-width:0;line-height:1.1;}
+.st .nm{font-weight:700;font-size:.8rem;white-space:nowrap;}
+.st .ct{font-size:.7rem;font-weight:600;color:rgba(255,255,255,.7);white-space:nowrap;}
+.st .bk{display:flex;--cw:14px;margin-left:2px;}
+.st .bk .pcard{flex:none;box-shadow:0 1px 2px rgba(0,0,0,.4);}
+.st .bk .pcard+.pcard{margin-left:calc(var(--cw) * -.7);}
+.st.turn{box-shadow:inset 0 0 0 1px rgba(255,211,77,.75),0 0 18px var(--litg),0 2px 8px rgba(0,0,0,.3);scale:1.04;}
+.st.turn::before{content:"";position:absolute;left:8px;right:8px;top:-1px;height:2px;border-radius:2px;background:var(--lit);box-shadow:0 0 8px 1px var(--litg);}
+.st.mate{box-shadow:var(--plate-line),inset 3px 0 0 var(--sc),0 2px 8px rgba(0,0,0,.3);}
+.st.mate.turn{box-shadow:inset 0 0 0 1px rgba(255,211,77,.75),inset 3px 0 0 var(--sc),0 0 18px var(--litg);}
+.st.away{opacity:.6;}
+.st .say{position:absolute;top:100%;left:50%;translate:-50% 0;margin-top:5px;padding:5px 11px;border-radius:9px;background:var(--plate-bg);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#fff;font-weight:700;font-size:.84rem;white-space:nowrap;box-shadow:var(--plate-line),0 4px 12px rgba(0,0,0,.35);animation:cnpop .35s var(--spring);z-index:20;}
+.st .say.big{color:var(--lit);box-shadow:inset 0 0 0 1px rgba(255,211,77,.7),0 0 16px var(--litg);}
+@keyframes cnpop{from{scale:.5;opacity:0;}to{scale:1;opacity:1;}}
+
+/* a side's band of melds */
+.bands-them{display:grid;gap:6px;min-height:0;}
+.band{position:relative;min-height:0;min-width:0;display:flex;flex-direction:column;gap:3px;border-radius:14px;padding:4px 6px 5px;background:rgba(0,0,0,.12);box-shadow:inset 0 0 0 1px rgba(255,255,255,.05);}
+.band.mine{background:rgba(255,255,255,.05);}
+.band.tgt{box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.5);}
+.band .bh{display:flex;align-items:center;gap:8px;min-width:0;font-size:.74rem;font-weight:700;color:rgba(255,255,255,.78);line-height:1.1;}
+.band .bh i{flex:none;width:8px;height:8px;border-radius:50%;background:var(--sc);}
+.band .bh .who{min-width:0;overflow-wrap:anywhere;}
+.band .bh .r3{display:flex;--cw:clamp(16px,calc(var(--mw) * .6),40px);margin-left:auto;}
+.band .bh .r3 .pcard{flex:none;box-shadow:0 1px 3px rgba(0,0,0,.45);}
+.band .bh .r3 .pcard+.pcard{margin-left:calc(var(--cw) * -.55);}
+.band .bh .need{flex:none;padding:1px 7px;border-radius:7px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);white-space:nowrap;}
+.band .ms{flex:1;min-height:0;display:flex;flex-wrap:wrap;align-content:flex-start;gap:6px 7px;--cw:var(--mw);}
+.band .none{font-size:.76rem;font-weight:600;color:rgba(255,255,255,.4);align-self:center;}
+/* a meld: its cards fanned down, the count under it */
+.ml{position:relative;display:flex;flex-direction:column;align-items:center;flex:none;transition:filter .2s,translate .2s var(--spring);}
+.ml .fan{position:relative;width:var(--cw);height:calc(var(--cw) * 1.4 + (var(--k) - 1) * var(--cw) * .27);}
+.ml .fan .pcard{position:absolute;left:0;top:calc(var(--i) * var(--cw) * .27);box-shadow:0 1px 3px rgba(0,0,0,.45);}
+.ml .n{margin-top:2px;font-size:calc(var(--cw) * .26 + 3px);font-weight:800;color:rgba(255,255,255,.85);font-variant-numeric:tabular-nums;line-height:1;}
+.ml.near .n{color:var(--lit);}
+.ml.tgt{cursor:pointer;}
+.ml.tgt .fan,.ml.tgt .pile3{filter:drop-shadow(0 0 7px rgba(255,211,77,.85));}
+.ml.stg .fan{outline:2px dashed rgba(255,211,77,.7);outline-offset:3px;border-radius:5px;}
+/* a canasta: squared into one pile, a red card on top for a natural one and a black card for a mixed one */
+.ml .pile3{position:relative;width:calc(var(--cw) + 6px);height:calc(var(--cw) * 1.4 + 6px);}
+.ml .pile3 .pcard{position:absolute;box-shadow:0 1px 2px rgba(0,0,0,.5);}
+.ml .pile3 .pcard:nth-child(1){left:6px;top:6px;} .ml .pile3 .pcard:nth-child(2){left:4px;top:4px;} .ml .pile3 .pcard:nth-child(3){left:2px;top:2px;} .ml .pile3 .pcard:nth-child(4){left:0;top:0;}
+.ml.can .tag{position:absolute;left:50%;bottom:calc(var(--cw) * .28 + 18px);translate:-50% 0;padding:1px 6px;border-radius:6px;font-size:calc(var(--cw) * .2 + 3px);font-weight:800;white-space:nowrap;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.4);z-index:2;}
+.ml.can.nat .tag{background:#c8102e;} .ml.can.mix .tag{background:#16161c;box-shadow:inset 0 0 0 1px rgba(255,255,255,.3),0 2px 6px rgba(0,0,0,.4);}
+.ml.squ .pile3{animation:cnsq .6s var(--spring);}
+@keyframes cnsq{0%{scale:1.25;rotate:-6deg;}50%{scale:.92;rotate:2deg;}100%{scale:1;rotate:0;}}
+.ml.squ.nat .pile3{filter:drop-shadow(0 0 14px rgba(255,90,110,.95));}
+.ml.grow .fan{animation:cngrow .4s var(--spring);}
+@keyframes cngrow{40%{scale:1.08;}}
+
+/* the middle: the stock and the discard pile */
+.mid{display:flex;align-items:center;justify-content:center;gap:clamp(12px,4vw,34px);min-width:0;position:relative;}
+.stock,.disc{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:none;padding:0;color:#fff;--cw:var(--tcw);font:inherit;}
+.stock .stk{position:relative;width:calc(var(--cw) + 6px);height:calc(var(--cw) * 1.4 + 6px);}
+.stock .stk .pcard{position:absolute;box-shadow:0 1px 2px rgba(0,0,0,.5);}
+.stock .stk .pcard:nth-child(1){left:6px;top:6px;} .stock .stk .pcard:nth-child(2){left:3px;top:3px;} .stock .stk .pcard:nth-child(3){left:0;top:0;}
+.stock .lb,.disc .lb{font-size:.72rem;font-weight:700;color:rgba(255,255,255,.8);white-space:nowrap;font-variant-numeric:tabular-nums;}
+.disc .pl{position:relative;width:calc(var(--cw) * 1.4 + 6px);height:calc(var(--cw) * 1.4 + 6px);display:grid;place-items:center;}
+.disc .pl .under{position:absolute;left:50%;top:50%;translate:-50% -50%;box-shadow:0 1px 2px rgba(0,0,0,.5);}
+.disc .pl .under:nth-child(1){rotate:-7deg;} .disc .pl .under:nth-child(2){rotate:5deg;}
+.disc .pl .cross{position:absolute;left:50%;top:50%;translate:-50% -50%;rotate:90deg;box-shadow:0 2px 6px rgba(0,0,0,.5);}
+.disc .pl .topc{position:relative;z-index:2;box-shadow:0 3px 10px rgba(0,0,0,.45);}
+.disc .pl .empty{width:var(--cw);height:calc(var(--cw) * 1.4);border-radius:calc(var(--cw) * .08);outline:1.5px dashed rgba(255,255,255,.25);outline-offset:-2px;}
+.disc.frozen .lb{color:#bfe6ff;}
+.disc.blocked .topc{box-shadow:0 0 0 3px rgba(20,20,26,.85),0 0 14px rgba(0,0,0,.6);}
+.stock.go .stk,.disc.go .pl{filter:drop-shadow(0 0 10px rgba(255,211,77,.8));cursor:pointer;}
+.stock.go:active .stk,.disc.go:active .pl{scale:.96;}
+.disc.bump .pl{animation:cngrow .35s var(--spring);}
+.mid .pnum{position:absolute;right:4px;bottom:0;}
+
+/* ── The score strip: a paper pad for each side ── */
+.top{display:flex;gap:6px;align-items:stretch;cursor:pointer;}
+.sd{flex:1 1 0;min-width:0;position:relative;border-radius:9px;padding:4px 9px 5px;color:#2a2a3a;box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 5px 12px rgba(0,0,0,.35);border-top:4px solid var(--sc);
+  background-image:repeating-linear-gradient(180deg,transparent 0 17px,rgba(60,80,160,.12) 17px 18px),linear-gradient(180deg,#fffaf0,#f1e6cc);}
+.sd .nm{display:block;font-size:.68rem;font-weight:800;line-height:1.15;color:#5a5a70;overflow-wrap:anywhere;}
+.sd .row{display:flex;align-items:baseline;justify-content:space-between;gap:6px;}
+.sd .tot{font-family:var(--hand);font-size:1.6rem;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums;}
+.sd .tot.neg{color:#c8102e;}
+.sd .now{font-family:var(--hand);font-size:.98rem;line-height:1;color:#3a7d4a;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.sd .now.bad{color:#c8102e;}
+.sd .bar{position:relative;height:5px;border-radius:3px;background:rgba(0,0,0,.1);margin-top:3px;overflow:hidden;}
+.sd .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--sc);transition:width .6s ease;}
+.sd .cans{display:flex;gap:3px;min-height:9px;margin-top:3px;}
+.sd .cans b{width:9px;height:12px;border-radius:2px;background:#c8102e;box-shadow:1px 1px 0 rgba(0,0,0,.25);}
+.sd .cans b.m{background:#1b1b22;}
+.sd.mine{box-shadow:0 0 0 2px var(--sc),0 5px 12px rgba(0,0,0,.35);}
+
+/* ── The action bar ── */
+.act{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:52px;}
+.act .hint{color:var(--text-2);font-weight:700;text-align:center;font-size:.95rem;line-height:1.25;}
+.act .sub{color:var(--text-3);font-weight:600;font-size:.8rem;text-align:center;}
+.act .row{display:flex;gap:8px;width:100%;max-width:480px;justify-content:center;flex-wrap:wrap;}
+.act .row .btn{flex:1 1 0;min-width:0;min-height:48px;padding-left:10px;padding-right:10px;}
+.act .row .btn small{display:block;font-size:.72rem;font-weight:600;opacity:.85;}
+.act .stage{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:12px;background:var(--well);box-shadow:inset 0 0 0 1px var(--gl-line);font-weight:700;}
+.act .stage b{font-family:var(--display);font-size:1.3rem;color:var(--lit);font-variant-numeric:tabular-nums;}
+.act .stage .meter{width:90px;height:6px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;}
+.act .stage .meter i{display:block;height:100%;background:var(--lit);transition:width .35s ease;}
+.act.nudge .hint{animation:cnnudge .4s;}
+@keyframes cnnudge{20%{translate:-6px 0;}40%{translate:6px 0;}60%{translate:-4px 0;}80%{translate:3px 0;}}
+
+/* ── Your hand ── */
+.hand{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;padding:16px 4px 2px;--cw:64px;touch-action:none;}
+.hand .hr{display:flex;justify-content:center;align-items:flex-end;max-width:100%;}
+.hand .hr + .hr{margin-top:calc(var(--cw) * -.62);}
+.hand .pcard{flex:none;transition:translate .18s var(--spring),box-shadow .2s,filter .2s;cursor:pointer;}
+.hand .pcard + .pcard{margin-left:var(--ov,-24px);}
+.hand .pcard.gap{margin-left:calc(var(--ov,-24px) + var(--gp,0px));}
+.hand .pcard.sel{translate:0 calc(var(--cw) * -.24);box-shadow:0 0 0 3px var(--lit),0 10px 18px rgba(0,0,0,.4);}
+.hand .pcard.new{box-shadow:0 0 0 3px #8ff0b0,0 8px 18px rgba(0,0,0,.35);}
+.hand .pcard.stg{filter:brightness(.55) saturate(.5);translate:0 calc(var(--cw) * .1);}
+.hand .pcard.hl{translate:0 calc(var(--cw) * -.18);box-shadow:0 0 0 3px #8ff0b0,0 10px 18px rgba(0,0,0,.4);}
+.hand .pcard.drag{transition:none;z-index:40;box-shadow:0 18px 30px rgba(0,0,0,.5);}
+.hand.hidden .pcard{cursor:default;}
+
+/* jokers and wild 2s */
+.pcard.jk{background:linear-gradient(180deg,#fffdf8,#f3ecdc);}
+.pcard.jk .big svg{width:calc(var(--cw) * .6);height:calc(var(--cw) * .6);}
+.pcard.jk .ix{font-size:calc(var(--cw) * .2);}
+.pcard.wild::after{content:"";position:absolute;inset:auto 14% 5% 14%;height:3px;border-radius:2px;background:linear-gradient(90deg,#c9a24a,#ffe3a0,#c9a24a);opacity:.9;}
+
+/* floating points, the line across the table */
+.fl{position:absolute;z-index:30;pointer-events:none;font-family:var(--display);font-size:1.35rem;color:#ffd166;text-shadow:0 2px 6px rgba(0,0,0,.6);animation:cnfl 1.2s ease-out forwards;white-space:nowrap;}
+.fl.g{color:#8ff0b0;} .fl.r{color:#ff9aa5;}
+@keyframes cnfl{0%{opacity:0;translate:-50% 0;scale:.6;}15%{opacity:1;scale:1.1;}100%{opacity:0;translate:-50% -46px;scale:1;}}
+.flash{position:absolute;left:50%;top:50%;translate:-50% -50%;z-index:25;padding:7px 14px;border-radius:14px;background:var(--plate-bg);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:var(--plate-line);color:#fff;font-weight:700;font-size:.9rem;width:max-content;max-width:calc(100% - 24px);text-align:center;line-height:1.25;animation:cnpop .25s;pointer-events:none;}
+.ghost{position:absolute;left:0;top:0;z-index:40;pointer-events:none;}
+
+/* the hand's count and the score pad (in sheets) */
+.cnt{display:flex;flex-direction:column;gap:10px;}
+.cr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center;padding:10px 12px;border-radius:15px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),inset 4px 0 0 var(--sc);position:relative;overflow:hidden;}
+.cr .who{font-weight:800;font-size:.95rem;min-width:0;}
+.cr .who small{display:block;font-size:.76rem;font-weight:600;color:var(--text-3);}
+.cr .pts{font-family:var(--display);font-size:1.7rem;line-height:1;text-align:right;font-variant-numeric:tabular-nums;}
+.cr .pts.neg{color:var(--red);}
+.cr .lines{grid-column:1 / -1;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;font-size:.84rem;font-weight:600;color:var(--text-2);}
+.cr .lines span:nth-child(even){text-align:right;font-variant-numeric:tabular-nums;font-weight:800;color:var(--text);}
+.cr .lines span.neg{color:var(--red) !important;}
+.cr .lines .ln{opacity:0;transition:opacity .25s;}
+.cr .lines .ln.on{opacity:1;}
+.cr .cs{grid-column:1 / -1;display:flex;flex-wrap:wrap;align-items:center;gap:6px;--cw:26px;}.cr .cs:empty{display:none;}
+.cr .cs .ml .n{display:none;}
+.cr .cs .ml.can .tag{bottom:6px;}
+.cr .stamp{margin-left:auto;align-self:center;rotate:-8deg;padding:3px 10px;border:3px solid currentColor;border-radius:8px;font-family:var(--display);font-size:1.15rem;opacity:0;scale:2;transition:opacity .25s,scale .35s var(--spring);pointer-events:none;background:rgba(20,16,10,.6);color:#4ade80;}
+.cr .stamp.on{opacity:1;scale:1;}
+.cr.out .pts{margin-right:0;}
+.padw{margin-top:12px;}
+.spad td small.k{font-size:.7rem;color:#7a7a90;display:block;line-height:1.1;}
+.spad thead th{font-size:1rem;}
+.lpad .spad{box-shadow:0 8px 20px rgba(0,0,0,.4);}
+.lpad .spad th,.lpad .spad td{height:34px;} .lpad .spad td{font-size:1.15rem;}
+
+/* phone sideways: a slimmer strip and bar */
+.cn.L-ps .sd{padding:3px 8px 4px;} .cn.L-ps .sd .tot{font-size:1.3rem;} .cn.L-ps .sd .cans{display:none;}
+.cn.L-ps .act{min-height:34px;gap:4px;} .cn.L-ps .act .hint{font-size:.86rem;} .cn.L-ps .act .sub{display:none;}
+.cn.L-ps .act .row .btn{min-height:44px;font-size:.9rem;}
+.cn.L-ps .hand{padding-top:14px;}
+.cn.L-pu .act{min-height:84px;}
+.cn.L-tu .act{min-height:96px;}
+.cn.L-tu .sd .nm,.cn.L-ts .sd .nm{font-size:.8rem;} .cn.L-tu .sd .tot,.cn.L-ts .sd .tot{font-size:2rem;}
+.cn.L-tu .act .hint,.cn.L-ts .act .hint{font-size:1.05rem;}
+.cn.L-tu .band .bh,.cn.L-ts .band .bh{font-size:.84rem;}
+.cn.L-ts .top{flex-direction:column;}
+.cn.L-pu .st .bk,.cn.L-ps .st .bk,.tbl.tight .st .bk{display:none;}
+.tbl.tight .ml .fan .pcard{top:calc(var(--i) * var(--cw) * .22);} .tbl.tight .ml .fan{height:calc(var(--cw) * 1.4 + (var(--k) - 1) * var(--cw) * .22);}
+.tbl.tight .band{padding:2px 5px 3px;} .tbl.tight .band .bh{font-size:.68rem;} .tbl.tight .st.turn{scale:1;} .tbl.tight .st .nm{font-size:.74rem;}
+@media (max-height:640px){ .cn.L-pu .act{min-height:58px;} .cn.L-pu{gap:4px;} } .tbl.tight .st .ct{display:none;} .tbl.tight .st{padding:2px 8px 2px 2px;} .tbl.tight .st .avatar{width:20px;height:20px;}
+</style>
+</head>
+<body>
+<main class="cn k-hold" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var Core = window.CanastaCore, el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'canasta_state', HKEY = 'canasta';
+  var POS = { 4: ['s', 'w', 'n', 'e'], 3: ['s', 'w', 'e'], 2: ['s', 'n'] };
+  var STAR = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.6 1-4.8 4.6 1.1 6.5L12 17.4l-5.8 3.1 1.1-6.5L2.5 9.4l6.6-1z"/></svg>';
+
+  Kit.init({
+    id: 'canasta',
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([
+      { icon: 'chart', label: 'Score pad', onClick: function () { if (S && S.players) showPad(); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Canasta: past games' }); } }
+    ]),
+    rules:
+      '<p class="goal">Canasta is a rummy game for two partnerships. You score by laying down <b>melds</b>, sets of cards of the same rank, and above all <b>canastas</b>, melds of seven cards. The first side to 5,000 wins.</p>' +
+      '<h3>The cards</h3><ul><li>Two decks and four jokers, 108 cards. Each player is dealt 11 cards.</li>' +
+      '<li><b>Jokers and 2s are wild.</b> A wild card stands in for any rank in a meld.</li>' +
+      '<li><b>Red 3s</b> are bonus cards. As soon as you’re dealt or draw one, it goes face up on the table and you draw a card to replace it. Each is worth 100, and all four on one side are worth 800. If your side hasn’t melded by the end of the hand, they count against you.</li>' +
+      '<li><b>Black 3s</b> block the discard pile: the next player can’t take the pile while a black 3 is on top.</li>' +
+      '<li>Card values: a joker is 50, a 2 or an ace is 20, a king down to an 8 is 10, and a 7 down to a 4, or a black 3, is 5.</li></ul>' +
+      '<h3>Your turn</h3><ul><li>Draw the top card of the stock, or take the whole discard pile (below).</li>' +
+      '<li>Then lay down any melds you want, or add cards to your side’s melds.</li>' +
+      '<li>End your turn by discarding one card onto the pile.</li></ul>' +
+      '<h3>Melds</h3><ul><li>A meld is three or more cards of the same rank, from 4s up to aces. It needs at least two natural cards and can hold no more than three wild cards.</li>' +
+      '<li>Partners share their melds, and a side has only one meld of each rank. More cards of that rank go on the same meld.</li>' +
+      '<li>A meld of seven cards is a <b>canasta</b>. With no wild card in it, it’s a natural canasta, worth 500, and it’s squared up with a red card on top. With a wild card, it’s a mixed canasta, worth 300, with a black card on top. You can keep adding cards to a canasta.</li></ul>' +
+      '<h3>Your side’s first meld</h3><p>The cards in your side’s first meld have to add up to a minimum, which depends on your side’s score: <b>15</b> below zero, <b>50</b> from 0, <b>90</b> from 1,500, and <b>120</b> from 3,000. You can lay several melds at once to reach it. Bonuses don’t count toward it.</p>' +
+      '<h3>Taking the discard pile</h3><ul><li>To take the pile, you have to meld its top card at once, using cards from your hand. Then the rest of the pile goes into your hand.</li>' +
+      '<li>You can use a natural pair that matches the top card, or one natural card and a wild card, or add the top card to a meld your side already has.</li>' +
+      '<li><b>The pile is frozen</b> while it holds a wild card (the first one is turned across the pile), and for a side that hasn’t made its first meld. A frozen pile can only be taken with a natural pair that matches the top card.</li>' +
+      '<li>Nobody can take the pile with a wild card or a black 3 on top. For a first meld made by taking the pile, only the top card and cards from your hand count toward the minimum.</li></ul>' +
+      '<h3>Going out</h3><ul><li>You go out by melding all your cards, or by discarding your last one. Your side needs at least one canasta before you can go out.</li>' +
+      '<li>Going out is worth 100. Going out <b>concealed</b>, melding your whole hand in one turn without having melded before, is worth 200, and when you drew from the stock your melds don’t need to reach the first-meld minimum.</li>' +
+      '<li>Before going out you can ask your partner, “May I go out?” Your partner answers, and the answer binds you: if it’s no, you can’t go out this turn, and if it’s yes, you have to.</li></ul>' +
+      '<h3>Scoring</h3><ul><li>At the end of each hand, each side scores its canastas, red 3s and going-out bonus, plus the value of every card it has melded, minus the value of the cards still in its hands.</li>' +
+      '<li>If the stock runs out, play goes on as long as each player takes the discard pile. You have to take it when its top card goes on one of your side’s melds. If the last card of the stock is a red 3, the hand ends at once.</li>' +
+      '<li>The game ends at the end of the hand in which a side reaches 5,000. The higher score wins.</li></ul>' +
+      '<h3>Two and three players</h3><ul><li><b>Two players:</b> each gets 15 cards and draws two cards from the stock each turn, discarding one. You need two canastas to go out.</li>' +
+      '<li><b>Three players:</b> everyone plays alone, with 13 cards each.</li></ul>' +
+      '<h3>Playing here</h3><ul><li>Tap cards in your hand to choose them, then tap a button, or tap one of your melds to add them. Tap the stock to draw, or the pile to take it.</li>' +
+      '<li>Before your side’s first meld, the melds you choose wait on the table until they reach the minimum, then Lay down puts them all down at once.</li>' +
+      '<li><b>Play online</b> in the menu: open a table and the others join on their own devices. With four, the first two people to sit are partners. The computer plays any empty seat.</li></ul>'
+  });
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  var S = null, token = 0, undoStack = [], busy = false, sel = [], staged = [], fresh = [];
+  var NET = null, MYSEAT = 0, LME = 0, BLIND = false;
+  function me() { return NET ? MYSEAT : LME; }
+  function N() { return S ? S.n : 4; }
+  function posOf(p) { return POS[N()][(p - me() + N() * 4) % N()]; }
+  function sideOf(p) { return Core.sideOf(S, p); }
+  function MS() { return sideOf(Math.max(0, me())); }
+  function person(p) { return p >= 0 && S.players[p] && !S.players[p].cpu; }
+  function people() { return S.players.filter(function (x) { return !x.cpu; }).length; }
+  function onePerson() { return !!NET || people() < 2; }
+  function first(n) { return String(n || '').split(' ')[0]; }
+  function fn(p) { var pl = S.players[p]; return pl.cpu ? pl.name : first(pl.name); }
+  function nm(p) { return S.players[p].name; }
+  function isYou(p) { return p === me() && onePerson() && (!NET || MYSEAT >= 0); }
+  function who(p) { return isYou(p) ? 'You' : fn(p); }
+  function sideName(s) { return Core.seatsOf(S, s).map(function (p) { return fn(p); }).join(' & '); }
+  function mineSide(s) { return s === MS() && onePerson() && (!NET || MYSEAT >= 0); }
+  function sideSay(s) {
+    if (!mineSide(s)) return sideName(s);
+    return S.kind === 'part' ? 'You & ' + fn((me() + 2) % 4) : 'You';
+  }
+  function sideColor(s) { return Kit.color(s); }
+  function seatColor(p) { return Kit.color(sideOf(p)); }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function save() {
+    if (NET || !S) return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S.phase !== 'over') Kit.resume.set('Hand ' + S.round + ' · ' + S.scores.map(function (v, s) { return sideName(s) + ' ' + v.toLocaleString('en-US'); }).join(' · '));
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); token++; busy = false; }
+  function fmt(v) { return (v < 0 ? '−' : '') + Math.abs(v).toLocaleString('en-US'); }
+  function plural(r) { return Core.PLURAL[r] || r; }
+
+  var LEVELS = [['easy', 'Easy', 'Melds what it sees and doesn’t mind what it throws away.'],
+    ['normal', 'Normal', 'Reaches its first meld early, builds canastas and watches what the next player could take.'],
+    ['hard', 'Hard', 'Saves its wild cards for natural canastas, guards the pile and remembers every discard.']];
+
+  // ── Setup ─────────────────────────────────────────────────────────────────
+  function kindFor(n) { return n === 2 ? 'two' : n === 3 ? 'three' : 'part'; }
+  function showSetup() {
+    S = null; token++; BLIND = false; LME = 0; sel = []; staged = []; Kit.handoff.close();
+    app.className = 'stage'; app.innerHTML = ''; app.removeAttribute('style'); tbl = null;
+    Kit.setup(app, {
+      modes: Kit.modes(['cpu', 'local']),
+      players: { min: 2, max: 4, count: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : 'mix'; }, teams: function (n) { return n === 4 ? [[0, 2], [1, 3]] : null; } },
+      options: [
+        { id: 'to', label: 'Play to', help: 'The first side to reach this score wins.', value: 5000, choices: [[2500, '2,500\nShorter'], [5000, '5,000\nStandard']] },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }
+      ],
+      onStart: function (cfg) {
+        var n = cfg.players.length, o = cfg.options;
+        S = Core.newGame({ kind: kindFor(n), players: cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu ? (p.level || o.level) : undefined }; }), target: +o.to || 5000, level: o.level });
+        S.mode = cfg.mode; S.me = 0; S.seen = 0;
+        LME = 0; Kit.gameStart(); undoStack = []; startHand();
+      }
+    });
+  }
+
+  // ═══ Layout ══════════════════════════════════════════════════════════════════════════════════════
+  var LAY = '', tbl = null, tblW, topEl, actEl, handEl, padEl, seatsEl, themEl, midEl, usEl, stockEl, discEl, seatEls = {}, bandEls = {};
+  function layoutFor() {
+    var w = innerWidth, h = innerHeight, big = Math.min(w, h) >= 600;
+    if (w > h * 1.05) return big ? 'L-ts' : 'L-ps';
+    return big ? 'L-tu' : 'L-pu';
+  }
+  function build() {
+    app.innerHTML = '';
+    LAY = layoutFor(); app.className = 'cn k-hold ' + LAY;
+    topEl = el('div', { class: 'top', role: 'button', 'aria-label': 'Score pad', onclick: function () { if (S) { Kit.sfx('tap'); showPad(); } } });
+    tblW = el('div', { class: 'tblw wood' }, [el('div', { class: 'felt-in' })]);
+    tbl = el('div', { class: 'tbl n' + N() }); tblW.appendChild(tbl);
+    seatsEl = el('div', { class: 'seats' });
+    themEl = el('div', { class: 'bands-them' });
+    midEl = el('div', { class: 'mid' });
+    usEl = el('div', { class: 'bands-us' });
+    usEl.style.display = 'grid'; usEl.style.minHeight = '0';
+    tbl.appendChild(seatsEl); tbl.appendChild(themEl); tbl.appendChild(midEl); tbl.appendChild(usEl);
+    stockEl = el('button', { type: 'button', class: 'stock', 'aria-label': 'The stock', onclick: tapStock });
+    discEl = el('button', { type: 'button', class: 'disc', 'aria-label': 'The discard pile', onclick: tapPile });
+    midEl.appendChild(stockEl); midEl.appendChild(discEl);
+    seatEls = {}; bandEls = {};
+    for (var p = 0; p < N(); p++) if (p !== me() || NET && MYSEAT < 0) { seatEls[p] = el('div', { class: 'st' }); }
+    actEl = el('div', { class: 'act' });
+    handEl = el('div', { class: 'hand' });
+    padEl = el('div', { class: 'lpad' });
+    app.appendChild(topEl); app.appendChild(tblW); app.appendChild(padEl); app.appendChild(actEl); app.appendChild(handEl);
+    handDrag();
+  }
+  // seats from this device's point of view: left, across, right
+  function otherSeats() { var out = []; for (var i = 1; i < N(); i++) out.push((Math.max(0, me()) + i) % N()); return out; }
+  function sidesOther() { var a = []; for (var s = 0; s < Core.nSides(S); s++) if (s !== MS()) a.push(s); return a.sort(function (x, y) { return ((x - MS() + 3) % 3) - ((y - MS() + 3) % 3); }); }
+  function fit() {
+    if (!app.classList.contains('cn') || !tbl) return;
+    var topY = app.getBoundingClientRect().top + (window.scrollY || 0);
+    app.style.setProperty('--ph', Math.max(300, innerHeight - topY) + 'px');
+    var side = LAY === 'L-ps' ? Math.min(420, Math.max(320, Math.round(innerWidth * 0.43))) : LAY === 'L-ts' ? Math.min(400, Math.round(innerWidth * 0.34)) : 0;
+    if (side) app.style.setProperty('--side', side + 'px');
+    fitHand();
+    var r = tbl.getBoundingClientRect(), wide = r.width > r.height * 1.15;
+    tbl.classList.toggle('tight', r.width < 340 || r.height < 300);
+    tbl.classList.toggle('wide', wide);
+    var sh = seatsEl ? seatsEl.offsetHeight : 36;
+    var tcw = wide ? Math.max(26, Math.min(84, (r.height - sh - 56) / 3.1, r.width / 8)) : Math.max(34, Math.min(84, r.height / 6.4, r.width / 6));
+    tbl.style.setProperty('--tcw', Math.round(tcw) + 'px');
+    fitBands();
+  }
+  // one card size for every band, eased down until every meld fits its band with nothing cut off
+  function fitBands() {
+    var bands = [].slice.call(tbl.querySelectorAll('.band'));
+    if (!bands.length) return;
+    var r = tbl.getBoundingClientRect();
+    var room = Math.min.apply(null, bands.map(function (b) { var h = b.querySelector('.bh'); return b.clientHeight - (h ? h.offsetHeight : 0) - 12; }));
+    var mw = Math.max(18, Math.min(104, room / 2.15, r.width / 6.5));
+    for (var i = 0; i < 30; i++) {
+      tbl.style.setProperty('--mw', mw.toFixed(1) + 'px');
+      // (measured from the layout, not the screen: a card in flight or a canasta squaring up is transformed)
+      var ok = bands.every(function (b) {
+        var ms = b.querySelector('.ms'); if (!ms) return true;
+        var bot = ms.offsetTop + ms.clientHeight + 1, rt = ms.offsetLeft + ms.clientWidth + 1;
+        return [].every.call(ms.children, function (c) { return c.offsetTop + c.offsetHeight <= bot && c.offsetLeft + c.offsetWidth <= rt; });
+      });
+      if (ok || mw <= 16) break;
+      mw *= 0.95;
+    }
+  }
+  function fitHand() {
+    if (!handEl) return;
+    var cards = handEl.querySelectorAll('.pcard'), k = cards.length;
+    var W = handEl.clientWidth - 8, H = innerHeight;
+    var capH = LAY === 'L-pu' ? H * 0.115 : LAY === 'L-tu' ? H * 0.13 : LAY === 'L-ps' ? H * 0.3 : H * 0.15;
+    var rows = handEl.querySelectorAll('.hr').length || 1, perRow = Math.ceil(Math.max(k, 1) / rows);
+    var cw = Math.max(40, Math.min(132, capH, W / (Math.max(perRow, 11) * 0.34 + 0.66)));
+    if (LAY === 'L-ps' && actEl && topEl) { var room = (parseFloat(app.style.getPropertyValue('--ph')) || innerHeight) - topEl.offsetHeight - actEl.offsetHeight - 30 - (rows > 1 ? 1 : 0); cw = Math.max(36, Math.min(cw, room / (rows > 1 ? 1.4 * 1.38 + .12 : 1.4 * 1.12))); }
+    handEl.style.setProperty('--cw', Math.round(cw) + 'px');
+    var gaps = handEl.querySelectorAll('.pcard.gap').length / rows, gp = Math.min(cw * 0.18, 8);
+    var ov = perRow > 1 ? Math.min(4, (W - cw - gaps * gp) / (perRow - 1) - cw) : 0;
+    if (ov < -cw * 0.78) gp = 0;
+    handEl.style.setProperty('--ov', Math.max(-cw * 0.8, ov).toFixed(1) + 'px');
+    handEl.style.setProperty('--gp', gp.toFixed(1) + 'px');
+  }
+  // A turn of the device at any moment: the table is laid out again inside a View Transition, so everything glides
+  window.addEventListener('resize', function () { relayout(); });
+  var rlT = 0;
+  function relayout() {
+    if (!S || !tbl || !tbl.isConnected) return;
+    clearTimeout(rlT);
+    rlT = setTimeout(function () {
+      dragCancel();
+      var next = layoutFor();
+      Kit.glide(function () {
+        if (next !== LAY) { app.classList.remove(LAY); LAY = next; app.classList.add(LAY); }
+        paintAll(); fit();
+      });
+    }, 30);
+  }
+
+  // ═══ Painting the table from S ═══════════════════════════════════════════════════════════════════
+  function render() {
+    if (!S) return;
+    if (!tbl || !tbl.isConnected) build();
+    paintAll();
+    fit(); requestAnimationFrame(fit);
+  }
+  function paintAll() { paintTop(); paintSeats(); paintBands(); paintMid(); paintHand(); paintAct(); paintPad(); fitHand(); fitBands(); }
+  function cardEl(c, o) {
+    if (c.r === 'JK') {
+      var n = Kit.cardFace({ html: STAR, label: 'Joker', rank: '★', color: c.s === 'r' ? '#d81e3a' : '#22222c', cls: 'jk wild' + (o && o.cls ? ' ' + o.cls : ''), aria: 'Joker, wild' });
+      n.dataset.id = c.id; return n;
+    }
+    var e = Cards.el(c, o); if (c.r === '2') e.classList.add('wild');
+    return e;
+  }
+  function vn(i) { return 'cn' + i; }
+  function paintTop() {
+    topEl.innerHTML = '';
+    var order = [MS()].concat(sidesOther());
+    if (NET && MYSEAT < 0) { order = []; for (var s0 = 0; s0 < Core.nSides(S); s0++) order.push(s0); }
+    order.forEach(function (s) {
+      var pts = handPts(s), mel = Core.melded(S, s), need = Core.needFor(S, s), cans = el('span', { class: 'cans' });
+      S.melds[s].forEach(function (m) { if (Core.isCanasta(m)) cans.appendChild(el('b', { class: Core.isNatural(m) ? '' : 'm' })); });
+      topEl.appendChild(el('div', { class: 'sd' + (mineSide(s) ? ' mine' : ''), style: { '--sc': sideColor(s), 'view-transition-name': 'cnsd' + s } }, [
+        el('span', { class: 'nm', text: sideSay(s) }),
+        el('div', { class: 'row' }, [el('span', { class: 'tot' + (S.scores[s] < 0 ? ' neg' : ''), text: fmt(S.scores[s]) }),
+          el('span', { class: 'now' + (pts < 0 ? ' bad' : ''), text: mel ? (pts >= 0 ? '+' : '') + fmt(pts) : 'First meld ' + need })]),
+        el('div', { class: 'bar' }, [el('i', { style: { width: Math.max(0, Math.min(100, S.scores[s] / S.target * 100)) + '%' } })]),
+        cans
+      ]));
+    });
+  }
+  // this hand so far, as the table shows it: canastas, red 3s and melded cards (cards in hands aren't counted yet)
+  function handPts(s) {
+    var t = 0, mel = Core.melded(S, s);
+    S.melds[s].forEach(function (m) { t += Core.sum(m.cards) + (Core.isCanasta(m) ? (Core.isNatural(m) ? 500 : 300) : 0); });
+    var r3 = S.red3[s].length === 4 ? 800 : S.red3[s].length * 100;
+    return t + (mel ? r3 : -r3);
+  }
+  function avatar(p) {
+    var pl = S.players[p];
+    return pl.cpu ? el('span', { class: 'avatar sm', style: { '--c': seatColor(p) }, html: Kit.icon('bot') }) : Kit.avatar.el(pl.name, 'sm', seatColor(p));
+  }
+  function paintSeats() {
+    seatsEl.innerHTML = '';
+    var list = NET && MYSEAT < 0 ? S.players.map(function (x, i) { return i; }) : otherSeats(), tp = Core.turn(S);
+    seatsEl.classList.toggle('one', list.length === 1);
+    list.forEach(function (p) {
+      var s = seatEls[p] || (seatEls[p] = el('div', { class: 'st' }));
+      s.innerHTML = '';
+      s.className = 'st' + (tp === p ? ' turn' : '') + (sideOf(p) === MS() && S.kind === 'part' ? ' mate' : '') + (S.players[p].away ? ' away' : '');
+      s.style.setProperty('--sc', seatColor(p)); s.style.viewTransitionName = 'cnseat' + p;
+      var n = S.hands[p].length, bk = el('span', { class: 'bk' });
+      for (var i = 0; i < Math.min(n, 5); i++) bk.appendChild(Kit.card('', '', { back: true }));
+      s.appendChild(avatar(p));
+      s.appendChild(el('span', { class: 'tx' }, [el('span', { class: 'nm', text: fn(p) }), el('span', { class: 'ct', text: n === 1 ? '1 card' : n + ' cards' })]));
+      s.appendChild(bk);
+      seatsEl.appendChild(s);
+    });
+  }
+  function seatAnchor(p) { return p === me() && handEl && !(NET && MYSEAT < 0) ? handEl : seatEls[p] && seatEls[p].isConnected ? seatEls[p] : tbl; }
+  function paintBands() {
+    themEl.innerHTML = ''; usEl.innerHTML = '';
+    var others = sidesOther();
+    if (NET && MYSEAT < 0) { others = [1].concat(S.kind === 'three' ? [2] : []); }
+    others.forEach(function (s) { themEl.appendChild(band(s)); });
+    usEl.appendChild(band(NET && MYSEAT < 0 ? 0 : MS()));
+  }
+  function band(s) {
+    var mine = mineSide(s), b = el('div', { class: 'band' + (mine ? ' mine' : ''), style: { '--sc': sideColor(s), 'view-transition-name': 'cnband' + s } });
+    bandEls[s] = b;
+    var r3 = el('span', { class: 'r3' }); S.red3[s].forEach(function (c) { r3.appendChild(cardEl(c)); });
+    var head = el('div', { class: 'bh' }, [el('i'), el('span', { class: 'who', text: sideSay(s) })]);
+    if (!Core.melded(S, s)) head.appendChild(el('span', { class: 'need', text: 'First meld ' + Core.needFor(S, s) }));
+    head.appendChild(r3);
+    b.appendChild(head);
+    var ms = el('div', { class: 'ms' });
+    var list = S.melds[s].slice().sort(function (a, b2) { return (Core.isCanasta(b2) - Core.isCanasta(a)) || Core.ORD[b2.r] - Core.ORD[a.r]; });
+    list.forEach(function (m) { ms.appendChild(meldEl(m, s)); });
+    if (mine && staged.length) staged.forEach(function (g, gi) { ms.appendChild(stagedEl(g, gi)); });
+    if (!ms.children.length) ms.appendChild(el('span', { class: 'none', text: mine ? 'Your side’s melds go here.' : 'No melds yet.' }));
+    b.appendChild(ms);
+    return b;
+  }
+  function meldCards(m) {
+    var nat = m.cards.filter(function (c) { return !Core.isWild(c); }), w = m.cards.filter(Core.isWild);
+    return nat.concat(w);
+  }
+  function meldEl(m, s) {
+    var can = Core.isCanasta(m), nat = Core.isNatural(m), cs = meldCards(m);
+    var e = el('div', { class: 'ml' + (can ? ' can ' + (nat ? 'nat' : 'mix') : '') + (m.cards.length >= 5 && !can ? ' near' : ''), 'data-r': m.r, 'data-side': String(s), style: { 'view-transition-name': 'cnm' + s + '-' + m.r } });
+    if (can) {
+      // squared up: a red card on top for a natural canasta, a black one for a mixed canasta
+      var pile = el('div', { class: 'pile3' });
+      var red = cs.filter(function (c) { return !Core.isWild(c) && (c.s === 'h' || c.s === 'd'); })[0], blk = cs.filter(function (c) { return !Core.isWild(c) && (c.s === 's' || c.s === 'c'); })[0];
+      var topc = nat ? red || cs[0] : blk || cs.filter(function (c) { return c.r === 'JK' && c.s === 'b'; })[0] || cs[0];
+      for (var i = 0; i < 3; i++) pile.appendChild(Kit.card('', '', { back: true }));
+      pile.appendChild(cardEl(topc));
+      e.appendChild(pile);
+      e.appendChild(el('span', { class: 'tag', text: nat ? '500' : '300' }));
+      e.appendChild(el('span', { class: 'n', text: String(m.cards.length) }));
+    } else {
+      var fan = el('div', { class: 'fan', style: { '--k': String(cs.length) } });
+      cs.forEach(function (c, i) { var n = cardEl(c); n.style.setProperty('--i', String(i)); fan.appendChild(n); });
+      e.appendChild(fan);
+      e.appendChild(el('span', { class: 'n', text: String(m.cards.length) }));
+    }
+    e.setAttribute('aria-label', (can ? (nat ? 'Natural canasta of ' : 'Mixed canasta of ') : 'Meld of ') + plural(m.r) + ', ' + m.cards.length + ' cards');
+    if (mineSide(s)) e.addEventListener('click', function () { tapMeld(m.r); });
+    return e;
+  }
+  function stagedEl(g, gi) {
+    var h = handCards(), cs = g.map(function (id) { return h[Core.find(h, id)]; }).filter(Boolean);
+    var nat = cs.filter(function (c) { return !Core.isWild(c); }), w = cs.filter(Core.isWild); cs = nat.concat(w);
+    var e = el('div', { class: 'ml stg', style: { 'view-transition-name': 'cnstg' + gi } });
+    var fan = el('div', { class: 'fan', style: { '--k': String(cs.length) } });
+    cs.forEach(function (c, i) { var n = cardEl(c); n.style.setProperty('--i', String(i)); fan.appendChild(n); });
+    e.appendChild(fan); e.appendChild(el('span', { class: 'n', text: String(Core.sum(cs)) }));
+    e.addEventListener('click', function () { staged.splice(gi, 1); Kit.sfx('tap'); paintAll(); });
+    return e;
+  }
+  function paintMid() {
+    stockEl.innerHTML = ''; discEl.innerHTML = '';
+    var stk = el('span', { class: 'stk' }), n = S.stock.length;
+    for (var i = 0; i < (n ? Math.min(3, Math.ceil(n / 20)) : 0); i++) stk.appendChild(Kit.card('', '', { back: true }));
+    stockEl.appendChild(stk); stockEl.appendChild(el('span', { class: 'lb', text: n ? n + ' in the stock' : 'The stock is gone' }));
+    stockEl.style.viewTransitionName = 'cnstock';
+    var pl = el('span', { class: 'pl' }), pile = S.pile, t = Core.top(S);
+    var cross = null; for (var j = 0; j < pile.length - 1; j++) if (Core.isWild(pile[j]) || Core.isRed3(pile[j])) { cross = pile[j]; break; }
+    if (pile.length > 2) pl.appendChild(Kit.card('', '', { back: true, cls: 'under' }));
+    if (pile.length > 1 && pile[pile.length - 2] !== cross) { var u = cardEl(pile[pile.length - 2], { cls: 'under' }); pl.appendChild(u); }
+    if (cross) pl.appendChild(cardEl(cross, { cls: 'cross' }));
+    if (t) pl.appendChild(cardEl(t, { cls: 'topc' })); else pl.appendChild(el('span', { class: 'empty' }));
+    discEl.appendChild(pl);
+    var fr = Core.frozenAll(S), blocked = t && Core.isBlack3(t);
+    discEl.className = 'disc' + (fr ? ' frozen' : '') + (blocked ? ' blocked' : '');
+    discEl.appendChild(el('span', { class: 'lb', text: !pile.length ? 'No discards' : (pile.length === 1 ? '1 card' : pile.length + ' cards') + (fr ? ', frozen' : blocked ? ', blocked' : '') }));
+    discEl.style.viewTransitionName = 'cndisc';
+    var my = myTurn(), drawPh = my && S.phase === 'draw';
+    stockEl.classList.toggle('go', drawPh && n > 0);
+    discEl.classList.toggle('go', drawPh && !!takeAuto());
+  }
+  function handCards() { var m = me(); if (m < 0 || !S.hands[m]) return []; return S.hands[m]; }
+  function myTurn() { var m = me(); return m >= 0 && Core.turn(S) === m && !busy && !BLIND && (!NET || NET.myTurn()); }
+  function inStage() { var o = {}; staged.forEach(function (g) { g.forEach(function (id) { o[id] = 1; }); }); return o; }
+  function paintHand() {
+    handEl.innerHTML = '';
+    var mine = handCards(), hidden = BLIND || (NET && MYSEAT < 0);
+    handEl.classList.toggle('hidden', !!hidden);
+    var st = inStage(), k = mine.length, W = handEl.clientWidth || innerWidth, cwGuess = parseFloat(handEl.style.getPropertyValue('--cw')) || 60;
+    // two rows when one would squeeze the cards past reading
+    var rows = k > 1 && (W - cwGuess) / (k - 1) < cwGuess * 0.26 ? 2 : 1;
+    var per = Math.ceil(k / rows), row = null, prev = null;
+    mine.forEach(function (c, i) {
+      if (i % per === 0) { row = el('div', { class: 'hr' }); handEl.appendChild(row); prev = null; }
+      if (hidden) { row.appendChild(Kit.card('', '', { back: true })); return; }
+      var n = cardEl(c);
+      if (prev && prev.r !== c.r && !(Core.isWild(prev) && Core.isWild(c))) n.classList.add('gap');
+      if (sel.indexOf(c.id) >= 0) n.classList.add('sel');
+      if (st[c.id]) n.classList.add('stg');
+      if (fresh.indexOf(c.id) >= 0) n.classList.add('new');
+      n.style.viewTransitionName = 'cnh' + c.id;
+      n.addEventListener('click', function () { if (n._dragged) return; tapCard(c); });
+      row.appendChild(n); prev = c;
+    });
+    fitHand();
+  }
+
+  // ═══ Choosing cards, and what can be done with them ═══════════════════════════════════════════════
+  function selCards() { var h = handCards(); return sel.map(function (id) { return h[Core.find(h, id)]; }).filter(Boolean); }
+  function tapCard(c) {
+    if (!S) return;
+    if (NET && !NET.myTurn()) { netNudge(); return; }
+    if (busy || BLIND || Core.turn(S) !== me()) return;
+    if (inStage()[c.id]) { staged = staged.filter(function (g) { return g.indexOf(c.id) < 0; }); Kit.sfx('tap'); paintAll(); return; }
+    var i = sel.indexOf(c.id);
+    if (i >= 0) sel.splice(i, 1); else sel.push(c.id);
+    Kit.sfx('tick'); Kit.haptic('light');
+    paintHand(); paintAct(); markTargets();
+  }
+  // the melds the chosen cards can go on glow
+  function markTargets() {
+    var cs = selCards(), s = MS();
+    [].forEach.call(tbl.querySelectorAll('.band.mine .ml'), function (e) {
+      var r = e.getAttribute('data-r'), m = r && Core.meldOfRank(S, s, r);
+      e.classList.toggle('tgt', !!(m && cs.length && myTurn() && S.phase === 'play' && Core.addOk(m, cs)));
+    });
+  }
+  function rankOfNat(cs) { var n = cs.filter(function (c) { return !Core.isWild(c); }); return n.length && n.every(function (c) { return c.r === n[0].r; }) ? n[0].r : null; }
+  function tapMeld(r) {
+    if (!S || busy || !myTurn()) return;
+    var cs = selCards();
+    if (S.phase === 'draw') { Kit.toast('Draw from the stock or take the pile first'); return; }
+    if (!cs.length) { Kit.toast('Choose cards from your hand to add to the ' + plural(r)); return; }
+    meld([], [{ r: r, ids: sel.slice() }]);
+  }
+  function meld(groups, adds) {
+    var a = { k: 'meld', groups: groups, adds: adds }, w = Core.why(S, me(), a);
+    if (w) { Kit.haptic('error'); Kit.sfx('bad', 0.5); Kit.toast(w); return; }
+    sel = []; staged = [];
+    move(a);
+  }
+  // a new meld from the chosen cards: before the side's first meld it waits on the table until the melds reach the minimum
+  function newMeld() {
+    var cs = selCards(), r = Core.newRank(cs, true);
+    if (!r) { var w0 = Core.why(S, me(), { k: 'meld', groups: [sel.slice()], adds: [] }); Kit.haptic('error'); Kit.toast(w0 || 'That isn’t a meld'); return; }
+    if (!Core.melded(S, MS())) {
+      var ranks = staged.map(function (g) { return Core.newRank(g.map(function (id) { var h = handCards(); return h[Core.find(h, id)]; }), true); });
+      if (ranks.indexOf(r) >= 0) { Kit.toast('You already have ' + plural(r) + ' waiting to go down'); return; }
+      staged.push(sel.slice()); sel = [];
+      Kit.sfx('chip'); Kit.haptic('light');
+      // laid at once when it is enough, or when it is the whole hand going out
+      var need = Core.needFor(S, MS()), got = stagedPts();
+      paintAll();
+      if (got >= need && S.phase === 'play') { var a = { k: 'meld', groups: staged.slice(), adds: [] }; if (!Core.why(S, me(), a)) { staged = []; move(a); } }
+      return;
+    }
+    meld([sel.slice()], []);
+  }
+  function stagedPts() { var h = handCards(), t = 0; staged.forEach(function (g) { g.forEach(function (id) { var c = h[Core.find(h, id)]; if (c) t += Core.val(c); }); }); return t; }
+  function discard() {
+    if (sel.length !== 1) { Kit.toast('Choose one card to discard'); return; }
+    var a = { k: 'discard', id: sel[0] }, w = Core.why(S, me(), a);
+    if (w) { Kit.haptic('error'); Kit.sfx('bad', 0.5); Kit.toast(w); return; }
+    sel = []; staged = [];
+    move(a);
+  }
+  function tapStock() {
+    if (!S) return;
+    if (NET && !NET.myTurn()) { netNudge(); return; }
+    if (!myTurn()) return;
+    if (S.phase !== 'draw') { Kit.toast(S.phase === 'play' ? 'You’ve drawn. Meld, then discard a card.' : 'Not now'); return; }
+    if (!S.stock.length) { Kit.toast('The stock is gone'); return; }
+    Kit.haptic('light'); sel = []; staged = []; move({ k: 'draw' });
+  }
+  // the way to take the pile: the chosen cards (and any melds waiting) if there are any, otherwise the one that uses
+  // the fewest wild cards
+  function takeAuto() {
+    if (!S || S.phase !== 'draw' || Core.turn(S) !== me()) return null;
+    if (sel.length || staged.length) {
+      var a = { k: 'take', ids: sel.slice(), groups: staged.slice() };
+      if (!Core.why(S, me(), a)) return a;
+      // a first meld: the pair goes with the top card, and melds from the rest of the hand make up the count
+      var t = Core.top(S), h = handCards();
+      if (t && !staged.length && !Core.melded(S, MS())) {
+        var cs = selCards(), rest = h.filter(function (c) { return sel.indexOf(c.id) < 0; }), wo = {}; wo[t.r] = 1;
+        var r = Core.reach(rest, Core.needFor(S, MS()) - Core.sum([t].concat(cs)), 2, wo);
+        if (r) { a.groups = r.groups; if (!Core.why(S, me(), a)) return a; }
+      }
+      return null;
+    }
+    var o = Core.takeOptions(S, me()); if (!o.length) return null;
+    o.sort(function (x, y) { return x.uses - y.uses; });
+    return o[0].a;
+  }
+  function tapPile() {
+    if (!S) return;
+    if (NET && !NET.myTurn()) { netNudge(); return; }
+    if (!myTurn()) return;
+    if (S.phase !== 'draw') { Kit.toast('You can only take the pile instead of drawing'); return; }
+    var a = takeAuto();
+    if (!a) {
+      var w = Core.why(S, me(), { k: 'take', ids: sel.slice(), groups: staged.slice() });
+      Kit.haptic('error'); Kit.sfx('bad', 0.5); Kit.toast(w || 'You can’t take the pile now'); return;
+    }
+    Kit.haptic('medium'); sel = []; staged = []; move(a);
+  }
+  function goOut() {
+    var plan = Core.planOut(S, me()); if (!plan) { Kit.toast('You can’t go out yet'); return; }
+    sel = []; staged = [];
+    if (plan.groups.length || plan.adds.length) { goingOut = plan.discard; move({ k: 'meld', groups: plan.groups, adds: plan.adds }); }
+    else move({ k: 'discard', id: plan.discard });
+  }
+  var goingOut = null;   // (the card to discard after Go out's melds)
+
+  // ── The action bar ──
+  function hint(t, sub) { actEl.appendChild(el('span', { class: 'hint', text: t })); if (sub) actEl.appendChild(el('span', { class: 'sub', text: sub })); }
+  function btn(label, cls, onClick, sub, dis) {
+    var b = el('button', { type: 'button', class: 'btn ' + cls, disabled: dis ? true : null, onclick: function () { Kit.sfx('tap'); onClick(); } });
+    b.appendChild(document.createTextNode(label)); if (sub) b.appendChild(el('small', { text: sub }));
+    return b;
+  }
+  function paintAct() {
+    actEl.innerHTML = ''; actEl.classList.remove('nudge');
+    if (!S || S.phase === 'over') return;
+    var m = me(), tp = Core.turn(S);
+    if (BLIND) return;
+    if (busy) { hint(waitText(tp, true)); return; }
+    if (S.phase === 'ask' && tp === m && myTurn()) {
+      var q = S.askBy;
+      hint(fn(q) + ' asks you, “May I go out?”', 'You hold ' + handCards().length + ' cards worth ' + Core.sum(handCards()) + '. Saying no keeps the hand going.');
+      actEl.appendChild(el('div', { class: 'row' }, [btn('Not yet', 'btn-soft', function () { Kit.haptic('light'); move({ k: 'answer', yes: false }); }), btn('Yes, go out', 'btn-primary', function () { Kit.haptic('medium'); move({ k: 'answer', yes: true }); })]));
+      return;
+    }
+    if (!myTurn()) { hint(waitText(tp)); return; }
+    var row = el('div', { class: 'row' });
+    if (S.phase === 'draw') {
+      var tk = takeAuto(), t = Core.top(S);
+      if (!S.stock.length) {
+        hint(Core.mustTake(S, m) ? 'The stock is gone, and the top card goes on one of your melds, so you have to take the pile.' : 'The stock is gone. Take the pile, or the hand ends.');
+        row.appendChild(btn('Take the pile', 'btn-primary', tapPile, null, !tk));
+        if (!Core.mustTake(S, m)) row.appendChild(btn('End the hand', 'btn-soft', function () { move({ k: 'end' }); }));
+      } else {
+        hint(tk ? 'Draw from the stock, or take the pile.' : pileWhy(), sel.length || staged.length ? '' : tk && tk.ids.length ? 'Taking it melds the ' + Core.rname(t) + ' with ' + tk.ids.length + ' from your hand.' : '');
+        row.appendChild(btn('Draw', tk ? 'btn-soft' : 'btn-primary', tapStock));
+        row.appendChild(btn(S.pile.length > 1 ? 'Take the pile of ' + S.pile.length : 'Take the pile', tk ? 'btn-primary' : 'btn-soft', tapPile, null, !tk));
+      }
+      var cs0 = selCards(), r0 = Core.newRank(cs0, false);
+      if (r0 && !Core.melded(S, MS()) && !(t && r0 === t.r)) row.appendChild(btn('Set aside ' + cs0.length + ' ' + plural(r0), 'btn-soft', newMeld, 'For the pile'));
+      if (staged.length) actEl.appendChild(stagePlate());
+      actEl.appendChild(row);
+      return;
+    }
+    if (S.phase !== 'play') { hint(''); return; }
+    var cs = selCards(), s = MS(), r = rankOfNat(cs), ex = r && Core.meldOfRank(S, s, r), plan = Core.planOut(S, m);
+    if (staged.length) actEl.appendChild(stagePlate());
+    if (!cs.length) {
+      hint(staged.length ? 'Add melds until they reach ' + Core.needFor(S, s) + ', then they all go down.' : S.asked === 'yes' ? fn(Core.partner(S, m)) + ' said yes. Go out now.' : S.asked === 'no' ? fn(Core.partner(S, m)) + ' said not yet. Meld if you like, then discard.' : 'Choose cards to meld, or one card to discard.');
+      if (plan) {
+        var mate = Core.partner(S, m);
+        if (mate >= 0 && !S.asked && !S.tmeld && handCards().length >= 2) row.appendChild(btn('Ask ' + fn(mate), 'btn-soft', function () { move({ k: 'ask' }); }, 'May I go out?'));
+        row.appendChild(btn('Go out', 'btn-primary', goOut, S.pm0 || Core.melded(S, s) && S.pm0 ? '' : !S.pm0 ? 'Concealed' : ''));
+      }
+      if (row.children.length) actEl.appendChild(row);
+      return;
+    }
+    var canNew = !!Core.newRank(cs, true) && !ex, canAdd = ex && Core.addOk(ex, cs), allWild = cs.every(Core.isWild);
+    if (cs.length === 1) hint(Core.isWild(cs[0]) ? 'Tap a meld to add the wild card to it, or discard it to freeze the pile.' : ex ? 'Add it to your ' + plural(r) + ', or discard it.' : 'Discard it to end your turn.');
+    else if (canNew) hint('That’s a meld of ' + plural(r) + '.');
+    else if (canAdd) hint('These go on your ' + plural(r) + '.');
+    else if (allWild) hint('Tap one of your melds to add the wild cards.');
+    else hint('Choose three or more of one rank to meld, or add cards to your melds.');
+    if (canNew) row.appendChild(btn(Core.melded(S, s) ? 'Meld ' + cs.length + ' ' + plural(r) : 'Set aside ' + cs.length + ' ' + plural(r), 'btn-primary', newMeld, Core.melded(S, s) ? '' : 'For your first meld'));
+    if (canAdd) row.appendChild(btn('Add to the ' + plural(r), 'btn-primary', function () { meld([], [{ r: r, ids: sel.slice() }]); }));
+    if (cs.length === 1) row.appendChild(btn('Discard', canNew || canAdd ? 'btn-soft' : 'btn-primary', discard));
+    row.appendChild(btn('Clear', 'btn-ghost', function () { sel = []; paintAll(); }));
+    actEl.appendChild(row);
+    markTargets();
+  }
+  function stagePlate() {
+    var need = Core.needFor(S, MS()), got = stagedPts();
+    var box = el('div', { class: 'stage' }, [el('span', { text: 'First meld' }), el('b', { text: got + ' of ' + need }), el('span', { class: 'meter' }, [el('i', { style: { width: Math.min(100, got / need * 100) + '%' } })])]);
+    return box;
+  }
+  function pileWhy() {
+    var t = Core.top(S); if (!t) return 'Draw from the stock.';
+    if (Core.isWild(t)) return 'A wild card is on top of the pile, so draw from the stock.';
+    if (Core.isBlack3(t)) return 'A black 3 blocks the pile this turn, so draw from the stock.';
+    return Core.frozenFor(S, MS()) ? 'The pile takes a natural pair of ' + plural(t.r) + ' now. Draw from the stock.' : 'Draw from the stock.';
+  }
+  function waitText(p, quiet) {
+    if (p < 0) return '';
+    if (p === me() && !BLIND) return quiet ? '' : '';
+    var nmx = fn(p);
+    if (!onePerson() && person(p) && !NET) return 'Pass the device to ' + nmx;
+    if (S.phase === 'ask') return fn(S.askBy) + ' asks ' + (isYou(p) ? 'you' : nmx) + ', “May I go out?”';
+    if (S.players[p].cpu) return nmx + ' is ' + (S.phase === 'draw' ? 'drawing…' : 'playing…');
+    return 'Waiting for ' + nmx;
+  }
+  // Drag a card from your hand onto the pile to discard it
+  var DR = null;
+  function handDrag() {
+    handEl.addEventListener('pointerdown', function (e) {
+      var n = e.target.closest && e.target.closest('.pcard'); if (!n || !S || !n.dataset.id) return;
+      DR = { n: n, x: e.clientX, y: e.clientY, on: false, id: e.pointerId };
+    });
+    if (handDrag.on) return; handDrag.on = true;
+    window.addEventListener('pointermove', function (e) {
+      if (!DR || e.pointerId !== DR.id) return;
+      var dx = e.clientX - DR.x, dy = e.clientY - DR.y;
+      if (!DR.on && Math.hypot(dx, dy) > 12 && dy < -6) {
+        if (S.phase !== 'play' || !myTurn()) { DR = null; return; }
+        DR.on = true; DR.n.classList.add('drag');
+      }
+      if (DR.on) DR.n.style.transform = 'translate(' + dx + 'px,' + dy + 'px) rotate(' + (dx / 30) + 'deg)';
+    });
+    window.addEventListener('pointerup', function (e) {
+      if (!DR || e.pointerId !== DR.id) return;
+      var d = DR; DR = null;
+      if (!d.on) return;
+      d.n._dragged = true; setTimeout(function () { d.n._dragged = false; }, 50);
+      var id = d.n.dataset.id, dr = discEl.getBoundingClientRect(), x = e.clientX, y = e.clientY;
+      var onPile = x > dr.left - 20 && x < dr.right + 20 && y > dr.top - 20 && y < dr.bottom + 20;
+      var mEl = document.elementsFromPoint ? document.elementsFromPoint(x, y).filter(function (q) { return q.classList && q.classList.contains('ml') && q.closest('.band.mine'); })[0] : null;
+      d.n.style.transition = 'transform .25s var(--spring)'; d.n.style.transform = ''; d.n.classList.remove('drag');
+      setTimeout(function () { d.n.style.transition = ''; }, 260);
+      if (onPile) { sel = [id]; discard(); return; }
+      if (mEl) { sel = sel.indexOf(id) >= 0 ? sel : [id]; tapMeld(mEl.getAttribute('data-r')); }
+    });
+    window.addEventListener('pointercancel', dragCancel);
+  }
+  function dragCancel() { if (DR && DR.n) { DR.n.style.transform = ''; DR.n.classList.remove('drag'); } DR = null; }
+
+  // ═══ Moves ═══════════════════════════════════════════════════════════════════════════════════════
+  function move(a) {
+    if (!S || busy) return;
+    if (NET) {
+      if (!NET.myTurn()) { netNudge(); return; }
+      var seat = MYSEAT;
+      NET.act(function (st) { var mv = Core.apply(st, seat, a); return mv ? { state: st, mv: mv } : null; });
+      return;
+    }
+    var p = Core.turn(S); if (p !== me() || !person(p)) return;
+    // (a card drawn from the stock or the pile has been seen: it can't be taken back)
+    if (a.k === 'draw' || a.k === 'take') undoStack = []; else snapshot();
+    doMove(p, a);
+  }
+  function doMove(p, a) {
+    var prev = clone(S), mv = Core.apply(S, p, a);
+    if (!mv) { undoStack.pop(); return false; }
+    if (mv.end || mv.out || mv.k === 'discard' && !person((p + 1) % S.n)) clearUndoIfDealt(prev);
+    save();
+    busy = true; var t = token;
+    step(prev, mv, S, function () { if (t !== token) return; busy = false; save(); next(); });
+    return true;
+  }
+  function clearUndoIfDealt(prev) { if (S.round !== prev.round || S.phase === 'over') undoStack = []; }
+  function next() {
+    if (!S || NET || busy) return;
+    if (S.phase === 'over') { finish(); return; }
+    var p = Core.turn(S);
+    // Go out: after its melds, the card left
+    if (goingOut && p === me() && S.phase === 'play') { var g = goingOut; goingOut = null; if (Core.find(S.hands[p], g) >= 0) { snapshot(); doMove(p, { k: 'discard', id: g }); return; } }
+    goingOut = null;
+    if (person(p) && p !== LME && !onePersonLocal()) { gate(p, next); return; }
+    if (person(p) && p !== LME) LME = p;
+    paintAll();
+    if (person(p)) return;
+    var t = token, wait = { draw: 650, play: 520, ask: 1200 }[S.phase] || 600;
+    setTimeout(function () {
+      if (t !== token || busy || !S || Core.turn(S) !== p) return;
+      var a = Core.bot(S, p); if (a && !doMove(p, a)) { a = { k: S.phase === 'draw' ? 'draw' : 'discard', id: S.hands[p][0] && S.hands[p][0].id }; doMove(p, a); }
+    }, (wait + Math.random() * 280) * FAST);
+  }
+  function onePersonLocal() { return people() < 2; }
+  function gate(p, then) {
+    BLIND = true; undoStack = []; sel = []; staged = []; paintAll();
+    var t = token;
+    var msg = S.phase === 'ask' && S.askBy >= 0 ? fn(S.askBy) + ' asks you, “May I go out?”' : S.phase === 'play' && S.asked ? fn(Core.partner(S, p)) + (S.asked === 'yes' ? ' said yes, so go out.' : ' said not yet.') : null;
+    Kit.handoff({ name: nm(p), color: seatColor(p), what: 'cards', msg: msg }).then(function () {
+      if (t !== token || !S || NET) return;
+      BLIND = false; LME = p; S.me = p; save(); build(); render(); then && then();
+    });
+  }
+
+  // ═══ Playing a move out on the table (here or from the online table) ═══════════════════════════════
+  // (tests: localStorage.canasta_fast = '1' plays everything at six times the speed)
+  var FAST = (function () { try { return localStorage.getItem('canasta_fast') === '1' ? 1 / 6 : 1; } catch (e) { return 1; } })();
+  function later(f, ms, g) { var t = token; setTimeout(function () { if (t === token && (g == null || g === NGEN)) f(); }, ms * FAST); }
+  function seatSay(p, t, big) {
+    var anchor = p === me() && !(NET && MYSEAT < 0) ? null : seatEls[p];
+    if (!anchor || !anchor.isConnected) { flash(t, big ? 1700 : 1200); return; }
+    var old = anchor.querySelector('.say'); if (old) old.remove();
+    var b = el('div', { class: 'say' + (big ? ' big' : ''), text: t }); anchor.appendChild(b);
+    setTimeout(function () { b.remove(); }, big ? 2000 : 1500);
+  }
+  function floatAt(node, text, cls) {
+    if (!node || !tblW) return;
+    var r = node.getBoundingClientRect(), b = tblW.getBoundingClientRect();
+    var f = el('div', { class: 'fl' + (cls ? ' ' + cls : ''), text: text, style: { left: Math.max(40, Math.min(b.width - 40, r.left + r.width / 2 - b.left)) + 'px', top: Math.max(44, r.top - b.top) + 'px' } });
+    tblW.appendChild(f); setTimeout(function () { f.remove(); }, 1300);
+  }
+  function flash(t, ms) {
+    if (!tblW) return;
+    var f = el('div', { class: 'flash', text: t }); tblW.appendChild(f);
+    setTimeout(function () { f.remove(); }, ms || 1700);
+  }
+  function rectOf(n) { var r = n.getBoundingClientRect(); return { getBoundingClientRect: function () { return r; } }; }
+  function handRects() { var o = {}; if (handEl) [].forEach.call(handEl.querySelectorAll('.pcard[data-id]'), function (n) { o[n.dataset.id] = rectOf(n); }); return o; }
+  function meldNode(s, r) { var b = bandEls[s]; return b && b.querySelector('.ml[data-r="' + r + '"]'); }
+  function step(prev, mv, st, done) {
+    var k = mv.k, p = mv.p, from = p === me() ? handRects() : null, src = seatAnchor(p), seatR = src ? rectOf(src) : null;
+    var stockR = stockEl ? rectOf(stockEl) : null, discR = discEl ? rectOf(discEl) : null;
+    var ps = Core.sideOf(st, p), mineS = mineSide(ps), yours = isYou(p);
+    var endNow = mv.end || mv.out;
+    // a hand that ended: the table as it stood at the end, then the count
+    if (endNow) S = endView(prev, st, mv); else S = st;
+    if (k === 'draw') {
+      if (!endNow) fresh = p === me() ? mv.cards.map(function (c) { return c.id; }) : [];
+      render();
+      Kit.sfx('deal'); if (mv.cards.length > 1) later(function () { Kit.sfx('deal'); }, 140);
+      if (p === me() && handEl) mv.cards.forEach(function (c, i) { var n = handEl.querySelector('[data-id="' + c.id + '"]'); if (n) later(function () { Cards.fly(n, stockR, { ms: 380 }); }, i * 110); });
+      else if (seatEls[p]) { seatEls[p].querySelector('.bk') && Cards.fly(seatEls[p].querySelector('.bk'), stockR, { ms: 360 }); }
+      var t0 = 0;
+      if (mv.r3.length) {
+        t0 = 500;
+        later(function () { red3s(ps, mv.r3, stockR); seatSay(p, mv.r3.length > 1 ? mv.r3.length + ' red 3s!' : 'Red 3!', true); }, 260);
+      }
+      if (mv.red4) { t0 = 1500; later(function () { bigMoment('All four red 3s!', p, { line: sideName(ps) + (Core.seatsOf(st, ps).length > 1 ? ' hold' : ' holds') + ' all four red 3s, worth 800.', pts: '+800', cards: [{ r: '3', s: 'h' }, { r: '3', s: 'd' }, { r: '3', s: 'h' }, { r: '3', s: 'd' }] }); }, 700); }
+      if (endNow) { later(function () { flash('The last card of the stock was a red 3, so the hand ends.', 2200); }, t0 + 300); later(function () { handEnd(prev, st, mv, done); }, t0 + 2000); return; }
+      later(function () { later(function () { fresh = []; if (handEl && S === st) paintHand(); }, 1600); done(); }, 380 + t0);
+      return;
+    }
+    if (k === 'take') {
+      var takeTop = mv.top;
+      if (p === me()) fresh = mv.cards.filter(function (c) { return !Core.isRed3(c); }).map(function (c) { return c.id; });
+      render();
+      Kit.sfx('whoosh'); Kit.haptic(yours ? 'medium' : 'light');
+      var mn = meldNode(ps, takeTop.r);
+      if (mn) { mn.classList.add('grow'); Cards.fly(mn, discR, { ms: 420 }); }
+      if (p === me() && handEl) fresh.forEach(function (id, i) { var n = handEl.querySelector('[data-id="' + id + '"]'); if (n && i < 30) later(function () { Cards.fly(n, discR, { ms: 360 }); }, 60 + i * 30); });
+      else if (seatEls[p] && seatEls[p].querySelector('.bk')) Cards.fly(seatEls[p].querySelector('.bk'), discR, { ms: 400 });
+      var tt = 600;
+      if (mv.r3 && mv.r3.length) later(function () { red3s(ps, mv.r3, discR); seatSay(p, 'Red 3!', true); }, 300);
+      if (mv.big) { tt = 1700; later(function () { bigMoment('A frozen pile of ' + mv.n + '!', p, { line: (yours ? 'You took' : fn(p) + ' took') + ' a frozen pile of ' + mv.n + ' cards with a natural pair of ' + plural(takeTop.r) + '.', chip: String(mv.n) }); }, 380); }
+      else if (mv.n >= 6) { later(function () { seatSay(p, who(p) + (isYou(p) ? ' take ' : ' takes ') + mv.n + ' cards', true); Kit.sfx(mineS ? 'good' : 'chip', 0.7); if (mn) floatAt(mn, '+' + mv.n + ' cards', mineS ? 'g' : ''); }, 360); }
+      else later(function () { seatSay(p, who(p) + (isYou(p) ? ' take ' : ' takes ') + (mv.n > 1 ? 'the pile' : 'the ' + Core.RNAME[takeTop.r]), false); }, 200);
+      if (mv.first) later(function () { firstMeldSay(ps, p); }, 500);
+      var cn = canMoments(mv, p, tt);
+      tt = Math.max(tt, cn);
+      if (endNow) { later(function () { outMoment(st, p); }, tt); later(function () { handEnd(prev, st, mv, done); }, tt + 1600); return; }
+      later(function () { later(function () { fresh = []; if (handEl && S === st) paintHand(); }, 1800); done(); }, tt);
+      return;
+    }
+    if (k === 'meld') {
+      render();
+      var allIds = [].concat.apply([], mv.groups).concat([].concat.apply([], mv.adds.map(function (a) { return a.ids; })));
+      // the cards fly from the hand (or the seat) to their melds
+      var tm = 0;
+      [].forEach.call(bandEls[ps] ? bandEls[ps].querySelectorAll('.ml') : [], function (mEl) {
+        var r = mEl.getAttribute('data-r'), hit = false;
+        mEl.querySelectorAll('.pcard[data-id]').forEach(function (n) { if (allIds.indexOf(n.dataset.id) >= 0) { hit = true; var fr = from && from[n.dataset.id] || seatR; if (fr) { Cards.fly(n, fr, { ms: 380 + tm * 30 }); tm++; } } });
+        if (!hit && mv.adds.some(function (a) { return a.r === r; })) { mEl.classList.add('grow'); if (seatR) Cards.fly(mEl, seatR, { ms: 380 }); }
+        if (hit) mEl.classList.add('grow');
+      });
+      Kit.sfx('chip'); Kit.haptic(yours ? 'light' : 'tick');
+      if (mv.pts && bandEls[ps]) later(function () { floatAt(bandEls[ps].querySelector('.ms') || bandEls[ps], '+' + mv.pts, mineS ? 'g' : ''); }, 300);
+      var t2 = 420;
+      if (mv.first) { t2 = 900; later(function () { firstMeldSay(ps, p); }, 250); }
+      var cm = canMoments(mv, p, t2); t2 = Math.max(t2, cm);
+      if (endNow) { later(function () { outMoment(st, p); }, t2); later(function () { handEnd(prev, st, mv, done); }, t2 + 1700); return; }
+      later(done, t2);
+      return;
+    }
+    if (k === 'discard') {
+      render();
+      var dn = discEl.querySelector('.topc');
+      if (dn) Cards.fly(dn, from && from[mv.c.id] || seatR, { ms: 340, rot: -12 });
+      Kit.sfx('flip'); if (yours) Kit.haptic('light');
+      discEl.classList.add('bump'); setTimeout(function () { discEl.classList.remove('bump'); }, 400);
+      if (mv.freeze) later(function () { seatSay(p, 'Frozen!', true); Kit.sfx('sparkle', 0.7); flash((yours ? 'You froze' : fn(p) + ' froze') + ' the pile with a wild card.', 1500); }, 300);
+      else if (mv.block) later(function () { seatSay(p, 'Blocked!', false); Kit.sfx('tap'); }, 250);
+      if (endNow) { later(function () { outMoment(st, p); }, 500); later(function () { handEnd(prev, st, mv, done); }, 2200); return; }
+      later(done, 380);
+      return;
+    }
+    if (k === 'ask') { render(); seatSay(p, 'May I go out?', true); Kit.sfx('pop'); later(done, 700); return; }
+    if (k === 'answer') { render(); seatSay(p, mv.yes ? 'Yes, go out' : 'Not yet', true); Kit.sfx(mv.yes ? 'good' : 'tap'); later(done, 900); return; }
+    if (k === 'end') { render(); flash('The stock is gone and the pile isn’t taken, so the hand ends.', 2200); later(function () { handEnd(prev, st, mv, done); }, 2000); return; }
+    render(); done();
+  }
+  // red 3s land on the side's band
+  function red3s(s, cards, fromR) {
+    var b = bandEls[s]; if (!b) return;
+    var r3 = b.querySelectorAll('.r3 .pcard'), n = cards.length;
+    for (var i = r3.length - n; i < r3.length; i++) if (r3[i]) Cards.fly(r3[i], fromR, { ms: 460 });
+    Kit.sfx('sparkle'); floatAt(b.querySelector('.r3') || b, '+' + n * 100, mineSide(s) ? 'g' : '');
+  }
+  function firstMeldSay(s, p) {
+    var b = bandEls[s];
+    if (b) { b.classList.add('tgt'); setTimeout(function () { b.classList.remove('tgt'); }, 900); }
+    Kit.sfx(mineSide(s) ? 'good' : 'chip');
+    if (isYou(p) || mineSide(s)) Kit.haptic('success');
+  }
+  // canastas made by this move: squared up on the table, the first and the natural ones as moments
+  function canMoments(mv, p, at) {
+    var t = at || 400, list = mv.can || [], ps = Core.sideOf(S, p), yours = mineSide(ps);
+    list.forEach(function (c, i) {
+      later(function () {
+        var n = meldNode(ps, c.r); if (n) { n.classList.remove('squ'); void n.offsetWidth; n.classList.add('squ'); }
+        if (c.spoilt) { seatSay(p, 'The ' + plural(c.r) + ' are a mixed canasta now', false); return; }
+        if (c.nat) { bigMoment('Natural canasta!', p, { line: (isYou(p) ? 'You' : fn(p)) + ' squared up seven ' + plural(c.r) + ' with no wild card.', pts: '+500', cards: [0, 1, 2, 3, 4, 5, 6].map(function (j) { return { r: c.r === '10' ? '10' : c.r, s: ['h', 'd', 's', 'c'][j % 4] }; }) }); }
+        else if (c.first) { Kit.moment({ title: 'First canasta!', line: sideName(ps) + ' made the first canasta of the game, in ' + plural(c.r) + '.', pts: '+300', chip: '7', at: tblW, ms: 1800 }); Kit.sfx('good'); Kit.haptic(yours ? 'success' : 'light'); seatSay(p, 'Canasta!', true); }
+        else { seatSay(p, 'Canasta!', true); Kit.sfx(yours ? 'good' : 'chip'); if (n) floatAt(n, '+300', yours ? 'g' : ''); if (yours) Kit.haptic('success'); }
+        if (c.first && c.nat) later(function () { flash('The first canasta of the game, and a natural one.', 1600); }, 1800);
+      }, t + i * 1500);
+    });
+    return list.length ? t + list.length * 1500 : 0;
+  }
+  function outMoment(st, p) {
+    var L = st.last; if (!L) return;
+    var ps = Core.sideOf(st, p);
+    if (L.conc) bigMoment('Out, concealed!', p, { line: (isYou(p) ? 'You' : fn(p)) + ' melded the whole hand in one turn, for a bonus of 200.', pts: '+200' });
+    else { Kit.moment({ title: isYou(p) ? 'You go out!' : fn(p) + ' goes out', line: 'Going out is worth 100.', pts: '+100', chip: 'Out', at: tblW, ms: 1600, tone: mineSide(ps) ? null : 'bad' }); Kit.sfx(mineSide(ps) ? 'good' : 'tap'); if (mineSide(ps)) Kit.haptic('success'); }
+  }
+  function bigMoment(text, p, o) {
+    o = o || {};
+    Kit.moment({ title: text, line: o.line, pts: o.pts, chip: o.chip, cards: o.cards, big: true, at: tblW || null });
+    Kit.confetti(); Kit.haptic('heavy');
+    later(function () { Kit.sfx('win'); }, 150);
+    if (p != null && seatEls[p]) seatSay(p, text, true);
+  }
+  // the table as it stood when the hand ended (the state has already dealt the next hand)
+  function endView(prev, st, mv) {
+    var L = st.last, V = clone(prev);
+    V.melds = clone(L.melds); V.red3 = clone(L.red3); V.hands = clone(L.hands); V.scores = L.before.slice(); V.turn = -1; V.phase = 'end';
+    if (mv && mv.k === 'discard') V.pile = prev.pile.concat([mv.c]);
+    if (mv && mv.k === 'take') V.pile = [];
+    if (mv && mv.k === 'draw' && V.stock) V.stock = [];
+    return V;
+  }
+
+  // ═══ The end of a hand: the count, then the next deal ═════════════════════════════════════════════
+  function handEnd(prev, st, mv, done) {
+    var L = st.last, g = NGEN, over = st.phase === 'over', shown = false;
+    var node = countNode(st, L);
+    function go() {
+      if (shown) return; shown = true;
+      if (NET && g !== NGEN) return;
+      S = st; ST0 = st;
+      if (over) { done(); return; }
+      fresh = []; sel = []; staged = [];
+      if (!NET) { S.seen = L.round; if (!onePersonLocal()) { var p = Core.turn(S); if (person(p)) { LME = p; S.me = p; } } save(); }
+      build(); dealIn(done);
+    }
+    var sh = Kit.sheet({ title: 'Hand ' + L.round + ' count', node: node, dismissible: !!NET, onClose: function () { if (NET) { NOVER = null; go(); } },
+      actions: [{ label: over ? 'See who won' : 'Deal the next hand', primary: true, onClick: function () { go(); } }] });
+    if (NET) NOVER = sh;
+    animateCount(node, st, L);
+  }
+  function countNode(st, L) {
+    var box = el('div', { class: 'cnt' });
+    L.res.forEach(function (r, s) {
+      var names = Core.seatsOf(st, s).map(function (p) { return st.players[p].cpu ? st.players[p].name : first(st.players[p].name); }).join(' & ');
+      var tag = L.out >= 0 && Core.sideOf(st, L.out) === s ? (L.conc ? 'Went out concealed' : 'Went out') : !r.melded ? 'No meld this hand' : '';
+      var lines = el('div', { class: 'lines' });
+      function line(label, v) { if (!v) return; lines.appendChild(el('span', { class: 'ln', text: label })); lines.appendChild(el('span', { class: 'ln' + (v < 0 ? ' neg' : ''), text: (v > 0 ? '+' : '') + fmt(v) })); }
+      if (r.cn) line(r.cn === 1 ? 'A natural canasta' : r.cn + ' natural canastas', r.cn * 500);
+      if (r.cm) line(r.cm === 1 ? 'A mixed canasta' : r.cm + ' mixed canastas', r.cm * 300);
+      if (r.r3n) line(r.r3n === 4 ? 'All four red 3s' : r.r3n === 1 ? 'A red 3' : r.r3n + ' red 3s', r.r3);
+      if (r.out) line(r.out === 200 ? 'Going out concealed' : 'Going out', r.out);
+      line('Cards melded', r.meld);
+      line('Cards left in hand', -r.hand);
+      var cs = el('div', { class: 'cs' });
+      (L.melds[s] || []).filter(Core.isCanasta).forEach(function (m) { cs.appendChild(meldMini(m)); });
+      box.appendChild(el('div', { class: 'cr', style: { '--sc': Kit.color(s) } }, [
+        el('div', { class: 'who' }, [el('span', { text: names }), tag ? el('small', { text: tag }) : null]),
+        el('div', { class: 'pts' + (r.pts < 0 ? ' neg' : ''), text: '0', 'data-v': String(r.pts) }),
+        cs, lines
+      ]));
+      if (tag && L.out >= 0) cs.appendChild(el('span', { class: 'stamp', text: L.conc ? 'Concealed' : 'Out' }));
+    });
+    box.appendChild(el('div', { class: 'padw' }, [padTable(st)]));
+    return box;
+  }
+  function meldMini(m) {
+    var nat = Core.isNatural(m), cs = meldCards(m), e = el('div', { class: 'ml can ' + (nat ? 'nat' : 'mix') }), pile = el('div', { class: 'pile3' });
+    var topc = nat ? cs.filter(function (c) { return c.s === 'h' || c.s === 'd'; })[0] || cs[0] : cs.filter(function (c) { return !Core.isWild(c) && (c.s === 's' || c.s === 'c'); })[0] || cs[0];
+    for (var i = 0; i < 3; i++) pile.appendChild(Kit.card('', '', { back: true }));
+    pile.appendChild(cardEl(topc)); e.appendChild(pile); e.appendChild(el('span', { class: 'tag', text: nat ? '500' : '300' }));
+    return e;
+  }
+  function countTo(node, a, b, ms) {
+    if (!node) return; var t0 = performance.now();
+    function f(t) { var k = Math.min(1, (t - t0) / ms); node.textContent = fmt(Math.round(a + (b - a) * (1 - Math.pow(1 - k, 3)))); if (k < 1) requestAnimationFrame(f); }
+    requestAnimationFrame(f);
+  }
+  function animateCount(node, st, L) {
+    var rows = node.querySelectorAll('.cr'), t = 150;
+    rows.forEach(function (row, s) {
+      var lns = row.querySelectorAll('.ln');
+      for (var i = 0; i < lns.length; i += 2) (function (a, b, at) { setTimeout(function () { a.classList.add('on'); if (b) b.classList.add('on'); Kit.sfx('tick', 0.6); }, at); })(lns[i], lns[i + 1], t + i * 90);
+      var end = t + lns.length * 90 + 120;
+      setTimeout(function () { var pts = row.querySelector('.pts'); countTo(pts, 0, +pts.getAttribute('data-v'), 600); }, end);
+      if (L.out >= 0 && Core.sideOf(st, L.out) === s) setTimeout(function () { row.querySelector('.stamp').classList.add('on'); Kit.sfx('pop'); }, end + 700);
+      t = end + 250;
+    });
+  }
+  // The score pad: a column for each side, a row for each hand
+  function padTable(st, quiet) {
+    var ns = Core.nSides(st), t = el('table'), pad = el('div', { class: 'spad' + (ns > 2 ? ' many' : '') });
+    pad.appendChild(el('div', { class: 'spad-h' }, [el('h2', { text: 'Canasta' }), el('small', { text: 'Game to ' + st.target.toLocaleString('en-US') })]));
+    var hr = el('tr', null, [el('th', { class: 'rn', text: 'Hand' })]);
+    for (var s = 0; s < ns; s++) hr.appendChild(el('th', { text: Core.seatsOf(st, s).map(function (p) { return st.players[p].cpu ? st.players[p].name : first(st.players[p].name); }).join(' & ') }));
+    var tb = el('tbody'), run = [];
+    for (s = 0; s < ns; s++) run.push(0);
+    st.hx.forEach(function (h, i) {
+      var sc = String(h.sc).split('.').map(Number), cn = String(h.cn || '').split('.').map(Number), cm = String(h.cm || '').split('.').map(Number);
+      var tr = el('tr', { class: i === st.hx.length - 1 && !quiet ? 'just' : '' }, [el('th', { class: 'rn', text: String(i + 1) })]);
+      for (var q = 0; q < ns; q++) {
+        run[q] += sc[q];
+        var bits = [];
+        if (cn[q] || cm[q]) bits.push((cn[q] + cm[q]) + (cn[q] + cm[q] === 1 ? ' canasta' : ' canastas'));
+        if (h.o >= 0 && Core.sideOf(st, h.o) === q) bits.push(h.c ? 'out concealed' : 'out');
+        tr.appendChild(el('td', null, [document.createTextNode(fmt(run[q])), el('small', { class: 'k', text: (sc[q] >= 0 ? '+' : '') + fmt(sc[q]) }), bits.length ? el('small', { class: 'k', text: bits.join(', ') }) : null]));
+      }
+      tb.appendChild(tr);
+    });
+    t.appendChild(el('thead', null, [hr])); t.appendChild(tb);
+    var ft = el('tr', null, [el('th', { class: 'rn', text: 'Total' })]), lead = Math.max.apply(null, st.scores);
+    st.scores.forEach(function (v) { ft.appendChild(el('td', { class: v === lead ? 'lead' : '', text: fmt(v) })); });
+    t.appendChild(el('tfoot', null, [ft]));
+    pad.appendChild(t);
+    return pad;
+  }
+  function paintPad() { if (!padEl) return; padEl.innerHTML = ''; if (LAY === 'L-ts' && S.hx) { padEl.appendChild(padTable(S, true)); padEl.scrollTop = padEl.scrollHeight; } }
+  function showPad() {
+    var node = el('div', null, [padTable(S), el('p', { class: 'muted', style: { 'margin-top': '10px', 'font-size': '.85rem' }, text: 'This is hand ' + S.round + '. The first side to ' + S.target.toLocaleString('en-US') + ' wins.' })]);
+    Kit.sheet({ title: 'Score pad', node: node, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+  }
+  // the new hand dealt, a card at a time, and the red 3s laid out
+  function dealIn(done) {
+    S = ST0 || S; render();
+    var cards = handEl ? [].slice.call(handEl.querySelectorAll('.pcard')) : [];
+    var src = seatAnchor(S.dealer) || stockEl;
+    cards.forEach(function (n, i) { n.style.opacity = '0'; setTimeout(function () { n.style.opacity = ''; Cards.fly(n, src, { ms: 300 }); if (i % 3 === 0) Kit.sfx('deal', 0.7); }, 40 + i * 40); });
+    Object.keys(seatEls).forEach(function (p) { var bk = seatEls[p].querySelector('.bk'); if (bk) { bk.style.opacity = '0'; setTimeout(function () { bk.style.opacity = ''; Cards.fly(bk, src, { ms: 320 }); }, 80 + p * 90); } });
+    flash('Hand ' + S.round + ', and ' + (isYou(S.dealer) ? 'you deal' : fn(S.dealer) + ' deals'), 1500);
+    var t = 260 + cards.length * 40;
+    if (S.dealR3 && S.dealR3.length) {
+      later(function () {
+        var bySide = {}; S.dealR3.forEach(function (x) { var s = Core.sideOf(S, x.p); (bySide[s] = bySide[s] || []).push(x.c); });
+        Object.keys(bySide).forEach(function (s) { red3s(+s, bySide[s], seatAnchor(S.dealR3.filter(function (x) { return Core.sideOf(S, x.p) === +s; })[0].p)); });
+        S.dealR3.forEach(function (x) { if (seatEls[x.p]) seatSay(x.p, 'Red 3!', false); });
+        for (var s2 = 0; s2 < Core.nSides(S); s2++) if (S.red3[s2].length === 4) bigMoment('All four red 3s!', Core.seatsOf(S, s2)[0], { line: sideName(s2) + (Core.seatsOf(S, s2).length > 1 ? ' were' : ' was') + ' dealt all four red 3s, worth 800.', pts: '+800' });
+      }, t);
+      t += 900;
+    }
+    if (Core.frozenAll(S)) later(function () { flash('A wild card came up first, so the pile starts frozen.', 1800); }, t);
+    later(done, t);
+  }
+  function startHand() {
+    ST0 = S; sel = []; staged = [];
+    if (!NET && !onePersonLocal()) { var p = Core.turn(S); if (person(p)) { LME = p; S.me = p; } }
+    save(); build(); fit();
+    busy = true; var t = token;
+    dealIn(function () { if (t !== token) return; busy = false; next(); });
+  }
+
+  // ═══ The end of the game ═════════════════════════════════════════════════════════════════════════
+  function recordGame(st, mode, extraHl) {
+    var ns = Core.nSides(st), w = st.winner, names = st.players.map(function (p) { return p.name; });
+    var seen = {}, hl = st.highlights.slice().reverse().filter(function (h) { var k = h.replace(/ in hand \d+$/, ''); if (seen[k]) return false; seen[k] = 1; return true; }).slice(0, 8).reverse();
+    hl.push(st.hx.length + (st.hx.length === 1 ? ' hand' : ' hands') + ', played to ' + st.target.toLocaleString('en-US'));
+    (extraHl || []).forEach(function (x) { hl.push(x); });
+    var sides = []; for (var s = 0; s < ns; s++) sides.push({ name: Core.sideName(st, s), score: st.scores[s], cpu: Core.seatsOf(st, s).every(function (p) { return st.players[p].cpu; }) });
+    var detail = { kind: st.kind, names: names, cpu: st.players.map(function (p) { return p.cpu ? 1 : 0; }).join(''), to: st.target, ws: w, hx: clone(st.hx),
+      canN: st.stats.canN.join('.'), canM: st.stats.canM.join('.'), outs: st.stats.outs.join('.'), conc: st.stats.conc.join('.'), red4: st.stats.red4.join('.'),
+      big: st.stats.bigPile ? st.stats.bigPile.n + '.' + st.stats.bigPile.p + '.' + st.stats.bigPile.r : '', back: st.last && st.last.comeback || 0 };
+    for (var i = 0; JSON.stringify(detail).length > 5600 && i < detail.hx.length; i++) { delete detail.hx[i].m; delete detail.hx[i].l; }
+    Kit.record(HKEY, {
+      started: st.started, mode: mode, players: sides, winner: Core.sideName(st, w),
+      rounds: { labels: st.rounds.map(function (r, i) { return 'H' + (i + 1); }), scores: st.rounds },
+      highlights: hl, detail: detail
+    });
+  }
+  function modeName(st) { return st.kind === 'part' ? 'Partnership' : st.kind === 'two' ? 'Two-handed' : 'Three-handed'; }
+  function finish() {
+    var st = S, w = st.winner;
+    recordGame(st, modeName(st) + ' · ' + (st.mode === 'local' ? 'Pass & play' : 'Against the computer'));
+    var cfg = { players: st.players, target: st.target, level: st.level, mode: st.mode, kind: st.kind };
+    var mine = w === MS() && onePerson(), lose = Core.seatsOf(st, w).every(function (p) { return !person(p); });
+    var ranks = []; for (var s = 0; s < Core.nSides(st); s++) ranks.push(s);
+    ranks.sort(function (a, b) { return st.scores[b] - st.scores[a]; });
+    clearSave(); S.phase = 'over';
+    var back = st.last && st.last.comeback;
+    if (back) setTimeout(function () { Kit.moment({ title: 'What a comeback!', line: sideName(w) + (Core.seatsOf(st, w).length > 1 ? ' were ' : ' was ') + fmt(back) + ' behind and won.', big: true, at: tblW }); }, 200);
+    setTimeout(function () {
+      Kit.win({
+        title: mine ? 'You win!' : sideName(w) + (Core.seatsOf(st, w).length > 1 ? ' win!' : ' wins!'),
+        sub: (mine ? (st.kind === 'part' ? 'You and ' + fn((me() + 2) % 4) + ' won by ' : 'You won by ') : 'Won by ') + fmt(st.scores[w] - st.scores[ranks[1]]) + ' · ' + st.hx.length + (st.hx.length === 1 ? ' hand' : ' hands') + (back ? ' · Came back from ' + fmt(back) + ' behind' : ''),
+        rank: ranks.map(function (s) { return { name: sideName(s), score: st.scores[s], color: sideColor(s), cpu: Core.seatsOf(st, s).every(function (p) { return st.players[p].cpu; }), me: s === MS() && onePerson() }; }),
+        lose: lose, icon: lose ? 'bot' : 'trophy',
+        again: function () { S = Core.newGame(cfg); S.mode = cfg.mode; S.seen = 0; LME = 0; Kit.gameStart(); undoStack = []; startHand(); },
+        look: 'Look at the table',
+        extra: [{ label: 'Score pad', onClick: function () { showPad(); } }],
+        setup: function () { clearSave(); showSetup(); }
+      });
+    }, back ? 2600 : 0);
+  }
+
+  // ── Undo (your own moves this turn and since) ──
+  function snapshot() { undoStack.push(JSON.stringify(S)); if (undoStack.length > 40) undoStack.shift(); }
+  function undo() {
+    if (busy) return Kit.toast('One moment');
+    if (!undoStack.length) return Kit.toast('Nothing to undo');
+    var back = JSON.parse(undoStack[undoStack.length - 1]);
+    if (back.round !== S.round) { undoStack = []; return Kit.toast('Nothing to undo this hand'); }
+    if ((back.me || 0) !== LME && !onePersonLocal()) return Kit.toast('Only your own last move can be taken back');
+    undoStack.pop();
+    token++; busy = false; sel = []; staged = []; goingOut = null; S = back; ST0 = S; Kit.sfx('whoosh'); Kit.toast('Undone'); save(); render(); next();
+  }
+
+  // ═══ Online (turnnet.js) ═════════════════════════════════════════════════════════════════════════
+  // The table holds the whole game in fixed seats. With four, people take the seats in the order 0, 2, 1, 3, so the
+  // first two to sit are partners. Each device draws the table from its own seat with only its own hand face up.
+  var NQ = [], NGEN = 0, NETREC = {}, NOVER = null, NST = null, ST0 = null;
+  function PS(st, x) { return st && st.n === 4 ? [0, 2, 1, 3][x] : x; }
+  function netCloseOver() { if (NOVER) { var o = NOVER; NOVER = null; try { o.close(); } catch (e) {} } }
+  function netOpts() {
+    var g = {}; try { g = JSON.parse(localStorage.getItem('gn_setup_canasta')) || {}; } catch (e) {}
+    var o = g.options || {}, n = Math.max(2, Math.min(4, +g.count || 4));
+    return { seats: n, to: +o.to || 5000, level: Core.lv(o.level) };
+  }
+  function netStart(players, opts, last) {
+    var n = players.length, pl = [];
+    for (var p = 0; p < n; p++) { var x = players[PS({ n: n }, p)] || { name: 'Robot', bot: true }; pl.push({ name: x.name, cpu: !!x.bot, level: x.bot ? opts.level : undefined }); }
+    var st = Core.newGame({ kind: kindFor(n), players: pl, target: opts.to, level: opts.level });
+    st.online = 1;
+    return st;
+  }
+  function netTurn(st) { var p = Core.turn(st); return p < 0 ? [] : [PS(st, p)]; }
+  function netOver(st) {
+    if (!st || st.phase !== 'over') return null;
+    var w = st.winner;
+    return { win: Core.seatsOf(st, w).map(function (p) { return PS(st, p); }), text: Core.sideName(st, w) + ' win ' + st.scores[w] };
+  }
+  function netBot(st, seat) {
+    var p = PS(st, seat), a = Core.bot(st, p); if (!a) return null;
+    var mv = Core.apply(st, p, a);
+    return mv ? { state: st, mv: mv } : null;
+  }
+  function netNudge() { if (busy || !NET) return; Kit.haptic('error'); actEl.classList.remove('nudge'); void actEl.offsetWidth; actEl.classList.add('nudge'); }
+  function netShow(net, info) {
+    NET = net;
+    if (info.fresh || info.again) { NQ = []; NGEN++; busy = false; netCloseOver(); }
+    NQ.push({ st: clone(net.state), prev: info.prev ? clone(info.prev) : null, mv: info.mv, info: info });
+    if (net.state && net.state.phase === 'over') netRecord(clone(net.state));
+    if (NQ.length > 8) NQ = NQ.slice(-1).map(function (x) { x.skip = true; return x; });
+    if (!busy) netPump();
+  }
+  function netPump() {
+    var it = NQ.shift(); if (!it) return;
+    var g = NGEN; busy = true;
+    netStep(it, function () {
+      if (g !== NGEN) return; busy = false;
+      if (NQ.length) { netPump(); return; }
+      if (NET && S) paintAll();
+      // Go out: after its melds, the card left
+      if (goingOut && NET && S && S.phase === 'play' && Core.turn(S) === MYSEAT) { var gid = goingOut; goingOut = null; if (Core.find(S.hands[MYSEAT], gid) >= 0) move({ k: 'discard', id: gid }); }
+    });
+  }
+  function netStep(it, done) {
+    var st = it.st, prev = it.prev, mv = it.mv, info = it.info;
+    MYSEAT = NET.seat >= 0 ? PS(st, NET.seat) : -1;
+    st.players.forEach(function (pl, p) { var s = NET.seats[PS(st, p)]; if (s) { pl.cpu = !!s.bot; pl.away = !!(!s.bot && !s.me && s.away); } });
+    NST = st; ST0 = st; token++;
+    if (!mv || !prev || info.fresh || info.again || it.skip) {
+      S = st; sel = []; staged = []; build(); render(); fit();
+      if (info.again) { Kit.gameStart(); Kit.callout('New game'); }
+      else if (info.fresh) Kit.gameStart();
+      if (st.phase === 'over') { setTimeout(function () { if (NET) netEnd(); }, info.fresh ? 300 : 900); }
+      else if (info.fresh || info.again) { busy = true; dealIn(done); return; }
+      done(); return;
+    }
+    prev.players = st.players;
+    var act = mvAction(mv), ok = (Core.turn(prev) === mv.p) && (!act || !!Core.apply(clone(prev), mv.p, act));
+    if (!ok) { S = st; render(); done(); return; }
+    if (mv.p !== MYSEAT) { sel = []; }
+    step(prev, mv, st, function () {
+      if (st.phase === 'over' && (mv.end || mv.out)) { S = st; render(); netEnd(); }
+      done();
+    });
+  }
+  function mvAction(mv) {
+    switch (mv.k) {
+      case 'draw': return { k: 'draw' };
+      case 'discard': return { k: 'discard', id: mv.c.id };
+      case 'meld': return { k: 'meld', groups: mv.groups, adds: mv.adds };
+      case 'take': return { k: 'take', ids: mv.ids, groups: mv.groups };
+      case 'ask': return { k: 'ask' };
+      case 'end': return { k: 'end' };
+      default: return null;
+    }
+  }
+  function netRecord(st) {
+    if (!NET || !st || st.phase !== 'over' || NET.seat < 0) return;
+    var key = NET.code + ':' + st.started, list = [];
+    try { list = JSON.parse(localStorage.getItem('canasta_netrec')) || []; } catch (e) {}
+    if (NETREC[key] || list.indexOf(key) >= 0) return;
+    NETREC[key] = 1;
+    try { localStorage.setItem('canasta_netrec', JSON.stringify(list.concat([key]).slice(-20))); } catch (e) {}
+    recordGame(st, modeName(st) + ' · Online', ['Played online at table ' + NET.code]);
+  }
+  function netEnd() {
+    if (!NET || !NST || NST.phase !== 'over') return;
+    var st = NST, w = st.winner;
+    netRecord(st);
+    var res = NET.result, left = res && res.left != null, watching = MYSEAT < 0, won = !watching && Core.sideOf(st, MYSEAT) === w;
+    var ranks = []; for (var s = 0; s < Core.nSides(st); s++) ranks.push(s);
+    ranks.sort(function (a, b) { return st.scores[b] - st.scores[a]; });
+    netCloseOver(); S = st;
+    NOVER = Kit.win({
+      title: left ? res.text : won ? 'You win!' : sideName(w) + (Core.seatsOf(st, w).length > 1 ? ' win' : ' wins'),
+      sub: 'Won by ' + fmt(st.scores[w] - st.scores[ranks[1]]) + ' · ' + st.hx.length + ' hands',
+      rank: ranks.map(function (s) { return { name: sideName(s), score: st.scores[s], color: sideColor(s), me: !watching && s === Core.sideOf(st, MYSEAT) }; }),
+      lose: !won, icon: won ? 'trophy' : 'users',
+      againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
+      look: 'Look at the table',
+      extra: [{ label: 'Score pad', onClick: function () { showPad(); } }],
+      closeLabel: 'Back to games'
+    });
+  }
+  function netLeave() { NET = null; NST = null; NQ = []; NGEN++; busy = false; token++; netCloseOver(); resumeLocal(true); }
+
+  // ── Boot ──
+  function resumeLocal(back) {
+    var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (saved && saved.v === 1 && saved.players && saved.hands && saved.phase !== 'over') {
+      S = saved; ST0 = S; LME = S.me || 0; BLIND = false; Kit.gameStart();
+      if (back) save();
+      build(); render(); fit();
+      // a hand that ended just before the page closed: its count first
+      if (S.last && (S.seen || 0) < S.last.round && S.hx.length) {
+        busy = true; var t = token, st = S;
+        S = endView(clone(S), st, null); render();
+        handEnd(clone(st), st, {}, function () { if (t !== token) return; busy = false; next(); });
+        return;
+      }
+      next();
+    } else showSetup();
+  }
+  resumeLocal();
+  TurnNet.setup({
+    game: 'canasta', title: 'Canasta', min: 2, max: 4, botMs: 1000,
+    seats: function (n, o) { return Math.max(n, Math.min(4, +(o && o.seats) || 4)); },
+    opts: netOpts, start: netStart, turn: netTurn, over: netOver, bot: netBot,
+    show: netShow, leave: netLeave
+  });
+  // (tests)
+  window.__canasta = { get S() { return S; }, get busy() { return busy; }, get seat() { return NET ? MYSEAT : LME; }, get net() { return !!NET; }, move: move, core: Core, record: recordGame,
+    sel: function (ids) { sel = ids.slice(); paintAll(); },
+    load: function (st) { token++; busy = false; sel = []; staged = []; S = st; ST0 = S; LME = S.me || 0; build(); render(); next(); } };
+})();
+</script>
+</body>
+</html>
