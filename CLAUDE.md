@@ -436,8 +436,11 @@ Underlying principles for everything:
   in `turnRooms`, holding the whole game. Every table keeps `seats`, `accts`, `turn` (seat indexes whose move it is)
   and `drive`, so the home screen's Keep playing shows "Your turn" for any game without game-specific code. A new
   turn-based online game needs nothing added on the home screen. (Chess and Lorcana predate it and keep their own.)
-- **A casino game's Players card shows each person's bankroll under their name** (`Casino.peek(name)`, read without
-  changing anything: yours, a linked player's, a frequent player's on this PIN, or play money; Tim, 2026-11-15).
+- **A casino game's Players card shows what each person sits down with under their name** (`Casino.peek(name)`, read
+  without changing anything: yours, a linked player's, a frequent player's on this PIN, or play money; Tim, 2026-11-15),
+  labeled bankroll, buy-in or table money as the game says in `players.stake(mode, options)`: null for the whole bankroll
+  (the default), `{buyin: n}` (Poker's cash games, $200), `{table: n}` (Blackjack and Horse Race pass and play on table
+  money), or false for chips that aren't money (Poker's tournaments).
 - **The house casino games** (Roulette, Craps, Baccarat, Three Card Poker, Pai Gow, Horse Race) go online through
   `CasinoNet` at the end of casino.js (Blackjack's pattern). **The host chooses the money** (Tim, 2026-11-14: "host gets
   to pick buy in with bankrolls or play money"; the review's Money, `CasinoNet.moneyOption`, Blackjack's `netmoney`):

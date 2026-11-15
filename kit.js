@@ -2460,7 +2460,8 @@
       // (a robot's skill is in its face, with the words kept for screen readers)
       var nl = String(t.name || '').length;
         // (at a casino game each person's bankroll stands under their name, what they sit down with: Tim, 2026-11-15)
-        var bank = typeof t.bank === 'number' ? el('small', { class: pre + '-bank', text: '$' + Math.round(t.bank).toLocaleString('en-US') }) : null;
+        var mo = t.money, bank = mo && typeof mo.amt === 'number' ? el('small', { class: pre + '-bank' }, [el('b', { text: '$' + Math.round(mo.amt).toLocaleString('en-US') }),
+          el('i', { text: mo.kind === 'buyin' ? 'buy-in' : mo.kind === 'table' ? 'table money' : 'bankroll' })]) : null;
         return el('span', { class: pre + '-tok' + (t.cpu ? ' bot' : '') }, [av, el('b', { class: nl >= 11 ? 'l2' : nl >= 8 ? 'l1' : null, text: t.name }), bank, t.cpu && t.tag ? el('span', { class: 'sr-only', text: t.tag }) : null]);
     }
     // (a name breaks only between words; one long word that doesn't fit its token eases down until it does, once the
@@ -3062,7 +3063,7 @@
         choices.forEach(function (c) {
           seg.appendChild(el('button', {
             type: 'button', class: (String(state.options[op.id]) === String(c[0]) ? 'on' : '') + (chSub(c) ? ' k-two' : ''), html: chHtml(c),
-            onclick: function () { state.options[op.id] = c[0]; if (op.onPick) op.onPick(c[0], state.options); sfx('tap'); if (P && typeof P.teams === 'function') renderSeats(); else renderOptions(); }
+            onclick: function () { state.options[op.id] = c[0]; if (op.onPick) op.onPick(c[0], state.options); sfx('tap'); if (P && (typeof P.teams === 'function' || typeof P.stake === 'function')) renderSeats(); else renderOptions(); }
           }));
         });
         var lab = el('div', { class: 'label' }, [el('span', { text: op.label })]);
@@ -3082,7 +3083,7 @@
             var pickC = function (c) {
               if (String(state.options[op.id]) === String(c[0])) return;
               state.options[op.id] = c[0]; if (op.onPick) op.onPick(c[0], state.options); sfx('tap'); haptic('light');
-              if (P && typeof P.teams === 'function') renderSeats(); else renderOptions();
+              if (P && (typeof P.teams === 'function' || typeof P.stake === 'function')) renderSeats(); else renderOptions();
             };
             var ctl;
             if (inl.sw) {
@@ -3217,8 +3218,20 @@
       seatList().forEach(function (st, i) {
         var c = playerColor(i), nm = st.name || (i === 0 && cpu ? 'You' : 'Player ' + (i + 1)), tag = null;
         if (st.cpu && lvs) { var cur = lvs.filter(function (x) { return String(x[0]) === String(levelOf(i)); })[0]; if (cur) tag = el('small', { text: cur[1] }); }
-        var bk = null; if (!st.cpu && typeof Casino !== 'undefined' && Casino && typeof Casino.peek === 'function') try { bk = Casino.peek(st.name ? nm : ''); } catch (e) {}
-        told.push({ name: nm, cpu: !!st.cpu, tag: tag ? tag.textContent : '', anon: !st.name, bank: bk });
+        // (at a casino game, what each person sits down with: their whole bankroll, a buy-in taken from it, or the table's
+        // money, as the game says in players.stake(mode, options): null the bankroll, {buyin: n}, {table: n}, or false for
+        // chips that aren't money; Tim, 2026-11-15: "some casino games ... can bring the whole bankroll. Others require a
+        // buy-in amount")
+        var money = null;
+        if (!st.cpu) try {
+          var stk = P && typeof P.stake === 'function' ? P.stake(state.mode, state.options, state.count) : null;
+          if (stk && stk.table) money = { amt: +stk.table, kind: 'table' };
+          else if (stk !== false && typeof Casino !== 'undefined' && Casino && typeof Casino.peek === 'function') {
+            var bk = Casino.peek(st.name ? nm : '');
+            money = stk && stk.buyin ? { amt: Math.min(+stk.buyin, bk), kind: 'buyin' } : { amt: bk, kind: 'bank' };
+          }
+        } catch (e) {}
+        told.push({ name: nm, cpu: !!st.cpu, tag: tag ? tag.textContent : '', anon: !st.name, money: money });
       });
       var one = r[1] <= 1 && !cpu, teams = teamsAt(state.count);
       lastWho = { seats: told, teams: teams };   // (the Play online review shows the same chips)

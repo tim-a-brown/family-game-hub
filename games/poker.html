@@ -1757,7 +1757,9 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
         { id: 'circuit', icon: 'trophy', title: 'Tournament Circuit', desc: 'Start at a $20 home game and work your way up to the World Championship.' },
         { id: 'vp', icon: 'coins', title: 'Video Poker', desc: 'Jacks or Better machine. Hold and draw.' }
       ],
-      players: { range: function (m) { return m === 'vp' || m === 'circuit' || m === 'net' ? [1, 1] : [2, 6]; }, count: 5, cpu: 'seats', label: 'At the table' },
+      players: { range: function (m) { return m === 'vp' || m === 'circuit' || m === 'net' ? [1, 1] : [2, 6]; }, count: 5, cpu: 'seats', label: 'At the table',
+        // (what you sit down with: a cash game's buy-in from your bank, a tournament's chips that aren't money, or your bank for the circuit and video poker)
+        stake: function (m, o) { return m === 'he' ? (o.fmt === 'cash' ? { buyin: 200 } : false) : m === 'net' ? (o.nspeed === 'cash' ? { buyin: 200 } : false) : null; } },
       options: [
         { id: 'pgame', label: 'Game', value: 'he', when: function (m) { return m === 'he'; }, render: pickRow, summary: function (v) { return (PICK[v] || PICK.he).name; } },
         { id: 'ngame', label: 'Game', value: 'he', when: function (m) { return m === 'net'; }, choices: [['he', 'Hold\'em'], ['om', 'Omaha', 'Pot-limit Omaha: 4 cards each, use exactly 2.'], ['mx', 'Mixed', 'Hold\'em and Omaha by turns: the game changes when the blinds go up.']] },
