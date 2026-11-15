@@ -832,7 +832,7 @@ function layout() {
   const px = (h * pr()) / (2 * Math.tan(fovV() / 2));
   parts.material.uniforms.uPx.value = px; trail.material.uniforms.uPx.value = px;
   parts.material.uniforms.uMax.value = trail.material.uniforms.uMax.value = Math.max(24, Math.min(w, h) * pr() * 0.09);
-  if (on && paused) draw(0);
+  if (on) draw(0);   // (resizing clears the canvas: paint it again at once, so a turn of the device never blinks)
 }
 function updateHud() {
   hudDirty = false;
@@ -1017,7 +1017,7 @@ function draw(dt) {
   if (hudDirty && G) updateHud();
   // the score counts up to what was just earned
   if (G && plates.sc && Math.round(shownScore) !== G.score) {
-    shownScore = shownScore < G.score ? Math.min(G.score, shownScore + Math.max(1, (G.score - shownScore) * Math.min(1, dt * 7))) : G.score;
+    shownScore = shownScore < G.score && dt > 0 ? Math.min(G.score, shownScore + Math.max(1, (G.score - shownScore) * Math.min(1, dt * 7))) : G.score;
     plates.sc.querySelector('b').textContent = fmt(shownScore);
   }
   composer.render();
