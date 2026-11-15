@@ -250,7 +250,8 @@
   // ═════════════════════════════════════════════════════════════════════════
   // The computer players. Easy, Normal and Hard differ in skill, never in cheating: each sees its own hand, the
   // trains, the markers and how many tiles the others hold, as a person at the table would.
-  //   Easy plays any tile that fits.
+  //   Easy plays any tile that fits, but a little more than half the time it looks for the sensible play: its own
+  //   train when its marker is out, a double only with a tile to follow it, a heavier tile before a lighter one.
   //   Normal gets rid of its heavy tiles, closes its own train when its marker is out, covers doubles it can follow.
   //   Hard plans the longest train it can build from its hand on its own train and keeps those tiles for it; it plays
   //   the tiles that aren't part of that plan on the Mexican Train and the open trains first, heaviest first, plays a
@@ -285,12 +286,28 @@
     var ms = legal(S, p), lv = lvOf(S, p);
     if (!ms.length) return canDone(S) ? { k: 'done' } : canDraw(S) ? { k: 'draw' } : { k: 'pass' };
     if (lv === 'easy') {
-      if (canDone(S) && Math.random() < 0.4) return { k: 'done' };
-      var m = ms[Math.floor(Math.random() * ms.length)];
+      if (canDone(S) && Math.random() < EZ.stop) return { k: 'done' };
+      var m = easyPick(S, p, ms);
       return { k: 'play', id: m.id, tr: m.tr };
     }
     var c = lv === 'hard' ? hardPick(S, p, ms) : normalPick(S, p, ms);
     return c ? { k: 'play', id: c.id, tr: c.tr } : { k: 'done' };
+  }
+  // Easy: any tile that fits, but a little more than half the time it looks first: its own train when its
+  // marker is out, a double it holds a tile to follow, a heavy tile to get rid of.
+  // (sense: how often it looks; heavy and noise weigh the look. Measured with scripts/mexicantrain-sim.js: about 1 match
+  // in 5 won against Normal head to head, 1 in 16 against Hard.)
+  var EZ = { stop: 0.4, sense: 0.6, heavy: 0.3, noise: 10 };
+  function easyPick(S, p, ms) {
+    if (Math.random() >= EZ.sense) return ms[Math.floor(Math.random() * ms.length)];
+    var h = S.hands[p], own = S.trains[p], best = null, bs = -1e9;
+    ms.forEach(function (m) {
+      var t = m.t, s = dots(t) * EZ.heavy + Math.random() * EZ.noise;
+      if (m.tr === p) s += own.m ? 6 : 2;
+      if (isDbl(t)) s += holds(h, t[0], m.id) ? 3 : -5;
+      if (s > bs) { bs = s; best = m; }
+    });
+    return best;
   }
   function others(S, p) { var o = []; for (var q = 0; q < S.n; q++) if (q !== p) o.push(q); return o; }
   function danger(S, p) { return others(S, p).some(function (q) { return S.hands[q].length <= 2; }); }

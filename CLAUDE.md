@@ -391,6 +391,14 @@ Underlying principles for everything:
   are one size across the table (`layoutAll`), and each number's pips have their own color (`PIP`). Saved in
   `dominoes_mt`; its history is in Dominoes' history (`detail.v === 'mexican'`, `mtView` in hist/board.js). Test hooks
   `window.__mt`.
+- **A crowded table folds the trains you can't play on** (2026-11-15, the small-screen pass): where an even share would
+  leave the tiles small, your own train, the Mexican Train, any train with its marker out and a double owed take the
+  room and the others lie in thinner lanes (`laneOpen`, `laneWidths`); a long train bends back (up to four lines) while
+  that keeps its tiles larger than pushing together would; a narrow table with many trains keeps the hub's column to the
+  hub (`nar`); on a 320-wide phone the four-to-a-row plates drop the avatar for the name.
+- **Easy** (Tim, 2026-11-15: "nudge mexican train easy up slightly"): any tile that fits, but a little more than half
+  the time it looks first (its own train when its marker is out, a double it can follow, a heavier tile): `EZ` in the
+  core. The sim (mulberry32 now) has Easy winning about 1 match in 5 against Normal head to head, 1 in 15 against Hard.
 
 ## Accounts: PIN or Google
 

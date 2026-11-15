@@ -12,7 +12,9 @@
 const C = require('../games/mexicantrain-core.js');
 const N = +(process.argv[2] || 3000);
 let seed = +(process.argv[3] || 7);
-function rand() { seed = (seed * 1103515245 + 12345) >>> 0; return seed / 4294967296; }
+// mulberry32 (a plain linear congruential generator here made Easy look far weaker than it is: its choices and the
+// deals came from neighboring numbers of one sequence)
+function rand() { let t = (seed = (seed + 0x6D2B79F5) >>> 0); t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }
 Math.random = rand;   // (Easy's choices and the deals come out the same each run)
 
 function fail(msg, S) { console.error('FAIL', msg); if (S) console.error(JSON.stringify({ round: S.round, cur: S.cur, tn: S.tn, dbl: S.dbl, trains: S.trains }).slice(0, 1500)); process.exit(1); }
@@ -102,4 +104,4 @@ function duel(a, b, n, games) {
 }
 const D = Math.max(200, Math.round(N / 2));
 console.log('Skills (' + D + ' games each, seats alternating):');
-duel('hard', 'normal', 2, D); duel('normal', 'easy', 2, D); duel('hard', 'easy', 2, D); duel('hard', 'normal', 4, D);
+duel('hard', 'normal', 2, D); duel('normal', 'easy', 2, D); duel('hard', 'easy', 2, D); duel('hard', 'normal', 4, D); duel('normal', 'easy', 4, D);
