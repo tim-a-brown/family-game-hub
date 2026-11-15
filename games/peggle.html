@@ -44,7 +44,7 @@
 /* ── Play view: fills the screen, no page scroll ────────────────────────── */
 html.pg-on,html.pg-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
 html.pg-on body{display:flex;flex-direction:column;background:transparent;}
-html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0 6px calc(var(--safe-b) + 8px);display:flex;flex-direction:column;align-items:center;justify-content:center;}
+html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0 6px max(18px,calc(var(--safe-b) + 10px));display:flex;flex-direction:column;align-items:center;justify-content:center;}
 .pg-hud{flex:none;display:flex;flex-wrap:wrap;align-items:stretch;gap:6px;width:100%;max-width:100%;margin-bottom:6px;}
 /* the full game under way: a quiet line under the plates */
 .pg-run{flex:1 0 100%;display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;gap:0 12px;margin-top:-1px;font-size:.78rem;font-weight:600;
@@ -58,6 +58,11 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .setup.k-snug .pg-levels{grid-template-columns:repeat(6,1fr);gap:6px;}
 .setup.k-snug .pg-lt{border-radius:10px;}
 @media (orientation:landscape){.setup.k-snug .pg-levels{grid-template-columns:repeat(15,1fr);}}
+/* a phone on its side: the level picker goes under the options in the left column, so the start button stays clear */
+@media (orientation:landscape) and (max-height:520px) and (min-width:640px){
+  .setup:has(> .k-seats):has(> .k-opts) > .k-opts{grid-row:1 / span 2;}
+  .setup:has(> .k-seats):has(> .k-opts) > .pg-pick{grid-column:1;grid-row:3 / span 3;}
+}
 .setup.k-snug .pg-lt canvas{aspect-ratio:1/1;object-fit:cover;}
 .setup.k-snug .pg-lt .nm{display:none;}
 .setup.k-snug .pg-lt .no{left:3px;top:3px;min-width:18px;height:18px;padding:0 4px;font-size:.72rem;}
@@ -132,6 +137,18 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
 #app.side .pg-wrap{grid-column:2;grid-row:1 / span 2;}
 #app.side .pg-ctl{position:static;grid-column:1;grid-row:2;justify-self:center;justify-content:center;width:min(360px,100%)!important;padding:0 0 10px;pointer-events:auto;}
 #app.side .pg-nudge{order:1;} #app.side .pg-fire{order:2;margin-left:0;flex:1;width:auto;} #app.side .pg-nudge + .pg-fire + .pg-nudge{order:3;}
+/* A phone on its side: the same panel, packed two plates to a row so it fits the short screen beside the board */
+html.pg-on #app.side.short{padding-left:max(17px,env(safe-area-inset-left));padding-bottom:max(18px,calc(var(--safe-b) + 10px));column-gap:18px;}
+#app.side.short .pg-hud{display:grid;grid-template-columns:auto 1fr 1fr;gap:6px;width:min(380px,100%);}
+#app.side.short .pg-plate{padding:6px 11px;}
+#app.side.short .pg-lv b,#app.side.short .pg-sc b{font-size:1.7rem;}
+#app.side.short .pg-best b{font-size:1.2rem;}
+#app.side.short .pg-pw{grid-column:1/4;}
+#app.side.short .pg-run{grid-column:1/4;}
+#app.side.short .pg-ctl{width:min(380px,100%)!important;padding:0;}
+/* Turning the device: the board, the plates and the buttons glide to their new places */
+.pg-hud{view-transition-name:pg-hud;} .pg-frame{view-transition-name:pg-frame;} .pg-ctl{view-transition-name:pg-ctl;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.8,.3,1);}
 .pg-pause{position:absolute;inset:5px;border-radius:14px;display:none;align-items:center;justify-content:center;z-index:4;
   background:rgba(8,6,20,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
 .pg-pause.show{display:flex;}
@@ -1047,7 +1064,7 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
   function loadSave() { try { var s = JSON.parse(localStorage.getItem(SAVE)); return s && s.v === 1 && s.n >= 1 && s.n <= NL ? s : null; } catch (e) { return null; } }
 
   // ═══ Kit shell ═══════════════════════════════════════════════════════════
-  Kit.init({ orient: 'portrait',
+  Kit.init({
     id: 'peggle',
     onNew: function () { clearSave(); showSetup(); },
     menu: [
@@ -1152,7 +1169,7 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
     var runl = el('div', { class: 'pg-runl', html: run && run.cur > 1
       ? '<b>Full game under way:</b> level ' + run.cur + ' of ' + NL + ' is next, ' + fmt(runTotal(run)) + ' points so far. Any other level ends it.'
       : 'For a <b>Full game</b> score, start at level 1 and clear all ' + NL + ' levels in order.' });
-    var box = el('div', null, [head, runl, grid, about]);
+    var box = el('div', { class: 'pg-pick' }, [head, runl, grid, about]);
     seats.parentNode.insertBefore(box, seats.nextSibling);
     label();
     window.scrollTo(0, 0);
@@ -1233,8 +1250,17 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
   function fit() {
     if (!wrapEl) return;
     // wide screens: the scores and buttons stand in a panel on the left, the board at the right, full height
-    var side = innerWidth >= 900 && innerWidth > innerHeight * 1.25;
-    if (side !== app.classList.contains('side')) { app.classList.toggle('side', side); cssW = 0; if (side) { hudEl.style.width = ''; ctlEl.style.width = ''; } }
+    // (a phone on its side too, packed tighter: .short). Turning the device switches inside a View Transition, so the
+    // board and the panel glide to their new places
+    var side = innerWidth > innerHeight * 1.25 && innerWidth >= 560;
+    if (side !== app.classList.contains('side')) {
+      if (fit.vt) return;
+      if (!fit.now && document.startViewTransition && view === 'game' && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        try { fit.vt = true; var t = document.startViewTransition(function () { fit.vt = false; fit.now = true; try { fit(); } finally { fit.now = false; } }); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) { fit.vt = false; }
+      }
+      app.classList.toggle('side', side); cssW = 0; if (side) { hudEl.style.width = ''; ctlEl.style.width = ''; }
+    }
+    app.classList.toggle('short', side && innerHeight < 560);
     var cs = getComputedStyle(app), aw = app.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
     var ctlH = side || getComputedStyle(ctlEl).position === 'absolute' ? 0 : ctlEl.offsetHeight;
     if (side) aw = aw * 0.62;
@@ -1697,6 +1723,7 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
     if (won) h.push('Cleared level ' + L.n + ' (' + L.def.name + ') with ' + L.ballsLeft + (L.ballsLeft === 1 ? ' ball' : ' balls') + ' left');
     else h.push('Ran out of balls on level ' + L.n + ' (' + L.def.name + ') with ' + orangeLeft() + ' orange ' + (orangeLeft() === 1 ? 'peg' : 'pegs') + ' left');
     if (st.feverBucket) h.push('Extreme Fever: ' + fmt(st.feverBucket) + ' bucket');
+    if (st.pb) h.push(L.who + ' beat the best score on ' + L.def.name);
     if (st.maxShot) h.push('Biggest shot: ' + fmt(st.maxShot));
     if (st.maxHits >= 12) h.push(st.maxHits + ' pegs in one shot');
     if (st.long) h.push(st.long === 1 ? 'Made a Long Shot' : st.long + ' Long Shots');
@@ -1871,6 +1898,12 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
     if (bestLv !== L.n) { bestLv = L.n; bestBase = Math.max(ArcadeHi.best(lvKey(L.n)) || 0, loadProg().best[L.n] || 0); }
     var bv = Math.max(bestBase, L.score);
     if (bestEl && shownBest !== bv) { shownBest = bv; bestEl.querySelector('b').textContent = fmt(bv); }
+    // passing this level's best score: the Best plate takes the gold and the moment says so, once a level
+    if (bestBase > 0 && L.score > bestBase && !L.stats.pb && !L.fever) {
+      L.stats.pb = 1;
+      Kit.moment({ title: 'New best on ' + L.def.name, line: 'You just passed your best score on this level, ' + fmt(bestBase) + ' points.', icon: 'trophy', at: hudEl, ms: 2100 });
+      Kit.sfx('win'); Kit.haptic('success');
+    }
     var hs = state + '|' + balls.length + '|' + L.guide + '|' + balls.some(function (b) { return b.spooky; });
     if (hs !== hudState) { hudState = hs; updateHud(); }
   }

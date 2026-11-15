@@ -107,6 +107,23 @@ body{overflow-x:hidden;}
   .ms.play.wide > .tools{grid-area:tools;width:auto;margin:0;}
   .ms.play.wide > .tools .seg{width:260px;}
 }
+/* Upright: Dig and Flag sit low, under the thumb, with the tip under them */
+@media (orientation:portrait){ .ms.play:not(.side)::after{flex:0 0 0;} .ms.play:not(.side) > .tools{margin-top:auto;padding-top:12px;} }
+/* Sideways (a phone on its side, an iPad on its side for Beginner and Intermediate): the field at the right as tall
+   as the screen, where you tap; the counters, Dig and Flag and the tip in a column at the left */
+.ms.play.side{display:grid;grid-template-columns:minmax(220px,300px) auto;grid-template-rows:auto auto 1fr;grid-template-areas:"hud frame" "tools frame" "hint frame";
+  justify-content:center;column-gap:clamp(18px,4vw,48px);row-gap:12px;align-content:center;align-items:start;max-width:none;
+  padding:4px max(17px,env(safe-area-inset-right)) max(18px,calc(var(--safe-b) + 10px)) max(17px,env(safe-area-inset-left));}
+.ms.play.side::before,.ms.play.side::after{display:none;}
+.ms.play.side{min-height:0;}
+.ms.play:not(.side) > .tools{padding-left:5px;padding-right:5px;}
+.ms.play.side > .frame{grid-area:frame;align-self:center;}
+.ms.play.side > .hud{grid-area:hud;margin:0;width:100%;}
+.ms.play.side > .tools{grid-area:tools;margin:0;width:100%;}
+.ms.play.side > .hintline{grid-area:hint;margin:0;text-align:left;}
+/* Turning the device: the field and the panel glide to their new places */
+.ms.play > .frame{view-transition-name:ms-frame;} .ms.play > .hud{view-transition-name:ms-hud;} .ms.play > .tools{view-transition-name:ms-tools;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.8,.3,1);}
 </style>
 </head>
 <body>
@@ -423,7 +440,15 @@ body{overflow-x:hidden;}
       field.classList.add('won', 'shine'); SND.shine();
       for (var k = 0; k < cellEls.length; k++) { var r = Math.floor(k / S.cols), c = k % S.cols; cellEls[k].style.setProperty('--wd', (r + c) * 25 + 'ms'); }
       Kit.callout(fmt(S.ms) + '!');
-      if (best && prev) setTimeout(function () { Kit.callout('New best time!'); Kit.sfx('good'); }, 1100);
+      if (best && prev) setTimeout(function () {
+        var by = Math.max(0.1, (prev - S.ms) / 1000);
+        Kit.moment({ title: 'New best time', line: 'You cleared ' + L().name + ' ' + (by >= 1 ? Math.round(by) + (Math.round(by) === 1 ? ' second' : ' seconds') : 'a moment') + ' faster than your old best of ' + fmt(prev) + '.', pts: fmt(S.ms), at: frame, ms: 2300 });
+        Kit.sfx('good'); Kit.haptic('success');
+      }, 1100);
+      else if (!S.flagsPlanted && S.diff !== 'beginner') setTimeout(function () {
+        Kit.moment({ title: 'No flags needed', line: 'You cleared ' + L().name + ' without planting a single flag.', icon: 'sparkle', at: frame, ms: 2100 });
+        Kit.sfx('sparkle'); Kit.haptic('success');
+      }, 1100);
     }, t);
     setTimeout(function () {
       var diff = S.diff;
@@ -436,7 +461,7 @@ body{overflow-x:hidden;}
           extra: [{ label: 'High scores', onClick: function () { ArcadeHi.show(hiKey(diff)); showSetup(); } }, { label: 'Change level', onClick: showSetup }]
         });
       });
-    }, t + (best && prev ? 2400 : 1600));
+    }, t + (best && prev || (!S.flagsPlanted && S.diff !== 'beginner') ? 2400 : 1600));
   }
 
   // ── Tension: last few safe squares ────────────────────────────────────────
@@ -496,7 +521,7 @@ body{overflow-x:hidden;}
     tools.appendChild(hud.zoom);
     app.appendChild(tools);
     app.appendChild(hud.hint = el('div', { class: 'hintline', 'aria-live': 'polite' }));
-    layout(true);
+    layout(true); layout.shape = innerWidth > innerHeight;
     bindField();
     setTool(tool); updHud(); updTime(); tension();
     if (S.over && !S.won && S.hit >= 0) { field.classList.add('dark'); }
@@ -511,10 +536,13 @@ body{overflow-x:hidden;}
     var tab = vw >= 700 && window.innerHeight >= 700;  // iPad-sized: let cells grow past phone size
     // Wide field with the controls in one row under it (the CSS above) leaves more height for the cells
     var strip = S.cols > 16 && WIDE.matches;
+    var side = !portrait && !strip && vw >= 560;
+    app.classList.toggle('side', side);
     var availW = Math.min(vw - 24, strip ? 1316 : S.cols > 16 ? 1180 : tab ? 780 : 620) - 16 - 2;
     var big = vr > 16;
-    if (hud.hint) hud.hint.style.display = big ? 'none' : '';
+    if (hud.hint) hud.hint.style.display = big && !side ? 'none' : '';
     var availH = window.innerHeight - 58 - (strip ? 130 : 64 + 68 + (big ? 0 : 80) + 22);
+    if (side) { availW = vw - 34 - Math.min(300, Math.max(220, vw * 0.3)) - Math.min(48, Math.max(18, vw * 0.04)) - 18; availH = window.innerHeight - 58 - 22 - 42; }
     baseCs = Math.max(14, Math.floor(Math.min(tab ? 72 : 44, availW / vc, Math.max(availH, vr * 16) / vr)));
     var cs = Math.round(baseCs * zoom);
     field.style.setProperty('--cs', cs + 'px');
@@ -542,7 +570,17 @@ body{overflow-x:hidden;}
     zoom = z; Kit.sfx('tap'); layout(false);
     scroller.scrollLeft = sx * scroller.scrollWidth; scroller.scrollTop = sy * scroller.scrollHeight;
   }
-  var rz; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (S && field && field.isConnected) layout(false); }, 150); });
+  // Turning the device: the new layout is drawn inside a View Transition, so the field and the panel glide there
+  var rz; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () {
+    if (!(S && field && field.isConnected)) return;
+    var go = function () { layout(false); };
+    var shape = innerWidth > innerHeight;
+    if (shape !== layout.shape && document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      layout.shape = shape;
+      try { var t = document.startViewTransition(go); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) {}
+    }
+    layout.shape = shape; go();
+  }, 150); });
   // o: {drop: delay ms, plant: bool, delay, reveal}
   function paintCell(i, o) {
     o = o || {};

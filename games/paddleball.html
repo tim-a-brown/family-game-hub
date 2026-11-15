@@ -18,9 +18,10 @@
 /* ── Play view: fills the screen, no page scroll ────────────────────────── */
 html.ar-on,html.ar-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
 html.ar-on body{display:flex;flex-direction:column;background:transparent;}
-html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0 8px calc(var(--safe-b) + 10px);
+html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0 8px max(18px,calc(var(--safe-b) + 10px));
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;}
-.ar-hud{flex:none;display:flex;gap:6px;width:100%;}
+.ar-hud{flex:none;display:flex;gap:6px;width:100%;padding:0 9px;}
+html.pd-land .ar-hud{padding:0;}
 .ar-plate{position:relative;flex:1;min-width:0;display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:15px;
   background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),0 10px 22px -16px rgba(0,0,0,.9);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transition:box-shadow .2s,background .2s;}
 .ar-plate .nm{flex:1;min-width:0;display:flex;flex-direction:column;}
@@ -79,14 +80,16 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .ar-hint{flex:none;font-size:.82rem;color:var(--text-3);text-align:center;font-weight:650;}
 /* A phone on its side: the scores stand in a column at the left (what you look at) and the court takes the screen's
    whole height beside them, with your slide strip between the two */
-@media (orientation:landscape) and (max-height:560px){
-  html.ar-on #app{flex-direction:row;align-items:stretch;gap:10px;padding:0 calc(env(safe-area-inset-right,0px) + 10px) calc(var(--safe-b) + 8px) calc(env(safe-area-inset-left,0px) + 10px);}
-  .ar-hud{flex-direction:column;justify-content:center;width:clamp(124px,17vw,168px);max-width:none !important;gap:8px;}
-  .ar-plate{flex:none;padding:8px 10px;}
-  .ar-plate.p2{flex-direction:row;text-align:left;}
-  .ar-plate.p2 .sv{align-self:flex-start;}
-  .ar-mid{padding:2px 0;}
-  .ar-pbtn{width:100%;height:44px;}
+/* (html.pd-land is switched inside a View Transition when the device turns, so the plates and the court glide) */
+html.pd-land.ar-on #app{flex-direction:row;align-items:stretch;gap:10px;padding:0 max(17px,env(safe-area-inset-right,0px)) max(12px,calc(var(--safe-b) + 8px)) max(17px,env(safe-area-inset-left,0px));}
+html.pd-land .ar-hud{flex-direction:column;justify-content:center;width:clamp(124px,17vw,168px);max-width:none !important;gap:8px;}
+html.pd-land .ar-plate{flex:none;padding:8px 10px;}
+html.pd-land .ar-plate.p2{flex-direction:row;text-align:left;}
+html.pd-land .ar-plate.p2 .sv{align-self:flex-start;}
+html.pd-land .ar-mid{padding:2px 0;}
+html.pd-land .ar-pbtn{width:100%;height:44px;}
+.ar-hud{view-transition-name:pd-hud;} .ar-wrap{view-transition-name:pd-court;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.8,.3,1);}
 }
 @media (hover:hover) and (pointer:fine){ .ar-touch{display:none!important;} }
 @media (hover:none),(pointer:coarse){ .ar-desk{display:none!important;} }
@@ -99,6 +102,20 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 (function () {
   'use strict';
   var el = Kit.el, app = document.getElementById('app'), root = document.documentElement;
+  // Turning the device: the sideways layout of a phone (html.pd-land) is switched inside a View Transition
+  (function () {
+    var q = matchMedia('(orientation:landscape) and (max-height:560px)'), wait = false;
+    function set() { wait = false; root.classList.toggle('pd-land', q.matches); if (typeof fit === 'function') { cssW = 0; fit(); } }
+    root.classList.toggle('pd-land', q.matches);
+    function turn() {
+      if (wait || root.classList.contains('pd-land') === q.matches) return;
+      if (document.startViewTransition && !document.hidden && root.classList.contains('ar-on') && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        try { wait = true; var t = document.startViewTransition(set); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) { wait = false; }
+      }
+      set();
+    }
+    if (q.addEventListener) q.addEventListener('change', turn); else q.addListener(turn);
+  })();
   var KEY = 'paddleball', SAVE = 'paddleball_state';
   // Abstract court: L runs from player 1's end (0) to player 2's end (FL); C runs across.
   var FL = 600, FC = 360;
@@ -349,7 +366,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     P.flash = 1;
     sHit(sp, smash);
     for (var i = 0; i < (smash ? 18 : 7); i++) part(l, c, dir * (60 + Math.random() * 200), (Math.random() - 0.5) * 260, PC[p], 0.35 + Math.random() * 0.3, 1.2 + Math.random() * 1.6);
-    if (rally === 20 || rally === 40) Kit.callout && Kit.callout(rally + '-hit rally!');
+    if (rally === 20 || rally === 40) { Kit.moment({ title: rally + '-hit rally', line: 'The ball has crossed the court ' + rally + ' times without a miss.', at: cabEl, ms: 1500 }); Kit.sfx('good'); }
+    // against the computer the board keeps the longest rally: passing it is a moment, once a match
+    if (G.mode === 'cpu' && !G.stats.rallyPB) {
+      if (G.rb0 == null) G.rb0 = ArcadeHi.best('paddleball') || 0;
+      if (G.rb0 >= 10 && rally === G.rb0 + 1) { G.stats.rallyPB = rally; Kit.moment({ title: 'Longest rally yet', line: 'This rally just passed the best on the board, ' + G.rb0 + ' hits.', icon: 'trophy', at: cabEl, ms: 2000 }); Kit.sfx('win'); Kit.haptic('success'); }
+    }
   }
   function wallSpark(b) { for (var i = 0; i < 4; i++) part(b.l, b.c, (Math.random() - 0.5) * 120, (b.c < FC / 2 ? 1 : -1) * (40 + Math.random() * 80), '#cfe6ff', 0.2, 0.8); }
   function grabPower(p, o, b) {
@@ -386,6 +408,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (G.score[0] === G.score[1] && G.score[0] >= G.to - 1) G.stats.deuce = true;
     if (G.rally > (G.stats.longestBy || { n: 0 }).n) G.stats.longestBy = { n: G.rally, winner: p };
     if (b.smash > 0) G.stats.smashWins[p]++;
+    // all square after being 4 or more points down: the comeback is on
+    if (G.score[p] === G.score[other] && G.stats.maxDown[p] >= 4 && !won(p)) {
+      G.stats.cb = G.stats.cb || [0, 0];
+      if (!G.stats.cb[p]) { G.stats.cb[p] = G.score[p]; Kit.moment({ title: 'All square', line: name(p) + ' was ' + G.stats.maxDown[p] + ' points down and has caught up at ' + G.score[p] + ' all.', icon: 'flame', color: PC[p], at: cabEl, ms: 2000 }); if (G.mode !== 'net' || p === ME) Kit.haptic('success'); }
+    }
     pointFx(p, b.l, b.c);
     var ev = { k: 'pt', p: p, id: b.id, l: r1(b.l), c: r1(b.c), sc: G.score.slice() };
     if (won(p)) { G.phase = 'over'; G.overT = 0; G.winner = p; G.pw.big = [0, 0]; G.pw.curve = [0, 0]; orb = null; balls = []; clearSave(); ev.w = p; netEv(ev); return; }
@@ -712,6 +739,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     h.push(wn + ' won ' + G.score[w] + '–' + G.score[l]);
     if (st.longest >= 2) h.push('Longest rally: ' + st.longest + ' hits');
     if (st.maxDown[w] >= 3) h.push(wn + ' came back from ' + st.maxDown[w] + ' points down');
+    if (!G.score[l] && G.score[w] >= 5) h.push(wn + ' won without giving up a single point');
+    if (st.rallyPB) h.push('A ' + st.rallyPB + '-hit rally passed the best on the board');
     if (st.deuce) h.push('Went to deuce at ' + (G.to - 1) + '–' + (G.to - 1));
     var bestRunP = st.bestRun[0] >= st.bestRun[1] ? 0 : 1;
     if (st.bestRun[bestRunP] >= 4) h.push(name(bestRunP) + ' won ' + st.bestRun[bestRunP] + ' points in a row');

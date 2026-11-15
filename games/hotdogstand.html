@@ -164,7 +164,7 @@ body{overflow-x:hidden;}
 
 /* ── Panels (chrome: clean) ──────────────────────────────────────────────── */
 .card{background:var(--gl);border-radius:18px;box-shadow:inset 0 0 0 1px var(--gl-line),var(--shadow-sm);}
-.tabs{display:flex;gap:4px;padding:4px;border-radius:var(--r);background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);}
+.tabs{display:flex;gap:4px;padding:4px 7px;border-radius:var(--r);background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);}
 .tabs button{flex:1;min-height:40px;border:0;border-radius:12px;background:transparent;color:var(--text-2);font-weight:700;font-size:.95rem;display:flex;align-items:center;justify-content:center;gap:6px;transition:transform .1s;}
 .tabs button:active{transform:translateY(1px) scale(.97);}
 .tabs button.on{background:rgba(255,211,77,.14);color:var(--lit-ink);box-shadow:inset 0 0 0 1px rgba(255,211,77,.6),0 0 16px rgba(255,190,60,.18);}
@@ -241,7 +241,7 @@ body{overflow-x:hidden;}
 .gear button:disabled{opacity:.45;}
 
 /* Footer: money out, money left, open */
-.foot{display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;border-radius:20px;background:var(--sheet-bg);-webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px);position:sticky;bottom:calc(var(--safe-b) + 8px);z-index:5;
+.foot{display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;border-radius:20px;background:var(--sheet-bg);-webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px);position:sticky;bottom:max(10px,calc(var(--safe-b) + 8px));z-index:5;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px var(--gl-line),0 -8px 22px -10px rgba(0,0,0,.6);}
 .foot .sum{flex:1;min-width:0;font-size:.8rem;font-weight:600;color:var(--text-3);line-height:1.3;}
 .foot .sum b{display:block;font:400 1.2rem/1.1 var(--display);color:var(--text);font-variant-numeric:tabular-nums;}
@@ -323,23 +323,32 @@ body{overflow-x:hidden;}
 .sea .up{color:#3ddc84;} .sea .down{color:#ff6b6b;}
 
 /* Landscape and big screens: look on the left, act on the right */
-@media (orientation:landscape) and (min-width:640px){
-  .hd{height:calc(100dvh - var(--bar));padding-bottom:calc(var(--safe-b) + 8px);}
-  .hd-main{flex-direction:row;flex:1;min-height:0;}
-  .hd-scene{flex:1 1 auto;aspect-ratio:auto;height:100%;}
-  .hd-panel{flex:0 0 clamp(330px,40%,440px);overflow-y:auto;overscroll-behavior:contain;padding-bottom:4px;}
-  .hd-panel::-webkit-scrollbar{display:none;}
-}
-@media (orientation:landscape) and (max-height:500px){
-  .lchart{display:none;}
-  .till{padding:6px 12px;} .meter{padding:5px 8px;} .meter svg.it{width:28px;height:28px;} .lost div{padding:5px 8px;}
-  .ord{padding:6px 8px;} .ord .art{width:40px;height:40px;} .ord .art svg{width:34px;height:34px;}
-  .step button{width:36px;height:36px;}
-  .till b{font-size:1.6rem;}
-}
+html.hd-land .hd{height:calc(100dvh - var(--bar));padding-bottom:calc(var(--safe-b) + 8px);}
+html.hd-land .hd-main{flex-direction:row;flex:1;min-height:0;}
+html.hd-land .hd-scene{flex:1 1 auto;aspect-ratio:auto;height:100%;}
+html.hd-land .hd-panel{flex:0 0 clamp(330px,40%,440px);overflow-y:auto;overscroll-behavior:contain;padding-bottom:4px;}
+html.hd-land .hd-panel::-webkit-scrollbar{display:none;}
+
+html.hd-short .lchart{display:none;}
+html.hd-short .till{padding:6px 12px;}
+html.hd-short .meter{padding:5px 8px;}
+html.hd-short .meter svg.it{width:28px;height:28px;}
+html.hd-short .lost div{padding:5px 8px;}
+html.hd-short .ord{padding:6px 8px;}
+html.hd-short .ord .art{width:40px;height:40px;}
+html.hd-short .ord .art svg{width:34px;height:34px;}
+html.hd-short .step button{width:36px;height:36px;}
+html.hd-short .till b{font-size:1.6rem;}
+
 @media (orientation:portrait) and (min-width:700px){
   .hd{max-width:860px;}
+  /* an upright iPad: the stand a little shorter, so the whole order list and the dock fit without scrolling */
+  .hd-scene{aspect-ratio:auto;height:min(46vw,40vh);}
 }
+@media (orientation:portrait) and (max-width:699px){ .hd-scene{aspect-ratio:400/262;} }
+/* Turning the device: the stand and the panel glide to their new places */
+.hd-scene{view-transition-name:hd-scene;} .hd-panel{view-transition-name:hd-panel;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.8,.3,1);}
 </style>
 </head>
 <body>
@@ -348,6 +357,21 @@ body{overflow-x:hidden;}
 (function () {
   'use strict';
   var el = Kit.el, app = document.getElementById('app');
+  // Turning the device: the sideways layout (html.hd-land, and hd-short on a phone) is switched inside a View
+  // Transition, so the stand and the panel glide to their new places
+  (function () {
+    var R = document.documentElement, q = matchMedia('(orientation:landscape) and (min-width:640px)'), qs = matchMedia('(orientation:landscape) and (max-height:500px)'), wait = false;
+    function set() { wait = false; R.classList.toggle('hd-land', q.matches); R.classList.toggle('hd-short', qs.matches); }
+    set();
+    function turn() {
+      if (wait || (R.classList.contains('hd-land') === q.matches && R.classList.contains('hd-short') === qs.matches)) return;
+      if (document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        try { wait = true; var t = document.startViewTransition(set); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) { wait = false; }
+      }
+      set();
+    }
+    [q, qs].forEach(function (m) { if (m.addEventListener) m.addEventListener('change', turn); else m.addListener(turn); });
+  })();
   var SAVE = 'hotdogstand_state', HKEY = 'hotdogstand';
   var ICO = Kit.icon;
 
@@ -1637,11 +1661,11 @@ body{overflow-x:hidden;}
     var tEnd = 250 + all.length * 190 + 150;
     setTimeout(function () {
       stamp.classList.add('on'); SND.stamp(); Kit.haptic('medium');
-      if (best) { Kit.callout('Best day yet!'); Kit.sfx('win', .6); }
+      if (best) { Kit.moment({ title: 'Best day yet', line: 'You made more today than on any other day this season.', pts: money(r.net, true), at: scene, ms: 2000 }); Kit.sfx('win', .6); Kit.haptic('success'); }
       else if (r.net > 0 && r.revenue >= 150000) { Kit.callout(money(r.net, true) + '!'); Kit.sfx('good', .7); }
       else if (r.net < 0) Kit.sfx('bad', .5);
       var M = MODES[S.mode];
-      if (S.cash >= M.goal && r.cashBefore < M.goal) setTimeout(function () { Kit.confetti(); Kit.callout('Season goal reached!'); Kit.sfx('win'); Kit.haptic('success'); }, 900);
+      if (S.cash >= M.goal && r.cashBefore < M.goal) { S.goalAt = S.i + 1; setTimeout(function () { Kit.confetti(); Kit.moment({ big: true, title: 'Season goal reached', line: 'The stand has made the ' + money(M.goal, true) + ' the season asked for, with ' + (S.sched.length - S.i - 1 === 1 ? '1 event' : (S.sched.length - S.i - 1) + ' events') + ' still to play.', icon: 'trophy', at: scene, ms: 3000 }); Kit.sfx('win'); Kit.haptic('success'); }, 900); }
     }, tEnd);
     ns.forEach(function (x, i) { setTimeout(function () { x.classList.add('in'); }, tEnd + 350 + i * 160); });
     setTimeout(function () { btn.style.visibility = ''; }, tEnd + 350 + ns.length * 160);
@@ -1716,6 +1740,7 @@ body{overflow-x:hidden;}
     hl.push((done ? 'Finished the ' : 'Stopped the ') + M.name + ' season with ' + money(S.cash, true) + (done ? '' : ' after ' + S.log.length + ' of ' + S.sched.length + ' events'));
     if (S.best) hl.push('Best day: ' + money(S.best.net, true) + ' at ' + S.best.title);
     hl.push('Sold ' + t.sold.dog.toLocaleString() + ' hot dogs, ' + t.sold.soda.toLocaleString() + ' sodas, ' + t.sold.chips.toLocaleString() + ' chips' + (t.sold.cocoa ? ' and ' + t.sold.cocoa.toLocaleString() + ' cocoas' : ''));
+    if (S.goalAt) hl.push('Reached the season goal at event ' + S.goalAt + ' of ' + S.sched.length);
     if (t.outs) hl.push('Sold out ' + t.outs + (t.outs === 1 ? ' time' : ' times'));
     var g = Object.keys(S.owned); if (g.length) hl.push('Gear: ' + g.map(function (k) { return gear(k).name.toLowerCase(); }).join(', '));
     Kit.record(HKEY, {

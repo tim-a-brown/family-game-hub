@@ -77,6 +77,10 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .pb-dmd.lcd{aspect-ratio:4/1;}
 .pb-view{flex:1;min-height:0;position:relative;}
 .pb-gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;}
+/* An iPad on its side (html.pb-land): the display band steps off the top and stands in the dark at the upper left
+   beside the table, so the table takes the screen's full height */
+html.pb-land .pb-band{position:absolute;left:16px;top:10px;width:min(330px,calc(50% - 26vh - 24px));padding:8px 10px 10px;border-radius:16px;}
+html.pb-land .pb-dmd{width:100%;}
 /* Arcade pushbuttons: a glossy convex cap (highlight upper-left, darker to the rim) seated in a slightly darker
    bezel ring with a seam shadow and a lip highlight. Opaque plastic, no glyphs. --cap sets the colour family. */
 .pb-arc{position:relative;border:0;padding:0;border-radius:50%;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
@@ -91,8 +95,8 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .pb-arc::after{content:"";position:absolute;left:26%;top:17%;width:34%;height:20%;border-radius:50%;background:rgba(255,255,255,.55);filter:blur(3px);transition:opacity .06s,transform .06s;}
 .pb-arc.on::before{transform:translateY(3.5px);filter:brightness(.82) saturate(1.1);box-shadow:0 0 0 2px rgba(0,0,0,.6),0 0 0 rgba(0,0,0,0),inset 0 1px 2px rgba(255,255,255,.25),inset 0 5px 8px rgba(0,0,0,.45);}
 .pb-arc.on::after{opacity:.3;transform:translateY(3.5px);}
-.pb-flip{position:absolute;z-index:3;bottom:calc(var(--safe-b) + 14px);width:72px;height:72px;}
-.pb-flipL{left:10px;}.pb-flipR{right:10px;}
+.pb-flip{position:absolute;z-index:3;bottom:max(18px,calc(var(--safe-b) + 14px));width:72px;height:72px;}
+.pb-flipL{left:max(17px,env(safe-area-inset-left));}.pb-flipR{right:max(17px,env(safe-area-inset-right));}
 .pb-view.no-flipbtns .pb-flip{display:none;}
 /* smaller buttons with an engraved legend plate under them, like the printed labels on a lockdown bar */
 /* the small buttons sit in the same apron row as the flippers: L · MAGNET · NUDGE · FIRE · R, legends aligned */
@@ -112,7 +116,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
    plunger slides in along the right side (above the button row): ball on the tip, spring, bracket, then the
    cabinet front with the chrome housing, rod and knob. Drag down anywhere on it to pull; let go to launch. It
    slides away once the ball is shot. Drawn on a canvas; the whole inset takes its own touches (never flips). */
-.pb-plunger{position:absolute;right:8px;top:0;z-index:4;border-radius:18px;pointer-events:none;visibility:hidden;opacity:0;
+.pb-plunger{position:absolute;right:max(17px,env(safe-area-inset-right));top:0;z-index:4;border-radius:18px;pointer-events:none;visibility:hidden;opacity:0;
   transform:translateX(calc(100% + 24px));transition:transform .36s cubic-bezier(.4,0,.2,1),opacity .3s,visibility 0s linear .36s;
   box-shadow:0 10px 26px rgba(0,0,0,.65),0 2px 6px rgba(0,0,0,.6);}
 .pb-plunger.show{visibility:visible;opacity:1;transform:none;pointer-events:auto;transition:transform .42s cubic-bezier(.2,.9,.25,1.05),opacity .25s,visibility 0s;}
@@ -205,11 +209,19 @@ function getRenderer() {
   return renderer;
 }
 
+// Turning an iPad: the sideways layout (html.pb-land: the display beside the table) follows at once, and the table's
+// camera is fitted again to the new shape. (A phone stays upright: on its side the table would be too small to
+// play. No View Transition here: its snapshot waits on the 3D table's next frame, which holds the relayout back.)
+(function () {
+  const R = document.documentElement, q = matchMedia('(orientation:landscape) and (min-height:600px)');
+  const set = () => R.classList.toggle('pb-land', q.matches);
+  set(); q.addEventListener('change', set);
+})();
 // ═══ Kit shell ══════════════════════════════════════════════════════════════
 let G = null, view = 'none', ambPref = true, ballsPref = 3;
-let bestEl = null, bestBase = 0, shownBest = -1;
+let bestEl = null, bestBase = 0, shownBest = -1, passedAt = 0;
 function showHigh() { const id = G ? G.id : selTable(); ArcadeHi.show('pinball_' + id, 'Pinball: ' + TABLES[id].name); }
-Kit.init({ orient: 'portrait', orientTablets: true,
+Kit.init({ orient: 'portrait',
   id: 'pinball',
   onNew: () => showSetup(),
   menu: [
@@ -374,7 +386,7 @@ function startGame(id, balls, who) {
   for (const side of ['L', 'R']) press(flipBtn[side], () => { btnHeld[side] = true; syncFlips(); }, () => { btnHeld[side] = false; syncFlips(); });
   // the table's best score on the scoreboard's top bezel, overtaken live by this game
   bestEl = el('canvas', { class: 'pb-best', role: 'img' });
-  bestBase = ArcadeHi.best('pinball_' + id); shownBest = -1;
+  bestBase = ArcadeHi.best('pinball_' + id); shownBest = -1; passedAt = 0;
   bestEl.dataset.ink = def.display && def.display.type === 'lcd' ? (def.display.ink || '#ffffff') : (def.display && def.display.color) || '#ff8a1e';
   app.append(el('div', { class: 'pb-band' }, [bestEl, dmdEl]), viewEl, pauseEl);
   drawBest(bestBase);
@@ -433,6 +445,12 @@ function tickUI() {
   if (G.state !== 'over' && document.querySelector('.k-scrim')) { pauseGame(); return; }
   // past the table's record the readout follows this game's score, redrawn at most twice a second
   const bv = Math.max(bestBase, G.score || 0);
+  // past the table's record: a moment over the display, once a game (the readout carries on following the score)
+  if (bestBase > 0 && !passedAt && (G.score || 0) > bestBase) {
+    passedAt = G.ball || 1;
+    Kit.moment({ title: 'New table record', line: 'You just passed the best score on this table, ' + fmt(bestBase) + ' points.', icon: 'trophy', at: document.querySelector('.pb-band'), ms: 2400 });
+    Kit.sfx('win'); Kit.haptic('success');
+  }
   if (bestEl && bv !== shownBest && performance.now() - bestAt > 500) { shownBest = bv; drawBest(bv); }
   uiRaf = setTimeout(tickUI, 200);
 }
@@ -1006,6 +1024,7 @@ function finish(g0) {
   if (st.cb) hl.push(st.cb + (st.cb === 1 ? ' combo' : ' combos'));
   if (st.sk) hl.push(st.sk === 1 ? 'Made the skill shot' : st.sk + ' skill shots');
   if (st.wiz) hl.push('Reached ' + (bd.wizard || 'the wizard mode'));
+  if (passedAt) hl.unshift(g0.who + ' beat the table record of ' + fmt(bestBase) + ' points');
   if (st.tilt) hl.push('Tilted ' + (st.tilt === 1 ? 'once' : st.tilt + ' times'));
   Kit.record(KEY, {
     detail, started: g0.started, mode: bd.name,

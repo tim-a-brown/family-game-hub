@@ -89,6 +89,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
 .inv-auto.on{color:var(--lit-ink);background:rgba(255,211,77,.14);box-shadow:inset 0 0 0 1px rgba(255,211,77,.6),0 0 16px rgba(255,190,60,.18);}
 .inv-auto.on i{background:var(--lit);box-shadow:0 0 6px var(--litg);}
 .inv-side .inv-top{display:flex;gap:8px;align-items:center;}
+/* Turning the device: the parts glide to their new places */
+.inv-scr{view-transition-name:inv-scr;} .inv-sz:not(.c2){view-transition-name:inv-stick;} .inv-fz{view-transition-name:inv-fire;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.8,.3,1);}
 </style>
 </head>
 <body>
@@ -837,6 +840,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   function hurtUfo(dmg, who) {
     var x = ufo.x, y = ufo.y, pts = 250 * (2 + Math.floor(Math.random() * 9));   // 500-2,500 in steps of 250
     addScore(who, pts); G.stats.ufos++;
+    if (pts === 2500) { G.stats.ufoTop = (G.stats.ufoTop || 0) + 1; Kit.moment({ title: 'Top saucer score', line: 'That saucer paid the most a saucer can, 2,500 points.', pts: '+2,500', at: boxEl, ms: 1600 }); }
     pop(x, y, String(pts), '#ff8aa0', 1);
     explode(x, y, '#ff3b5c', true);
     if (Math.random() < 0.35) addBomb(x, y + 20);
@@ -858,8 +862,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     if (B) banner('UFOS HIT ' + B.hit + '/' + B.total, (perfect ? 'PERFECT  ' : '') + '+' + fmt(bonus), '#ffd23e', 2.6);
     else banner(G.wave === STAGES ? 'ALL 50 STAGES!' : 'STAGE ' + G.wave + ' CLEAR', (perfect ? 'PERFECT  ' : '') + '+' + fmt(bonus), '#6dff4a', 2.4);
     sWave(); hap('success');
-    if (G.wave === STAGES) { G.stats.all50 = 1; confetti(); callout('You beat all 50 stages!', '#6dff4a'); }
-    else if (perfect) callout(B ? 'Every UFO!' : 'Perfect stage!', '#6dff4a');
+    if (G.wave === STAGES) { G.stats.all50 = 1; confetti(); Kit.moment({ big: true, title: 'All 50 stages', line: 'You beat every stage of the invasion and saved the base.', icon: 'trophy', at: boxEl, ms: 3200 }); Kit.sfx('win'); }
+    else if (perfect) { Kit.moment({ title: B ? 'Every UFO' : 'Perfect stage', line: B ? 'You hit every saucer in the bonus round.' : 'You cleared stage ' + G.wave + ' without the base taking a hit.', pts: '+' + fmt(bonus), at: boxEl, ms: 1900 }); Kit.sfx('sparkle'); }
   }
   function nextStage() {
     // after stage 3: each player picks a permanent weapon upgrade
@@ -1168,6 +1172,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   function maxAsp() { return lay.indexOf('land') === 0 && app.clientHeight < 560 ? 1 : 0.8; }
   // Lay out the controls: under the screen when upright, either side of it when turned sideways
   function arrange() {
+    if (arrange.wait) return;
     var W0 = app.clientWidth, H0 = app.clientHeight, two = TWO() && !NET.mode;
     var mode = !TOUCH ? 'desk' : W0 > H0 * 1.15 ? 'land' : 'port';
     var key = mode + (SET.right ? 'R' : 'L') + (two ? '2' : '1');
@@ -1183,6 +1188,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
       app.style.setProperty('--stick', st2 + 'px'); app.style.setProperty('--fire', Math.round(st2 * 0.78) + 'px');
     }
     if (key === lay) return;
+    // turning the device (upright and sideways swap): the new layout is laid inside a View Transition, so the screen,
+    // the stick and the button glide to their new places
+    if (lay && lay.charAt(0) !== key.charAt(0) && !arrange.go && document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      if (arrange.wait) return;
+      try { arrange.wait = true; var t = document.startViewTransition(function () { arrange.wait = false; arrange.go = true; try { fit(true); } finally { arrange.go = false; } }); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) { arrange.wait = false; }
+    }
     lay = key;
     app.className = 'stage lay-' + mode;
     [SZ[0].zone, SZ[1].zone, fireZone, pauseEl, autoEl].forEach(detach);
@@ -1385,6 +1396,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     h.push(st.all50 ? 'Beat all 50 stages and reached stage ' + G.wave + '!' : 'Reached stage ' + G.wave + (st.cleared ? ' (cleared ' + st.cleared + ')' : ''));
     if (two) pl.forEach(function (p, i) { h.push(p.name + ' (' + (i ? 'blue' : 'red') + '): ' + fmt(p.score) + ' points, best streak ' + p.best + (p.wpn ? ', ' + (p.wpn === 'ring' ? 'ring weapon' : 'missile shooter') : '')); });
     else {
+      if (st.ufoTop) h.push(pl[0].name + ' hit ' + (st.ufoTop === 1 ? 'a saucer' : st.ufoTop + ' saucers') + ' for the top 2,500 points');
       h.push('Blasted ' + st.kills + (st.kills === 1 ? ' invader' : ' invaders') + (st.heavies ? ', ' + st.heavies + ' of them heavy ships' : ''));
       if (pl[0].best >= 10) h.push('Best streak: ' + pl[0].best + ' hits in a row');
       if (pl[0].wpn) h.push('Weapon: ' + (pl[0].wpn === 'ring' ? 'ring weapon' : 'missile shooter'));
