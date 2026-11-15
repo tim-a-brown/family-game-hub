@@ -20,6 +20,7 @@
 //   Kit.confirm(msg, {ok, danger})             -> Promise<bool>
 //   Kit.toast(msg)   Kit.callout(text)         quick feedback
 //   Kit.moment({title, line, chip|icon, pts, color, tone, big, at, ms})   a moment on the table (the edge-lit strip)
+//   Kit.glide(fn)   run a relayout (the device turned) inside a View Transition so the pieces glide; plain where unsupported or motion is reduced
 //   Kit.confetti()   Kit.sfx(name, vol?)   Kit.haptic(kind)
 //   Kit.card(rank, suit, {back, cls})          playing-card element
 //   Kit.die(value)                             die element
@@ -511,6 +512,16 @@
     return best;
   }
   var moEl = null, moT = null, moR = null;
+  // Kit.glide(fn): fn redraws or re-lays the page (the device turned, the table changed shape); the pieces glide from
+  // where they were to where they land (give them view-transition-name). A transition cut short by another turn is
+  // quietly dropped (its promises would otherwise report an error), and without View Transitions, or with reduced
+  // motion, fn just runs.
+  function glide(fn) {
+    if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) { fn(); return null; }
+    try { var t = document.startViewTransition(fn); [t.ready, t.finished, t.updateCallbackDone].forEach(function (p) { if (p && p.catch) p.catch(function () {}); }); return t; }
+    catch (e) { fn(); return null; }
+  }
+
   function moment(o) {
     o = o || {};
     if (moEl) { moEl.remove(); clearTimeout(moT); }
@@ -5453,7 +5464,7 @@
 
   window.Kit = {
     netTurns: netTurns, turnsMark: turnsMark, turnBanner: turnBanner, turnBadge: turnBadge, badgeAsk: badgeAsk, notify: notifySheet, notifyStatus: notifyStatus, inbox: inboxSheet, inboxNew: inboxNew,
-    marquee: marquee, init: init, keepAwake: keepAwake, setup: setup, cashOut: cashOutBtn, fitText: fitText, modes: modes, depth: depth, win: win, winClear: winPeekClear, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout, moment: moment,
+    marquee: marquee, glide: glide, init: init, keepAwake: keepAwake, setup: setup, cashOut: cashOutBtn, fitText: fitText, modes: modes, depth: depth, win: win, winClear: winPeekClear, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout, moment: moment,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     defaults: { sheet: defaultsSheet, get: setupSaved }, setupPage: function (g) { return g && g.play && SETUP_PAGES.indexOf(g.play) >= 0 ? g.play : null; }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, playing: playing, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },
     initials: { of: iniOf, set: iniSet }, player: function () { return curPlayers.length === 1 ? curPlayers[0] : ''; }, players: function () { return curPlayers.slice(); },
