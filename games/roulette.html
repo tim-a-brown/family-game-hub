@@ -164,6 +164,8 @@
 .stage.rl.cmp{padding-top:2px;}
 .cmp .head{padding:6px;gap:8px;margin-bottom:6px;align-items:center;border-radius:16px;}
 .cmp .mini{width:clamp(70px,11.5dvh,100px);height:clamp(70px,11.5dvh,100px);}
+/* (a phone held upright: the wheel takes a bigger share of the width, Tim 2026-11-15) */
+@media (orientation:portrait) and (max-width:600px){.cmp .mini{width:clamp(84px,min(31vw,15dvh),132px);height:clamp(84px,min(31vw,15dvh),132px);}}
 .cmp .board{flex:none;padding:5px 8px 4px;border-radius:10px;}
 .cmp .board .lbl{font-size:.68rem;}
 .cmp .board .nums{flex:none;flex-wrap:nowrap;overflow:hidden;align-items:center;gap:4px;height:32px;margin-top:2px;padding:0 2px;}
@@ -1069,7 +1071,7 @@
   // ── Wheel drawing ────────────────────────────────────────────────────────
   function drawWheel(cv, sizeCss, wAng, ball, hlIdx) {
     var dpr = Math.min(3, window.devicePixelRatio || 1), px = Math.round(sizeCss * dpr);
-    if (cv.width !== px) { cv.width = px; cv.height = px; }
+    if (cv.width !== px || cv.height !== px) { cv.width = px; cv.height = px; }   // (both: a canvas 300 wide by default once matched a 100px wheel at 3x and kept its default 150 height, squashing the wheel)
     var x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0);
     var Rr = sizeCss / 2, c = Rr, order = ORDER[S.wheel], N = order.length, sl = 2 * Math.PI / N;
     x.clearRect(0, 0, sizeCss, sizeCss);
