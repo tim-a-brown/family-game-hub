@@ -356,7 +356,7 @@ Underlying principles for everything:
   **Ten themed decks** (Tim, 2026-11-15: Space, Cats, Dogs, Zoo Animals, Food, Flowers, Sports, Jobs, US States,
   Countries; the standard deck stays the default): `games/gofish/decks.js` (13 subjects stand in for the 13 ranks, so the
   core and robots are unchanged; each subject has its name for one, for many and with "a"; the four cards of a subject
-  are one picture over a band in its suit's color), the game's `theme` in its state and on the TurnNet table, the Deck
+  are one picture over a band in its suit's color, with the same picture small in the top left corner ringed in that color), the game's `theme` in its state and on the TurnNet table, the Deck
   choice in the setup. Each deck's names are lettered in a face of its own (Tim, 2026-11-15: "a creative but fitting font": Audiowide,
   Grandstander, Chewy, Lilita One, Lobster, Playfair Display italic, Graduate, Fredoka, Alfa Slab One, DM Serif Display;
   `th-<deck>` in gofish.html, files `fonts/gofish-*.woff2`), each name sized by its longest word measured in that face
