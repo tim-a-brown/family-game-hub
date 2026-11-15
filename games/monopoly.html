@@ -18,7 +18,7 @@
 <script src="monopoly/music.js"></script>
 <style>
 @font-face{font-family:'Sofia Sans Condensed';src:url('../fonts/sofia-sans-condensed.woff2') format('woff2');font-weight:100 900;font-display:swap;}
-#app.mono{max-width:none;padding:2px 12px calc(var(--safe-b) + 20px);}
+#app.mono{max-width:none;padding:2px 17px calc(var(--safe-b) + 20px);}
 /* phones and tablets: the action box is a dock fixed at the bottom; the page (board, money, log) scrolls under it */
 #app.mono.dockd{padding-bottom:calc(var(--dock-h, 180px) + 14px);}
 .mlay{display:flex;flex-direction:column;gap:10px;max-width:640px;margin:0 auto;}
@@ -154,7 +154,7 @@
 .mact{border-radius:var(--r-lg);padding:12px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line), var(--shadow-sm);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);display:flex;flex-direction:column;gap:10px;}
 /* the dock: fixed to the bottom of the screen, the board scrolls under it */
 .mono.dockd .mact{position:fixed;left:0;right:0;bottom:0;z-index:40;width:min(100%,640px);margin:0 auto;min-height:118px;
-  border-radius:var(--r-xl) var(--r-xl) 0 0;padding:10px 12px calc(var(--safe-b) + 10px);background:var(--sheet-bg);
+  border-radius:var(--r-xl) var(--r-xl) 0 0;padding:10px 17px max(calc(var(--safe-b) + 10px), 18px);background:var(--sheet-bg);
   -webkit-backdrop-filter:blur(26px) saturate(1.2);backdrop-filter:blur(26px) saturate(1.2);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.14), inset 0 0 0 1px var(--gl-line), 0 -12px 34px rgba(0,0,0,.45);}
 .mono.dockd .mact::before{content:"";position:absolute;left:50%;top:5px;width:38px;height:4px;margin-left:-19px;border-radius:2px;background:var(--w16);}
@@ -202,6 +202,7 @@ html[data-theme="light"] .turnl b,html[data-theme="parchment"] .turnl b{color:co
 .btns.jail .usecard .jfi.cc{width:36px;}
 .tools{display:flex;gap:8px;}
 .tools .btn{flex:1;min-height:44px;font-size:.92rem;padding:0 8px;}
+@media (max-width:359px){.tools{gap:6px;} .tools .btn{min-width:0;font-size:.82rem;padding:0 4px;gap:4px;} .tools .btn .ico{width:16px;height:16px;}}
 .mono.dockd .tools .btn{min-height:40px;}
 .mono.dockd .mact{gap:8px;}
 .mono.dockd .turnl b{font-size:1.22rem;}
@@ -497,14 +498,30 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
 @media (prefers-reduced-motion:reduce){.pk-seat.now .pk-ptr,.pk-well.last .pk-pc,.pk-well.wait .pk-pc,.pk-seat.now .pk-sock::before,.pk-acts .pk-go.ready{animation:none;}}
 
 /* ── Wide screens: board on the left, everything else beside it ── */
-@media (orientation:landscape) and (min-width:900px){
+/* (a phone held sideways too: the board as tall as the screen allows at the left, where you act at the right) */
+@media (orientation:landscape) and (min-width:600px){
   #app.mono{padding-top:4px;}
   .mlay{flex-direction:row;align-items:flex-start;max-width:1400px;gap:18px;justify-content:center;}
-  .mlay > .mleft{position:sticky;top:calc(var(--safe-t) + 58px);}
+  .mlay > .mleft{position:sticky;top:var(--mtop, calc(var(--safe-t) + 58px));}
   .mside{width:min(420px, 34vw);flex:none;}
   .pstrip{flex-wrap:wrap;overflow:visible;}
   .pchip{flex:1 1 calc(50% - 6px);}
 }
+/* a phone on its side: the side column takes the rest of the width, packed a little tighter */
+@media (orientation:landscape) and (min-width:600px) and (max-height:520px){
+  .mlay{gap:14px;}
+  .mside{width:auto;flex:1 1 0;max-width:560px;gap:8px;}
+  .pstrip{gap:6px;}
+  .pchip{flex:1 1 calc(33.3% - 6px);min-width:120px;padding:3px 8px 3px 4px;}
+  .pchip .tkb{width:28px;height:28px;} .pchip .tkb svg{width:25px;height:25px;}
+  .mact{padding:10px;gap:8px;}
+}
+/* turning the device: the board, the players and the panels glide to their new places */
+.mtable{view-transition-name:mo-board;} .pstrip{view-transition-name:mo-strip;} .mact{view-transition-name:mo-act;}
+.mine{view-transition-name:mo-mine;} .mlog{view-transition-name:mo-log;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.7,.25,1);}
+::view-transition-old(root),::view-transition-new(root){animation:none;}
+::view-transition-old(mo-board),::view-transition-new(mo-board){height:100%;width:100%;object-fit:fill;}
 @media (prefers-reduced-motion:reduce){.tk .hop{animation:none!important;}}
 </style>
 </head>
@@ -879,7 +896,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   function build() {
     app.className = 'stage mono'; app.innerHTML = '';
     view = {};
-    var lay = el('div', { class: 'mlay' });
+    var lay = el('div', { class: 'mlay' }); view.lay = lay;
     view.strip = el('div', { class: 'pstrip', role: 'list', 'aria-label': 'Players' });
     view.table = el('div', { class: 'mtable wood' });
     view.vp = el('div', { class: 'mvp' });
@@ -925,14 +942,20 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   }
   var dockRO = null;
   function dockRoom() { if (!view || view.wide) return; app.style.setProperty('--dock-h', Math.ceil(view.act.getBoundingClientRect().height) + 'px'); }
-  function wide() { return matchMedia('(orientation:landscape) and (min-width:900px)').matches; }
+  function wide() { return matchMedia('(orientation:landscape) and (min-width:600px)').matches; }
   // every decision's buttons fit in a dock this tall (the build and raise-money panels may run taller; the page scrolls)
   var DOCK = 196;
   function sizeBoard() {
     if (!view) return;
     // the wooden rim adds 2.8% on each side
-    var W = app.clientWidth - 24, H = window.innerHeight, avail;
-    if (wide()) avail = Math.min(H - 108, W - Math.min(420, window.innerWidth * 0.34) - 18);
+    var W = app.clientWidth - 34, H = window.innerHeight, avail;
+    if (wide()) {
+      // as tall as the screen below the bar allows, leaving the side column its room (a phone on its side: 300 at least)
+      var lt = view.lay.getBoundingClientRect().top + window.scrollY, sb2 = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-b')) || 0;
+      app.style.setProperty('--mtop', Math.round(lt) + 'px');
+      var sideW = window.innerHeight <= 520 ? 300 : Math.min(420, window.innerWidth * 0.34);
+      avail = Math.min(H - lt - 10 - sb2, W - sideW - 18);
+    }
     else {
       // short screens: the board shrinks so the players, the board and the dock all fit without scrolling
       var top = view.table.getBoundingClientRect().top + window.scrollY, sb = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-b')) || 0;
@@ -956,7 +979,15 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   }
   function unfit() { if (!view || !view.fitKey) return; view.fitKey = null; if (window.scrollY > 0) window.scrollTo({ top: 0, behavior: TEST.instant ? 'auto' : 'smooth' }); }
   var rsT = 0;
-  window.addEventListener('resize', function () { clearTimeout(rsT); rsT = setTimeout(function () { if (!view || !S) return; if (view.wide !== wide()) { var was = view; build(); keepPieces(was); render(); } else { sizeBoard(); placeTokens(); } }, 120); });
+  window.addEventListener('resize', function () { clearTimeout(rsT); rsT = setTimeout(function () {
+    if (!view || !S) return;
+    var go = function () { if (!view || !S) return; if (view.wide !== wide()) { var was = view; build(); keepPieces(was); render(); } else { sizeBoard(); placeTokens(); fitNames(); } };
+    // turning the device: everything glides from the last frame to the new layout
+    if (document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      try { var t = document.startViewTransition(go); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) {}
+    }
+    go();
+  }, 120); });
   // the layout is rebuilt when the device turns: the dice and tokens move over to the new board as they are
   // (showing the last roll, or still tumbling or hopping), and an open build plan or spotlit player stays open
   function keepPieces(was) {
@@ -1075,7 +1106,10 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
       ]);
       view.strip.appendChild(c); view.chips.push(c);
     });
+    fitNames();
   }
+  // a long name eases its size down to fit its chip, never cut off
+  function fitNames() { if (view && view.chips) view.chips.forEach(function (c) { Kit.fitText(c.querySelector('.nm'), 0.68); }); }
   // tap a chip: that player's squares light up and the rest of the board dims; tap it again for the full list
   var spotT = 0;
   function spotlight(i) {
@@ -1234,7 +1268,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   // ── The action area: whose turn, what's happening, the buttons ──
   function btn(label, cls, fn, o) {
     o = o || {};
-    return el('button', { type: 'button', class: 'btn ' + (cls || 'btn-soft'), html: (o.icon ? Kit.icon(o.icon) : '') + '<span>' + esc(label) + '</span>', disabled: o.disabled || null, onclick: function () { if (busy) return; Kit.haptic('light'); fn(); } });
+    return el('button', { type: 'button', class: 'btn ' + (cls || 'btn-soft'), html: (o.icon ? Kit.icon(o.icon) : '') + '<span>' + esc(label) + '</span>', disabled: o.disabled || null, onclick: function () { if (busy) return; Kit.sfx('tap', 0.5); Kit.haptic('light'); fn(); } });
   }
   function act(a) { doAct(a); }
   function turnLine(p, sub, head, extra) {
@@ -1494,7 +1528,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   }
 
   // ═══ Doing things ═══════════════════════════════════════════════════════
-  function snapPre() { return { pos: S.players.map(function (p) { return p.pos; }), cash: S.players.map(function (p) { return p.cash; }), jail: S.players.map(function (p) { return p.jail; }), own: S.own.slice(), hs: S.hs.slice() }; }
+  function snapPre() { return { dbl: S.dbl, pos: S.players.map(function (p) { return p.pos; }), cash: S.players.map(function (p) { return p.cash; }), jail: S.players.map(function (p) { return p.jail; }), own: S.own.slice(), hs: S.hs.slice() }; }
   var UNDOABLE = { buy: 1, build: 1, sell: 1, sellAll: 1, sellDown: 1, mort: 1, unmort: 1 };
   function doAct(a) {
     if (!S) return;
@@ -1579,7 +1613,11 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   }
 
   // ═══ Animation ══════════════════════════════════════════════════════════
+  // the game's uncommon moments, kept with the game for its history (whole sentences)
+  function hlAdd(t) { if (!S) return; S.hl = S.hl || []; if (S.hl.indexOf(t) < 0 && S.hl.length < 12) S.hl.push(t); }
+  var curPre = null;
   function animate(ev, pre) {
+    curPre = pre;
     disp = { pos: pre.pos.slice(), cash: pre.cash.slice(), jail: pre.jail.slice(), big: ev.some(function (e) { return /^(dice|move|card|bankrupt|jail)$/.test(e.e); }) };
     // buildings go up (or come down) one at a time, in the order they were built
     var nb = ev.filter(function (e) { return e.e === 'build' || e.e === 'sell'; }).length;
@@ -1614,7 +1652,15 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
       case 'move': return e.jail ? slideToJail(e) : hop(e);
       case 'pay': return payFx(e);
       case 'card': return showCard(e);
-      case 'jail': { disp.jail[e.p] = true; placeTokens(); view.vp.appendChild(el('div', { class: 'mjailfx' })); setTimeout(function () { var j = view.vp.querySelector('.mjailfx'); if (j) j.remove(); }, 1500);
+      case 'jail': { disp.jail[e.p] = true; placeTokens();
+        if (curPre && curPre.dbl >= 2 && S.dice && S.dice[0] === S.dice[1]) {
+          // three doubles in a row: rarer than any card, a moment of its own
+          var jn = S.players[e.p].name;
+          hlAdd(jn + ' rolled doubles three times in a row and went straight to Jail in round ' + S.round + '.');
+          Kit.moment({ icon: 'dice', title: 'Three doubles in a row', line: (jn === 'You' ? 'You go' : jn + ' goes') + ' straight to Jail.', color: '#ff8a3d', tone: 'bad', at: view.table, ms: 2600 });
+          Kit.sfx('clash'); Kit.haptic('heavy'); view.vp.appendChild(el('div', { class: 'mjailfx' })); setTimeout(function () { var j = view.vp.querySelector('.mjailfx'); if (j) j.remove(); }, 1500);
+          return wait(1400);
+        } view.vp.appendChild(el('div', { class: 'mjailfx' })); setTimeout(function () { var j = view.vp.querySelector('.mjailfx'); if (j) j.remove(); }, 1500);
         Kit.callout(S.players[e.p].name === 'You' ? 'To Jail!' : S.players[e.p].name + ' goes to Jail!', '#ff8a3d'); Kit.sfx('clash'); Kit.haptic('heavy'); return wait(900); }
       case 'free': disp.jail[e.p] = false; placeTokens(); Kit.sfx('good'); floatAt(10, e.how === 'doubles' ? 'Free!' : 'Out!', 'good'); return wait(400);
       case 'buy': case 'won': {
@@ -1638,7 +1684,16 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
         if (e.sq >= 0) { floatAt(e.sq, money(e.a) + '!', 'bad'); popDeed(e.sq); }
         Kit.sfx('bad'); Kit.haptic('error'); return wait(1200);
       }
-      case 'pot': Kit.callout('Jackpot!'); Kit.sfx('sparkle'); return wait(600);
+      case 'pot':
+        if (e.a >= 500) {
+          // a big Free Parking jackpot: the money glows and counts up on the table
+          var pn = S.players[e.p].name;
+          hlAdd(pn + ' scooped a ' + money(e.a) + ' Free Parking jackpot.');
+          Kit.moment({ icon: 'coins', title: 'Free Parking jackpot', line: (pn === 'You' ? 'You scoop' : pn + ' scoops') + ' the pot.', pts: money(e.a), color: '#ffc83d', at: view.table, ms: 2600 });
+          Kit.sfx('win', 0.7); Kit.haptic('success'); Kit.confetti({ count: 60, colors: ['#ffc83d', '#7bd389', '#ffffff'] });
+          return wait(1300);
+        }
+        Kit.callout('Jackpot!'); Kit.sfx('sparkle'); return wait(600);
       case 'turn': return wait(80);
     }
     return Promise.resolve();
@@ -1710,6 +1765,13 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
     if (e.t === -2) renderCentre();
     if (why === 'rent' && e.sq >= 0) {
       floatAt(e.sq, 'Rent ' + money(e.a), 'bad');
+      if (e.a >= 750 && e.f >= 0 && e.t >= 0) {
+        // a crushing rent: a moment on the table, gold for the one collecting, red for the one paying
+        var rf = S.players[e.f], rt = S.players[e.t];
+        hlAdd(rf.name + ' paid ' + rt.name + ' ' + money(e.a) + ' rent on ' + SQ[e.sq].n + '.');
+        Kit.moment({ chip: '$', title: 'Rent on ' + SQ[e.sq].n, line: rf.name + ' ' + (rf.name === 'You' ? 'pay ' : 'pays ') + rt.name + '.', pts: money(e.a), color: groupColor(e.sq), tone: (mode === 'online' ? NET && e.f === NET.seat : !rf.cpu && rt.cpu) ? 'bad' : '', at: view.table, ms: 2800 });
+        Kit.haptic('heavy');
+      }
       // the deed pops up with the rent that applies lit up
       popDeed(e.sq);
     }
@@ -2056,7 +2118,8 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   }
   function highlights() {
     var h = [], P = S.players;
-    if (S.big) h.push('Biggest rent: ' + P[S.big.f].name + ' paid ' + P[S.big.t].name + ' ' + money(S.big.a) + (S.big.sq >= 0 ? ' on ' + SQ[S.big.sq].n : ''));
+    (S.hl || []).forEach(function (t) { h.push(t); });
+    if (S.big && !(S.hl || []).some(function (t) { return t.indexOf(money(S.big.a) + ' rent') >= 0; })) h.push('The biggest rent of the game was ' + money(S.big.a) + ', which ' + P[S.big.f].name + ' paid ' + P[S.big.t].name + (S.big.sq >= 0 ? ' on ' + SQ[S.big.sq].n : '') + '.');
     var held = {};
     for (var g = 0; g < 8; g++) { var o = S.own[M.GSQ[g][0]]; if (o >= 0 && M.ownsGroup(S, o, g)) (held[o] = held[o] || []).push(GROUPS[g].n); }
     Object.keys(held).forEach(function (o) { var L = held[o]; h.push(P[o].name + ' held ' + (L.length === 1 ? 'the ' + L[0] + ' group' : L.slice(0, -1).join(', ') + ' and ' + L[L.length - 1])); });
@@ -2169,7 +2232,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
     });
   }
   function syncCpu() { if (S && NET) S.players.forEach(function (x, i) { x.cpu = !!(NET.seats[i] && NET.seats[i].bot); }); }
-  function snapOf(st) { return { pos: st.players.map(function (p) { return p.pos; }), cash: st.players.map(function (p) { return p.cash; }), jail: st.players.map(function (p) { return p.jail; }), own: st.own.slice(), hs: st.hs.slice() }; }
+  function snapOf(st) { return { dbl: st.dbl, pos: st.players.map(function (p) { return p.pos; }), cash: st.players.map(function (p) { return p.cash; }), jail: st.players.map(function (p) { return p.jail; }), own: st.own.slice(), hs: st.hs.slice() }; }
   // Draw the table: the first look, or the move just made (yours or anyone's) played out from the state before it
   function netShow(net, info) {
     NET = net;

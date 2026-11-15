@@ -286,22 +286,68 @@
   .buy{grid-template-columns:1fr 1fr;}
   .cart{margin:12px 0 0;border-radius:18px;}
 }
-/* Wide screens (iPad landscape, laptop): two columns */
-@media (min-width:900px) and (orientation:landscape){
-  .home{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start;gap:20px;}
-  .tools{grid-template-columns:repeat(3,1fr);}
-  .tool{padding:8px 10px;gap:8px;}
-  .fight{grid-template-columns:minmax(0,1.25fr) minmax(320px,1fr);align-items:start;}
-  .fight .trayw{position:sticky;top:64px;}
-  .fight{padding-bottom:0;}
-  .dock{position:static;padding:0;background:none;}
-  .tray{min-height:calc(100vh - 150px);min-height:calc(100dvh - 150px);}
-  .bset{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start;}
-  .bset .odds{margin:0 0 12px;}
-  .bset .rail{position:sticky;top:64px;}
-  .sides{grid-template-columns:1fr 1fr;}
-  .buy{grid-template-columns:1fr 1fr 1fr;}
-}
+.tcard{view-transition-name:aas-sheet;} .home .bank{view-transition-name:aas-bank;} .todo{view-transition-name:aas-todo;} .tools{view-transition-name:aas-tools;}
+.vcbar{view-transition-name:aas-vc;} .cart{view-transition-name:aas-cart;} .rail{view-transition-name:aas-rail;} .sides{view-transition-name:aas-sides;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.7,.25,1);}
+::view-transition-old(root),::view-transition-new(root){animation:none;}
+/* (the sideways layouts below are classes set by aasShape() from media queries, so a turn of the device glides from
+   one layout to the next inside a View Transition: aas-l sideways from 640 wide, aas-w from 900, aas-p a phone on its side) */
+/* Sideways (a phone on its side, iPad landscape, laptop): two columns, the bank and the log at the left to look at,
+   the turn sheet and what to do at the right, where the taps go */
+html.aas-l .home{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start;gap:20px;}
+html.aas-l .home > .col:first-child{order:2;}
+html.aas-w .tools{grid-template-columns:repeat(3,1fr);}
+html.aas-w .tool{padding:8px 10px;gap:8px;}
+html.aas-w .fight{grid-template-columns:minmax(0,1.25fr) minmax(320px,1fr);align-items:start;}
+html.aas-w .fight .trayw{position:sticky;top:64px;}
+html.aas-w .fight{padding-bottom:0;}
+html.aas-w .dock{position:static;padding:0;background:none;}
+html.aas-w .tray{min-height:calc(100vh - 150px);min-height:calc(100dvh - 150px);}
+html.aas-w .bset{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start;}
+html.aas-w .bset .odds{margin:0 0 12px;}
+html.aas-w .bset .rail{position:sticky;top:64px;}
+html.aas-w .sides{grid-template-columns:1fr 1fr;}
+
+/* A phone on its side: three columns, so the turn fits the screen: the bank at the left, the turn sheet in the
+   middle, what to do now and the tools at the right */
+html.aas-p .home{grid-template-columns:minmax(0,1fr) minmax(0,1.02fr) minmax(0,1fr);grid-template-rows:auto auto auto 1fr;gap:10px 12px;}
+html.aas-p .home > .col{display:contents;}
+html.aas-p .home .bank{grid-column:1;grid-row:1 / span 2;}
+html.aas-p .home .vcbar{grid-column:1;grid-row:3;}
+html.aas-p .home .bank ~ section{grid-column:1;grid-row:4;}
+html.aas-p .home .tcard{grid-column:2;grid-row:1 / span 4;align-self:start;}
+html.aas-p .home .todo{grid-column:3;grid-row:1;}
+html.aas-p .home .tools{grid-column:3;grid-row:2 / span 3;align-self:start;}
+html.aas-p .home .tcard .pn{font-size:1.24rem;}
+html.aas-p .home .tcard .who{gap:8px;}
+html.aas-p .home .pw .nm b{font-size:.92rem;}
+html.aas-p .home .tools{grid-template-columns:1fr 1fr;gap:6px;}
+html.aas-p .home .tool{min-height:46px;padding:5px 8px;gap:6px;}
+html.aas-p .home .tool small{display:none;}
+html.aas-p .home .todo{gap:8px;}
+html.aas-p .home .todo .tip{font-size:.84rem;line-height:1.3;}
+html.aas-p .home .pw{min-height:50px;padding:5px 10px 5px 8px;gap:8px;}
+html.aas-p .home .pw .ipc b{font-size:1.4rem;}
+html.aas-p .home .bank .side-lbl{margin:2px 0 0;}
+/* setting up a battle: the two sides at the left, the odds and To battle! at the right, always in view */
+html.aas-p .bset{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:12px;align-items:start;}
+html.aas-p .bset .rail{position:sticky;top:60px;}
+html.aas-p .bset .odds{margin:0 0 10px;}
+html.aas-p .sides{grid-template-columns:1fr 1fr;gap:10px;}
+html.aas-p .bset > div:first-child{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:center;}
+html.aas-p .bset > div:first-child > *{margin:0;}
+html.aas-p .bset > div:first-child > .sides{grid-column:1 / -1;}
+/* buying (any sideways screen): the units in two columns at the left, the total and Pay at the right, always in view */
+html.aas-l #app:has(> .buy){max-width:none;display:grid;grid-template-columns:minmax(0,1fr) 240px;column-gap:14px;align-items:start;}
+html.aas-l #app:has(> .buy) > *{grid-column:1;}
+html.aas-l #app:has(> .buy) > .cart{grid-column:2;grid-row:1 / span 30;position:sticky;top:60px;margin:0;border-radius:18px;padding:12px 14px;}
+html.aas-l #app:has(> .buy) .buy{grid-template-columns:1fr 1fr;}
+html.aas-l #app:has(> .buy) .urow{gap:8px;padding:6px 6px 6px 4px;}
+html.aas-l #app:has(> .buy) .urow .cost{width:34px;}
+html.aas-l #app:has(> .buy) .urow .un small{font-size:.7rem;line-height:1.25;}
+html.aas-l #app:has(> .buy) .stp2 button{width:36px;height:36px;}
+html.aas-l #app:has(> .buy) .stp2 output{min-width:22px;}
+html.aas-l #app:has(> .buy) .cart .tot{flex-direction:column;align-items:flex-start;gap:2px;}
 </style>
 </head>
 <body>
@@ -1618,6 +1664,22 @@
     var t = S && (S.view === 'battle' || S.view === 'bomb') && app.querySelector('.tray'); if (!t) return;
     t.style.setProperty('--dsz', S.view === 'bomb' ? (innerWidth >= 700 ? '52px' : '42px') : dsz(S.battle && S.battle.last));
   }, 200); });
+
+  // The layout's shape: classes from the media queries, changed inside a View Transition when the device turns, so
+  // the bank, the turn sheet and the buttons glide to their new places
+  var shapeK = null;
+  function aasShape(anim) {
+    var mq = function (q) { return matchMedia(q).matches; };
+    var l = mq('(min-width:640px) and (orientation:landscape)'), w = mq('(min-width:900px) and (orientation:landscape)'), p = mq('(orientation:landscape) and (max-height:520px) and (min-width:640px)');
+    var k = (l ? 1 : 0) + (w ? 2 : 0) + (p ? 4 : 0); if (k === shapeK) return;
+    var de = document.documentElement, go = function () { shapeK = k; de.classList.toggle('aas-l', l); de.classList.toggle('aas-w', w); de.classList.toggle('aas-p', p); };
+    if (anim && shapeK !== null && document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      try { var t = document.startViewTransition(go); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) {}
+    }
+    go();
+  }
+  aasShape(false);
+  window.addEventListener('resize', function () { aasShape(true); });
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   S = load();
