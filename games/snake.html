@@ -25,6 +25,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .ar-plate.sc{flex:1.5;}
 .ar-plate.sc b{color:var(--lit);text-shadow:0 0 14px var(--litg);}
 .ar-plate.bump b{animation:bounce .45s var(--spring);}
+/* A new best: the Best plate lights gold once, as the score passes it */
+.ar-plate.pb{animation:ar-pb 1.6s var(--ease);}
+.ar-plate.pb b{color:var(--lit);text-shadow:0 0 14px var(--litg);animation:bounce .5s var(--spring);}
+@keyframes ar-pb{0%{box-shadow:inset 0 0 0 1px var(--gl-line),0 0 0 0 rgba(255,200,60,0)}18%{box-shadow:inset 0 0 0 2px var(--lit),0 0 26px 4px rgba(255,200,60,.55)}100%{box-shadow:inset 0 0 0 1px var(--gl-line),0 0 0 0 rgba(255,200,60,0)}}
 .ar-wrap{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;touch-action:none;}
 .ar-cab{position:relative;padding:7px;border-radius:20px;}
 .ar-cab canvas{display:block;border-radius:13px;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
@@ -45,23 +49,24 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 @media (hover:hover) and (pointer:fine){ .ar-touch{display:none!important;} }
 @media (hover:none),(pointer:coarse){ .ar-desk{display:none!important;} }
 @media (max-height:700px){ .ar-pad{grid-template-rows:44px 44px;} .ar-plate b{font-size:1.2rem;} }
-/* Tablet landscape: the d-pad sits in the lower-left corner, under the left thumb; the board gets the full height */
-@media (orientation:landscape) and (min-width:900px) and (min-height:600px) and (pointer:coarse){
-  html.ar-on #app{position:relative;}
-  .ar-pad{position:absolute;left:22px;bottom:calc(var(--safe-b) + 18px);width:270px;max-width:none;grid-template-rows:72px 72px;gap:9px;}
-  .ar-key{border-radius:22px;}
-  .ar-key .ico{width:32px;height:32px;}
-}
-/* Wide screens (iPad sideways, computers): the board stands at the right; scores (and the d-pad) get the room on the left */
-.ar-wrap.side{flex-direction:row;align-items:center;justify-content:flex-end;gap:clamp(24px,4vw,64px);padding-right:clamp(8px,4vw,64px);}
-.ar-side{flex:1;min-width:0;align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:14px;padding:8px 0 4px;}
-.ar-side .ar-hud{flex-direction:column;gap:12px;width:min(300px,100%);max-width:none!important;margin:auto 0;}
-.ar-side .ar-plate{flex:none;padding:12px 16px;align-items:flex-start;}
+/* Upright: the d-pad grows into the room under the board (a phone's thumb zone) */
+@media (orientation:portrait) and (pointer:coarse) and (max-width:600px){ .ar-pad{max-width:380px;grid-template-rows:clamp(54px,9vh,92px) clamp(54px,9vh,92px);} .ar-key .ico{width:30px;height:30px;} .ar-plate{padding:7px 8px;} .ar-plate b{font-size:clamp(1.45rem,3.6vh,1.9rem);} }
+/* Sideways (a phone on its side, an iPad, a wide window; fit() sets .side): the scores in a column at the left, the
+   board in the middle at the full height, and the d-pad at the right, under the right thumb */
+.ar-wrap.side{flex-direction:row;align-items:stretch;justify-content:center;gap:clamp(12px,2.6vw,40px);}
+.ar-side{flex:none;width:clamp(140px,calc((100vw - 80vh - 40px) / 2),300px);display:flex;flex-direction:column;justify-content:center;gap:12px;padding:4px 0 max(var(--corner-y),8px);}
+.ar-side.r{justify-content:flex-end;}
+.ar-side .ar-hud{flex-direction:column;gap:clamp(6px,1.6vh,12px);width:100%;max-width:none!important;}
+.ar-side .ar-plate{flex:none;padding:clamp(5px,1.4vh,12px) 14px;align-items:flex-start;}
 .ar-side .ar-plate small{font-size:.86rem;}
-.ar-side .ar-plate b{font-size:2.3rem;}
-.ar-side .ar-plate.sc b{font-size:3rem;}
-.ar-side .ar-pad{position:static;width:min(300px,100%);}
-.ar-side .ar-hint{max-width:300px;font-size:.9rem;}
+.ar-side .ar-plate b{font-size:clamp(1.4rem,5vh,2.3rem);}
+.ar-side .ar-plate.sc b{font-size:clamp(1.7rem,6.4vh,3rem);}
+.ar-wrap.side .ar-cab{align-self:center;}
+.ar-side .ar-pad{position:static;width:100%;max-width:none;grid-template-rows:clamp(52px,17vh,84px) clamp(52px,17vh,84px);gap:clamp(6px,1.4vh,10px);}
+.ar-side .ar-key{border-radius:22px;}
+.ar-side .ar-key .ico{width:clamp(26px,5vh,34px);height:clamp(26px,5vh,34px);}
+.ar-side .ar-hint{font-size:.9rem;text-align:left;}
+html.ar-on .ar-cab{view-transition-name:ar-cab;} html.ar-on .ar-hud{view-transition-name:ar-hud;} html.ar-on .ar-pad{view-transition-name:ar-pad;}
 </style>
 </head>
 <body>
@@ -236,6 +241,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (!G.gold && !gold && G.apples % 6 === 0) { G.gold = placeFood('gold'); if (G.gold) { G.gold.left = 42; sGoldAppear(); } }
     var lenNow = G.body.length + G.grow;
     if (lenNow % 25 === 0) { banner('Length ' + lenNow + '!'); Kit.sfx('good'); }
+    // Half the board under one snake: a rare run, the biggest call short of filling it
+    if (!G.stats.half && lenNow >= COLS * ROWS / 2) { G.stats.half = 1; banner('Half the board!'); Kit.sfx('win'); Kit.haptic('heavy'); fx.flash = 0.6; }
     hudDirty = true; bumpScore = true;
     if (G.apples % 3 === 0) save();
   }
@@ -277,7 +284,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function loadSave() { try { var s = JSON.parse(localStorage.getItem(SAVE)); return s && s.v === 1 && s.body && s.body.length ? s : null; } catch (e) { return null; } }
 
   // ═══ Kit shell ═══════════════════════════════════════════════════════════
-  Kit.init({ orient: 'portrait',
+  Kit.init({
     id: 'snake',
     theme: { wood: ['#7a5232', '#4a2f1a'] },
     onNew: function () { clearSave(); showSetup(); },
@@ -345,7 +352,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     app.appendChild(el('div', { class: 'ar-hint ar-desk', text: 'Steer with the arrow keys or W, A, S and D, and Space pauses.' }));
     bindGestures();
     if (ro) ro.disconnect();
-    ro = new ResizeObserver(fit); ro.observe(app);
+    ro = new ResizeObserver(refit); ro.observe(app);
     cssW = 0; fit();
     view = 'game';
     if (!raf) { lastT = 0; raf = requestAnimationFrame(loop); }
@@ -357,21 +364,32 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
   }
   // Wide screens: the scores (and the d-pad) move into a panel on the left and the board stands at the right, full height
-  var sideEl = null;
+  // Sideways (wider than tall, phones too): the scores go to a column at the left and the d-pad to one at the right,
+  // and the board stands between them at the full height
+  var sideEl = null, sideR = null;
+  function wantSide() { return innerWidth > innerHeight * 1.15; }
   function sideLayout() {
-    var side = innerWidth >= 900 && innerWidth > innerHeight * 1.25;
+    var side = wantSide();
     if (side === wrapEl.classList.contains('side')) return;
     wrapEl.classList.toggle('side', side);
     var hint = app.querySelector('.ar-hint') || (sideEl && sideEl.querySelector('.ar-hint'));
-    if (side) { sideEl = sideEl || el('div', { class: 'ar-side' }); sideEl.appendChild(hudEl); if (hint) sideEl.appendChild(hint); sideEl.appendChild(padEl); wrapEl.insertBefore(sideEl, cabEl); }
-    else { wrapEl.insertBefore(hudEl, cabEl); app.appendChild(padEl); if (hint) app.appendChild(hint); if (sideEl) sideEl.remove(); }
+    sideEl = sideEl || el('div', { class: 'ar-side' }); sideR = sideR || el('div', { class: 'ar-side r' });
+    if (side) { sideEl.appendChild(hudEl); if (hint) sideEl.appendChild(hint); sideR.appendChild(padEl); sideR.style.display = padEl.style.display; wrapEl.insertBefore(sideEl, cabEl); wrapEl.appendChild(sideR); }
+    else { wrapEl.insertBefore(hudEl, cabEl); app.appendChild(padEl); if (hint) app.appendChild(hint); sideEl.remove(); sideR.remove(); }
     cssW = 0;
+  }
+  // Turning the device: the board, scores and d-pad glide to their new places (a View Transition around the relayout)
+  function refit() {
+    if (wrapEl && wantSide() !== wrapEl.classList.contains('side') && document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      try { var t = document.startViewTransition(fit); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) {}
+    }
+    fit();
   }
   function fit() {
     if (!wrapEl) return;
     sideLayout();
-    var side = wrapEl.classList.contains('side');
-    var aw = side ? wrapEl.clientWidth * 0.62 - 14 : wrapEl.clientWidth - 14, ah = wrapEl.clientHeight - 14 - (side ? 0 : hudEl.offsetHeight + 8);
+    var side = wrapEl.classList.contains('side'), gp = side ? parseFloat(getComputedStyle(wrapEl).columnGap) || 0 : 0;
+    var aw = side ? wrapEl.clientWidth - sideEl.offsetWidth - (sideR.isConnected && sideR.style.display !== 'none' ? sideR.offsetWidth + gp : 0) - gp - 14 : wrapEl.clientWidth - 14, ah = wrapEl.clientHeight - 14 - (side ? 0 : hudEl.offsetHeight + 8);
     var c = Math.min(aw / COLS, ah / ROWS, 44); c = Math.max(8, Math.floor(c * 2) / 2);
     var w = Math.round(c * COLS), h = Math.round(c * ROWS);
     if (w === cssW && cv.width) return;
@@ -481,7 +499,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function endGame() {
     if (G.ended) return; G.ended = true;
     var len = G.maxLen, secs = Math.round(G.playMs / 1000), h = [];
+    if (G.stats.pb && G.score > G.stats.pb) h.push(G.who + ' beat the best score of ' + fmt(G.stats.pb) + ' and set a new high score.');
     h.push('Snake reached length ' + len);
+    if (G.stats.half && G.why !== 'full') h.push(G.who + '’s snake filled half the board.');
+
     if (G.apples) h.push('Ate ' + G.apples + (G.apples === 1 ? ' apple' : ' apples') + (G.golds ? ' (' + G.golds + ' golden)' : ''));
     h.push('Lasted ' + Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0'));
     if (G.why === 'full') h.push('Filled the whole board!');
@@ -572,6 +593,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (shown.s !== G.score) { scoreEl._b.textContent = fmt(G.score); shown.s = G.score; }
     if (shown.l !== len) { lenEl._b.textContent = len; shown.l = len; }
     if (shown.b !== best) { bestEl._b.textContent = fmt(best); shown.b = best; }
+    // Passing your best: the Best plate lights, a chime, and the call on the board
+    if (!G.stats.pb && G.best0 > 0 && G.score > G.best0) {
+      G.stats.pb = G.best0;
+      bestEl.classList.remove('pb'); void bestEl.offsetWidth; bestEl.classList.add('pb');
+      Kit.sfx('sparkle'); Kit.haptic('success'); if (!fx.banner) banner('New best!');
+    }
     if (bumpScore) { bumpScore = false; scoreEl.classList.remove('bump'); void scoreEl.offsetWidth; scoreEl.classList.add('bump'); }
   }
 

@@ -43,6 +43,13 @@ html.tn-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 @media (max-height:700px){ .ar-key{height:48px;} }
 /* Sideways: the controls sit under your own field, on the right */
 html.tn-land .ar-ctl{width:52%;margin-left:auto;}
+/* A phone on its side: the keys stand in a column at the right of the fields, so the fields get the screen's whole height */
+@media (max-height:520px) and (pointer:coarse){
+  html.tn-land.tn-on #app{flex-direction:row;align-items:stretch;}
+  html.tn-land .ar-ctl{width:auto;margin:0;flex:none;display:grid;grid-template-columns:repeat(3,62px);grid-template-rows:repeat(2,minmax(56px,84px));align-content:end;gap:8px;padding:0 max(var(--corner-x),8px) max(var(--corner-y),8px) 0;}
+  html.tn-land .ar-key{max-width:none;height:auto;}
+  html.tn-land .ar-key.hot{grid-column:2 / span 2;}
+}
 /* Waiting room: computer seats */
 .tn-bots{display:flex;gap:8px;}
 .tn-bots .btn{flex:1;white-space:nowrap;}
@@ -539,6 +546,11 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
       // against the computer, the rest play on at four times the speed, or you skip to the result
       if (M.mode === 'local' && alive().length > 1) { M.warp = 4; showSkip(); }
     }
+    else if (S.ko === M.me && M.seats[M.me] && M.seats[M.me].alive) {
+      // your special or your lines finished them: a knockout, the field's biggest call short of winning
+      M.myKo = (M.myKo || 0) + 1; sTetris(); Kit.haptic('heavy'); fx.shake = Math.max(fx.shake, 0.4);
+      banner('KNOCKOUT!', 'You knocked out ' + (S.name || 'a player'), '#ffd45a', 1.8);
+    }
     else { osc('triangle', 330, 0, 0.25, 0.05, { to: 160 }); }
     M.log.unshift({ t: M.t, out: s });
   }
@@ -648,7 +660,7 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
   }
 
   // ═══ Kit shell ══════════════════════════════════════════════════════════
-  Kit.init({ orient: 'portrait', id: 'tetrinet',
+  Kit.init({ id: 'tetrinet',
     theme: { wood: ['#4b3a6e', '#2a1f45'] },
     onNew: function () { if (net.mode) { leaveOnline(true); return; } leaveGame(); showSetup(); },
     menu: [
@@ -871,6 +883,7 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
     if (iWon) h.push('Last one standing out of ' + M.seats.length);
     else h.push('Finished ' + placeText(me.place || M.seats.length) + ' of ' + M.seats.length);
     if (st.lines) h.push('Cleared ' + st.lines + (st.lines === 1 ? ' line' : ' lines') + (st.tetris ? ', ' + st.tetris + (st.tetris === 1 ? ' Tetris' : ' Tetrises') : ''));
+    if (M.myKo) h.push((me.name || 'You') + ' knocked out ' + (M.myKo === 1 ? 'one player' : M.myKo + ' players') + ' with specials and lines.');
     if (st.used) h.push('Used ' + st.used + (st.used === 1 ? ' special' : ' specials'));
     if (st.sent) h.push('Sent ' + st.sent + (st.sent === 1 ? ' line' : ' lines') + ' to the others');
     if (st.hit) h.push('Hit by ' + st.hit + (st.hit === 1 ? ' special' : ' specials'));

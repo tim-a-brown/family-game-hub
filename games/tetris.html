@@ -25,6 +25,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .ar-plate.sc{flex:1.7;}
 .ar-plate.sc b{color:var(--lit);text-shadow:0 0 14px var(--litg);}
 .ar-plate.bump b{animation:bounce .45s var(--spring);}
+/* A new best: the Best plate lights gold once, as the score passes it */
+.ar-plate.pb{animation:ar-pb 1.6s var(--ease);}
+.ar-plate.pb b{color:var(--lit);text-shadow:0 0 14px var(--litg);animation:bounce .5s var(--spring);}
+@keyframes ar-pb{0%{box-shadow:inset 0 0 0 1px var(--gl-line),0 0 0 0 rgba(255,200,60,0)}18%{box-shadow:inset 0 0 0 2px var(--lit),0 0 26px 4px rgba(255,200,60,.55)}100%{box-shadow:inset 0 0 0 1px var(--gl-line),0 0 0 0 rgba(255,200,60,0)}}
 .ar-wrap{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;touch-action:none;}
 .ar-cab{position:relative;padding:7px;border-radius:20px;}
 .ar-cab canvas{display:block;border-radius:13px;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
@@ -49,18 +53,31 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 @media (hover:none),(pointer:coarse){ .ar-desk{display:none!important;} }
 @media (max-height:700px){ .ar-key{height:50px;} .ar-plate b{font-size:1.2rem;} }
 @media (min-height:800px) and (max-width:600px){ .ar-key{height:64px;} }
-/* Tablet landscape: controls split into the two lower corners, where thumbs rest; the board gets the full height */
 .ar-grp{display:contents;}
 .ar-grp .k-hold{order:-1;}
-@media (orientation:landscape) and (min-width:900px) and (min-height:600px) and (pointer:coarse){
-  html.ar-on #app{position:relative;}
-  .ar-ctl{position:absolute;left:0;right:0;bottom:calc(var(--safe-b) + 18px);max-width:none!important;justify-content:space-between;padding:0 22px;pointer-events:none;}
-  .ar-grp{display:flex;gap:10px;align-items:flex-end;pointer-events:auto;}
-  .ar-grp .k-hold{order:0;}
-  .ar-key{flex:none;width:78px;max-width:none;height:78px;border-radius:22px;}
-  .ar-key .ico{width:30px;height:30px;}
-  .ar-key.hot{width:96px;height:96px;border-radius:26px;}
-}
+/* Upright: the keys grow into the room under the board (a phone's thumb zone) */
+@media (orientation:portrait) and (pointer:coarse){ .ar-key{height:clamp(54px,8.4vh,76px);} }
+/* Sideways (a phone on its side, an iPad, a wide window; fit() sets .sd): the numbers and the move keys in a column at
+   the left, the board in the middle at the full height, and Hold, Turn and Drop in a column at the right */
+.ar-wrap.sd{flex-direction:row;align-items:stretch;justify-content:center;gap:clamp(10px,2.2vw,36px);padding:4px 0 0;}
+.ar-col{flex:none;width:clamp(150px,calc((100vw - 81vh - 40px) / 2),290px);display:flex;flex-direction:column;justify-content:space-between;gap:10px;padding-bottom:max(var(--corner-y),8px);}
+.ar-col.r{justify-content:flex-end;}
+.ar-wrap.sd .ar-hud{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;max-width:none!important;}
+.ar-wrap.sd .ar-hud .sc{grid-column:1/4;order:-1;}
+.ar-wrap.sd .ar-plate{padding:6px 4px;}
+.ar-wrap.sd .ar-plate.sc b{font-size:clamp(1.5rem,4.4vh,2.4rem);}
+.ar-wrap.sd .ar-cab{align-self:center;}
+.ar-col .ar-grp{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;align-items:end;}
+.ar-col .ar-grp .k-hold{order:0;}
+.ar-col .ar-key{max-width:none;width:auto;height:clamp(52px,19vh,88px);border-radius:20px;}
+.ar-col .ar-key .ico{width:clamp(22px,4vh,30px);height:clamp(22px,4vh,30px);}
+.ar-col.r .ar-grp{grid-template-columns:1fr 1.25fr;grid-template-rows:auto auto;}
+.ar-col.r .k-hold{grid-column:1;grid-row:1;height:clamp(40px,10vh,60px);}
+.ar-col.r .ar-key[aria-label="Rotate"]{grid-column:1;grid-row:2;}
+.ar-col.r .ar-key.hot{grid-column:2;grid-row:1/3;height:auto;align-self:stretch;}
+.ar-col .ar-hint{text-align:left;}
+html.ar-on .ar-cab{view-transition-name:ar-cab;} html.ar-on .ar-hud{view-transition-name:ar-hud;}
+
 </style>
 </head>
 <body>
@@ -73,6 +90,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   var TOUCH = window.matchMedia && matchMedia('(pointer:coarse)').matches;
   var COLS = 10, ROWS = 20, HID = 4, TR = ROWS + HID;
   var SIDE = 3.0, GAP = 0.3, CW_CELLS = SIDE * 2 + GAP * 2 + 10, CH_CELLS = 20.4;
+  // A narrow screen (a phone upright) draws the cabinet the other way ('r'): Hold and the numbers in a strip over the
+  // well and Next down the right only, so the well can take the screen's whole width. fit() picks the larger.
+  var RS = 2.7, RTOP = 2.6, RW_CELLS = 0.15 + 10 + 0.3 + RS + 0.1, RH_CELLS = RTOP + 20.4, LAY = 'std';
   var DAS = 0.167, ARR = 0.033, LOCK = 0.5, MAX_RESETS = 15;
   var TYPES = 'IJLOSTZ';
   var COLORS = { I: '#2fd0f0', J: '#4f6cf0', L: '#ff8f2a', O: '#ffd22e', S: '#4fd65a', T: '#b45ef0', Z: '#ff4058', G: '#6c6888' };
@@ -427,7 +447,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function loadSave() { try { var s = JSON.parse(localStorage.getItem(SAVE)); return s && s.v === 1 && s.board && s.board.length === TR ? s : null; } catch (e) { return null; } }
 
   // ═══ Kit shell ═══════════════════════════════════════════════════════════
-  Kit.init({ orient: 'portrait',
+  Kit.init({
     id: 'tetris',
     theme: { wood: ['#4b3a6e', '#2a1f45'] },
     onNew: function () { clearSave(); showSetup(); },
@@ -487,7 +507,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
 
   // ═══ Play view ═══════════════════════════════════════════════════════════
-  var cv, g, wrapEl, cabEl, hudEl, ctlEl, ovEl, hintEl, scoreEl, levelEl, linesEl, bestEl, ro = null;
+  var cv, g, wrapEl, cabEl, hudEl, ctlEl, ovEl, hintEl, scoreEl, levelEl, linesEl, bestEl, ro = null, colL, colR, grpL, grpR;
+  var pbFrom = 0, pbHit = false, pbWait = false;   // the best score when this game began, and whether this game has passed it
   var C = 20, DPR = 1, cssW = 0, sprites = {}, hudDirty = true, bumpScore = false;
 
   function plate(label, cls) { var b = el('b', { text: '0' }); var p = el('div', { class: 'ar-plate ' + (cls || '') }, [el('small', { text: label }), b]); p._b = b; return p; }
@@ -508,7 +529,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var kHold = key('<span style="font-size:.86rem">Hold</span>', 'Hold', 'k-hold');
     var kL = key(I('back'), 'Move left'), kR = key(I('right'), 'Move right'), kD = key(I('down'), 'Soft drop');
     var kRot = key(ROT, 'Rotate'), kDrop = key(DROP + '<span>Drop</span>', 'Hard drop', 'hot');
-    ctlEl = el('div', { class: 'ar-ctl ar-touch' }, [el('div', { class: 'ar-grp' }, [kL, kD, kR]), el('div', { class: 'ar-grp' }, [kHold, kRot, kDrop])]);
+    grpL = el('div', { class: 'ar-grp ar-touch' }, [kL, kD, kR]); grpR = el('div', { class: 'ar-grp ar-touch' }, [kHold, kRot, kDrop]);
+    ctlEl = el('div', { class: 'ar-ctl ar-touch' }, [grpL, grpR]);
+    colL = el('div', { class: 'ar-col l' }); colR = el('div', { class: 'ar-col r' });
+    pbFrom = ArcadeHi.best('tetris'); pbHit = !!(G && G.score > pbFrom); pbWait = false;
     hintEl = el('div', { class: 'ar-hint ar-desk', text: 'The arrows move, Up turns, Space drops, C holds and P pauses.' });
     app.appendChild(wrapEl); app.appendChild(ctlEl); app.appendChild(hintEl);
     press(kHold, function () { doHold(); });
@@ -520,7 +544,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     press(kD, function () { softHeld.btn = true; softStep(); }, function () { softHeld.btn = false; });
     bindGestures();
     if (ro) ro.disconnect();
-    ro = new ResizeObserver(fit); ro.observe(app);
+    ro = new ResizeObserver(refit); ro.observe(app);
     cssW = 0; fit();
     view = 'game';
     if (!raf) { lastT = 0; raf = requestAnimationFrame(loop); }
@@ -537,18 +561,45 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
     dasDir = 0; dasHeld = {}; softHeld = {};
   }
+  // Sideways (wider than tall): the numbers and the move keys go to a column at the left, Hold, Turn and Drop to one at
+  // the right, and the board stands between them at the full height. Upright they go back over and under the board.
+  function wantSide() { return innerWidth > innerHeight * 1.15; }
+  function shapeLayout() {
+    var sd = wantSide();
+    if (sd === wrapEl.classList.contains('sd')) return sd;
+    wrapEl.classList.toggle('sd', sd);
+    if (sd) {
+      colL.appendChild(hudEl); colL.appendChild(grpL); colR.appendChild(hintEl); colR.appendChild(grpR);
+      wrapEl.insertBefore(colL, cabEl); wrapEl.appendChild(colR); ctlEl.style.display = 'none';
+    } else {
+      wrapEl.insertBefore(hudEl, cabEl); ctlEl.appendChild(grpL); ctlEl.appendChild(grpR); ctlEl.style.display = '';
+      app.appendChild(hintEl); colL.remove(); colR.remove();
+    }
+    cssW = 0;
+    return sd;
+  }
+  // Turning the device: the board and the numbers glide to their new places (a View Transition around the relayout)
+  function refit() {
+    if (wrapEl && wantSide() !== wrapEl.classList.contains('sd') && document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      try { var t = document.startViewTransition(fit); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) {}
+    }
+    fit();
+  }
   function fit() {
     if (!wrapEl) return;
-    var aw = wrapEl.clientWidth - 14, ah = wrapEl.clientHeight - 14 - hudEl.offsetHeight - 8;
-    var c = Math.min(aw / CW_CELLS, ah / CH_CELLS, 40); c = Math.max(8, Math.floor(c * 2) / 2);
-    var w = Math.round(c * CW_CELLS), h = Math.round(c * CH_CELLS);
-    if (w === cssW && cv.width) return;
-    cssW = w; C = c;
+    var sd = shapeLayout(), aw, ah;
+    if (sd) { var gp = parseFloat(getComputedStyle(wrapEl).columnGap) || 0; aw = wrapEl.clientWidth - colL.offsetWidth - colR.offsetWidth - 2 * gp - 14; ah = wrapEl.clientHeight - 18; }
+    else { aw = wrapEl.clientWidth - 14; ah = wrapEl.clientHeight - 14 - hudEl.offsetHeight - 8; }
+    var cs = Math.min(aw / CW_CELLS, ah / CH_CELLS, 40), cr = Math.min(aw / RW_CELLS, ah / RH_CELLS, 40);
+    var lay = cr > cs * 1.04 ? 'r' : 'std', c = lay === 'r' ? cr : cs; c = Math.max(8, Math.floor(c * 2) / 2);
+    var w = Math.round(c * (lay === 'r' ? RW_CELLS : CW_CELLS)), h = Math.round(c * (lay === 'r' ? RH_CELLS : CH_CELLS));
+    if (w === cssW && lay === LAY && cv.width) return;
+    cssW = w; C = c; LAY = lay;
     DPR = Math.min(window.devicePixelRatio || 1, 3);
     cv.style.width = w + 'px'; cv.style.height = h + 'px';
     cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR);
     var hw = Math.min(wrapEl.clientWidth, w + 14);
-    hudEl.style.maxWidth = hw + 'px'; ctlEl.style.maxWidth = Math.max(hw, 340) + 'px';
+    hudEl.style.maxWidth = sd ? '' : hw + 'px'; ctlEl.style.maxWidth = Math.max(hw, 340) + 'px';
     sprites = {};
     draw();
   }
@@ -557,7 +608,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   var gest = null;
   function bindGestures() {
     wrapEl.addEventListener('pointerdown', function (e) {
-      if (e.target.closest('.ar-ov')) return;
+      if (e.target.closest('.ar-ov, .ar-key')) return;   // (in the side columns the keys sit in here)
       ac();
       if (!canAct()) return;
       e.preventDefault();
@@ -598,7 +649,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       if (!canAct()) return;
       if (!gs.axis && dt < 350 && Math.abs(dx) < 12 && Math.abs(dy) < 12) {
         // Tapping the Hold box holds; anywhere else turns the block
-        if (e.clientX - cv.getBoundingClientRect().left < SIDE * C) doHold(); else rotate(1);
+        var cr0 = cv.getBoundingClientRect();
+        if (LAY === 'r' ? e.clientX - cr0.left < 3.6 * C && e.clientY - cr0.top < RTOP * C : e.clientX - cr0.left < SIDE * C) doHold(); else rotate(1);
         return;
       }
       if (gs.axis === 'v' && vy > 0.9 && dy > 30) { hardDrop(); return; }
@@ -720,6 +772,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function endGame() {
     if (G.ended) return; G.ended = true;
     var st = G.stats, h = [];
+    if (st.pb && G.score > st.pb) h.push(G.who + ' beat the best score of ' + fmt(st.pb) + ' and set a new high score.');
     if (st.tetris) h.push(st.tetris === 1 ? 'Tetris! 4 lines at once' : st.tetris + ' Tetrises (4 lines at once)');
     if (G.level > G.startLevel || G.level >= 5) h.push('Reached level ' + G.level);
     h.push(G.lines ? 'Cleared ' + G.lines + (G.lines === 1 ? ' line' : ' lines') + ' with ' + st.pieces + ' blocks' : 'Stacked ' + st.pieces + ' blocks before the top filled up');
@@ -779,6 +832,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     fx.parts = fx.parts.filter(function (p) { p.life -= dt; p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; return p.life > 0; });
     fx.trails = fx.trails.filter(function (p) { p.life -= dt; return p.life > 0; });
     fx.banners = fx.banners.filter(function (b) { b.life -= dt; return b.life > 0; });
+    if (pbWait && !fx.banners.length) { pbWait = false; banner('NEW BEST', 'Past ' + fmt(pbFrom), '#ffd45a', 1.6); }
     fx.shake = Math.max(0, fx.shake - dt * 2.2); fx.flash = Math.max(0, fx.flash - dt * 3);
     if (fx.fall) { fx.fall.t += dt; if (fx.fall.t >= fx.fall.dur) fx.fall = null; }
     if (G.action) { G.action.life -= dt; if (G.action.life <= 0) G.action = null; }
@@ -839,6 +893,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     // the board's top score, overtaken live by this game
     var best = Math.max(ArcadeHi.best('tetris'), G.score);
     if (shown.b !== best) { bestEl._b.textContent = fmt(best); shown.b = best; }
+    // Passing your best: the Best plate lights, a chime, and the call on the board (after any call already showing)
+    if (!pbHit && pbFrom > 0 && G.score > pbFrom) {
+      pbHit = true; G.stats.pb = pbFrom;
+      bestEl.classList.remove('pb'); void bestEl.offsetWidth; bestEl.classList.add('pb');
+      Kit.sfx('sparkle'); Kit.haptic('success');
+      if (fx.banners.length) pbWait = true; else banner('NEW BEST', 'Past ' + fmt(pbFrom), '#ffd45a', 1.6);
+    }
     if (shown.l !== G.level) { levelEl._b.textContent = G.level; if (shown.l > 0) { levelEl.classList.remove('bump'); void levelEl.offsetWidth; levelEl.classList.add('bump'); } shown.l = G.level; }
     if (shown.n !== G.lines) { linesEl._b.textContent = G.lines; shown.n = G.lines; }
     if (bumpScore) { bumpScore = false; scoreEl.classList.remove('bump'); void scoreEl.offsetWidth; scoreEl.classList.add('bump'); }
@@ -865,12 +926,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     sprites[k] = c; return c;
   }
   function rr(x, a, b, w, h, r) { x.beginPath(); if (x.roundRect) x.roundRect(a, b, w, h, r); else x.rect(a, b, w, h); }
-  function wellX() { return (SIDE + GAP) * C; }
-  function wellY() { return 0.2 * C; }
+  function wellX() { return LAY === 'r' ? 0.15 * C : (SIDE + GAP) * C; }
+  function wellY() { return LAY === 'r' ? (RTOP + 0.2) * C : 0.2 * C; }
 
   function draw() {
     if (!g || !G) return;
-    var W = cssW, H = Math.round(C * CH_CELLS);
+    var W = cssW, H = Math.round(C * (LAY === 'r' ? RH_CELLS : CH_CELLS));
     g.setTransform(DPR, 0, 0, DPR, 0, 0);
     // Cabinet screen backdrop
     var bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#1b1436'); bg.addColorStop(1, '#0d0a1f');
@@ -878,7 +939,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var sx = 0, sy = 0;
     if (fx.shake > 0) { var m = fx.shake * fx.shake * C * 0.7; sx = (Math.random() - 0.5) * m; sy = (Math.random() - 0.5) * m * 0.6 + fx.shake * C * 0.25; }
     g.save(); g.translate(sx, sy);
-    drawSide();
+    if (LAY === 'r') drawSideR(); else drawSide();
     drawWell();
     g.restore();
     // Flash over everything
@@ -959,7 +1020,52 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       }
     }
   }
+  // The narrow cabinet: Hold and the numbers (or the call for the move just made) over the well, Next down the right
+  function drawSideR() {
+    var top = 0.2 * C, X = wellX(), WW = 10 * C, hw = 3.3 * C, hh = (RTOP - 0.2) * C, dim = 'rgba(198,196,218,.85)';
+    if (!G.classic) {
+      panel(X, top, hw, hh);
+      label('Hold', X + hw / 2, top + 0.45 * C, Math.round(C * 0.42), dim);
+      if (G.hold) miniPiece(G.hold, X + hw / 2, top + 1.42 * C, C * 0.5, G.holdUsed ? 0.45 : 1);
+    }
+    var sx = G.classic ? X : X + hw + 0.25 * C, sw = X + WW - sx;
+    panel(sx, top, sw, hh);
+    if (G.action) {
+      var a = G.action, al = Math.min(1, a.life / 0.4), pop = 1 + Math.max(0, (a.life - a.max + 0.15) / 0.15) * 0.2;
+      var words = (a.b2b ? ['BACK-TO-BACK'] : []).concat(a.text).join(' '), sub = (a.combo ? 'COMBO ' + a.combo + '   ' : '') + (a.pc ? 'PERFECT   ' : '') + '+' + fmt(a.pts);
+      var col = a.text.indexOf('TETRIS') >= 0 ? '#2fd0f0' : a.text[0] && a.text[0].indexOf('T-SPIN') === 0 ? '#d58bff' : '#fff';
+      g.save(); g.globalAlpha = al; g.translate(sx + sw / 2, top + hh / 2); g.scale(pop, pop);
+      var fs = C * 0.62; g.font = '800 ' + Math.round(fs) + 'px "GN Display", "Schibsted Grotesk", system-ui, sans-serif';
+      var mw = g.measureText(words).width; if (mw > sw * 0.9) fs = fs * sw * 0.9 / mw;
+      label(words, 0, -0.4 * C, Math.round(fs), col, 'center', true);
+      label(sub, 0, 0.42 * C, Math.round(C * 0.5), '#ffd45a', 'center', true);
+      g.restore();
+    } else if (G.stats) {
+      var secs = Math.floor(G.playMs / 1000), tm = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
+      [['Time', tm, '#fff'], ['Tetrises', String(G.stats.tetris), '#2fd0f0'], ['Blocks', String(G.stats.pieces), '#fff']].forEach(function (s, i) {
+        var cx = sx + sw * (i + 0.5) / 3;
+        label(s[0], cx, top + 0.62 * C, Math.round(C * 0.4), dim);
+        label(s[1], cx, top + 1.5 * C, Math.round(C * 0.62), s[2]);
+      });
+    }
+    var rx = X + WW + 0.3 * C, w = RS * C, nh = 10.4 * C, H = RH_CELLS * C;
+    panel(rx, top, w, nh);
+    label('Next', rx + w / 2, top + 0.55 * C, Math.round(C * 0.46), dim);
+    for (var i = 0; i < (G.classic ? 1 : 5) && i < G.queue.length; i++) {
+      var sz = i === 0 ? C * 0.56 : C * 0.46, cy = i === 0 ? top + 2.0 * C : top + 2.75 * C + i * 1.65 * C;
+      miniPiece(G.queue[i], rx + w / 2, cy, sz, 1);
+    }
+    var mt = top + nh + 0.4 * C, mh = H - 0.2 * C - mt;
+    panel(rx, mt, w, mh);
+    label('Next level', rx + w / 2, mt + 0.5 * C, Math.round(C * 0.38), dim);
+    var need = Math.max(0, G.level * 10 - G.lines), frac = clamp(1 - need / 10, 0, 1);
+    var bx = rx + w / 2 - C * 0.35, by = mt + 1.1 * C, bh = mh - 2.6 * C;
+    g.fillStyle = 'rgba(0,0,0,.4)'; rr(g, bx, by, C * 0.7, bh, C * 0.35); g.fill();
+    if (frac > 0) { var gr = g.createLinearGradient(0, by + bh, 0, by); gr.addColorStop(0, '#8b5cf6'); gr.addColorStop(1, '#ffd45a'); g.fillStyle = gr; rr(g, bx, by + bh * (1 - frac), C * 0.7, bh * frac, C * 0.35); g.fill(); }
+    label(need + (need === 1 ? ' row' : ' rows'), rx + w / 2, mt + mh - 0.75 * C, Math.round(C * 0.42), '#fff');
+  }
   var bestCache = null;
+
   function bestShort() {
     if (bestCache == null) { bestCache = ArcadeHi.best('tetris'); }
     var b = Math.max(bestCache, G.score);
