@@ -319,6 +319,25 @@ Underlying principles for everything:
   cards in flight carry `.aim` with `_aim()` to re-target. Online through TurnNet (seats `PS` 0,2,1,3 for four); each
   device records once on arrival (`netRecord`, `pinochle_netrec`).
 
+## New card games and Arrow Jam (2026-11-15; Tim: "add war, go fish, crazy 8s and canasta to classic cards and uno to specialty cards")
+
+- Each has its rules in a plain-JSON core that runs in the page, at the TurnNet table and in Node, a robot run under
+  `scripts/` that plays thousands of games and checks every move, and a history view in `hist/`.
+- **War** `games/war.html`, `war-core.js`, `hist/war.js`, `scripts/war-sim.js`: 2 to 4, Pagat's rules; won cards go under
+  in the order laid starting from a different player each round (a fixed order looped forever in about 1 three-player
+  game in 8).
+- **Go Fish** `games/gofish.html`, `gofish-core.js`, `hist/gofish.js`, `scripts/gofish-sim.js`: 2 to 6; no undo (an
+  answered ask shows another player's cards).
+- **Canasta** `games/canasta.html`, `canasta-core.js`, `hist/canasta.js`, `scripts/canasta/run.js` (`run.txt`): four in
+  partnerships by default, two- and three-handed too; the robots' settings are `LV` in the core; test hooks
+  `window.__canasta` and `localStorage.canasta_fast = '1'`.
+- **Spanish One** `games/spanishone.html`, `spanishone-core.js`, `hist/spanishone.js`, `scripts/spanishone-sim.js`: Tim's
+  name for an original game in the genre of UNO (UNO's own name, logo and card look are Mattel's and are not used); 2 to
+  10, its own card faces with a shape for each color.
+- **Arrow Jam** `games/arrowjam.html`, levels `games/arrowjam/levels.js` from `scripts/arrowjam/gen.js` (checked by
+  `check.js`, table in `levels.txt`), `hist/arrowjam.js` (replays a clear): played from Mazes beside the Labyrinth (Tim:
+  "incorporate arrow jam into the mazes"), so its catalog entry is `hidden`.
+
 ## Accounts: PIN or Google
 
 - A PIN account lives at `pins/{pin}`; a Google account (mode `google`, `FGHSync.isGoogle()`) at `users/{uid}`, readable
