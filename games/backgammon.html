@@ -102,9 +102,10 @@
 .ctrl .btn .ico{width:20px;height:20px;}
 .hint{text-align:center;color:var(--text-2);font-weight:600;font-size:.92rem;min-height:22px;}
 
+#app.stage.ipl{padding-left:max(17px,var(--corner-x));padding-right:max(17px,var(--corner-x));}
 /* Landscape iPad: player bars, hint and buttons in a column beside the board (sized in geometry()) */
 @media (orientation:landscape) and (min-width:900px) and (min-height:600px){
-  #app.stage.ipl{max-width:none;padding-bottom:calc(var(--safe-b) + 12px);}
+  #app.stage.ipl{max-width:none;padding-bottom:max(calc(var(--safe-b) + 12px),18px);}
   .bgw{display:grid;grid-template-columns:minmax(260px,320px) auto;grid-template-rows:max-content max-content max-content 1fr max-content;
     grid-template-areas:"t b" "h b" "c b" ". b" "p b";height:var(--bh);column-gap:24px;row-gap:12px;justify-content:center;align-items:start;}
   .bgw>.bboard{grid-area:b;}
@@ -131,6 +132,8 @@
   .btag .st{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
   .btag .num{min-width:34px;padding:1px 5px;}
 }
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.7,.25,1);}
+::view-transition-old(root),::view-transition-new(root){animation:none;}
 </style>
 </head>
 <body>
@@ -408,6 +411,8 @@
     if (S.mv != null) S.mv += ' ' + S.cur + S.dice[0] + S.dice[1];
     S.phase = 'move'; S.opening = null; sel = null;
     Kit.sfx('roll'); Kit.haptic('medium');
+    // doubles play four times: a small cheer as the dice land, and a callout for double sixes
+    if (S.dice[0] === S.dice[1]) { var d6 = S.dice[0] === 6; setTimeout(function () { Kit.sfx('good', 0.55); if (d6) Kit.callout('Double sixes!'); }, 620); }
     save(); render(true);
     afterRollCheck(750);
   }
@@ -432,6 +437,9 @@
   }
   function endTurn() {
     sel = null; S.left = []; S.dice = [];
+    // how far behind in the race each player has been this game (for a comeback)
+    var bh = S.gs.behind || (S.gs.behind = [0, 0]), p0 = pips(S.pos, 0), p1 = pips(S.pos, 1);
+    bh[0] = Math.max(bh[0], p0 - p1); bh[1] = Math.max(bh[1], p1 - p0);
     S.cur = 1 - S.cur; S.phase = 'roll';
     save(); render();
     if (curP().cpu) cpuTurn();
@@ -451,9 +459,26 @@
     if (m.to === OFF) Kit.sfx('pop');
     sel = null;
     render(false, { s: s, m: m, from: fromXY, victim: victimFrom });
+    if (!S.gs.closed && closedOut(S.pos, s)) {
+      // every point of the home board made while the other player sits on the bar: they can't come in at all
+      S.gs.closed = 1;
+      var cn = S.players[s].name, mine = !S.players[s].cpu || S.mode === '2p';
+      if (!S.ms.sp) S.ms.sp = [];
+      S.ms.sp.push(cn + ' closed out ' + S.players[1 - s].name + (S.target > 1 ? ' in game ' + S.gameNo : ''));
+      setTimeout(function () {
+        Kit.moment({ big: true, title: 'Closed out', line: cn + ' holds all six home points, so ' + S.players[1 - s].name + ' can\'t come in from the bar.', icon: 'lock', tone: mine ? '' : 'bad', at: document.querySelector('.bboard'), ms: 2300 });
+        Kit.sfx(mine ? 'sparkle' : 'bad'); Kit.haptic(mine ? 'success' : 'heavy');
+      }, 450);
+    }
     if (S.pos.off[s] === 15) { save(); setTimeout(function () { gameOver(s); }, 650); return true; }
     save();
     return false;
+  }
+  // all six of s's home points made (two or more checkers each) while the other player has a checker on the bar
+  function closedOut(pos, s) {
+    if (!pos.bar[1 - s]) return false;
+    for (var k = 0; k < 6; k++) if (own(pos, s, s === 0 ? k : 23 - k) < 2) return false;
+    return true;
   }
   function mvCode(i) { return i === BAR ? 'y' : i === OFF ? 'z' : String.fromCharCode(97 + i); }
   function stackTop(pos, s, where) { return where === BAR ? pos.bar[s] - 1 : where === OFF ? pos.off[s] - 1 : own(pos, s, where) - 1; }
@@ -596,8 +621,17 @@
     S.phase = 'over'; S.left = []; sel = null;
     var matchOver = S.score[w] >= S.target;
     save(); render();
-    if (how === 'gammon') Kit.callout('Gammon!'); else if (how === 'backgammon') Kit.callout('Backgammon!');
-    if (matchOver) { setTimeout(endMatch, how === 'drop' ? 500 : 1300); return; }
+    // a gammon, a backgammon and a comeback from far behind in the race get their moment on the board
+    var back = how !== 'drop' && S.gs.behind ? S.gs.behind[w] : 0, sp = [];
+    if (how === 'backgammon') sp.push({ t: 'Backgammon', l: P[w].name + ' bore off every checker while ' + P[1 - w].name + ' still had one in ' + P[w].name + '\'s home board or on the bar. That counts three times.' });
+    else if (how === 'gammon') sp.push({ t: 'Gammon', l: P[w].name + ' bore off every checker before ' + P[1 - w].name + ' bore off any. That counts double.' });
+    if (back >= 40) { sp.push({ t: 'Comeback', l: P[w].name + ' was ' + back + ' pips behind in the race and still won.' }); if (!S.ms.sp) S.ms.sp = []; S.ms.sp.push(P[w].name + ' came back from ' + back + ' pips behind to win' + (S.target > 1 ? ' game ' + S.gameNo : '')); }
+    if (sp.length) {
+      var good = !P[w].cpu || S.mode === '2p';
+      Kit.moment({ big: how === 'backgammon' || sp.length > 1, title: sp[0].t, line: sp.map(function (x) { return x.l; }).join(' '), pts: how === 'drop' ? null : '+' + pts, icon: good ? 'trophy' : 'bot', tone: good ? '' : 'bad', at: document.querySelector('.bboard'), ms: 2300 });
+      Kit.sfx(good ? 'sparkle' : 'bad'); Kit.haptic(good ? 'success' : 'heavy');
+    }
+    if (matchOver) { setTimeout(endMatch, how === 'drop' ? 500 : sp.length ? 2500 : 1300); return; }
     var name = P[w].name;
     setTimeout(function () {
       Kit.sfx(P[w].cpu ? 'lose' : 'win');
@@ -609,10 +643,10 @@
         dismissible: false,
         actions: [{ label: 'Next game', primary: true, onClick: function () { newGame(); } }]
       });
-    }, how === 'drop' ? 400 : 1400);
+    }, how === 'drop' ? 400 : sp.length ? 2500 : 1400);
   }
   function endMatch() {
-    var P = S.players, w = S.score[0] >= S.target ? 0 : 1, hl = [];
+    var P = S.players, w = S.score[0] >= S.target ? 0 : 1, hl = (S.ms.sp || []).slice();
     S.ms.gammons.forEach(function (g) { hl.push(P[g.w].name + ' won a ' + g.how + (S.games.length > 1 ? ' in game ' + g.game : '') + ' (' + g.pts + ' points)'); });
     if (S.ms.maxCube >= 2) hl.push('The cube went up to ' + S.ms.maxCube);
     S.ms.drops.forEach(function (d) { hl.push(P[d.who].name + ' dropped a double' + (S.games.length > 1 ? ' in game ' + d.game : '')); });
@@ -680,10 +714,10 @@
     var W = side ? Math.min(innerW() - 340, (vh - 84) / 0.82, 820) : Math.min(innerW(), (window.innerWidth || 0) >= 700 ? 712 : 600);
     var fw = Math.round(Math.max(8, W * 0.025)), bw = Math.round(W * 0.07), tw = Math.round(W * 0.085), dv = 3;
     var pw = (W - 2 * fw - bw - tw - dv) / 12, cd = Math.floor(pw * 0.96);
-    var avail = side ? vh - 84 : vh - 58 - 2 * 56 - 26 - 62 - 34 - (vh < 700 ? 22 : 0);   // (a small phone's player strips take two lines)
+    var avail = side ? vh - 90 : vh - 58 - 2 * 56 - 26 - 62 - 40 - (vh < 700 ? 22 : 0);   // (a small phone's player strips take two lines)
     // (the middle holds the dice between the two rows of point numbers, NUMS each)
     var mg = Math.round(Math.max(cd * 1.9, 44) + 2 * NUMS), pad = 3;
-    var th = Math.round(Math.max(cd * 3.6, Math.min(cd * 6.2, (avail - 2 * fw - 2 * pad - mg) / 2)));   // (a short screen overlaps tall stacks)
+    var th = Math.round(Math.max(cd * 3.6, Math.min(cd * 8, (avail - 2 * fw - 2 * pad - mg) / 2)));   // (a short screen overlaps tall stacks; a tall phone gets taller points, so eight stack without overlapping)
     return frame(W, fw, bw, tw, dv, pw, cd, th, mg, pad);
   }
   var NUMS = 15;   // a row of point numbers: 3px off the points, 12px tall
@@ -751,7 +785,7 @@
     app.innerHTML = ''; app.classList.add('ipl');
     var wrap = el('div', { class: 'bgw', style: { '--bh': G.H + 'px' } });
     wrap.appendChild(tag(1 - bot()));
-    boardEl = el('div', { class: 'bboard', style: { width: G.W + 'px', height: G.H + 'px', '--cd': G.cd + 'px' } });
+    boardEl = el('div', { class: 'bboard', style: { width: G.W + 'px', height: G.H + 'px', '--cd': G.cd + 'px', 'view-transition-name': 'bg-board' } });
     // felt halves, bar, tray
     boardEl.appendChild(el('div', { class: 'field', style: { left: G.fieldL + 'px', top: G.fw + 'px', width: 6 * G.pw + 'px', height: (G.H - 2 * G.fw) + 'px' } }));
     boardEl.appendChild(el('div', { class: 'field', style: { left: G.fieldR + 'px', top: G.fw + 'px', width: 6 * G.pw + 'px', height: (G.H - 2 * G.fw) + 'px' } }));
@@ -896,7 +930,7 @@
       el('span', { class: 'num' }, [el('b', { text: S.pos.off[pl] + '' }), el('small', { text: 'off' })])
     ]);
     if (S.target > 1) nums.appendChild(el('span', { class: 'num' }, [el('b', { text: String(S.score[pl]) }), el('small', { text: 'of ' + S.target })]));
-    return el('div', { class: 'btag' + (on ? ' on' : '') }, [chk, el('span', { class: 'col' }, [el('span', { class: 'nm', text: name }), el('span', { class: 'st', text: st })]), nums]);
+    return el('div', { class: 'btag' + (on ? ' on' : ''), style: { 'view-transition-name': 'bg-tag' + pl } }, [chk, el('span', { class: 'col' }, [el('span', { class: 'nm', text: name }), el('span', { class: 'st', text: st })]), nums]);
   }
   function hintLine(human, lm) {
     var t = '';
@@ -911,7 +945,7 @@
     return el('div', { class: 'hint', text: t });
   }
   function controls(human) {
-    var c = el('div', { class: 'ctrl' }), me = curP();
+    var c = el('div', { class: 'ctrl', style: { 'view-transition-name': 'bg-ctrl' } }), me = curP();
     if (NET) {
       if (LEFT || S.phase === 'over' && S.matchOver) { c.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: LEFT ? 'Back to the lobby' : 'Play again', onclick: netAgain })); return c; }
       if (S.phase === 'over') { c.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Next game', onclick: netNext })); return c; }
@@ -950,7 +984,16 @@
     }
   }
   var rT = null;
-  window.addEventListener('resize', function () { clearTimeout(rT); rT = setTimeout(function () { if (S && S.pos) render(); }, 150); });
+  // Turning the device: the board, the player strips and the buttons glide to the new shape (a View Transition)
+  window.addEventListener('resize', function () {
+    clearTimeout(rT);
+    rT = setTimeout(function () {
+      if (!(S && S.pos) || !app.classList.contains('ipl')) return;
+      var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (document.startViewTransition && !reduce && !document.hidden) { try { document.startViewTransition(function () { render(); }); return; } catch (e) {} }
+      render();
+    }, 120);
+  });
 
   // ── Online ────────────────────────────────────────────────────────────────
   // Two people, each on their own device: whoever opens the table plays White. The match length and the cube are
