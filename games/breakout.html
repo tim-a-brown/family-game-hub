@@ -26,6 +26,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .ar-plate.sc{flex:1.6;}
 .ar-plate.sc b{color:var(--lit);text-shadow:0 0 14px var(--litg);}
 .ar-plate.bump b{animation:bounce .45s var(--spring);}
+/* A new best: the Best plate lights gold once, as the score passes it */
+.ar-plate.pb{animation:ar-pb 1.6s var(--ease);}
+.ar-plate.pb b{color:var(--lit);text-shadow:0 0 14px var(--litg);animation:bounce .5s var(--spring);}
+@keyframes ar-pb{0%{box-shadow:inset 0 0 0 1px var(--gl-line),0 0 0 0 rgba(255,200,60,0)}18%{box-shadow:inset 0 0 0 2px var(--lit),0 0 26px 4px rgba(255,200,60,.55)}100%{box-shadow:inset 0 0 0 1px var(--gl-line),0 0 0 0 rgba(255,200,60,0)}}
+html.ar-on .ar-cab{view-transition-name:ar-cab;} html.ar-on .ar-hud{view-transition-name:ar-hud;}
 .ar-lives{display:flex;gap:4px;height:1.52rem;align-items:center;}
 .ar-lives i{display:block;width:18px;height:7px;border-radius:4px;background:linear-gradient(90deg,#e8384f 0 22%,#d9dde8 22% 78%,#e8384f 78%);box-shadow:0 0 6px rgba(255,255,255,.25);}
 .ar-lives em{font-style:normal;font-family:var(--display);font-weight:800;font-size:1.1rem;color:var(--text);}
@@ -45,11 +50,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 /* Wide screens (iPad sideways, computers): the field stands at the right, the scoreboard gets the room on the left */
 .ar-wrap.side{flex-direction:row;align-items:center;justify-content:flex-end;gap:clamp(24px,4vw,64px);padding-right:clamp(8px,4vw,64px);}
 .ar-side{flex:1;min-width:0;align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
-.ar-side .ar-hud{flex-direction:column;gap:12px;width:min(320px,100%);max-width:none!important;}
-.ar-side .ar-plate{flex:none;padding:12px 16px;align-items:flex-start;}
+.ar-side .ar-hud{flex-direction:column;gap:clamp(6px,1.6vh,12px);width:min(320px,100%);max-width:none!important;}
+.ar-side .ar-plate{flex:none;padding:clamp(5px,1.4vh,12px) 16px;align-items:flex-start;}
 .ar-side .ar-plate small{font-size:.86rem;}
-.ar-side .ar-plate b{font-size:2.3rem;}
-.ar-side .ar-plate.sc b{font-size:3rem;}
+.ar-side .ar-plate b{font-size:clamp(1.4rem,5vh,2.3rem);}
+.ar-side .ar-plate.sc b{font-size:clamp(1.7rem,6.4vh,3rem);}
 .ar-side .ar-lives{height:2.3rem;} .ar-side .ar-lives i{width:26px;height:10px;}
 .ar-side .ar-hint{max-width:320px;font-size:.9rem;}
 </style>
@@ -288,6 +293,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     addScore(pts);
     shatter(k);
     if (G.chain >= 5 && G.chain % 5 === 0) pop(k.x + k.w / 2, k.y, G.chain + ' chain! x2', '#ffd45a', 13);
+    // A long rally without touching the paddle: the field calls it at 15 and every 10 after (rarer, so bigger)
+    if (G.chain >= 15 && (G.chain - 15) % 10 === 0 && !fx.banner) { fx.banner = { text: G.chain + ' IN A ROW', sub: 'Without the paddle', c: '#ffd45a', life: 1.5, max: 1.5 }; Kit.sfx('good'); Kit.haptic('medium'); fx.flash = Math.max(fx.flash, 0.3); }
     else if (k.ch === 's') pop(k.x + k.w / 2, k.y, '+' + pts, '#e8eef8', 11);
     sBrick(G.chain);
     if (G.speedMul < 1.3) G.speedMul += 0.0025;
@@ -405,7 +412,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function loadSave() { try { var s = JSON.parse(localStorage.getItem(SAVE)); return s && s.v === 1 && s.level >= 1 && s.level <= NL ? s : null; } catch (e) { return null; } }
 
   // ═══ Kit shell ═══════════════════════════════════════════════════════════
-  Kit.init({ orient: 'portrait',
+  Kit.init({
     id: 'breakout',
     theme: { wood: ['#5a2a3a', '#33141f'] },
     onNew: function () { clearSave(); showSetup(); },
@@ -472,7 +479,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     app.appendChild(wrapEl); app.appendChild(hintEl);
     bindInput();
     if (ro) ro.disconnect();
-    ro = new ResizeObserver(fit); ro.observe(app);
+    ro = new ResizeObserver(refit); ro.observe(app);
     cssW = 0; fit();
     view = 'game';
     if (!raf) { lastT = 0; raf = requestAnimationFrame(loop); }
@@ -484,10 +491,19 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
     keys = {};
   }
-  // Wide screens: the scoreboard moves into a panel on the left and the field stands at the right, full height
+  // Sideways (wider than tall, phones too): the scoreboard moves into a panel on the left and the field stands at the
+  // right, full height, under the hand that drags the paddle
   var sideEl = null;
+  function wantSide() { return innerWidth > innerHeight * 1.15; }
+  // Turning the device: the field and the scoreboard glide to their new places (a View Transition around the relayout)
+  function refit() {
+    if (wrapEl && wantSide() !== wrapEl.classList.contains('side') && document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      try { var t = document.startViewTransition(fit); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) {}
+    }
+    fit();
+  }
   function sideLayout() {
-    var side = innerWidth >= 900 && innerWidth > innerHeight * 1.25;
+    var side = wantSide();
     if (side === wrapEl.classList.contains('side')) return;
     wrapEl.classList.toggle('side', side);
     if (side) { sideEl = sideEl || el('div', { class: 'ar-side' }); sideEl.appendChild(hudEl); sideEl.appendChild(hintEl); wrapEl.insertBefore(sideEl, cabEl); }
@@ -619,7 +635,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (G.ended) return; G.ended = true; G.phase = 'over';
     clearSave();
     var st = G.stats, h = [], L = LEVELS[G.level - 1];
+    if (st.pb && G.score > st.pb) h.push(G.who + ' beat the best score of ' + fmt(st.pb) + ' and set a new high score.');
     if (won) h.push('Beat all ' + NL + ' levels!');
+
     else h.push('Reached level ' + G.level + ' (' + L.name + ')');
     if (st.cleared) h.push('Cleared ' + st.cleared + (st.cleared === 1 ? ' level' : ' levels'));
     h.push('Smashed ' + st.bricks + (st.bricks === 1 ? ' brick' : ' bricks'));
@@ -712,6 +730,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     // the board's top score, overtaken live by this game
     var best = Math.max(bestScore(), G.score);
     if (shown.b !== best) { bestEl._b.textContent = fmt(best); shown.b = best; }
+    // Passing your best: the Best plate lights, a chime, and the call on the field (if nothing else is called there)
+    if (!G.stats.pb && G.best0 > 0 && G.score > G.best0) {
+      G.stats.pb = G.best0;
+      bestEl.classList.remove('pb'); void bestEl.offsetWidth; bestEl.classList.add('pb');
+      Kit.sfx('sparkle'); Kit.haptic('success');
+      if (!fx.banner) fx.banner = { text: 'NEW BEST', sub: 'Past ' + fmt(G.best0), c: '#ffd45a', life: 1.6, max: 1.6 };
+    }
     if (shown.v !== G.lives) {
       var box = livesEl.querySelector('.ar-lives'); box.innerHTML = '';
       var n = Math.max(0, G.lives);
