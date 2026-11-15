@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v811-2026-11-15-spanish-one';
+const CACHE_VERSION = 'v812-2026-11-15-war';
 // Preview channels (familygames-da3e5--name-xyz.web.app) and local testing: pages and code always from the network
 const PREVIEW = self.location.hostname.includes('--') || /^(localhost|127\.0\.0\.1)$/.test(self.location.hostname);
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
@@ -305,6 +305,8 @@ const PRECACHE_URLS = [
   '/games/pinochle-core.js',
   '/games/gofish.html',
   '/games/gofish-core.js',
+  '/games/war.html',
+  '/games/war-core.js',
   '/games/pinball.html',
   '/games/pinball/engine.js',
   '/games/pinball/physics.js',
@@ -367,6 +369,7 @@ const PRECACHE_URLS = [
   '/hist/pinochle.js',
   '/hist/arrowjam.js',
   '/hist/gofish.js',
+  '/hist/war.js',
   '/fonts/press-start-2p.woff2',
   '/games/plinko.html',
   '/vendor/three/addons/postprocessing/AfterimagePass.js',
