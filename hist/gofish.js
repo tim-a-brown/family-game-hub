@@ -6,17 +6,30 @@
 // The record's detail (games/gofish-core.js historyDetail): names, cpu ('1' a computer player), o the books in order
 // "seat.rank.turn.how" joined by spaces (rank T is 10; how a ask, f fish, d deal), t the last turn, asks, s each
 // player's best streak, lk the fish each wished for, bg their three-card catches (each "n.n.n"), c the biggest catch
-// "seat.from.rank.count", nx 'left' | 'asked'.
+// "seat.from.rank.count", nx 'left' | 'asked', th the themed deck's id (games/gofish/decks.js; none: the standard deck).
+// A themed game names every book by its subject and shows it by its picture; the deck's names come from
+// games/gofish/decks.js, fetched the first time such a game is opened away from Go Fish's page.
 (function () {
   if (!window.HistView) return;
   function K() { return window.Kit; }
   function el(t, a, k) { return K().el(t, a, k); }
   var NAMES = { J: 'Jack', Q: 'Queen', K: 'King', A: 'Ace' };
   function rk(c) { return c === 'T' ? '10' : c; }
-  function plural(r) { return NAMES[r] ? NAMES[r] + 's' : r + 's'; }
   function first(n) { return String(n || '').split(' ')[0]; }
   function nums(s) { return String(s == null ? '' : s).split('.').map(Number); }
   var NUMW = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen'];
+  var base = (function () { try { var s = document.querySelector('script[src*="hist-view.js"]'); return new URL('games/', s.src).href; } catch (e) { return ''; } })();
+  var waiting = null;
+  function decks(then) {
+    if (window.GoFishDecks) return then();
+    if (!waiting) {
+      waiting = [];
+      var s = document.createElement('script'); s.src = base + 'gofish/decks.js';
+      s.onload = s.onerror = function () { var w = waiting; waiting = []; w.forEach(function (f) { try { f(); } catch (e) {} }); };
+      document.head.appendChild(s);
+    }
+    waiting.push(then);
+  }
 
   HistView.css('hv-gofish', [
     '.hvg-race{display:block;width:100%;height:auto;}',
@@ -39,11 +52,25 @@
     '.hvg-key span{display:inline-flex;align-items:center;gap:5px;}',
     '.hvg-key i{display:inline-block;width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.75);}',
     '.hvg-key i.o{background:none;box-shadow:inset 0 0 0 1.6px #9fd8ff;width:8px;height:8px;}',
-    '.hvg-none{font-size:.78rem;font-weight:700;color:rgba(255,255,255,.5);padding-left:18px;}'
+    '.hvg-none{font-size:.78rem;font-weight:700;color:rgba(255,255,255,.5);padding-left:18px;}',
+    '.hvg-pic{position:relative;width:46px;height:46px;border-radius:9px;background:#eee center/cover no-repeat;box-shadow:0 0 0 1.5px rgba(255,255,255,.85),3px 3px 0 -1px #f3ead8,3px 3px 0 .5px rgba(0,0,0,.25),0 2px 5px rgba(0,0,0,.4);}',
+    '.hvg-bk b{max-width:72px;font-size:.66rem;font-weight:800;line-height:1.1;color:#fff;text-align:center;text-wrap:balance;}'
   ].join(''));
 
   HistView.register('gofish', function (e, ui) {
     var d = e.dt; if (!d || !d.names || d.o == null) return null;
+    if (d.th && !window.GoFishDecks) {   // (the deck's names are fetched first)
+      var box = el('div');
+      decks(function () { var n = view(e, ui); if (n) box.appendChild(n); });
+      return box;
+    }
+    return view(e, ui);
+  });
+  function view(e, ui) {
+    var d = e.dt, DK = window.GoFishDecks, deck = d.th && DK && DK.get(d.th);
+    var th = deck ? d.th : null;
+    function plural(r) { var t = th && DK.subj(th, r); return t ? t.many : NAMES[r] ? NAMES[r] + 's' : r + 's'; }
+    function single(r) { var t = th && DK.subj(th, r); return t ? t.one : NAMES[r] || r; }
     var nm = d.names, n = nm.length, out = [];
     function fn(p) { return String(d.cpu || '').charAt(p) === '1' ? String(nm[p] || '') : first(nm[p]); }
     var books = String(d.o).split(' ').filter(Boolean).map(function (x) { var q = x.split('.'); return { p: +q[0], r: rk(q[1]), t: +q[2], h: q[3] || 'a' }; });
@@ -86,7 +113,8 @@
         var bx = el('div', { class: 'hvg-bks' });
         mine.forEach(function (b) {
           var r = b.r === '10' ? '10' : b.r;
-          bx.appendChild(el('div', { class: 'hvg-bk ' + b.h, title: plural(b.r) }, [ui.cards([r + 's', r + 'h', r + 'c', r + 'd']), el('small', { html: b.h === 'd' ? 'Dealt' : (b.h === 'f' ? ui.icon('fish') : '') + 'Turn ' + b.t })]));
+          var pic = th ? [el('div', { class: 'hvg-pic', role: 'img', 'aria-label': plural(b.r), style: { backgroundImage: 'url("' + base + DK.pic(th, b.r, true) + '")' } }), el('b', { text: plural(b.r) })] : [ui.cards([r + 's', r + 'h', r + 'c', r + 'd'])];
+          bx.appendChild(el('div', { class: 'hvg-bk ' + b.h, title: plural(b.r) }, pic.concat([el('small', { html: b.h === 'd' ? 'Dealt' : (b.h === 'f' ? ui.icon('fish') : '') + 'Turn ' + b.t })])));
         });
         row.appendChild(bx);
       }
@@ -101,10 +129,10 @@
     out.push(ui.section('The game in numbers', ui.stats([
       ['Asks', d.asks],
       bs > 1 ? ['Longest run of asks', bs, fn(bw)] : null,
-      cq ? ['Biggest catch', catchN, NUMW[catchN] + ' ' + (catchN === 1 ? (NAMES[rk(cq[2])] || rk(cq[2])) : plural(rk(cq[2]))) + ' from ' + fn(+cq[1])] : null,
+      cq ? ['Biggest catch', catchN, NUMW[catchN] + ' ' + (catchN === 1 ? single(rk(cq[2])) : plural(rk(cq[2]))) + ' from ' + fn(+cq[1])] : null,
       ['Fish wished for', lkT, lkT ? nm.map(function (x, i) { return lk[i] ? fn(i) + ' ' + lk[i] : ''; }).filter(Boolean).join(', ') : 'Nobody drew the rank they asked for']
     ]), { icon: 'fish' }));
-    out.push(ui.facts([['After a Go fish', d.nx === 'asked' ? 'The player who said Go fish took the next turn' : 'The turn passed to the left']]));
+    out.push(ui.facts([['Deck', deck ? 'The ' + deck.name + ' deck' : 'The standard deck'], ['After a Go fish', d.nx === 'asked' ? 'The player who said Go fish took the next turn' : 'The turn passed to the left']]));
     return ui.wrap(out, 'hvg');
-  });
+  }
 })();

@@ -14,6 +14,7 @@
 <script src="../players.js"></script>
 <script src="../online.js"></script>
 <script src="../turnnet.js"></script>
+<script src="gofish/decks.js"></script>
 <script src="gofish-core.js"></script>
 <style>
 /* ── The page is laid out to the screen: upright, the table over your hand; sideways, the table at the left and what
@@ -132,6 +133,48 @@
 .grp.three .gn{background:var(--lit);color:#2b1a00;box-shadow:0 0 0 1.5px #fff,0 0 10px var(--litg);}
 .hand.blind .pcard{pointer-events:none;}
 .ghost{position:fixed;z-index:60;pointer-events:none;margin:0;left:0;top:0;transform-origin:50% 50%;}
+
+/* ── Themed decks (gofish/decks.js): a card is its subject's picture on the deck's panel, over a band in its suit's
+   color with the name, and the suit's mark in the top corner; the back is the deck's colors round its emblem ── */
+.pcard.gft{background:linear-gradient(160deg,#fffdf8 0%,#f8f2e6 70%,#efe6d4 100%);}
+.pcard.gft .art{position:absolute;left:5.5%;right:5.5%;top:4%;aspect-ratio:1;border-radius:calc(var(--cw) * .075) calc(var(--cw) * .075) calc(var(--cw) * .02) calc(var(--cw) * .02);
+  background:var(--pa) center/cover no-repeat;box-shadow:inset 0 0 0 1px rgba(0,0,0,.07);}
+.pcard.gft .mk{position:absolute;z-index:2;left:2.5%;top:1.8%;display:grid;place-items:center;width:calc(var(--cw) * .22);height:calc(var(--cw) * .22);border-radius:50%;
+  background:var(--band);color:#fff;font-size:calc(var(--cw) * .13);line-height:1;box-shadow:0 0 0 calc(var(--cw) * .018) #fffdf8,0 1px 2px rgba(0,0,0,.25);}
+.pcard.gft .mk.lt,.pcard.gft .nm.lt{color:#3b2500;}
+.pcard.gft .nm{position:absolute;left:5.5%;right:5.5%;top:calc(4% + var(--cw) * .89 * 1.0);bottom:3.6%;display:flex;align-items:center;justify-content:center;padding:0 calc(var(--cw) * .04);
+  border-radius:calc(var(--cw) * .02) calc(var(--cw) * .02) calc(var(--cw) * .075) calc(var(--cw) * .075);background:var(--band);color:#fff;
+  box-shadow:inset 0 calc(var(--cw) * .012) 0 rgba(255,255,255,.22);}
+.grp .pcard.gft:not(:last-of-type) .nm span,.fan .pcard.gft .nm span{visibility:hidden;}   /* (a card covered by the next one in a group shows its band, not a clipped name) */
+.pcard.gft .nm span{font-family:var(--font);font-weight:800;font-size:calc(var(--cw) * var(--nf,.13));line-height:1.04;text-align:center;letter-spacing:-.01em;text-wrap:balance;overflow-wrap:normal;}
+.pcard.back.gfb{background:
+    var(--em) center/46% no-repeat,
+    radial-gradient(circle at 50% 50%,rgba(255,251,242,.96) 0 25%,rgba(255,251,242,.0) 25.6%),
+    radial-gradient(circle at 50% 50%,transparent 0 28.5%,rgba(255,255,255,.4) 29% 30%,transparent 30.6%),
+    repeating-linear-gradient(45deg,rgba(255,255,255,.09) 0 2px,transparent 2px 7px),
+    repeating-linear-gradient(-45deg,rgba(255,255,255,.09) 0 2px,transparent 2px 7px),
+    linear-gradient(140deg,var(--back-a),var(--back-b));
+  box-shadow:inset 0 0 0 calc(var(--cw) * .05) rgba(255,251,242,.92),inset 0 0 0 calc(var(--cw) * .075) var(--back-a),0 0 0 1px rgba(0,0,0,.12),0 2px 0 rgba(0,0,0,.15),0 6px 14px rgba(0,0,0,.3);}
+/* a themed book: the picture on top */
+.bk.th b{background:var(--pa) center/cover no-repeat;}
+.k-mo-sq.gfmo,.kmb-c.gfmb{background:var(--pa) center/cover no-repeat !important;min-width:52px;}
+/* the results card: the winner's books by their pictures */
+.gfwp{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 6px;margin:2px 0 14px;}
+.gfwp-t{display:flex;flex-direction:column;align-items:center;gap:4px;width:58px;}
+.gfwp-p{display:block;width:44px;height:44px;border-radius:10px;background:var(--pa) center/cover no-repeat;box-shadow:0 0 0 1.5px rgba(255,255,255,.85),3px 3px 0 -1px #f3ead8,3px 3px 0 .5px rgba(0,0,0,.25),0 3px 8px rgba(0,0,0,.35);animation:gfbook .6s var(--spring) backwards;}
+.gfwp-t:nth-child(2) .gfwp-p{animation-delay:.08s}.gfwp-t:nth-child(3) .gfwp-p{animation-delay:.16s}.gfwp-t:nth-child(4) .gfwp-p{animation-delay:.24s}.gfwp-t:nth-child(5) .gfwp-p{animation-delay:.32s}.gfwp-t:nth-child(n+6) .gfwp-p{animation-delay:.4s}
+.gfwp-n{font-size:.66rem;font-weight:750;line-height:1.1;text-align:center;color:var(--text-2);text-wrap:balance;}
+/* the setup's Deck choice */
+.gfdk{display:flex;gap:10px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;padding:6px 4px 8px;margin:0 -4px;scrollbar-width:none;-webkit-mask:linear-gradient(90deg,transparent,#000 10px,#000 calc(100% - 14px),transparent);mask:linear-gradient(90deg,transparent,#000 10px,#000 calc(100% - 14px),transparent);}
+.gfdk::-webkit-scrollbar{display:none;}
+.gfdt{flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;width:76px;min-height:44px;padding:8px 4px 7px;border:0;border-radius:16px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);color:var(--text-2);font:inherit;cursor:pointer;scroll-snap-align:center;-webkit-tap-highlight-color:transparent;transition:background .2s,box-shadow .2s,scale .2s var(--spring);}
+.gfdt:active{scale:.96;}
+.gfdt.on{background:color-mix(in srgb,var(--lit) 16%,var(--gl));box-shadow:inset 0 0 0 2px var(--lit),0 0 16px var(--litg);color:var(--lit-ink);}
+.gfdt-c{position:relative;display:block;width:58px;height:62px;--cw:40px;}
+.gfdt-c .pcard{position:absolute;top:0;}
+.gfdt-c .gfdt-b{left:16px;top:6px;rotate:9deg;}
+.gfdt-c .pcard:first-child{left:2px;rotate:-6deg;z-index:1;}
+.gfdt-n{font-weight:750;font-size:.74rem;line-height:1.1;text-align:center;text-wrap:balance;}
 @media (prefers-reduced-motion:reduce){.pond.fish .ring{animation:none;}.seat.can .tg{animation:none;}}
 </style>
 </head>
@@ -160,19 +203,26 @@
       { icon: 'chart', label: 'Books so far', onClick: function () { if (S && S.players) showBooks(); } },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Go Fish: past games' }); } }
     ]),
-    rules:
-      '<p class="goal">Collect <b>books</b>: all four cards of a rank, like four 7s or four Kings. When all 13 books are down, whoever made the most wins.</p>' +
+    // (the words follow the deck: the one on the table, or the one chosen in the setup)
+    rules: function () {
+      var th = TH(); if (!th && !S) { try { th = Core.theme(((JSON.parse(localStorage.getItem('gn_setup_gofish')) || {}).options || {}).deck); } catch (e) {} }
+      var d = th && DK.get(th), w = function (r) { return Core.plural(r, th); };
+      var kind = d ? 'picture' : 'rank', ex = d ? 'four ' + w('3') + ' or four ' + w('K') : 'four 7s or four Kings';
+      return '<p class="goal">Collect <b>books</b>: all four cards of a ' + kind + ', like ' + ex + '. When all 13 books are down, whoever made the most wins.</p>' +
+      (d ? '<h3>The ' + Kit.esc(d.name) + ' deck</h3><p>This deck has 13 pictures in place of the 13 ranks, and four cards of each. The four cards of a picture are told apart by the color of the band under it, the way suits tell the cards of a rank apart. The deck plays exactly like a standard one.</p>' : '') +
       '<h3>The deal</h3><p>With 2 or 3 players everyone gets 7 cards; with 4 to 6 everyone gets 5. The rest of the deck is spread face down in the middle of the table. That is the <b>pond</b>.</p>' +
-      '<h3>Your turn</h3><ul><li>Ask one player for a rank you already hold. Tap the player, then a card from your hand, and you ask for that card’s rank: “Pete, do you have any 7s?”</li>' +
-      '<li>If they have any, they have to hand over every card of that rank, and you ask again (anyone, for any rank you hold).</li>' +
-      '<li>If they have none, they say “Go fish!” and you draw a card from the pond. If it is the rank you asked for, you show it and ask again. Otherwise the turn passes to the player on your left.</li>' +
-      '<li>When you have all four cards of a rank, the book goes down in front of you straight away.</li></ul>' +
+      '<h3>Your turn</h3><ul><li>Ask one player for a ' + kind + ' you already hold. Tap the player, then a card from your hand, and you ask for more like that card: “Pete, do you have any ' + Kit.esc(d ? w('3') : '7s') + '?”</li>' +
+      '<li>If they have any, they have to hand over every card of that ' + kind + ', and you ask again (anyone, for any ' + kind + ' you hold).</li>' +
+      '<li>If they have none, they say “Go fish!” and you draw a card from the pond. If it is the ' + kind + ' you asked for, you show it and ask again. Otherwise the turn passes to the player on your left.</li>' +
+      '<li>When you have all four cards of a ' + kind + ', the book goes down in front of you straight away.</li></ul>' +
       '<h3>Running out</h3><ul><li>If your hand is empty when your turn comes, you draw a card from the pond first and then ask.</li>' +
       '<li>If nobody else has any cards left to ask for, you draw a card from the pond and the turn passes.</li>' +
       '<li>With the pond empty, a “Go fish!” just passes the turn, and a player with no cards left is out.</li></ul>' +
       '<h3>Who goes next</h3><p>The standard rule passes the turn to your left after a Go fish. Some families play that the player who said “Go fish!” takes the next turn instead, which you can choose in the setup.</p>' +
-      '<h3>Online</h3><ul><li><b>Play online</b>, beside the start button, opens a table, and the others join on their own devices. The computer plays any empty seat.</li>' +
-      '<li>Take your turn whenever you like; the home screen shows when it’s your move.</li></ul>'
+      '<h3>Decks</h3><p>Besides the standard deck there are ten themed decks: Space, Cats, Dogs, Zoo Animals, Food, Flowers, Sports, Jobs, US States and Countries. Choose one under Deck in the setup.</p>' +
+      '<h3>Online</h3><ul><li><b>Play online</b>, beside the start button, opens a table, and the others join on their own devices. The computer plays any empty seat. Everyone plays with the deck the host chose.</li>' +
+      '<li>Take your turn whenever you like; the home screen shows when it’s your move.</li></ul>';
+    }
   });
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -200,6 +250,87 @@
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); token++; busy = false; }
 
+  // ── The deck: the standard 52, or one of the themed decks (gofish/decks.js) ─────────────────────────
+  // A themed deck's card is its subject's picture over a band in its suit's color, with the suit's mark in the corner,
+  // and a back of its own; every sentence names the subject ("any Tigers?"). TH(): the deck of the game on the table.
+  var DK = window.GoFishDecks;
+  function TH() { return S && S.theme && DK.get(S.theme) ? S.theme : null; }
+  function deckOf(th) { return th ? DK.get(th) : null; }
+  function setDeckVars(n, d) {
+    n.style.setProperty('--back-a', d.back[0]); n.style.setProperty('--back-b', d.back[1]);
+    n.style.setProperty('--pa', d.pan[0]); n.style.setProperty('--pb', d.pan[1]);
+  }
+  // the name's size on the band: its longest word fits the band's width
+  function nameFit(t) { var w = 0; String(t).split(' ').forEach(function (x) { w = Math.max(w, x.length); }); return Math.min(0.15, 0.82 / Math.max(1, w * 0.6)).toFixed(3); }
+  function themedFace(th, c, o) {
+    o = o || {};
+    var d = deckOf(th), t = DK.subj(th, c.r), n = el('div', { class: 'pcard gft' + (d.dark ? ' dk' : '') + (o.cls ? ' ' + o.cls : ''), 'data-r': c.r, 'data-s': c.s, 'aria-label': t.one });
+    setDeckVars(n, d);
+    n.style.setProperty('--band', DK.BAND[c.s]); n.style.setProperty('--nf', nameFit(t.one));
+    n.appendChild(el('span', { class: 'art', style: { backgroundImage: 'url("' + DK.pic(th, c.r) + '")' } }));
+    n.appendChild(el('span', { class: 'mk' + (c.s === 'd' ? ' lt' : ''), text: DK.MARK[c.s] }));
+    n.appendChild(el('span', { class: 'nm' + (c.s === 'd' ? ' lt' : '') }, [el('span', { text: t.one })]));
+    return n;
+  }
+  function faceEl(c, th) { th = th === undefined ? TH() : th; return th ? themedFace(th, c) : Cards.el(c); }
+  function themedBack(th, cls) {
+    var d = deckOf(th), n = Kit.card('', '', { back: true, cls: 'gfb' + (cls ? ' ' + cls : '') });
+    setDeckVars(n, d);
+    n.style.setProperty('--em', 'url("' + DK.pic(th, d.by ? emRank(d) : 'A', true) + '")');
+    return n;
+  }
+  function emRank(d) { for (var r in d.by) if (d.by[r].k === d.em) return r; return 'A'; }
+  function backEl(cls, th) { th = th === undefined ? TH() : th; return th ? themedBack(th, cls) : Kit.card('', '', { back: true, cls: cls }); }
+  // the pictures are fetched and decoded before the deal, so no card shows empty while its picture loads
+  var WARM = {};
+  function warm(th) {
+    if (!th || WARM[th]) return;
+    WARM[th] = Core.RANKS.map(function (r) { var a = new Image(); a.src = DK.pic(th, r); var b = new Image(); b.src = DK.pic(th, r, true); try { a.decode().catch(function () {}); } catch (e) {} return [a, b]; });
+  }
+  // a moment's tile shows the subject's picture
+  function momentPic(r) {
+    var th = TH(); if (!th) return;
+    var sq = document.querySelector('.k-mo .k-mo-sq'); if (!sq) return;
+    sq.textContent = ''; sq.classList.add('gfmo');
+    var d = deckOf(th); sq.style.setProperty('--pa', d.pan[0]); sq.style.setProperty('--pb', d.pan[1]);
+    sq.style.backgroundImage = 'url("' + DK.pic(th, r, true) + '")';
+  }
+  // what the deck's cards are called in a sentence about asking: "rank" for the standard deck
+  function kindWord() { return TH() ? 'picture' : 'rank'; }
+
+  // The setup's Deck choice: a row of the decks, each shown by one of its cards, the chosen one lit. Where the setup
+  // folds its options into rows (a short screen, the home sheet), it is one row too, "Deck" and the chosen deck, and
+  // a tap opens the row of decks.
+  var deckOpen = false, deckHelp = false;
+  function deckName(v) { var d = deckOf(v); return d ? d.name : 'Standard'; }
+  function deckTile(v, on, pick) {
+    var d = deckOf(v), card;
+    if (d) { var r = emRank(d); card = themedFace(v, { r: r, s: 'h' }); }
+    else card = Kit.card('A', 's');
+    var b = el('button', { type: 'button', class: 'gfdt' + (on ? ' on' : ''), 'aria-pressed': String(on), 'aria-label': deckName(v) + ' deck', onclick: function () { pick(v); } }, [
+      el('span', { class: 'gfdt-c' }, [card, d ? backEl('gfdt-b', v) : Kit.card('', '', { back: true, cls: 'gfdt-b' })]), el('span', { class: 'gfdt-n', text: deckName(v) })]);
+    return b;
+  }
+  function deckPicker(value, set) {
+    var v = deckOf(value) ? value : 'std';
+    var folded = /[?&]sheet=1(&|$)/.test(location.search) || !!document.querySelector('.setup.k-folded');
+    function pick(x) { Kit.sfx('tap'); Kit.haptic('light'); if (folded) deckOpen = false; set(x); }
+    var strip = el('div', { class: 'gfdk', role: 'group', 'aria-label': 'Deck' });
+    strip.appendChild(deckTile('std', v === 'std', pick));
+    DK.DECKS.forEach(function (d) { strip.appendChild(deckTile(d.id, v === d.id, pick)); });
+    // (the chosen deck scrolled into view)
+    setTimeout(function () { var on = strip.querySelector('.on'); if (on && strip.isConnected) strip.scrollLeft = Math.max(0, on.offsetLeft - (strip.clientWidth - on.offsetWidth) / 2); }, 0);
+    var help = 'Every themed deck plays the same way as the standard one. Its 13 pictures take the place of the 13 ranks, and there are four cards of each, told apart by the color of their band.';
+    if (folded) {
+      var row = el('button', { type: 'button', class: 'k-scrow', 'aria-expanded': String(deckOpen), onclick: function () { deckOpen = !deckOpen; Kit.sfx('tap'); Kit.haptic('light'); set(v); } },
+        [el('span', { class: 'k-scl', text: 'Deck' }), el('span', { class: 'k-scv', text: deckName(v) }), el('span', { class: 'k-scc', html: Kit.icon('down') })]);
+      return el('div', { class: 'k-opt k-sc gfdeck' + (deckOpen ? ' k-open' : '') }, deckOpen ? [row, strip, el('p', { class: 'k-help', text: help })] : [row]);
+    }
+    var lab = el('div', { class: 'label' }, [el('span', { text: 'Deck' }),
+      el('button', { type: 'button', class: 'k-q', 'aria-label': 'What does Deck mean?', 'aria-expanded': String(deckHelp), text: '?', onclick: function () { deckHelp = !deckHelp; Kit.sfx('tap'); set(v); } })]);
+    return el('div', { class: 'k-opt gfdeck' + (deckHelp ? ' help-on' : '') }, [lab, strip, el('p', { class: 'k-help', text: help })]);
+  }
+
   var LEVELS = [['easy', 'Easy', 'Forgets who asked for what.'],
     ['normal', 'Normal', 'Remembers what the others asked for lately.'],
     ['hard', 'Hard', 'Remembers every ask and every card shown, and plays the odds.']];
@@ -212,13 +343,14 @@
       modes: Kit.modes(['cpu', 'local']),
       players: { min: 2, max: 6, count: 3, cpu: function (m) { return m === 'cpu' ? 'seats' : 'mix'; } },
       options: [
+        { id: 'deck', value: 'std', render: deckPicker, summary: function (v) { return deckName(v) + ' deck'; } },
         { id: 'next', label: 'After a Go fish', help: 'When a player goes fishing and doesn’t draw the rank they asked for, the turn passes. The standard rule passes it to their left; some families give it to the player who said “Go fish!”.',
           value: 'left', choices: [['left', 'Next player\nStandard'], ['asked', 'Whoever\nsaid it']] },
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }
       ],
       onStart: function (cfg) {
         var o = cfg.options;
-        S = Core.newGame({ players: cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu ? (p.level || o.level) : undefined }; }), level: o.level, next: o.next });
+        S = Core.newGame({ players: cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu ? (p.level || o.level) : undefined }; }), level: o.level, next: o.next, theme: o.deck });
         S.mode = cfg.mode; S.me = 0; ME = 0;
         Kit.gameStart(); startGame();
       }
@@ -229,7 +361,7 @@
   function layoutFor() { return innerWidth > innerHeight * 1.05 ? 'side' : 'up'; }
   function isBig() { return Math.min(innerWidth, innerHeight) >= 600; }
   function build() {
-    clearBubs();
+    clearBubs(); warm(TH());
     app.innerHTML = ''; app.removeAttribute('style');
     LAY = layoutFor(); app.className = 'gf k-hold ' + LAY + (isBig() ? ' big' : '');
     tblEl = el('div', { class: 'tbl wood', 'data-flip': '1' }, [el('div', { class: 'felt-in' })]);
@@ -342,7 +474,14 @@
     return el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: isCpu(p) ? Kit.icon('bot') : Kit.esc(nm(p).charAt(0).toUpperCase()) });
   }
   function mostBooks() { return Math.max.apply(null, S.books.map(function (b) { return b.length; })); }
-  function bookEl(r) { var b = el('span', { class: 'bk', 'data-r': r, 'aria-label': 'A book of ' + Core.plural(r) }, [el('i'), el('i'), el('b', { text: r })]); return b; }
+  function bookEl(r) {
+    var th = TH();
+    if (th) {   // (a themed book: the subject's picture on top, on its deck's panel)
+      var d = deckOf(th), b = el('span', { class: 'bk th', 'data-r': r, 'aria-label': 'A book of ' + Core.plural(r, th) }, [el('i'), el('i'), el('b', { style: { backgroundImage: 'url("' + DK.pic(th, r, true) + '")' } })]);
+      setDeckVars(b, d); return b;
+    }
+    return el('span', { class: 'bk', 'data-r': r, 'aria-label': 'A book of ' + Core.plural(r) }, [el('i'), el('i'), el('b', { text: r })]);
+  }
   function booksEl(p) { var w = el('div', { class: 'books' }); S.books[p].forEach(function (r, i) { var b = bookEl(r); if (i % 2) b.classList.add('red'); w.appendChild(b); }); return w; }
   function countEl(p) { var k = S.books[p].length, m = mostBooks(); return el('span', { class: 'bkn' + (k && k === m ? ' lead' : ''), 'aria-label': k + (k === 1 ? ' book' : ' books'), text: String(k) }); }
   function myTurn() { return S && S.turn === ME && !BLIND && !watching() && !busy && person(ME) && (!NET || NET.myTurn()); }
@@ -359,7 +498,7 @@
       s.setAttribute('aria-label', fn(p) + ', ' + h + (h === 1 ? ' card' : ' cards') + ', ' + S.books[p].length + (S.books[p].length === 1 ? ' book' : ' books'));
       s.appendChild(el('span', { class: 'tg' }, [avatarOf(p), el('span', { class: 'nm', text: fn(p) }), countEl(p)]));
       var fan = el('div', { class: 'fan' + (h ? '' : ' none') });
-      for (var k = 0; k < Math.min(h, 6); k++) fan.appendChild(Kit.card('', '', { back: true }));
+      for (var k = 0; k < Math.min(h, 6); k++) fan.appendChild(backEl());
       fan.appendChild(el('span', { class: 'cnt', text: h ? String(h) : 'No cards' }));
       s.appendChild(fan);
       if (S.books[p].length) s.appendChild(booksEl(p));
@@ -379,7 +518,7 @@
     var keep = {};
     S.pond.forEach(function (c) {
       keep[c.id] = 1;
-      if (!have[c.id]) { var n = Kit.card('', '', { back: true, cls: 'pd' }); n.dataset.id = c.id; pondEl.appendChild(n); }
+      if (!have[c.id]) { var n = backEl('pd'); n.dataset.id = c.id; pondEl.appendChild(n); }
     });
     Object.keys(have).forEach(function (id) { if (!keep[id]) have[id].remove(); });
     var fishing = S.phase === 'fish' && S.turn === ME && myTurnish();
@@ -409,10 +548,10 @@
       else if (S.turn === ME && person(ME)) {
         go = true;
         if (S.phase === 'fish') t = !S.ask ? 'You are out of cards, so fish one from the pond' : S.ask.alone ? 'Nobody else has cards left, so fish one from the pond' : '<b>Go fish!</b> Tap a card in the pond';
-        else if (N() === 2) t = 'Tap a card to ask ' + fn((ME + 1) % 2) + ' for that rank';
-        else if (SEL.to >= 0) t = 'Now tap a card to ask ' + fn(SEL.to) + ' for that rank';
-        else if (SEL.r) t = 'Now tap who to ask for ' + Core.plural(SEL.r);
-        else t = 'Your turn. Tap a player, then a card to ask for that rank';
+        else if (N() === 2) t = TH() ? 'Tap a card to ask ' + fn((ME + 1) % 2) + ' for more like it' : 'Tap a card to ask ' + fn((ME + 1) % 2) + ' for that rank';
+        else if (SEL.to >= 0) t = TH() ? 'Now tap a card to ask ' + fn(SEL.to) + ' for more like it' : 'Now tap a card to ask ' + fn(SEL.to) + ' for that rank';
+        else if (SEL.r) t = 'Now tap who to ask for ' + Core.plural(SEL.r, TH());
+        else t = TH() ? 'Your turn. Tap a player, then a card to ask for more like it' : 'Your turn. Tap a player, then a card to ask for that rank';
       } else if (isCpu(S.turn)) t = fn(S.turn) + (S.phase === 'fish' ? ' is fishing' : ' is thinking');
       else t = NET ? 'Waiting for ' + fn(S.turn) : 'Pass the device to ' + fn(S.turn);
     }
@@ -441,9 +580,9 @@
       var r = el('div', { class: 'hrow' });
       row.forEach(function (g) {
         var rank = g[0].r, b = el('button', { type: 'button', class: 'grp' + (asking ? ' can' : '') + (SEL.r === rank && asking ? ' sel' : '') + (g.length === 3 ? ' three' : ''), 'data-r': rank,
-          'aria-label': BLIND ? 'Face-down cards' : (g.length === 1 ? 'One ' + Core.single(rank) : Core.many(g.length, rank)) + (asking ? ', ask for ' + Core.plural(rank) : ''),
+          'aria-label': BLIND ? 'Face-down cards' : (g.length === 1 ? 'One ' + Core.single(rank, TH()) : Core.many(g.length, rank, TH())) + (asking ? ', ask for ' + Core.plural(rank, TH()) : ''),
           onclick: function () { onGroupTap(rank); } });
-        g.forEach(function (c) { var n = BLIND ? Kit.card('', '', { back: true }) : Cards.el(c); n.dataset.id = c.id; b.appendChild(n); });
+        g.forEach(function (c) { var n = BLIND ? backEl() : faceEl(c); n.dataset.id = c.id; b.appendChild(n); });
         if (g.length > 1 && !BLIND) b.appendChild(el('span', { class: 'gn', text: String(g.length) }));
         r.appendChild(b);
       });
@@ -525,6 +664,7 @@
     });
   }
   function startGame() {
+    warm(TH());
     if (!NET && people() > 1) { var p = S.turn; if (person(p)) { ME = p; S.me = p; } }
     save(); build(); render();
     busy = true; var t = token;
@@ -540,7 +680,7 @@
   }
   function dealtMoments() {
     (S.dealtBooks || []).forEach(function (b, i) {
-      later(300 + i * 1800, function () { Kit.moment({ chip: b.r, title: 'Dealt a book', line: (you(b.p) ? 'You were' : fn(b.p) + ' was') + ' dealt all four ' + Core.plural(b.r) + ', so the book went straight down.', pts: '+1' }); Kit.sfx('sparkle'); });
+      later(300 + i * 1800, function () { Kit.moment({ chip: TH() ? ' ' : b.r, title: 'Dealt a book', line: (you(b.p) ? 'You were' : fn(b.p) + ' was') + ' dealt all four ' + Core.plural(b.r, TH()) + ', so the book went straight down.', pts: '+1' }); momentPic(b.r); Kit.sfx('sparkle'); });
     });
   }
 
@@ -573,7 +713,7 @@
     setTimeout(function () { n.classList.add('out'); setTimeout(function () { n.remove(); bubs = bubs.filter(function (x) { return x !== b; }); }, 260); }, ms || 1700);
   }
   function ghostCard(c, r, cw) {
-    var g = c ? Kit.card(c.r, c.s) : Kit.card('', '', { back: true });
+    var g = c ? faceEl(c) : backEl();
     g.classList.add('ghost'); g.style.setProperty('--cw', cw + 'px');
     g.style.translate = (r.left + r.width / 2 - cw / 2) + 'px ' + (r.top + r.height / 2 - cw * 0.7) + 'px';
     document.body.appendChild(g);
@@ -611,7 +751,7 @@
     if (mv.k === 'fish') return playFish(prev, mv, st, done);
     S = st; render(); done();
   }
-  function phrase(r) { return Core.plural(r); }
+  function phrase(r) { return Core.plural(r, TH()); }
   function playAsk(prev, mv, st, done) {
     S = prev; render();
     var p = mv.p, to = mv.to, r = mv.r, mine = p === ME && !BLIND && !watching();
@@ -624,7 +764,7 @@
     later(mine ? 650 : 1050, function () {
       if (g) g.classList.add('want');
       if (mv.n) {
-        bubble(to, mv.n === 1 ? 'Here’s ' + Core.aOf(r) + '.' : 'Here are ' + Core.many(mv.n, r) + '.', '', 1400);
+        bubble(to, mv.n === 1 ? 'Here’s ' + Core.aOf(r, TH()) + '.' : 'Here are ' + Core.many(mv.n, r, TH()) + '.', '', 1400);
         later(380, function () {
           var from = to === ME && !watching() ? groupRect(r) : fanRect(to);
           var mid = withBooksUp(st, p, mv.books);
@@ -701,7 +841,7 @@
         var cn = holder && holder.querySelector('.bkn');
         if (cn) { cn.classList.remove('bump'); void cn.offsetWidth; cn.classList.add('bump'); plusOne(cn); }
         Kit.sfx('sparkle'); if (you(p)) Kit.haptic('success');
-        if (!you(p)) bubble(p, 'That makes four ' + Core.plural(r) + '!', 'lucky', 1300);   // (yours: the book and the count say it)
+        if (!you(p)) bubble(p, 'That makes four ' + Core.plural(r, TH()) + '!', 'lucky', 1300);   // (yours: the book and the count say it)
       });
     });
     later(ranks.length * 300 + 900, done);
@@ -715,10 +855,11 @@
   function wished(mv) {
     var r = mv.c.r, g = mv.c.r + SUITG[mv.c.s];
     if (you(mv.p)) {
-      Kit.moment({ chip: g, color: mv.c.s === 'h' || mv.c.s === 'd' ? '#d81e3a' : '#1d1b2e', icon: null, title: 'The fish you wished for', line: 'You asked for ' + Core.plural(r) + ' and fished one up from the pond, so you ask again.', ms: 2200 });
+      Kit.moment({ chip: TH() ? ' ' : g, color: TH() ? DK.BAND[mv.c.s] : mv.c.s === 'h' || mv.c.s === 'd' ? '#d81e3a' : '#1d1b2e', icon: null, title: 'The fish you wished for', line: 'You asked for ' + Core.plural(r, TH()) + ' and fished one up from the pond, so you ask again.', ms: 2200 });
+      momentPic(r);
       Kit.sfx('good'); Kit.haptic('success');
     } else {
-      bubble(mv.p, 'It’s ' + Core.aOf(r) + ', just what I asked for!', 'lucky', 1800);
+      bubble(mv.p, 'It’s ' + Core.aOf(r, TH()) + ', just what I asked for!', 'lucky', 1800);
       Kit.callout('The fish ' + fn(mv.p) + ' wished for');
       Kit.sfx('good', 0.6);
     }
@@ -726,9 +867,10 @@
   function bigCatch(mv) {
     var mine = you(mv.p), hit = you(mv.to);
     if (mine || hit) {
-      Kit.moment({ chip: mv.r, title: 'A big catch', line: mine ? 'You took three ' + Core.plural(mv.r) + ' from ' + fn(mv.to) + ' in one ask.' : fn(mv.p) + ' took all three of your ' + Core.plural(mv.r) + ' in one ask.', pts: '+3', tone: mine ? '' : 'bad', ms: 2100 });
+      Kit.moment({ chip: TH() ? ' ' : mv.r, title: 'A big catch', line: mine ? 'You took three ' + Core.plural(mv.r, TH()) + ' from ' + fn(mv.to) + ' in one ask.' : fn(mv.p) + ' took all three of your ' + Core.plural(mv.r, TH()) + ' in one ask.', pts: '+3', tone: mine ? '' : 'bad', ms: 2100 });
+      momentPic(mv.r);
       Kit.sfx(mine ? 'win' : 'bad'); if (mine) Kit.confetti({ count: 40 });
-    } else Kit.callout(fn(mv.p) + ' took three ' + Core.plural(mv.r));
+    } else Kit.callout(fn(mv.p) + ' took three ' + Core.plural(mv.r, TH()));
     if (mv.streak >= 3) later(1200, function () { streakNote(mv); });
   }
   function streakNote(mv) {
@@ -767,12 +909,24 @@
   function rankRows(st, me) {
     return standings(st).map(function (i) { return { name: st.players[i].name, score: st.books[i].length, color: Kit.color(i), cpu: isCpu(i), me: i === me && onePerson() && !watching() }; });
   }
+  // A themed deck's results card shows the winner's books by their pictures, under the title
+  function winPic(st) {
+    var th = st.theme && DK.get(st.theme) ? st.theme : null; if (!th) return null;
+    var p = st.winner[0], d = deckOf(th), row = el('div', { class: 'gfwp', role: 'list', 'aria-label': (you(p) ? 'Your' : fn(p) + '’s') + ' books' });
+    st.books[p].forEach(function (r) {
+      var t = el('div', { class: 'gfwp-t', role: 'listitem' }, [el('span', { class: 'gfwp-p', style: { backgroundImage: 'url("' + DK.pic(th, r, true) + '")' } }), el('span', { class: 'gfwp-n', text: Core.plural(r, th) })]);
+      setDeckVars(t, d); row.appendChild(t);
+    });
+    return row.children.length ? row : null;
+  }
   function sweepMoment(st, then) {
     var w = st.winner;
     if (w.length !== 1 || st.books[w[0]].length !== 13) { then(); return; }
     var mine = you(w[0]);
     Kit.moment({ big: true, icon: 'fish', title: 'Every book', line: (mine ? 'You' : fn(w[0])) + ' made all 13 books, and nobody else made a single one.', pts: '13', tone: mine ? '' : 'bad', ms: 3200,
       cards: Core.RANKS.slice(-5).map(function (r, i) { return { r: r, s: Core.SUITS[i % 4] }; }) });
+    var th = TH();
+    if (th) [].forEach.call(document.querySelectorAll('.kmb-c'), function (c, i) { var r = Core.RANKS[8 + i], d = deckOf(th); c.innerHTML = ''; c.classList.add('gfmb'); c.style.setProperty('--pa', d.pan[0]); c.style.setProperty('--pb', d.pan[1]); c.style.backgroundImage = 'url("' + DK.pic(th, r, true) + '")'; });
     Kit.sfx(mine ? 'win' : 'bad'); if (mine) { Kit.confetti({ count: 120 }); Kit.haptic('success'); }
     setTimeout(then, 3400);
   }
@@ -781,14 +935,14 @@
     if (st._done) return; st._done = 1;
     recordGame(st, st.mode === 'local' ? 'Pass & play' : 'vs Computer');
     clearSave();
-    var cfg = { players: st.players, level: st.level, next: st.next, mode: st.mode };
+    var cfg = { players: st.players, level: st.level, next: st.next, mode: st.mode, theme: st.theme };
     var t = token;
     later(500, function () {
       sweepMoment(st, function () {
         if (t !== token) return;
         var lose = st.winner.every(function (p) { return !person(p); });
         Kit.win({
-          title: winTitle(st, ME), sub: winSub(st), rank: rankRows(st, ME), lose: lose, icon: lose ? 'bot' : 'trophy',
+          title: winTitle(st, ME), sub: winSub(st), pic: winPic(st), rank: rankRows(st, ME), lose: lose, icon: lose ? 'bot' : 'trophy',
           again: function () { S = Core.newGame(cfg); S.mode = cfg.mode; S.me = 0; ME = 0; Kit.gameStart(); startGame(); },
           look: 'Look at the table',
           extra: [{ label: 'Every book', onClick: showBooks }],
@@ -845,10 +999,10 @@
   function netOpts() {
     var g = {}; try { g = JSON.parse(localStorage.getItem('gn_setup_gofish')) || {}; } catch (e) {}
     var o = g.options || {};
-    return { seats: Math.max(2, Math.min(6, +g.count || 3)), next: o.next === 'asked' ? 'asked' : 'left', level: Core.lv(o.level) };
+    return { seats: Math.max(2, Math.min(6, +g.count || 3)), next: o.next === 'asked' ? 'asked' : 'left', level: Core.lv(o.level), theme: Core.theme(o.deck) };
   }
   function netStart(players, opts) {
-    var st = Core.newGame({ players: players.map(function (p) { return { name: p.name, cpu: !!p.bot, level: p.bot ? opts.level : undefined }; }), level: opts.level, next: opts.next });
+    var st = Core.newGame({ players: players.map(function (p) { return { name: p.name, cpu: !!p.bot, level: p.bot ? opts.level : undefined }; }), level: opts.level, next: opts.next, theme: opts.theme });
     st.online = 1;
     return st;
   }
@@ -906,7 +1060,7 @@
     var st = S, res = NET.result, left = res && res.left != null, me = NET.seat, won = me >= 0 && st.winner.indexOf(me) >= 0;
     netRecord(st); netCloseOver();
     NOVER = Kit.win({
-      title: left ? res.text : winTitle(st, me), sub: winSub(st), rank: rankRows(st, me), lose: !won && !left, icon: won ? 'trophy' : 'users',
+      title: left ? res.text : winTitle(st, me), sub: winSub(st), pic: left ? null : winPic(st), rank: rankRows(st, me), lose: !won && !left, icon: won ? 'trophy' : 'users',
       againLabel: left ? 'Back to the lobby' : 'Play again',
       again: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
       look: 'Look at the table',
@@ -936,6 +1090,7 @@
   });
   // (tests)
   window.__gf = { get S() { return S; }, get busy() { return busy; }, get me() { return ME; }, get net() { return !!NET; }, move: function (a) { move(ME, a); }, core: Core,
+    redraw: function () { render(); },
     finishNow: function () { while (S && S.phase !== 'over') { var p = Core.turn(S); Core.apply(S, p, Core.bot(S, p)); } save(); render(); next(); } };
 })();
 </script>
