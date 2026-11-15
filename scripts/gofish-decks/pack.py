@@ -47,6 +47,23 @@ def cutout(im, tol):
             ny, nx = y + dy, x + dx
             if 0 <= ny < h and 0 <= nx < w and not seen[ny, nx] and open_[ny, nx]:
                 seen[ny, nx] = True; q.append((ny, nx))
+    # background shut inside the drawing (between a tripod's legs, under a cat's chin): a pocket of the very same flat
+    # color as the background, big enough to matter, is background too; a white part of the subject is shaded and
+    # grained, so it is never as flat as the paper it was drawn on
+    from scipy import ndimage
+    flat = (dist < tol * 0.4) & ~seen
+    lab, n = ndimage.label(flat)
+    if n:
+        sizes = ndimage.sum(np.ones_like(lab), lab, index=np.arange(1, n + 1))
+        means = ndimage.mean(dist, lab, index=np.arange(1, n + 1))
+        sds = ndimage.standard_deviation(dist, lab, index=np.arange(1, n + 1))
+        keep = np.zeros(n + 1, bool)
+        for i in range(n):
+            if sizes[i] > h * w * 0.0012 and means[i] < 5 and sds[i] < 2.0: keep[i + 1] = True
+        pocket = keep[lab]
+        # grow each pocket out to the outline, as the flood fill does from the edges
+        grow = ndimage.binary_dilation(pocket, iterations=3) & open_
+        seen = seen | pocket | grow
     m = Image.fromarray(np.where(seen, 0, 255).astype(np.uint8), 'L')
     # soften: a pixel half way between the background and the drawing is half see-through
     soft = np.clip((dist - tol * 0.35) / (tol * 0.9), 0, 1)

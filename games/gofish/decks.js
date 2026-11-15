@@ -59,7 +59,7 @@
       ['police', 'Police Officer', 'Police Officers'], ['farmer', 'Farmer', 'Farmers'], ['pilot', 'Pilot', 'Pilots'], ['mail', 'Mail Carrier', 'Mail Carriers'],
       ['builder', 'Builder', 'Builders'], ['scientist', 'Scientist', 'Scientists'], ['artist', 'Artist', 'Artists', 'an Artist'], ['vet', 'Veterinarian', 'Veterinarians'],
       ['mechanic', 'Mechanic', 'Mechanics']] },
-    { id: 'states', name: 'US States', em: 'newyork', back: ['#22386e', '#a8323a'], pan: ['#f1f0ea', '#dcdccf'], map: 1, s: [
+    { id: 'states', name: 'US States', em: 'newyork', back: ['#22386e', '#a8323a'], pan: ['#eef2f7', '#d3dde9'], map: 1, s: [
       ['california', 'California'], ['texas', 'Texas'], ['florida', 'Florida'], ['newyork', 'New York'],
       ['alaska', 'Alaska'], ['hawaii', 'Hawaii'], ['arizona', 'Arizona'], ['washington', 'Washington'],
       ['louisiana', 'Louisiana'], ['michigan', 'Michigan'], ['southdakota', 'South Dakota'], ['pennsylvania', 'Pennsylvania'],

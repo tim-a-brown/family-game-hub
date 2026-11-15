@@ -30,7 +30,7 @@ const D = {
     station: 'The International Space Station seen from a slight angle: a long straight central truss, four pairs of long rectangular gold-and-dark-blue solar array wings along it, white cylinder modules joined in the middle, and white radiator panels.',
     telescope: 'A backyard refracting telescope: a long navy and brass tube pointing up to the upper right, with a small finder scope on top and an eyepiece at the lower end, on a wooden tripod with three legs.',
     galaxy: 'A spiral galaxy seen face-on: a glowing golden core and two sweeping spiral arms of tiny blue-white and lavender stars with soft pink patches, all within a round shape.',
-    rover: 'A Mars rover like NASA\'s Perseverance, seen side-on: a boxy white body, exactly six wheels (three visible on this side) on rocker-bogie suspension arms, a tall mast with a camera head on top, and a robotic arm folded at the front. No ground under it.'
+    rover: 'A Mars rover like NASA\'s Perseverance, seen exactly side-on: a boxy white body; only three wheels show, one at the front, one in the middle and one at the back, evenly spaced on rocker-bogie suspension arms (the wheels on the far side are hidden exactly behind them); a tall mast with a camera head on top, and a robotic arm folded at the front. Not five or six wheels in a row: three. No ground under it.'
   } },
   cats: { pal: 'warm ginger, cream, charcoal, dusty rose and sage green', s: {
     ginger: 'A ginger (orange) tabby house cat curled up asleep in a round loaf, its soft stripes following the curve of its body, its tail wrapped around to its nose, eyes closed peacefully.',

@@ -113,7 +113,7 @@
         var bx = el('div', { class: 'hvg-bks' });
         mine.forEach(function (b) {
           var r = b.r === '10' ? '10' : b.r;
-          var pic = th ? [el('div', { class: 'hvg-pic', role: 'img', 'aria-label': plural(b.r), style: { backgroundImage: 'url("' + base + DK.pic(th, b.r, true) + '")' } }), el('b', { text: plural(b.r) })] : [ui.cards([r + 's', r + 'h', r + 'c', r + 'd'])];
+          var pic = th ? [el('div', { class: 'hvg-pic', role: 'img', 'aria-label': plural(b.r), style: { 'background-image': 'url("' + base + DK.pic(th, b.r, true) + '")' } }), el('b', { text: plural(b.r) })] : [ui.cards([r + 's', r + 'h', r + 'c', r + 'd'])];
           bx.appendChild(el('div', { class: 'hvg-bk ' + b.h, title: plural(b.r) }, pic.concat([el('small', { html: b.h === 'd' ? 'Dealt' : (b.h === 'f' ? ui.icon('fish') : '') + 'Turn ' + b.t })])));
         });
         row.appendChild(bx);

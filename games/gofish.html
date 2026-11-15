@@ -167,6 +167,9 @@
 /* the setup's Deck choice */
 .gfdk{display:flex;gap:10px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;padding:6px 4px 8px;margin:0 -4px;scrollbar-width:none;-webkit-mask:linear-gradient(90deg,transparent,#000 10px,#000 calc(100% - 14px),transparent);mask:linear-gradient(90deg,transparent,#000 10px,#000 calc(100% - 14px),transparent);}
 .gfdk::-webkit-scrollbar{display:none;}
+.gfdk{position:relative;}
+/* (an iPad has the room to show every deck at once) */
+@media (orientation:portrait) and (min-width:700px) and (min-height:700px){.gfdk{flex-wrap:wrap;justify-content:center;overflow:visible;-webkit-mask:none;mask:none;margin:0;padding:4px 0 2px;}}
 .gfdt{flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;width:76px;min-height:44px;padding:8px 4px 7px;border:0;border-radius:16px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);color:var(--text-2);font:inherit;cursor:pointer;scroll-snap-align:center;-webkit-tap-highlight-color:transparent;transition:background .2s,box-shadow .2s,scale .2s var(--spring);}
 .gfdt:active{scale:.96;}
 .gfdt.on{background:color-mix(in srgb,var(--lit) 16%,var(--gl));box-shadow:inset 0 0 0 2px var(--lit),0 0 16px var(--litg);color:var(--lit-ink);}
@@ -267,7 +270,7 @@
     var d = deckOf(th), t = DK.subj(th, c.r), n = el('div', { class: 'pcard gft' + (d.dark ? ' dk' : '') + (o.cls ? ' ' + o.cls : ''), 'data-r': c.r, 'data-s': c.s, 'aria-label': t.one });
     setDeckVars(n, d);
     n.style.setProperty('--band', DK.BAND[c.s]); n.style.setProperty('--nf', nameFit(t.one));
-    n.appendChild(el('span', { class: 'art', style: { backgroundImage: 'url("' + DK.pic(th, c.r) + '")' } }));
+    n.appendChild(el('span', { class: 'art', style: { 'background-image': 'url("' + DK.pic(th, c.r) + '")' } }));
     n.appendChild(el('span', { class: 'mk' + (c.s === 'd' ? ' lt' : ''), text: DK.MARK[c.s] }));
     n.appendChild(el('span', { class: 'nm' + (c.s === 'd' ? ' lt' : '') }, [el('span', { text: t.one })]));
     return n;
@@ -477,7 +480,7 @@
   function bookEl(r) {
     var th = TH();
     if (th) {   // (a themed book: the subject's picture on top, on its deck's panel)
-      var d = deckOf(th), b = el('span', { class: 'bk th', 'data-r': r, 'aria-label': 'A book of ' + Core.plural(r, th) }, [el('i'), el('i'), el('b', { style: { backgroundImage: 'url("' + DK.pic(th, r, true) + '")' } })]);
+      var d = deckOf(th), b = el('span', { class: 'bk th', 'data-r': r, 'aria-label': 'A book of ' + Core.plural(r, th) }, [el('i'), el('i'), el('b', { style: { 'background-image': 'url("' + DK.pic(th, r, true) + '")' } })]);
       setDeckVars(b, d); return b;
     }
     return el('span', { class: 'bk', 'data-r': r, 'aria-label': 'A book of ' + Core.plural(r) }, [el('i'), el('i'), el('b', { text: r })]);
@@ -914,7 +917,7 @@
     var th = st.theme && DK.get(st.theme) ? st.theme : null; if (!th) return null;
     var p = st.winner[0], d = deckOf(th), row = el('div', { class: 'gfwp', role: 'list', 'aria-label': (you(p) ? 'Your' : fn(p) + '’s') + ' books' });
     st.books[p].forEach(function (r) {
-      var t = el('div', { class: 'gfwp-t', role: 'listitem' }, [el('span', { class: 'gfwp-p', style: { backgroundImage: 'url("' + DK.pic(th, r, true) + '")' } }), el('span', { class: 'gfwp-n', text: Core.plural(r, th) })]);
+      var t = el('div', { class: 'gfwp-t', role: 'listitem' }, [el('span', { class: 'gfwp-p', style: { 'background-image': 'url("' + DK.pic(th, r, true) + '")' } }), el('span', { class: 'gfwp-n', text: Core.plural(r, th) })]);
       setDeckVars(t, d); row.appendChild(t);
     });
     return row.children.length ? row : null;
