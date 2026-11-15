@@ -109,6 +109,55 @@
   .stage > .csort-row{grid-area:sort;align-self:end;justify-content:center;margin:0 0 8px;}
   .stage > .chand{grid-area:hand;--cw:84px;}
 }
+/* ── Every shape uses the whole screen (the baseline, 2026-11-15) ─────────────────────────────────────────────────
+   Upright, phone and iPad: the page is the screen, and the table takes all the height the hand and the bar leave;
+   the trick's cards grow with the table (container units of the felt). */
+#app .ctable .felt-in{container-type:size;}
+#app .ctrick .pcard{--cw:clamp(40px,min(17cqw,15cqh),96px);}
+@media (orientation:portrait){
+  #app.stage:has(> .ctable){display:flex;flex-direction:column;height:calc(100dvh - var(--bar));padding-bottom:max(calc(var(--safe-b) + 6px),18px);}
+  #app.stage > .ctable{flex:1 1 0;display:flex;flex-direction:column;margin-bottom:6px;}
+  #app.stage > .ctable .felt-in{flex:1 1 0;height:auto;min-height:250px;}
+  #app.stage > .csort-row,#app.stage > .chand,#app.stage > .cbar{flex:none;}
+  #app.stage > .chand{--cw:clamp(56px,17vw,80px);}
+}
+@media (orientation:portrait) and (min-width:700px){
+  #app.stage > .chand{--cw:clamp(84px,12.5vw,104px);}
+}
+/* a short screen leaves out the fanned backs (everyone holds as many cards as you do) */
+@media (max-height:640px){#app .cseat .backs{display:none;}}
+/* A phone on its side: the table at the left as tall as the screen; at the right what you act with, the bar
+   (bids, buttons, what's happening) over your hand */
+@media (orientation:landscape) and (max-height:520px){
+  #app.stage:has(> .ctable){max-width:none;height:calc(100dvh - var(--bar));display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto auto;grid-template-areas:"table bar" "table sort" "table hand";column-gap:14px;padding:0 calc(12px + var(--corner-x)) max(calc(var(--safe-b) + 6px),18px);}
+  #app.stage > .ctable{grid-area:table;margin:0;display:flex;flex-direction:column;min-height:0;padding:6px;border-radius:22px;}
+  #app.stage > .ctable .felt-in{flex:1 1 0;height:auto;min-height:0;border-radius:17px;}
+  #app.stage > .cbar{grid-area:bar;align-self:center;flex-wrap:wrap;margin:0;min-height:0;text-align:center;}
+  #app.stage > .csort-row{grid-area:sort;margin:0;}
+  #app.stage > .chand{grid-area:hand;--cw:clamp(48px,18dvh,76px);padding:14px 0 0;min-height:0;}
+  #app.stage > .cbar .bidgrid button{min-height:38px;}
+  #app .cmsg{bottom:auto;top:64%;transform:translate(-50%,-50%);}
+}
+/* An iPad on its side: the table and its side panel fill the height down to the hand */
+@media (orientation:landscape) and (min-width:1000px) and (min-height:600px){
+  #app.stage:has(> .ctable){height:calc(100dvh - var(--bar));grid-template-rows:minmax(0,1fr) auto auto;padding-bottom:max(calc(var(--safe-b) + 6px),18px);}
+  #app.stage > .ctable{display:flex;flex-direction:column;min-height:0;}
+  #app.stage > .ctable .felt-in{flex:1 1 0;height:auto;min-height:0;}
+  #app.stage > .chand{--cw:clamp(84px,11dvh,100px);}
+}
+/* the stock and the discard grow with the table, and the message keeps below them */
+#app .felt-in{--pcw:clamp(50px,min(20cqw,18cqh),118px);}
+#app .gpiles{--cw:var(--pcw);gap:clamp(22px,9cqw,56px);}
+#app .cmsg{top:calc(47% + var(--pcw) * .7 + 26px);}
+@media (orientation:landscape) and (max-height:520px){
+  #app .gpiles{top:45%;}
+  #app .cmsg{top:calc(45% + var(--pcw) * .7 + 24px);transform:none;}
+  #app.stage > .chand{padding-bottom:20px;min-height:calc(var(--cw) * 1.4 + 34px);}
+}
+/* the shortest phones: the table keeps room for the piles, the message and your seat (the page scrolls a little) */
+@media (orientation:portrait) and (max-height:640px){#app.stage > .ctable .felt-in{min-height:300px;}}
+/* a short table: your seat's points sit beside your name, so the message has room above it */
+@media (max-height:640px),(orientation:landscape) and (max-height:520px){#app .cseat.s{flex-direction:row;gap:6px;} #app .cseat.s .chip-s{white-space:nowrap;}}
 </style>
 </head>
 <body>
@@ -123,7 +172,6 @@
   var MELD_COLORS = ['#3ddc84', '#ffc83d', '#7fd3ff', '#ff9ad5'];
 
   Kit.init({
-    orient: 'portrait',   // phones: sideways leaves no room (the hand or board falls below the screen); tablets turn freely
     id: 'gin-rummy',
     onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } clearSave(); showSetup(); },
     undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
@@ -523,11 +571,14 @@
     S.res = res; S.phase = 'reveal'; S.turn = -1;
     clearUndo(); save(); paint();
     var mine = person(res.winner);
-    Kit.callout(gin ? 'Gin!' : res.undercut ? 'Undercut!' : 'Knock!');
+    // gin and an undercut have their moment on the table, with what they're worth; a plain knock is a callout
+    if (gin) Kit.moment({ icon: 'trophy', title: 'Gin', line: K + ' went gin with no deadwood at all, and ' + D + ' had ' + lo.dw + '.', pts: '+' + res.pts, tone: mine ? '' : 'bad', ms: 2400 });
+    else if (res.undercut) Kit.moment({ icon: 'shield', title: 'Undercut', line: D + ' had ' + lo.dw + ' deadwood against the ' + kb.dw + ' ' + K + ' knocked with.', pts: '+' + res.pts, tone: mine ? '' : 'bad', ms: 2400 });
+    else Kit.callout('Knock!');
     Kit.sfx(gin || res.undercut ? (mine ? 'win' : 'bad') : (mine ? 'good' : 'bad'));
     Kit.haptic(mine ? 'success' : 'error');
     if (gin && person(kn)) Kit.confetti({ count: 90 });
-    setTimeout(function () { if (S && S.phase === 'reveal') showReveal(); }, 1000);
+    setTimeout(function () { if (S && S.phase === 'reveal') showReveal(); }, gin || res.undercut ? 2500 : 1000);
   }
   function deadHand() {
     S.rounds.push([0, 0]); S.labels.push('H' + S.hand);
@@ -1204,6 +1255,36 @@
     show: netShow, leave: netLeave
   });
 })();
+</script>
+<script>
+// Turning the device (or resizing the window) at any moment: the cards and seats glide from where they showed in the
+// last frame to their new places (where everything is, is noted every frame, since a resize has already moved things
+// by the time it is heard). A card that was redrawn is found again by its id.
+(function (SEL) {
+  var root = document.getElementById('app') || document.body, last = new Map(), lastId = {}, wh = innerWidth + 'x' + innerHeight;
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function note() {
+    var m = new Map(), ids = {};
+    root.querySelectorAll(SEL).forEach(function (n) { var r = n.getBoundingClientRect(); if (!r.width) return; m.set(n, r); if (n.dataset && n.dataset.id) ids[n.dataset.id] = r; });
+    last = m; lastId = ids;
+  }
+  (function loop() { if (!document.hidden) note(); requestAnimationFrame(loop); })();
+  window.addEventListener('resize', function () {
+    var now = innerWidth + 'x' + innerHeight; if (now === wh || reduce) return; wh = now;
+    var before = last, beforeId = lastId;
+    requestAnimationFrame(function () {   // (after the game's own resize work has redrawn whatever it redraws)
+      var nodes = [].slice.call(root.querySelectorAll(SEL)), set = new Set(nodes);
+      nodes.forEach(function (n) {
+        for (var p = n.parentElement; p && p !== root; p = p.parentElement) if (set.has(p)) return;   // (moves with its seat)
+        var a = before.get(n) || (n.dataset && n.dataset.id && beforeId[n.dataset.id]), b = n.getBoundingClientRect();
+        if (!a || !b.width || !n.animate) return;
+        var dx = a.left + a.width / 2 - b.left - b.width / 2, dy = a.top + a.height / 2 - b.top - b.height / 2, sx = a.width / b.width, sy = a.height / b.height;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < .02 && Math.abs(sy - 1) < .02) return;
+        try { n.animate([{ translate: dx + 'px ' + dy + 'px', scale: sx + ' ' + sy }, { translate: '0px 0px', scale: '1 1' }], { duration: 440, easing: 'cubic-bezier(.25,.8,.25,1)' }); } catch (e) {}
+      });
+    });
+  });
+})('.pcard, .cseat, .gpile, .cmsg, .brk');
 </script>
 </body>
 </html>
