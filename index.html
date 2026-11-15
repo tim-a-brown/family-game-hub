@@ -1075,14 +1075,9 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   background:var(--lit);box-shadow:0 0 10px var(--litg);}
 :root:not(.ng-x) .g.gr.tl .fav{position:absolute;top:2px;right:2px;width:34px;height:34px;border-radius:12px;align-self:auto;}
 :root:not(.ng-x) .g.gr.tl .fav .ico{width:15px;height:15px;}
-/* the seats, drawn: filled for the players a game needs, outlined for the ones that can join too */
-:root:not(.ng-x) .ppl{display:flex;align-items:flex-end;justify-content:center;gap:2px;height:13px;margin-top:auto;}
+:root:not(.ng-x) .ppl{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:auto;color:var(--text-2);font-size:.8rem;font-weight:650;line-height:1;font-variant-numeric:tabular-nums;}
 :root:not(.ng-x) .ppl:empty{display:none;}
-:root:not(.ng-x) .ppl i{display:block;width:10px;height:12px;color:var(--text-3);}
-:root:not(.ng-x) .ppl i svg{display:block;width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.1;}
-:root:not(.ng-x) .ppl i.on{color:color-mix(in srgb,var(--h) 55%,#fff);}
-:root:not(.ng-x) .ppl i.on svg{fill:currentColor;stroke:none;}
-:root:not(.ng-x) .ppl b{margin-left:1px;font-size:.78rem;font-weight:800;line-height:12px;color:var(--text-3);}
+:root:not(.ng-x) .ppl .ico{width:14px;height:14px;flex:none;color:color-mix(in srgb,var(--h) 55%,#fff);}
 @media (max-width:359px){:root:not(.ng-x) .g.gr.tl .go{padding-top:18px;} :root:not(.ng-x) .g.gr.tl .gi{width:40px;height:40px;} :root:not(.ng-x) .g.gr.tl .tx b{font-size:.84rem;} :root:not(.ng-x) .g.gr.tl .fav{top:0;right:0;width:28px;height:28px;} :root:not(.ng-x) .g.gr.tl .fav .ico{width:13px;height:13px;}}
 @media (max-width:359px){:root:not(.ng-x) .g.gr .go{gap:9px;} :root:not(.ng-x) .g.gr .lv{max-width:46%;font-size:.76rem;} :root:not(.ng-x) .g.gr .fav{width:32px;}}
 :root:not(.ng-x) .sec.favs.wiggle .list > .g.lift{box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.6),0 16px 30px rgba(0,0,0,.55);}
@@ -1310,16 +1305,13 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     if (g.min === g.max) return g.min === 1 ? 'Just you' : g.min + ' players';
     return g.min + ' to ' + g.max + ' players';
   }
-  // How many play, drawn (the tile view; Tim, 2026-11-15: "player ranges should be shown graphically"): a person for
-  // each seat up to six, filled for the players the game needs and outlined for the seats that can join too, and a
-  // + when it seats more than six (or any number). A console game or a tool draws none.
-  var PERSON = '<svg viewBox="0 0 10 12" aria-hidden="true"><circle cx="5" cy="3.1" r="2.4"/><path d="M1 11.4v-.9a4 4 0 0 1 8 0v.9z"/></svg>';
+  // How many play, on a tile (Tim, 2026-11-15: "the people on the tile can just be like '(icon) 2-24'"): the people
+  // icon and the range, "1", "2 to 4" written 2–4, "2+" for any number; a console game or a tool shows none.
   function seatsPic(g) {
     var box = el('span', { class: 'ppl' });
     if (g.cart || g.cat === 'tools') return box;
-    var lo = Math.max(1, g.min || 1), any = !g.max, hi = any ? Math.max(lo + 2, 3) : g.max, n = Math.min(hi, 6);
-    for (var i = 0; i < n; i++) box.appendChild(el('i', { class: i < lo ? 'on' : '', html: PERSON }));
-    if (any || hi > 6) box.appendChild(el('b', { text: '+' }));
+    var lo = Math.max(1, g.min || 1), t = !g.max ? lo + '+' : g.max === lo ? String(lo) : lo + '\u2013' + g.max;
+    box.innerHTML = Kit.icon('users'); box.appendChild(el('span', { text: t }));
     return box;
   }
   var DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];

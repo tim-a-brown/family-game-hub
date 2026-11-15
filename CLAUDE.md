@@ -199,9 +199,8 @@ Underlying principles for everything:
   buttons in a column of their own at the right (cards.js). Sheets' buttons and the Kit keyboard's bottom row stand clear
   of a phone's rounded corners when the browser reports no safe area (18px and 26px). Most games that were locked upright
   on a phone now play sideways (the card tables, the casino tables, Rook, Phase 10, Marbles, the arcade games); Mazes
-  and Pinball play sideways too (Tim, 2026-11-15: "allow all"; Mazes' counters at the left and tools at the right, Pinball's
-  table the screen's full height from the player's eye with Nudge beside the right flipper), and Centipede and Goblin
-  Defenders stay sideways.
+  plays sideways too (Tim, 2026-11-15: "allow all"; its counters at the left and tools at the right), Pinball stays upright
+  on a phone (Tim, the same day: "do pinball vertically only"), and Centipede and Goblin Defenders stay sideways.
 - **Subtle per-game identity:** layout and controls stay standard; each game
   gets its own table "box" via `THEMES` in `kit.js` (felt colour, card backs,
   wood). Keep it understated: colour and material, never mascots or emoji.

@@ -77,7 +77,7 @@ html.pb-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .pb-dmd.lcd{aspect-ratio:4/1;}
 .pb-view{flex:1;min-height:0;position:relative;}
 .pb-gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;}
-/* A phone or an iPad on its side (html.pb-land): the display band steps off the top and stands in the dark at the upper left
+/* An iPad on its side (html.pb-land): the display band steps off the top and stands in the dark at the upper left
    beside the table, so the table takes the screen's full height */
 html.pb-land .pb-band{position:absolute;left:16px;top:10px;width:min(330px,calc(50% - 26vh - 24px));padding:8px 10px 10px;border-radius:16px;}
 html.pb-land .pb-dmd{width:100%;}
@@ -112,13 +112,6 @@ html.pb-land .pb-dmd{width:100%;}
 .pb-fire .pb-arc{--cap:#f1c531;--cap-hi:#fff2a8;--cap-lo:#a07c0c;--bez:#c9a324;--bez-lo:#7c6208;}
 .pb-fire.show{display:flex;}
 .pb-view.no-flipbtns .pb-magna{left:14px;}.pb-view.no-flipbtns .pb-fire{right:14px;}
-/* a phone on its side: the table runs down the middle to the bottom edge, so Nudge leaves it for the right corner
-   beside the right flipper (Fire, on a table that has it, beside Nudge), as Magnet sits beside the left one */
-@media (orientation:landscape) and (max-height:520px){
-  .pb-nudge{left:auto;right:88px;transform:none;}
-  .pb-fire{right:152px;}
-  .pb-view.no-flipbtns .pb-nudge{right:14px;}.pb-view.no-flipbtns .pb-fire{right:78px;}
-}
 /* The plunger close-up: while a ball waits in the shooter lane, a magnified inset of the lane's foot and the
    plunger slides in along the right side (above the button row): ball on the tip, spring, bracket, then the
    cabinet front with the chrome housing, rod and knob. Drag down anywhere on it to pull; let go to launch. It
@@ -216,11 +209,11 @@ function getRenderer() {
   return renderer;
 }
 
-// Turning the device: the sideways layout (html.pb-land: the display beside the table) follows at once, and the table's
-// camera is fitted again to the new shape. (A phone plays sideways too, Tim, 2026-11-15: "allow all": the table takes
-// the screen's height and the flipper buttons sit under each thumb. No View Transition here: its snapshot waits on the 3D table's next frame, which holds the relayout back.)
+// Turning an iPad: the sideways layout (html.pb-land: the display beside the table) follows at once, and the table's
+// camera is fitted again to the new shape. (A phone stays upright: on its side the table would be too small to
+// play. No View Transition here: its snapshot waits on the 3D table's next frame, which holds the relayout back.)
 (function () {
-  const R = document.documentElement, q = matchMedia('(orientation:landscape)');
+  const R = document.documentElement, q = matchMedia('(orientation:landscape) and (min-height:600px)');
   const set = () => R.classList.toggle('pb-land', q.matches);
   set(); q.addEventListener('change', set);
 })();
@@ -228,7 +221,7 @@ function getRenderer() {
 let G = null, view = 'none', ambPref = true, ballsPref = 3;
 let bestEl = null, bestBase = 0, shownBest = -1, passedAt = 0;
 function showHigh() { const id = G ? G.id : selTable(); ArcadeHi.show('pinball_' + id, 'Pinball: ' + TABLES[id].name); }
-Kit.init({
+Kit.init({ orient: 'portrait',
   id: 'pinball',
   onNew: () => showSetup(),
   menu: [
@@ -414,7 +407,6 @@ function startGame(id, balls, who) {
     const padBottom = () => {
       if (viewEl.classList.contains('looking')) return padLast;
       const v = viewEl.getBoundingClientRect(), b = flipBtn.L.getBoundingClientRect();
-      if (v.width > v.height * 1.6) return (padLast = 0);   // (a phone on its side: the buttons sit in the corners beside the table, which takes the full height)
       return (padLast = Math.max(0, v.bottom - (btnsOn() ? b.top : magCtl.getBoundingClientRect().top) + 6));
     };
     const q = pickQuality();   // the quality tier, decided here and fixed for the whole game
@@ -502,7 +494,7 @@ function layoutPlunger() {
   const P = plunger; if (!P.el) return;
   if (!G || !G.plunger || view !== 'game') { hidePlunger(true); return; }
   const vr = viewEl.getBoundingClientRect(); if (!vr.width || !vr.height) return;
-  const W = Math.round(Math.max(vr.height < 500 ? 64 : 84, Math.min(180, vr.width * 0.2, vr.height * 0.26))), right = vr.width > 600 ? 12 : 8, x0 = vr.width - right - W;
+  const W = Math.round(Math.max(84, Math.min(180, vr.width * 0.2))), right = vr.width > 600 ? 12 : 8, x0 = vr.width - right - W;
   // never over a control below it (on a phone that is the right flipper button; with the buttons off, nothing)
   let limit = vr.height - 12;
   for (const c of [flipBtn.R, flipBtn.L, fireCtl, magCtl, nudgeCtl]) {
@@ -510,7 +502,7 @@ function layoutPlunger() {
     const r = c.getBoundingClientRect();
     if (r.right - vr.left > x0 - 6 && r.left - vr.left < x0 + W + 6) limit = Math.min(limit, r.top - vr.top - 12);
   }
-  const top = Math.max(10, Math.round(vr.height * 0.14)), H = Math.max(150, Math.round(limit - top));   // (the room above the flipper button: on a phone held sideways that is under 240)
+  const top = Math.max(10, Math.round(vr.height * 0.14)), H = Math.max(240, Math.round(limit - top));
   // the parts, in CSS px, scaled from the ball (a 27 mm ball is 40% of the inset's width)
   const b = 5, bd = W * 0.4, cx = W / 2, g = { b, bd, cx, laneW: bd * 1.5, tipW: bd * 1.02, tipH: bd * 0.34, cupH: bd * 0.09, rodW: bd * 0.2,
     brH: bd * 0.34, flH: bd * 0.42, flW: bd * 1.5, r0: bd * 0.3, fH: bd * 0.2, kW: bd * 1.2, kH: bd * 1.05 };

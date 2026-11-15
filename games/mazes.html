@@ -67,6 +67,8 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
 .nib-ring{fill:none;stroke:#d0392a;transform-box:fill-box;transform-origin:center;animation:nibp 1.8s ease-out infinite;}
 @keyframes nibp{0%{transform:scale(.6);opacity:.7;}80%,100%{transform:scale(1.9);opacity:0;}}
 .mzs.drawing .nib-ring,.mzs.done .nib-ring,.mzs.done .nib{display:none;}
+/* drawing with a finger from anywhere: the line's end keeps a steady halo, so your eye has it as it moves */
+.mzs.drawing.rel .nib-ring{display:block;animation:none;transform:scale(1.7);opacity:.45;}
 .hintp{stroke:#2a74c9;opacity:0;}
 .hintp.on{animation:hintp 3.6s ease forwards;}
 @keyframes hintp{0%{opacity:0;}10%,70%{opacity:.95;}100%{opacity:0;}}
@@ -256,7 +258,6 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
       { icon: 'trophy', label: 'High scores', onClick: function () { ArcadeHi.show(hiKey(S ? S.mode : 'pencil', S ? S.size : 'easy')); } },
       { icon: 'history', label: 'Past games', onClick: function () { pastGames(); } },
       { icon: 'lightbulb', label: 'Hint', sub: 'Shows the next few steps (costs time)', when: function () { return live(); }, onClick: function () { hint(); } },
-      { icon: 'search', label: 'Magnifier', sub: 'A close-up of the squares under your finger, parked in a corner', when: function () { return TOUCH; }, toggle: function () { return loupeOn(); }, onClick: function () { lsSet('mazes_loupe', loupeOn() ? '0' : '1'); if (!loupeOn()) hideLoupe(); Kit.toast(loupeOn() ? 'Magnifier on' : 'Magnifier off'); } },
       { icon: 'eye', label: 'Reveal the way out', sub: 'Gives up on this maze', when: function () { return live(); }, onClick: function () { askReveal(); } },
       { icon: 'compass', label: 'Level the board', sub: 'Make the way you are holding it flat', when: function () { return live() && S.mode === 'tilt'; }, onClick: function () { level(true); } }
     ],
@@ -521,7 +522,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     drawPencil();
     applyView();
     hud.zoom.style.display = cell < 30 && !S.done ? '' : 'none';
-    tipEl.textContent = S.done ? '' : cell < 30 ? (TOUCH ? 'Drag from the red dot, and pinch to zoom' : 'Drag from the red dot and scroll to zoom. The arrow keys work too.') : (TOUCH ? 'Drag from the red dot along the corridors' : 'Drag from the red dot, or use the arrow keys');
+    tipEl.textContent = S.done ? '' : cell < 30 ? (TOUCH ? 'Drag anywhere to move the red dot, and pinch to zoom' : 'Drag from the red dot and scroll to zoom. The arrow keys work too.') : (TOUCH ? 'Drag anywhere on the page to move the red dot' : 'Drag from the red dot, or use the arrow keys');
   }
   function drawPencil() {
     svg.innerHTML = '';
@@ -681,6 +682,17 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
       var ids = Object.keys(pts);
       if (ids.length >= 2) { endDraw(); startPinch(); return; }
       if (S.done) { gesture = zoomed() ? { k: 'pan', x: e.clientX, y: e.clientY } : null; return; }
+      // A finger draws from anywhere on the page, like a trackpad: the line's end moves as far as the finger does, so the
+      // finger never covers the line or the way ahead (Tim, 2026-11-15: "you can move the end of the line from anywhere
+      // on the screen and don't have to be on top of the dot to move it"). A mouse draws where it points.
+      if (e.pointerType !== 'mouse') {
+        pushUndo();
+        gesture = { k: 'draw', id: e.pointerId, touch: true, rel: true, x: e.clientX, y: e.clientY };
+        svg.classList.add('drawing', 'rel');
+        vp = MC.center(M, S.head, tr).slice(); lastP = vp.slice();
+        edgeLoop();
+        return;
+      }
       var p = toMaze(e.clientX, e.clientY), c = MC.cellAt(M, p[0], p[1], tr), hc = MC.center(M, S.head, tr);
       var near = Math.hypot(p[0] - hc[0], p[1] - hc[1]) <= Math.max(U * (S.head === M.start ? 1.9 : 0.8), 30 / pxu);
       if (near || (c >= 0 && onPath[c])) {
@@ -701,7 +713,8 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
       pt.x = e.clientX; pt.y = e.clientY;
       if (!gesture) return;
       if (gesture.k === 'pinch') return movePinch();
-      if (gesture.k === 'draw' && e.pointerId === gesture.id) { finger = { x: e.clientX, y: e.clientY }; drawAt(e.clientX, e.clientY); }
+      if (gesture.k === 'draw' && e.pointerId === gesture.id && gesture.rel) { var k = relGain() / pxu; vp[0] += (e.clientX - gesture.x) * k; vp[1] += (e.clientY - gesture.y) * k; gesture.x = e.clientX; gesture.y = e.clientY; drawRel(); }
+      else if (gesture.k === 'draw' && e.pointerId === gesture.id) { finger = { x: e.clientX, y: e.clientY }; drawAt(e.clientX, e.clientY); }
       else if (gesture.k === 'pan') { view.x -= (e.clientX - gesture.x) / pxu; view.y -= (e.clientY - gesture.y) / pxu; gesture.x = e.clientX; gesture.y = e.clientY; clampView(); applyView(); }
     });
     function up(e) {
@@ -736,8 +749,28 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
   }
   function endDraw() {
     if (gesture && gesture.k === 'draw') gesture = null;
-    finger = null; lastP = null; if (svg) svg.classList.remove('drawing');
+    finger = null; lastP = null; vp = null; if (svg) svg.classList.remove('drawing', 'rel');
     cancelAnimationFrame(edgeRaf); edgeRaf = 0; hideLoupe();
+  }
+  // The trackpad pen: vp is where the finger has carried the line's end, in the maze's units. It walks the cells in small
+  // steps, as a stroke does, and a wall holds it inside the end's square (it never builds up a lead past a wall, so
+  // turning back answers at once). On a small maze the finger moves farther than the line does: a square is never
+  // less than 16 px of finger travel.
+  var vp = null;
+  function relGain() { return Math.min(1, U * pxu / 16); }
+  function drawRel() {
+    if (!S || S.done || !vp) return;
+    var a = lastP || vp, dist = Math.hypot(vp[0] - a[0], vp[1] - a[1]), n = Math.max(1, Math.ceil(dist / (U * 0.25))), blocked = false;
+    for (var i = 1; i <= n; i++) {
+      var q = [a[0] + (vp[0] - a[0]) * i / n, a[1] + (vp[1] - a[1]) * i / n], c = MC.cellAt(M, q[0], q[1], tr);
+      if (c < 0 || c === S.head) continue;
+      blocked = !moveTo(c);
+      if (S.done) return;
+    }
+    var hc = MC.center(M, S.head, tr), d = Math.hypot(vp[0] - hc[0], vp[1] - hc[1]), lim = U * 0.45;
+    if (MC.cellAt(M, vp[0], vp[1], tr) !== S.head && d > lim) { vp = [hc[0] + (vp[0] - hc[0]) * lim / d, hc[1] + (vp[1] - hc[1]) * lim / d]; }
+    lastP = vp.slice();
+    if (blocked) { var now = performance.now(); if (now - bumpT > 260) { bumpT = now; SND.bump(); Kit.haptic('tick'); } }
   }
   // Walk the finger's track in small steps so a fast stroke still turns every corner
   function drawAt(cx, cy) {
@@ -752,13 +785,22 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     }
     lastP = p;
     if (blocked) { var now = performance.now(); if (now - bumpT > 260) { bumpT = now; SND.bump(); Kit.haptic('tick'); } }
-    if (gesture && gesture.touch) showLoupe(cx, cy, p);
   }
   // While drawing on a zoomed maze, a finger near the edge slides the page along
   function edgeLoop() {
     cancelAnimationFrame(edgeRaf);
     edgeRaf = requestAnimationFrame(function tick() {
-      if (!gesture || gesture.k !== 'draw' || !finger) return;
+      if (!gesture || gesture.k !== 'draw') return;
+      if (gesture.rel) {   // zoomed in: the page slides to keep the line's end well inside it
+        if (zoomed()) {
+          var h = MC.center(M, S.head, tr), mx = view.w * 0.22, my = view.h * 0.22, tx = view.x, ty = view.y;
+          if (h[0] < view.x + mx) tx = h[0] - mx; else if (h[0] > view.x + view.w - mx) tx = h[0] - view.w + mx;
+          if (h[1] < view.y + my) ty = h[1] - my; else if (h[1] > view.y + view.h - my) ty = h[1] - view.h + my;
+          if (tx !== view.x || ty !== view.y) { view.x += (tx - view.x) * 0.18; view.y += (ty - view.y) * 0.18; clampView(); applyView(); }
+        }
+        edgeRaf = requestAnimationFrame(tick); return;
+      }
+      if (!finger) { edgeRaf = requestAnimationFrame(tick); return; }
       if (zoomed()) {
         var r = svg.getBoundingClientRect(), M0 = 40, vx = 0, vy = 0;
         if (finger.x < r.left + M0) vx = -(r.left + M0 - finger.x) / M0; else if (finger.x > r.right - M0) vx = (finger.x - r.right + M0) / M0;
