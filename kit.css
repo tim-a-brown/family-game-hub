@@ -890,8 +890,8 @@ html.k-insheet .k-opt.k-sc{display:flex;flex-direction:column;gap:8px;}
 .k-who-go .ico{width:17px;height:17px;}
 html.k-insheet .k-seats{gap:8px;}
 /* ── The players sheet: a table of seats over a bench of players ─────────────────────────────────────────────
-   Up top every seat is a token; one is chosen (ringed, lifted). Underneath is what can sit there: the Computer
-   switch with its skill, and everyone you play with as big chips. */
+   Up top every seat is a token; one is chosen (ringed, lifted). Underneath, on a panel lit in the chosen seat's
+   color, is what can sit there: the computer at each skill, and everyone you play with as big chips. */
 .k-ps{display:flex;flex-direction:column;gap:14px;margin-top:8px;}
 .k-ps-table{position:sticky;top:-10px;z-index:2;display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:16px 2px;justify-items:center;
   padding:18px 6px 12px;border-radius:var(--r-lg);background:linear-gradient(var(--inset),var(--inset)),var(--bg-2);box-shadow:0 10px 18px -12px rgba(0,0,0,.55);}
@@ -928,35 +928,58 @@ html.k-insheet .k-seats{gap:8px;}
 @keyframes kStPopOn{0%{transform:scale(.35) rotate(-14deg);}60%{transform:scale(1.18) rotate(4deg);}100%{transform:scale(1.04);}}
 /* a seat waiting for someone: its ring breathes (it doesn't hop about) */
 @keyframes kStWait{50%{box-shadow:inset 0 0 0 2px var(--c),0 0 0 3px var(--bg-2),0 0 0 6px var(--accent),0 0 0 11px color-mix(in srgb,var(--accent) 30%,transparent);}}
-.k-ps-pane{display:flex;flex-direction:column;gap:10px;min-width:0;}
-.k-ps-h{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:34px;}
-.k-ps-seat{display:inline-flex;align-items:center;gap:8px;font-size:.78rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--text-2);}
-.k-ps-seat i{width:12px;height:12px;border-radius:50%;}
-.k-ps-rm{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 12px 0 9px;border:0;border-radius:999px;background:var(--w06);color:var(--text-2);font:inherit;font-size:.84rem;font-weight:800;cursor:pointer;}
+/* What goes in the chosen seat stands on one glass panel lit along its top in that seat's color (--sc), the light
+   brightest at a notch under the chosen token (--px, registered so a new choice glides there); its head is that seat
+   again, small: who sits there and which seat it is */
+@property --px{syntax:'<length>';inherits:true;initial-value:60px;}
+.k-ps-pane{position:relative;display:flex;flex-direction:column;gap:12px;min-width:0;padding:12px 12px 14px;border-radius:var(--r-lg);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--sc) 16%,transparent),transparent 160px),var(--gl,var(--w05));box-shadow:inset 0 0 0 1px var(--gl-line,var(--w1));
+  transition:--px .42s var(--spring);}
+.k-ps-pane.still{transition:none;}
+.k-ps-pane::before{content:"";position:absolute;left:14px;right:14px;top:0;height:2px;border-radius:2px;pointer-events:none;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--sc) 18%,transparent),color-mix(in srgb,var(--sc) 55%,transparent) calc(var(--px) - 124px),var(--sc) calc(var(--px) - 14px),color-mix(in srgb,var(--sc) 55%,transparent) calc(var(--px) + 96px),color-mix(in srgb,var(--sc) 18%,transparent));
+  box-shadow:0 0 10px color-mix(in srgb,var(--sc) 40%,transparent);}
+.k-ps-notch{position:absolute;top:-8px;left:calc(var(--px) - 9px);width:18px;height:9px;background:var(--sc);clip-path:polygon(50% 0,100% 100%,0 100%);pointer-events:none;
+  filter:drop-shadow(0 0 5px color-mix(in srgb,var(--sc) 60%,transparent));}
+.k-ps-h{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;}
+.k-ps-seat{display:flex;align-items:center;gap:10px;min-width:0;}
+.k-ps-seat > .avatar,.k-ps-seat > .seat-av > .avatar{width:38px;height:38px;font-size:.98rem;flex:none;}
+.k-ps-seat > .seat-av{flex:none;}
+.k-ps-seat > .avatar .ico{width:50%;height:50%;}
+.k-ps-who{display:flex;flex-direction:column;min-width:0;line-height:1.15;}
+.k-ps-who b{font-size:1.04rem;font-weight:800;color:var(--text);overflow-wrap:break-word;}
+.k-ps-who small{font-size:.8rem;font-weight:600;color:var(--text-3);}
+.k-ps-rm{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 13px 0 10px;border:0;border-radius:999px;background:var(--w06);color:var(--text-2);font:inherit;font-size:.84rem;font-weight:800;cursor:pointer;}
 .k-ps-rm .ico{width:16px;height:16px;}
 .k-ps-rm:active{transform:scale(.95);}
-/* the computer in this seat */
-.k-pb{border-radius:var(--r);background:var(--surface-2);transition:box-shadow .2s,background .2s;}
-.k-pb.on{background:color-mix(in srgb,var(--accent) 12%,var(--surface-2));box-shadow:inset 0 0 0 2px var(--accent);}
-.k-pb-row{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:8px 14px 8px 10px;border:0;background:none;color:var(--text);font:inherit;text-align:left;cursor:pointer;}
-div.k-pb-row{cursor:default;}
-.k-pb-row > .avatar{width:42px;height:42px;color:var(--text);transition:background .2s;}
-.k-pb.on .k-pb-row > .avatar{color:#16102e;}
-.k-pb-n{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.15;}
-.k-pb-n b{font-size:1.08rem;font-weight:800;}
-.k-pb-n small{font-size:.86rem;font-weight:700;color:var(--text-2);overflow-wrap:anywhere;}
-.k-sw{position:relative;flex:none;width:52px;height:32px;border-radius:999px;background:var(--surface-3);transition:background .2s;}
-.k-sw::after{content:"";position:absolute;left:3px;top:3px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.35);transition:transform .25s var(--spring);}
-.k-pb.on .k-sw{background:var(--accent);}
-.k-pb.on .k-sw::after{transform:translateX(20px);}
-.k-pb-more{display:flex;flex-direction:column;gap:8px;padding:2px 12px 12px;animation:kScIn .22s var(--ease);}
-.k-pb-seg{width:100%;}
-.k-pb-seg button{min-height:46px;font-size:1rem;}
-.k-pb-help{margin:0 2px;font-size:.88rem;line-height:1.35;color:var(--text-2);}
+/* the computer for this seat: each skill's robot in this seat's color with its word under it, the one sitting here lit
+   gold, and the dice for new names at the right past a hairline */
+.k-pb{display:flex;flex-direction:column;gap:8px;}
+.k-pk{display:flex;align-items:stretch;justify-content:center;gap:2px;}
+.k-pk-b{flex:1 1 0;min-width:0;max-width:112px;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:44px;padding:8px 2px 7px;border:0;border-radius:16px;background:none;
+  color:var(--text-2);font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .15s,box-shadow .15s;}
+.k-pk-b > .avatar{width:46px;height:46px;flex:none;transition:transform .18s var(--spring),box-shadow .2s;}
+.k-pk-b b{width:100%;font-size:.84rem;font-weight:750;line-height:1.12;text-align:center;overflow-wrap:break-word;}
+.k-pk-b:active > .avatar{transform:scale(.9);}
+.k-pk-b.on{background:rgba(255,211,77,.1);box-shadow:inset 0 0 0 1px rgba(255,211,77,.42);color:var(--lit-ink,var(--accent));cursor:default;}
+.k-pk-b.on > .avatar{box-shadow:0 0 0 3px var(--bg-2),0 0 0 5px var(--lit,var(--accent)),0 0 16px var(--litg,transparent);}
+.k-pk-b.on:active > .avatar{transform:none;}
+.k-pk-sep{flex:none;width:1px;margin:10px 3px 26px;background:var(--gl-line,var(--w1));}
+.k-pk-re > .avatar{background:var(--w08);color:var(--text);box-shadow:inset 0 0 0 1px var(--gl-line,var(--w1));}
+.k-pk-re > .avatar .ico{width:50%;height:50%;}
+.k-pk-re:disabled{opacity:.38;cursor:default;}
+.k-pk-re:disabled:active > .avatar{transform:none;}
+.k-pk-re.roll > .avatar .ico{animation:kDiceRoll .62s var(--spring);}
+@keyframes kDiceRoll{0%{transform:rotate(0) scale(1);}40%{transform:rotate(200deg) scale(.78);}100%{transform:rotate(360deg) scale(1);}}
+/* new names: each robot's name turns over like a flip board, one after another */
+.k-st.roll b,.k-ps-seat.roll .k-ps-who b{animation:kNameRoll .52s var(--spring) both;animation-delay:var(--rd,0ms);transform-origin:50% 60%;}
+.k-st.roll > .avatar{animation:kBotHop .46s var(--spring) both;animation-delay:var(--rd,0ms);}
+@keyframes kNameRoll{0%{transform:perspective(240px) rotateX(-95deg);opacity:0;}55%{opacity:1;}100%{transform:none;opacity:1;}}
+@keyframes kBotHop{0%{transform:none;}35%{transform:translateY(-5px) rotate(-6deg);}70%{transform:translateY(0) rotate(3deg);}100%{transform:none;}}
+.k-pb-help{margin:0 4px;font-size:.88rem;line-height:1.35;color:var(--text-2);}
 .k-pb-all{align-self:flex-start;}
-.k-pb-re{align-self:flex-start;display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:0 12px 0 9px;border:0;border-radius:999px;background:var(--w08);color:var(--text-2);font:inherit;font-size:.86rem;font-weight:800;cursor:pointer;}
-.k-pb-re .ico{width:17px;height:17px;}
-.k-pb-re:active{transform:scale(.95);}
+.k-pb + .k-bench{margin-top:4px;padding-top:14px;border-top:1px solid var(--gl-line,var(--w1));}
+@media (prefers-reduced-motion:reduce){ .k-ps-pane{transition:none;} .k-st.roll b,.k-ps-seat.roll .k-ps-who b,.k-st.roll > .avatar,.k-pk-re.roll > .avatar .ico{animation:none;} }
 /* the bench: everyone you play with. One tap seats them */
 .k-bench{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
 .k-bp{display:flex;align-items:center;gap:10px;min-width:0;min-height:58px;padding:7px 10px 7px 8px;border:0;border-radius:var(--r);background:var(--surface-2);color:var(--text);font:inherit;text-align:left;cursor:pointer;position:relative;
@@ -975,6 +998,7 @@ div.k-pb-row{cursor:default;}
 .k-bp-at{background:var(--c,var(--w2));color:#16102e;}
 .k-ps-new{gap:8px;margin-top:2px;}
 .k-ps-new .input{flex:1;min-width:0;}
+.k-ps-new .btn{min-height:44px;}
 .k-ps-edit{min-height:44px;color:var(--text-3);font-size:.92rem;}
 .k-ps-edit .ico{width:17px;height:17px;}
 @media (min-width:520px){ .k-bench{grid-template-columns:repeat(3,minmax(0,1fr));} }
@@ -988,6 +1012,9 @@ div.k-pb-row{cursor:default;}
   .k-ps-table,.k-ps-table.many{position:sticky;top:0;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));padding:14px 4px 10px;}
   .k-st > .avatar,.k-st > .seat-av > .avatar{width:46px;height:46px;font-size:1.1rem;}
   .k-bench{grid-template-columns:repeat(2,minmax(0,1fr));}
+  /* (the panel stands beside the table here, not under it: no notch, the top lit evenly) */
+  .k-ps-notch{display:none;}
+  .k-ps-pane::before{background:linear-gradient(90deg,color-mix(in srgb,var(--sc) 30%,transparent),var(--sc),color-mix(in srgb,var(--sc) 30%,transparent));}
 }
 @media (prefers-reduced-motion:reduce){ .k-st.open.on > .avatar,.k-st.add.on > .avatar{animation:none;} }
 html.k-insheet .k-opt{scroll-margin-bottom:110px;}
@@ -2108,7 +2135,7 @@ html.k-kb-short .k-lock p{margin-bottom:4px;}
 :root:not(.ng-x) .seg > :is(button.on,button[aria-pressed="true"]){background:rgba(255,211,77,.14);color:var(--lit-ink);box-shadow:inset 0 0 0 1px rgba(255,211,77,.6),0 0 16px rgba(255,190,60,.18);}
 :root:not(.ng-x) .panel{background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),var(--shadow-sm);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);}
 :root:not(.ng-x) .panel-soft{background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);}
-:root:not(.ng-x) :is(.label,.k-scl,.k-rev-h,.k-sk-l,.k-win-notes b,.k-list .k-grp h3,.k-st small,.k-ps-seat,.k-hd-meta small,.k-ho-k,.lk .lk-or,.hv-h,.k-tmr-pick small,.k-tmr-mid small,.k-off h3,.k-pt-hero small,.kd-time small,.kd-card h3,.k-mq-h){text-transform:none;letter-spacing:0;font-weight:600;font-size:.84rem;color:var(--text-2);}
+:root:not(.ng-x) :is(.label,.k-scl,.k-rev-h,.k-sk-l,.k-win-notes b,.k-list .k-grp h3,.k-st small,.k-hd-meta small,.k-ho-k,.lk .lk-or,.hv-h,.k-tmr-pick small,.k-tmr-mid small,.k-off h3,.k-pt-hero small,.kd-time small,.kd-card h3,.k-mq-h){text-transform:none;letter-spacing:0;font-weight:600;font-size:.84rem;color:var(--text-2);}
 :root:not(.ng-x) :is(.k-vs,.qs-vs,.k-ps-vs){text-transform:none;letter-spacing:0;font-size:.82rem;font-weight:650;}
 :root:not(.ng-x) .input{background:var(--inset);box-shadow:inset 0 0 0 1px var(--gl-line);border-radius:var(--r);}
 :root:not(.ng-x) .input:focus{border-color:var(--lit);}
