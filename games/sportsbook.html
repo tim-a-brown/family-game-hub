@@ -421,6 +421,16 @@ body{overflow-x:hidden;}
 @media (orientation:landscape) and (max-height:500px){
   .sb-money b{font-size:1rem;}
   .gm{--pw:clamp(56px,10vw,80px);}
+  /* a phone on its side: the money and the whole slip, down to Place bet, fit the left column's height */
+  .sb-money{gap:6px;margin:2px 0 6px;} .sb-money div{padding:5px 8px 4px;} .sb-money small{font-size:.68rem;}
+  .sb-side .tk{padding-top:calc(var(--z) + 6px);padding-bottom:calc(var(--z) + 6px);line-height:1.25;}
+  .sb-side .tk hr{margin:5px 0;}
+  .sb-side .tkw{margin-bottom:8px;}
+  .sb-side .stake{margin:2px 0 4px;} .sb-side .stake .amt{font-size:22px;}
+  .sb-side .chips{margin-bottom:6px;} .sb-side .cchip{max-width:40px;}
+  .sb-side .place{min-height:44px;}
+  .sb-side .tk{font-size:11.5px;} .sb-side .tk .hd{font-size:10px;}
+  .sb-side .slipbody .mode{margin:0 0 6px;} .sb-side .slipbody .mode button{padding:5px 4px;}
 }
 @media (prefers-reduced-motion:reduce){.prn .feed.out{animation-duration:.01s}.stamp.in{animation:none}}
 </style>
@@ -1066,9 +1076,10 @@ body{overflow-x:hidden;}
     return Promise.all(jobs).then(function () {
       var newly = settle();
       if (view === 'bets') paintBets(); else if (openBets().length) paintBadge();
-      if (newly.length) showResults(newly);
+      if (newly.length) { if (dom.view) showResults(newly); else pendingRes = (pendingRes || []).concat(newly); }   // (settled at load, on the setup screen: shown once the board is up)
     });
   }
+  var pendingRes = null;
 
   // ── State and layout ──────────────────────────────────────────────────────
   var view = 'board', tab = lsGet(TK, null), betsSeg = 'open';
@@ -1104,8 +1115,10 @@ body{overflow-x:hidden;}
     function place() { var wide = mq.matches; (wide ? dom.side : dom.main).insertBefore(dom.money, wide ? dom.side.firstChild : dom.main.firstChild); dom.wide = wide; if (wide) openSlip(false); paintSlip(); }
     if (mq.addEventListener) mq.addEventListener('change', place); else mq.addListener(place);
     place();
+    if (pendingRes) { var pr = pendingRes; pendingRes = null; setTimeout(function () { showResults(pr); }, 700); }
   }
   function paintMoney() {
+    if (!dom.money) return;   // (a ticket can settle at load, before the board is drawn)
     var open = openBets(), risk = open.reduce(function (a, t) { return a + t.stake; }, 0), win = open.reduce(function (a, t) { return a + t.stake + toWin(t); }, 0);
     dom.money.innerHTML = '';
     [['bank', 'Bankroll', money(Casino.balance())], ['', 'In play', money(risk)], ['', 'To collect', money(win)]].forEach(function (x) {
@@ -1976,13 +1989,28 @@ body{overflow-x:hidden;}
     body.appendChild(wrap);
     if (done.some(function (t) { return !t.seen; })) { done.forEach(function (t) { t.seen = 1; }); saveBets(); paintView(); }
   }
+  // The uncommon results get a moment as the tickets are stamped: a parlay that hits (four legs or more bigger), a single
+  // that comes in at +400 or longer, and three or more tickets settled together that all won
+  function rareMoment(list) {
+    var won = list.filter(function (t) { return t.st === 'win'; });
+    var par = won.filter(function (t) { return t.kind === 'parlay'; }).sort(function (a, b) { return b.legs.length - a.legs.length; })[0];
+    if (par) return { chip: par.legs.length + ' legs', title: 'The parlay hits', line: 'All ' + par.legs.length + ' picks on the ticket won, so it pays ' + money(par.pay) + '.', pts: '+' + money(par.pay - par.stake), big: par.legs.length >= 4, at: null };
+    var ls = won.filter(function (t) { return t.kind === 'single' && t.legs[0].odds >= 400; }).sort(function (a, b) { return b.legs[0].odds - a.legs[0].odds; })[0];
+    var nm = ls && (ls.legs[0].pn || (ls.legs[0].side === 'h' ? ls.legs[0].hn : ls.legs[0].side === 'a' ? ls.legs[0].an : ''));
+    if (ls) return { chip: '+' + ls.legs[0].odds, title: 'A longshot comes in', line: (nm ? nm + ' came in' : 'The pick came in') + ' at +' + ls.legs[0].odds + ', so the ticket pays ' + money(ls.pay) + '.', pts: '+' + money(ls.pay - ls.stake), big: ls.legs[0].odds >= 1000, at: null };
+    if (list.length >= 3 && won.length === list.length) return { chip: String(list.length), title: 'A clean sweep', line: 'All ' + list.length + ' tickets that just settled won.', pts: '+' + money(won.reduce(function (a, t) { return a + t.pay - t.stake; }, 0)), at: null };
+    return null;
+  }
   function showResults(list) {
     var box = el('div'), net = list.reduce(function (a, t) { return a + (t.pay || 0); }, 0), stakes = list.reduce(function (a, t) { return a + t.stake; }, 0);
     var sum = el('div', { class: 'res-sum' }, [el('div', null, [el('small', { text: 'Collected' }), el('b', { class: net > 0 ? 'up' : '', text: money(net) })]),
       el('div', { style: { 'text-align': 'right' } }, [el('small', { text: 'Staked' }), el('b', { text: money(stakes) })])]);
     box.appendChild(sum);
     var tks = list.map(function (t) { var w = ticketEl(t, { noStamp: 1, stampLater: 1 }); box.appendChild(w); return w; });
-    Kit.sheet({ title: list.length === 1 ? 'Your bet is settled' : list.length + ' bets settled', node: box, actions: [{ label: 'Nice', cls: 'btn-primary' }] });
+    // a rare result's moment comes up on the board as the results sheet goes away (behind the sheet nobody would see it)
+    var mo = rareMoment(list);
+    Kit.sheet({ title: list.length === 1 ? 'Your bet is settled' : list.length + ' bets settled', node: box, actions: [{ label: 'Nice', cls: 'btn-primary' }],
+      onClose: mo ? function () { setTimeout(function () { Kit.moment(mo); Kit.sfx('win'); Kit.haptic('success'); if (mo.big) Kit.confetti({ count: 160 }); }, 250); } : null });
     list.forEach(function (t) { t.seen = 1; }); saveBets(); paintView();
     tks.forEach(function (w, i) {
       setTimeout(function () {
@@ -1991,7 +2019,7 @@ body{overflow-x:hidden;}
         Kit.sfx(t.st === 'win' ? 'good' : t.st === 'loss' ? 'bad' : 'tick'); Kit.haptic(t.st === 'win' ? 'success' : 'light');
         if (i === tks.length - 1) {
           var profit = net - stakes, big = list.some(function (x) { return x.st === 'win' && (x.kind === 'parlay' || x.pay - x.stake >= 250); });
-          if (profit > 0) setTimeout(function () { Kit.sfx('win'); if (big) { Kit.confetti(); Kit.callout(list.some(function (x) { return x.st === 'win' && x.kind === 'parlay'; }) ? 'Parlay hits!' : 'Big win!'); } }, 300);
+          if (profit > 0) setTimeout(function () { Kit.sfx('win'); if (big) { Kit.confetti(); if (!mo) Kit.callout('Big win!'); } }, 300);
         }
       }, 650 + i * 520);
     });
