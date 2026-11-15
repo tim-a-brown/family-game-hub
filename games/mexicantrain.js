@@ -205,7 +205,7 @@
       later(nx, 650);
       return;
     }
-    if (e.e === 'runEnd') { if (e.n >= 4) { say(e.p, e.n + ' in a row'); if (e.n >= 6) { Kit.moment({ title: 'Express', line: who(e.p) + ' laid ' + e.n + ' tiles on ' + verb(e.p, 'your', 'their') + ' own train in one turn.', chip: String(e.n), color: S.players[e.p].color, tone: isBot(e.p) && humans() ? 'bad' : '', at: tblEl, ms: 1800 }); Kit.sfx('sparkle'); later(nx, 1300); return; } } nx(); return; }
+    if (e.e === 'runEnd') { if (e.n >= 4) { say(e.p, e.n + ' in a row'); if (e.n >= (S.n <= 5 ? 10 : 8)) { Kit.moment({ title: 'Express', line: who(e.p) + ' laid ' + e.n + ' tiles on ' + verb(e.p, 'your', 'their') + ' own train in one turn.', chip: String(e.n), color: S.players[e.p].color, tone: isBot(e.p) && humans() ? 'bad' : '', at: tblEl, ms: 1800 }); Kit.sfx('sparkle'); later(nx, 1300); return; } } nx(); return; }
     if (e.e === 'turn') { nx(); return; }
     if (e.e === 'block') { Kit.callout('Blocked!'); Kit.sfx('bad'); later(nx, 900); return; }
     if (e.e === 'round') { roundEnd(e.res, nx); return; }
@@ -291,11 +291,12 @@
     var zeros = Object.keys(X.outs).map(function (i) { return { p: +i, n: X.outs[i] }; }).sort(function (a, b) { return b.n - a.n; });
     if (zeros.length && zeros[0].n >= 3) hl.push(nm(zeros[0].p) + ' went out in ' + zeros[0].n + ' of the ' + S.R + ' rounds');
     (X.first1 || []).slice(0, 2).forEach(function (f) { hl.push(nm(f.p) + ' went out on the first turn of round ' + (f.round + 1)); });
-    if (X.run && X.run.n >= 5) hl.push(nm(X.run.p) + ' laid ' + X.run.n + ' tiles on ' + (you0(X.run.p) ? 'your' : 'their') + ' own train in one turn in round ' + (X.run.round + 1));
-    if (X.long && X.long.n >= 10) hl.push(Kit.poss(nm(X.long.p)) + ' own train ran to ' + X.long.n + ' tiles in round ' + (X.long.round + 1));
+    // (only the rarer ones: about the longest one game in ten has, by the sim; most games have a run of 5 and a train
+    // of 10, which isn't news)
+    if (X.run && X.run.n >= (S.n <= 5 ? 13 : 10)) hl.push(nm(X.run.p) + ' laid ' + X.run.n + ' tiles on ' + (you0(X.run.p) ? 'your' : 'their') + ' own train in one turn in round ' + (X.run.round + 1));
+    if (X.long && X.long.n >= Math.round(14 + 60 / S.n)) hl.push(Kit.poss(nm(X.long.p)) + ' own train ran to ' + X.long.n + ' tiles in round ' + (X.long.round + 1));
     (X.blank || []).slice(0, 2).forEach(function (b) { hl.push(nm(b.p) + ' ' + (you0(b.p) ? 'were' : 'was') + ' caught with the double blank in round ' + (b.round + 1)); });
-    if (X.bigLoss && X.bigLoss.n >= 100) hl.push(nm(X.bigLoss.p) + ' took ' + X.bigLoss.n + ' dots in round ' + (X.bigLoss.round + 1));
-    if (X.mex) hl.push(nm(X.mex.p) + ' started the Mexican Train' + (X.mex.round ? ' in round ' + (X.mex.round + 1) : ' in the first round'));
+    if (X.bigLoss && X.bigLoss.n >= 100 + Math.round(180 / S.n)) hl.push(nm(X.bigLoss.p) + ' took ' + X.bigLoss.n + ' dots in round ' + (X.bigLoss.round + 1));
     return hl;
   }
   function modeName() {
