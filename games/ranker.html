@@ -20,6 +20,9 @@
 .rk-title{font-family:var(--display);font-weight:400;font-size:clamp(1.8rem,8vw,2.3rem);line-height:1.08;letter-spacing:-.025em;
   margin:0 -6px;padding:2px 6px;border-radius:10px;outline:none;cursor:text;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text;}
 .rk-title:focus{background:var(--gl);box-shadow:0 0 0 2px var(--lit);}
+/* a name being typed is a real box (the Kit keyboard types into boxes), dressed as the words it replaces */
+input.inl{display:block;width:100%;box-sizing:border-box;border:0;color:inherit;font:inherit;-webkit-appearance:none;appearance:none;}
+input.rk-title.inl{width:calc(100% + 12px);background:var(--gl);box-shadow:0 0 0 2px var(--lit);}
 .rk-status{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:.88rem;font-weight:600;color:var(--text-2);}
 .rk-dot{width:9px;height:9px;border-radius:50%;background:var(--text-3);flex:none;}
 .rk-dot.unsaved{background:var(--yellow);box-shadow:0 0 8px rgba(255,200,61,.7);}
@@ -85,7 +88,7 @@
 .rk.m2{background:radial-gradient(circle at 35% 30%,var(--silver-a),var(--silver-b));color:#2b3040;}
 .rk.m3{background:radial-gradient(circle at 35% 30%,var(--bronze-a),var(--bronze-b));color:#3a1c06;}
 .nm{flex:1;min-width:0;padding:8px 8px;font-weight:700;font-size:1.05rem;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:8px;outline:none;cursor:text;}
-.nm[contenteditable="true"]{white-space:normal;overflow-wrap:anywhere;background:#fff;box-shadow:0 0 0 2px var(--lit);-webkit-user-select:text;user-select:text;}
+.nm[contenteditable="true"],input.nm.inl{white-space:normal;overflow-wrap:anywhere;background:#fff;box-shadow:0 0 0 2px var(--lit);-webkit-user-select:text;user-select:text;}
 .dupb{flex:none;font-size:.74rem;font-weight:700;padding:3px 8px;border-radius:6px;background:#f7de9a;color:#7a5200;}
 .ed{display:none;gap:4px;flex:none;}
 .edit .ed{display:flex;}
@@ -396,7 +399,7 @@
   }
 
   // ── Layout ────────────────────────────────────────────────────────────
-  var titleEl = el('h1', { class: 'rk-title', contenteditable: 'true', spellcheck: 'false', 'aria-label': 'List name' });
+  var titleEl = el('h1', { class: 'rk-title', tabindex: '0', 'aria-label': 'List name' });
   var dotEl = el('span', { class: 'rk-dot' }), statusEl = el('span');
   // Two columns on wide landscape screens (display:contents everywhere else)
   var colA = el('div', { class: 'rcol a' }), colB = el('div', { class: 'rcol b' });
@@ -408,8 +411,9 @@
   var listEl = el('div', { class: 'rk-list' }); colB.appendChild(listEl);
   var addInput = el('input', { class: 'input', type: 'text', placeholder: 'Add an item', maxlength: 120, autocomplete: 'off', enterkeyhint: 'done', 'aria-label': 'New item' });
   var addBtn = el('button', { type: 'button', class: 'btn btn-soft', html: icon('plus') + '<span>Add</span>', onclick: function () { tryAdd(true); } });
-  colB.appendChild(el('div', { class: 'add' }, [addInput, addBtn]));
-  var suggestHost = el('div'); colB.appendChild(suggestHost);
+  // the box and the note under it about a near duplicate (with its buttons) are kept in view above the keyboard together
+  var suggestHost = el('div');
+  colB.appendChild(el('div', { 'data-osk-view': '' }, [el('div', { class: 'add' }, [addInput, addBtn]), suggestHost]));
   var hintEl = el('p', { class: 'hint' }); colB.appendChild(hintEl);
 
   var saveBtn = el('button', { type: 'button', class: 'btn btn-primary', onclick: function () { if (!saveBtn.disabled) saveList(); } });
@@ -505,22 +509,23 @@
   }
 
   // ── Editing a name in place ───────────────────────────────────────────
-  function editName(nm, id) {
-    if (nm.isContentEditable) return;
-    nm.setAttribute('contenteditable', 'true'); nm.setAttribute('spellcheck', 'false');
-    nm.focus();
-    var r = document.createRange(); r.selectNodeContents(nm); var s = getSelection(); s.removeAllRanges(); s.addRange(r);
-    var done = false;
-    function fin(save) {
-      if (done) return; done = true;
-      nm.removeAttribute('contenteditable');
-      if (save) renameItem(id, nm.textContent); else render();
-    }
-    nm.addEventListener('blur', function () { fin(true); }, { once: true });
-    nm.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') { e.preventDefault(); nm.blur(); }
-      else if (e.key === 'Escape') { done = true; nm.removeAttribute('contenteditable'); render(); }
+  // A name is typed in a box laid where its words were (a box, not editable text, so the Kit keyboard types it);
+  // Enter or a tap elsewhere keeps it, Escape puts the old name back.
+  function inlineEdit(node, label, done) {
+    if (!node.isConnected || node.classList.contains('inl')) return;
+    var inp = el('input', { class: node.className + ' inl', type: 'text', maxlength: 120, value: node.textContent, autocomplete: 'off', spellcheck: 'false', enterkeyhint: 'done', 'aria-label': label });
+    var fin = false;
+    function end(v) { if (fin) return; fin = true; if (inp.isConnected) inp.replaceWith(node); done(v); }
+    inp.addEventListener('blur', function () { end(inp.value); });
+    inp.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+      else if (e.key === 'Escape') { e.preventDefault(); end(null); }
     });
+    node.replaceWith(inp);
+    inp.focus(); inp.select();
+  }
+  function editName(nm, id) {
+    inlineEdit(nm, 'Item name', function (v) { if (v == null) render(); else renameItem(id, v); });
   }
 
   // ── Gestures: drag to rank, long-press, swipe to delete, tap to edit ──
@@ -534,7 +539,7 @@
     });
     var G = null;
     row.addEventListener('pointerdown', function (e) {
-      if (e.button || D || grip.contains(e.target) || e.target.closest('.ed') || nm.isContentEditable) return;
+      if (e.button || D || grip.contains(e.target) || e.target.closest('.ed') || e.target.tagName === 'INPUT') return;
       G = { x: e.clientX, y: e.clientY, t: Date.now(), mode: null, id: e.pointerId, mouse: e.pointerType === 'mouse' };
       row.classList.add('pressing');
       G.timer = setTimeout(function () {
@@ -667,7 +672,7 @@
         el('button', { type: 'button', class: 'btn btn-yellow btn-sm', text: 'Add anyway', onclick: function () { addItem(addInput.value); addInput.value = ''; updateInput(); addInput.focus(); } }),
         el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Skip', onclick: function () { addInput.value = ''; updateInput(); addInput.focus(); } })
       ])
-    ]));
+    ]));    if (window.KitKb && KitKb.on()) KitKb.place();   // (the note just came: room is made for it too)
   }
   function tryAdd(fromBtn) {
     var v = addInput.value.trim(); if (!v) return;
@@ -678,12 +683,9 @@
   addInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); tryAdd(false); } });
 
   // ── Title ─────────────────────────────────────────────────────────────
-  titleEl.addEventListener('focus', function () { var r = document.createRange(); r.selectNodeContents(titleEl); var s = getSelection(); s.removeAllRanges(); s.addRange(r); });
-  titleEl.addEventListener('blur', function () { setName(titleEl.textContent); });
-  titleEl.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') { e.preventDefault(); titleEl.blur(); }
-    else if (e.key === 'Escape') { titleEl.textContent = state.name; titleEl.blur(); }
-  });
+  function editTitle() { inlineEdit(titleEl, 'List name', function (v) { if (v == null) render(); else setName(v); }); }
+  titleEl.addEventListener('click', editTitle);
+  titleEl.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); editTitle(); } });
 
   // ── Sheets: my lists, share, settings ─────────────────────────────────
   var listsSheet = null, listsBox = null;
@@ -720,7 +722,7 @@
     return Promise.resolve(legacyCopy(t));
   }
   function legacyCopy(t) {
-    var ta = el('textarea', { style: { position: 'fixed', opacity: '0', top: '0' } }); ta.value = t; document.body.appendChild(ta); ta.select();
+    var ta = el('textarea', { 'data-osk': 'off', style: { position: 'fixed', opacity: '0', top: '0' } }); ta.value = t; document.body.appendChild(ta); ta.select();
     try { document.execCommand('copy'); } catch (e) {} ta.remove();
   }
   function openShare() {
