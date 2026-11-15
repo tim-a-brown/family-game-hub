@@ -296,7 +296,9 @@ Underlying principles for everything:
   separate Play online rows from games.js hide once the setup offers it. The game's own setup shows it too, as a card
   above the Players card (`friendTables` in kit.js reads the linked people's tables once when the setup opens and
   again when the page comes back into view: TurnNet's, `online.js`'s, Chess's and Lorcana's). **A setup that would not fit the screen folds its options** into
-  one-line rows (`fitFold`), as the home sheet shows them, so nothing scrolls where that can be helped.
+  one-line rows (`fitFold`), as the home sheet shows them, so nothing scrolls where that can be helped. A folded row whose setting is On and Off is a switch on the row, and one with two to four short choices (a score
+  target) is a row of buttons on it, with a ? at the end that opens what it means (`inlineKind` in kit.js; Tim, 2026-11-15);
+  longer choices keep the row that opens them.
   `Kit.win`'s rank rows take `me: true`: your row is ringed in your color and shows your own name, never "You".
   An online.js game whose table takes the setup's robots says `players.onlineBots: true`, and its review shows them.
   Results cards use `Kit.win`'s slots (`again`, `look`, `extra`, `setup`, `scores`, `stats`, close) rather

@@ -2850,6 +2850,21 @@
   // A choice's label can have a second line ('10\nStandard'): the button shows it small under the first (no " · "
   // strung between them); a one-line place (a folded row, the review, a summary) says the first line alone.
   function chText(c) { return String(c[1]).split('\n')[0]; }
+  // Which settings are played on their row in a folded setup or the home screen's sheet: two choices that are on and off
+  // (a switch), or two to four choices short enough to stand beside the setting's name (a row of buttons)
+  function inlineKind(op, choices) {
+    if (!choices || choices.length < 2 || choices.length > 4 || op.render) return null;
+    var isOff = function (c) { return c[0] === false || /^(off|no|none|0|false)$/i.test(String(c[0])) || /^off$/i.test(chText(c)); };
+    var isOn = function (c) { return c[0] === true || /^(on|yes|1|true)$/i.test(String(c[0])) || /^on$/i.test(chText(c)); };
+    if (choices.length === 2) {
+      var off = choices.filter(isOff)[0], on = choices.filter(isOn)[0];
+      if (off && on && off !== on) return { sw: true, on: on, off: off };
+    }
+    var txt = choices.map(chText), most = Math.max.apply(null, txt.map(function (t) { return t.length; }));
+    var total = txt.join('').length + String(op.label || '').length;
+    if (most <= 7 && total <= 30 - choices.length) return { sw: false };
+    return null;
+  }
   function chSub(c) { return String(c[1]).split('\n')[1] || ''; }
   function chHtml(c) { var s2 = chSub(c); return esc(chText(c)) + (s2 ? '<small>' + esc(s2) + '</small>' : ''); }
   function setup(host, o) {
@@ -3055,6 +3070,36 @@
         // In the home screen's sheet each option is one row, its name and what it's set to; tap it to open its
         // choices (and what they mean), pick one and it folds back up
         if (IN_SHEET || fold) {
+          // A setting with a few short choices is played on its row (Tim, 2026-11-15: "most settings are easy to just have
+          // toggles where you can either tap off on or a score target. Surface those on the option selection instead of
+          // making the user open up another menu"): On and Off as a switch, two to four short choices as a row of
+          // buttons, and a ? at the end of the row that opens what the setting means under it
+          var inl = inlineKind(op, choices);
+          if (inl) {
+            var helpOpen = !!openHelp[op.id];
+            var pickC = function (c) {
+              if (String(state.options[op.id]) === String(c[0])) return;
+              state.options[op.id] = c[0]; if (op.onPick) op.onPick(c[0], state.options); sfx('tap'); haptic('light');
+              if (P && typeof P.teams === 'function') renderSeats(); else renderOptions();
+            };
+            var ctl;
+            if (inl.sw) {
+              var isOn = String(state.options[op.id]) === String(inl.on[0]);
+              ctl = el('button', { type: 'button', class: 'k-isw' + (isOn ? ' on' : ''), role: 'switch', 'aria-checked': String(isOn), 'aria-label': op.label,
+                onclick: function () { pickC(isOn ? inl.off : inl.on); } }, [el('i')]);
+            } else {
+              ctl = el('div', { class: 'k-iseg', role: 'radiogroup', 'aria-label': op.label }, choices.map(function (c) {
+                var on = String(state.options[op.id]) === String(c[0]);
+                return el('button', { type: 'button', role: 'radio', 'aria-checked': String(on), class: on ? 'on' : '', text: chText(c), onclick: function () { pickC(c); } });
+              }));
+            }
+            var qb = hasHelp && note ? el('button', { type: 'button', class: 'k-iq' + (helpOpen ? ' on' : ''), 'aria-expanded': String(helpOpen), 'aria-label': 'What ' + op.label + ' means',
+              onclick: function () { openHelp[op.id] = !helpOpen; sfx('tap'); renderOptions(); } }, [el('span', { text: '?' })]) : null;
+            optsBox.appendChild(el('div', { class: 'k-opt k-sc k-inl' + (helpOpen ? ' k-open' : '') }, [
+              el('div', { class: 'k-inrow' }, [el('span', { class: 'k-scl', text: op.label }), ctl, qb]),
+              helpOpen && note ? el('p', { class: 'k-help', text: note }) : null]));
+            return;
+          }
           var openNow = scOpen === op.id;
           // (the choice's own listener has set the value and redrawn; this one folds the row)
           Array.prototype.forEach.call(seg.children, function (b) { b.addEventListener('click', function () { scOpen = null; renderOptions(); }); });
