@@ -25,7 +25,7 @@
 .ls th{height:13px;padding:0;font-size:.62rem;font-weight:750;color:rgba(251,243,220,.55);text-align:center;}
 .ls th.tmh{text-align:left;padding-left:3px;}
 .ls td{height:23px;padding:0;text-align:center;background:var(--plate);border-radius:3px;color:var(--cream);font-family:var(--display);font-size:1.02rem;line-height:23px;box-shadow:inset 0 1px 3px rgba(0,0,0,.8);}
-.ls td.tm{background:none;box-shadow:none;text-align:left;font-family:var(--font);font-weight:900;font-size:.8rem;color:var(--cream);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:2px;}
+.ls td.tm{background:none;box-shadow:none;text-align:left;font-family:var(--font);font-weight:900;font-size:.8rem;color:var(--cream);white-space:nowrap;overflow:hidden;text-overflow:clip;padding-left:2px;}   /* (a long name eases its size down: fitNames) */
 .ls td.tm i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c);margin-right:5px;vertical-align:1px;box-shadow:0 0 0 2px rgba(0,0,0,.4);}
 .ls td.tm.up{color:#fff;}
 .ls td.tm.up i{box-shadow:0 0 0 2px rgba(0,0,0,.4),0 0 8px var(--c);}
@@ -107,7 +107,7 @@
 .mvb:disabled{opacity:.36;}
 .mvb.on{background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--gold-ink);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 8px 18px -10px rgba(255,190,60,.6);}
 .mvb b{display:inline-grid;place-items:center;min-width:17px;height:17px;margin-left:3px;padding:0 4px;border-radius:9px;background:var(--amber);color:#2b1a00;font-size:.68rem;}
-.mvr .cpu{flex:1;min-width:0;display:flex;align-items:center;gap:6px;color:var(--text-3);font-weight:650;font-size:.84rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mvr .cpu{flex:1;min-width:0;display:flex;align-items:center;gap:6px;color:var(--text-3);font-weight:650;font-size:.84rem;line-height:1.15;}
 .mvr .cpu .ico{width:18px;height:18px;flex:none;}
 .go{flex:none;min-height:56px;font-family:var(--display);font-size:1.45rem;letter-spacing:-.01em;}
 
@@ -260,8 +260,8 @@ html.k-osk-up .k-sheet .kp{display:none;}
 .balls i.used{background:#c8102e;box-shadow:none;opacity:.85;}
 .balls i.bonus{box-shadow:inset 0 0 0 2px #e2a400;}
 
-/* iPad portrait and up: bigger type and controls */
-@media (min-width:700px){
+/* iPad portrait and up: bigger type and controls (not a phone on its side, which has its own layout below) */
+@media (min-width:700px) and (min-height:521px){
   .stage.sl-on{max-width:720px;}
   .sl{gap:10px;}
   .ls td{height:32px;line-height:32px;font-size:1.35rem;}
@@ -305,6 +305,26 @@ html.k-osk-up .k-sheet .kp{display:none;}
   .go{min-height:72px;font-size:1.9rem;}
   .dslug .balls i{width:22px;height:22px;}
 }
+/* A phone on its side (html.sl-side, set in the script): the ballpark on the left as tall as the screen; the scoreboard,
+   the matchup, the announcer, the manager's moves and Pitch on the right, where you act */
+html.sl-side .stage.sl-on{max-width:none;padding-left:calc(var(--corner-x) + 6px);padding-right:calc(var(--corner-x) + 6px);padding-bottom:max(calc(var(--safe-b) + 6px),18px);}
+html.sl-side .sl{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(330px,1fr);grid-template-rows:auto auto auto minmax(0,1fr) auto;
+  grid-template-areas:"fld sb" "fld mu" "fld mb" "fld mv" "fld go";column-gap:12px;row-gap:5px;}
+html.sl-side .sl .sb{grid-area:sb;padding:3px;} html.sl-side .sl .fieldbox{grid-area:fld;min-height:0;} html.sl-side .sl .mu{grid-area:mu;}
+html.sl-side .sl .mb{grid-area:mb;padding:4px 8px 5px;} html.sl-side .sl .mv{grid-area:mv;align-self:center;} html.sl-side .sl .go{grid-area:go;min-height:46px;font-size:1.25rem;}
+html.sl-side .ls td{height:19px;line-height:19px;font-size:.9rem;}
+html.sl-side .ls th{height:11px;font-size:.56rem;}
+html.sl-side .bc{padding-top:3px;padding-right:7px;padding-bottom:4px;}
+html.sl-side .bc .nm{font-size:.98rem;}
+html.sl-side .bc .st{font-size:.9rem;}
+html.sl-side .bc .td{display:none;}
+html.sl-side .tick{min-height:2.3em;margin-top:4px;font-size:.92rem;}
+html.sl-side .mvr{min-height:34px;} html.sl-side .mvb{min-height:34px;}
+html.sl-side .mvr:has(> .cpu){display:none;}   /* (the computer's "is managing" line: its moves still show on the field and in the announcer) */
+html.sl-side .bc{--thw:30px;}
+html.sl-side .bc .rl{font-size:.5rem;}
+/* Turning the device: the ballpark, the scoreboard and the controls glide to their new places (a View Transition) */
+.sl .fieldbox{view-transition-name:sl-field;} .sl .sb{view-transition-name:sl-board;} .sl .mu{view-transition-name:sl-mu;} .sl .go{view-transition-name:sl-go;}
 </style>
 </head>
 <body>
@@ -313,6 +333,22 @@ html.k-osk-up .k-sheet .kp{display:none;}
 <script>
 (function () {
   'use strict';
+  // Turning the device. A phone on its side has its own layout (html.sl-side: Sandlot's line score is .ls), and every turn (phone or iPad) changes the
+  // layout inside a View Transition, so the ballpark, the scoreboard and the controls glide to their new places instead of jumping.
+  (function () {
+    var R = document.documentElement, q = matchMedia('(orientation:landscape) and (max-height:520px)'), o = matchMedia('(orientation:landscape)');
+    var wait = false;
+    function set() { wait = false; R.classList.toggle('sl-side', q.matches); R.classList.toggle('land', o.matches); window.dispatchEvent(new Event('resize')); }
+    R.classList.toggle('sl-side', q.matches); R.classList.toggle('land', o.matches);
+    function turn() {
+      if (wait || (R.classList.contains('sl-side') === q.matches && R.classList.contains('land') === o.matches)) return;
+      if (document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        try { wait = true; var t = document.startViewTransition(set); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) { wait = false; }
+      }
+      set();
+    }
+    [q, o].forEach(function (m) { if (m.addEventListener) m.addEventListener('change', turn); else m.addListener(turn); });
+  })();
   var el = Kit.el, esc = Kit.esc, app = document.getElementById('app');
   var SAVE = 'sandlot_state', HKEY = 'sandlot';
   // Tests can set localStorage.sandlot_fast = '1' to skip the animation waits.
@@ -1497,7 +1533,16 @@ html.k-osk-up .k-sheet .kp{display:none;}
     });
     V.sb.innerHTML = '';
     V.sb.appendChild(el('div', { class: 'sb-in' }, [t]));
+    fitNames();
   }
+  // The team names on the scoreboard ease down together until both fit; nothing is cut off with "…"
+  function fitNames() {
+    if (!V || !V.sb) return;
+    var tms = V.sb.querySelectorAll('td.tm'), fs = 0;
+    Array.prototype.forEach.call(tms, function (td) { Kit.fitText(td, 0.55); var f = parseFloat(td.style.fontSize) || 0; if (f && (!fs || f < fs)) fs = f; });
+    if (fs) Array.prototype.forEach.call(tms, function (td) { td.style.fontSize = fs + 'px'; });
+  }
+  window.addEventListener('resize', function () { if (S && S.phase !== 'roster') fitNames(); });
 
   function paintHud() {
     V.tl.innerHTML = '';
@@ -1628,6 +1673,7 @@ html.k-osk-up .k-sheet .kp{display:none;}
   }
   window.addEventListener('resize', chartText);
   window.addEventListener('resize', function () { fitCard(); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { fitCard(); fitNames(); });   // (the card faces' fonts arrive after the first paint)
   function paintTick(fresh) {
     V.tick.innerHTML = '';
     V.tick.classList.toggle('new', !!fresh);
@@ -1872,7 +1918,7 @@ html.k-osk-up .k-sheet .kp{display:none;}
       paint(); paintChart(L.u, L.alt, SEG.filter(function (g) { return g.of.indexOf(o) >= 0; })[0].k); paintTick(true);
       if (big) {
         Kit.haptic('heavy');
-        if (L.tag === 'slam') { Kit.callout('GRAND SLAM!'); Kit.confetti({ count: 120 }); SND.roar(.9, 3.5); }
+        if (L.tag === 'slam') { Kit.moment({ big: true, title: 'Grand slam', line: 'Four runs come home on one swing.', icon: 'flame', pts: '+4', at: V.felt, ms: 2600 }); Kit.confetti({ count: 120 }); SND.roar(.9, 3.5); }
         else Kit.callout(L.runs > 1 ? L.runs + '-run homer!' : 'Home run!');
       } else if (L.runs) { Kit.sfx('good'); SND.roar(.3 + .1 * L.runs, 1.6); }
       if (L.tag === 'dp') { splash('Double play!'); Kit.sfx('bad'); }
@@ -2167,7 +2213,7 @@ html.k-osk-up .k-sheet .kp{display:none;}
     if (canCh) fb.appendChild(el('button', { type: 'button', class: 'btn btn-yellow btn-block', text: L.name + ': challenge the last play!', onclick: function () { S.phase = 'play'; challenge(lose); } }));
     fb.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Final score', onclick: finish }));
     V.felt.appendChild(el('div', { class: 'final' }, [fb]));
-    if (S.walkoff && !S.walkShown) { S.walkShown = true; Kit.callout('Walk-off!'); SND.roar(.9, 3.5); SND.organ(); save(); }
+    if (S.walkoff && !S.walkShown) { S.walkShown = true; Kit.moment({ big: true, title: 'Walk-off win', line: S.teams[hm].name + ' wins it in the bottom of the ' + ord(S.walkoff.i) + '.', icon: 'trophy', at: V.felt, ms: 2600 }); Kit.confetti({ count: 90 }); SND.roar(.9, 3.5); SND.organ(); save(); }
     // A computer manager facing defeat throws its challenge flag
     if (S.pre && L.cpu && L.tricks.challenge && !S.cpuFinalCh) {
       S.cpuFinalCh = true; save();
