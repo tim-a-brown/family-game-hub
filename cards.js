@@ -538,7 +538,7 @@ function Scorepad(host, o) {
       number: function (i, opt) {
         opt = opt || {};
         var start = opt.value != null ? opt.value : (prev && prev.round.scores[i] != null ? prev.round.scores[i] : '');
-        var inp = el('input', { class: 'input num', type: 'text', inputmode: opt.neg === false ? 'numeric' : 'text', value: String(start), placeholder: opt.placeholder || '0', 'aria-label': (opt.label || S.sides[i].name) + ' points' });
+        var inp = el('input', { class: 'input num', type: 'text', inputmode: opt.neg === false ? 'numeric' : 'text', 'data-osk': opt.neg === false ? null : 'neg', enterkeyhint: 'next', value: String(start), placeholder: opt.placeholder || '0', 'aria-label': (opt.label || S.sides[i].name) + ' points' });
         inp.addEventListener('focus', function () { inp.select(); });
         var step = opt.step || 1;
         function bump(d) { var v = parseInt(inp.value, 10) || 0; v += d; if (opt.min != null) v = Math.max(opt.min, v); if (opt.max != null) v = Math.min(opt.max, v); inp.value = String(v); inp.dispatchEvent(new Event('input')); Kit.sfx('tick'); }

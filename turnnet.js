@@ -517,7 +517,7 @@
     wrap.appendChild(E('div', { class: 'ol-h', text: 'Open tables' }));
     var rooms = E('div', { class: 'stack' }, [E('p', { class: 'ol-note', text: 'Looking for open tables…' })]);
     wrap.appendChild(rooms);
-    var codeIn = E('input', { class: 'input', type: 'text', maxlength: '4', placeholder: 'Code', 'aria-label': 'Table code', autocapitalize: 'characters', autocomplete: 'off', spellcheck: 'false' });
+    var codeIn = E('input', { class: 'input', type: 'text', maxlength: '4', placeholder: 'Code', 'aria-label': 'Table code', autocapitalize: 'characters', 'data-osk': 'letters', 'data-osk-space': 'off', enterkeyhint: 'go', autocomplete: 'off', spellcheck: 'false' });
     var codeBtn = E('button', { type: 'button', class: 'btn btn-soft', text: 'Join with code', onclick: function () { run(codeBtn, 'Joining…', function () { return join(codeIn.value, me); }); } });
     codeIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') codeBtn.click(); });
     wrap.appendChild(E('div', { class: 'ol-join' }, [codeIn, codeBtn]));

@@ -289,7 +289,7 @@ const FrequentPlayers = (function(){
         </div>
         <div class="fp-mgr-body">
           <div class="fp-mgr-add">
-            <input type="text" placeholder="Add a player…" maxlength="20" autocomplete="off" autocorrect="off" spellcheck="false">
+            <input type="text" placeholder="Add a player…" maxlength="20" data-osk="name" enterkeyhint="done" autocomplete="off" autocorrect="off" spellcheck="false">
             <button type="button" disabled>Add</button>
           </div>
           <div class="fp-mgr-list"></div>
@@ -325,6 +325,7 @@ const FrequentPlayers = (function(){
         inp.type = 'text';
         inp.value = n;
         inp.maxLength = 20;
+        inp.setAttribute('data-osk', 'name'); inp.setAttribute('enterkeyhint', 'done');
         inp.dataset.original = n;
         inp.addEventListener('blur', function(){
           const val = (inp.value||'').trim();
@@ -607,7 +608,7 @@ const FrequentPlayers = (function(){
         <div class="fp-name-icon">👤</div>
         <div class="fp-name-title">What's your name?</div>
         <div class="fp-name-sub">Used in history and on-screen instead of "You"</div>
-        <input class="fp-name-input" id="fp-name-in" type="text" maxlength="24"
+        <input class="fp-name-input" id="fp-name-in" type="text" maxlength="24" data-osk="name" enterkeyhint="done"
                placeholder="e.g. Tim" autocomplete="off" autocorrect="off" spellcheck="false"
                value="${escapeHtml(current)}">
         <div id="fp-name-chips"></div>

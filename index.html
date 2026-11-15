@@ -2467,8 +2467,8 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   // forced = this device is on a PIN that is now too easy to guess (no "later", but signing out is allowed).
   function changePinSheet(forced) {
     var s, busy = false;
-    function pinIn(ph) { return el('input', { class: 'input pin-in', type: 'password', inputmode: 'numeric', pattern: '[0-9]*', maxlength: 4, autocomplete: 'new-password', placeholder: ph, 'aria-label': ph }); }
-    var a = pinIn('New PIN'), b = pinIn('Type it again'), msg = el('p', { class: 'pin-msg', role: 'status' });
+    function pinIn(ph, hint) { return el('input', { class: 'input pin-in', type: 'password', inputmode: 'numeric', pattern: '[0-9]*', maxlength: 4, autocomplete: 'new-password', enterkeyhint: hint, placeholder: ph, 'aria-label': ph }); }
+    var a = pinIn('New PIN', 'next'), b = pinIn('Type it again', 'done'), msg = el('p', { class: 'pin-msg', role: 'status' });
     [a, b].forEach(function (x) { x.addEventListener('input', function () { x.value = x.value.replace(/[^0-9]/g, '').slice(0, 4); msg.textContent = ''; msg.className = 'pin-msg'; }); });
     b.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
     function say(t, err) { msg.textContent = t; msg.className = 'pin-msg' + (err ? ' err' : ''); }
@@ -2571,7 +2571,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var node = el('div'), s;
     // One header: you (avatar + name, both editable here), with the account underneath
     var mn = typeof FrequentPlayers !== 'undefined' && FrequentPlayers.myName ? FrequentPlayers.myName() : '';
-    var myIn = el('input', { class: 'acct-name', maxlength: 14, placeholder: 'Your name', value: mn || '', autocomplete: 'off', 'aria-label': 'Your name' });
+    var myIn = el('input', { class: 'acct-name', maxlength: 14, placeholder: 'Your name', value: mn || '', 'data-osk': 'name', enterkeyhint: 'done', autocomplete: 'off', 'aria-label': 'Your name' });
     function saveName() { var v = myIn.value.trim(); if (v && v !== mn && FrequentPlayers.setMyName) { FrequentPlayers.setMyName(v); mn = v; refreshWho(); } return v; }
     myIn.addEventListener('change', saveName);
     myIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') myIn.blur(); });
