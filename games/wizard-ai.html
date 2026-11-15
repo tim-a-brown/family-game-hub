@@ -15,7 +15,7 @@
 <script src="../online.js"></script>
 <script src="../turnnet.js"></script>
 <style>
-.stage{padding-bottom:calc(var(--safe-b) + 8px);}
+.stage{padding-bottom:max(calc(var(--safe-b) + 8px),18px);}
 .ctable .felt-in{height:clamp(290px,47dvh,440px);}
 /* Seats for 3, 5 and 6 players (kit has n/s/e/w) */
 .cseat.nw,.cseat.ne{top:8px;transform:translateX(-50%);}
@@ -90,26 +90,59 @@
 .grid td.miss{color:var(--red);font-weight:900;}
 /* iPad portrait: a bigger table and bigger cards to fill the room */
 @media (min-width:700px) and (min-height:900px){
-  .stage{max-width:720px;}
-  .ctable .felt-in{height:clamp(440px,46dvh,560px);}
-  .chand{--cw:86px;}
-  .ctrick .pcard{--cw:80px;}
-  .cseat .backs{--cw:28px;}
-  .cseat .backs .pcard+.pcard{margin-left:-20px;}
-  .cseat .tag{font-size:.95rem;}
-  .cseat .tag .avatar{width:30px;height:30px;}
-  .cseat .chip-s{font-size:.8rem;padding:2px 9px;}
-  .many .cseat .tag{max-width:130px;font-size:.85rem;}
-  .trumpbox{--cw:54px;}
-  .roundbox b{font-size:1.5rem;}
-  .bids button{width:52px;height:52px;font-size:1.45rem;}
-  .picker .q{font-size:1.1rem;}
+  html:not(.land) .stage{max-width:720px;}
+  html:not(.land) .ctable .felt-in{height:clamp(440px,46dvh,560px);}
+  html:not(.land) .chand{--cw:86px;}
+  html:not(.land) .ctrick .pcard{--cw:80px;}
+  html:not(.land) .cseat .backs{--cw:28px;}
+  html:not(.land) .cseat .backs .pcard+.pcard{margin-left:-20px;}
+  html:not(.land) .cseat .tag{font-size:.95rem;}
+  html:not(.land) .cseat .tag .avatar{width:30px;height:30px;}
+  html:not(.land) .cseat .chip-s{font-size:.8rem;padding:2px 9px;}
+  html:not(.land) .many .cseat .tag{max-width:130px;font-size:.85rem;}
+  html:not(.land) .trumpbox{--cw:54px;}
+  html:not(.land) .roundbox b{font-size:1.5rem;}
+  html:not(.land) .bids button{width:52px;height:52px;font-size:1.45rem;}
+  html:not(.land) .picker .q{font-size:1.1rem;}
 }
 /* Landscape tablets and desktops: wider table, hand in one row, everything fits the height */
 @media (min-width:1000px) and (orientation:landscape){
-  .stage{max-width:940px;}
-  .ctable .felt-in{height:clamp(290px,calc(100dvh - 404px),440px);}
+  html.land .stage{max-width:940px;}
+  html.land .ctable .felt-in{height:clamp(290px,calc(100dvh - 404px),440px);}
 }
+/* A phone held upright: the table grows into whatever room the hand and the bid buttons leave, so nothing sits under
+   an empty band */
+@media (orientation:portrait) and (max-width:600px){
+  .stage:has(> .ctable){display:flex;flex-direction:column;min-height:calc(100dvh - var(--bar));}
+  .stage > .ctable{flex:1 1 auto;display:flex;flex-direction:column;}
+  .stage > .ctable .felt-in{flex:1 1 auto;height:auto;min-height:clamp(290px,47dvh,440px);max-height:560px;}
+}
+/* A phone or iPad on its side (html.ls, set in the script): the table on the left as tall as the screen; your hand and the bid
+   buttons on the right, where you act */
+html.ls .stage{max-width:none;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(340px,1fr);grid-template-rows:auto 1fr auto;column-gap:14px;align-items:start;
+  height:calc(100dvh - var(--bar));padding:0 calc(var(--corner-x) + 6px) max(calc(var(--safe-b) + 10px),18px);}
+html.ls .stage > .ctable{grid-column:1;grid-row:1 / -1;margin:0;padding:7px;align-self:stretch;}
+html.ls .ctable .felt-in{height:100%;min-height:0;}
+html.ls .stage > :not(.ctable){grid-column:2;}
+html.ls .csort-row{grid-row:1;}
+html.ls .hands{grid-row:2;align-self:center;}
+html.ls .hands .chand{--cw:clamp(50px,calc((100dvh - var(--bar)) * .2),92px);padding-top:14px;}
+html.ls .cbar{grid-row:3;margin:0;align-self:end;}
+html.ls .picker .sub{margin-bottom:6px;}
+html.ls .bids button{width:40px;height:40px;font-size:1.15rem;}
+html.ls .suits button{height:46px;}
+html.ls .ctrick .pcard{--cw:clamp(42px,calc((100dvh - var(--bar)) * .15),80px);}
+html.ls .trumpbox{--cw:clamp(34px,calc((100dvh - var(--bar)) * .08),54px);}
+/* the same on an iPad: the table's seats at an iPad's size */
+@media (min-height:600px){
+  html.ls .cseat .tag{font-size:.95rem;}
+  html.ls .cseat .tag .avatar{width:30px;height:30px;}
+  html.ls .cseat .chip-s{font-size:.8rem;padding:2px 9px;}
+  html.ls .cseat .backs{--cw:28px;}
+  html.ls .cseat .backs .pcard+.pcard{margin-left:-20px;}
+}
+/* Turning the device: the table, the hand and the buttons glide to their new places (a View Transition in the script) */
+.ctable{view-transition-name:wz-table;} .hands{view-transition-name:wz-hand;} .cbar{view-transition-name:wz-bar;}
 </style>
 </head>
 <body>
@@ -117,6 +150,22 @@
 <script>
 (function () {
   'use strict';
+  // Turning the device. A phone on its side or an iPad held sideways has its own layout (html.ls), and every turn (phone or iPad) changes the
+  // layout inside a View Transition, so the table, the hand and the buttons glide to their new places instead of jumping.
+  (function () {
+    var R = document.documentElement, q = matchMedia('(orientation:landscape) and (max-height:820px)'), o = matchMedia('(orientation:landscape)');
+    var wait = false;
+    function set() { wait = false; R.classList.toggle('ls', q.matches); R.classList.toggle('land', o.matches); window.dispatchEvent(new Event('resize')); }
+    R.classList.toggle('ls', q.matches); R.classList.toggle('land', o.matches);
+    function turn() {
+      if (wait || (R.classList.contains('ls') === q.matches && R.classList.contains('land') === o.matches)) return;
+      if (document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        try { wait = true; var t = document.startViewTransition(set); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) { wait = false; }
+      }
+      set();
+    }
+    [q, o].forEach(function (m) { if (m.addEventListener) m.addEventListener('change', turn); else m.addListener(turn); });
+  })();
   var el = Kit.el, app = document.getElementById('app');
   var SAVE = 'wizard_state', KEY = 'wizard', PAD_KEY = 'wz';
   var V = { '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, J: 11, Q: 12, K: 13, A: 14 };
@@ -405,11 +454,42 @@
     S.phase = 'roundover';
     clearUndo(); save();
     paintSeats(); paintBar();
-    var me = S.me;
-    if (pts[me] > 0) { Kit.callout(S.bids[me] >= 3 ? 'Nailed ' + S.bids[me] + '!' : 'Nailed it!'); Kit.sfx('good'); Kit.haptic('success'); }
-    else { Kit.sfx('bad'); Kit.haptic('error'); }
+    var me = S.me, mo = roundMoment(S.detail, S.rounds, me, S.players);
+    if (!mo && pts[me] > 0) { Kit.callout(S.bids[me] >= 3 ? 'Nailed ' + S.bids[me] + '!' : 'Nailed it!'); Kit.sfx('good'); Kit.haptic('success'); }
+    else if (!mo) { Kit.sfx('bad'); Kit.haptic('error'); }
     var t = token;
-    setTimeout(function () { if (t === token) { S.round >= S.nRounds ? finish() : showScores(true); } }, 1100);
+    setTimeout(function () { if (t === token) { S.round >= S.nRounds ? finish() : showScores(true); } }, mo ? 2300 : 1100);
+  }
+
+  // The rare rounds get a moment on the table: everyone at the table made their bid, you made a bid of 4 or more,
+  // you bid zero with 5 or more cards and took nothing, or you have made your bid 5 rounds running
+  function roundMoment(D, R, me, P) {
+    var d = D[D.length - 1], pts = R[R.length - 1], n = d.bids.length, felt = document.querySelector('.ctable .felt-in');
+    if (!d || me == null || me < 0) return false;
+    var all = d.bids.every(function (b, i) { return b === d.took[i]; }), mine = d.bids[me] === d.took[me], cards = D.length > 0 ? d.took.reduce(function (a, b) { return a + b; }, 0) : 0;
+    var run = 0; for (var k = D.length - 1; k >= 0 && D[k].bids[me] === D[k].took[me]; k--) run++;
+    if (all && n >= 3 && cards >= 3) {
+      Kit.moment({ big: true, title: 'Everyone made their bid', line: 'All ' + n + ' players took exactly what they bid in this round of ' + cards + ' cards.', icon: 'sparkle', pts: '+' + pts[me], at: felt, ms: 2200 });
+      Kit.sfx('win'); Kit.haptic('success');
+      return true;
+    }
+    if (!mine) return false;
+    if (d.bids[me] >= 4) {
+      Kit.moment({ big: d.bids[me] >= 6, title: 'Bid of ' + d.bids[me] + ' made', line: 'You took exactly ' + d.bids[me] + ' tricks.', chip: d.bids[me], pts: '+' + pts[me], at: felt, ms: 2100 });
+      Kit.sfx(d.bids[me] >= 6 ? 'win' : 'good'); Kit.haptic('success'); if (d.bids[me] >= 6) Kit.confetti({ count: 70 });
+      return true;
+    }
+    if (d.bids[me] === 0 && cards >= 5) {
+      Kit.moment({ title: 'Zero bid made', line: 'You held ' + cards + ' cards and took no tricks.', chip: '0', pts: '+' + pts[me], at: felt, ms: 2100 });
+      Kit.sfx('good'); Kit.haptic('success');
+      return true;
+    }
+    if (run >= 5 && run % 5 === 0) {
+      Kit.moment({ title: run + ' bids in a row', line: 'You have made your bid ' + run + ' rounds running.', icon: 'flame', pts: '+' + pts[me], at: felt, ms: 2100 });
+      Kit.sfx('good'); Kit.haptic('success');
+      return true;
+    }
+    return false;
   }
 
   // ── Score sheets ──────────────────────────────────────────────────────────
@@ -479,6 +559,9 @@
     var zero = null;
     D.forEach(function (d, ri) { d.bids.forEach(function (b, j) { if (b === 0 && d.took[j] === 0 && ri + 1 >= 5 && (!zero || ri + 1 > zero.r)) zero = { i: j, r: ri + 1 }; }); });
     if (zero && out.length < 5) out.push(nm(zero.i) + ' bid zero with ' + zero.r + ' cards and dodged every trick');
+    var allIn = []; D.forEach(function (d, ri) { if (n >= 3 && ri >= 2 && d.bids.every(function (b, j) { return b === d.took[j]; })) allIn.push(ri + 1); });
+    if (allIn.length) out.unshift('Everyone made their bid in round ' + allIn[allIn.length - 1]);
+    if (D.length >= 5) P.forEach(function (p, j) { if (hits[j] === D.length) out.unshift(nm(j) + ' made every bid of the game'); });
     var wz = S.wizPlayed.indexOf(Math.max.apply(null, S.wizPlayed));
     if (S.wizPlayed[wz] >= 4 && out.length < 5) out.push(nm(wz) + ' played ' + S.wizPlayed[wz] + ' Wizards');
     return out.concat(S.highlights);
@@ -1052,12 +1135,12 @@
   function netRoundEnd(st, done) {
     var g = NGEN, pts = st.rounds[st.rounds.length - 1], me = NET.seat;
     if (me >= 0) {
-      var bid = st.detail[st.detail.length - 1].bids[me];
-      if (pts[me] > 0) { Kit.callout(bid >= 3 ? 'Nailed ' + bid + '!' : 'Nailed it!'); Kit.sfx('good'); Kit.haptic('success'); }
-      else { Kit.sfx('bad'); Kit.haptic('error'); }
+      var bid = st.detail[st.detail.length - 1].bids[me], mo = roundMoment(st.detail, st.rounds, me, st.players);
+      if (!mo && pts[me] > 0) { Kit.callout(bid >= 3 ? 'Nailed ' + bid + '!' : 'Nailed it!'); Kit.sfx('good'); Kit.haptic('success'); }
+      else if (!mo) { Kit.sfx('bad'); Kit.haptic('error'); }
     }
     S = netView(st);
-    if (st.phase === 'over') { render(); setTimeout(function () { if (g === NGEN && NET) netEnd(); }, 1100); done(); return; }
+    if (st.phase === 'over') { render(); setTimeout(function () { if (g === NGEN && NET) netEnd(); }, mo ? 2300 : 1100); done(); return; }
     S.dealt = true; render(); Kit.sfx('deal'); dealtNote(st);
     setTimeout(function () {
       if (g !== NGEN || !NET) return;
