@@ -132,6 +132,7 @@ var GAMES = [
   { id: 'hangman',     name: 'Hangman',      color: '#8b5cf6', cat: 'puzzle', min: 1, max: 2, tag: 'Guess the word, letter by letter', play: 'hangman' },
   { id: 'wordscramble',name: 'Word Scramble', color: '#14b8a6', cat: 'puzzle', min: 1, max: 4, tag: 'Unscramble against the clock', play: 'wordscramble' },
   { id: 'wordsearch',  name: 'Word Search',  color: '#e11d48', cat: 'puzzle', min: 1, max: 1, tag: 'Find every hidden word', play: 'wordsearch' },
+  { id: 'arrowjam',    name: 'Arrow Jam',    color: '#1e88e5', cat: 'puzzle', min: 1, max: 1, tag: 'Slide every arrow off the board without a bump', play: 'arrowjam' },
 
   // ── Party ────────────────────────────────────────────────────────────────
   { id: 'trivia',      name: 'Trivia',       color: '#f59e0b', cat: 'party', min: 1, max: 24, tag: 'Who knows the most?', play: 'trivia' },

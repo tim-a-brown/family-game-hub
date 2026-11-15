@@ -196,6 +196,13 @@ var GameIcon = (function () {
     // Puzzles
     '2048': function (c) { return rect(1.5, 5, 21, 14, 3, c) + txt('2048', 8.6, W, 12.4); },
     sudoku: function (c) { return rect(2, 2, 20, 20, 2, 'none', ' stroke="' + K + '" stroke-width="1.8"') + line('M8.7 2v20M15.3 2v20M2 8.7h20M2 15.3h20', K, 1) + txt('9', 7.5, c, 5.6, 5.4) + txt('3', 7.5, c, 12, 12) + txt('7', 7.5, R, 18.6, 18.6); },
+    arrowjam: function () {   // three chunky arrows jammed together: one bent, one leaving to the right
+      var o = ' stroke-linecap="round" stroke-linejoin="round"';
+      function ar(d, col, w) { return path(d, 'none', ' stroke="' + col + '" stroke-width="' + (w || 3.4) + '"' + o); }
+      return ar('M4 21V12.5a3 3 0 0 1 3-3h5', R) + path('M12 6.2l4.2 3.3-4.2 3.3z', R, ' stroke="' + R + '" stroke-width="1.4"' + o) +
+        ar('M4.5 3.5h7', Y) + path('M11.5 0.6l3.9 2.9-3.9 2.9z', Y, ' stroke="' + Y + '" stroke-width="1.4"' + o) +
+        ar('M10.5 16.5h7.5', B) + path('M18 13.4l4 3.1-4 3.1z', B, ' stroke="' + B + '" stroke-width="1.4"' + o);
+    },
     mazes: function () {   // a tiny printed maze, in at the top and out at the bottom, with the red pen line through it
       return line('M5.3 .8V12H12V5.3h6.7V23.2', R, 2.3) +
         line('M8.7 2H22V22M15.3 22H2V2M8.7 2v6.7M15.3 8.7V22M8.7 15.3h6.6', K, 2);

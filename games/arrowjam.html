@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Arrow Jam</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="arrowjam/core.js"></script>
+<script src="arrowjam/levels.js"></script>
+<style>
+/* ── The play screen: a layout for each shape (html[data-o], the board's size --bw by --bh and its shorter side --bs are
+   set by layout(); a board is a third taller than wide, upright on a phone held upright and turned on its side sideways) ── */
+#app.aj-play{--bs:300px;--bw:300px;--bh:300px;--side:240px;position:relative;box-sizing:border-box;height:calc(var(--vvh,100dvh) - var(--bar));overflow:hidden;
+  display:grid;justify-content:center;align-content:center;padding:4px 16px max(calc(var(--safe-b) + 10px),18px);}
+html[data-o=port] #app.aj-play{grid-template-columns:min(100%,max(var(--bw),560px));grid-template-rows:auto minmax(var(--bh),1fr) auto;row-gap:var(--gap,12px);align-content:stretch;
+  padding-bottom:max(calc(var(--safe-b) + 10px),24px);   /* (the buttons' outer corners clear of an iPhone's rounded corner even when no safe area is reported) */
+  grid-template-areas:"hud" "board" "tools";}
+html[data-o=land] #app.aj-play{grid-template-columns:var(--side) var(--bw);grid-template-rows:auto minmax(0,1fr) auto;column-gap:var(--cg,28px);row-gap:12px;
+  grid-template-areas:"hud board" "note board" "tools board";padding-left:max(18px,env(safe-area-inset-left));padding-right:max(18px,env(safe-area-inset-right));
+  padding-top:calc(6px + var(--padT,0px));padding-bottom:calc(max(calc(var(--safe-b) + 10px),18px) + var(--padT,0px));}
+/* A wide screen tall enough (an iPad held sideways): the board on its side across the top, and under it one strip, the
+   counters at its left and the buttons at its right */
+html[data-o=wide] #app.aj-play{grid-template-columns:calc(var(--bw) - var(--tw,420px) - 16px) var(--tw,420px);grid-template-rows:var(--bh) auto;column-gap:16px;row-gap:16px;
+  grid-template-areas:"board board" "hud tools";padding-top:calc(6px + var(--padT,0px));}
+html[data-o=wide] .aj-tools .btn{flex:1;}
+html[data-o=wide] .aj-note{grid-area:board;align-self:end;justify-self:center;transform:translateY(-14px);}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.22,1,.36,1);}
+
+/* Counters: the level, your hearts, the arrows still to go, with the board's progress filling along the foot */
+.aj-hud{grid-area:hud;view-transition-name:aj-hud;position:relative;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;
+  min-height:60px;padding:8px 14px 12px;border-radius:20px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}
+.aj-cnt{display:flex;flex-direction:column;line-height:1.05;min-width:0;}
+.aj-cnt small{font-size:.76rem;font-weight:650;color:var(--text-2);white-space:nowrap;}
+.aj-cnt b{font-family:var(--display);font-size:1.5rem;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.aj-cnt.r{text-align:right;align-items:flex-end;}
+.aj-cnt b.pop{animation:ajPop .34s var(--spring,cubic-bezier(.3,1.5,.5,1));}
+@keyframes ajPop{40%{transform:scale(1.22);color:var(--lit);}}
+.aj-prog{position:absolute;left:14px;right:14px;bottom:6px;height:4px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;}
+.aj-prog i{position:absolute;inset:0;transform-origin:0 50%;transform:scaleX(var(--p,0));background:linear-gradient(90deg,var(--gold-lo,#f6b93b),var(--gold-hi,#ffe486));
+  box-shadow:0 0 10px rgba(255,200,70,.6);transition:transform .35s cubic-bezier(.22,1,.36,1);}
+.aj-hearts{display:flex;gap:6px;justify-content:center;}
+.aj-ht{position:relative;width:28px;height:28px;}
+.aj-ht svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
+.aj-ht .bg{fill:none;stroke:rgba(255,255,255,.22);stroke-width:1.6;}
+.aj-ht .fg{fill:url(#ajHeart);filter:drop-shadow(0 2px 2px rgba(0,0,0,.4));transform-origin:50% 60%;}
+.aj-ht.off .fg{opacity:0;}
+.aj-ht.lose .fg{animation:ajHeartGo .8s cubic-bezier(.3,.1,.6,1) forwards;}
+.aj-ht.lose::after{content:"";position:absolute;inset:-6px;border-radius:50%;box-shadow:0 0 0 2px #ff5a6a;animation:ajRing .55s ease-out forwards;pointer-events:none;}
+@keyframes ajHeartGo{0%{opacity:1;transform:scale(1);}18%{opacity:1;transform:scale(1.45);}35%{opacity:1;transform:scale(1.2) rotate(-12deg);}100%{opacity:0;transform:translateY(26px) rotate(28deg) scale(.6);}}
+@keyframes ajRing{from{transform:scale(.6);opacity:1;}to{transform:scale(1.7);opacity:0;}}
+.aj-ht.last .fg{animation:ajBeat 1.1s ease-in-out infinite;}
+@keyframes ajBeat{0%,100%{transform:scale(1);}12%{transform:scale(1.16);}24%{transform:scale(1);}36%{transform:scale(1.1);}}
+
+/* The board: a molded tray, the felt in the game's own blue, and a well for every cell of the board's shape */
+.aj-bd{grid-area:board;view-transition-name:aj-board;position:relative;width:var(--bw);height:var(--bh);justify-self:center;align-self:center;}
+.aj-tray{position:absolute;inset:0;border-radius:calc(var(--bs) * .055 + 6px);padding:calc(var(--bs) * .022 + 3px);box-sizing:border-box;
+  background:linear-gradient(180deg,#26365e,#111a33 70%,#0c1328);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.16),inset 0 -3px 0 rgba(0,0,0,.35),0 18px 40px -10px rgba(0,0,0,.65),0 0 0 1px rgba(0,0,0,.4);}
+.aj-tray.shake{animation:ajShake .38s cubic-bezier(.36,.07,.19,.97);}
+@keyframes ajShake{15%{transform:translate(-5px,1px) rotate(-.4deg);}35%{transform:translate(4px,-1px) rotate(.3deg);}55%{transform:translate(-3px,0);}75%{transform:translate(2px,0);}}
+.aj-felt{position:relative;width:100%;height:100%;border-radius:calc(var(--bs) * .04 + 3px);}
+.aj-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;cursor:pointer;}
+.aj-svg .well{fill:rgba(0,0,0,.2);stroke:rgba(255,255,255,.05);stroke-width:.02;}
+.aj-svg .well.lit{animation:ajWell .9s ease-out both;}
+@keyframes ajWell{0%{fill:rgba(255,224,130,.0);}30%{fill:rgba(255,224,130,.55);}100%{fill:rgba(0,0,0,.2);}}
+/* An arrow is a piece with thickness: a shadow on the felt, its darker side, its top and a line of light along it */
+.ar{transition:opacity .2s;}
+.ar path{fill:none;stroke-linecap:round;stroke-linejoin:round;}
+.ar .sh path{stroke:rgba(0,0,0,.42);}
+.ar .sh path.h{fill:rgba(0,0,0,.42);}
+.ar .sd path{stroke:var(--c2);}
+.ar .sd path.h{fill:var(--c2);}
+.ar .tp path{stroke:var(--c);}
+.ar .tp path.h{fill:var(--c);}
+.ar .gl{stroke:rgba(255,255,255,.5);}
+.ar .halo path{stroke:#ffd34d;opacity:0;}
+.ar .halo path.h{fill:#ffd34d;}
+.ar.hint .halo path{animation:ajHalo 1.1s ease-in-out infinite;}
+@keyframes ajHalo{0%,100%{opacity:.25;}50%{opacity:.9;}}
+.ar.press .tp,.ar.press .gl{transform:translateY(.03px);}
+.ar.hit .halo path{stroke:#ff4d5e;fill:none;animation:ajHit .5s ease-out;}
+.ar.hit .halo path.h{fill:#ff4d5e;}
+@keyframes ajHit{0%{opacity:.95;}100%{opacity:0;}}
+.ar.block .halo path{stroke:#fff;animation:ajHit .6s ease-out;}
+.ar.block .halo path.h{fill:#fff;}
+.ar.gone{pointer-events:none;}
+.aj-way{fill:none;stroke:#ffd34d;stroke-width:.09;stroke-linecap:round;stroke-dasharray:.02 .26;opacity:0;transition:opacity .25s;}
+.aj-way.on{opacity:.9;}
+.aj-trail{fill:none;stroke-linecap:round;pointer-events:none;}
+.aj-spark{pointer-events:none;}
+
+/* Under the counters: a quick run of arrows, and the level's first word when something new comes in */
+.aj-note{grid-area:hud;align-self:end;justify-self:center;transform:translateY(calc(100% + 6px));z-index:4;pointer-events:none;display:flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;background:linear-gradient(180deg,var(--gold-hi,#ffe486),var(--gold-lo,#f6b93b));color:var(--gold-ink,#2a1c00);font-weight:800;font-size:.9rem;
+  box-shadow:0 6px 16px -6px rgba(255,180,40,.7);opacity:0;transition:opacity .2s,transform .25s var(--spring,ease);white-space:nowrap;}
+.aj-note .ico{width:16px;height:16px;}
+.aj-note.on{opacity:1;}
+.aj-note.bump{animation:ajPop .3s var(--spring,ease);}
+html[data-o=land] .aj-note{grid-area:note;align-self:start;justify-self:start;transform:none;}
+
+/* The buttons: Levels, Restart, Hint */
+.aj-tools{grid-area:tools;view-transition-name:aj-tools;display:flex;gap:10px;}
+.aj-tools .btn{flex:1;min-height:52px;min-width:0;padding:0 10px;gap:8px;}
+.aj-tools .btn .ico{width:20px;height:20px;flex:none;}
+.aj-tools .btn span{white-space:nowrap;}
+.aj-tools .btn .n{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 5px;border-radius:11px;background:rgba(255,211,77,.2);color:var(--lit-ink);font-size:.82rem;font-weight:800;box-sizing:border-box;}
+.aj-tools .btn:disabled .n{background:rgba(255,255,255,.08);color:var(--text-3);}
+
+/* Sideways: the counters stand in a column at the left, the buttons at its foot, the board at the right */
+html[data-o=land] .aj-hud{grid-template-columns:1fr 1fr;grid-template-rows:auto auto;row-gap:12px;padding:14px 16px 18px;align-self:start;}
+html[data-o=land] .aj-hud .aj-lv{grid-column:1;grid-row:1;}
+html[data-o=land] .aj-hud .aj-left{grid-column:2;grid-row:1;}
+html[data-o=land] .aj-hud .aj-hearts{grid-column:1 / 3;grid-row:2;justify-content:flex-start;}
+html[data-o=land] .aj-prog{bottom:8px;}
+html[data-o=land] .aj-tools{flex-direction:column;align-self:end;}
+html[data-o=land] .aj-tools .btn{flex:none;justify-content:flex-start;padding:0 16px;}
+html[data-o=land] .aj-tools .btn .n{margin-left:auto;}
+@media (max-height:430px){
+  html[data-o=land] .aj-hud{row-gap:6px;padding:10px 14px 15px;}
+  html[data-o=land] .aj-tools{gap:8px;}
+  html[data-o=land] .aj-tools .btn{min-height:46px;}
+  .aj-cnt b{font-size:1.3rem;}
+  .aj-ht{width:24px;height:24px;}
+}
+@media (max-width:360px){
+  .aj-tools{gap:8px;}
+  .aj-tools .btn{gap:5px;padding:0 6px;font-size:.92rem;}
+  .aj-tools .btn .ico{width:18px;height:18px;}
+}
+/* Bigger screens: bigger counters */
+@media (min-width:700px) and (min-height:700px){
+  .aj-hud{min-height:76px;padding:10px 20px 16px;border-radius:24px;}
+  .aj-cnt small{font-size:.9rem;}
+  .aj-cnt b{font-size:2rem;}
+  .aj-ht{width:36px;height:36px;}
+  .aj-hearts{gap:10px;}
+  .aj-tools .btn{min-height:58px;font-size:1.05rem;}
+  .aj-prog{height:5px;}
+  .aj-note{font-size:1rem;padding:7px 16px;}
+}
+
+/* ── The level picker (in the setup and in its own sheet) ── */
+.aj-pick{display:flex;flex-direction:column;gap:10px;}
+.aj-pick .hd{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:0 4px;}
+.aj-pick .hd b{font-weight:800;font-size:1rem;}
+.aj-pick .hd span{display:flex;align-items:center;gap:5px;font-size:.88rem;font-weight:700;color:var(--text-2);white-space:nowrap;}
+.aj-pick .hd span .ico{width:16px;height:16px;color:var(--lit);}
+.aj-grid{--tw:52px;--th:56px;position:relative;display:grid;grid-template-columns:repeat(var(--cols,7),var(--tw));gap:var(--tg,6px);justify-content:center;}
+.aj-grid.scroll{overflow-y:auto;overscroll-behavior:contain;padding:4px 4px 10px;margin:-4px;-webkit-mask:linear-gradient(180deg,#000 calc(100% - 22px),transparent);mask:linear-gradient(180deg,#000 calc(100% - 22px),transparent);}
+.aj-tile{position:relative;width:var(--tw);height:var(--th);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0;border:0;border-radius:14px;
+  background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);color:var(--text);font:inherit;cursor:pointer;transition:transform .12s;-webkit-tap-highlight-color:transparent;}
+.aj-tile:active{transform:translateY(1px) scale(.96);}
+.aj-tile b{font-family:var(--display);font-size:calc(var(--th) * .36);line-height:1;font-variant-numeric:tabular-nums;}
+.aj-tile .st{display:flex;gap:1px;}
+.aj-tile .st i{width:calc(var(--th) * .2);height:calc(var(--th) * .2);display:block;background:rgba(255,255,255,.16);
+  -webkit-mask:var(--star) center/contain no-repeat;mask:var(--star) center/contain no-repeat;}
+.aj-tile .st i.on{background:var(--lit);}
+.aj-tile.lock{color:var(--text-3);background:rgba(255,255,255,.03);cursor:default;}
+.aj-tile.lock .ico{width:calc(var(--th) * .24);height:calc(var(--th) * .24);opacity:.6;}
+.aj-tile.next{box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.75),0 0 16px -4px rgba(255,190,60,.6);}
+.aj-tile.on{background:linear-gradient(180deg,var(--gold-hi,#ffe486),var(--gold-lo,#f6b93b));color:var(--gold-ink,#2a1c00);box-shadow:0 8px 18px -10px rgba(255,180,40,.9);}
+.aj-tile.on .st i{background:rgba(42,28,0,.22);}
+.aj-tile.on .st i.on{background:var(--gold-ink,#2a1c00);}
+.aj-pick .sum{margin:0 4px;font-size:.86rem;color:var(--text-2);line-height:1.35;}
+
+/* The results card: the level's stars, counted in one by one */
+.aj-stars{display:flex;justify-content:center;gap:10px;margin:4px 0 6px;}
+.aj-stars i{width:46px;height:46px;display:block;background:rgba(255,255,255,.12);-webkit-mask:var(--star) center/contain no-repeat;mask:var(--star) center/contain no-repeat;}
+.aj-stars i:nth-child(2){width:56px;height:56px;margin-top:-8px;}
+.aj-stars i.on{background:linear-gradient(180deg,#fff1a8,#ffc83d 55%,#e89a12);animation:ajStar .5s cubic-bezier(.3,1.6,.5,1) both;filter:drop-shadow(0 0 10px rgba(255,200,60,.65));}
+@keyframes ajStar{0%{transform:scale(0) rotate(-40deg);opacity:0;}100%{transform:none;opacity:1;}}
+:root{--star:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1.8l3.1 6.5 7.1.9-5.2 4.9 1.3 7.1L12 17.8l-6.3 3.4L7 14.1 1.8 9.2l7.1-.9z' stroke='%23000' stroke-width='1.6' stroke-linejoin='round'/%3E%3C/svg%3E");}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="ajHeart" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff8a95"/><stop offset=".55" stop-color="#ff3d55"/><stop offset="1" stop-color="#c81e3a"/></linearGradient>
+</defs></svg>
+<main class="stage" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app'), C = window.ArrowJamCore, LV = window.ARROWJAM_LEVELS || [];
+  var N = LV.length, SAVE = 'arrowjam_state', PROG = 'arrowjam_progress', HKEY = 'arrowjam', LIVES = 3, HINTS = 3;
+  var NS = 'http://www.w3.org/2000/svg', R = document.documentElement;
+  function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function soundOn() { return lsGet('gn_sound', '1') !== '0'; }
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ── Sound: the zip of an arrow leaving (higher on a run), the thud of a bump, a chime for each star ──
+  var AC = null;
+  function ac() {
+    if (!soundOn()) return null;
+    if (!AC) { var K = window.AudioContext || window.webkitAudioContext; if (!K) return null; try { AC = new K(); } catch (e) { return null; } }
+    if (AC.state === 'suspended') { try { AC.resume(); } catch (e) {} }
+    return AC;
+  }
+  function tone(f, t0, dur, type, vol, slide) {
+    var a = ac(); if (!a) return;
+    var o = a.createOscillator(), g = a.createGain(), t = a.currentTime + t0;
+    o.type = type || 'sine'; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + dur + 0.03);
+  }
+  var nb = null;
+  function noise(t0, dur, vol, type, fr, q, to) {
+    var a = ac(); if (!a) return;
+    if (!nb) { var n = a.sampleRate; nb = a.createBuffer(1, n, a.sampleRate); var d = nb.getChannelData(0); for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; }
+    var s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(), t = a.currentTime + t0;
+    s.buffer = nb; f.type = type; f.frequency.setValueAtTime(fr, t); if (to) f.frequency.exponentialRampToValueAtTime(to, t + dur); f.Q.value = q || 1;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(a.destination); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.02);
+  }
+  var SND = {
+    lift: function () { tone(880, 0, 0.04, 'triangle', 0.035); },
+    zip: function (run) { var f = 520 * Math.pow(1.06, Math.min(run, 14)); tone(f, 0, 0.14, 'triangle', 0.06, f * 2.1); noise(0, 0.16, 0.045, 'bandpass', 900, 0.8, 3600); },
+    thud: function () { tone(130, 0, 0.2, 'sine', 0.22, 52); noise(0, 0.09, 0.09, 'lowpass', 420); tone(310, 0, 0.05, 'square', 0.025, 160); },
+    heart: function () { tone(523, 0.06, 0.14, 'triangle', 0.05, 392); tone(392, 0.18, 0.22, 'triangle', 0.05, 262); },
+    star: function (k) { [1047, 1319, 1568][k] && tone([1047, 1319, 1568][k], 0, 0.32, 'sine', 0.08); tone([2093, 2637, 3136][k], 0, 0.18, 'sine', 0.025); },
+    clear: function () { [784, 988, 1175, 1568].forEach(function (f, i) { tone(f, i * 0.06, 0.3, 'triangle', 0.05); }); }
+  };
+
+  // ── Progress: the stars each level was cleared with (1 to 3, the hearts left), kept under arrowjam_progress ──
+  function prog() { var p = null; try { p = JSON.parse(lsGet(PROG, 'null')); } catch (e) {} if (!p || typeof p !== 'object') p = {}; if (!p.s || typeof p.s !== 'object') p.s = {}; if (!p.t || typeof p.t !== 'object') p.t = {}; return p; }
+  function starsOf(n) { return +prog().s[n] || 0; }
+  function cleared(n) { return starsOf(n) > 0; }
+  function highest() { var p = prog(), h = 0; for (var n = 1; n <= N; n++) if (+p.s[n] > 0) h = n; return h; }
+  function isOpen(n) { return n >= 1 && n <= N && n <= highest() + 1; }
+  function nextOpen() { for (var n = 1; n <= N; n++) if (!cleared(n)) return n; return N; }
+  function totals() { var p = prog(), d = 0, s = 0; for (var n = 1; n <= N; n++) { var v = +p.s[n] || 0; if (v) d++; s += v; } return { done: d, stars: s }; }
+  function myName() {
+    var n = ''; try { var g = JSON.parse(lsGet('gn_setup_arrowjam', '{}')); n = g && g.names && g.names[0] || ''; } catch (e) {}
+    return n || lsGet('my_name', '').trim() || 'You';
+  }
+
+  // ── Shell ──────────────────────────────────────────────────────────────────
+  Kit.init({
+    id: 'arrowjam',
+    mark: false,   // (no picture of the game on the felt: the board is the picture)
+    onNew: function () { leave(); showSetup(); },
+    confirmNew: false,
+    menu: [
+      { icon: 'tiles', label: 'Levels', top: true, onClick: function () { pickSheet(); } },
+      { icon: 'lightbulb', label: 'Hint', sub: 'Lights an arrow that can leave now', when: function () { return live(); }, onClick: function () { hint(); } },
+      { icon: 'sync', label: 'Restart this level', when: function () { return live(); }, onClick: function () { askRestart(); } },
+      { icon: 'history', label: 'Past games', onClick: function () { pastGames(); } }
+    ],
+    rules:
+      '<p class="goal">Clear the board. Tap an arrow and it slides off the board the way it points, as long as nothing is in its way.</p>' +
+      '<h3>How arrows move</h3><ul>' +
+      '<li>An arrow leaves along the line its head points to, straight on to the edge of the board.</li>' +
+      '<li>If another arrow lies anywhere on that line, the arrow you tapped slides up to it, bumps it and slides back. A bump costs one of your three hearts.</li>' +
+      '<li>From level 10 on, some arrows bend. The head leads and the rest of the arrow follows it, so only the line ahead of the head has to be clear.</li>' +
+      '<li>Taking an arrow off never blocks another one, so every board can be cleared. The trick is spotting which arrows are free.</li></ul>' +
+      '<h3>Stars and levels</h3><ul>' +
+      '<li>When you clear a level, each heart you still have is a star: three stars for no bumps, two for one bump and one for two bumps.</li>' +
+      '<li>If you lose all three hearts, you can try the level again from the start. A level you have cleared can be played again any time for more stars.</li>' +
+      '<li>The 50 levels open one at a time. They grow from a few short arrows on a small board to long bending arrows packed onto a big one.</li></ul>' +
+      '<h3>Hint and Restart</h3><ul>' +
+      '<li>Hint lights an arrow that can leave right now and shows its way out. Each level gives you three hints.</li>' +
+      '<li>Restart puts every arrow back and gives you your three hearts again.</li>' +
+      '<li>Tap near an arrow on a big board and the closest one moves, so you never have to hit a thin line exactly.</li></ul>'
+  });
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  // S: {v, lv (1 to 50), gone: [arrows taken off, in order], lives, bumps, hints (left), used (hints used), ms (time played),
+  //     run (arrows in a quick run now), best (the longest run), name, done}
+  var S = null, L = null, gone = {}, busy = {}, over = false;
+  function live() { return !!(S && !S.done && !over); }
+  var saveT = 0;
+  function save() {
+    clearTimeout(saveT);
+    saveT = setTimeout(function () {
+      if (!S || S.done || over) return;
+      lsSet(SAVE, JSON.stringify(S));
+      var left = L.a.length - S.gone.length;
+      Kit.resume.set('Level ' + S.lv + ' · ' + left + (left === 1 ? ' arrow left' : ' arrows left'), { keys: [SAVE] });
+    }, 250);
+  }
+  function clearSave() { clearTimeout(saveT); try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function leave() { stopLoop(); clearSave(); S = null; over = false; }
+
+  // ── Setup: who's playing, and which level ────────────────────────────────
+  var pickLv = 1;
+  function showSetup(at) {
+    stopLoop(); over = false;
+    R.removeAttribute('data-o');
+    app.className = 'stage'; app.style.cssText = '';
+    Kit.titleSwitch(null);
+    pickLv = at && isOpen(at) ? at : nextOpen();
+    var st = Kit.setup(app, {
+      players: { min: 1, max: 1, names: true, label: 'Who is playing?' },
+      options: [{ id: 'level', value: pickLv, render: function (v, set) { return picker(function (n) { pickLv = n; set(n); startLabel(); }, true); }, summary: function () { return 'Level ' + pickLv; } }],
+      start: 'Play level ' + pickLv,
+      onStart: function (cfg) {
+        var nm = cfg.players[0] && cfg.players[0].name;
+        if (!nm || /^Player \d+$/.test(nm)) nm = lsGet('my_name', '').trim() || 'You';
+        start(pickLv, nm);
+      }
+    });
+    function startLabel() { var b = st.el.querySelector('.k-start'); if (b) b.textContent = 'Play level ' + pickLv; }
+    startLabel();
+    setTimeout(fitGrids, 0); setTimeout(fitGrids, 350);
+  }
+  // The grid of levels: done ones with their stars, the next one ringed in gold, the rest locked
+  var grids = [];
+  function picker(onPick, inSetup) {
+    var t = totals(), box = el('div', { class: 'aj-pick' }), grid = el('div', { class: 'aj-grid', role: 'listbox', 'aria-label': 'Levels' });
+    box.appendChild(el('div', { class: 'hd' }, [inSetup ? el('b', { text: 'Level' }) : el('b', { text: '' }), el('span', { html: Kit.icon('star') + '<span>' + t.stars + ' of ' + (N * 3) + ' stars</span>' })]));
+    var nxt = nextOpen();
+    function paint() {
+      grid.innerHTML = '';
+      for (var n = 1; n <= N; n++) (function (n) {
+        var open = isOpen(n), s = starsOf(n), on = n === pickLv;
+        var b = el('button', { type: 'button', class: 'aj-tile' + (open ? '' : ' lock') + (on ? ' on' : '') + (n === nxt && !cleared(n) && !on ? ' next' : ''), role: 'option', 'aria-selected': String(on),
+          'aria-label': 'Level ' + n + (open ? (s ? ', cleared with ' + s + (s === 1 ? ' star' : ' stars') : ', not cleared yet') : ', locked'),
+          onclick: function () {
+            if (!open) { Kit.sfx('tap', 0.6); Kit.haptic('light'); Kit.toast('Clear level ' + (highest() + 1) + ' to open the next one'); return; }
+            Kit.sfx('tap'); Kit.haptic('light'); pickLv = n; paint(); onPick(n);
+          } });
+        if (open) {
+          b.appendChild(el('b', { text: String(n) }));
+          var st = el('span', { class: 'st', 'aria-hidden': 'true' }); for (var k = 0; k < 3; k++) st.appendChild(el('i', { class: k < s ? 'on' : '' }));
+          b.appendChild(st);
+        } else b.innerHTML = Kit.icon('lock');
+        grid.appendChild(b);
+      })(n);
+    }
+    paint();
+    box.appendChild(grid);
+    box.appendChild(el('p', { class: 'sum', text: t.done ? (t.done === N ? 'Every level is clear. Play any of them again for more stars.' : t.done + ' of ' + N + (t.done === 1 ? ' level is clear.' : ' levels are clear.')) : 'Start at level 1. Each level you clear opens the next.' }));
+    grids.push({ grid: grid, box: box, setup: !!inSetup });
+    setTimeout(fitGrids, 0);
+    return box;
+  }
+  // As many columns as make the tiles as large as the room allows (44 points at the least), so the whole grid shows
+  function fitGrids() {
+    grids = grids.filter(function (g) { return g.grid.isConnected; });
+    grids.forEach(function (g) {
+      var gr = g.grid, w = gr.clientWidth || gr.parentNode.clientWidth; if (!w) return;
+      var gb = gr.getBoundingClientRect(), top = gb.top, dock = g.setup ? document.querySelector('.setup .k-startdock') : null, sheet = gr.closest('.k-sheet');
+      var db = dock && dock.getBoundingClientRect(), beside = db && db.left >= gb.right - 4;   // (a phone on its side: the start button stands in the other column)
+      var bottom = sheet ? innerHeight * 0.92 - 130 : (db && !beside ? db.top : innerHeight - 18) - 40;
+      var room = Math.max(160, bottom - Math.max(0, top)), gap = 6, best = null;
+      for (var c = 5; c <= 10; c++) {
+        var rows = Math.ceil(N / c), tw = Math.floor((w - (c - 1) * gap) / c), th = Math.floor((room - (rows - 1) * gap) / rows);
+        var s = Math.min(tw, 64), h = Math.min(Math.max(th, 44), Math.round(s * 1.08));
+        if (s < 44) continue;
+        var fits = rows * h + (rows - 1) * gap <= room + 1;
+        var score = (fits ? 1000 : 0) + Math.min(s, h) - (fits ? 0 : rows * h / 40);
+        if (!best || score > best.score) best = { c: c, s: s, h: Math.max(44, h), score: score, fits: fits };
+      }
+      if (!best) best = { c: Math.max(1, Math.floor((w + gap) / 50)), s: 44, h: 48 };
+      gr.style.setProperty('--cols', best.c); gr.style.setProperty('--tw', best.s + 'px'); gr.style.setProperty('--th', best.h + 'px');
+      // a screen too short for all 50 at a size a finger can hit (a phone on its side): the grid scrolls by itself,
+      // with the chosen level in view, and the rest of the screen stays where it is
+      var scroll = !best.fits && !sheet;
+      gr.classList.toggle('scroll', scroll); gr.style.maxHeight = scroll ? Math.max(150, Math.floor(room)) + 'px' : '';
+      if (scroll) { var on = gr.querySelector('.aj-tile.on'); if (on) gr.scrollTop = Math.max(0, on.offsetTop - gr.clientHeight / 2 + on.offsetHeight / 2); }
+    });
+  }
+  window.addEventListener('resize', function () { setTimeout(fitGrids, 60); });
+  // The same grid in a sheet, from the title, the menu or the Levels button
+  function pickSheet() {
+    pickLv = S ? S.lv : nextOpen();
+    var sh = Kit.sheet({ title: 'Choose a level', node: picker(function (n) { go(n); }), actions: [{ label: 'Close' }] });
+    function go(n) {
+      var doIt = function () { sh.close(); start(n, S ? S.name : myName()); };
+      if (live() && S.gone.length && n !== S.lv) Kit.confirm('Leave level ' + S.lv + ' for level ' + n + '?', { ok: 'Play level ' + n, body: 'The arrows you have cleared on level ' + S.lv + ' go back on the board.' }).then(function (ok) { if (ok) doIt(); else pickLv = S.lv; });
+      else if (live() && n === S.lv) sh.close();
+      else doIt();
+    }
+  }
+
+  // ── Starting a level ─────────────────────────────────────────────────────
+  function start(n, name) {
+    n = Math.max(1, Math.min(N, n | 0));
+    clearSave(); stopLoop();
+    S = { v: 1, lv: n, gone: [], lives: LIVES, bumps: 0, hints: HINTS, used: 0, ms: 0, run: 0, best: 0, name: name || myName(), done: false };
+    Kit.gameStart();
+    build();
+    Kit.sfx('deal'); Kit.haptic('light');
+    // Something new on this level, said once
+    var p = prog();
+    if (n === 10 && !p.bends) { p.bends = 1; lsSet(PROG, JSON.stringify(p)); setTimeout(function () { Kit.moment({ title: 'Arrows bend now', line: 'From here on some arrows bend. The head leads, and the rest of the arrow follows it out.', icon: 'right', color: '#3ddcb0', at: trayEl, ms: 3800 }); }, 700); }
+    if (n === 1 && !cleared(1) && !p.seen1) { p.seen1 = 1; lsSet(PROG, JSON.stringify(p)); setTimeout(function () { if (live() && !S.gone.length) showHint(true); }, 900); }
+    save();
+  }
+  function resumeSaved(sv) {
+    S = sv; S.name = S.name || myName(); S.run = 0;
+    if (S.hints == null) S.hints = HINTS;
+    build();
+  }
+
+  // ── The board ────────────────────────────────────────────────────────────
+  // rot 1: the board is shown turned a quarter turn clockwise (a phone held sideways), its long side across
+  var rot = 0, rotG = null, MG = 0.32;   // (MG: a margin round the cells, so the arrows at the edge sit inside the felt)
+  function turnBoard() {
+    if (!svgEl || !L) return;
+    var dw = rot ? L.h : L.w, dh = rot ? L.w : L.h;
+    svgEl.setAttribute('viewBox', (-MG) + ' ' + (-MG) + ' ' + (dw + 2 * MG) + ' ' + (dh + 2 * MG));
+    if (rotG) rotG.setAttribute('transform', rot ? 'translate(' + L.h + ' 0) rotate(90)' : '');
+  }
+  var svgEl = null, trayEl = null, feltEl = null, hud = {}, arrEls = [], wayEl = null, fxG = null, A = [], P = null;
+  var PAL = [['#ff5d5d', '#b42a35'], ['#ff9a3c', '#b85a14'], ['#ffd447', '#b98c12'], ['#8bd450', '#4b8a23'], ['#3ddcb0', '#1a8f71'], ['#ff6fb5', '#b2356f'], ['#a77bff', '#6542bd'], ['#f2f4ff', '#9aa0c4']];
+  function build() {
+    L = LV[S.lv - 1]; gone = {}; busy = {}; over = false;
+    S.gone.forEach(function (i) { gone[i] = true; });
+    app.className = 'aj-play k-hold'; app.innerHTML = '';
+    Kit.titleSwitch('Level ' + S.lv, function () { pickSheet(); }, 'Choose another level');
+    // counters
+    hud.box = el('div', { class: 'aj-hud' });
+    hud.lv = el('b', { text: String(S.lv) });
+    hud.left = el('b');
+    hud.hearts = el('div', { class: 'aj-hearts', role: 'img' });
+    for (var h = 0; h < LIVES; h++) hud.hearts.appendChild(el('span', { class: 'aj-ht', html: '<svg viewBox="0 0 24 24"><path class="bg" d="M12 20.5s-8-5-8-10.6A4.4 4.4 0 0 1 12 7.3a4.4 4.4 0 0 1 8 2.6c0 5.6-8 10.6-8 10.6z"/><path class="fg" d="M12 20.5s-8-5-8-10.6A4.4 4.4 0 0 1 12 7.3a4.4 4.4 0 0 1 8 2.6c0 5.6-8 10.6-8 10.6z"/></svg>' }));
+    hud.box.appendChild(el('div', { class: 'aj-cnt aj-lv' }, [el('small', { text: 'Level' }), hud.lv]));
+    hud.box.appendChild(hud.hearts);
+    hud.box.appendChild(el('div', { class: 'aj-cnt r aj-left' }, [el('small', { text: 'Arrows left' }), hud.left]));
+    hud.prog = el('i'); hud.box.appendChild(el('div', { class: 'aj-prog', 'aria-hidden': 'true' }, [hud.prog]));
+    app.appendChild(hud.box);
+    hud.note = el('div', { class: 'aj-note', role: 'status' }); app.appendChild(hud.note);
+    // the board
+    var bd = el('div', { class: 'aj-bd' });
+    trayEl = el('div', { class: 'aj-tray' });
+    feltEl = el('div', { class: 'aj-felt felt-in' });
+    svgEl = document.createElementNS(NS, 'svg'); svgEl.setAttribute('class', 'aj-svg');
+    svgEl.setAttribute('role', 'img'); svgEl.setAttribute('aria-label', 'The board');
+    feltEl.appendChild(svgEl); trayEl.appendChild(feltEl); bd.appendChild(trayEl); app.appendChild(bd);
+    // tools
+    hud.tools = el('div', { class: 'aj-tools' });
+    hud.tools.appendChild(btn('tiles', 'Levels', function () { pickSheet(); }));
+    hud.tools.appendChild(btn('sync', 'Restart', function () { askRestart(); }));
+    hud.hint = btn('lightbulb', 'Hint', function () { hint(); });
+    hud.hintN = el('span', { class: 'n' }); hud.hint.appendChild(hud.hintN);
+    hud.tools.appendChild(hud.hint);
+    app.appendChild(hud.tools);
+    drawBoard();
+    layout(true);
+    updHud(true);
+    bindInput();
+  }
+  function btn(icon, label, fn) {
+    return el('button', { type: 'button', class: 'btn btn-soft', html: Kit.icon(icon) + '<span>' + Kit.esc(label) + '</span>', onclick: function () { Kit.sfx('tap'); Kit.haptic('light'); fn(); } });
+  }
+  function svg(tag, attrs, parent) { var n = document.createElementNS(NS, tag); for (var k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.appendChild(n); return n; }
+  function cx(c) { return c % L.w + 0.5; }
+  function cy(c) { return Math.floor(c / L.w) + 0.5; }
+  function drawBoard() {
+    svgEl.innerHTML = '';
+    rotG = svg('g', { class: 'rot' }, svgEl); turnBoard();
+    var wells = svg('g', { class: 'wells' }, rotG);
+    for (var c = 0; c < L.w * L.h; c++) if (!L.m || L.m.charAt(c) === '1') svg('rect', { class: 'well', x: (c % L.w) + 0.07, y: Math.floor(c / L.w) + 0.07, width: 0.86, height: 0.86, rx: 0.2, 'data-c': c }, wells);
+    wayEl = svg('path', { class: 'aj-way' }, rotG);
+    var arrows = svg('g', { class: 'arrows' }, rotG);
+    fxG = svg('g', { class: 'fx' }, rotG);
+    // each arrow's color: from the palette, never the same as an arrow touching it
+    var occ = C.occ(L), col = [];
+    A = L.a.map(function (a, i) {
+      var d = a[0], cells = a.slice(1), n = cells.length, used = {};
+      cells.forEach(function (c) { var x = c % L.w, y = (c - x) / L.w; for (var k = 0; k < 4; k++) { var nx = x + C.DX[k], ny = y + C.DY[k]; if (nx < 0 || ny < 0 || nx >= L.w || ny >= L.h) continue; var j = occ[ny * L.w + nx]; if (j >= 0 && j < i && col[j] != null) used[col[j]] = 1; } });
+      var start = (i * 5 + S.lv * 3) % PAL.length, pc = start;
+      for (var t = 0; t < PAL.length; t++) { var q = (start + t) % PAL.length; if (!used[q]) { pc = q; break; } }
+      col[i] = pc;
+      // the track: one point behind the tail, the cells tail to head, then straight on past the board's edge
+      var pts = [], hx = cx(cells[n - 1]), hy = cy(cells[n - 1]);
+      if (n > 1) pts.push([2 * cx(cells[0]) - cx(cells[1]), 2 * cy(cells[0]) - cy(cells[1])]);
+      else pts.push([hx - C.DX[d], hy - C.DY[d]]);
+      cells.forEach(function (c) { pts.push([cx(c), cy(c)]); });
+      var ray = C.ray(L, a), far = ray.length + n + 4;
+      for (var k = 1; k <= far; k++) pts.push([hx + C.DX[d] * k, hy + C.DY[d] * k]);
+      var g = svg('g', { class: 'ar', 'data-i': i, style: '--c:' + PAL[pc][0] + ';--c2:' + PAL[pc][1] }, arrows);
+      var mk = function (cls, w, hw, dy) {
+        var gg = svg('g', { class: cls, transform: dy ? 'translate(0 ' + dy + ')' : '' }, g);
+        return { s: svg('path', { 'stroke-width': w }, gg), h: svg('path', { class: 'h', 'stroke-width': hw }, gg), g: gg };
+      };
+      var rec = { i: i, d: d, n: n, pts: pts, ray: ray.length, g: g, t: 0, color: PAL[pc][0] };
+      rec.halo = mk('halo', 0.56, 0.36, 0.02);
+      rec.sh = mk('sh', 0.34, 0.14, 0.11);
+      rec.sd = mk('sd', 0.34, 0.14, 0.065);
+      rec.tp = mk('tp', 0.34, 0.14, 0);
+      rec.gl = svg('path', { class: 'gl', 'stroke-width': 0.085, transform: 'translate(0 -0.05)' }, g);
+      if (gone[i]) g.style.display = 'none';
+      paintArrow(rec, 0);
+      return rec;
+    });
+    arrEls = A.map(function (r) { return r.g; });
+  }
+  // a point on an arrow's track, s cells along from its tail
+  function at(r, s) {
+    var p = r.pts, j = Math.floor(s) + 1;
+    if (j < 0) j = 0; if (j > p.length - 2) j = p.length - 2;
+    var f = s + 1 - j;
+    return [p[j][0] + (p[j + 1][0] - p[j][0]) * f, p[j][1] + (p[j + 1][1] - p[j][1]) * f];
+  }
+  function f2(v) { return Math.round(v * 1000) / 1000; }
+  // the line from s0 to s1 along the track, its corners rounded
+  function lineD(r, s0, s1) {
+    var q = [at(r, s0)];
+    for (var k = Math.floor(s0) + 1; k < s1; k++) q.push(r.pts[k + 1]);
+    q.push(at(r, s1));
+    var d = 'M' + f2(q[0][0]) + ' ' + f2(q[0][1]);
+    for (var i = 1; i < q.length - 1; i++) {
+      var a = q[i - 1], b = q[i], c = q[i + 1];
+      var ux = b[0] - a[0], uy = b[1] - a[1], vx = c[0] - b[0], vy = c[1] - b[1];
+      var la = Math.hypot(ux, uy), lc = Math.hypot(vx, vy);
+      if (la < 1e-6 || lc < 1e-6 || Math.abs(ux * vy - uy * vx) < 1e-6) { d += 'L' + f2(b[0]) + ' ' + f2(b[1]); continue; }
+      var rr = Math.min(0.42, la / 2, lc / 2);
+      d += 'L' + f2(b[0] - ux / la * rr) + ' ' + f2(b[1] - uy / la * rr) + 'Q' + f2(b[0]) + ' ' + f2(b[1]) + ' ' + f2(b[0] + vx / lc * rr) + ' ' + f2(b[1] + vy / lc * rr);
+    }
+    d += 'L' + f2(q[q.length - 1][0]) + ' ' + f2(q[q.length - 1][1]);
+    return d;
+  }
+  // an arrow drawn t cells along its way out (0: where it lies)
+  function paintArrow(r, t) {
+    r.t = t;
+    var tail = t - (r.n === 1 ? 0.3 : 0.1), hs = t + r.n - 1, H = at(r, hs), ux = C.DX[r.d], uy = C.DY[r.d];
+    var sd = lineD(r, tail, hs + 0.02);
+    var b0 = [H[0] - ux * 0.05, H[1] - uy * 0.05], tip = [H[0] + ux * 0.27, H[1] + uy * 0.27], w = 0.23;
+    var hd = 'M' + f2(tip[0]) + ' ' + f2(tip[1]) + 'L' + f2(b0[0] - uy * w) + ' ' + f2(b0[1] + ux * w) + 'L' + f2(b0[0] + uy * w) + ' ' + f2(b0[1] - ux * w) + 'Z';
+    [r.halo, r.sh, r.sd, r.tp].forEach(function (L2) { L2.s.setAttribute('d', sd); L2.h.setAttribute('d', hd); });
+    r.gl.setAttribute('d', lineD(r, tail + 0.12, hs - 0.06 < tail + 0.14 ? tail + 0.2 : hs - 0.06));
+  }
+
+  // ── Layout: a shape for each screen, and a turn of the device glides ─────
+  // Every way the screen can hold the board is measured (the board upright or on its side) and the one with the
+  // largest cells wins: upright on a phone held upright, on its side on a phone held sideways.
+  var shape = null;
+  function fitBoard(aw, ah, r) {
+    var dw = (r ? L.h : L.w) + 2 * MG, dh = (r ? L.w : L.h) + 2 * MG;
+    var pad = 0.022 * Math.min(aw, ah) + 3, cell = Math.min((aw - 2 * pad) / dw, (ah - 2 * pad) / dh);
+    return { r: r, cell: cell, bw: Math.floor(cell * dw + 2 * pad), bh: Math.floor(cell * dh + 2 * pad) };
+  }
+  function layout(first) {
+    if (!S || !L || !app.classList.contains('aj-play')) return;
+    var w = innerWidth, h = innerHeight, big = w >= 700 && h >= 700;
+    var bar = parseFloat(getComputedStyle(R).getPropertyValue('--bar')) || 58;
+    var safeB = 0; try { safeB = parseFloat(getComputedStyle(R).getPropertyValue('--safe-b')) || 0; } catch (e) {}
+    var gap = big ? 18 : 12, hudH = big ? 76 : 60, toolsH = big ? 58 : 52, sideMin = big ? 220 : 196;
+    // the counters over the board and the buttons under it (o 'port'), or the counters and buttons in a column at the
+    // left (o 'land'), each with the board upright or on its side: whichever gives the largest cells
+    var opts = [];
+    [0, 1].forEach(function (r) {
+      var hhP = h - bar - 4 - Math.max(safeB + 10, 24);
+      var f = fitBoard(w - 24, hhP - hudH - toolsH - 2 * gap, r); f.o = 'port'; f.hh = hhP; opts.push(f);
+      var hhL = h - bar - 6 - Math.max(safeB + 10, 18), cg = Math.round(Math.max(18, Math.min(40, w * 0.03)));
+      var g = fitBoard(w - sideMin - cg - 36, hhL, r); g.o = 'land'; g.hh = hhL; g.cg = cg; opts.push(g);
+      if (w > h) { var k = fitBoard(w - 36, hhL - hudH - 16, r); k.o = 'wide'; k.hh = hhL - hudH - 16; opts.push(k); }
+    });
+    // (a phone held upright always stacks; elsewhere the column has to win clearly to take over an upright screen)
+    opts.forEach(function (f) { f.score = f.cell * (f.o === 'land' && w < h ? (w < 600 ? 0 : 0.95) : 1); });
+    var fit = opts.sort(function (a, b) { return b.score - a.score; })[0], o = fit.o, side = 0, cg = fit.cg || 0, padT = 0;
+    if (o === 'land') {
+      side = Math.max(sideMin, Math.min(340, w - fit.bw - cg - 36));   // (a wide screen gives the column what the board can't use)
+      padT = Math.max(0, Math.floor((fit.hh - fit.bh) / 2));            // (the column runs from the board's top edge to its foot)
+    } else if (o === 'wide') {
+      padT = Math.max(0, Math.floor((fit.hh - fit.bh) / 2));
+      app.style.setProperty('--tw', Math.round(Math.min(480, Math.max(330, fit.bw * 0.42))) + 'px');
+    }
+    var turned = !first && fit.r !== rot, oldCell = cellPx();
+    var go = function () {
+      R.setAttribute('data-o', o);
+      app.style.setProperty('--gap', gap + 'px'); app.style.setProperty('--side', side + 'px'); app.style.setProperty('--cg', cg + 'px'); app.style.setProperty('--padT', padT + 'px');
+      app.style.setProperty('--bw', fit.bw + 'px'); app.style.setProperty('--bh', fit.bh + 'px'); app.style.setProperty('--bs', Math.min(fit.bw, fit.bh) + 'px');
+      if (fit.r !== rot) { rot = fit.r; turnBoard(); }
+    };
+    var bd = trayEl && trayEl.parentNode;
+    if (turned && bd) bd.style.viewTransitionName = 'none';   // (the board turns by itself, below)
+    if (first || (shape === o && !turned) || reduce) go(); else Kit.glide(go);
+    // the board turns the quarter turn the device made, from where it lay
+    if (turned && trayEl && trayEl.animate && !reduce) {
+      var k = oldCell && fit.cell ? Math.max(0.6, Math.min(1.6, oldCell / fit.cell)) : 1;
+      try { trayEl.animate([{ transform: 'rotate(' + (rot ? -90 : 90) + 'deg) scale(' + k.toFixed(3) + ')' }, { transform: 'none' }], { duration: 560, easing: 'cubic-bezier(.22,1,.36,1)' }); } catch (e) {}
+    }
+    if (bd) setTimeout(function () { bd.style.viewTransitionName = ''; }, 700);
+    shape = o;
+  }
+  function cellPx() { if (!svgEl) return 0; var b = svgEl.getBoundingClientRect(), vb = svgEl.viewBox.baseVal; return vb && vb.width ? b.width / vb.width : 0; }
+  var lt = 0;
+  window.addEventListener('resize', function () { clearTimeout(lt); lt = setTimeout(function () { layout(false); }, 40); });
+  window.addEventListener('orientationchange', function () { setTimeout(function () { layout(false); }, 200); });
+
+  // ── Counters ─────────────────────────────────────────────────────────────
+  function updHud(first) {
+    if (!S || !hud.left) return;
+    var left = L.a.length - S.gone.length;
+    if (hud.left.textContent !== String(left)) { hud.left.textContent = String(left); if (!first) { hud.left.classList.remove('pop'); void hud.left.offsetWidth; hud.left.classList.add('pop'); } }
+    hud.prog.style.setProperty('--p', (S.gone.length / L.a.length).toFixed(3));
+    [].forEach.call(hud.hearts.children, function (hEl, k) {
+      var on = k < S.lives;
+      if (!on && !hEl.classList.contains('off') && !hEl.classList.contains('lose')) { if (first) hEl.classList.add('off'); else { hEl.classList.add('lose'); setTimeout(function () { hEl.classList.remove('lose'); hEl.classList.add('off'); }, 820); } }
+      if (on) hEl.classList.remove('off', 'lose');
+      hEl.classList.toggle('last', on && S.lives === 1);
+    });
+    hud.hearts.setAttribute('aria-label', S.lives + (S.lives === 1 ? ' heart left' : ' hearts left'));
+    hud.hintN.textContent = String(S.hints);
+    hud.hint.disabled = !S.hints || !live();
+  }
+  var noteT = 0;
+  function note(html, ms) {
+    hud.note.innerHTML = html; hud.note.classList.add('on'); hud.note.classList.remove('bump'); void hud.note.offsetWidth; hud.note.classList.add('bump');
+    clearTimeout(noteT); noteT = setTimeout(function () { hud.note.classList.remove('on'); }, ms || 1400);
+  }
+
+  // ── Input: a tap moves the arrow nearest the finger ──────────────────────
+  var downI = -1, downAt = null;
+  function bindInput() {
+    svgEl.addEventListener('pointerdown', function (e) {
+      if (!live()) return;
+      var i = nearest(e); downI = i; downAt = [e.clientX, e.clientY];
+      if (i >= 0) { A[i].g.classList.add('press'); SND.lift(); }
+    });
+    var up = function (e) {
+      var i = downI; downI = -1;
+      if (i >= 0) A[i].g.classList.remove('press');
+      if (i < 0 || !downAt || e.type === 'pointercancel') return;
+      if (Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 24) return;
+      tap(i);
+    };
+    svgEl.addEventListener('pointerup', up);
+    svgEl.addEventListener('pointercancel', up);
+  }
+  // a point on the screen in the board's own cells (undoing the quarter turn when the board lies on its side)
+  function toCell(e) {
+    var b = svgEl.getBoundingClientRect(), vb = svgEl.viewBox.baseVal;
+    var dx = vb.x + (e.clientX - b.left) / b.width * vb.width, dy = vb.y + (e.clientY - b.top) / b.height * vb.height;
+    return rot ? [dy, L.h - dx, b.width / vb.width] : [dx, dy, b.width / vb.width];
+  }
+  function segDist(px, py, a, b) {
+    var vx = b[0] - a[0], vy = b[1] - a[1], l2 = vx * vx + vy * vy, t = l2 ? Math.max(0, Math.min(1, ((px - a[0]) * vx + (py - a[1]) * vy) / l2)) : 0;
+    return Math.hypot(px - a[0] - vx * t, py - a[1] - vy * t);
+  }
+  function nearest(e) {
+    var p = toCell(e), px = p[0], py = p[1], cell = p[2], best = -1, bd = 1e9;
+    var reach = Math.max(0.62, 24 / cell);   // (forgiving: at least 24 points round the finger, more than half a cell)
+    A.forEach(function (r, i) {
+      if (gone[i] || busy[i]) return;
+      var q = [];
+      for (var k = 1; k <= r.n; k++) q.push(r.pts[k]);
+      var hd = r.pts[r.n]; q.push([hd[0] + C.DX[r.d] * 0.3, hd[1] + C.DY[r.d] * 0.3]);
+      if (r.n === 1) q.unshift([hd[0] - C.DX[r.d] * 0.3, hd[1] - C.DY[r.d] * 0.3]);
+      for (var s = 0; s < q.length - 1; s++) { var dd = segDist(px, py, q[s], q[s + 1]); if (dd < bd) { bd = dd; best = i; } }
+    });
+    return bd <= reach ? best : -1;
+  }
+
+  // ── A tap: the arrow leaves, or bumps into the first arrow in its way ────
+  var lastClear = 0;
+  function tap(i) {
+    if (!live() || gone[i] || busy[i]) return;
+    var occ = C.occ(L, gone), b = C.blocker(L, i, occ);
+    clearHint();
+    if (b.by < 0) leaveBoard(i);
+    else bump(i, b);
+  }
+  function leaveBoard(i) {
+    var r = A[i], now = performance.now();
+    gone[i] = true; S.gone.push(i);
+    var quick = now - lastClear < 1150 && S.run > 0;
+    S.run = quick ? S.run + 1 : 1; lastClear = now;
+    S.best = Math.max(S.best || 0, S.run);
+    var last = S.gone.length === L.a.length;
+    SND.zip(S.run); Kit.sfx('whoosh', last ? 0.9 : 0.55); Kit.haptic('light');
+    // a quick run of arrows, counted as it builds
+    if (S.run >= 3) note(Kit.icon('flame') + '<span>' + S.run + ' in a row</span>');
+    if (S.run === 10 || S.run === 20) {
+      Kit.sfx('sparkle'); Kit.haptic('success');
+      setTimeout(function () { Kit.moment({ title: S.run + ' in a row', line: 'You sent ' + S.run + ' arrows off one after another without stopping.', icon: 'flame', color: '#ff8a3d', at: trayEl, ms: 2200 }); }, 80);
+    }
+    updHud();
+    animate(r, 'exit', last);
+    if (last) finish();
+    else save();
+  }
+  function bump(i, b) {
+    var r = A[i];
+    busy[i] = true; S.run = 0;
+    S.lives--; S.bumps++;
+    if (S.lives <= 0) over = true;
+    animate(r, 'bump', false, b);
+    save();
+  }
+
+  // ── Motion: one frame loop moves every arrow in flight ───────────────────
+  var flying = [], raf = 0;
+  function stopLoop() { cancelAnimationFrame(raf); raf = 0; flying = []; }
+  function animate(r, kind, last, b) {
+    var now = performance.now(), m = { r: r, kind: kind, t0: now, last: last };
+    if (kind === 'exit') {
+      m.dist = r.n - 1 + r.ray + 2.6;
+      m.dur = (last ? 720 : 300) + m.dist * (last ? 34 : 17);
+      if (reduce) m.dur = 220;
+      m.trail = svg('path', { class: 'aj-trail', stroke: r.color, 'stroke-width': 0.2, opacity: 0.5 }, fxG);
+      r.g.classList.add('gone');
+    } else {
+      m.gap = b.gap + 0.36; m.by = b.by;
+      m.fwd = 70 + m.gap * 30; m.back = 300; m.dur = m.fwd + m.back;
+      m.hit = false;
+    }
+    flying.push(m);
+    if (!raf) raf = requestAnimationFrame(frame);
+  }
+  function frame(now) {
+    raf = 0;
+    flying = flying.filter(function (m) {
+      var u = Math.min(1, (now - m.t0) / m.dur), r = m.r;
+      if (m.kind === 'exit') {
+        var p = m.last ? u * u * u * 0.6 + u * 0.4 : 0.22 * u + 0.78 * u * u, t = p * m.dist;
+        paintArrow(r, t);
+        // the trail: a fading streak behind the tail, from where the arrow lay
+        var tail = Math.max(-0.2, t - 3.2);
+        if (t - 0.15 > tail) m.trail.setAttribute('d', lineD(r, tail, t - 0.15));
+        var past = t - (r.n - 1 + r.ray + 0.6);   // how far the head is past the board's edge
+        r.g.style.opacity = past > 0 ? Math.max(0, 1 - past / 1.6).toFixed(3) : '1';
+        if (!m.spark && t + r.n - 1 >= r.n - 1 + r.ray + 0.5) { m.spark = true; spark(r); }
+        if (u >= 1) {
+          r.g.style.display = 'none';
+          var tr = m.trail; tr.style.transition = 'opacity .35s'; tr.style.opacity = '0'; setTimeout(function () { tr.remove(); }, 400);
+          return false;
+        }
+      } else {
+        var e = now - m.t0, t2;
+        if (e < m.fwd) { var a = e / m.fwd; t2 = m.gap * a * a; }
+        else {
+          if (!m.hit) { m.hit = true; impact(m); }
+          var c = Math.min(1, (e - m.fwd) / m.back); t2 = m.gap * (1 - (1 - Math.pow(1 - c, 3))) ;
+          t2 += Math.sin(c * Math.PI * 3) * 0.06 * (1 - c);
+        }
+        paintArrow(r, Math.max(0, t2));
+        if (u >= 1) { paintArrow(r, 0); delete busy[r.i]; if (over) failed(); return false; }
+      }
+      return true;
+    });
+    if (flying.length) raf = requestAnimationFrame(frame);
+  }
+  // the moment of a bump: the thud, the blocker jolts, the tray shakes, a heart goes
+  function impact(m) {
+    var r = m.r, bl = A[m.by];
+    SND.thud(); Kit.haptic('heavy');
+    r.g.classList.remove('hit'); void r.g.getBoundingClientRect(); r.g.classList.add('hit');
+    if (bl) { bl.g.classList.remove('block'); bl.g.classList.add('block'); jolt(bl, r.d); setTimeout(function () { bl.g.classList.remove('block'); }, 650); }
+    setTimeout(function () { r.g.classList.remove('hit'); }, 520);
+    trayEl.classList.remove('shake'); void trayEl.offsetWidth; trayEl.classList.add('shake');
+    setTimeout(function () { SND.heart(); }, 40);
+    updHud();
+    if (S.lives === 1 && !over) note(Kit.icon('heart') + '<span>One heart left</span>', 1800);
+  }
+  function jolt(r, d) {
+    var t0 = performance.now(), dx = C.DX[d] * 0.14, dy = C.DY[d] * 0.14;
+    (function step(now) {
+      var u = Math.min(1, (now - t0) / 260), k = Math.sin(u * Math.PI) * (1 - u * 0.4);
+      r.g.setAttribute('transform', u >= 1 ? '' : 'translate(' + f2(dx * k) + ' ' + f2(dy * k) + ')');
+      if (u < 1) requestAnimationFrame(step);
+    })(t0);
+  }
+  // little sparks where an arrow leaves the board
+  function spark(r) {
+    var hd = r.pts[r.n], k = r.ray + 0.5, x = hd[0] + C.DX[r.d] * k, y = hd[1] + C.DY[r.d] * k;
+    for (var s = 0; s < 5; s++) (function (s) {
+      var ang = Math.atan2(C.DY[r.d], C.DX[r.d]) + (s - 2) * 0.5, c = svg('circle', { class: 'aj-spark', cx: x, cy: y, r: 0.07, fill: s % 2 ? '#fff' : r.color }, fxG);
+      var t0 = performance.now(), dist = 0.6 + Math.random() * 0.5;
+      (function st(now) {
+        var u = Math.min(1, (now - t0) / 380);
+        c.setAttribute('cx', f2(x + Math.cos(ang) * dist * u)); c.setAttribute('cy', f2(y + Math.sin(ang) * dist * u));
+        c.setAttribute('opacity', (1 - u).toFixed(2)); c.setAttribute('r', f2(0.08 * (1 - u * 0.6)));
+        if (u < 1) requestAnimationFrame(st); else c.remove();
+      })(t0);
+    })(s);
+  }
+
+  // ── Hint: an arrow that can leave now, lit in gold, and its way out ──────
+  var hinted = -1;
+  function clearHint() { if (hinted >= 0 && A[hinted]) A[hinted].g.classList.remove('hint'); hinted = -1; if (wayEl) wayEl.classList.remove('on'); }
+  function hint() {
+    if (!live()) return;
+    if (!S.hints) { Kit.toast('You have used the three hints this level gives you'); return; }
+    if (showHint(false)) { S.hints--; S.used++; updHud(); save(); }
+  }
+  function showHint(free) {
+    var f = C.free(L, gone).filter(function (i) { return !busy[i]; });
+    if (!f.length) return false;
+    // the free arrow that frees the most others (so the hint helps), the longest first
+    var before = C.links(L), score = function (i) { var n = 0; before.forEach(function (b, j) { if (!gone[j] && b.indexOf(i) >= 0) n++; }); return n * 10 + A[i].n; };
+    f.sort(function (a, b) { return score(b) - score(a); });
+    clearHint();
+    var i = f[0], r = A[i]; hinted = i;
+    r.g.classList.add('hint');
+    var hd = r.pts[r.n];
+    wayEl.setAttribute('d', 'M' + f2(hd[0] + C.DX[r.d] * 0.45) + ' ' + f2(hd[1] + C.DY[r.d] * 0.45) + 'L' + f2(hd[0] + C.DX[r.d] * (r.ray + 0.5)) + ' ' + f2(hd[1] + C.DY[r.d] * (r.ray + 0.5)));
+    wayEl.classList.add('on');
+    if (!free) { Kit.sfx('sparkle', 0.6); Kit.haptic('light'); }
+    return true;
+  }
+  function askRestart() {
+    if (!S) return;
+    var go = function () { var nm = S.name, n = S.lv; start(n, nm); Kit.sfx('whoosh'); };
+    if (live() && S.gone.length) Kit.confirm('Start level ' + S.lv + ' over?', { ok: 'Restart', body: 'Every arrow goes back on the board and you get your three hearts back.' }).then(function (ok) { if (ok) go(); });
+    else go();
+  }
+
+  // ── The end of a level ───────────────────────────────────────────────────
+  function finish() {
+    S.done = true; clearSave(); clearHint();
+    var stars = S.lives, lv = S.lv, p = prog(), before = +p.s[lv] || 0, t0 = totals();
+    var first = !before, better = stars > before;
+    if (better) p.s[lv] = stars;
+    lsSet(PROG, JSON.stringify(p));
+    var t1 = totals(), allDone = t1.done === N && t0.done < N, allStars = t1.stars === N * 3 && t0.stars < N * 3;
+    var perfect = S.bumps === 0, lastHeart = S.lives === 1;
+    // the highlights the history keeps
+    var hl = [], nm = S.name;
+    if (perfect && lv >= 21) hl.push(nm + ' cleared level ' + lv + ' without a single bump.');
+    if (lastHeart && lv >= 11) hl.push(nm + ' cleared level ' + lv + ' on the last heart.');
+    if (S.best >= 15) hl.push(nm + ' sent ' + S.best + ' arrows off in a row on level ' + lv + '.');
+    if (lv === N && first) hl.push(nm + ' cleared level ' + N + ', the last level of Arrow Jam.');
+    if (allDone) hl.push(nm + ' has cleared all ' + N + ' levels.');
+    if (allStars) hl.push(nm + ' has all ' + (N * 3) + ' stars.');
+    Kit.record(HKEY, {
+      players: [{ name: nm, score: stars }], winner: null, mode: 'Level ' + lv,   // (a puzzle has no winner: the history names it by what happened)
+      summary: 'Cleared level ' + lv + ' with ' + stars + (stars === 1 ? ' star' : ' stars'),
+      highlights: hl, meta: { lv: lv, stars: stars, bumps: S.bumps, hints: S.used, arrows: L.a.length, run: S.best || 0 },
+      detail: { level: lv, stars: stars, bumps: S.bumps, hints: S.used, arrows: L.a.length }
+    });
+    // the board lights up from the middle out, then the moment, then the card
+    var wait = 900;
+    setTimeout(function () { wave(); SND.clear(); Kit.haptic('success'); }, 650);
+    var mo = null;
+    var GOLD = '#f2b53a';
+    if (lv === N && first) mo = { title: 'Level 50 is clear', line: 'You have cleared every board in Arrow Jam.', icon: 'trophy', big: true, color: GOLD };
+    else if (allStars) mo = { title: 'All 150 stars', line: 'Every level is clear without a single bump.', icon: 'star', big: true, color: GOLD };
+    else if (allDone) mo = { title: 'Every level is clear', line: 'All 50 boards are done. Play any of them again for more stars.', icon: 'trophy', big: true, color: GOLD };
+    else if (perfect) mo = { title: 'Not a single bump', line: 'Level ' + lv + ' is clear with all three hearts.', icon: 'star', pts: '3 stars', color: GOLD };
+    else if (lastHeart) mo = { title: 'Saved by the last heart', line: 'Level ' + lv + ' is clear with one heart to spare.', icon: 'heart', color: '#ff4d6d' };
+    if (mo) {
+      setTimeout(function () {
+        Kit.moment({ title: mo.title, line: mo.line, icon: mo.icon, pts: mo.pts, big: mo.big, color: mo.color, at: mo.big ? null : trayEl, ms: mo.big ? 3000 : 2000 });
+        Kit.sfx(mo.big ? 'win' : 'sparkle'); if (mo.big) Kit.confetti();
+      }, 1300);
+      wait = mo.big ? 4600 : 3500;
+    } else wait = 1700;
+    setTimeout(function () { if (S && S.done && S.lv === lv) winCard(stars, first, better); }, wait);
+  }
+  function wave() {
+    if (!svgEl) return;
+    var mx = L.w / 2, my = L.h / 2;
+    [].forEach.call(svgEl.querySelectorAll('.well'), function (w) {
+      var c = +w.getAttribute('data-c'), d = Math.hypot(c % L.w + 0.5 - mx, Math.floor(c / L.w) + 0.5 - my);
+      w.style.animationDelay = Math.round(d * 45) + 'ms'; w.classList.add('lit');
+    });
+  }
+  function starRow(n) {
+    var box = el('div', { class: 'aj-stars', role: 'img', 'aria-label': n + (n === 1 ? ' star' : ' stars') });
+    for (var k = 0; k < 3; k++) (function (k) {
+      var s = el('i'); box.appendChild(s);
+      if (k < n) { s.style.animationDelay = (0.35 + k * 0.28) + 's'; s.classList.add('on'); setTimeout(function () { SND.star(k); Kit.haptic('light'); }, 350 + k * 280); }
+    })(k);
+    return box;
+  }
+  function winCard(stars, first, better) {
+    var lv = S.lv, nm = S.name, hasNext = lv < N;
+    var sub = (stars === 3 ? 'No bumps' : S.bumps === 1 ? 'One bump' : S.bumps + ' bumps') + ' · ' + L.a.length + ' arrows' + (S.used ? ' · ' + S.used + (S.used === 1 ? ' hint' : ' hints') : '') +
+      (!first && better ? ' · A new best for this level' : '') + (first && hasNext ? ' · Level ' + (lv + 1) + ' is open' : '');
+    Kit.win({
+      icon: 'star', title: 'Level ' + lv + ' is clear', sub: sub, pic: starRow(stars),
+      again: function () { start(hasNext ? lv + 1 : lv, nm); }, againLabel: hasNext ? 'Play level ' + (lv + 1) : 'Play level ' + lv + ' again',
+      look: true,
+      extra: stars < 3 ? [{ label: 'Try level ' + lv + ' again for 3 stars', onClick: function () { start(lv, nm); } }] : [],
+      setup: function () { leave(); showSetup(hasNext ? lv + 1 : lv); }, setupLabel: 'Choose a level'
+    });
+  }
+  function failed() {
+    if (!S || S.done) return;
+    var lv = S.lv, nm = S.name, cl = S.gone.length;
+    S.done = true; clearSave(); clearHint(); updHud();
+    Kit.record(HKEY, {
+      players: [{ name: nm, score: 0 }], winner: null, mode: 'Level ' + lv,
+      summary: 'Ran out of hearts on level ' + lv,
+      meta: { lv: lv, stars: 0, bumps: S.bumps, hints: S.used, arrows: L.a.length, cleared: cl }, detail: { level: lv, cleared: cl, arrows: L.a.length }
+    });
+    setTimeout(function () {
+      Kit.win({
+        lose: true, icon: 'heart', title: 'Out of hearts',
+        sub: cl ? 'You cleared ' + cl + ' of the ' + L.a.length + ' arrows.' : 'Every arrow is still on the board.',
+        again: function () { start(lv, nm); }, againLabel: 'Try level ' + lv + ' again',
+        look: true,
+        setup: function () { leave(); showSetup(lv); }, setupLabel: 'Choose a level'
+      });
+    }, 500);
+  }
+
+  // ── History ──────────────────────────────────────────────────────────────
+  function pastGames() {
+    Kit.loadHistView().then(function () { Kit.history(HKEY, { title: 'Arrow Jam: past games' }); });
+  }
+
+  // ── For tests ────────────────────────────────────────────────────────────
+  window.__aj = {
+    state: function () { return S; }, level: function () { return L; }, levels: LV,
+    free: function () { return C.free(L, gone).filter(function (i) { return !busy[i]; }); },
+    blocked: function () { var f = C.free(L, gone); return L.a.map(function (a, i) { return i; }).filter(function (i) { return !gone[i] && f.indexOf(i) < 0; }); },
+    tap: tap, start: start, busy: function () { return flying.length; },
+    point: function (i) {   // the middle of arrow i on the screen, for a real tap
+      var r = A[i], k = Math.ceil(r.n / 2), p = r.pts[k], b = svgEl.getBoundingClientRect(), vb = svgEl.viewBox.baseVal;
+      var q = rot ? [L.h - p[1], p[0]] : p;
+      return [b.left + (q[0] - vb.x) / vb.width * b.width, b.top + (q[1] - vb.y) / vb.height * b.height];
+    },
+    progress: prog
+  };
+
+  // ── Open: carry on with a level in progress, or the setup ────────────────
+  var saved = null; try { saved = JSON.parse(lsGet(SAVE, 'null')); } catch (e) {}
+  if (saved && saved.v === 1 && saved.lv >= 1 && saved.lv <= N && Array.isArray(saved.gone) && !saved.done && saved.lives > 0) resumeSaved(saved);
+  else showSetup();
+})();
+</script>
+</body>
+</html>
