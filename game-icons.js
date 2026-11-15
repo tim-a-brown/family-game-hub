@@ -72,6 +72,10 @@ var GameIcon = (function () {
     pinochle: function (c) {   // the pinochle itself: the queen of spades over the jack of diamonds
       return rect(2.5, 4, 11, 15.5, 2, W, ' stroke="' + K + '" stroke-width="1.2" transform="rotate(-10 8 12)"') + txt('Q', 8.5, K, 10, 7.4) + rect(10.5, 4.5, 11, 15.5, 2, W, ' stroke="' + R + '" stroke-width="1.2" transform="rotate(10 16 12)"') + txt('J', 8.5, R, 11, 16.5);
     },
+    gofish: function (c) {   // a fish leaping over a fanned pair of cards
+      return rect(3, 9, 9, 12.5, 1.6, W, ' stroke="' + K + '" stroke-width="1.1" transform="rotate(-14 7.5 15)"') + rect(11.5, 9.5, 9, 12.5, 1.6, W, ' stroke="' + K + '" stroke-width="1.1" transform="rotate(12 16 16)"') +
+        '<g transform="translate(-1.8 -2.4) scale(1.42)">' + path('M4.5 6.2c2.6-3 7.6-3.4 10.6-.6l2.2-1.8-.5 3 .6 2.9-2.3-1.6c-3.1 2.6-7.9 2.2-10.6-.8z', c, ' stroke="' + K + '" stroke-width=".7" stroke-linejoin="round"') + circ(7.4, 6.1, .6, K) + '</g>';
+    },
     bridge: function (c) { return rect(3, 6, 10.5, 7.5, 1.6, W, ' stroke="' + K + '" stroke-width="1.2"') + txt('1', 7, K, 9.9, 6.2) + path('M10.6 8.2s-1.6 1.2-1.6 2.1a.8.8 0 0 0 1.4.5l-.4 1h1.2l-.4-1a.8.8 0 0 0 1.4-.5c0-.9-1.6-2.1-1.6-2.1z', K) + rect(9.5, 11, 11.5, 8, 1.6, R) + txt('NT', 6.2, W, 15.2, 15.2); },
     euchre: function (c) { return txt('J', 19, c, 11) + path('M12 17.5l2 2.5-2 2.5-2-2.5z', R); },
     cribbage: function (c) {
