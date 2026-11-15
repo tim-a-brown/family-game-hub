@@ -3636,22 +3636,22 @@
   // ── Pass-and-play hand-off ────────────────────────────────────────────────
   // Kit.handoff({name, color, what, msg, hold}) -> Promise
   // Covers the screen with "Pass to <name>". The player must press and HOLD
-  // the button for 3 seconds (hold: ms) before the cover lifts and their
+  // the button for 2 seconds (hold: ms) before the cover lifts and their
   // hidden cards/tiles show for their turn. Letting go early resets it.
   // Call it again before the next player's turn. The cover sits under the game
   // bar so the menu (Undo, New game) still works; opts.hint replaces the hint
   // text; Kit.handoff.close() removes an open cover without revealing.
   function handoff(o) {
     o = o || {};
-    var HOLD = o.hold || 3000;
+    var HOLD = o.hold || 2000;
     return new Promise(function (resolve) {
       var c = o.color || 'var(--accent)';
       var R = 46, CIRC = 2 * Math.PI * R;
       var ring = '<svg viewBox="0 0 108 108" aria-hidden="true"><circle cx="54" cy="54" r="' + R + '" class="tr"/><circle cx="54" cy="54" r="' + R + '" class="pg" style="stroke-dasharray:' + CIRC + ';stroke-dashoffset:' + CIRC + '"/></svg>';
-      var btn = el('button', { type: 'button', class: 'k-ho-btn', 'aria-label': 'Hold for 3 seconds to show your ' + (o.what || 'cards') }, [
+      var btn = el('button', { type: 'button', class: 'k-ho-btn', 'aria-label': 'Hold for 2 seconds to show your ' + (o.what || 'cards') }, [
         el('span', { class: 'k-ho-ring', html: ring }), el('span', { class: 'k-ho-ic', html: icon('eye') })
       ]);
-      var HINT = o.hint || ('Hold for 3 seconds to see your ' + (o.what || 'cards'));
+      var HINT = o.hint || ('Hold for 2 seconds to see your ' + (o.what || 'cards'));
       var hint = el('div', { class: 'k-ho-hint', text: HINT });
       var cover = el('div', { class: 'k-ho', role: 'dialog', 'aria-modal': 'true', style: { '--ho': c } }, [
         el('div', { class: 'k-ho-in' }, [
