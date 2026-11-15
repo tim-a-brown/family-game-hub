@@ -16,6 +16,8 @@
 /* ── Table ──────────────────────────────────────────────────────────────── */
 .stage.play{max-width:780px;display:flex;flex-direction:column;padding:0 8px calc(var(--safe-b) + 4px);min-height:460px;}
 @media (orientation:landscape) and (min-width:980px) and (min-height:600px){.stage.play{max-width:1060px;}}
+@media (orientation:landscape) and (min-height:561px){.stage.play{max-width:1180px;}}   /* (an iPad on its side: the table as wide as the screen) */
+@media (orientation:landscape) and (max-height:560px){.stage.play{min-height:0;max-width:none;padding-left:calc(8px + var(--corner-x));padding-right:calc(8px + var(--corner-x));}}
 .stable{flex:1;min-height:0;display:flex;border-radius:22px;padding:6px;}
 .stable .felt-in{flex:1;position:relative;isolation:isolate;border-radius:16px;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
 /* Cards sit on the felt at absolute positions and glide between piles */
@@ -49,7 +51,7 @@
 .badge{position:absolute;left:0;top:0;z-index:900;min-width:24px;padding:1px 7px;border-radius:9px;background:rgba(14,15,30,.8);box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);
   color:#fff;font-size:.72rem;font-weight:900;text-align:center;pointer-events:none;font-variant-numeric:tabular-nums;}
 /* Bottom bar: undo, clock, moves, score, hint */
-.sbar{flex:none;display:flex;align-items:center;gap:8px;height:calc(56px + var(--corner-y));padding:6px calc(2px + var(--corner-x)) var(--corner-y);}
+.sbar{flex:none;display:flex;align-items:center;gap:8px;height:calc(56px + max(var(--corner-y),14px));padding:6px max(calc(2px + var(--corner-x)),9px) max(var(--corner-y),14px);}   /* (undo and the hint clear of a rounded screen corner: 18px off the bottom, 17px in from each side) */
 .sbar .icon-btn{width:46px;height:46px;}
 .sbar .stats{flex:1;display:flex;justify-content:center;gap:clamp(14px,5vw,30px);}
 .sbar .st{display:flex;flex-direction:column;align-items:center;line-height:1.1;min-width:44px;}
@@ -303,7 +305,13 @@
       highlights: hl.slice(0, 6), meta: { moves: S.moves, time: S.time, result: 'win', cleared: 28 }, detail: pyrDetail()
     });
     clearSave(); updBar();
-    setTimeout(function () {
+    // An uncommon win has its moment as the cards go: the pyramid cleared on the first trip through the deck, a run of
+    // wins, a new best time
+    var mo = S.pass === 1 ? { big: true, chip: '1', title: 'Cleared in one pass', line: 'You cleared the pyramid on your first trip through the deck.' }
+      : m.streak >= 3 ? { big: true, chip: String(m.streak), title: m.streak + ' wins in a row', line: 'You have cleared ' + m.streak + ' pyramids in a row.' }
+      : bestT && m.won > 1 ? { icon: 'clock', title: 'A new best time', line: 'You cleared the pyramid in ' + fmt(S.time) + ', and your best was ' + fmt(prevTime) + '.', pts: fmt(S.time) } : null;
+    if (mo) { Kit.moment(Object.assign({ ms: mo.big ? 3000 : 2400 }, mo)); Kit.haptic('success'); }
+    setTimeout(function () {   // (after a moment, when there is one)
       var list = S.disc.slice().reverse().concat(S.waste.slice().reverse(), S.stock.slice().reverse());
       cascade(list, function () {
         Kit.win({
@@ -312,7 +320,7 @@
           stats: function () { newGame(); showStats(); }
         });
       });
-    }, 450);
+    }, mo ? 2200 : 450);
   }
   function lose() {
     if (!S || S.won || !S.stock || S.stock.length) return;
@@ -446,6 +454,19 @@
     var step = .54;
     // Wide, roomy screens (tablet/desktop landscape): stock, waste and done
     // sit in a column beside the pyramid so the cards can be bigger.
+    // A phone on its side: the pyramid as tall as the table, the cards you've cleared at its left, the stock and the
+    // waste side by side at its right where your thumb is
+    if (H < 560 && W > H * 1.7) {
+      var cwP = Math.max(30, Math.min(96, Math.floor((H - 2 * pad - 4) / (1.4 * (6 * step + 1))), Math.floor((W - 2 * pad - 6 * g - 3 * 40) / 10)));
+      var chP = Math.round(cwP * 1.4), rowHP = Math.round(chP * step), pyrHP = 6 * rowHP + chP, sgP = Math.max(36, Math.round(cwP * .7));
+      var pyrWP = 7 * cwP + 6 * g, leftP = Math.round((W - (cwP + sgP + pyrWP + sgP + 2 * cwP + 14)) / 2), cyP = Math.round((H - chP - 30) / 2);
+      var sxP = leftP + cwP + sgP + pyrWP + sgP;
+      G = { W: W, H: H, pad: pad, g: g, cw: cwP, ch: chP, rowH: rowHP, y0: Math.round((H - pyrHP) / 2), cx: leftP + cwP + sgP + pyrWP / 2, side: true,
+        bot: { stock: [sxP + cwP + 14, cyP], waste: [sxP, cyP], disc: [leftP, cyP] } };
+      G.botY = cyP;
+      felt.style.setProperty('--cw', cwP + 'px');
+      return;
+    }
     if (W >= 700 && W > H * 1.3) {
       var cwS = Math.min(112, Math.floor((H - 2 * pad) / (1.4 * (6 * step + 1))), Math.floor((W - 2 * pad - 6 * g - 48) / 8.6));
       cwS = Math.min(cwS, Math.floor((H - 2 * pad - 3 * 30 - 2 * 16) / (3 * 1.4)));
@@ -610,7 +631,8 @@
     tapCard(id);
   }
   // a card held mid-drag goes back home first (it was measured for the old shape), then the table re-fits
-  window.addEventListener('resize', function () { if (S && felt && felt.isConnected) { onCancel(); fit(); place(true); } });
+  // (turning the device: every card glides to its place in the new layout)
+  window.addEventListener('resize', function () { if (S && felt && felt.isConnected) { onCancel(); fit(); place(); } });
   window.addEventListener('pagehide', save);
   document.addEventListener('visibilitychange', function () { if (document.hidden) save(); });
 
