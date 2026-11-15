@@ -1607,6 +1607,22 @@
       sym: [['1','2','3','4','5','6','7','8','9','0'], ['-','/',':',';','(',')','$','&','@','"'], ['@more','.',',','?','!',"'",'@back'], ['@abc','@hide','@space','@enter']],
       sym2: [['[',']','{','}','#','%','^','*','+','='], ['_','\\','|','~','<','>','€','£','¥','`'], ['@123b','.',',','?','!',"'",'@back'], ['@abc','@hide','@space','@enter']]
     };
+    // Paste: the clipboard's text goes in at the caret, cut to the box's length (the phone asks first where it does)
+    function canPaste() { return !!(navigator.clipboard && navigator.clipboard.readText); }
+    function paste() {
+      var a = cur; if (!a || !canPaste()) return;
+      navigator.clipboard.readText().then(function (t) {
+        if (!t || cur !== a) return;
+        if (a.tagName !== 'TEXTAREA') t = t.replace(/[\r\n]+/g, ' ');
+        var v = a.value, st = v.length, en = v.length;
+        try { if (a.selectionStart != null) { st = a.selectionStart; en = a.selectionEnd; } } catch (e) {}
+        var room = a.maxLength > 0 ? a.maxLength - (v.length - (en - st)) : Infinity;
+        if (room <= 0) { haptic('error'); return; }
+        if (t.length > room) t = t.slice(0, room);
+        if (a.setRangeText) a.setRangeText(t, st, en, 'end'); else a.value = v.slice(0, st) + t + v.slice(en);
+        fire(a, 'insertFromPaste', t);
+      }).catch(function () {});
+    }
     function rows() {
       var k = cur ? cur.dataset.oskKind : 'text';
       if (/^num/.test(k)) {
@@ -1624,11 +1640,13 @@
         return L;
       }
       var r = ROWS[page === 'sym' || page === 'sym2' ? page : 'abc'].map(function (x) { return x.slice(); });
+      var pst = canPaste();
       if (page === 'abc') {
         if (k === 'email') r[3] = ['@123', '@', '@space', '.', '@enter'];
-        else if (k === 'url') r[3] = ['@123', '/', '@space', '.', '@enter'];
+        else if (k === 'url') r[3] = ['@123'].concat(pst ? ['@paste'] : [], ['/', '@space', '.', '@enter']);   // (a link is usually pasted)
+        else if (k === 'area' && pst) r[3] = ['@123', '@paste', '@space', '@enter'];   // (a list or a note: a deck pasted in)
         else r[3] = ['@123', '@hide', '@space', '@enter'];
-      }
+      } else if (pst) r[3] = ['@abc', '@hide', '@paste', '@space', '@enter'];   // (any full keyboard: Paste is on the symbols pages)
       return r;
     }
     function enterLabel() {
@@ -1640,33 +1658,34 @@
     function keyEl(spec) {
       var b = doc.createElement('button'); b.type = 'button'; b.tabIndex = -1; b.className = 'k-osk-k';
       if (spec[0] === '@' && spec.length > 1) {
-        var a = spec.slice(1); b.dataset.act = a; b.classList.add('fn', 'k-' + a);
-        if (a === 'shift') { b.innerHTML = icon(shift === 2 ? 'kshiftlock' : 'kshift'); b.setAttribute('aria-label', 'Shift'); if (shift) b.classList.add('on'); }
+        var a = spec.slice(1); b.dataset.act = a; b.classList.add('k-osk-fn', 'k-osk-a-' + a);
+        if (a === 'shift') { b.innerHTML = icon(shift === 2 ? 'kshiftlock' : 'kshift'); b.setAttribute('aria-label', 'Shift'); if (shift) b.classList.add('k-osk-on'); }
         else if (a === 'back') { b.innerHTML = icon('kback'); b.setAttribute('aria-label', 'Delete'); }
-        else if (a === 'space') { b.textContent = 'space'; b.classList.remove('fn'); b.classList.add('sp'); }
-        else if (a === 'enter') { var l = enterLabel(); if (l) b.textContent = l; else { b.innerHTML = icon('kenter'); b.setAttribute('aria-label', 'Return'); } b.classList.add('go'); }
+        else if (a === 'space') { b.textContent = 'space'; b.classList.remove('k-osk-fn'); b.classList.add('k-osk-sp'); }
+        else if (a === 'enter') { var l = enterLabel(); if (l) b.textContent = l; else { b.innerHTML = icon('kenter'); b.setAttribute('aria-label', 'Return'); } b.classList.add('k-osk-go'); }
         else if (a === 'hide') { b.innerHTML = icon('khide'); b.setAttribute('aria-label', 'Hide the keyboard'); }
         else if (a === '123') b.textContent = '123';
+        else if (a === 'paste') { b.textContent = 'Paste'; b.setAttribute('aria-label', 'Paste'); }
         else if (a === 'abc') b.textContent = 'ABC';
         else if (a === 'more') { b.textContent = '#+='; b.setAttribute('aria-label', 'More symbols'); }
         else if (a === '123b') b.textContent = '123';
-        else if (a === 'none') { b.className = 'k-osk-k gap'; b.disabled = true; }
-        else if (a === 'pad') { b.className = 'k-osk-k gap pad'; b.disabled = true; }
+        else if (a === 'none') { b.className = 'k-osk-k k-osk-gap'; b.disabled = true; }
+        else if (a === 'pad') { b.className = 'k-osk-k k-osk-gap k-osk-pad'; b.disabled = true; }
       } else {
         var ch = spec.length === 1 && /[a-z]/.test(spec) && shift ? spec.toUpperCase() : spec;
         b.dataset.ch = ch; b.textContent = ch === '-' && /^num/.test(kind) ? '−' : ch;
-        if (/^num/.test(kind)) b.classList.add('n');
+        if (/^num/.test(kind)) b.classList.add('k-osk-n');
       }
       return b;
     }
     function paint() {
       if (!box) return;
       kind = cur ? cur.dataset.oskKind : 'text';
-      box.classList.toggle('num', /^num/.test(kind));
+      box.classList.toggle('k-osk-num', /^num/.test(kind));
       inner.innerHTML = '';
       rows().forEach(function (r, i) {
-        var row = doc.createElement('div'); row.className = 'k-osk-r r' + i + (r[0] === 'a' ? ' mid' : '');
-        r.forEach(function (k) { var b = keyEl(k); if (held && keyId(b) === held) b.classList.add('dn'); row.appendChild(b); });
+        var row = doc.createElement('div'); row.className = 'k-osk-r k-osk-r' + i + (r[0] === 'a' ? ' k-osk-mid' : '');
+        r.forEach(function (k) { var b = keyEl(k); if (held && keyId(b) === held) b.classList.add('k-osk-dn'); row.appendChild(b); });
         inner.appendChild(row);
       });
     }
@@ -1686,7 +1705,7 @@
     // the page answered a key by changing what is around the box (a name added to the list above it, a message under
     // it): the box is brought back above the keyboard, in its sheet or by the page's lift
     function inView(a) {
-      if (!a || !a.isConnected || doc.activeElement !== a || !box || !box.classList.contains('on')) return;
+      if (!a || !a.isConnected || doc.activeElement !== a || !box || !box.classList.contains('k-osk-open')) return;
       var r = a.getBoundingClientRect(), lim = window.innerHeight - h - 8;
       if (r.bottom <= lim && r.top >= 0) return;
       if (a.closest && a.closest('.k-sheet')) { try { a.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
@@ -1755,12 +1774,13 @@
       if (act === 'more') { page = 'sym2'; paint(); return; }
       if (act === 'abc') { page = 'abc'; autoShift(); paint(); return; }
       if (act === 'enter') { enter(); return; }
+      if (act === 'paste') { paste(); return; }
       if (act === 'hide') { if (cur) cur.blur(); hide(); return; }
     }
     function down(e) {
       var b = e.target.closest && e.target.closest('.k-osk-k');
       if (!b || b.disabled) return;
-      b.classList.add('dn'); held = keyId(b); haptic('light'); sfx('tap', 0.4);
+      b.classList.add('k-osk-dn'); held = keyId(b); haptic('light'); sfx('tap', 0.4);
       press(b);
       var act = b.dataset.act;
       if (act === 'back' || b.dataset.ch === ' ') { clearTimeout(repT); clearInterval(repI); repT = setTimeout(function () { repI = setInterval(function () { if (act === 'back') backspace(); }, 70); }, 420); }
@@ -1768,7 +1788,7 @@
     function up(e) {
       clearTimeout(repT); clearInterval(repI); held = null;
       if (!box) return;
-      Array.prototype.forEach.call(box.querySelectorAll('.k-osk-k.dn'), function (b) { b.classList.remove('dn'); });
+      Array.prototype.forEach.call(box.querySelectorAll('.k-osk-k.k-osk-dn'), function (b) { b.classList.remove('k-osk-dn'); });
     }
     function show(a) {
       clearTimeout(hideT);
@@ -1778,18 +1798,18 @@
       if (!same) { page = 'abc'; if (shift !== 2) shift = 0; }
       autoShift(); paint();
       root.classList.add('k-osk-up');
-      box.classList.add('on');
+      box.classList.add('k-osk-open');
       measure();
     }
     function measure() {
       if (!box) return;
-      var nh = box.classList.contains('on') ? Math.round(box.getBoundingClientRect().height) : 0;
+      var nh = box.classList.contains('k-osk-open') ? Math.round(box.getBoundingClientRect().height) : 0;
       if (nh !== h) { h = nh; root.style.setProperty('--osk', h + 'px'); }
       if (window.KitKb) window.KitKb.fit();
     }
     function hide() {
-      if (!box || !box.classList.contains('on')) return;
-      box.classList.remove('on'); root.classList.remove('k-osk-up'); cur = null;
+      if (!box || !box.classList.contains('k-osk-open')) return;
+      box.classList.remove('k-osk-open'); root.classList.remove('k-osk-up'); cur = null;
       h = 0; root.style.setProperty('--osk', '0px');
       if (window.KitKb) window.KitKb.fit();
     }
@@ -1818,7 +1838,7 @@
       doc.addEventListener('keydown', function (e) { if (e.isTrusted && touch && cur && e.key && (e.key.length === 1 || e.key === 'Backspace')) { touch = false; hide(); } }, true);
       doc.addEventListener('selectionchange', function () { if (cur && doc.activeElement === cur && page === 'abc') { var s0 = shift; autoShift(); if (s0 !== shift) paint(); } });
     }
-    return { on: function () { return !!(box && box.classList.contains('on')); }, h: function () { return h; }, show: show, hide: hide, active: function () { return touch; } };
+    return { on: function () { return !!(box && box.classList.contains('k-osk-open')); }, h: function () { return h; }, show: show, hide: hide, active: function () { return touch; } };
   })();
   window.KitOsk = KitOsk;
   // The on-screen keyboard: iPhone covers the bottom of the screen with it, and an open sheet (pasting a deck, typing a
