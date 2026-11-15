@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v825-2026-11-15-english-pattern';
+const CACHE_VERSION = 'v826-2026-11-15-gofish-lettering';
 // Preview channels (familygames-da3e5--name-xyz.web.app) and local testing: pages and code always from the network
 const PREVIEW = self.location.hostname.includes('--') || /^(localhost|127\.0\.0\.1)$/.test(self.location.hostname);
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
@@ -484,6 +484,13 @@ const PRECACHE_URLS = [
   '/fonts/im-fell-english-sc.woff2',
   '/fonts/crimson-pro.woff2',
   '/fonts/alfa-slab-one.woff2',
+  '/fonts/gofish-space.woff2',
+  '/fonts/gofish-cats.woff2',
+  '/fonts/gofish-dogs.woff2',
+  '/fonts/gofish-food.woff2',
+  '/fonts/gofish-flowers.woff2',
+  '/fonts/gofish-sports.woff2',
+  '/fonts/gofish-countries.woff2',
   '/data/a2a-cards.js',
   '/data/cah-cards.js',
   '/games/yahtzee.html',

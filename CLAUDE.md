@@ -357,7 +357,10 @@ Underlying principles for everything:
   Countries; the standard deck stays the default): `games/gofish/decks.js` (13 subjects stand in for the 13 ranks, so the
   core and robots are unchanged; each subject has its name for one, for many and with "a"; the four cards of a subject
   are one picture over a band in its suit's color), the game's `theme` in its state and on the TurnNet table, the Deck
-  choice in the setup. Pictures `games/gofish/decks/<deck>/<key>.webp` and `-t.webp`; how they are made (the house
+  choice in the setup. Each deck's names are lettered in a face of its own (Tim, 2026-11-15: "a creative but fitting font": Audiowide,
+  Grandstander, Chewy, Lilita One, Lobster, Playfair Display italic, Graduate, Fredoka, Alfa Slab One, DM Serif Display;
+  `th-<deck>` in gofish.html, files `fonts/gofish-*.woff2`), each name sized by its longest word measured in that face
+  (`nameFitTh`). Pictures `games/gofish/decks/<deck>/<key>.webp` and `-t.webp`; how they are made (the house
   style, every brief, the cut-out and the real map outlines for the two map decks) is `scripts/gofish-decks/README.md`.
 - **Canasta** `games/canasta.html`, `canasta-core.js`, `hist/canasta.js`, `scripts/canasta/run.js` (`run.txt`): four in
   partnerships by default, two- and three-handed too; the robots' settings are `LV` in the core; test hooks

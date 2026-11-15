@@ -146,7 +146,31 @@
   border-radius:calc(var(--cw) * .02) calc(var(--cw) * .02) calc(var(--cw) * .075) calc(var(--cw) * .075);background:var(--band);color:#fff;
   box-shadow:inset 0 calc(var(--cw) * .012) 0 rgba(255,255,255,.22);}
 .grp .pcard.gft:not(:last-of-type) .nm span,.fan .pcard.gft .nm span{visibility:hidden;}   /* (a card covered by the next one in a group shows its band, not a clipped name) */
-.pcard.gft .nm span{font-family:var(--font);font-weight:800;font-size:calc(var(--cw) * var(--nf,.13));line-height:1.04;text-align:center;letter-spacing:-.01em;text-wrap:balance;overflow-wrap:normal;}
+.pcard.gft .nm span{font-family:var(--font);font-weight:800;font-size:calc(var(--cw) * var(--nf,.13) * var(--nfx,1));line-height:1.04;text-align:center;letter-spacing:-.01em;text-wrap:balance;overflow-wrap:normal;}
+.pcard.gft.nfm .nm span{font-size:calc(var(--cw) * var(--nf,.13));}
+/* each themed deck's names are lettered in a face that fits it (Tim, 2026-11-15: "make sure the Go Fish cards list the name of
+   the item on the card in a creative but fitting font"); printed on the card, so the face is the deck's own, not the app's.
+   --nfx evens out how wide each face runs. fonts/gofish-decks-LICENSE.txt */
+@font-face{font-family:"GF Space";src:url("../fonts/gofish-space.woff2") format("woff2");font-weight:400;font-style:normal;font-display:block;}
+@font-face{font-family:"GF Cats";src:url("../fonts/gofish-cats.woff2") format("woff2");font-weight:800;font-style:normal;font-display:block;}
+@font-face{font-family:"GF Dogs";src:url("../fonts/gofish-dogs.woff2") format("woff2");font-weight:400;font-style:normal;font-display:block;}
+@font-face{font-family:"GF Zoo";src:url("../fonts/lilita-one.woff2") format("woff2");font-weight:400;font-style:normal;font-display:block;}
+@font-face{font-family:"GF Food";src:url("../fonts/gofish-food.woff2") format("woff2");font-weight:400;font-style:normal;font-display:block;}
+@font-face{font-family:"GF Flowers";src:url("../fonts/gofish-flowers.woff2") format("woff2");font-weight:700;font-style:italic;font-display:block;}
+@font-face{font-family:"GF Sports";src:url("../fonts/gofish-sports.woff2") format("woff2");font-weight:400;font-style:normal;font-display:block;}
+@font-face{font-family:"GF Jobs";src:url("../fonts/fredoka-600.woff2") format("woff2");font-weight:600;font-style:normal;font-display:block;}
+@font-face{font-family:"GF States";src:url("../fonts/alfa-slab-one.woff2") format("woff2");font-weight:400;font-style:normal;font-display:block;}
+@font-face{font-family:"GF Countries";src:url("../fonts/gofish-countries.woff2") format("woff2");font-weight:400;font-style:normal;font-display:block;}
+.pcard.gft.th-space .nm span{font-family:"GF Space",var(--font);font-weight:400;font-style:normal;--nfx:0.8;letter-spacing:0;}
+.pcard.gft.th-cats .nm span{font-family:"GF Cats",var(--font);font-weight:800;font-style:normal;--nfx:0.92;letter-spacing:0;}
+.pcard.gft.th-dogs .nm span{font-family:"GF Dogs",var(--font);font-weight:400;font-style:normal;--nfx:1.0;letter-spacing:0;}
+.pcard.gft.th-zoo .nm span{font-family:"GF Zoo",var(--font);font-weight:400;font-style:normal;--nfx:0.95;letter-spacing:0;}
+.pcard.gft.th-food .nm span{font-family:"GF Food",var(--font);font-weight:400;font-style:normal;--nfx:1.0;letter-spacing:0;}
+.pcard.gft.th-flowers .nm span{font-family:"GF Flowers",var(--font);font-weight:700;font-style:italic;--nfx:0.95;letter-spacing:0;}
+.pcard.gft.th-sports .nm span{font-family:"GF Sports",var(--font);font-weight:400;font-style:normal;--nfx:0.8;letter-spacing:0;}
+.pcard.gft.th-jobs .nm span{font-family:"GF Jobs",var(--font);font-weight:600;font-style:normal;--nfx:0.95;letter-spacing:0;}
+.pcard.gft.th-states .nm span{font-family:"GF States",var(--font);font-weight:400;font-style:normal;--nfx:0.86;letter-spacing:0;}
+.pcard.gft.th-countries .nm span{font-family:"GF Countries",var(--font);font-weight:400;font-style:normal;--nfx:0.98;letter-spacing:0;}
 .pcard.back.gfb{background:
     var(--em) center/46% no-repeat,
     radial-gradient(circle at 50% 50%,rgba(255,251,242,.96) 0 25%,rgba(255,251,242,.0) 25.6%),
@@ -265,11 +289,26 @@
   }
   // the name's size on the band: its longest word fits the band's width
   function nameFit(t) { var w = 0; String(t).split(' ').forEach(function (x) { w = Math.max(w, x.length); }); return Math.min(0.15, 0.82 / Math.max(1, w * 0.6)).toFixed(3); }
+  // (once the deck's lettering has loaded, a name is sized by its own longest word measured in that face, as large as the
+  // band allows, so a long word like Veterinarian isn't made smaller than it must be)
+  var FITC = {}, fitCv = null;
+  function nameFitTh(th, t) {
+    var k = th + '|' + t; if (FITC[k]) return FITC[k];
+    var probe = el('span', { class: 'pcard gft th-' + th, style: { position: 'absolute', visibility: 'hidden' } }, [el('span', { class: 'nm' }, [el('span', { text: 'A' })])]);
+    document.body.appendChild(probe);
+    var cs = getComputedStyle(probe.querySelector('.nm span')), fam = cs.fontFamily, sty = cs.fontStyle + ' ' + cs.fontWeight + ' ', cap = 0.15 * (parseFloat(cs.getPropertyValue('--nfx')) || 1);
+    probe.remove();
+    if (!document.fonts || !document.fonts.check(sty + '20px ' + fam.split(',')[0])) return nameFit(t);
+    fitCv = fitCv || document.createElement('canvas').getContext('2d');
+    fitCv.font = sty + '100px ' + fam;
+    var w = 0; String(t).split(' ').forEach(function (x) { w = Math.max(w, fitCv.measureText(x).width / 100); });
+    return (FITC[k] = Math.min(cap, 0.76 / Math.max(w, 0.1)).toFixed(3));
+  }
   function themedFace(th, c, o) {
     o = o || {};
-    var d = deckOf(th), t = DK.subj(th, c.r), n = el('div', { class: 'pcard gft' + (d.dark ? ' dk' : '') + (o.cls ? ' ' + o.cls : ''), 'data-r': c.r, 'data-s': c.s, 'aria-label': t.one });
+    var d = deckOf(th), t = DK.subj(th, c.r), n = el('div', { class: 'pcard gft th-' + th + (d.dark ? ' dk' : '') + (o.cls ? ' ' + o.cls : ''), 'data-r': c.r, 'data-s': c.s, 'aria-label': t.one });
     setDeckVars(n, d);
-    n.style.setProperty('--band', DK.BAND[c.s]); n.style.setProperty('--nf', nameFit(t.one));
+    n.style.setProperty('--band', DK.BAND[c.s]); n.style.setProperty('--nf', nameFitTh(th, t.one)); n.classList.add('nfm');
     n.appendChild(el('span', { class: 'art', style: { 'background-image': 'url("' + DK.pic(th, c.r) + '")' } }));
     n.appendChild(el('span', { class: 'mk' + (c.s === 'd' ? ' lt' : ''), text: DK.MARK[c.s] }));
     n.appendChild(el('span', { class: 'nm' + (c.s === 'd' ? ' lt' : '') }, [el('span', { text: t.one })]));
@@ -288,6 +327,7 @@
   var WARM = {};
   function warm(th) {
     if (!th || WARM[th]) return;
+    try { var nmEl = el('span', { class: 'pcard gft th-' + th, style: { position: 'absolute', opacity: 0 } }, [el('span', { class: 'nm' }, [el('span', { text: 'A' })])]); document.body.appendChild(nmEl); var ff = getComputedStyle(nmEl.querySelector('.nm span')); document.fonts.load(ff.fontStyle + ' ' + ff.fontWeight + ' 20px ' + ff.fontFamily).then(function () { nmEl.remove(); }, function () { nmEl.remove(); }); } catch (e) {}   // (and the deck's lettering)
     WARM[th] = Core.RANKS.map(function (r) { var a = new Image(); a.src = DK.pic(th, r); var b = new Image(); b.src = DK.pic(th, r, true); try { a.decode().catch(function () {}); } catch (e) {} return [a, b]; });
   }
   // a moment's tile shows the subject's picture
@@ -1093,7 +1133,7 @@
   });
   // (tests)
   window.__gf = { get S() { return S; }, get busy() { return busy; }, get me() { return ME; }, get net() { return !!NET; }, move: function (a) { move(ME, a); }, core: Core,
-    redraw: function () { render(); },
+    redraw: function () { render(); }, face: function (th, r, s) { return themedFace(th, { r: r, s: s || 'h' }); },
     finishNow: function () { while (S && S.phase !== 'over') { var p = Core.turn(S); Core.apply(S, p, Core.bot(S, p)); } save(); render(); next(); } };
 })();
 </script>
