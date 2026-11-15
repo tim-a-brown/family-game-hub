@@ -1607,6 +1607,22 @@
       sym: [['1','2','3','4','5','6','7','8','9','0'], ['-','/',':',';','(',')','$','&','@','"'], ['@more','.',',','?','!',"'",'@back'], ['@abc','@hide','@space','@enter']],
       sym2: [['[',']','{','}','#','%','^','*','+','='], ['_','\\','|','~','<','>','€','£','¥','`'], ['@123b','.',',','?','!',"'",'@back'], ['@abc','@hide','@space','@enter']]
     };
+    // Paste: the clipboard's text goes in at the caret, cut to the box's length (the phone asks first where it does)
+    function canPaste() { return !!(navigator.clipboard && navigator.clipboard.readText); }
+    function paste() {
+      var a = cur; if (!a || !canPaste()) return;
+      navigator.clipboard.readText().then(function (t) {
+        if (!t || cur !== a) return;
+        if (a.tagName !== 'TEXTAREA') t = t.replace(/[\r\n]+/g, ' ');
+        var v = a.value, st = v.length, en = v.length;
+        try { if (a.selectionStart != null) { st = a.selectionStart; en = a.selectionEnd; } } catch (e) {}
+        var room = a.maxLength > 0 ? a.maxLength - (v.length - (en - st)) : Infinity;
+        if (room <= 0) { haptic('error'); return; }
+        if (t.length > room) t = t.slice(0, room);
+        if (a.setRangeText) a.setRangeText(t, st, en, 'end'); else a.value = v.slice(0, st) + t + v.slice(en);
+        fire(a, 'insertFromPaste', t);
+      }).catch(function () {});
+    }
     function rows() {
       var k = cur ? cur.dataset.oskKind : 'text';
       if (/^num/.test(k)) {
@@ -1624,11 +1640,13 @@
         return L;
       }
       var r = ROWS[page === 'sym' || page === 'sym2' ? page : 'abc'].map(function (x) { return x.slice(); });
+      var pst = canPaste();
       if (page === 'abc') {
         if (k === 'email') r[3] = ['@123', '@', '@space', '.', '@enter'];
-        else if (k === 'url') r[3] = ['@123', '/', '@space', '.', '@enter'];
+        else if (k === 'url') r[3] = ['@123'].concat(pst ? ['@paste'] : [], ['/', '@space', '.', '@enter']);   // (a link is usually pasted)
+        else if (k === 'area' && pst) r[3] = ['@123', '@paste', '@space', '@enter'];   // (a list or a note: a deck pasted in)
         else r[3] = ['@123', '@hide', '@space', '@enter'];
-      }
+      } else if (pst) r[3] = ['@abc', '@hide', '@paste', '@space', '@enter'];   // (any full keyboard: Paste is on the symbols pages)
       return r;
     }
     function enterLabel() {
@@ -1647,6 +1665,7 @@
         else if (a === 'enter') { var l = enterLabel(); if (l) b.textContent = l; else { b.innerHTML = icon('kenter'); b.setAttribute('aria-label', 'Return'); } b.classList.add('go'); }
         else if (a === 'hide') { b.innerHTML = icon('khide'); b.setAttribute('aria-label', 'Hide the keyboard'); }
         else if (a === '123') b.textContent = '123';
+        else if (a === 'paste') { b.textContent = 'Paste'; b.setAttribute('aria-label', 'Paste'); }
         else if (a === 'abc') b.textContent = 'ABC';
         else if (a === 'more') { b.textContent = '#+='; b.setAttribute('aria-label', 'More symbols'); }
         else if (a === '123b') b.textContent = '123';
@@ -1755,6 +1774,7 @@
       if (act === 'more') { page = 'sym2'; paint(); return; }
       if (act === 'abc') { page = 'abc'; autoShift(); paint(); return; }
       if (act === 'enter') { enter(); return; }
+      if (act === 'paste') { paste(); return; }
       if (act === 'hide') { if (cur) cur.blur(); hide(); return; }
     }
     function down(e) {
