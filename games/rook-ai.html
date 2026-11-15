@@ -15,7 +15,7 @@
 <script src="../online.js"></script>
 <script src="../turnnet.js"></script>
 <style>
-.stage{padding-bottom:calc(var(--safe-b) + 8px);}
+.stage{padding-bottom:max(calc(var(--safe-b) + 8px),18px);}
 /* Scoreboard strip: two paper score cards and the trump/bid marker */
 .rk-top{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:stretch;margin:2px 0 8px;}
 .rk-team{position:relative;border-radius:15px;padding:6px 10px 5px 13px;min-width:0;background:var(--gl);color:var(--text);box-shadow:inset 0 0 0 1px var(--gl-line),0 10px 22px -16px rgba(0,0,0,.9);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);overflow:hidden;}
@@ -80,27 +80,60 @@
 .verdict{font-weight:800;font-size:1.02rem;margin:2px 0 4px;}
 /* iPad portrait: a bigger table and bigger cards to fill the room */
 @media (min-width:700px) and (min-height:900px){
-  .stage{max-width:720px;}
-  .ctable .felt-in{height:clamp(440px,48dvh,580px);}
-  .chand{--cw:92px;}
-  .ctrick .pcard{--cw:84px;}
-  .cseat .backs{--cw:30px;}
-  .cseat .backs .pcard+.pcard{margin-left:-21px;}
-  .cseat .tag{font-size:.95rem;}
-  .cseat .tag .avatar{width:30px;height:30px;}
-  .cseat .chip-s{font-size:.8rem;padding:2px 9px;}
-  .nest .stack{--cw:58px;}
-  .rk-team .nm{font-size:.8rem;}
-  .rk-team .tot{font-size:2rem;}
-  .rk-mid .v{font-size:1rem;}
-  .bidbar,.trumps{max-width:520px;}
+  html:not(.land) .stage{max-width:720px;}
+  html:not(.land) .ctable .felt-in{height:clamp(440px,48dvh,580px);}
+  html:not(.land) .chand{--cw:92px;}
+  html:not(.land) .ctrick .pcard{--cw:84px;}
+  html:not(.land) .cseat .backs{--cw:30px;}
+  html:not(.land) .cseat .backs .pcard+.pcard{margin-left:-21px;}
+  html:not(.land) .cseat .tag{font-size:.95rem;}
+  html:not(.land) .cseat .tag .avatar{width:30px;height:30px;}
+  html:not(.land) .cseat .chip-s{font-size:.8rem;padding:2px 9px;}
+  html:not(.land) .nest .stack{--cw:58px;}
+  html:not(.land) .rk-team .nm{font-size:.8rem;}
+  html:not(.land) .rk-team .tot{font-size:2rem;}
+  html:not(.land) .rk-mid .v{font-size:1rem;}
+  html:not(.land) .bidbar,html:not(.land) .trumps{max-width:520px;}
 }
 /* Landscape tablets and desktops: wider table so the hand fits in one row, and the felt
    shrinks so the bid and trump controls stay on screen */
 @media (min-width:1000px) and (orientation:landscape){
-  .stage{max-width:940px;}
-  .ctable .felt-in{height:clamp(260px,calc(100dvh - 404px),460px);}
+  html.land .stage{max-width:940px;}
+  html.land .ctable .felt-in{height:clamp(260px,calc(100dvh - 404px),460px);}
 }
+/* A phone or iPad on its side (html.ls, set in the script): the table on the left as tall as the screen; the scores, your hand
+   and the bid and trump buttons on the right, where you act */
+html.ls .stage{max-width:none;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(340px,1fr);grid-template-rows:auto auto 1fr auto;column-gap:14px;align-items:start;
+  height:calc(100dvh - var(--bar));padding:0 calc(var(--corner-x) + 6px) max(calc(var(--safe-b) + 10px),18px);}
+html.ls .stage > .ctable{grid-column:1;grid-row:1 / -1;margin:0;padding:7px;align-self:stretch;}
+html.ls .ctable .felt-in{height:100%;min-height:0;}
+html.ls .stage > :not(.ctable){grid-column:2;}
+html.ls .rk-top{grid-row:1;margin:0 0 4px;}
+html.ls .rk-team{padding:4px 8px 4px 12px;}
+html.ls .rk-team .tot{font-size:1.35rem;}
+html.ls .rk-mid{min-width:72px;padding:2px 6px;}
+html.ls .csort-row{grid-row:2;}
+html.ls .chand{grid-row:3;align-self:center;--cw:clamp(52px,calc((100dvh - var(--bar)) * .23),96px);padding:14px 0 2px;}
+html.ls .cbar{grid-row:4;margin:0;align-self:end;}
+html.ls .bidbar,html.ls .trumps{max-width:none;}
+html.ls .trumps button{min-height:46px;}
+html.ls .ctrick .pcard{--cw:clamp(44px,calc((100dvh - var(--bar)) * .15),84px);}
+html.ls .nest .stack{--cw:clamp(38px,calc((100dvh - var(--bar)) * .1),58px);}
+html.ls .cseat .backs{--cw:18px;}
+html.ls .cseat .backs .pcard+.pcard{margin-left:-13px;}
+/* the same on an iPad: the table's seats at an iPad's size */
+@media (min-height:600px){
+  html.ls .cseat .tag{font-size:.95rem;}
+  html.ls .cseat .tag .avatar{width:30px;height:30px;}
+  html.ls .cseat .chip-s{font-size:.8rem;padding:2px 9px;}
+  html.ls .cseat .backs{--cw:28px;}
+  html.ls .cseat .backs .pcard+.pcard{margin-left:-20px;}
+  html.ls .rk-team .nm{font-size:.82rem;}
+  html.ls .rk-team .tot{font-size:2rem;}
+  html.ls .rk-mid .v{font-size:1rem;}
+}
+/* Turning the device: the table, the hand and the buttons glide to their new places (a View Transition in the script) */
+.ctable{view-transition-name:rk-table;} .chand{view-transition-name:rk-hand;} .cbar{view-transition-name:rk-bar;} .rk-top{view-transition-name:rk-top;}
 </style>
 </head>
 <body>
@@ -108,6 +141,22 @@
 <script>
 (function () {
   'use strict';
+  // Turning the device. A phone on its side or an iPad held sideways has its own layout (html.ls), and every turn (phone or iPad) changes the
+  // layout inside a View Transition, so the table, the hand and the buttons glide to their new places instead of jumping.
+  (function () {
+    var R = document.documentElement, q = matchMedia('(orientation:landscape) and (max-height:820px)'), o = matchMedia('(orientation:landscape)');
+    var wait = false;
+    function set() { wait = false; R.classList.toggle('ls', q.matches); R.classList.toggle('land', o.matches); window.dispatchEvent(new Event('resize')); }
+    R.classList.toggle('ls', q.matches); R.classList.toggle('land', o.matches);
+    function turn() {
+      if (wait || (R.classList.contains('ls') === q.matches && R.classList.contains('land') === o.matches)) return;
+      if (document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        try { wait = true; var t = document.startViewTransition(set); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) { wait = false; }
+      }
+      set();
+    }
+    [q, o].forEach(function (m) { if (m.addEventListener) m.addEventListener('change', turn); else m.addListener(turn); });
+  })();
   var el = Kit.el, app = document.getElementById('app');
   var SAVE = 'rook_state', KEY = 'rook', PAD_KEY = 'rk', SEATS = ['s', 'w', 'n', 'e'];
   var COLS = ['r', 'y', 'g', 'b'];
@@ -125,7 +174,6 @@
   var STAR = '<svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2.5l2.9 5.9 6.6 1-4.8 4.6 1.1 6.5L12 17.4l-5.8 3.1 1.1-6.5L2.5 9.4l6.6-1z"/></svg>';
 
   Kit.init({
-    orient: 'portrait',   // phones: sideways leaves no room (the hand or board falls below the screen); tablets turn freely
     id: 'rook',
     onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } clearSave(); showSetup(); },
     undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
@@ -668,7 +716,34 @@
     clearUndo(); save();
     if (made) { Kit.sfx(bt === MT() ? 'good' : 'tick'); } else { Kit.sfx(bt === MT() ? 'bad' : 'good'); }
     var over = (S.scores[0] >= S.target || S.scores[1] >= S.target) && S.scores[0] !== S.scores[1];
-    setTimeout(function () { over ? finish() : showScores(true); }, 500);
+    var mo = handMoment(S.last, S);
+    setTimeout(function () { over ? finish() : showScores(true); }, mo ? 2300 : 500);
+  }
+  // The rare hands get a moment on the table before the scores: every point taken, a big bid made, a bid gone set
+  function handMoment(L, st) {
+    var who = teamAnd(L.bt), ours = L.bt === MT() && onePerson(), felt = document.querySelector('.ctable .felt-in');
+    if (L.made && L.cap[L.bt] === TOTAL) {
+      Kit.moment({ big: true, title: 'All 180 points', line: (ours ? 'Your team' : who) + ' took every point in the hand.', icon: 'crown', pts: '+180', at: felt, ms: 2200 });
+      Kit.sfx('win'); Kit.haptic('success'); if (ours) Kit.confetti({ count: 90 });
+      return true;
+    }
+    if (L.made && L.bid >= 150) {
+      Kit.moment({ title: 'Bid of ' + L.bid + ' made', line: (ours ? 'Your team' : who) + ' took ' + L.cap[L.bt] + ' points.', icon: 'trophy', pts: '+' + L.cap[L.bt], at: felt, ms: 2100 });
+      Kit.sfx('good'); Kit.haptic('success');
+      return true;
+    }
+    if (!L.made) {
+      Kit.moment({ title: (ours ? 'Your team went set' : who + ' went set'), line: 'The bid was ' + L.bid + ' and the team took ' + L.cap[L.bt] + '.', chip: L.bid, pts: '-' + L.bid, tone: ours ? 'bad' : '', at: felt, ms: 2100 });
+      Kit.haptic(ours ? 'error' : 'success');
+      return true;
+    }
+    return false;
+  }
+  // The most points a team was behind at the end of a hand, from the hand-by-hand scores
+  function deficit(st, k) {
+    var a = 0, b = 0, d = 0;
+    (st.rounds || []).forEach(function (r) { a += r[k]; b += r[1 - k]; d = Math.max(d, b - a); });
+    return d;
   }
   function showScores(between, online) {
     var L = S.last, t = el('table', { class: 'sum' });
@@ -704,6 +779,8 @@
     var hl = S.events.slice().sort(function (a, b) { return b.pr - a.pr; }).map(function (e) { return e.t; });
     if (S.bestMade && hl.indexOf(S.bestMade.t) < 0) hl.unshift(S.bestMade.t);
     hl = hl.slice(0, 4);
+    var back = deficit(S, w);
+    if (back >= 150) hl.unshift(teamAnd(w) + ' came back from ' + back + ' points behind to win');
     var rc = S.rookCaps.indexOf(Math.max.apply(null, S.rookCaps));
     if (S.rookCaps[rc] > 1) hl.push(S.players[rc].name + ' caught the Rook ' + S.rookCaps[rc] + ' times');
     hl.push(S.rounds.length + ' hands, played to ' + S.target);
@@ -720,7 +797,7 @@
     var mine = w === MT() && onePerson(), lose = !person(w) && !person(w + 2);
     Kit.win({
       title: mine ? 'Your team wins!' : teamAnd(w) + ' win',
-      sub: S.scores[w] + ' to ' + S.scores[1 - w],
+      sub: S.scores[w] + ' to ' + S.scores[1 - w] + (back >= 150 ? ', after being ' + back + ' points behind' : ''),
       rank: [w, 1 - w].map(function (k) { return { name: teamName(k), score: S.scores[k], color: Kit.color(k) }; }),
       lose: lose, icon: lose ? 'bot' : 'trophy',
       again: function () { S = freshGame(S.target, S.players, S.mode, S.level); ME = 0; undoStack = []; newHand(); },
@@ -1221,13 +1298,14 @@
     S = netView(st); render();
     var mine = L.bt === MT();
     if (L.made) Kit.sfx(mine ? 'good' : 'tick'); else Kit.sfx(mine ? 'bad' : 'good');
-    if (st.phase === 'over') { setTimeout(function () { if (g === NGEN && NET) netEnd(); }, 600); done(); return; }
+    var mo = handMoment(L, st);
+    if (st.phase === 'over') { setTimeout(function () { if (g === NGEN && NET) netEnd(); }, mo ? 2300 : 600); done(); return; }
     Kit.sfx('deal');
     setTimeout(function () {
       if (g !== NGEN || !NET) return;
       netCloseOv();
       NOV = showScores(true, function () { NOV = null; });
-    }, 500);
+    }, mo ? 2300 : 500);
     done();
   }
   function netEnd() {
@@ -1241,6 +1319,8 @@
       var me = ME, hl = st.events.slice().sort(function (a, b) { return b.pr - a.pr; }).map(function (e) { return e.t; });
       if (st.bestMade && hl.indexOf(st.bestMade.t) < 0) hl.unshift(st.bestMade.t);
       hl = hl.slice(0, 4);
+      var back = deficit(st, w);
+      if (back >= 150) hl.unshift(st.players[w].name + ' and ' + st.players[w + 2].name + ' came back from ' + back + ' points behind to win');
       var rc = st.rookCaps.indexOf(Math.max.apply(null, st.rookCaps));
       if (st.rookCaps[rc] > 1) hl.push(st.players[rc].name + ' caught the Rook ' + st.rookCaps[rc] + ' times');
       hl.push(st.rounds.length + ' hands, played to ' + st.target);
