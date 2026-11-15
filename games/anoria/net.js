@@ -391,7 +391,7 @@
       '.an-nd .dk-info .plan{font-size:.9rem;}.an-nd .dk-info .gd{font-size:.8rem;line-height:1.2;}.an-nd .dk-pick{gap:6px;}' +
       '.an-nd .nd-wait{padding:8px 0;}}' +
       '.an-nd .nd-wait{display:flex;flex-direction:column;align-items:center;gap:12px;padding:28px 0 12px;}' +
-      '.an-nd .nd-dots{display:flex;gap:7px;}.an-nd .nd-dots i{width:8px;height:8px;border-radius:50%;background:#d9b45a;opacity:.35;animation:ndp 1.2s infinite ease-in-out;}' +
+      '.an-nd .nd-dots{display:flex;gap:7px;}.an-nd .nd-dots i{width:8px;height:8px;border-radius:50%;background:#d39b62;opacity:.35;animation:ndp 1.2s infinite ease-in-out;}' +
       '.an-nd .nd-dots i:nth-child(2){animation-delay:.2s}.an-nd .nd-dots i:nth-child(3){animation-delay:.4s}' +
       '@keyframes ndp{0%,100%{opacity:.25;transform:scale(.85)}50%{opacity:1;transform:scale(1.1)}}';
     document.head.appendChild(s);
@@ -430,7 +430,7 @@
         box.appendChild(p);
       };
       paint(); rw.appendChild(box);
-      const go = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block k-start shine', text: 'Bring this deck', onclick: () => {
+      const go = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block k-start', text: 'Bring this deck', onclick: () => {
         const d = Coll.deck(H.deckChoice(pick.v, 'me')); if (!d || !d.ok) { Kit.toast('That deck can’t be played yet'); return; }
         const stack = H.stackOf({ deckId: d.id, deck: d.n, cpu: false });
         let mat = null; try { mat = localStorage.getItem(H.matKey); } catch (e) {}

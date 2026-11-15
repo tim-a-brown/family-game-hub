@@ -22,7 +22,7 @@
   'use strict';
   const C = window.AnoriaCards, TX = window.AnoriaText, Coll = window.AnoriaColl, CARDS = C.CARDS, el = Kit.el;
   const IMG = 'anoria/ui/', TEAR = 15;   // (the tear line: this far down the pack, in % of its height)
-  const GOLD = ['#f6e3a1', '#e9cf86', '#b8862d', '#fff1bf', '#ffffff'];
+  const GOLD = ['#d9a46c', '#f0c99c', '#8f5f33', '#ecc193', '#e8b37b'];   // (bronze: the flakes off the pack's band, the sparks of a moment)
   // the colours a foil throws as it turns over, by edition (1 Shiny, 2 Silver foil, 3 Gold foil, 4 Rainbow foil)
   const FOIL = [null, ['#ffffff', '#dff1ff', '#a9dcff'], ['#ffffff', '#dfe7f2', '#9fb1c8', '#eef3f9'], ['#fff3bf', '#f6d77a', '#d9a431', '#ffffff'], ['#ff7ad1', '#ffd166', '#7dffc0', '#6fc3ff', '#c79bff', '#ffffff']];
   const Ed = () => window.AnoriaEd, EDS = Coll.EDITIONS;
@@ -40,15 +40,17 @@
     if (calm()) { o = Object.assign({}, o, { duration: 1, delay: 0 }); }
     const a = node.animate(frames, o); if (!a.finished) a.finished = new Promise(r => { a.onfinish = r; }); return a;
   }
+  // Arvela's mark (the A, its ring and the armillary sphere, in its own gilt) with its name under it as words (AnoriaUI.logo)
+  const logo = (cls, row) => U().logo(cls, row);
   // a small round picture of a card (the Thread it sits on, a gift)
   function thumb(k, cls) { const t = el('span', { class: 'pk-th ' + (cls || ''), style: { '--f': col(k) } }); const im = U().artImg(k, true) || U().mono(k); if (im) t.appendChild(im); return t; }
 
   // ═══ The sealed pack ═════════════════════════════════════════════════════════════════════════════════════
-  // what's printed on it: the crimped gilt ends, the logo, where it came from on a paper band, how many cards
+  // what's printed on it: the band of bronze across its head (the seal, where it tears), Arvela's mark with its name,
+  // and at its foot where it came from and how many cards (Gallery stone's pack: packs.css)
   function packArt(pack) {
     return el('div', { class: 'pk-art' }, [
-      el('i', { class: 'pk-crimp t' }), el('i', { class: 'pk-crimp b' }), el('i', { class: 'pk-frame' }),
-      el('img', { class: 'pk-logo', src: IMG + 'logo.webp', alt: '', draggable: 'false' }),
+      el('i', { class: 'pk-bronze' }), logo('pk-logo'),
       el('div', { class: 'pk-band' }, [el('span', { class: 'pk-label', text: pack.why }), el('span', { class: 'pk-count' }, [el('b', { text: String(pack.n) }), plural(pack.n, ' card', ' cards')])]),
       el('i', { class: 'pk-perf' })
     ]);
@@ -211,7 +213,7 @@
       if (!P.n) return next();   // (chosen already, on another device)
       if (P.from.length === 1) return chosen(x, P.from[0]);
       dots.innerHTML = ''; dots.removeAttribute('aria-label');
-      const R = window.AnoriaRewards, head = R ? R.sphere({ lit: Coll.SIGNS, size: 52, cls: 'pk-ch-sph' }) : el('img', { class: 'pk-ch-logo', src: IMG + 'logo.webp', alt: '', draggable: 'false' });
+      const R = window.AnoriaRewards, head = R ? R.sphere({ lit: Coll.SIGNS, size: 52, cls: 'pk-ch-sph' }) : el('img', { class: 'pk-ch-logo', src: IMG + 'logo-mark.webp', alt: '', draggable: 'false' });
       const root = chooser({ keys: P.from, inSc: true, head: head, title: 'Choose who joins you',
         sub: 'The sphere came round. The Guide you choose joins your company, with their set of 20 cards.',
         see: g => { const set = Coll.setCards(g), G = TX.GUIDES[g]; return ['See the ' + set.length + ' cards of ' + Kit.poss(G.n) + ' set', () => A.browse(set, { title: Kit.poss(G.n) + ' set', sub: set.length + ' cards' })]; },
@@ -243,7 +245,7 @@
       const set = Coll.setCards(g), doms = Coll.DSET[g] || [], fresh = x.doms || doms, nd = doms.filter(id => fresh.indexOf(id) >= 0).length;
       const card = el('button', { type: 'button', class: 'pk-g-card', 'aria-label': 'Read ' + Kit.poss(G.n) + ' card', onclick: e => { e.stopPropagation(); A.openView(g); } }, [A.cardEl(g)]);
       // the set, on the Guide's mat: the cards fanned in an arc, the Domains in a row under them
-      const mat = el('span', { class: 'an-pm gj-mat', 'aria-hidden': 'true' }); if (A.matFill) A.matFill(mat, g, 'gj');
+      const mat = el('span', { class: 'an-pm gj-mat', 'aria-hidden': 'true', 'data-quiet': '' }); if (A.matFill) A.matFill(mat, g, 'gj');
       // (the fan: each card's place along the mat, its drop toward the ends and its turn, in units of the mat's width)
       const slots = set.map((k, i) => { const h = (set.length - 1) / 2 || 1, t = (i - h) / h, a = t * 15;
         const n = el('span', { class: 'gj-c', style: { '--x': (5 + i * (78 / (set.length - 1 || 1))).toFixed(2), '--y': (3 * t * t).toFixed(2), '--a': a.toFixed(1), '--i': i } }, [A.cardEl(k, { mini: true })]); n._a = a; return n; });
@@ -280,7 +282,7 @@
       function finish() {
         if (dealt) return; dealt = true; timers.forEach(clearTimeout);
         tray.classList.add('open', 'done'); slots.concat(tiles).forEach(n => { n.classList.add('in'); (n.getAnimations ? n.getAnimations({ subtree: true }) : []).forEach(a => { try { a.finish(); } catch (e) {} }); });
-        nC.textContent = String(set.length); nD.textContent = String(nd); go.classList.add('shine');
+        nC.textContent = String(set.length); nD.textContent = String(nd);
       }
       m.addEventListener('click', e => { if (!dealt && !e.target.closest('button')) finish(); });
       if (calm()) { finish(); Kit.sfx('win'); Kit.haptic('success'); }
@@ -312,7 +314,7 @@
       stage.className = 'pk-stage'; stage.innerHTML = '';
       const G = TX.GUIDES[g], d = Coll.guideDeck(g), st = Coll.stackFor(d.id), mine = Coll.DSET.base.concat(Coll.DSET[g].filter(id => Coll.DSET.base.indexOf(id) < 0));
       const band = (cls, head, n, keys, i) => el('button', { type: 'button', class: 'pk-f-band ' + cls, style: { '--i': i }, 'aria-label': 'Read the ' + keys.length + ' cards of ' + head, onclick: () => { Kit.sfx('tap'); A.browse(keys, { title: head, sub: keys.length + ' cards' }); } }, [
-        el('span', { class: 'pk-f-hd' }, [cls === 'g' ? A.artImg(g, true) || el('i') : el('img', { src: IMG + 'logo.webp', alt: '' }), el('b', { text: head }), el('em', { text: n + ' cards' })]),
+        el('span', { class: 'pk-f-hd' }, [cls === 'g' ? A.artImg(g, true) || el('i') : el('img', { src: IMG + 'logo-mark.webp', alt: '' }), el('b', { text: head }), el('em', { text: n + ' cards' })]),
         el('span', { class: 'pk-f-row' }, keys.map((k, j) => { const c = A.cardEl(k, { mini: true }); c.style.setProperty('--j', j); return c; }))]);
       const count = el('b', { class: 'pk-f-n', text: '0' });
       const go = el('button', { type: 'button', class: 'btn btn-primary btn-lg pk-g-go', text: waiting().length ? 'Open your welcome packs' : 'Done', onclick: () => { Kit.sfx('tap'); Kit.haptic('light'); next(); } });
@@ -346,7 +348,7 @@
       });
       const ok = el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Done', onclick: () => { Kit.sfx('tap'); Kit.haptic('light'); leave(); } });
       stage.appendChild(el('div', { class: 'pk-none' }, [
-        el('div', { class: 'pk-none-a' }, [el('div', { class: 'pk-ghost', 'aria-hidden': 'true' }, [el('img', { src: IMG + 'logo.webp', alt: '', draggable: 'false' })]), el('h2', { class: 'pk-none-t', text: 'No packs waiting' })]),
+        el('div', { class: 'pk-none-a' }, [el('div', { class: 'pk-ghost', 'aria-hidden': 'true' }, [el('img', { src: IMG + 'logo-mark.webp', alt: '', draggable: 'false' })]), el('h2', { class: 'pk-none-t', text: 'No packs waiting' })]),
         el('div', { class: 'pk-none-b' }, [el('div', { class: 'pk-k', text: 'What earns the next' }), el('ul', { class: 'pk-n-list' }, rows),
           el('div', { class: 'pk-none-acts' }, [window.AnoriaLibrary && window.AnoriaLibrary.open ? el('button', { type: 'button', class: 'btn btn-soft', html: Kit.icon('book') + '<span>Library</span>', onclick: () => { Kit.sfx('tap'); toLibrary(); } }) : null, ok])])
       ]));
@@ -539,7 +541,7 @@
         else if (o.pass) { Kit.sfx('deal', .8); Kit.haptic(isNew ? 'light' : 'tick'); }
         else if (isNew) {
           Kit.sfx('deal', 1); Kit.sfx('flip', .6); setTimeout(() => Kit.sfx('sparkle', last ? 1 : .8), 120); Kit.haptic('medium');
-          const r = flow.getBoundingClientRect(), w = r.height * .7143; setTimeout(() => { if (alive) bits(fx, r.left + r.width / 2, r.top + r.height / 2, 14, [col(k), '#fff1bf', '#e9cf86'], { d: w * .95, ms: 700 }); }, 90);
+          const r = flow.getBoundingClientRect(), w = r.height * .7143; setTimeout(() => { if (alive) bits(fx, r.left + r.width / 2, r.top + r.height / 2, 14, [col(k), '#ecc193', '#d9a46c'], { d: w * .95, ms: 700 }); }, 90);
         } else { Kit.sfx('deal', 1); Kit.sfx('flip', .5); Kit.haptic('light'); }
         if (link && !o.pass) setTimeout(() => Kit.sfx('good', .6), 300);
         mark();
@@ -609,6 +611,8 @@
         if (stop) { rest.disabled = false; Promise.resolve().then(() => { if (alive && !ended && F) F.settle(j, 0); }); }
         turn(j, { pass: onward && !stop });
         c.el.classList.add('land'); setTimeout(() => c.el.classList.remove('land'), 460);
+        // (a card new to you: the gallery's light comes up on it while the room round it falls dark for a moment)
+        if (c.el.classList.contains('new') && !calm()) { stage.classList.add('lit'); clearTimeout(stage._lit); stage._lit = setTimeout(() => stage.classList.remove('lit'), 460); }
         if (!ended && Math.round(F.pos) === j) show(c.x.c, c.x, linkFor(c.x.c));
       }
       // another card has come to the front: the plate says which, once it is face up. (On a calm screen there is no
@@ -637,32 +641,56 @@
       // buttons under it can wrap)
       if (window.ResizeObserver) { let rq = 0; const ro = new ResizeObserver(() => { cancelAnimationFrame(rq); rq = requestAnimationFrame(() => { if (alive && main.isConnected) fit(); }); }); ro.observe(field); offs.push(() => ro.disconnect()); }
 
-      // ── out of the pack and into your hands ──
+      // ── out of the pack and into your hands. The opened pack does not slide away: it glides (a little smaller where
+      // room is short) to where the cards will be, its middle under the strip's middle and its mouth just under the
+      // top of the front card's place, so a card that rises out of it is half out of the pack and still whole on the
+      // screen. The cards come up out of the mouth one behind the other: each rises straight up, half its height clear
+      // of the pack, then swings across to its place on the strip. The pack then sinks away under the first card as
+      // that card turns over. There is never an empty screen. ──
+      function aim() {
+        const tilt = seal.querySelector('.pk-tilt'), S0 = seal.getBoundingClientRect(), r = tilt.getBoundingClientRect(), fr = flow.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+        const cu = parseFloat(getComputedStyle(flow).getPropertyValue('--cu')) || fr.height, cw = cu * .7143;
+        const mx = r.left + r.width / 2, my = r.top + r.height * TEAR / 100, fx = fr.left + fr.width / 2, fy = fr.top + fr.height / 2;
+        const room = Math.min(innerHeight, sr.bottom + 8) - 40;
+        // (the mouth sits where the half-risen card is level with the top of the front card's place; where the pack is
+        // too tall for that, it rides higher, as long as the risen card stays clear of the back button; only then is it
+        // smaller)
+        let k = 1, s = 0, y = 0;
+        for (; k >= .55; k -= .025) {
+          s = Math.min(.92, r.width * k * .8 / cw); const h = cu * s;
+          const lo = sr.top + 58 + h * .54, hi = room - r.height * .85 * k, want = fy - cu / 2 + h * .55;
+          if (lo <= hi || k < .57) { y = Math.max(lo, Math.min(hi, want)); break; }
+        }
+        return { k: k, s: s, cu: cu, cw: cw, x: fx, y: y, w: r.width * k, h: r.height * k, ox: mx - S0.left, oy: my - S0.top, dx: fx - mx, dy: y - my, sh: S0.height };
+      }
       (async function deal() {
         const quick = calm();
         if (!quick) await wait(420);
         if (!alive) return;
-        const s = seal.getBoundingClientRect(), f = field.getBoundingClientRect(), st = stage.getBoundingClientRect();
-        const to = { x: f.left + f.width / 2, y: st.bottom - Math.min(84, st.height * .16) }, dx = to.x - mouth.x, dy = to.y - mouth.y;
+        const P = quick ? null : aim();
         seal.classList.add('away');
-        if (!quick) { seal.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)'; await wait(430); }
+        if (P) { seal.style.transformOrigin = P.ox.toFixed(1) + 'px ' + P.oy.toFixed(1) + 'px'; seal.style.transform = 'translate(' + P.dx.toFixed(1) + 'px,' + P.dy.toFixed(1) + 'px) scale(' + P.k.toFixed(3) + ')'; await wait(500); }
         await firstReady;   // (the first card's picture: it is nearly always there by now)
         if (!alive) return;
         stage.classList.remove('dealing');
-        if (!quick && n) {
-          // the cards come up out of the pack one behind the other and fan out along the strip
+        if (P && n) {
+          const fr = flow.getBoundingClientRect(), s = P.s, h = P.cu * s;
+          // (the card turns about its left edge, so its middle is moved there by hand)
+          const cx = P.x - (fr.left + fr.width / 2) + P.cw / 2 * (1 - s), mo = P.y - (fr.top + fr.height / 2);
+          const tf = y => 'translate3d(' + cx.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0) scale(' + s.toFixed(3) + ')';
           cells.forEach((c, i) => {
             if (i > 4) return;
-            const r = flow.getBoundingClientRect(), oy = to.y - (r.top + r.height / 2), d = i * 90, here = c.el.style.transform;
-            anim(c.el, [{ transform: 'translate3d(0,' + oy.toFixed(1) + 'px,0) scale(.3)', opacity: 0 }, { opacity: 1, offset: .2 }, { transform: here, opacity: c.el.style.opacity || 1 }],
-              { duration: 540, delay: d, easing: 'cubic-bezier(.2,.85,.3,1.08)', fill: 'backwards' });
+            const d = i * 70;
+            c.el.classList.add('rising'); setTimeout(() => c.el.classList.remove('rising'), d + 640);
+            anim(c.el, [{ transform: tf(mo + h * .52), opacity: 1, easing: 'cubic-bezier(.25,.7,.35,1)' }, { transform: tf(mo - h * .02), opacity: 1, offset: .46, easing: 'cubic-bezier(.5,0,.25,1)' },
+              { transform: c.el.style.transform, opacity: c.el.style.opacity || 1 }], { duration: 600, delay: d, easing: 'linear', fill: 'backwards' });
             setTimeout(() => { if (alive) { Kit.sfx('deal', 1); Kit.haptic('tick'); } }, d + 40);
           });
-          await wait((Math.min(n, 5) - 1) * 90 + 560);
+          await wait((Math.min(n, 5) - 1) * 70 + 620);
         }
         if (!alive) return;
-        // (the empty pack slides away while the first card comes over)
-        if (!quick) { seal.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + (dy + s.height).toFixed(1) + 'px)'; seal.style.opacity = '0'; setTimeout(() => seal.remove(), 400); } else seal.remove();
+        // (the empty pack sinks away under the first card as it comes over)
+        if (P) { seal.style.transform = 'translate(' + P.dx.toFixed(1) + 'px,' + (P.dy + P.sh * .08).toFixed(1) + 'px) scale(' + (P.k * .93).toFixed(3) + ')'; seal.style.opacity = '0'; setTimeout(() => seal.remove(), 520); } else seal.remove();
         stage.classList.add('turning'); mark();
         if (!n) { end(); return; }
         dealt = true; if (flat) front(0); else F.settle(0, 0, 560);
@@ -812,7 +840,7 @@
   function chooseStarter(app, done) {
     const A = U();
     const root = chooser({ keys: Object.keys(C.GUIDES), title: 'Choose your Guide', sub: 'Each one brings a set of 20 cards.',
-      head: el('img', { class: 'pk-ch-logo', src: IMG + 'logo.webp', alt: 'Arvela', draggable: 'false' }),
+      head: el('img', { class: 'pk-ch-logo', src: IMG + 'logo-mark.webp', alt: 'Arvela', draggable: 'false' }),
       see: g => { const d = Coll.guideDeck(g); return ['See the first deck\'s ' + d.cards.length + ' cards', () => A.deckSheet(d)]; },
       go: g => 'Begin with ' + TX.GUIDES[g].n,
       commit: g => {
@@ -822,7 +850,7 @@
       } });
     app.innerHTML = ''; app.appendChild(root);
     // the logo first, for a breath (a tap moves on)
-    if (!calm() && !(window.AnoriaGuide && window.AnoriaGuide.justRan())) { const sp = el('div', { class: 'pk-ch-splash' }, [el('img', { src: IMG + 'logo.webp', alt: '', draggable: 'false' })]); root.appendChild(sp); sp.addEventListener('pointerdown', () => sp.remove()); setTimeout(() => sp.remove(), 1950); }
+    if (!calm() && !(window.AnoriaGuide && window.AnoriaGuide.justRan())) { const sp = el('div', { class: 'pk-ch-splash' }, [logo('pk-ch-lockup')]); root.appendChild(sp); sp.addEventListener('pointerdown', () => sp.remove()); setTimeout(() => sp.remove(), 1950); }
   }
   // (a guide object from AnoriaColl.gameOver keeps why it joined, so the moment can say so)
 
