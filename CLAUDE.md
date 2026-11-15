@@ -141,7 +141,11 @@ Underlying principles for everything:
   `--kb`, `--vvh`, the `--kblift` page lift), so a sheet rides above it and the box stays in view. A new box needs
   nothing; one that is really a game's own key capture, or a game that draws its own keys (Wordle, Oregon Trail), says
   `data-osk="off"`. A box is described for the keyboard by its own attributes (`type`, `inputmode`, `autocapitalize`,
-  `enterkeyhint`, `maxlength`). Desktops keep their keyboard, and a real key pressed on an iPad's keyboard case puts the
+  `enterkeyhint`, `maxlength`), and by the keys it can take: `data-osk` `letters` (A to Z; `data-osk-space="off"` drops
+  space), `name` (letters, ' and -, a capital each word), `word` (the same keys), `code` (digits over capitals), `neg`
+  and `dec` (a number pad with a minus or a point), `off`; no value is the full keyboard with symbols and Paste. What a
+  player reads while typing is marked `data-osk-view` around the box (it stays in view above the keyboard), and a
+  helper beside it that should not put the keyboard away (Mad Libs' ideas, Ranker's note) `data-osk-keep`. Desktops keep their keyboard, and a real key pressed on an iPad's keyboard case puts the
   screen keyboard away for the visit.
 - **Every game is in Night glass** (the sweep of 2026-11-14, every game page, its own folder and history view). The line
   between what a game keeps and what follows the look: **anything that would be printed on the physical game keeps its own

@@ -1553,6 +1553,7 @@
   // styled uppercase) has no shift key.
   var KitOsk = (function () {
     var touch = false; try { touch = matchMedia('(hover:none) and (pointer:coarse)').matches; } catch (e) {}
+    var keepFor = null, keepAt = 0;
     var root = doc.documentElement, box = null, inner = null, cur = null, kind = 'text', page = 'abc', shift = 0, lastShift = 0, h = 0, repT = 0, repI = 0, hideT = 0;
     var chEl = null, chV = '', chDirty = false;   // (a box typed in here hears 'change' on Enter or as it loses the focus, as with a real keyboard)
     var held = null;   // (the key under the finger, kept pressed when the keys are redrawn)
@@ -1758,7 +1759,7 @@
       // with the sheet's message above it). A search puts it away to show what it found.
       setTimeout(function () {
         if (doc.activeElement !== a || !a.isConnected) return;
-        if (was && !a.value) { inView(a); return; }
+        if (was && !a.value) { if (cur === a && page === 'abc') { autoShift(); paint(); } inView(a); return; }   // (the next entry starts with its capital)
         var sc = a.closest && a.closest('.k-scrim');
         if (hint !== 'search' && sc && sc.classList.contains('show')) { inView(a); return; }
         a.blur();
@@ -1824,13 +1825,18 @@
       }, true);
       doc.addEventListener('pointerdown', function (e) {
         var a = e.target; if (wants(a)) { prep(a); openTap = a; openAt = Date.now(); }
+        else if (cur && a.closest && a.closest('[data-osk-keep]')) { keepFor = cur; keepAt = Date.now(); }   // (a helper beside the box, an idea chip: the keyboard stays up)
         else if (cur && box && !box.contains(a) && !(a.closest && a.closest('label')) && doc.activeElement === cur) cur.blur();   // (a tap anywhere else puts the keyboard away)
       }, true);
-      doc.addEventListener('focusin', function (e) { if (wants(e.target)) show(e.target); else if (cur) { hideT = setTimeout(hide, 30); } });
+      doc.addEventListener('focusin', function (e) { if (wants(e.target)) show(e.target); else if (cur && !(keepFor && Date.now() - keepAt < 900)) { hideT = setTimeout(hide, 30); } });
       doc.addEventListener('focusout', function (e) { if (e.target === chEl) { changed(chEl); chEl = null; } }, true);
       // a sheet closing with its box still focused takes the keyboard down with it, as it starts to slide away
       window.addEventListener('kit-sheet-closed', function () { var sc = cur && cur.closest && cur.closest('.k-scrim'); if (sc && !sc.classList.contains('show')) cur.blur(); });
-      doc.addEventListener('focusout', function () { hideT = setTimeout(function () { var a = doc.activeElement; if (wants(a)) show(a); else hide(); }, 60); });
+      doc.addEventListener('focusout', function () { hideT = setTimeout(function () {
+        var a = doc.activeElement; if (wants(a)) { show(a); return; }
+        if (keepFor && Date.now() - keepAt < 900 && keepFor.isConnected && wants(keepFor)) { var k = keepFor; keepFor = null; try { k.focus({ preventScroll: true }); } catch (e) { k.focus(); } return; }   // (back to the box the helper was for)
+        hide();
+      }, 60); });
       // a page changes what is on the screen while the keyboard is up: a box that leaves takes the keyboard with it
       setInterval(function () { if (cur && (!cur.isConnected || doc.activeElement !== cur)) { if (wants(doc.activeElement)) show(doc.activeElement); else hide(); } }, 500);
       window.addEventListener('resize', function () { if (cur) { paint(); setTimeout(measure, 30); } });
