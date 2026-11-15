@@ -882,7 +882,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 :root:not(.ng-x) .chips .chip{font-weight:650;}
 /* Players and Games: two dropdowns; Games takes the rest of the row and says what is shown */
 :root:not(.ng-x) .chips .chip.kinds{flex:1 1 auto;min-width:0;justify-content:flex-start;}
-:root:not(.ng-x) .chips .chip.kinds .kl{min-width:0;overflow-wrap:anywhere;line-height:1.15;text-align:left;white-space:normal;}
+:root:not(.ng-x) .chips .chip.kinds .kl{min-width:0;overflow-wrap:normal;line-height:1.15;text-align:left;white-space:normal;}
 :root:not(.ng-x) .chips .chip.kinds > span:last-child{margin-left:auto;}
 /* Tap targets (Tim, 2026-11-15: "some of the tap targets are probably smaller than they should be (notably, the filters
    on the home screen)"): everything you tap on home answers to at least 44 x 44. The filters are 40 tall and the small
@@ -916,6 +916,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 :root:not(.ng-x) .kpick .kr.on .ck{background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--gold-ink);box-shadow:0 0 12px rgba(255,190,60,.4);}
 
 :root:not(.ng-x) .chips .chip .n{color:var(--text-3);font-weight:600;}
+.dlbtn .dn{display:none;} @media (min-width:360px) and (max-width:719px){:root:not(.ng-x) .filters .dlbtn .dn{display:inline;}}
 :root:not(.ng-x) .chips .chip.on .n{color:inherit;opacity:.75;}
 :root:not(.ng-x) .dlbtn{--dh:hsl(205 78% 62%);border-radius:20px;font-weight:700;
   background:linear-gradient(160deg,color-mix(in srgb,var(--dh) 22%,transparent),rgba(255,255,255,.05) 65%);
@@ -943,6 +944,25 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 @media (max-width:719px){
   :root:not(.ng-x) .filters .chips{grid-column:1/-1;}
   :root:not(.ng-x) .filters .dlbtn{grid-column:1/-1;grid-row:4;margin:8px 0 0;}
+  /* (the pinned bar kept tight, Tim 2026-11-15: Daily puzzles is one line as tall as the chips, its progress a thin line
+     along its foot) */
+  :root:not(.ng-x) .filters .dlbtn{position:relative;display:flex;flex-direction:row;align-items:center;gap:9px;min-height:40px;padding:0 14px;border-radius:14px;overflow:hidden;}
+  :root:not(.ng-x) .filters .dlbtn .ico{width:18px;height:18px;flex:none;}
+  :root:not(.ng-x) .filters .dlbtn b{font-size:.9rem;white-space:nowrap;}
+  :root:not(.ng-x) .filters .dlbtn .ct{margin-left:auto;white-space:nowrap;}
+  :root:not(.ng-x) .filters .dlbtn .bar{position:absolute;left:12px;right:12px;bottom:5px;width:auto;height:3px;}
+}
+/* a phone held upright from 360 wide: Daily puzzles is a short pill at the end of the filters' row ("Daily 0 of 12"), so the
+   bar at the top is two rows */
+@media (min-width:360px) and (max-width:719px){
+  :root:not(.ng-x) .filters{grid-template-columns:minmax(0,1fr) auto auto;}
+  :root:not(.ng-x) .filters .search{grid-column:1;}
+  :root:not(.ng-x) .filters .surprise{grid-column:2/4;}
+  :root:not(.ng-x) .filters .chips{grid-column:1/3;}
+  :root:not(.ng-x) .filters .dlbtn{grid-column:3;grid-row:3;margin:10px 0 0;padding:0 12px;gap:6px;}
+  :root:not(.ng-x) .filters .dlbtn b{display:none;}
+  :root:not(.ng-x) .filters .dlbtn .dw{display:none;}
+  :root:not(.ng-x) .filters .dlbtn .ct{margin-left:0;color:var(--text);font-weight:700;}
 }
 /* an iPad or a wide window: Daily puzzles is a slim pill as tall as the chips, under Surprise (Tim, 2026-11-15: "make the
    locked filters at the top tighter ... maybe by tightening up the daily puzzles into a collapsed version"): the icon,
@@ -1107,6 +1127,19 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 }
 @media (max-width:359px){:root:not(.ng-x) .g.gr.tl .go{padding:11px 5px 9px;gap:5px;border-radius:16px;} :root:not(.ng-x) .g.gr.tl .tx{gap:4px;} :root:not(.ng-x) .g.gr.tl .gi{width:36px;height:36px;border-radius:11px;} :root:not(.ng-x) .g.gr.tl .tx b{font-size:.84rem;} :root:not(.ng-x) .g.gr.tl .fav{top:0;right:0;width:28px;height:28px;} :root:not(.ng-x) .g.gr.tl .fav .ico{width:13px;height:13px;}}
 @media (max-width:359px){:root:not(.ng-x) .g.gr .go{gap:9px;} :root:not(.ng-x) .g.gr .lv{max-width:46%;font-size:.76rem;} :root:not(.ng-x) .g.gr .fav{width:32px;}}
+/* every list row the same shape (Tim, 2026-11-15: "verify tile and detail views"): the name has the row's whole width on
+   the first line, and what is happening in the game (gold when it waits on you) sits on the second line at the right,
+   level with how many play, instead of squeezing the name onto two lines */
+:root:not(.ng-x) .g.gr:not(.tl) .go{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"gi nm nm" "gi pl lv";column-gap:11px;row-gap:2px;align-items:center;}
+:root:not(.ng-x) .g.gr:not(.tl) .go > :first-child{grid-area:gi;}
+:root:not(.ng-x) .g.gr:not(.tl) .tx{display:contents;}
+:root:not(.ng-x) .g.gr:not(.tl) .tx b{grid-area:nm;align-self:end;}
+:root:not(.ng-x) .g.gr:not(.tl) .tx small{grid-area:pl;align-self:start;margin-top:0;}
+:root:not(.ng-x) .g.gr:not(.tl) .lv{grid-area:lv;align-self:start;max-width:none;flex-direction:row;flex-wrap:nowrap;gap:8px;white-space:nowrap;}
+:root:not(.ng-x) .g.gr:not(.tl) .lv:empty{display:none;}
+:root:not(.ng-x) .g.gr:not(.tl) .tx small{min-width:0;}
+/* (and when a row still needs more room at this width, every row takes that height: markWraps sets --row-h) */
+:root:not(.ng-x) #list .g.gr:not(.tl){min-height:var(--row-h,0px);}
 :root:not(.ng-x) .sec.favs.wiggle .list > .g.lift{box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.6),0 16px 30px rgba(0,0,0,.55);}
 
 /* friends' open tables: a gold-ringed glass banner */
@@ -1373,7 +1406,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var r = resumeMap[g.id];
     if (r) { var p = String(r.label || 'Game in progress').split(' · ').map(function (q) { return q.trim(); }).filter(Boolean).slice(-2); return { t: p.length ? p : ['Game in progress'] }; }
     var dl = dailyOf(g.id);
-    if (dl === 'new') return { t: ['Today’s puzzle is ready'], y: 1 };
+    if (dl === 'new') return { t: ['New puzzle today'], y: 1 };
     if (dl === 'going') return { t: ['You’re partway through today’s puzzle'], y: 1 };
     if (dl === 'done') return { t: ['You solved today’s puzzle'] };
     var b = bestOf(g); if (b) return { t: ['The best score is ' + b.toLocaleString()] };
@@ -1564,7 +1597,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var c = Daily.count(), pct = c.total ? Math.round(100 * c.done / c.total) : 0;
     b.hidden = false; b.classList.toggle('all-done', c.total > 0 && c.done >= c.total);
     b.setAttribute('aria-label', 'Daily puzzles: ' + c.done + ' of ' + c.total + ' done today');
-    b.innerHTML = Kit.icon(c.total && c.done >= c.total ? 'check' : 'calendar') + '<b>Daily <br>puzzles</b><span class="ct">' + c.done + ' of ' + c.total + ' done</span><span class="bar"><i style="width:' + pct + '%"></i></span>';
+    b.innerHTML = Kit.icon(c.total && c.done >= c.total ? 'check' : 'calendar') + '<b>Daily <br>puzzles</b><span class="ct">' + c.done + '<span class="dw"> of </span><span class="dn">/</span>' + c.total + '<span class="dw"> done</span></span><span class="bar"><i style="width:' + pct + '%"></i></span>';
     b.onclick = function () { Kit.sfx('tap'); Daily.open(); };
   }
   function renderChips() {
@@ -2275,14 +2308,22 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     // (a long name first eases its size down, to 74% at most, to stay on one line, so one long name doesn't make every tile taller)
     var two = false, rg = document.createRange();
     function lines(b) { rg.selectNodeContents(b); var ys = {}; [].forEach.call(rg.getClientRects(), function (r) { if (r.width > 1) ys[Math.round(r.top)] = 1; }); return Object.keys(ys).length; }
-    document.querySelectorAll('.g.gr.tl .tx b').forEach(function (b) {
+    document.querySelectorAll('.g.gr .tx b').forEach(function (b) {
       if (!b.offsetWidth) return; b.style.fontSize = '';
       var over = function () { return lines(b) > 1 || b.scrollWidth > b.clientWidth; };
       if (!over()) return;
       var fs0 = parseFloat(getComputedStyle(b).fontSize), fs = fs0;
       while (over() && fs > fs0 * .74) { fs -= .5; b.style.fontSize = fs + 'px'; }
-      if (lines(b) > 1) { b.style.fontSize = ''; two = true; }
+      if (lines(b) > 1) { b.style.fontSize = ''; if (b.closest('.tl')) two = true; }
     });
+    // (list rows: every one as tall as the tallest, so the rows are all the same shape)
+    // (the games all share one height; the Tools, which say what each does instead of who plays, share their own)
+    var root = document.documentElement, tools = document.querySelector('#list .sec-tools');
+    root.style.removeProperty('--row-h'); if (tools) tools.style.removeProperty('--row-h');
+    function even(rows, on) { var rh = 0; rows.forEach(function (g) { if (g.offsetHeight > rh) rh = g.offsetHeight; }); if (rh && rows.some(function (g) { return g.offsetHeight !== rh; })) on.style.setProperty('--row-h', rh + 'px'); }
+    var rows = [].slice.call(document.querySelectorAll('#list .g.gr:not(.tl)'));
+    even(rows.filter(function (g) { return !g.closest('.sec-tools'); }), root);
+    if (tools) even(rows.filter(function (g) { return g.closest('.sec-tools'); }), tools);
     if (two) document.querySelectorAll('.g.gr.tl .tx b').forEach(function (b) { b.style.fontSize = ''; });   // (room for two lines anyway: every name at its own size)
     document.documentElement.classList.toggle('tl2', two);
     document.querySelectorAll('.tiles .g').forEach(function (g) {
