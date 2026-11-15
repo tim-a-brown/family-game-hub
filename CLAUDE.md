@@ -111,6 +111,10 @@ Underlying principles for everything:
 - Every game checks its rules against the official/standard rules, and has a
   plain-language "How to play" via `Kit.init({rules})`.
 - Fun moments: `Kit.win` (confetti), `Kit.callout`, `Kit.sfx`, `Kit.haptic`.
+- **What computer players say in character** (a judge's reason, a contestant's bubble) lives in `games/talk/<game>.js`
+  (`window.TALK_<GAME>`), read through `Talk.line(key, pool, slots)` in `games/talk/talk.js`, which doesn't repeat a
+  line until most of its pool has been said. Tim, 2026-11-15: each pool holds 20 times the lines it first had, so a new
+  pool starts big too. Calls like "Pass", "Bid 3" or "Go fish!" are game state, not talk.
 - **The look is Night glass in color** (Tim, 2026-11-14, chosen from eight directions drawn on 37 screens; "fun but
   still elegant, colorful but not cartoony, info-dense but designed for touchscreens and spacious"). The last section of
   kit.css builds it (its rules are scoped `:root:not(.ng-x)`, a no-op that keeps their weight); every theme is Night
