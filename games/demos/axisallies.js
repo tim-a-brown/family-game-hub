@@ -21,8 +21,9 @@
     },
     steps: async function (D) {
       await D.wait(function () { return document.querySelector('.aa-banner.show .btn'); }, 5000);
-      await D.say('You command the Allies, and Bender commands Germany and Japan. The Soviet Union moves first.', { at: '.aa-banner .card' });
+      await D.wait(900);
       await D.tap('.aa-banner .btn', { after: 700 });
+      await D.say('You command the Allies, and Bender commands Germany and Japan. The Soviet Union moves first.', { at: '.aa-top' });
       await D.say('A turn starts with buying units. The Soviet Union has 24 IPCs to spend.', { at: '.aa-side .shop-top .money' });
       await D.you(tileFor('Infantry'), 'Infantry cost 3 IPCs each. Tap Infantry to buy one. New units join the board at the end of the turn.', { until: function () { return (S().buy.inf || 0) >= 1; } });
       await D.tap(tileFor('Infantry'), { after: 300 });
