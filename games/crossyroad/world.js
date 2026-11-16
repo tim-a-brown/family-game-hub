@@ -258,6 +258,7 @@ export function createGame(seed, saved) {
 
   function die(cause, o) {
     if (G.state === 'dying' || G.state === 'dead') return;
+    if (G.guard) return;   // (a demo: games/demos/crossyroad.js)
     G.state = 'dying'; G.queue.length = 0;
     const k = P.hop ? Math.min(1, P.hop.t / P.hop.dur) : 1;
     G.death = Object.assign({ cause, t: 0, x: P.vx, row: P.vrow, hopK: k, face: P.face }, o || {});
@@ -317,6 +318,7 @@ export function createGame(seed, saved) {
     if (G.state === 'play') {
       C.focus += (0.5 + 0.4 * difficulty(G.maxRow)) * dt;
       if (P.vrow > C.focus) C.focus += (P.vrow - C.focus) * Math.min(1, dt * 3.2);
+      if (G.guard) C.focus = Math.min(C.focus, P.vrow + 1.2);   // (a demo: the view waits for the chicken)
       if (P.vrow < C.focus - BACK) die('eagle', { x: P.vx, row: P.vrow });
     }
     if (G.state !== 'dying' && G.state !== 'dead') C.x += (clamp(P.vx, -3, 3) * 0.55 - C.x) * Math.min(1, dt * 3);

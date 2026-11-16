@@ -528,14 +528,19 @@ function spawn() {
   bgHueT = hueAt(n); setGlow(hueAt(n));
   Snd.spawn(n);
 }
+// (the demo, games/demos/crazytower.js: a slower slide while you try, a drop that lands where the demo lined it up,
+// and a guard so a demo never misses the tower)
+const DEMO = { speed: 1, snap: null, guard: false };
 function drop() {
   if (!cur || cur.phase !== 'slide') return;
+  if (DEMO.snap != null) { cur[cur.axis] = topBlock()[cur.axis] + DEMO.snap; DEMO.snap = null; }
   cur.phase = 'drop'; cur.vy = 3;
   guide.visible = false;
 }
 // The block lands: slice what hangs over, snap a perfect, score it
 function land() {
   const top = topBlock(), a = cur.axis, sk = a === 'x' ? 'w' : 'd';
+  if (DEMO.guard && Math.abs(cur[a] - top[a]) > top[sk] * .6) cur[a] = top[a] + Math.sign(cur[a] - top[a]) * top[sk] * .6;
   const delta = cur[a] - top[a], cs = cur[sk], ps = top[sk];
   const perfect = Math.abs(delta) <= perfAt(cur.n);
   let cut = 0, sgn = Math.sign(delta) || 1;
@@ -671,7 +676,7 @@ function update(dt) {
   if (state === 'play') {
     if (cur) {
       if (cur.phase === 'slide') {
-        const a = cur.axis, v = speedAt(cur.n) * dt;
+        const a = cur.axis, v = speedAt(cur.n) * DEMO.speed * dt;
         cur[a] += cur.dir * v;
         if (cur[a] > cur.base + RANGE) { cur[a] = 2 * (cur.base + RANGE) - cur[a]; cur.dir = -1; }
         else if (cur[a] < cur.base - RANGE) { cur[a] = 2 * (cur.base - RANGE) - cur[a]; cur.dir = 1; }
@@ -1125,7 +1130,26 @@ window.__tower = {
     return true;
   },
   build(n, off) { for (let i = 0; i < n; i++) if (!this.place(typeof off === 'function' ? off(i) : (off || 0))) break; return height(); },
-  advance(sec) { const steps = Math.round(sec * 60); for (let i = 0; i < steps; i++) update(1 / 60); render(); }
+  advance(sec) { const steps = Math.round(sec * 60); for (let i = 0; i < steps; i++) update(1 / 60); render(); },
+  // (the demo: start a one-player game; line the sliding block up to reach `off` from the block below in so many
+  // seconds, and land there when dropped)
+  start(name) {
+    players = [{ name: name || 'Player', color: Kit.color(0), score: null, height: null, perfects: 0, jackpot: false }];
+    players.started = Date.now(); multi = false; session = { runs: 0, best: 0 }; lastRun = null;
+    const app = $('app'); app.className = ''; app.innerHTML = '';
+    root.classList.add('ar-on'); view.hidden = false; app.appendChild(view); live = true;
+    if (!glOk && !renderer) initGL();
+    scrW = scrH = 0; fit(); newRun(0);
+  },
+  lineUp(off, inSec) {
+    if (!cur || cur.phase !== 'slide') return false;
+    const a = cur.axis, top = topBlock(), v = speedAt(cur.n) * DEMO.speed * (inSec || 0);
+    cur.dir = off >= 0 ? -1 : 1;   // heading back toward the middle
+    cur[a] = top[a] + off - cur.dir * v;
+    if (Math.abs(cur[a] - cur.base) > RANGE) { cur.dir = -cur.dir; cur[a] = top[a] + off - cur.dir * v; }
+    DEMO.snap = off; return true;
+  },
+  demo: DEMO
 };
 // (the WebGL context waits until a game starts, so the setup screen costs nothing)
 showSetup();
