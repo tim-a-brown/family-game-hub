@@ -148,8 +148,9 @@ Underlying principles for everything:
   corner, the name and player count at the lower left on the color, a console game's cartridge the same way, and the Keep
   playing cards to match (`html.look`, the `==LOOKS==` block in index.html). The game's own art is stamped faintly into each tile's empty color, large and turned the other way at the lower left (Tim, 2026-11-16, chosen from three textures: "definitely do art stamped in but more subtle"; `.emb`, `embEl` in index.html, opacity .05, "fainter still"), on the Keep playing cards too; a console game keeps its plain color. A Keep playing card's glass foot holds the game's
   name alone, always two lines tall, and where you are ("Round 9 of 13", "182 pts") stands at the lower left of the card's
-  color (Tim, 2026-11-16: "fit game names up to two lines long. move the details into the bottom left of the colorful top
-  part"; `shelfBox`, the block after `.sbox.old .art` in index.html). Quick notes (`Kit.toast`) are lifted glass with a hairline lit along the top.
+  color on a small chip of dark glass, so it reads over the art (Tim, 2026-11-16: "fit game names up to two lines long. move
+  the details into the bottom left of the colorful top part", then "make the top part shorter again": the color keeps its
+  1 : .66 shape; `shelfBox`, the block after `.sbox.old .art` in index.html). Quick notes (`Kit.toast`) are lifted glass with a hairline lit along the top.
 - **What keeps the home screen smooth** (Tim, 2026-11-16: "lagginess, scrolling up and down on the iPad mini in
   landscape"; measured with the CPU slowed 4x at 1024x768). Scrolling: **no `backdrop-filter` on anything repeated per
   tile or card**. A tile's glass band and a Keep playing card's name panel are painted glass, with the art clipped at the
