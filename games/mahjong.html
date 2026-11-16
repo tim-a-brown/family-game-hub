@@ -341,6 +341,7 @@ body{overflow:hidden;}
     var pos = buildLayout(layout), lk = links(pos);
     POS = pos; LK = lk;
     var idx = pos.map(function (_, i) { return i; }), order = removalOrder(idx, lk, pos.length);
+    dealOrder = order;
     var k = pos.map(function () { return 0; }), pairs = facePairs(pos.length);
     order.forEach(function (pr, i) { var f = Math.random() < .5 ? pairs[i] : [pairs[i][1], pairs[i][0]]; k[pr[0]] = f[0]; k[pr[1]] = f[1]; });
     S = { layout: layout, name: name, k: k, gone: pos.map(function () { return false; }), pairs: [], time: 0, hints: 0, shuffles: 0, undos: 0, started: Date.now(), done: false, init: k.slice() };
@@ -732,7 +733,11 @@ body{overflow:hidden;}
   });
 
   // Test hook: clear the table (as if every pair was taken) or read the state
-  window.__mj = { get: function () { return S; }, clear: function () { if (!S || S.done) return; S.gone = S.gone.map(function () { return true; }); paint(true); finish(true); } };
+  // (the demo: start a deal, the pairs that clear it in order (the deal was made by taking them off a full table), a tile's name, and a redraw after changing S)
+  var dealOrder = null;
+  window.__mj = { get: function () { return S; }, start: function (layout, name) { newGame(layout, name); },
+    solution: function () { return dealOrder ? dealOrder.slice() : null; }, name: function (i) { return gname(S.k[i]); }, tile: function (i) { return tiles[i]; },
+    redraw: function () { paint(true); save(); }, clear: function () { if (!S || S.done) return; S.gone = S.gone.map(function () { return true; }); paint(true); finish(true); } };
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}

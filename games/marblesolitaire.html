@@ -1307,7 +1307,16 @@ body{overflow-x:hidden;}
     S: function () { return S; }, E: E, G: function () { return G; }, legal: function () { return legalAll(); },
     move: function (f, t) { var j = jumpsFrom(f).filter(function (q) { return q[2] === t; })[0]; return j ? doMove(j) : false; },
     pick: function (h) { if (S && S.phase === 'pick') pickOut(h); },
-    hint: hint, hintMove: function () { return hintMv; }, cache: cache, newGame: newGame, unlock: function () { lock = 0; }
+    hint: hint, hintMove: function () { return hintMv; }, cache: cache, newGame: newGame, unlock: function () { lock = 0; },
+    // a board part way through (the demo): only the holes in `fill` ('r,c') keep a marble, the rest are in the gutter
+    setup: function (id, fill) {
+      newGame(id);
+      var keep = {}; fill.forEach(function (rc) { keep[G.at[rc]] = 1; });
+      S.holes.forEach(function (x, h) { if (x >= 0 && !keep[h]) { S.tray.push(x); S.holes[h] = -1; } });
+      Object.keys(keep).forEach(function (h) { if (S.holes[h] < 0 && S.tray.length) S.holes[h] = S.tray.pop(); });
+      S.moves = S.tray.length; S.start = S.holes.slice();
+      layout(); paint(); updHud(); save(); prefetch();
+    }
   };
 
   // ── Boot ──────────────────────────────────────────────────────────────────

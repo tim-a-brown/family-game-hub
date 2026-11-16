@@ -666,6 +666,8 @@ html.k-kb .ahi-box{max-height:calc(var(--vvh,100vh) - 24px);}
     // opts.who: the player (default: the one picked on the setup screen). Their saved initials file the score
     // without asking; a player with none types them once and they're kept for next time.
     check(key, score, onDone, opts){
+      // a demo (Kit.inDemo) files nothing, so it never asks for initials either
+      if(window.Kit && Kit.inDemo && Kit.inDemo()){ onDone && onDone(); return; }
       const also = ((opts && opts.also) || []).filter(a=>a && a.key && a.score>0 && qualifies(a.key, a.score));
       const who = curWho(opts), ini = iniOf(who);
       let k = key, sc = score;
