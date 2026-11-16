@@ -474,7 +474,7 @@
         const under = (n > 1 ? strip.offsetHeight + 6 : 0) + (foils ? 16 : 0);
         const cu = Math.floor(Math.max(64, Math.min(r.height - under - 16, r.width * (n > 1 ? 1.12 : 1.3), 600)));
         if (cu === lastCu) return; lastCu = cu;
-        flow.style.setProperty('--cu', cu + 'px'); if (F) F.reset();
+        flow.style.setProperty('--cu', cu + 'px'); if (F) F.reset(); shadowPic(cu);
       }
 
       // a Thread between this card and one you can see: a Figure it grew from, or one that grew from it
@@ -526,6 +526,9 @@
         if (fin.length) setTimeout(() => { if (alive && !ended && cells[Math.round(F ? F.pos : 0)] === c) lineMoment(fin[0].id); }, o && o.pass ? 120 : 520);
         const link = linkFor(k);
         c.el.classList.add('up', isNew ? 'new' : 'two'); if (ed) c.el.classList.add('foil', 'e' + ed);
+        // (the glow it lands in fades to nothing, and is then put away: a blurred layer left under every turned card was
+        // drawn again on every frame the strip moved)
+        const glow = c.el.querySelector(':scope > .pk-glow'); if (glow) glow.addEventListener('animationend', e => { if (e.target === glow) glow.classList.add('gone'); });
         // what it is to you, stamped on the card: New at its head for a card new to you, New finish for a card you had,
         // and at its foot the finish it came in, as its gem and its name. A new finish lands on top of the card as you
         // had it, which slides out from under it.
@@ -594,11 +597,32 @@
       // its edge, tighter and darker as it comes down
       function shadow(c, a, th, sc, w) {
         if (a > 1.25 || !dealt) { if (c.sh) c.sh.style.opacity = '0'; return; }
-        if (!c.sh) { c.sh = el('i', { class: 'pk-sh' }); flow.insertBefore(c.sh, flow.firstChild); }
+        if (!c.sh) { c.sh = el('i', { class: 'pk-sh' }); if (shPic) { c.sh.classList.add('pic'); c.sh.style.backgroundImage = 'url(' + shPic + ')'; } flow.insertBefore(c.sh, flow.firstChild); }
         const r = th * Math.PI / 180, foot = Math.cos(r) * w * sc, up = Math.sin(r), x0 = w / 2 + Math.min(0, foot), sx = Math.max(.05, Math.abs(foot) / w) * (1 + up * .1);
         c.sh.style.transform = 'translate3d(' + x0.toFixed(1) + 'px,' + (up * w * .03).toFixed(1) + 'px,0) scale(' + sx.toFixed(3) + ',' + (1 + up * .06).toFixed(3) + ')';
         c.sh.style.opacity = ((.62 - .34 * up) * Math.min(1, (1.25 - a) / .25)).toFixed(3);
         c.sh.style.zIndex = String(100 - Math.round(a * 10) - 1);
+      }
+      // The shadow is a picture (Tim, 2026-11-16: the strip was "still not as smooth as I'd expect" on his iPhone): the
+      // card's shape softened as the blur filter softened it, drawn once for the strip's card size and shared by every
+      // card's shadow. As a blur filter on a layer that moves, it was worked out again on every frame of every tumble.
+      // (packs.css .pk-sh.pic: the box grows by three times the softening on each side, which is where it fades out)
+      let shPic = '', shCu = 0;
+      function shadowPic(cu) {
+        if (flat || cu === shCu || !window.URL || !URL.createObjectURL) return; shCu = cu;
+        const k = Math.min(3, window.devicePixelRatio || 1), sg = .028 * cu, pad = 3 * sg, w = .7143 * cu, h = .94 * cu;
+        const cv = document.createElement('canvas'); cv.width = Math.ceil((w + 2 * pad) * k); cv.height = Math.ceil((h + 2 * pad) * k);
+        const g = cv.getContext && cv.getContext('2d'); if (!g || !cv.toBlob) return;
+        const X = pad * k, Y = pad * k, W = w * k, H = h * k, rx = W * .08, ry = H * .08;   // (border-radius 8%: 8% of the width across, 8% of the height down)
+        const shape = dx => { const x = X + dx; g.beginPath(); g.moveTo(x + rx, Y); g.lineTo(x + W - rx, Y); g.ellipse(x + W - rx, Y + ry, rx, ry, 0, -Math.PI / 2, 0); g.lineTo(x + W, Y + H - ry);
+          g.ellipse(x + W - rx, Y + H - ry, rx, ry, 0, 0, Math.PI / 2); g.lineTo(x + rx, Y + H); g.ellipse(x + rx, Y + H - ry, rx, ry, 0, Math.PI / 2, Math.PI); g.lineTo(x, Y + ry);
+          g.ellipse(x + rx, Y + ry, rx, ry, 0, Math.PI, Math.PI * 1.5); g.closePath(); g.fill(); };
+        g.fillStyle = '#121211';
+        // (the canvas's own blur filter where there is one, the same blur as the stylesheet's; elsewhere the shape's shadow,
+        // cast from off the canvas, whose softening is a Gaussian of half its blur)
+        if (window.CanvasRenderingContext2D && 'filter' in CanvasRenderingContext2D.prototype) { g.filter = 'blur(' + (sg * k).toFixed(2) + 'px)'; shape(0); }
+        else { g.shadowColor = '#121211'; g.shadowBlur = 2 * sg * k; g.shadowOffsetX = cv.width; shape(-cv.width); }
+        cv.toBlob(bl => { if (!bl || shCu !== cu || !alive) return; if (shPic) URL.revokeObjectURL(shPic); shPic = URL.createObjectURL(bl); }, 'image/png');
       }
       // it has come all the way over: from here on it is an ordinary card on the strip, face up
       function land(j) {

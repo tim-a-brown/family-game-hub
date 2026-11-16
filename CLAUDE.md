@@ -955,6 +955,25 @@ Underlying principles for everything:
   screen are in the page, the ones that leave are kept made, and the neighbors of the card at rest are made ahead
   while nothing moves; `o.rest` (the notes) runs after the frame where the strip stops. A change to the strip keeps
   all of these, and is measured again with that script.
+  **Nothing that moves with the strip carries a live filter, and nothing on a card is drawn again while it moves**
+  (Tim, 2026-11-16, opening a pack on his iPhone: "it's still not as smooth as I'd expect"; his recording showed the
+  screen changing only every 2 to 5 frames while the strip moved, and every frame once it rested; measured with the
+  scratchpad's `pk/bench.js`, which opens a pack of five with two foils, tumbles each card in, then swipes and flicks
+  over the turned cards, and `pk/layers.js`, which lists every layer and why it is one). A phone works out a filter
+  on a layer again on every frame that layer moves. So: the small picture standing in under a full one (`standIn`, a
+  canvas with a blur) goes once the full picture is decoded, in the page and drawn (`letGo` in ui.js); it had stayed
+  under every full card for good, a blurred layer under each card, and the picture over it a layer too. A pack card's
+  landing glow (`.pk-glow`, a blur) is put away once its animation ends (`.gone`), since an animation that holds its
+  last frame keeps its layer. The tumbling card's shadow is a picture of the same blur drawn once on a canvas for the
+  strip's card size (`shadowPic` in packs.js, `.pk-sh.pic`; it matches the filter within one level of 255). The light
+  coming up on a new card (`.lit`) fades in a brighter copy of the pool (`.pk-field::after`) instead of animating
+  `filter: brightness` over it. Whatever changes every frame on a card is a layer of its own (`will-change: opacity`
+  on the tumble's shade `.pk-dim` and the edition stamp `.pk-ed`), so the card's face under it is not painted again.
+  The foil light is set only on what that edition lights (`LIT` in editions.js), and a Rainbow foil's frame is a leaf of
+  its own (`.ed-fx.r`) rather than the card's `::after`, so the light moving never recalculates the whole card. Where a
+  thumbnail sits is read at the start of the next frame, never after the cards have been moved. Together these took a
+  turned pack from 78 layers to 47 (and none with a filter), with the compositor's time per frame about halved; a new
+  effect on a pack or a strip is checked with those two scripts before it goes in.
 - **A card being read can be turned over to its picture** (Tim, 2026-11-11): the round button on the picture's lower
   left (`tg` in `cardEl`, on by default in `openView`, `browse` and a pack's strip; not in lessons). The picture then
   takes 80% of the card, the same on every card, and a strip at the foot keeps the essentials: name, a Figure's Might

@@ -35,6 +35,9 @@
       n.classList.add('ed-' + ED[e].id);
       const art = n.querySelector('.ac-art');
       if (art && !n.classList.contains('mini')) { art.appendChild(el('i', { class: 'ed-fx a', 'aria-hidden': 'true' })); art.appendChild(el('i', { class: 'ed-fx b', 'aria-hidden': 'true' })); }
+      // (a Rainbow foil's frame takes the light too: it is a leaf of its own, so the light moving never works out the
+      // style of the whole card again, as it did when the frame was the card's own ::after)
+      if (e === 4 && !n.classList.contains('mini')) n.appendChild(el('i', { class: 'ed-fx r', 'aria-hidden': 'true' }));
     }
     const b = n.querySelector('.ac-ed'); if (b) { const g = b.querySelector('.ed-gem'); if (g) g.className = 'ed-gem e' + e; b.setAttribute('aria-label', 'Choose the edition of ' + CARDS[n.getAttribute('data-card')].n + '. It is shown in ' + ED[e].n); }
   }
@@ -116,7 +119,10 @@
   const REST = { x: -.3, y: -.35 };
   const T = { x: REST.x, y: REST.y, cx: REST.x, cy: REST.y, raf: 0, ptr: false, tilt: null, base: null, prev: null, sweep: 0, was: [], listening: false, asked: false };
   // the elements the light falls on (editions.css): set --lx, --ly and --ls on these, never on the whole card
-  const lights = n => { const a = Array.prototype.slice.call(n.querySelectorAll('.ed-fx, .ac-name, .ac-brief > b, .ac-when')); if (n.classList.contains('ed-rainbow')) a.push(n); return a; };
+  // (only what the card's own edition lights: the layers on every foil, the gilt name on a Gold foil, the rule under the
+  // dates on a Rainbow foil, and its frame, .ed-fx.r. Each one is worked out again every frame the light moves.)
+  const LIT = { 3: '.ed-fx, .ac-name, .ac-brief > b', 4: '.ed-fx, .ac-when' };
+  const lights = n => Array.prototype.slice.call(n.querySelectorAll(LIT[+n.getAttribute('data-ed')] || '.ed-fx'));
   const front = () => Array.prototype.filter.call(document.querySelectorAll('.view:not(.flow):not(.lesson) > .ac, .vf-c.front .ac:not(.back)'), n => n.getAttribute('data-ed') > 0);
   function frame(now) {
     T.raf = 0;

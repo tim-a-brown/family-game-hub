@@ -259,13 +259,27 @@
     try { const c = el('canvas', { class: 'ac-lo', width: got.naturalWidth, height: got.naturalHeight, 'aria-hidden': 'true' }); c.getContext('2d').drawImage(got, 0, 0); if (FY[key] != null) c.style.objectPosition = '50% ' + FY[key] + '%'; return c; } catch (e) { return null; }
   }
   function comeUp(key, im) {
-    const f = full[artSrc(key, false)]; if (im.tagName !== 'IMG' || (f && f.ok) || (im.complete && im.naturalWidth)) return;
-    im.classList.add('ld'); const show = () => im.classList.remove('ld');
+    const f = full[artSrc(key, false)]; if (im.tagName !== 'IMG') return;
+    if ((f && f.ok) || (im.complete && im.naturalWidth)) { letGo(im, 0); return; }
+    im.classList.add('ld'); const show = () => { im.classList.remove('ld'); letGo(im, 320); };
     (im.decode ? im.decode() : Promise.reject()).then(show, () => { if (im.complete) show(); else im.addEventListener('load', show); });
     // (no small picture in memory yet to stand in: it is asked for, and stands in as soon as it comes, if the full one still hasn't)
     const ssrc = artSrc(key, true);
     if (!loaded[ssrc] && !noArt[ssrc]) { (smallWait[ssrc] || (smallWait[ssrc] = [])).push(() => { if (!im.classList.contains('ld') || !im.parentNode) return; const lo = standIn(key); if (lo) im.parentNode.insertBefore(lo, im); });
       preload([key]); }
+  }
+  // The small picture standing in is let go once the full one is on the screen (Tim, 2026-11-16: opening a pack was
+  // "still not as smooth as I'd expect"). It is a canvas, a layer of its own with its softening filter, and it had stayed
+  // under every full card for good, so the phone composited a blurred layer under each card on every frame the strip
+  // moved. It goes only once the full picture is decoded, in the page and drawn (two frames on), or once it has come up
+  // (ms: its fade), so there is never a frame with neither; a full picture that never loads keeps it.
+  function letGo(im, ms) {
+    let tries = 0;
+    const drop = () => { const p = im.parentNode; if (p && im.complete && im.naturalWidth) p.querySelectorAll(':scope > canvas.ac-lo').forEach(c => c.remove()); };
+    const when = () => { if (!im.isConnected) { if (++tries < 120) setTimeout(when, 500); return; } requestAnimationFrame(() => requestAnimationFrame(drop)); };
+    const go = () => (ms ? setTimeout(when, ms) : when());
+    if (!im.decode) { if (im.complete && im.naturalWidth) go(); return; }
+    im.decode().then(go, () => {});
   }
   // The small pictures of the whole set (about 20 KB each), warmed a few at a time once the page is idle, so that
   // there is always one to stand in.
@@ -903,7 +917,7 @@
         if (s.z !== w.z) st.zIndex = s.z = w.z;
         if (s.o !== w.o) st.opacity = s.o = w.o;
         if (s.d !== d) { s.d = d; b._dim.style.opacity = d; }
-        if (o.dimVar) b.querySelectorAll(o.dimVar).forEach(x => { if (x.style.getPropertyValue('--dim') !== d) x.style.setProperty('--dim', d); });   // (a stamp put on later gets it too)
+        if (o.dimVar) { if (b._dvn !== b.childElementCount) { b._dvn = b.childElementCount; b._dv = b.querySelectorAll(o.dimVar); } b._dv.forEach(x => { if (x.style.getPropertyValue('--dim') !== d) x.style.setProperty('--dim', d); }); }   // (a stamp put on later gets it too: the card's own children are counted)
         // (the light on a foil slides over it as it passes: only a foil has any use for --ls, and it is set only on what
         // the light falls on, AnoriaEd.lights)
         const foil = !!b._ac && +b._ac.getAttribute('data-ed') > 0, ls = foil ? Math.max(-1.5, Math.min(1.5, p)).toFixed(3) : '';
@@ -917,7 +931,9 @@
         const was = F.at; if (was >= 0) { Kit.sfx('slide'); Kit.haptic('light'); } F.at = idx;
         if (strip) {
           const old = strip.children[was], on = strip.children[idx]; if (old) old.classList.remove('on'); if (on) on.classList.add('on');
-          if (on && strip.scrollWidth > strip.clientWidth) strip.scrollTo({ left: on.offsetLeft - strip.clientWidth / 2 + on.offsetWidth / 2, behavior: 'smooth' });
+          // (where the thumbnail is, read at the start of the next frame, before anything is written: read here, after
+          // the cards' moves, it made the browser work the styles out early)
+          if (on) requestAnimationFrame(() => { if (on.classList.contains('on') && strip.scrollWidth > strip.clientWidth) strip.scrollTo({ left: on.offsetLeft - strip.clientWidth / 2 + on.offsetWidth / 2, behavior: 'smooth' }); });
         }
         if (o.front) o.front(idx, was);
       }
