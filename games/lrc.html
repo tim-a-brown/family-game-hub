@@ -122,7 +122,7 @@
   var FACES = ['L', 'R', 'C', '.', '.', '.'];
   var SPEEDS = { slow: 1.6, normal: 1, fast: 0.45 };
 
-  var S = null, view = null, busy = false, token = 0, testSpd = null;
+  var S = null, view = null, busy = false, token = 0, testSpd = null, held = false;
   var prefs = { auto: false, speed: 'normal' };
   try { var pr = JSON.parse(localStorage.getItem(PREFS)); if (pr) { prefs.auto = !!pr.auto; if (SPEEDS[pr.speed]) prefs.speed = pr.speed; } } catch (e) {}
   function savePrefs() { try { localStorage.setItem(PREFS, JSON.stringify(prefs)); } catch (e) {} }
@@ -211,6 +211,7 @@
     if (S.winner != null) return finish();
     var p = S.players[S.cur];
     render();
+    if (held) return;   // (a demo holds the table between turns while it explains one: __lrc.hold)
     if (NET) { if (prefs.auto && NET.myTurn() && S.cur === NET.seat && p.chips > 0) later(function () { if (S && NET && !busy && S.cur === NET.seat && prefs.auto) roll(true); }, 700); return; }
     if (p.chips === 0) {
       busy = true;
@@ -700,7 +701,10 @@
   });
 
   // Test hooks
-  window.__lrc = { state: function () { return S; }, busy: function () { return busy; }, speed: function (x) { testSpd = x; }, start: function (cfg) { start(cfg); } };
+  window.__lrc = { state: function () { return S; }, busy: function () { return busy; }, speed: function (x) { testSpd = x; }, start: function (cfg) { start(cfg); },
+    // (a demo sets a later moment of the game: fn changes S, then the table is drawn again and play carries on)
+    set: function (fn) { token++; busy = false; fn(S); view = null; save(); render(); next(); },
+    hold: function (on) { held = !!on; if (!held && S && !busy) next(); } };
 
   // ── Boot ─────────────────────────────────────────────────────────────────
   var saved = load();

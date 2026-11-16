@@ -754,6 +754,8 @@
     return p.text.split(' ').length <= 3 && nL <= 14 && ['BEFORE & AFTER', 'TITLE', 'PERSON', 'CHARACTER', 'ON THE MAP'].indexOf(p.cat) < 0 && hiddenAfter(p.text, 'RSTLNE') >= 4;
   }
   function pickPuzzle(filter) {
+    var rig = window.__wof && window.__wof.rigPz;   // test hook (a demo): this puzzle next
+    if (rig) { window.__wof.rigPz = null; S.seen.push(rig.text); return rig; }
     var recent = []; try { recent = JSON.parse(localStorage.getItem(RECENT) || '[]') || []; } catch (e) {}
     var pool = PUZZLES.filter(function (p) { return S.seen.indexOf(p.text) < 0 && (!filter || filter(p)); });
     var fresh = pool.filter(function (p) { return recent.indexOf(p.text) < 0; });
@@ -1368,6 +1370,17 @@
   // the wheel spins on every device from the host's wheel's state at this moment
   function spinW(w0) {
     var f = Wheel.flapper();
+    var want = window.__wof && window.__wof.rigW;
+    if (want != null) {   // test hook (a demo): the spin from here that stops on a wedge of this value
+      window.__wof.rigW = null;
+      for (var k = 0; k < 500; k++) {
+        var sm = makeSim(), w = W_MIN + (W_MAX - W_MIN) * k / 500;
+        sm.s.th = f.th; sm.s.b = f.b; sm.s.bv = f.bv; sm.s.touch = f.touch; sm.s.om = w;
+        while (sm.s.t < SIM_CAP && !sm.step(SIM_H)) {}
+        var wd = Wheel.wedge(sm.index());
+        if (wd && wd.t === '$' && wd.v === want) { w0 = w; break; }
+      }
+    }
     bc('spin', [f.th, f.b, f.bv, w0, nextSid]); nextSid = 0;
     return Wheel.spin(w0);
   }
@@ -2294,7 +2307,10 @@
     submit: function () { submitSolve(); }, pass: function () { cancelSolve(); },
     next: function () { var b = shell && shell.acts.querySelector('.btn-primary'); if (b && !b.disabled) b.click(); return !!b; },
     startClock: function () { var b = shell && Array.prototype.filter.call(shell.acts.querySelectorAll('button'), function (x) { return /Start the clock/.test(x.textContent); })[0]; if (b && !b.disabled) b.click(); return !!b; },
-    answer: function () { return GUEST() ? null : S && S.pz && S.pz.text; }, judged: function () { return lastJudge; } };
+    answer: function () { return GUEST() ? null : S && S.pz && S.pz.text; }, judged: function () { return lastJudge; },
+    // a demo: start a show, the letter the solve's cursor is on, and whether every blank is filled in
+    start: function (cfg) { start(cfg); }, nextBlank: function () { return ui.solve && ui.solve.cur != null && !ui.solve.fill[ui.solve.cur] ? S.pz.text[ui.solve.cur] : null; },
+    filled: function () { return !!ui.solve && blankIdx().every(function (i) { return ui.solve.fill[i]; }); } };
 })();
 </script>
 <script>

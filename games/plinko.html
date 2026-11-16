@@ -1547,7 +1547,12 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
     paintShow(); paintHint();
     kick();
   }
-  // test hook: board mode and the chip in play
+  // test hooks: the game (a demo), and board mode and the chip in play
+  window.__plinko = { state: function () { return S; }, start: function (players, wheel) { start(players, wheel); }, mode: function () { return mode; },
+    wheelBusy: function () { return wheelBusy; }, canvas: function () { return cv; },
+    // where a slot's middle (or a spot on the drop rail, rail: true) lies on the screen
+    at: function (x, rail) { if (!cv) return null; var b = cv.getBoundingClientRect(), k = b.width / WU; return { x: b.left + (x + WALL) * k, y: b.top + (rail ? RAIL_Y : FLOOR - 0.5) * k, k: k }; },
+    rig: null };
   window._pkdbg = function () { return { mode: mode, chip: chip && { x: chip.x, y: chip.y, t: chip.t, done: chip.done }, raf: raf, acc: acc, aim: aim }; };
   function canAim() { return S && S.phase === 'drop' && (mode === 'aim' || mode === 'enter'); }
   function toUnits(e) { var b = cv.getBoundingClientRect(); return (e.clientX - b.left) / b.width * WU - WALL; }
@@ -1613,9 +1618,19 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
     kick();
   }
   function launch() {
-    chip = newChip(aim.x, Math.random); chip.a = aim.a; chip.x0 = aim.x;
     // Carry the swipe's momentum into the drop (a little friction from the board face)
-    var fl = Math.abs(aim.fling || 0) > 0.6 ? aim.fling * 0.75 : 0;
+    var fl = Math.abs(aim.fling || 0) > 0.6 ? aim.fling * 0.75 : 0, rnd = Math.random;
+    var want = window.__plinko && window.__plinko.rig;
+    if (want != null) {   // test hook (a demo): the bounces that take a chip dropped here to the slot asked for
+      window.__plinko.rig = null;
+      for (var k = 1; k < 4000; k++) {
+        var tc = newChip(aim.x, mulberry(k)), tev = [];
+        if (fl) { tc.vx += fl; tc.w = fl / R * 0.6; }
+        while (!tc.done) step(tc, H, tev);
+        if (tc.slot === want) { rnd = mulberry(k); break; }
+      }
+    }
+    chip = newChip(aim.x, rnd); chip.a = aim.a; chip.x0 = aim.x;
     if (fl) { chip.vx += fl; chip.w = fl / R * 0.6; }
     aim.fling = 0;
     mode = 'drop'; acc = 0;
