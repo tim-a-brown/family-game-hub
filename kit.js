@@ -41,6 +41,7 @@
 //   Kit.init({orient:'landscape'|'portrait'})  phones only (orientTablets:true adds iPads): lock or show a turn-your-device cover; 'kit:orient' event
 //   Kit.orient('landscape'|'portrait'|null, tablets?)  same gate, set or lifted later (per mode); Kit.orientOk() -> bool
 //   Kit.titleSwitch(text, onClick, label) / (null)   title shows the table/machine/level with a down arrow; tap = the game's own picker
+//   Kit.demo() / Kit.demoScript(script) / Kit.hasDemo(game)   the game's demo (demo.js, games/demos/<page>.js; see CLAUDE.md, Demos)
 // window.GN is kept as an alias for haptic/toast/confirm/sheet.
 // ═══════════════════════════════════════════════════════════════════════════
 (function () {
@@ -69,6 +70,13 @@
   try { GO = JSON.parse(sessionStorage.getItem('kit_go') || 'null'); sessionStorage.removeItem('kit_go'); } catch (e) {}
   if (GO && (IN_SHEET || EDIT_DEFAULTS || GO.page !== location.pathname.replace(/^.*\//, '').replace(/\.html$/, '') || !(Date.now() - GO.t < 30000))) GO = null;
   if (GO) { GO.at = Date.now(); root.classList.add('k-going'); setTimeout(function () { root.classList.remove('k-going'); }, 6000); }
+  // A demo (games/<page>.html?demo=1): sync.js has already made the page a sandbox (window.__KIT_DEMO); the table stays
+  // hidden until the demo has set it, then demo.js and the game's script (games/demos/<page>.js) are loaded and run
+  var DEMO = !!window.__KIT_DEMO && !EDIT_DEFAULTS;
+  if (DEMO) {
+    GO = null; root.classList.add('k-demo', 'k-demo-boot');
+    var dmSty = doc.createElement('style'); dmSty.textContent = 'html.k-demo-boot body>:not(.k-demo-ui){visibility:hidden!important;}'; doc.head.appendChild(dmSty);
+  }
   // (a Play online pressed on the home screen's sheet opens the review here, over the game's own page: Cancel goes back
   // to that sheet on the home screen, not to this page's setup; Tim, 2026-11-16: "why'd the menu look different when i
   // cancelled and came back from the online lobby?")
@@ -347,6 +355,8 @@
     swap: '<path d="M7 4v16"/><path d="m3 8 4-4 4 4"/><path d="M17 20V4"/><path d="m21 16-4 4-4-4"/>',
     hand: '<path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/>',
     eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    demo: '<circle cx="12" cy="12" r="9.5"/><path d="M10 8.4v7.2l5.6-3.6z" fill="currentColor"/>',
+    tap: '<path d="M22 14a8 8 0 0 1-8 8"/><path d="M18 11v-1a2 2 0 0 0-4 0"/><path d="M14 10V9a2 2 0 0 0-4 0v1"/><path d="M10 9.5V4a2 2 0 0 0-4 0v10"/><path d="M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.3l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/>',
     battery: '<rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2"/><path d="M6 10v4"/>',
     lightbulb: '<path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/>',
     meh: '<circle cx="12" cy="12" r="9.5"/><path d="M8 15h8"/><path d="M9 9.5h.01"/><path d="M15 9.5h.01"/>',
@@ -1513,6 +1523,7 @@
     item('Settings', 'headphones', 'Music', spotifySheet, '', !spotifyOn() ? 'Play your Spotify' : spP && spP.u !== 'off' ? spP.n || 'Spotify' : spP ? 'Spotify off in this game' : 'Search or pick a playlist');
     var M = 'More';
     if (opts.rules) item(M, 'book', 'How to play', help);
+    if (!DEMO && (opts.demo || hasDemo(game))) item(M, 'demo', 'Watch a demo', function () { demo(); });
     var nReq = linkReqs().length;
     item(M, 'users', 'Frequent players', function () { managePlayers(); }, nReq ? 'k-attn' : '', nReq ? (nReq === 1 ? '1 link request to review' : nReq + ' link requests to review') : null);
     if (game) item(M, 'star', isFav() ? 'Remove from favorites' : 'Add to favorites', function () {
@@ -2054,7 +2065,7 @@
     opts = o || {};
     if (!IN_SHEET) startFitLock();
     game = findGameSafe(opts.id || pageKey());
-    if (game && !IN_SHEET) setTimeout(turnWatch, 0);
+    if (game && !IN_SHEET && !DEMO) setTimeout(turnWatch, 0);
     if (opts.orient && !IN_SHEET) orientGate(opts.orient, opts.orientTablets);
     var accent = opts.color || (game && game.color) || '#ffc83d';
     root.style.setProperty('--accent', accent);
@@ -3654,6 +3665,7 @@
     // the computer fills. Then Open the table opens it at once, or Find a table goes to the tables already open.
     var TN = function () { return !EDIT_DEFAULTS && window.TurnNet && TurnNet.ready && TurnNet.ready() ? TurnNet : null; };
     function goOnline() {
+      if (DEMO) { toast('Play online once the demo is over'); return; }
       var om = MK.online || resolvedMode(), tn = TN(), info = tn && tn.info ? tn.info() : null;
       var only = MK.online ? (o.options || []).filter(function (op) { return op.when && !op.render && op.when(MK.online, state.options, state.count) && !op.when(resolved(), state.options, state.count); }) : [];
       var box = el('div', { class: 'k-rev' }), sh;
@@ -3893,7 +3905,7 @@
       // it syncs: a detail that got too big is left out rather than crowding everyone's history
       try { var dj = JSON.stringify(r.detail); if (dj.length <= 6000) entry.dt = JSON.parse(dj); else console.warn('[record] detail too big, skipped', key, dj.length); } catch (e) {}
     }
-    try { GameHistory.save(key, entry); } catch (e) {}
+    if (!DEMO) try { GameHistory.save(key, entry); } catch (e) {}
     return entry;
   }
 
@@ -5283,6 +5295,38 @@
     tourP.then(function () { if (topic === 'intro') Tour.intro(opts || { app: true }); else Tour.guide(topic || null, opts); }, function () { tourP = null; togetherSheet(); });
   }
   function loadJs(src) { return new Promise(function (res, rej) { var sc = doc.createElement('script'); sc.src = src; sc.onload = res; sc.onerror = rej; doc.head.appendChild(sc); }); }
+
+  // ── Demos ─────────────────────────────────────────────────────────────────────────────────────────────────────
+  // A game with `demo` in games.js has one: true is its play page opened with ?demo=1 (its script games/demos/<page>.js),
+  // a string is a page of its own (Arvela's quick start). Kit.demo() opens it from the game's menu; the home screen's
+  // game sheet has the round button. Watched demos are kept in gn_demo_seen (the button stops glowing).
+  function hasDemo(g) { return !!(g && g.demo); }
+  function demoSeen(id, mark) {
+    var a = []; try { a = JSON.parse(lsGet('gn_demo_seen', '[]')) || []; } catch (e) {}
+    if (!Array.isArray(a)) a = [];
+    if (!mark) return a.indexOf(id) >= 0;
+    if (a.indexOf(id) < 0 && !DEMO) { a.push(id); lsSet('gn_demo_seen', JSON.stringify(a.slice(-300))); }
+    return true;
+  }
+  function demoHref(g, from) { if (!hasDemo(g)) return ''; var u = typeof g.demo === 'string' ? g.demo : (g.play || g.id) + '.html?demo=1'; return u + (from ? (u.indexOf('?') >= 0 ? '&' : '?') + 'from=' + from : ''); }
+  function demo() {
+    if (game) demoSeen(game.id, true);
+    if (typeof opts.demo === 'function') { opts.demo(); return; }
+    if (!hasDemo(game)) return;
+    root.classList.add('k-going');
+    location.href = typeof game.demo === 'string' ? game.demo : pageKey() + '.html?demo=1';
+  }
+  var demoQ = null;
+  function demoScript(sc) { if (!DEMO) return; if (window.KitDemo) KitDemo.run(sc); else demoQ = sc; }
+  if (DEMO) {
+    var demoGo = function () {
+      setTimeout(function () {
+        loadJs(rootPath() + 'demo.js').then(function () { if (demoQ) KitDemo.run(demoQ); return loadJs('demos/' + pageKey() + '.js'); })
+          .catch(function () { root.classList.remove('k-demo-boot'); toast('This game has no demo yet'); setTimeout(function () { location.replace(location.pathname); }, 1600); });
+      }, 0);
+    };
+    if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', demoGo); else demoGo();
+  }
   // Your arcade initials: offered first (and filled in) when you make a high score; people who link you see your best scores
   function initialsSheet(onDone) {
     if (!linksOn()) { sheet({ title: 'Arcade initials', html: '<p class="muted">Sign in with a PIN to set your arcade initials.</p>', actions: [{ label: 'OK', cls: 'btn-soft' }] }); return; }
@@ -5916,7 +5960,7 @@
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, joker: joker, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     defaults: { sheet: defaultsSheet, get: setupSaved }, setupPage: function (g) { return g && g.play && SETUP_PAGES.indexOf(g.play) >= 0 ? g.play : null; }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, playing: playing, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },
     initials: { of: iniOf, set: iniSet }, player: function () { return curPlayers.length === 1 ? curPlayers[0] : ''; }, players: function () { return curPlayers.slice(); },
-    tour: tour, links: { link: linkSheet, profile: profileSheet, review: reviewSheet, fromUrl: linkFromUrl, request: requestSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
+    tour: tour, demo: demo, demoScript: demoScript, hasDemo: hasDemo, demoSeen: demoSeen, demoHref: demoHref, inDemo: function () { return DEMO; }, links: { link: linkSheet, profile: profileSheet, review: reviewSheet, fromUrl: linkFromUrl, request: requestSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
     orientOk: function () { return orientOk; },
     orient: function (want, tablets) { orientGate(want, tablets); },
     theme: { list: THEME_LIST, get: themeGet, set: themeSet, name: function () { return themeRec(themeGet()).name; }, pick: themePick },

@@ -1779,6 +1779,8 @@
   window.__chess = {
     net: { NET: NET, lobby: function () { showLobby(); }, away: function (ms) { NET.seenAt -= ms; netTick(); }, linkTag: linkTag, acctTag: acctTag, mine: netMine, open: netOpen },
     E: E, state: function () { return S; },
+    // (a demo: a fresh game for these players, {mode: '2p' | 'cpu', level, players: [{name, cpu, side}]})
+    start: function (cfg) { cancelThink(); S = { mode: cfg.mode || '2p', level: cfg.level || 'normal', players: cfg.players }; newGame(); },
     fen: function (fen) { if (!S) return; cancelThink(); S.busy = false; S.pos = fromFen(fen); S.keys = [E.key(S.pos)]; S.hist = []; S.moves = []; S.events = []; S.last = null; S.over = false; S.result = null; S.caps = { '1': [], '-1': [] }; sel = -1; selMoves = []; save(); render(); maybeCpu(); },
     move: function (from, to, promo) { var f = (8 - +from[1]) * 8 + FILES.indexOf(from[0]), t = (8 - +to[1]) * 8 + FILES.indexOf(to[0]); commit({ f: f, t: t, promo: promo || 0 }); },
     legalSan: function () { var l = E.legal(S.pos); return l.map(function (m) { return san(S.pos, m, l); }); },

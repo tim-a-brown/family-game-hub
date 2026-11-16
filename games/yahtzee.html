@@ -272,7 +272,7 @@ html.yw .ylay .sc .lbl small{display:none;}
 
   // ── Play ──────────────────────────────────────────────────────────────────
   function P() { return S.players[S.cur]; }
-  var diceEls = [];
+  var diceEls = [], RIG = [];   // (RIG: the dice a demo or a test has set for the next roll, die by die)
 
   function roll() {
     if (NET) { netRoll(); return; }
@@ -280,7 +280,7 @@ html.yw .ylay .sc .lbl small{display:none;}
     if (S.rolls >= 3) return;
     S.rolls++;
     var kept = S.held.map(function (h, i) { return h && S.dice[i] > 0; });
-    for (var i = 0; i < 5; i++) if (!S.held[i] || S.dice[i] === 0) { S.dice[i] = 1 + Math.floor(Math.random() * 6); S.held[i] = S.held[i] && S.dice[i] > 0; }
+    for (var i = 0; i < 5; i++) if (!S.held[i] || S.dice[i] === 0) { S.dice[i] = RIG.length ? RIG.shift() : 1 + Math.floor(Math.random() * 6); S.held[i] = S.held[i] && S.dice[i] > 0; }
     noteRoll(S, kept);
     Kit.sfx('roll'); Kit.haptic('medium');
     render(true);
@@ -897,7 +897,8 @@ html.yw .ylay .sc .lbl small{display:none;}
     render(); maybeCpu();
   } else showSetup();
   // test hook: start a game ({mode, players:[{name, cpu}]}) and read the state
-  window.__yahtzee = { start: function (cfg) { start(cfg); }, state: function () { return S; } };
+  // (and a demo: rig the next roll's dice, draw the table again after changing S)
+  window.__yahtzee = { start: function (cfg) { start(cfg); }, state: function () { return S; }, rig: function (d) { RIG = (d || []).slice(); }, render: function () { render(); } };
 })();
 </script>
 </body>

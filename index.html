@@ -1303,6 +1303,17 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
 :root:not(.ng-x) .pick-h .gicon{width:58px;height:58px;filter:drop-shadow(0 0 22px color-mix(in srgb,var(--h) 50%,transparent)) drop-shadow(0 8px 14px rgba(0,0,0,.35));}
 :root:not(.ng-x) .pick-h b{font-weight:800;font-size:1.7rem;line-height:1.05;letter-spacing:-.03em;}
 :root:not(.ng-x) .pick-h .pk-tag{display:block;margin-top:4px;font-size:.88rem;line-height:1.3;color:var(--text-2);}
+:root:not(.ng-x) .pick-h > div{flex:1;min-width:0;}
+/* the game's demo: a small round button at the header's top right (Tim, 2026-11-16); it glows until the game is played or
+   its demo watched (a ring that grows and fades on ::before: transform and opacity only) */
+:root .pick.gsheet button.pk-demo{position:relative;flex:none;align-self:flex-start;display:grid;place-items:center;width:42px;height:42px;margin:2px -4px 0 0;padding:0;border:0;border-radius:50%;
+  background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);color:var(--text);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .12s;}
+:root .pick.gsheet button.pk-demo .ico{width:22px;height:22px;}
+:root .pick.gsheet button.pk-demo:active{transform:scale(.92);box-shadow:inset 0 0 0 1px var(--gl-line);}
+:root .pick.gsheet button.pk-demo.new{color:var(--lit-ink,#ffe28a);background:rgba(255,211,77,.12);box-shadow:inset 0 0 0 1px rgba(255,211,77,.55),0 0 16px rgba(255,190,60,.35);}
+:root .pick.gsheet button.pk-demo.new::before{content:"";position:absolute;inset:-1px;border-radius:50%;box-shadow:0 0 0 2px var(--lit,#ffd34d);opacity:0;animation:pkDemo 2.2s ease-out infinite;pointer-events:none;}
+@keyframes pkDemo{0%{opacity:.8;transform:scale(1);}70%,100%{opacity:0;transform:scale(1.45);}}
+@media (prefers-reduced-motion:reduce){:root .pick.gsheet button.pk-demo.new::before{animation:none;}}
 :root:not(.ng-x) .gs-dock{background:linear-gradient(transparent,var(--sheet-solid) 34%);}
 
 /* the profile and its sheets: plain sentence-case labels */
@@ -1850,6 +1861,13 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     }
     var head = el('div', { class: 'pick-h', html: GameIcon(g.id) + '<div><b>' + Kit.esc(g.name) + '</b><span class="pk-tag">' + Kit.esc(g.tag || '') + '</span></div>' });
     box.appendChild(head);
+    // the game's demo, at the header's top right; it glows for a game you have never played and whose demo you haven't watched
+    if (Kit.hasDemo && Kit.hasDemo(g)) {
+      var played = !!live; try { var gh = JSON.parse(localStorage.getItem('gh_' + g.id) || '[]'); if (Array.isArray(gh) && gh.length) played = true; } catch (e) {}
+      var db = el('button', { type: 'button', class: 'pk-demo' + (!played && !Kit.demoSeen(g.id) ? ' new' : ''), 'aria-label': 'Watch a demo of ' + g.name, title: 'Watch a demo', html: Kit.icon('demo'),
+        onclick: function () { Kit.haptic('light'); Kit.sfx('pop'); Kit.demoSeen(g.id, true); s.close(); window.__leaving = true; setTimeout(function () { window.__leaving = false; }, 4000); location.href = 'games/' + Kit.demoHref(g, 'home'); } });
+      head.appendChild(db);
+    }
     // a friend has a table open in this game: joining it is the first thing offered (Tim, 2026-11-11)
     friendTables.filter(function (x) { return x.id === g.id; }).forEach(function (x) {
       var seated = x.max > 2 ? x.n + ' of ' + x.max + ' seats are taken' : 'One seat is waiting for you';
