@@ -596,6 +596,16 @@
     show: netShow, leave: netLeave
   });
 
+  // Test hook (a demo): a fresh game for these players ({players: [{name, cpu}], level}, the first one red and first to move)
+  window.__c4 = {
+    state: function () { return S; },
+    start: function (cfg) {
+      S = { players: cfg.players.map(function (p, i) { return { name: p.name, cpu: !!p.cpu, disc: i === 0 ? 'r' : 'y' }; }), level: cfg.level || 'med', wins: [0, 0, 0], first: 0 };
+      newRound();
+    },
+    drop: function (c) { drop(c); }
+  };
+
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.grid && saved.players) { S = saved; S.busy = false; render(); maybeCpu(); }

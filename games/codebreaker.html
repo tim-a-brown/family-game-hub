@@ -1167,7 +1167,15 @@ button.hole{cursor:pointer;}
   }
 
   // For tests: the scoring rule and the solver
-  window.CodeBreaker = { feedback: feedback, Solver: Solver, state: function () { return S; }, place: function (i, c) { place(i, c); }, lock: function () { lockCode(); }, check: function () { submit(false); }, next: function () { netNextRound(); }, myTurn: function () { return myTurn(); } };
+  window.CodeBreaker = { feedback: feedback, Solver: Solver, state: function () { return S; }, place: function (i, c) { place(i, c); }, lock: function () { lockCode(); }, check: function () { submit(false); }, next: function () { netNextRound(); }, myTurn: function () { return myTurn(); },
+    // (a demo: you break a code the computer hides, {diff, name, code: [colors]})
+    start: function (o) {
+      var d = DIFF[o.diff] || DIFF.classic;
+      S = { mode: 'solo', diff: o.diff in DIFF ? o.diff : 'classic', blanks: false, P: d.pegs, C: d.colors, K: d.colors, dup: d.dup, R: d.rows,
+        players: [{ name: o.name || 'You', cpu: false }], total: 1, round: 0, scores: [0, 0], log: [], started: Date.now() };
+      Kit.gameStart(); startRound();
+      if (o.code) { S.code = o.code.slice(); save(); }
+    } };
 
   // ── Boot ────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}

@@ -1535,6 +1535,11 @@ function GoEngine() {
   window.__go = {
     agree: function () { netAgree(); }, myTurn: function () { return canAct(); },
     E: E, state: function () { return S; },
+    // (a demo: a fresh even game, {mode: '2p' | 'cpu', level, n, players: [{name, cpu, color}]})
+    start: function (cfg) {
+      S = { mode: cfg.mode || '2p', level: cfg.level || 'normal', n: cfg.n || 9, hcap: 0, komi: 6.5, rule: 'area', atari: true, players: cfg.players };
+      newGame();
+    },
     set: function (arr, turn, extra) { epoch++; cancelThink(); S.busy = false; S.b = arr.slice(); S.turn = turn || BLACK; S.hist = []; S.last = -1; S.ml = null; S.ko = -1; S.phase = 'play'; S.passes = 0; S.lastPass = 0; S.dead = null; if (extra) for (var k in extra) S[k] = extra[k]; save(); paint(); maybeCpu(); },
     move: function (i) { return move(i); }, pass: function () { return move(-1); }, finish: function () { finish(); }, undo: undo, toggle: toggleDead
   };
