@@ -2537,6 +2537,12 @@
   // Sides that wrap stack one over the other with "vs" on a line of its own between them.
   function evenToks(box) {
     if (!box || !box.isConnected) return;
+    // one or two players beside the dial stand larger, to fill the card the dial makes tall (Tim, 2026-11-16)
+    // (where they fit side by side: two large tokens and the vs between take about 200px)
+    if (box.closest('.has-n')) {
+      if (!box.clientWidth) { requestAnimationFrame(function () { evenToks(box); }); return; }   // (a card just drawn has no width yet: on the next frame)
+      var nt = box.querySelectorAll('.k-tok, .qs-tok').length; box.classList.toggle('few', nt === 1 || (nt === 2 && box.clientWidth >= 200));
+    }
     if (box.classList.contains('teams')) {
       box.classList.remove('stack');
       var sides = box.querySelectorAll(':scope > [class$="-side"]');
