@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v888-2026-11-16-demos-board1';
+const CACHE_VERSION = 'v889-2026-11-16-demos-cards2';
 // Preview channels (familygames-da3e5--name-xyz.web.app) and local testing: pages and code always from the network
 const PREVIEW = self.location.hostname.includes('--') || /^(localhost|127\.0\.0\.1)$/.test(self.location.hostname);
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
@@ -46,6 +46,13 @@ const PRECACHE_URLS = [
   '/tour.js',
   '/demo.js',
   '/games/demos/hearts-ai.js',
+  '/games/demos/pokersquares.js',
+  '/games/demos/pyramid.js',
+  '/games/demos/freecell.js',
+  '/games/demos/solitaire.js',
+  '/games/demos/crazy8s.js',
+  '/games/demos/gin-rummy-ai.js',
+  '/games/demos/canasta.js',
   '/games/demos/othello.js',
   '/games/demos/go.js',
   '/games/demos/marbles.js',
