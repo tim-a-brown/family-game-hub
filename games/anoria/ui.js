@@ -755,6 +755,7 @@
       }
     }
     if (c.kind === 'guide') notes.appendChild(el('p', { html: '<b>Guide</b>: a Guide is always in play, so this power is on for the whole game.' }));
+    if (key === 'cleopatra') notes.appendChild(el('p', { html: '<b>Two Cleopatras</b>: if a tie is between two players who both have Cleopatra, and both have a Figure there, her power works for neither of them, and the tie goes as it would without her.' }));
     return notes;
   }
   // What lies on a Domain or a Figure until the count, said under it: the Peace of Westphalia, the Edict of Milan, the
@@ -4471,6 +4472,7 @@
     '<li>Your first win, your first win against Normal, your first against Hard and your first with a deck you built each give a pack too.</li>' +
     '<li>Every card in a pack is a card you don\'t have yet, or a finish of a card you haven\'t found yet, so you go on collecting Shiny, Silver, Gold and Rainbow cards after you have every card. Packs draw from the whole set, the sets of Guides who haven\'t joined you yet included, and some cards are found only in packs. Domains come only with the sets.</li></ul>' +
     '<h3>The end of a round</h3><ul><li>When every player has had a turn, each Place goes to the side with <b>the most Might</b> there. If the Might is tied, nobody holds the Place. An empty or tied Gate stays with its owner.</li>' +
+    '<li>Two players can have the same Guide. When the Might at a Place is tied between two players who both have Cleopatra, and both have a Figure there, her power works for neither of them, and the tie goes as it would without her. Two teammates who both have her are one side, so their team holds it.</li>' +
     '<li>Each Place you hold scores <b>1 Renown</b>, and a Place scores the same in every round of the game. The flag on a Place shows what it scores, in the color of whoever holds it right now.</li>' +
     '<li>If you hold an opponent\'s Gate, one of their <b>Seals breaks</b>. Breaking a Seal scores you 1 Renown, on top of what the Place itself scores.</li>' +
     '<li>The <b>Theodosian Walls</b> give you a Seal: they mend a broken one, or add a fourth. No player can have more than 4 Seals.</li>' +

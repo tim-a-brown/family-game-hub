@@ -579,7 +579,10 @@ function holderT(S, i, m, w) {
   const tied = t => tv[t] === mx;
   if (mx > 0) {
     if (w === 'throne' && S.lh) { const l = S.lh[S.places[i]]; if (l != null && tied(S.tm[l])) return lead(S.tm[l], l); }
-    const cl = []; for (let o = 0; o < S.N; o++) if (tied(S.tm[o]) && S.P[o].guide === 'cleopatra' && S.figs.some(f => f.p === i && f.o === o)) cl.push(o); if (cl.length === 1) return cl[0];
+    const cl = []; for (let o = 0; o < S.N; o++) if (tied(S.tm[o]) && S.P[o].guide === 'cleopatra' && S.figs.some(f => f.p === i && f.o === o)) cl.push(o);
+    // (Cleopatra settles a tie for one side: two on the same team are one side and their team holds it, led by the one
+    // with more Might there; Cleopatras on different sides cancel out and the tie goes as it would without her)
+    if (cl.length && cl.every(o => S.tm[o] === S.tm[cl[0]])) return cl.reduce((b, o) => (m[o] > m[b] ? o : b), cl[0]);
     if (S.dm && i === 2 * S.N && S.ban[i] >= 0 && tied(S.tm[S.ban[i]]) && S.figs.some(f => f.p === i && f.o === S.ban[i])) return S.ban[i];
   }
   if (isGate(S, i) && !S.P[i >> 1].out && tied(S.tm[i >> 1])) return lead(S.tm[i >> 1], i >> 1);   // (a Gate nobody holds more strongly is its own player's, as without teams)

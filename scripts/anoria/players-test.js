@@ -84,6 +84,15 @@ const T2 = [[0, 2], [1, 3]];
   ok('2v2: teammates level at the top: the team holds it, the first in seat order', E.holder(L, 8) === 0, E.holder(L, 8));
   const M = game(4, [], { cfg: { teams: T2 } }); fig(M, 'leonidas', 0, 8); fig(M, 'spartacus', 2, 8); fig(M, 'spartacus', 1, 8);
   ok('2v2: a teammate standing there doesn\'t take it from you', E.holder(M, 8) === 0, E.holder(M, 8)); }
+// Two Cleopatras (2026-11-16): teammates who both have her are one side and hold the tie; on different sides they cancel out
+{ const A = game(4, [], { cfg: { teams: T2 } }); A.P[0].guide = 'cleopatra'; A.P[2].guide = 'cleopatra'; fig(A, 'leonidas', 0, 3); fig(A, 'spartacus', 2, 3); fig(A, 'leonidas', 1, 3);
+  ok('2v2: two teammates with Cleopatra hold a tie for their team', E.holder(A, 3) === 0, E.holder(A, 3));
+  const B = game(4, [], { cfg: { teams: T2 } }); B.P[0].guide = 'cleopatra'; B.P[1].guide = 'cleopatra'; fig(B, 'leonidas', 0, 3); fig(B, 'leonidas', 1, 3);
+  ok('2v2: Cleopatras on both sides cancel out', E.holder(B, 3) === -1, E.holder(B, 3));
+  const C = game(4, [], { cfg: { teams: T2 } }); C.P[0].guide = 'cleopatra'; fig(C, 'leonidas', 0, 3); fig(C, 'leonidas', 1, 3);
+  ok('2v2: one Cleopatra holds the tie', E.holder(C, 3) === 0, E.holder(C, 3));
+  const D = game(3, []); D.P[0].guide = 'cleopatra'; D.P[1].guide = 'cleopatra'; fig(D, 'leonidas', 0, 3); fig(D, 'leonidas', 1, 3);
+  ok('3 players: two Cleopatras in a tie cancel out', E.holder(D, 3) === -1, E.holder(D, 3)); }
 { const S = game(4, [], { cfg: { teams: T2 } }); S.P[0].renown = 12; S.P[2].renown = 12; fig(S, 'leonidas', 0, 0); E.endRound(S);
   ok('2v2: a team\'s Renown is its players\' together, and it wins together', S.over && S.how === 'renown' && S.wt === 0 && S.winner === 0, [S.over, S.wt, S.winner]); }
 { const S = game(4, [], { cfg: { teams: T2, outEnds: 0 } }); S.P[0].seals = 1; fig(S, 'leonidas', 1, 0); E.endRound(S);
