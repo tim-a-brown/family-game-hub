@@ -150,7 +150,12 @@ Underlying principles for everything:
   name alone, always two lines tall, and where you are ("Round 9 of 13", "182 pts") stands at the lower left of the card's
   color over a soft dark gradient at the color's foot, so it reads over the art (Tim, 2026-11-16: "fit game names up to two lines long. move
   the details into the bottom left of the colorful top part", then "make the top part shorter again": the color keeps its
-  1 : .66 shape; then "remove the pillboxes and add a subtle dark gradient"; `shelfBox`, the block after `.sbox.old .art` in index.html). Quick notes (`Kit.toast`) are lifted glass with a hairline lit along the top.
+  1 : .66 shape; then "remove the pillboxes and add a subtle dark gradient"; `shelfBox`, the block after `.sbox.old .art` in index.html). Quick notes (`Kit.toast`) are lifted glass with a hairline lit along the top. **Hiding games and sections** (Tim, 2026-11-16: "add a discreet edit option to each
+  section to allow hiding games within the section or the section altogether"): a quiet pencil at the end of each
+  section's heading (`.sec-ed`) opens that section alone (`Kit.homeSheet(catId)`: Show this section, then a switch for
+  each of its games, Hide all, and All sections), and a pencil in the top bar (`#hedit`) opens every section, the same
+  sheet as Home screen in the profile menu (`gn_cat_off`, `gn_games_off`, `gn_cat_order`). With the bell showing the
+  title eases down a step for the fourth button, and at 360 wide or less the top pencil steps aside.
 - **What keeps the home screen smooth** (Tim, 2026-11-16: "lagginess, scrolling up and down on the iPad mini in
   landscape"; measured with the CPU slowed 4x at 1024x768). Scrolling: **no `backdrop-filter` on anything repeated per
   tile or card**. A tile's glass band and a Keep playing card's name panel are painted glass, with the art clipped at the

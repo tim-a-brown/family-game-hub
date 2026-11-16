@@ -938,6 +938,11 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
 :root:not(.ng-x) .sec-h .bank .bank-amt{min-height:44px;}
 @media (max-width:440px){:root:not(.ng-x) .top :is(.vbtn,.me){width:38px;height:38px;}
   :root:not(.ng-x) .top h1{font-size:clamp(1.1rem,calc((100vw - 214px) / 5.45),2.15rem);}}
+/* (a fourth button beside the title, the bell with the pencil: the title eases down a step to keep its room, and on the
+   narrowest phones the pencil steps aside: each section's own pencil and Home screen in the profile menu do the same) */
+@media (max-width:440px){:root:not(.ng-x) .top:has(#bell:not([hidden])):has(#hedit:not([hidden])) h1{font-size:clamp(1.1rem,calc((100vw - 258px) / 5.45),2.15rem);}}
+@media (max-width:360px){.top:has(#bell:not([hidden])) #hedit{display:none;}
+  :root:not(.ng-x) .top:has(#bell:not([hidden])) h1{font-size:clamp(1.1rem,calc((100vw - 214px) / 5.45),2.15rem);}}
 :root:not(.ng-x) .chips .chip:is(.kinds,.who).set{background:rgba(255,211,77,.14);color:var(--lit-ink);box-shadow:inset 0 0 0 1px rgba(255,211,77,.6),0 0 16px rgba(255,190,60,.18);}
 :root:not(.ng-x) .chips .chip:is(.kinds,.who).set .ico{color:var(--lit-ink);}
 /* the Which games? sheet: a row for each kind, its icon in the kind's color, how many games, and a tick at the right */
@@ -1129,6 +1134,11 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
 :root:not(.ng-x) .sec.favs .sec-h h2{color:var(--text);}
 :root:not(.ng-x) .sec-h .n{margin-left:auto;padding:0;background:none;color:var(--text-2);font-size:.84rem;font-weight:500;white-space:nowrap;}
 :root:not(.ng-x) .sec-h .n:not(:empty) ~ *{margin-left:0;}
+/* the section's pencil: quiet until pressed, a full-size target with a small mark */
+.sec-h .sec-ed{flex:none;display:grid;place-items:center;width:36px;height:36px;margin:-4px -6px -4px -4px;border:0;border-radius:12px;background:none;color:var(--text-3);opacity:.6;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.sec-h .sec-ed .ico{width:16px;height:16px;}
+.sec-h .sec-ed:active{opacity:1;background:var(--gl-2,rgba(255,255,255,.1));transform:scale(.92);}
+@media (hover:hover){.sec-h .sec-ed:hover{opacity:1;}}
 @media (max-width:460px){:root:not(.ng-x) .sec-console > .sec-h .cs-head{margin-left:auto;}}
 :root:not(.ng-x) .sec-h .hs-link{border-radius:12px;background:rgba(255,211,77,.12);color:var(--lit-ink);box-shadow:inset 0 0 0 1px rgba(255,211,77,.35);font-weight:700;}
 :root:not(.ng-x) .sec-h .hs-link .ico{color:var(--lit);}
@@ -1516,6 +1526,7 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
       <div class="hi" id="hi">Hi there</div>
       <h1>Game Night</h1>
     </div>
+    <button class="vbtn" id="hedit" type="button" aria-label="Show or hide sections and games"></button>
     <button class="vbtn" id="view" type="button"></button>
     <button class="vbtn bell" id="bell" type="button" aria-label="Notifications" hidden><span class="bell-n" id="bell-n" hidden></span></button>
     <button class="me" id="me" type="button" aria-label="Account">G</button>
@@ -2055,6 +2066,9 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     var s = el('section', { class: 'sec sec-' + ic + (favs ? ' favs' : ''), style: sc ? { '--sc': 'hsl(' + sc.hue + ' ' + sc.sat + '% 46%)', '--h': 'hsl(' + sc.hue + ' ' + sc.sat + '% 58%)' } : null });
     var h = el('div', { class: 'sec-h' }, [el('span', { html: Kit.icon(ic) }), el('h2', { text: title }), el('span', { class: 'n', text: gl ? games.length + (games.length === 1 ? ' game' : ' games') : String(games.length) })]);
     if (extra) h.appendChild(extra);
+    // a quiet pencil at the heading's end: which of this section's games show, or the whole section (Tim, 2026-11-16:
+    // "add a discreet edit option to each section to allow hiding games within the section or the section altogether")
+    if (sc && !favs && Kit.homeSheet) h.appendChild(el('button', { type: 'button', class: 'sec-ed', 'aria-label': 'Show or hide ' + title + ' games', html: Kit.icon('pencil'), onclick: function () { Kit.sfx('tap'); Kit.haptic('light'); Kit.homeSheet(ic); } }));
     s.appendChild(h);
     // (Night: rows, or tiles in the tile view, the Consoles' cartridges in the same grid as every game)
     var list = el('div', { class: 'list' + (gl ? (tiles ? ' rows gtiles' : ' rows') : tiles ? ' tiles' : '') });
@@ -2857,6 +2871,9 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     $('view').setAttribute('aria-label', tiles ? 'Show as a list' : 'Show as tiles');
   }
   paintView();
+  // the top bar's pencil: every section and game, the same sheet as Home screen in the profile menu
+  $('hedit').innerHTML = Kit.icon('pencil');
+  $('hedit').addEventListener('click', function () { Kit.sfx('tap'); Kit.haptic('light'); if (Kit.homeSheet) Kit.homeSheet(); });
   $('view').addEventListener('click', function () {
     tiles = !tiles; set('gn_home_view', tiles ? 'tiles' : 'list'); Kit.sfx('tap'); Kit.haptic('light'); paintView(); render();
   });

@@ -5024,7 +5024,7 @@
   }
   function setupSaved(id) { try { return JSON.parse(lsGet('gn_setup_' + id, 'null')); } catch (e) { return null; } }
   function rootPath() { return /\/games\//.test(location.pathname) ? '../' : ''; }
-  function defaultsSheet(part) {
+  function defaultsSheet(part, focus) {
     var list = (typeof GAMES !== 'undefined' ? GAMES : []).filter(function (g) { return !g.hidden && setupPageOf(g); });
     // Home screen sections: move them up and down; Favorites always stays first
     var ord = el('div', { class: 'k-ord' });
@@ -5038,8 +5038,10 @@
     function catsChanged() { try { window.dispatchEvent(new Event('kit:cats')); } catch (e) {} }
     function paintOrd() {
       ord.innerHTML = '';
-      ord.appendChild(el('div', { class: 'k-ord-row fixed' }, [el('span', { class: 'ic', html: icon('star') }), el('span', { class: 'grow' }, [el('b', { text: 'Favorites' }), el('small', { text: 'Always first' })])]));
-      var cs = catsOrdered(), allGames = typeof GAMES !== 'undefined' ? GAMES : [];
+      // (focus: one section alone, opened from the pencil on its heading, its games always in view)
+      if (!focus) ord.appendChild(el('div', { class: 'k-ord-row fixed' }, [el('span', { class: 'ic', html: icon('star') }), el('span', { class: 'grow' }, [el('b', { text: 'Favorites' }), el('small', { text: 'Always first' })])]));
+      var cs = catsOrdered().filter(function (c) { return !focus || c.id === focus; }), allGames = typeof GAMES !== 'undefined' ? GAMES : [];
+      if (focus) openCat[focus] = 1;
       cs.forEach(function (c, i) {
         // the switch shows or hides the whole section on the home screen (the row dims when it's off)
         var on = catOn(c.id), pcOff = pcCatOff(c.id), row = el('div', { class: 'k-ord-row mv' + (on ? '' : ' off') });
@@ -5054,11 +5056,11 @@
         var nOff = games.filter(function (g) { return !gameOn(g); }).length;
         var small = !on ? (pcOff ? 'Turned off by ' + pcNames() : 'Hidden from the home screen') : nOff ? nOff + ' of ' + games.length + ' games hidden' : '';
         var open = !!openCat[c.id];
-        var disc = games.length ? el('button', { type: 'button', class: 'k-ord-b k-ord-open' + (open ? ' up' : ''), 'aria-expanded': String(open), 'aria-label': (open ? 'Hide' : 'Show') + ' the games in ' + c.name, html: icon('down'), onclick: function () {
+        var disc = games.length && !focus ? el('button', { type: 'button', class: 'k-ord-b k-ord-open' + (open ? ' up' : ''), 'aria-expanded': String(open), 'aria-label': (open ? 'Hide' : 'Show') + ' the games in ' + c.name, html: icon('down'), onclick: function () {
           openCat[c.id] = !openCat[c.id]; sfx('tap'); paintOrd();
         } }) : null;
         ord.appendChild(sec);
-        [ordGrip(), el('span', { class: 'ic', html: icon(c.id) }), el('span', { class: 'grow' }, [el('b', { text: c.name })].concat(small ? [el('small', { text: small })] : [])), disc, sw].forEach(function (x) { if (x) row.appendChild(x); });
+        [focus ? null : ordGrip(), el('span', { class: 'ic', html: icon(c.id) }), el('span', { class: 'grow' }, [el('b', { text: focus ? 'Show this section' : c.name })].concat(small ? [el('small', { text: small })] : [])), disc, sw].forEach(function (x) { if (x) row.appendChild(x); });
         if (!open) return;
         var list = el('div', { class: 'k-ord-games' });
         games.forEach(function (g) {
@@ -5081,7 +5083,7 @@
           } })]));
         sec.appendChild(list);
       });
-      if (lsGet('gn_cat_order', '') && lsGet('gn_cat_order', '') !== '[]') ord.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block k-ord-reset', text: 'Back to the usual order', onclick: function () {
+      if (!focus && lsGet('gn_cat_order', '') && lsGet('gn_cat_order', '') !== '[]') ord.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block k-ord-reset', text: 'Back to the usual order', onclick: function () {
         lsSet('gn_cat_order', '[]'); sfx('tap'); paintOrd(); try { window.dispatchEvent(new Event('kit:cats')); } catch (e) {}
       } }));
     }
@@ -5108,6 +5110,8 @@
     }
     q.addEventListener('input', paint);
     paint();
+    if (part === 'home' && focus) return sheet({ title: catName(focus) || 'Home screen', node: el('div', { class: 'k-ord-one' }, [ord]),
+      actions: [{ label: 'All sections', cls: 'btn-ghost', onClick: function () { setTimeout(function () { defaultsSheet('home'); }, 260); } }, { label: 'Done', cls: 'btn-soft' }] });
     if (part === 'home') return sheet({ title: 'Home screen', node: el('div', null, [
         el('p', { class: 'muted', style: { margin: '0 0 4px' }, text: 'Drag sections into the order you like. Switch a section off to hide all its games from home, search, Surprise and High Scores, or open a section to switch off single games.' }), ord]),
       actions: [{ label: 'Done', cls: 'btn-soft' }] });
@@ -5115,7 +5119,7 @@
         el('p', { class: 'muted', style: { margin: '0 0 10px' }, text: 'Pick a game to set how it starts: who plays, the computer’s skill and its options. A game also remembers whatever you pick when you start it.' }), q, box]),
       actions: [{ label: 'Done', cls: 'btn-soft' }] });
   }
-  function homeSheet() { defaultsSheet('home'); }
+  function homeSheet(focus) { defaultsSheet('home', typeof focus === 'string' ? focus : null); }
   function timerSheet() { sheet({ title: 'Game timer', node: timerPanel(), actions: [{ label: 'Done', cls: 'btn-soft' }] }); }
   // a few words for the menus: what the timer and the sections are set to now
   function timerStatus(t) { t = t === undefined ? timerGet() : t; if (!t) return 'Off'; if (t.cut) return 'Games off'; var ms = t.end - Date.now(); return ms > 0 ? (ms >= 3600000 ? Math.floor(ms / 3600000) + ' hr ' + Math.floor(ms / 60000) % 60 + ' min' : Math.ceil(ms / 60000) + ' min') + ' left' : t.lock && ms <= -60000 ? 'Locked' : 'Time’s up'; }
