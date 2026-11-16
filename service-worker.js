@@ -47,6 +47,8 @@ const PRECACHE_URLS = [
   '/spin.js',
   '/games.js',
   '/game-icons.js',
+  '/tile-glow.js',
+  '/img/tile-glow.webp',
   '/diag.js',
   '/data/wordle-words.js',
   '/fonts/lilita-one.woff2',

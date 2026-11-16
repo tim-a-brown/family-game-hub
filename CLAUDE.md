@@ -149,10 +149,19 @@ Underlying principles for everything:
   playing cards to match (`html.look`, the `==LOOKS==` block in index.html). Quick notes (`Kit.toast`) are lifted glass with a hairline lit along the top.
 - **What keeps the home screen smooth** (Tim, 2026-11-16: "lagginess, scrolling up and down on the iPad mini in
   landscape"; measured with the CPU slowed 4x at 1024x768). Scrolling: **no `backdrop-filter` on anything repeated per
-  tile or card**. A tile's glass band and a Keep playing card's name panel are painted glass (the dark gradient, and on a
-  tile a soft light at the band's upper right standing in for the art glowing through), with the art clipped at the
+  tile or card**. A tile's glass band and a Keep playing card's name panel are painted glass, with the art clipped at the
   band's top edge (`clip-path` on `.gi`); a live blur on every tile made each one a layer of its own, about 320 layers in
-  all against 13 now. The few blurred controls in the header are fine. **A looping animation moves only `transform` and
+  all against 13 now. The few blurred controls in the header are fine. **The frosting is baked** (Tim, 2026-11-16: "render
+  what that glass blur actually looks like so you don't have to calculate on the fly"): under the glass's dark tint lies
+  the game's glow, the part of its art under the glass blurred and saturated as the live blur looked on his iPhone, one
+  picture for every game (`img/tile-glow.webp`, about 40 KB, and where each glow lies, `tile-glow.js`, both made by
+  `scripts/build-tile-glow.js`, which draws them with index.html's own tiles in Playwright). A tile gets `.gl` and its
+  `.go` (a card, its `.nm`) gets `data-gl`; one rule a glow, written once at load, places the picture, because a custom
+  property set on each tile would be inherited by everything in it and lose the tiles' shared styles. A console game's glow
+  is its console's cartridge with a plain label. **After adding a game, changing a game's icon or moving the tiles' art,
+  run `node scripts/build-tile-glow.js`**; a game with no glow yet shows a soft light at the band's upper right. A still
+  `filter: blur()` on a copy of the art looked the same, but it doubled every icon's SVG (about 0.7 s more for a full
+  redraw at 4x) and left 130 blurs to work out as the page is first painted. **A looping animation moves only `transform` and
   `opacity`**: the gold edge of an online game whose turn is yours (`ngTurn`) and the green ring of a friend's live table
   (`livePulse`) animated `box-shadow`, which repainted the page every frame for as long as they showed, scrolling or not
   (the page at rest used 2.3 s of every 3 s of the main thread); now a brighter copy of the edge fades in and out on
