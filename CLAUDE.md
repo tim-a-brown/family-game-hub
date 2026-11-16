@@ -1624,7 +1624,9 @@ Underlying principles for everything:
     rule (the rule struck out, still readable), a pen-nib token and a dotted line for a rule changed for a while,
     bone counters 1 to 5. **On the live table** (2026-11-12) whose Domain it is shows as the player's avatar on the
     tile's bottom border (Tim's choice over the pennants), and the pieces a rule uses now lie half on that border either
-    side of the avatar (`domTokens` in ui.js, `.pl-toks` in domains.css), clear of the totals, the flag and the words:
+    side of the avatar (`domTokens` in ui.js, `.pl-toks` in domains.css), clear of the totals, the flag and the words (on a phone held upright, where the Domains stack one above another, the
+    avatar and its pieces sit inside the tile's foot on the paper instead, so none touches the tile under it: Tim,
+    2026-11-16, "the avatar is touching two cards - confusing"):
     at its left, the card that switches the power off (Vesuvius as a small card laid slightly turned; Diogenes's
     Silence marker as his portrait on a square token edged in his player's colour) over the veil of ash, and the
     pen-nib token with the dotted line while a Ward (Pope Leo I) changes what Seneca Falls, Himeji, Nan Madol or
