@@ -2598,6 +2598,20 @@ html.sl-side .bc .rl{font-size:.5rem;}
   var saved = load();
   if (saved && saved.teams && saved.phase && saved.phase !== 'done') { S = saved; finished = false; render(); }
   else showSetup();
+
+  // Test hook (the demo, games/demos/sandlot.js): start a game, make a team, arrange the state, and choose what the next
+  // pitch does (rig finds the dice seed that lands on that outcome for this batter and pitcher; outcomes as in ENG.pick)
+  window.__sandlot = {
+    state: function () { return S; }, busy: function () { return busy; },
+    start: function (cfg) { start(cfg); },
+    team: function (t) { genTeam(t); save(); render(); },
+    set: function (fn) { fn(S); save(); render(); },
+    rig: function (want) {
+      var bid = curBatter(), pid = S.pi[fldT()], d = ENG.dist(S.P[bid], S.P[pid], ctxNow());
+      for (var k = 1; k < 200000; k++) { var r = ENG.rng(k), roll = rollDice(r); if (ENG.pick(d, roll.u) === want) { S.seed = k; return true; } }
+      return false;
+    }
+  };
 })();
 </script>
 </body>

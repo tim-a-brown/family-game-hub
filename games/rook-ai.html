@@ -1365,6 +1365,12 @@ html.ls .cseat .backs .pcard+.pcard{margin-left:-13px;}
     } else showSetup();
   }
   boot();
+  // Test hook (the demo, games/demos/rook-ai.js): start a game with given players, then set the hands and carry on
+  window.__rook = {
+    state: function () { return S; },
+    start: function (cfg) { token++; ME = 0; BLIND = false; S = freshGame(cfg.target || 500, cfg.players, cfg.mode || 'cpu', cfg.level); undoStack = []; Kit.gameStart(); newHand(); },
+    set: function (fn) { token++; fn(S); S.hands.forEach(sortHand); undoStack = []; save(); render(); step(); }
+  };
   TurnNet.setup({
     game: 'rook', title: 'Rook', min: 2, max: 4, botMs: 900,
     seats: function () { return 4; },

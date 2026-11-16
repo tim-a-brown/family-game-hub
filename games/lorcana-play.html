@@ -14107,6 +14107,16 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     fire: function (src, ab, pi, ctx) { Q.push({ src: src, ab: ab, pi: pi, ctx: ctx || {} }); pumpQ(); },
     rollHTML: rollHTML, fitRoll: fitRoll,
     matById: matById, matFill: matFill, matPicker: matPicker, matWith: matWith,
+    // the demo (games/demos/lorcana-play.js): start a game, then put named cards where it needs them
+    start: function (cfg, choices) { newGame(cfg, choices); },
+    put: function (pi, full, zone, o) {
+      var key = String(full).toLowerCase(), d = DB.unique.filter(function (x) { return x.full.toLowerCase() === key; })[0] || (DB.byFull[key] || [])[0]; if (!d) return null;   // (the deck builder's printing)
+      S.defs[d.id] = compactOf(d);
+      var u = 'c' + (++uidN); S.uidN = uidN;
+      S.cards[u] = { id: d.id, o: pi, ex: !!(o && o.ex), dmg: 0, dry: !(o && o.wet), at: null, under: [], mods: [], bt: 0 };
+      S.P[pi][zone || 'hand'].push(u);
+      return u;
+    },
     hitFx: function (e, x, src) { var st = { pi: S.cur, src: src, ab: { name: 'Test' }, said: [] }; fx.beam(src, [x]); act(function () { hit(e, st, x); checkBanishAll(); }); }
   };
 })();
