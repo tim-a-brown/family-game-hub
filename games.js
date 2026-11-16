@@ -167,29 +167,29 @@ var GAMES = [
   { id: 'paigow',      name: 'Pai Gow',      color: '#9f1239', cat: 'casino', min: 1, max: 6, tag: 'Set a high hand and a low hand', play: 'paigow', demo: 1 },
 
   // ── Arcade ───────────────────────────────────────────────────────────────
-  { id: 'tetris',      name: 'Tetris',       color: '#8b5cf6', cat: 'arcade', min: 1, max: 6, tag: 'Stack and clear lines, solo or TetriNET with up to 6', play: 'tetris',
+  { id: 'tetris',      name: 'Tetris',       color: '#8b5cf6', cat: 'arcade', min: 1, max: 6, tag: 'Stack and clear lines, solo or TetriNET with up to 6', play: 'tetris', demo: 1,
     launch: [
       { icon: 'gamepad', title: 'Play Tetris', desc: 'Just you: clear lines and climb the levels', file: 'tetris.html' },
       { icon: 'users', title: 'TetriNET', desc: 'Up to 6 fields at once with specials to fire: against the computer or online', file: 'tetrinet.html' }
     ] },
   // TetriNET lives under Tetris (its launch options), so it has no tile of its own
   { id: 'tetrinet',    name: 'TetriNET',     color: '#8b5cf6', cat: 'arcade', min: 1, max: 6, tag: 'Multiplayer Tetris with specials, online or vs computer', play: 'tetrinet', hidden: true },
-  { id: 'snake',       name: 'Snake',        color: '#22c55e', cat: 'arcade', min: 1, max: 1, tag: "Eat, grow, don't crash", play: 'snake' },
-  { id: 'pacman',      name: 'Pac-Man',      color: '#facc15', cat: 'arcade', min: 1, max: 1, tag: 'Eat the dots, dodge the ghosts', play: 'pacman' },
-  { id: 'donkeykong',  name: 'Donkey Kong',  color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Climb the girders, jump the barrels, rescue Pauline', play: 'donkeykong' },
-  { id: 'breakout',    name: 'Breakout',     color: '#f43f5e', cat: 'arcade', min: 1, max: 1, tag: 'Smash every brick', play: 'breakout' },
-  { id: 'flappybird',  name: 'Flappy Bird',       color: '#38bdf8', cat: 'arcade', min: 1, max: 1, tag: 'Tap to fly through the pipes', play: 'flappybird' },
-  { id: 'crossyroad',  name: 'Crossy Road',  color: '#84cc16', cat: 'arcade', min: 1, max: 1, tag: 'Hop across roads and rivers', play: 'crossyroad' },
-  { id: 'willycrash',  name: 'Willy Crash',  color: '#ff6a3d', cat: 'arcade', min: 1, max: 1, tag: 'Blast the daredevil onto the rooftop', play: 'willycrash' },
-  { id: 'crazytower',  name: 'Crazy Tower',  color: '#000', cat: 'arcade', min: 1, max: 4, tag: 'Drop the blocks, stack to the jackpot', play: 'crazytower' },
-  { id: 'centipede',   name: 'Centipede', color: '#000', cat: 'arcade', min: 1, max: 3, tag: 'Blast the centipedes, beat the bosses, solo or online', play: 'centipede',
+  { id: 'snake',       name: 'Snake',        color: '#22c55e', cat: 'arcade', min: 1, max: 1, tag: "Eat, grow, don't crash", play: 'snake', demo: 1 },
+  { id: 'pacman',      name: 'Pac-Man',      color: '#facc15', cat: 'arcade', min: 1, max: 1, tag: 'Eat the dots, dodge the ghosts', play: 'pacman', demo: 1 },
+  { id: 'donkeykong',  name: 'Donkey Kong',  color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Climb the girders, jump the barrels, rescue Pauline', play: 'donkeykong', demo: 1 },
+  { id: 'breakout',    name: 'Breakout',     color: '#f43f5e', cat: 'arcade', min: 1, max: 1, tag: 'Smash every brick', play: 'breakout', demo: 1 },
+  { id: 'flappybird',  name: 'Flappy Bird',       color: '#38bdf8', cat: 'arcade', min: 1, max: 1, tag: 'Tap to fly through the pipes', play: 'flappybird', demo: 1 },
+  { id: 'crossyroad',  name: 'Crossy Road',  color: '#84cc16', cat: 'arcade', min: 1, max: 1, tag: 'Hop across roads and rivers', play: 'crossyroad', demo: 1 },
+  { id: 'willycrash',  name: 'Willy Crash',  color: '#ff6a3d', cat: 'arcade', min: 1, max: 1, tag: 'Blast the daredevil onto the rooftop', play: 'willycrash', demo: 1 },
+  { id: 'crazytower',  name: 'Crazy Tower',  color: '#000', cat: 'arcade', min: 1, max: 4, tag: 'Drop the blocks, stack to the jackpot', play: 'crazytower', demo: 1 },
+  { id: 'centipede',   name: 'Centipede', color: '#000', cat: 'arcade', min: 1, max: 3, tag: 'Blast the centipedes, beat the bosses, solo or online', play: 'centipede', demo: 1,
     launch: [
       { icon: 'gamepad', title: 'Play solo', desc: 'Ten waves and four bosses', file: 'centipede.html' },
       { icon: 'users', title: 'Play online', desc: '2 or 3 players, each on their own device', file: 'centipede.html?online=1' }
     ] },
   { id: 'junglehunt',  name: 'Jungle Hunt',  color: '#2f8a3a', cat: 'console', min: 1, max: 1, tag: 'Swing, swim and leap to rescue Lady Penelope', play: 'junglehunt', hidden: true },   // (played from its Atari 2600 cartridge: see CONSOLE_NATIVE)
-  { id: 'goblindefenders', name: 'Goblin Defenders', color: '#4f9a2c', cat: 'arcade', min: 1, max: 1, tag: 'Build towers of steel and wood, stop the march on the village', play: 'goblindefenders' },
-  { id: 'galaga',      name: 'Galaga',       color: '#2a5cff', cat: 'arcade', min: 1, max: 1, tag: 'Blast the swarm, dodge the tractor beam', play: 'galaga' },
+  { id: 'goblindefenders', name: 'Goblin Defenders', color: '#4f9a2c', cat: 'arcade', min: 1, max: 1, tag: 'Build towers of steel and wood, stop the march on the village', play: 'goblindefenders', demo: 1 },
+  { id: 'galaga',      name: 'Galaga',       color: '#2a5cff', cat: 'arcade', min: 1, max: 1, tag: 'Blast the swarm, dodge the tractor beam', play: 'galaga', demo: 1 },
   { id: 'invaders',    name: 'Space Invaders', color: '#2fd35a', cat: 'arcade', min: 1, max: 2, tag: 'Stop the invaders before they land', play: 'invaders' },
   { id: 'asteroids',   name: 'Asteroids',   color: '#6366f1', cat: 'arcade', min: 1, max: 1, tag: 'Blast rocks, stay alive', play: 'asteroids' },
   { id: 'peggle',      name: 'Peggle',       color: '#fb923c', cat: 'arcade', min: 1, max: 1, tag: 'Aim, bounce, clear the orange pegs', play: 'peggle' },
