@@ -1845,7 +1845,7 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
       box.appendChild(b); return b;
     }
     function start(how, page) {
-      try { sessionStorage.setItem('kit_go', JSON.stringify({ page: page || sp, how: how || 'start', t: Date.now() })); } catch (e) {}
+      try { sessionStorage.setItem('kit_go', JSON.stringify({ page: page || sp, id: g.id, how: how || 'start', t: Date.now() })); } catch (e) {}
       s.close(); go(g.play + nw, false);
     }
     var head = el('div', { class: 'pick-h', html: GameIcon(g.id) + '<div><b>' + Kit.esc(g.name) + '</b><span class="pk-tag">' + Kit.esc(g.tag || '') + '</span></div>' });
@@ -3384,6 +3384,14 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     if (go && window.Daily) setTimeout(function () { Daily.open(); }, 60);
   }
   openDailyIfAsked();
+  // a game's Play online review, cancelled after the home screen's sheet sent the player there (#sheet=<game>): that game's
+  // sheet opens again, so they are back where they pressed it
+  (function () {
+    var m = /^#sheet=([\w-]+)$/.exec(location.hash); if (!m) return;
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    var g = (window.GAMES || []).filter(function (x) { return x && x.id === m[1]; })[0];
+    if (g) setTimeout(function () { launch(g); }, 60);
+  })();
 })();
 </script>
 </body>

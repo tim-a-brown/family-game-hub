@@ -69,6 +69,10 @@
   try { GO = JSON.parse(sessionStorage.getItem('kit_go') || 'null'); sessionStorage.removeItem('kit_go'); } catch (e) {}
   if (GO && (IN_SHEET || EDIT_DEFAULTS || GO.page !== location.pathname.replace(/^.*\//, '').replace(/\.html$/, '') || !(Date.now() - GO.t < 30000))) GO = null;
   if (GO) { GO.at = Date.now(); root.classList.add('k-going'); setTimeout(function () { root.classList.remove('k-going'); }, 6000); }
+  // (a Play online pressed on the home screen's sheet opens the review here, over the game's own page: Cancel goes back
+  // to that sheet on the home screen, not to this page's setup; Tim, 2026-11-16: "why'd the menu look different when i
+  // cancelled and came back from the online lobby?")
+  var HOME_BACK = null;
   var LS = (function () { try { return window.localStorage; } catch (e) { return null; } })();
   function lsGet(k, d) { try { var v = LS.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
   function lsSet(k, v) { try { LS.setItem(k, v); } catch (e) {} if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite(k); }   // settings follow the PIN
@@ -3703,7 +3707,9 @@
       // (the robots the review shows keep their names at the table, in the seats nobody takes)
       function botNames() { return lastWho && info && info.bots ? lastWho.seats.filter(function (t) { return t.cpu; }).map(function (t) { return t.name; }) : []; }
       function findTable() { setTimeout(function () { if (tn) { saveSetup(); tn.open(); } else go(true, 'find'); }, 0); }
-      sh = sheet({ title: 'Play online', node: box, actions: [{ label: 'Open the table', primary: true, onClick: openTable }, { label: 'Find a table to join', cls: 'btn-soft', onClick: findTable }, { label: 'Cancel', cls: 'btn-ghost' }] });
+      var chose = false;
+      sh = sheet({ title: 'Play online', node: box, actions: [{ label: 'Open the table', primary: true, onClick: function () { chose = true; HOME_BACK = null; openTable(); } }, { label: 'Find a table to join', cls: 'btn-soft', onClick: function () { chose = true; HOME_BACK = null; findTable(); } }, { label: 'Cancel', cls: 'btn-ghost' }],
+        onClose: function () { setTimeout(function () { if (chose || !HOME_BACK) return; var id = HOME_BACK; HOME_BACK = null; root.classList.add('k-going'); location.replace(rootPath() + 'index.html#sheet=' + encodeURIComponent(id)); }, 0); } });   // (a tick later: a button closes the sheet before its own action runs)
     }
     function resolvedMode() { return merged ? resolved() : state.mode; }
     function listAnd(a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
@@ -3769,7 +3775,7 @@
     window.addEventListener('resize', function () { setTimeout(fitFold, 60); setTimeout(dockInset, 60); });
     // started from the home screen's sheet: press start (or Play online) once the game has added its own parts
     if (GO && Date.now() - GO.at < 15000) {
-      var how = GO.how; GO = null;
+      var how = GO.how; if (how !== 'start' && GO.id) HOME_BACK = GO.id; GO = null;
       setTimeout(function () {
         var b = wrap.querySelector(how === 'start' ? '.k-start' : '.k-start-alt');
         root.classList.remove('k-going');

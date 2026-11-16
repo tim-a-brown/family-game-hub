@@ -329,7 +329,7 @@ Underlying principles for everything:
   together (Mad Libs, Would You Rather). A partner's "&" stays on the line with that partner. On the Players card partners share a plate with "&" between them, and sides that wrap stack with "vs" on its own line between them; rows of players wrap evenly (six are three and three, five three and two: `evenToks`), and so do the players sheet's seats (Tim, 2026-11-15). `Kit.whoChips` draws them, on
   the home sheet too. **Play online** is on every game whose tables are TurnNet's (not only ones that list online
   among their ways to play) and takes what is chosen: a **review** first (`goOnline` in kit.js: who will be at the
-  table, the rules as set, choices that only matter online), then Open the table opens it at once
+  table, the rules as set, choices that only matter online), (pressed on the home screen's game sheet, the review opens over the game's own page, so Cancel goes back to the home screen with that game's sheet open again, `HOME_BACK` in kit.js and `#sheet=<game>` in index.html; Tim, 2026-11-16: "why'd the menu look different when i cancelled"), then Open the table opens it at once
   (`TurnNet.host`) or Find a table goes to the lobby; a game on `online.js` (Centipede, TetriNET, Mind Meld, Apples
   to Apples) gets the same review, and both buttons open its lobby. **A friend's open table** in a game is the first
   row of that game's sheet on the home screen ("Join Pete's table", from `friendTables` in index.html), and the
