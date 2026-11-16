@@ -3350,7 +3350,13 @@
           Array.prototype.forEach.call(seg.children, function (b) { b.addEventListener('click', function () { scOpen = null; renderOptions(); }); });
           var row = el('button', { type: 'button', class: 'k-scrow', 'aria-expanded': String(openNow), onclick: function () { scOpen = openNow ? null : op.id; sfx('tap'); haptic('light'); renderOptions(); } },
             [el('span', { class: 'k-scl', text: op.label }), el('span', { class: 'k-scv', text: cur ? chText(cur) : '' }), el('span', { class: 'k-scc', html: icon('down') })]);
-          var scBox = el('div', { class: 'k-opt k-sc' + (openNow ? ' k-open' : '') }, [row, seg].concat(hasHelp && note ? [el('p', { class: 'k-help', text: note })] : []));
+          // A setting that has words about it has the same ? at the end of its row as a setting played on its row, and
+          // the words come up under it only when the ? is tapped (Tim, 2026-11-16: "found some rules with explanations
+          // but no question mark")
+          var hq = !!(hasHelp && note), hOpen = hq && !!openHelp[op.id];
+          var head = hq ? el('div', { class: 'k-scrw' }, [row, el('button', { type: 'button', class: 'k-iq' + (hOpen ? ' on' : ''), 'aria-expanded': String(hOpen), 'aria-label': 'What ' + op.label + ' means',
+            onclick: function () { openHelp[op.id] = !hOpen; sfx('tap'); renderOptions(); } }, [el('span', { text: '?' })])]) : row;
+          var scBox = el('div', { class: 'k-opt k-sc' + (openNow ? ' k-open' : '') + (hOpen ? ' k-hon' : '') }, [head, seg].concat(hOpen ? [el('p', { class: 'k-help', text: note })] : []));
           optsBox.appendChild(scBox);
           if (openNow) setTimeout(function () { try { scBox.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {} }, 30);
           return;
@@ -3655,6 +3661,7 @@
     var TN = function () { return !EDIT_DEFAULTS && window.TurnNet && TurnNet.ready && TurnNet.ready() ? TurnNet : null; };
     function goOnline() {
       var om = MK.online || resolvedMode(), tn = TN(), info = tn && tn.info ? tn.info() : null;
+      var revHelp = {};
       var only = MK.online ? (o.options || []).filter(function (op) { return op.when && !op.render && op.when(MK.online, state.options, state.count) && !op.when(resolved(), state.options, state.count); }) : [];
       var box = el('div', { class: 'k-rev' }), sh;
       function shown(op) { return (!op.render || (op.summary && (op.label || op.reviewLabel))) && !op.robot && only.indexOf(op) < 0 && (!op.when || op.when(om, state.options, state.count)); }
@@ -3698,7 +3705,11 @@
           if (!choices.some(function (c) { return String(c[0]) === String(state.options[op.id]); })) state.options[op.id] = op.value;
           choices.forEach(function (c) { seg.appendChild(el('button', { type: 'button', class: (String(state.options[op.id]) === String(c[0]) ? 'on' : '') + (chSub(c) ? ' k-two' : ''), html: chHtml(c), onclick: function () { state.options[op.id] = c[0]; sfx('tap'); paint(); } })); });
           var cur = choices.filter(function (c) { return String(c[0]) === String(state.options[op.id]); })[0];
-          box.appendChild(el('div', { class: 'k-opt' }, [el('div', { class: 'label' }, [el('span', { text: op.label })]), seg, cur && cur[2] ? el('p', { class: 'k-help', style: { display: 'block' }, text: cur[2] }) : null]));
+          // (what a choice means comes up under it from the ? beside its name, as in the setup)
+          var lab = el('div', { class: 'label' }, [el('span', { text: op.label })]), hlp = cur && cur[2];
+          if (hlp) lab.appendChild(el('button', { type: 'button', class: 'k-q', 'aria-label': 'What does ' + op.label + ' mean?', 'aria-expanded': String(!!revHelp[op.id]), text: '?',
+            onclick: function () { revHelp[op.id] = !revHelp[op.id]; sfx('tap'); paint(); } }));
+          box.appendChild(el('div', { class: 'k-opt' + (revHelp[op.id] ? ' help-on' : '') }, [lab, seg, hlp ? el('p', { class: 'k-help', text: hlp }) : null]));
         });
       }
       paint();
