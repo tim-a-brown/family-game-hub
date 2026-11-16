@@ -156,11 +156,12 @@
     ui.skip = el('button', 'sk', 'Skip'); ui.skip.type = 'button'; ui.skip.setAttribute('aria-label', 'Skip to the end of the demo');
     ui.skip.onclick = function () { tick(); skip(); };
     ui.strip.appendChild(ui.x); ui.strip.appendChild(ui.mid); ui.strip.appendChild(ui.skip);
-    doc.body.appendChild(ui.strip);
+    // (the strip, ring, finger and captions live on <html>, as the Kit keyboard does: the keyboard's page lift moves body)
+    root.appendChild(ui.strip);
     placeStrip();
     window.addEventListener('resize', placeStrip);
-    ui.ring = el('div', 'k-demo-ui k-demo-ring'); doc.body.appendChild(ui.ring);
-    ui.finger = el('div', 'k-demo-ui k-demo-finger', '<b></b>'); doc.body.appendChild(ui.finger);
+    ui.ring = el('div', 'k-demo-ui k-demo-ring'); root.appendChild(ui.ring);
+    ui.finger = el('div', 'k-demo-ui k-demo-finger', '<b></b>'); root.appendChild(ui.finger);
     st.fx = vw() / 2; st.fy = vh() + 40; moveFinger(st.fx, st.fy, true);
   }
   function tick() { try { Kit.sfx('tap'); Kit.haptic('light'); } catch (e) {} }
@@ -202,7 +203,9 @@
     }, { capture: true, passive: false });
   });
   window.addEventListener('keydown', function (e) {
-    if (st.ended || inUi(e.target)) return;
+    // (a key from the Kit keyboard is a synthetic one, and its taps were already let through or not; a real key typed
+    // into the box the player is to fill goes through too)
+    if (st.ended || inUi(e.target) || !e.isTrusted || allowed(e.target)) return;
     if (e.key === 'Escape') { e.preventDefault(); leave(); return; }
     e.stopImmediatePropagation(); e.preventDefault();
   }, true);
@@ -219,7 +222,7 @@
   function fingerIdle() { clearTimeout(hideT); hideT = setTimeout(function () { showFinger(false); }, 1300); }
   function ripple(x, y) {
     if (reduce) return;
-    var r = el('div', 'k-demo-ui k-demo-rip'); r.style.left = x + 'px'; r.style.top = y + 'px'; doc.body.appendChild(r);
+    var r = el('div', 'k-demo-ui k-demo-rip'); r.style.left = x + 'px'; r.style.top = y + 'px'; root.appendChild(r);
     setTimeout(function () { r.remove(); }, 600);
   }
   // a point inside the target that is really the target there (a fanned card shows only its edge)
@@ -383,7 +386,7 @@
     c.setAttribute('role', 'status'); c.setAttribute('aria-live', 'polite');
     c.innerHTML = '<span class="ln"><i></i></span><span class="nub"></span>' + (o.you ? '<span class="hd">' + (window.Kit ? Kit.icon('tap') : '') + '</span>' : '') + '<span class="tx"></span>';
     c.querySelector('.tx').textContent = text;
-    doc.body.appendChild(c);
+    root.appendChild(c);
     st.cap = c; st.capAt = o.at || null; st.capPos = o.pos; st.capPlace = o.place || null; st.avoid = o.avoid ? [].concat(o.avoid) : [];
     var g = group(o.at); placeCap(c, g.length ? g : null, o.pos);
     requestAnimationFrame(function () { c.classList.add('show'); });
