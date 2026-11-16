@@ -8,6 +8,11 @@
   function st() { return T.state(); }
   function cur() { return T.cur(); }
   var screen = function () { return document.getElementById('scr'); };
+  // the top of the tower and the block sliding over it, which a caption must not cover
+  function upper() {
+    var v = screen(); if (!v) return null;
+    return { nodeType: 1, isConnected: true, getBoundingClientRect: function () { var r = v.getBoundingClientRect(); return { left: r.left + r.width * 0.1, top: r.top, right: r.right - r.width * 0.1, bottom: r.top + r.height * 0.62, width: r.width * 0.8, height: r.height * 0.62 }; } };
+  }
   function sliding() { var c = cur(); return st() === 'play' && c && c.phase === 'slide'; }
   // the demo drops the sliding block so it lands `off` from the block below
   async function dropAt(D, off) {
@@ -32,7 +37,7 @@
       await D.say('Build the tallest tower you can, one glowing block at a time.', { at: screen, pos: 'below', wait: 2800 });
       await D.tap('#big', { after: 300 });
       await D.wait(sliding, 4000);
-      await D.say('Each block slides back and forth above the tower. Tap Drop to let it fall.', { at: '#big', wait: false });
+      await D.say('Each block slides back and forth above the tower. Tap Drop to let it fall.', { at: '#big', wait: 3200 });
       await dropAt(D, 0.8);
       await D.wait(400);
       await D.say('That one landed a little off, so the part hanging over the edge was sliced away. The next block is smaller.', { at: screen, pos: 'below' });
@@ -43,7 +48,7 @@
       T.demo.speed = 0.55;
       var h0 = T.height();
       await D.you('#big', 'Your turn. Watch the lit patch on top of the tower, and tap Drop when the block is right over it.', {
-        pos: 'above', until: function () { return T.height() > h0; }
+        pos: 'above', avoid: [upper], until: function () { return T.height() > h0; }
       });
       await D.wait(700);
       await D.say('Nice drop! Perfects in a row score more, and from the third, each one makes the block a little wider again.', { at: '#p-sc', pad: 6 });
