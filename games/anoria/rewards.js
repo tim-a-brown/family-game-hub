@@ -104,25 +104,33 @@
     const A = U(), sp = Coll.sphere(), sc = A.screen({ title: 'The sphere', cls: 'rw-scr rw-path', onClose: () => { if (done) done(); } });
     const L = el('section', { class: 'rw-col a' }), R = el('section', { class: 'rw-col b' });
     sc.body.appendChild(el('div', { class: 'rw-split' }, [L, R]));
-    // the sphere, and the turns ahead of it as far as the next Guide
+    // the sphere, how many of its signs are lit, and what "comes round" means (Tim, 2026-11-16: the screen "weirdly has
+    // no styling and there's no explanation for what we mean by when the sphere comes around"). The count stands under
+    // the sphere, not over it, so the sphere is seen whole; then one sentence says what coming round is and brings
     const big = sphere({ lit: sp.lit, cls: 'big' });
-    big.appendChild(el('div', { class: 'rw-mid' }, [el('b', { text: String(sp.lit) }), el('span', { text: 'of ' + sp.of })]));
     L.appendChild(big);
+    L.appendChild(el('div', { class: 'rw-count' }, [el('b', { text: String(sp.lit) }), el('span', { text: 'of ' + sp.of + ' signs lit' })]));
+    L.appendChild(el('p', { class: 'rw-lede' }, [document.createTextNode('The sphere comes round when all ' + (WORD[sp.of] || sp.of) + ' signs on its ring are lit. Each time it does, you get a pack of\u00a0' + Coll.PACK + ' cards, and the ring starts again from the first sign.')]));
     if (Coll.pending().n && window.AnoriaPacks && window.AnoriaPacks.pending) L.appendChild(el('button', { type: 'button', class: 'btn btn-primary rw-pick', html: A.MARK.guide + '<span>Choose your new Guide</span>',
       onclick: () => { tap(); sc.close(); window.AnoriaPacks.pending(() => path(done)); } }));
+    // the turns ahead as far as the next Guide: a step for each, a pack on every one and the Guide's mark on the last
     if (sp.next) {
-      const tr = el('div', { class: 'rw-turns', role: 'img', 'aria-label': 'A pack each time the sphere comes round, and a new Guide in ' + sp.toGuide + (sp.toGuide === 1 ? ' turn' : ' turns') });
-      for (let t = 1; t <= sp.toGuide; t++) tr.appendChild(t === sp.toGuide ? el('span', { class: 'rw-t g', html: A.MARK.guide }) : el('span', { class: 'rw-t' }, [packFace()]));
-      L.appendChild(tr);
-      L.appendChild(el('p', { class: 'rw-say c', text: sp.toGuide === 1 ? 'The next time the sphere comes round, it brings a pack and a new Guide.' : 'Each time the sphere comes round it brings a pack of\u00a0' + Coll.PACK + ' cards. ' + sp.guideSay }));
-    } else L.appendChild(el('p', { class: 'rw-say c', text: 'Each time the sphere comes round it brings a pack of\u00a0' + Coll.PACK + ' cards.' }));
+      const ORD = ['', 'Next', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th'];
+      const tr = el('ol', { class: 'rw-turns', role: 'img', 'aria-label': 'A pack each time the sphere comes round, and a new Guide in ' + sp.toGuide + (sp.toGuide === 1 ? ' turn' : ' turns') });
+      for (let t = 1; t <= sp.toGuide; t++) tr.appendChild(el('li', { class: 'rw-t' + (t === sp.toGuide ? ' g' : '') }, [
+        el('span', { class: 'rw-t-ic' }, t === sp.toGuide ? [packFace(), el('span', { class: 'rw-t-gd', html: A.MARK.guide })] : [packFace()]),
+        el('small', { text: ORD[t] || t + 'th' })]));
+      L.appendChild(el('div', { class: 'rw-next' }, [el('h2', { class: 'rw-cap', text: 'What the sphere brings' }), tr,
+        el('p', { class: 'rw-say c', text: sp.toGuide === 1 ? 'The next time the sphere comes round, it brings a pack and a new Guide.' : sp.guideSay })]));
+    }
     // how a sign is lit
     const LG = [[sp.light.game, 'A finished game lights one sign.'], [sp.light.game + sp.light.win, 'A win lights two.'], [sp.light.game + sp.light.win + sp.light.daily, 'Your first win of the day lights three.']];
+    L.appendChild(el('h2', { class: 'rw-cap', text: 'How signs are lit' }));
     L.appendChild(el('ul', { class: 'rw-how' }, LG.map(x => el('li', {}, [el('span', { class: 'rw-dm' }, Array.from({ length: x[0] }, () => el('i'))), el('span', { text: x[1] })]))));
     // the firsts still to come
     const firsts = Coll.nextUp().filter(x => Coll.FIRSTS[x.id]);
     if (firsts.length) { L.appendChild(el('h2', { class: 'rw-cap', text: 'A pack for each first' }));
-      L.appendChild(el('ul', { class: 'rw-firsts' }, firsts.map(x => el('li', {}, [packFace(), el('span', { text: x.when })])))); }
+      L.appendChild(el('ul', { class: 'rw-firsts rw-how' }, firsts.map(x => el('li', {}, [packFace(), el('span', { text: x.when })])))); }
     // the callings
     const calls = Coll.callings().sort((a, b) => b.have / b.need - a.have / a.need);
     if (calls.length) {

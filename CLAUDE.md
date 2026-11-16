@@ -93,6 +93,15 @@ Underlying principles for everything:
   eliminates Tim"). In chat, describe things as Tim sees or does them, not as Claude observes them: "You can see it in
   your screenshot" (not "Your screenshot shows it"); "The instructions explain that players you seat in game setup
   don't carry into the online table, where others will join from their own devices."
+- **No stray lines across buttons, ever** (Tim, 2026-11-16: black hairlines through Arvela's Deal the cards, "a pretty
+  common issue ... make sure we never see it ever, ever, ever again"). Every `.btn` is a layer of its own in Safari
+  (`will-change` in kit.css, so a label that changes isn't left with a row of its old words), and Safari repaints a
+  layer that sits on a fraction of a pixel in strips whose seams can stay unpainted, the dark page showing through. The
+  kit repaints a button whole whenever it changes size or its words change (the block "No stray lines across buttons
+  in Safari" in kit.js: a ResizeObserver and a MutationObserver nudge its color one step for two frames; Safari only,
+  `window.__kRpLog` lists each repaint for a test). A new kind of button needs nothing; something that is not a `.btn`
+  but has its own layer (`will-change`, a transform) and changes its words or size gets the class `btn` or the same
+  treatment.
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
@@ -289,7 +298,7 @@ Underlying principles for everything:
   seat); a tap on another face where a robot already sits changes only its skill; a person's chip or Remove seat takes
   a robot away. A game never draws its own seat list; one that shows something per seat reads
   `setup.seats()` (Axis & Allies' countries). Who's playing is shown as a **Players card** above the game's options
-  (`.k-who`: each seat a token in its seat's color with the name under it; there are 24 seat colors (`--p1` to `--p24` in kit.css, `Kit.color(i)`, Tim 2026-11-14: "a set of 24 colors that you assign to either humans or AI", the most players any game seats), the first eight as they always were and every one at least 8 apart from every other in OKLab, and an avatar's letter is white or dark by its color's contrast (`inkFor`); a robot's token is ringed in its seat's color, the color that player has in the game, as a person's token is that color (Tim, 2026-11-14: "it's helpful if the player color matches the ring around the player, whether it's computer or human"), and shows its skill in the robot's face and a glow just inside the ring, past a thin dark gap: Easy smiles with green eyes inside a green glow, under a green antenna tip, Normal looks on with gold eyes inside a gold glow, under a gold tip, Hard glares with red eyes inside a fiery one, under a short flame rising from behind its head (`botFace`), in even columns, partners on one plate and the sides across "vs" (`whoChips`, Tim 2026-11-14: "looks more organized"); a tap opens the players sheet; where the count can change, a − and + either side of it sit in the card's top right (`countStepper`, Tim 2026-11-15), and change it at once: a seat added is filled as the players sheet fills one, the last seat is the one that leaves; the home sheet's card has the same, sent to the setup in its frame with `kitSheet: 'step'`). On the
+  (`.k-who`: each seat a token in its seat's color with the name under it; there are 24 seat colors (`--p1` to `--p24` in kit.css, `Kit.color(i)`, Tim 2026-11-14: "a set of 24 colors that you assign to either humans or AI", the most players any game seats), the first eight as they always were and every one at least 8 apart from every other in OKLab, and an avatar's letter is white or dark by its color's contrast (`inkFor`); a robot's token is ringed in its seat's color, the color that player has in the game, as a person's token is that color (Tim, 2026-11-14: "it's helpful if the player color matches the ring around the player, whether it's computer or human"), and shows its skill in the robot's face and a glow just inside the ring, past a thin dark gap: Easy smiles with green eyes inside a green glow, under a green antenna tip, Normal looks on with gold eyes inside a gold glow, under a gold tip, Hard glares with red eyes inside a fiery one, under a short flame rising from behind its head (`botFace`), in even columns, partners on one plate and the sides across "vs" (`whoChips`, Tim 2026-11-14: "looks more organized"); a tap opens the players sheet; where the count can change, a − and + either side of it sit under the title at the card's left, so the players have the whole right side (`countStepper`, Tim 2026-11-15, moved 2026-11-16: "move the player count plus and minus control to the left side under the word players"), and change it at once: a seat added is filled as the players sheet fills one, the last seat is the one that leaves; the home sheet's card has the same, sent to the setup in its frame with `kitSheet: 'step'`). On the
   home screen's game sheet the sheet draws that card itself (`.gs-who` in index.html; the framed setup says who is
   seated with `kitSheet: 'who'` and draws none). A game's extras (Lorcana's online games) go under the options. One seat is Just me, robots in
   every other seat is vs Computer, people (and robots where the game mixes them, `cpu: 'mix'`) is Pass & play, and
@@ -729,6 +738,11 @@ Underlying principles for everything:
     played so far"): an older `anoria_coll` or `anoria_decks` becomes the first run, and a game in progress finishes and
     earns nothing (`G.cv`). Nothing of the old economy is left: no copies, no ready decks to unlock, no wins counted
     for Guides.
+  - **The sphere's screen** (`path()` in rewards.js; Tim, 2026-11-16: it had "no styling and there's no explanation for
+    what we mean by when the sphere comes around") says it in one sentence under the sphere and its count: "The sphere
+    comes round when all twelve signs on its ring are lit. Each time it does, you get a pack of 5 cards, and the ring
+    starts again from the first sign." Then stone panels with a label over each: what the sphere brings (a step for
+    each turn as far as the next Guide), how signs are lit, a pack for each first, and the callings.
   - The screens: `packs.js` (choosing one of the twelve Guides, the first deck forming, packs where a new finish lands
     on top of the card as you had it, a Guide joining with their set), `library.js`, `decks.js`, and `rewards.js`
     (`AnoriaRewards`: the sphere, its screen with the callings, the collection's rings, and the results card's panel
@@ -1181,7 +1195,7 @@ Underlying principles for everything:
   its navy square (`ui/logo-mark.webp`, made from `ui/logo.webp`), with the name set beside it or under it as live text
   in the titling capitals, evenly tracked (Tim, the same day: "check the spacing on the 'ARVELA' word mark"; the letters
   baked into the old picture were unevenly spaced). `logo()` in ui.js draws the lockup (`.an-logo`): the sealed pack,
-  the Guide chooser's splash, the story's first scene. The setup's head is the same lockup side by side ("New games use
+  the Guide chooser's splash, the story's first scene. The setup's head is the same lockup side by side, the name's line box trimmed to its capitals (`text-box: trim-both cap alphabetic`) so the capitals are centered on the mark, not the line with its room for descenders (Tim, 2026-11-16) ("New games use
   the logo at top only — add the text ... next to the logo"), drawn by ui.css over the kit's hero, small enough that the
   setup still fits upright on a phone and on an iPad (`k-snug` makes it smaller still). The results card has the mark
   small on a joint line between its head and the race; the chooser's head, the ghost of an empty pack and the base

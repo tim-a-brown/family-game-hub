@@ -169,6 +169,59 @@
   // Kit.keepAwake(false): let the screen dim and lock as usual (a game's battery saver); true: keep it on again
   function keepAwake(on) { wakeOff = !on; if (on) touchWake(); else releaseWake(); }
 
+  // ── No stray lines across buttons in Safari ──────────────────────────────────────────────────────────────────────
+  // Every .btn is a layer of its own (will-change in kit.css). When Safari repaints part of a layer that sits on a
+  // fraction of a pixel (a button widening as the fonts load, its words changing, a count going up), it repaints in
+  // strips, and the seam between two strips can be left unpainted: a hairline of the dark page through the button
+  // (Tim, 2026-11-16: two black lines across Arvela's Deal the cards, level with the top and bottom of its words;
+  // "make sure we never see it ever, ever, ever again"). So whenever a button changes size or its words change, the
+  // whole button is repainted in one piece: its color is nudged one step of red for two frames, a change Safari
+  // repaints the whole button for, and then put back. Safari only (iOS browsers are all Safari underneath).
+  (function () {
+    var ua = navigator.userAgent || '';
+    if (!/AppleWebKit/.test(ua) || /Chrome\/|Chromium|Android|Edg\//.test(ua) || typeof ResizeObserver === 'undefined' || typeof MutationObserver === 'undefined') return;
+    var todo = new Set(), raf = 0, seen = new WeakMap();
+    function flush() {
+      raf = 0; var list = Array.from(todo); todo.clear();
+      list.forEach(function (b) {
+        if (!b.isConnected || b.__kRp) return;
+        var c = getComputedStyle(b).color.match(/[\d.]+/g); if (!c) return;
+        b.__kRp = b.style.getPropertyValue('color') || ''; var pri = b.style.getPropertyPriority('color');
+        var r = +c[0] + (+c[0] > 127 ? -1 : 1);   // (one step of red: too small to see, but a real change; an alpha nudge rounds away)
+        b.style.setProperty('color', 'rgba(' + r + ',' + c[1] + ',' + c[2] + ',' + (c[3] != null ? c[3] : 1) + ')', 'important');
+        if (window.__kRpLog) window.__kRpLog.push(b.className);
+        requestAnimationFrame(function () { requestAnimationFrame(function () {
+          if (b.__kRp) b.style.setProperty('color', b.__kRp, pri); else b.style.removeProperty('color');
+          b.__kRp = null;
+        }); });
+      });
+    }
+    function redo(b) { if (b) { todo.add(b); if (!raf) raf = requestAnimationFrame(flush); } }
+    var ro = new ResizeObserver(function (es) {
+      es.forEach(function (e) {
+        var r = e.contentRect, was = seen.get(e.target); seen.set(e.target, r.width + 'x' + r.height);
+        if (was && was !== r.width + 'x' + r.height) redo(e.target);
+      });
+    });
+    function watch(n) {
+      if (!n || n.nodeType !== 1) return;
+      if (n.classList.contains('btn')) ro.observe(n);
+      if (n.firstElementChild) { var bs = n.getElementsByClassName('btn'); for (var i = 0; i < bs.length; i++) ro.observe(bs[i]); }
+    }
+    function start() {
+      watch(doc.body);
+      new MutationObserver(function (ms) {
+        ms.forEach(function (m) {
+          var t = m.target.nodeType === 1 ? m.target : m.target.parentElement;
+          var b = t && t.closest && t.closest('.btn'); if (b) redo(b);
+          if (m.type === 'childList') m.addedNodes.forEach(watch);
+          else if (m.type === 'attributes' && t && t.classList.contains('btn')) ro.observe(t);
+        });
+      }).observe(doc.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['class'] });
+    }
+    if (doc.body) start(); else doc.addEventListener('DOMContentLoaded', start);
+  })();
+
   // ── Small DOM helper ──────────────────────────────────────────────────────
   function el(tag, attrs, kids) {
     var n = doc.createElement(tag);
