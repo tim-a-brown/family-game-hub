@@ -154,17 +154,17 @@ var GAMES = [
   { id: 'minigolf',    name: 'Mini Golf',    color: '#16a34a', cat: 'party', min: 1, max: 6, tag: 'Scorecard for a real round', play: 'minigolf' },
 
   // ── Casino ───────────────────────────────────────────────────────────────
-  { id: 'blackjack',   name: 'Blackjack',    color: '#059669', cat: 'casino', min: 1, max: 4, tag: 'Get closer to 21 than the dealer', play: 'blackjack' },
-  { id: 'poker',       name: 'Poker',        color: '#dc2626', cat: 'casino', min: 1, max: 10, tag: "Hold'em, Omaha, Stud, Draw, home games and video poker, solo, on the circuit or online", play: 'poker' },
-  { id: 'roulette',    name: 'Roulette',     color: '#b91c1c', cat: 'casino', min: 1, max: 6, tag: 'Place your bets, spin the wheel', play: 'roulette' },
-  { id: 'slots',       name: 'Slots',        color: '#d97706', cat: 'casino', min: 1, max: 1, tag: 'Pull the lever, chase the jackpot', play: 'slots' },
-  { id: 'craps',       name: 'Craps',        color: '#047857', cat: 'casino', min: 1, max: 6, tag: 'Roll the bones, ride the point', play: 'craps' },
-  { id: 'baccarat',    name: 'Baccarat',     color: '#7c3aed', cat: 'casino', min: 1, max: 6, tag: 'Player, Banker or Tie', play: 'baccarat' },
-  { id: 'horserace',   name: 'Horse Race',   color: '#000', cat: 'casino', min: 1, max: 6, tag: 'Pick your horse, place your bets', play: 'horserace' },
-  { id: 'stocks',      name: 'Stock Market', color: '#0f5f9e', cat: 'casino', min: 1, max: 1, tag: 'Invest real stocks, index funds, bonds and options, and learn how', play: 'stocks' },
-  { id: 'sportsbook',  name: 'Sportsbook',   color: '#16703e', cat: 'casino', min: 1, max: 1, tag: 'Bet real games: moneylines, spreads, totals and parlays', play: 'sportsbook' },
-  { id: 'threecardpoker', name: 'Three Card Poker', color: '#0f766e', cat: 'casino', min: 1, max: 6, tag: 'Ante up and beat the dealer', play: 'threecardpoker' },
-  { id: 'paigow',      name: 'Pai Gow',      color: '#9f1239', cat: 'casino', min: 1, max: 6, tag: 'Set a high hand and a low hand', play: 'paigow' },
+  { id: 'blackjack',   name: 'Blackjack',    color: '#059669', cat: 'casino', min: 1, max: 4, tag: 'Get closer to 21 than the dealer', play: 'blackjack', demo: 1 },
+  { id: 'poker',       name: 'Poker',        color: '#dc2626', cat: 'casino', min: 1, max: 10, tag: "Hold'em, Omaha, Stud, Draw, home games and video poker, solo, on the circuit or online", play: 'poker', demo: 1 },
+  { id: 'roulette',    name: 'Roulette',     color: '#b91c1c', cat: 'casino', min: 1, max: 6, tag: 'Place your bets, spin the wheel', play: 'roulette', demo: 1 },
+  { id: 'slots',       name: 'Slots',        color: '#d97706', cat: 'casino', min: 1, max: 1, tag: 'Pull the lever, chase the jackpot', play: 'slots', demo: 1 },
+  { id: 'craps',       name: 'Craps',        color: '#047857', cat: 'casino', min: 1, max: 6, tag: 'Roll the bones, ride the point', play: 'craps', demo: 1 },
+  { id: 'baccarat',    name: 'Baccarat',     color: '#7c3aed', cat: 'casino', min: 1, max: 6, tag: 'Player, Banker or Tie', play: 'baccarat', demo: 1 },
+  { id: 'horserace',   name: 'Horse Race',   color: '#000', cat: 'casino', min: 1, max: 6, tag: 'Pick your horse, place your bets', play: 'horserace', demo: 1 },
+  { id: 'stocks',      name: 'Stock Market', color: '#0f5f9e', cat: 'casino', min: 1, max: 1, tag: 'Invest real stocks, index funds, bonds and options, and learn how', play: 'stocks', demo: 1 },
+  { id: 'sportsbook',  name: 'Sportsbook',   color: '#16703e', cat: 'casino', min: 1, max: 1, tag: 'Bet real games: moneylines, spreads, totals and parlays', play: 'sportsbook', demo: 1 },
+  { id: 'threecardpoker', name: 'Three Card Poker', color: '#0f766e', cat: 'casino', min: 1, max: 6, tag: 'Ante up and beat the dealer', play: 'threecardpoker', demo: 1 },
+  { id: 'paigow',      name: 'Pai Gow',      color: '#9f1239', cat: 'casino', min: 1, max: 6, tag: 'Set a high hand and a low hand', play: 'paigow', demo: 1 },
 
   // ── Arcade ───────────────────────────────────────────────────────────────
   { id: 'tetris',      name: 'Tetris',       color: '#8b5cf6', cat: 'arcade', min: 1, max: 6, tag: 'Stack and clear lines, solo or TetriNET with up to 6', play: 'tetris',
