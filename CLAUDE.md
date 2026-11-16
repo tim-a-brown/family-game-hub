@@ -690,6 +690,9 @@ Underlying principles for everything:
   person it names who is in play on its side (`inspEach`; two copies of one person count once), every Legacy Line a player makes scores, however many in a round (`lineCap: 0`, Tim, 2026-11-12: "i look at legacy lines as powerups for making historical connections"; it was the first line a round only, and the ready decks measured 4.8 apart without the limit against 4.9 with it), the second copy costs the same as the first (`ret: 0`, Tim, 2026-11-12: "remove that discount rule"; it returned for 1 less), and Threads (`threads`): any card can name what
   it grew from in cards.js (`from`: a Figure, a Relic or `'@place'`; a Figure's own Legacy is `insp`), with a true
   sentence for each link in `text.js` (`LINKS`). The robots are `PROF.novice` (Easy), `normal` and `hard`.
+  **Two players can have the same Guide** (Tim, 2026-11-16, of a mirror match): two Cleopatras in a tie on different sides
+  cancel out and the tie goes as it would without her; two teammates who both have her are one side, so their team holds it
+  (`holderM`, `holderT`; the rules page and her card's notes say so; players-test.js).
 - **The Library and the deck builder sort and filter cards the same way** (Tim, 2026-11-12: "keep library and deck
   filters/sorts in sync"). Sorts: Cost, Might, Time, Region, Name and Newest (`SORTS` in library.js and decks.js);
   filters: faction, kind, Spark, Might, era, home region and keyword (`groups()` in library.js, `paintGroups` in
