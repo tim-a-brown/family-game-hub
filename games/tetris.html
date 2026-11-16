@@ -93,7 +93,7 @@ html.ar-on .ar-cab{view-transition-name:ar-cab;} html.ar-on .ar-hud{view-transit
   // A narrow screen (a phone upright) draws the cabinet the other way ('r'): Hold and the numbers in a strip over the
   // well and Next down the right only, so the well can take the screen's whole width. fit() picks the larger.
   var RS = 2.7, RTOP = 2.6, RW_CELLS = 0.15 + 10 + 0.3 + RS + 0.1, RH_CELLS = RTOP + 20.4, LAY = 'std';
-  var DAS = 0.167, ARR = 0.033, LOCK = 0.5, MAX_RESETS = 15;
+  var DAS = 0.167, ARR = 0.033, LOCK = 0.5, MAX_RESETS = 15, FLOAT = false;
   var TYPES = 'IJLOSTZ';
   var COLORS = { I: '#2fd0f0', J: '#4f6cf0', L: '#ff8f2a', O: '#ffd22e', S: '#4fd65a', T: '#b45ef0', Z: '#ff4058', G: '#6c6888' };
   var SHAPES = {
@@ -868,7 +868,8 @@ html.ar-on .ar-cab{view-transition-name:ar-cab;} html.ar-on .ar-hud{view-transit
       dasT += dt;
       if (dasT >= DAS) { var guard = 0; while (dasT >= DAS && guard++ < 10) { shift(dasDir); dasT -= ARR; } }
     }
-    // Gravity / soft drop
+    // Gravity / soft drop (a demo can hold the block in the air: window.__tet.float)
+    if (FLOAT) { G.grav = 0; G.lockT = 0; return; }
     var gi = gravityFor(G.level), soft = softHeld.key || softHeld.btn;
     var interval = soft ? Math.min(gi, Math.max(gi / 20, 0.03)) : gi;
     G.grav += dt;
@@ -1183,7 +1184,14 @@ html.ar-on .ar-cab{view-transition-name:ar-cab;} html.ar-on .ar-hud{view-transit
     },
     setCur: function (t) { G.queue.unshift(t); spawn(); },
     setLines: function (n) { G.lines = n; G.level = Math.max(G.startLevel, Math.floor(n / 10) + 1); hudDirty = true; },
-    pause: pauseGame, resume: resumeGame
+    pause: pauseGame, resume: resumeGame,
+    // (the demo, games/demos/tetris.js: start a game, hold the falling block in the air, line up the next blocks, and
+    // find a cell of the well on the screen)
+    start: function (o) { startGame(Object.assign({ who: 'Player', startLevel: 1 }, o || {})); },
+    float: function (on) { FLOAT = !!on; },
+    setQueue: function (l) { G.queue = l.concat(G.queue); },
+    at: function (x, y) { if (!cv) return null; var r = cv.getBoundingClientRect(); return { x: r.left + wellX() + (x + 0.5) * C, y: r.top + wellY() + (y + 0.5) * C, c: C }; },
+    canvas: function () { return cv; }
   };
 
   // ═══ Boot ════════════════════════════════════════════════════════════════

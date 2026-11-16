@@ -802,7 +802,14 @@ html.ar-on .ar-cab{view-transition-name:ar-cab;} html.ar-on .ar-hud{view-transit
     steer: steer,
     foodAhead: function () { var h = G.body[0], d = DIRS[G.dir]; G.food = { x: h.x + d[0] * 2, y: h.y + d[1] * 2, t: 0, kind: 'apple' }; },
     goldAhead: function () { var h = G.body[0], d = DIRS[G.dir]; G.gold = { x: h.x + d[0] * 2, y: h.y + d[1] * 2, t: 0, kind: 'gold', left: 40 }; },
-    grow: function (n) { G.grow += n; G.maxLen = Math.max(G.maxLen, G.body.length + G.grow); }
+    grow: function (n) { G.grow += n; G.maxLen = Math.max(G.maxLen, G.body.length + G.grow); },
+    // (the demo, games/demos/snake.js: start a game, hold the snake still until the next swipe, lay an apple)
+    start: function (o) { startGame(Object.assign({ who: 'Player', speed: 'relaxed', wrap: false, pad: true }, o || {})); },
+    hold: function () { if (G && G.phase === 'play') { G.phase = 'wait'; G.queue = []; G.acc = 0; } },
+    apple: function (x, y) { G.food = { x: x, y: y, t: 0, kind: 'apple' }; },
+    golden: function (x, y) { G.gold = { x: x, y: y, t: 0, kind: 'gold', left: 40 }; sGoldAppear(); },
+    wrap: function (on) { G.wrap = !!on; },
+    canvas: function () { return cv; }
   };
 
   // ═══ Boot ════════════════════════════════════════════════════════════════

@@ -554,6 +554,7 @@ html.ar-on .bezel{view-transition-name:pm-maze;} html.ar-on .hud{view-transition
     if (phase === 'flash') { if (--G.pt <= 0) afterClear(); return; }
     if (phase === 'cut') { if (--G.pt <= 0) nextLevel(); return; }
     if (phase !== 'play') return;
+    if (window.__pac && window.__pac.hold) return;   // (a demo holding the maze still)
 
     G.idleT++;
     // Scatter / chase schedule (paused while frightened)
@@ -1095,7 +1096,13 @@ html.ar-on .bezel{view-transition-name:pm-maze;} html.ar-on .hud{view-transition
     lives: function (n) { if (G) { G.lives = n; drawStrip(); } },
     steer: function (d) { steer(d); }, god: false, MAP: MAP,
     clearLevel: function () { if (!G || phase !== 'play') return; for (var i = 0; i < G.dots.length; i++) if (G.dots[i]) { G.dots[i] = 0; G.eaten++; } G.left = 0; levelClear(); },
-    kill: function () { if (!G) return; var gh = G.ghosts[0]; gh.state = 'out'; gh.fright = false; gh.x = G.pac.x; gh.y = G.pac.y; }
+    kill: function () { if (!G) return; var gh = G.ghosts[0]; gh.state = 'out'; gh.fright = false; gh.x = G.pac.x; gh.y = G.pac.y; },
+    // (the demo, games/demos/pacman.js: start a game, hold the maze still, and send a ghost down a given corridor)
+    start: function (o) { startGame(Object.assign({ who: 'Player', lives: 3, pad: true }, o || {})); },
+    hold: false,
+    ghost: function (i, c, r, d, fright) { var gh = G.ghosts[i]; gh.state = 'out'; gh.x = cen(c); gh.y = cen(r); gh.dir = d; gh.last = -1; gh.fright = !!fright; },
+    at: function (c, r) { var cv = $('cv'), b = cv.getBoundingClientRect(); return { x: b.left + (c + 0.5) / COLS * b.width, y: b.top + (r + 0.5) / ROWS * b.height, t: b.width / COLS }; },
+    canvas: function () { return $('cv'); }
   };
 
   // The shape decides the layout (a class, so turning the device can glide: a View Transition around the change)

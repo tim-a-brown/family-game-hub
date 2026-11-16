@@ -2328,7 +2328,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     Snd.fuse(depth);
   }
   // Arcade: one push of the handle fires at whatever angle the cannon is at
-  function pushHandle() { if (state !== 'aim') return; plVis = 1; Kit.haptic('medium'); fire(angle, 1); }
+  var forceAng = null;   // (the demo's shot: window.__willy.aimNext)
+  function pushHandle() { if (state !== 'aim') return; plVis = 1; Kit.haptic('medium'); var a = forceAng != null ? forceAng : angle; forceAng = null; fire(a, 1); }
   function blocked() { return !!document.querySelector('.ahi-overlay, .k-scrim, .k-win'); }
   function release() {
     if (state !== 'aim') { depth = 0; Snd.fuse(0); return; }
@@ -2521,7 +2522,21 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     freeze: function (on) { if (on) { live = false; } else { live = true; kick(); } },
     render: function () { render(); drawDeck(); },
     result: function () { return res; },
-    cam: function () { return cam; }
+    cam: function () { return cam; },
+    // (the demo, games/demos/willycrash.js: start an arcade game on a given city, and line the swing up so the cannon
+    // reaches an angle in so many seconds; the next push of the handle fires at exactly that angle)
+    start: function (name, seed) {
+      who = name || 'Player'; aimMode = 'arcade';
+      var v = $('view'), app = $('app'); app.className = ''; app.innerHTML = '';
+      document.documentElement.classList.add('ar-on'); v.hidden = false; app.appendChild(v); live = true;
+      fit(); start3D(); newGame(); if (seed != null) { citySeed = seed; buildCity(seed); startShot(); } fit(); overlay();
+    },
+    aimNext: function (a, inSec) {
+      if (state === 'intro') toAim();
+      var per = sweepPeriod(), u = (ARC_HI - a) / (ARC_HI - ARC_LO) / 2;
+      sweepT = u * per - (inSec || 0); while (sweepT < 0) sweepT += per; angle = curAngle(); forceAng = a;
+    },
+    angle: function () { return angle; }
   };
   // Deterministic test hook: freeze the real-time loop and step the simulation by hand
   window.__wc = {

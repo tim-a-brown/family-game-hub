@@ -317,6 +317,7 @@ html.ar-on .bezel{view-transition-name:fb-screen;} html.ar-on .hud{view-transiti
     if (state === 'ready') { bird.y = H * .42 + Math.sin(t * 5.2) * 6; bird.wingT += DT; scroll += SPEED * DT; return; }
     if (countdown) { countdown -= DT; if (countdown <= 0) { countdown = 0; overlay(); } else { var n = Math.ceil(countdown / .6); if (n !== shownCount) { shownCount = n; overlay(); } } return; }
     if (state === 'play') {
+      if (window.__fb && window.__fb.hold) return;   // (a demo holding the bird still for a moment)
       scroll += SPEED * DT;
       // Flight, as in the original: steady gravity up to a top falling speed; a flap sets the same upward speed every time
       bird.vy = Math.min(MAXFALL, bird.vy + GRAV * DT);
@@ -337,6 +338,16 @@ html.ar-on .bezel{view-transition-name:fb-screen;} html.ar-on .hud{view-transiti
       pipes.forEach(function (p) {
         if (!p.passed && p.x + p.w / 2 < bird.x) { p.passed = true; score++; Snd.point(); Kit.haptic('tick'); if (bestAtStart > 0 && score === bestAtStart + 1) { var bp = $('h-best').parentNode; bp.classList.remove('pb'); void bp.offsetWidth; bp.classList.add('pb'); $('h-best').textContent = score; Kit.sfx('sparkle'); Kit.haptic('success'); Kit.callout('New best!', '#ffd84a'); } else if (score % 10 === 0) Kit.callout(score + '!', '#ffd84a'); }
       });
+      var DM = window.__fb;
+      if (DM && DM.auto) {   // (the demo flying by itself)
+        var nx = null; for (var k = 0; k < pipes.length; k++) if (pipes[k].x + pipes[k].w > bird.x - BW / 2) { nx = pipes[k]; break; }
+        var aim = nx && nx.x < bird.x + 150 ? nx.y + 14 : (H - GROUND) * 0.5;
+        if (bird.y > aim && bird.vy > 40) { bird.vy = FLAP; bird.wingT = 0; bird.flapAt = t; flaps++; Snd.flap(); }
+      }
+      if (DM && DM.guard) {
+        if (bird.y + BH / 2 >= H - GROUND - 2) { bird.y = H - GROUND - BH / 2 - 3; bird.vy = FLAP; }
+        if (bird.y < BH) bird.vy = Math.max(bird.vy, 0);
+      }
       // Collisions
       if (bird.y + BH / 2 >= H - GROUND) { bird.y = H - GROUND - BH / 2; die('ground'); return; }
       if (bird.y < -40) bird.y = -40;
@@ -344,6 +355,7 @@ html.ar-on .bezel{view-transition-name:fb-screen;} html.ar-on .hud{view-transiti
         var p = pipes[j];
         var pw = p.w, pg = p.g;
         if (bird.x + BW / 2 < p.x - 3 || bird.x - BW / 2 > p.x + pw + 3) continue;
+        if (DM && DM.guard) continue;
         if (hitRect(p.x, -100, pw, p.y - pg / 2 + 100) || hitRect(p.x, p.y + pg / 2, pw, H) ||
             hitRect(p.x - 3, p.y - pg / 2 - 24, pw + 6, 24) || hitRect(p.x - 3, p.y + pg / 2, pw + 6, 24)) { die('pipe'); return; }
       }
@@ -525,7 +537,7 @@ html.ar-on .bezel{view-transition-name:fb-screen;} html.ar-on .hud{view-transiti
   function press() {
     if (document.querySelector('.ahi-overlay, .k-scrim, .k-win')) return;
     if (state === 'ready') { start(); return; }
-    if (state === 'play' && !paused) flap();
+    if (state === 'play' && !paused) { if (window.__fb && window.__fb.hold) window.__fb.hold = false; flap(); }
   }
   $('view').addEventListener('pointerdown', function (e) {
     if (e.target.closest('button, .card')) return;
@@ -584,7 +596,14 @@ html.ar-on .bezel{view-transition-name:fb-screen;} html.ar-on .hud{view-transiti
       '<h3>Medals</h3><ul><li><b>Bronze</b> at 10 pipes</li><li><b>Silver</b> at 20</li><li><b>Gold</b> at 30</li><li><b>Platinum</b> at 40</li></ul>' +
       '<p>If your score makes the top 15, enter your initials for the high-score board.</p>'
   });
-  window.__fb = { state: function () { return state; }, bird: function () { return bird; }, pipes: function () { return pipes; }, score: function () { return score; }, flap: press, GAP: GAP };
+  window.__fb = { state: function () { return state; }, bird: function () { return bird; }, pipes: function () { return pipes; }, score: function () { return score; }, flap: press, GAP: GAP,
+    // (the demo, games/demos/flappybird.js: start at the Get ready screen, fly by itself (auto: flaps to stay level with
+    // the next opening), and a guard that lets the bird through a pipe and hops it off the ground instead of ending the
+    // flight; flaps() counts every flap, the player's too)
+    start: function (name) { who = name || 'Player'; birdPick = '0'; session = { runs: 0, best: 0 }; lastFlight = null; $('app').className = ''; $('app').innerHTML = ''; document.documentElement.classList.add('ar-on'); var v = $('view'); v.hidden = false; $('app').appendChild(v); live = true; state = 'ready'; fit(); toReady(); hud(); },
+    auto: false, guard: false, hold: false, flaps: function () { return flaps; },
+    W: function () { return W; }, H: function () { return H; }, canvas: function () { return cv; }
+  };
 
   // ═══ Setup ══════════════════════════════════════════════════════════════
   function showSetup() {

@@ -347,6 +347,8 @@ function showCount() {
 const gest = new Map();
 function hop(dir) {
   if (view !== 'game' || !G || paused || countdown > 0 || ended) return;
+  const H = window.__crossy;   // (a demo holding the world still: the hop it waits for lets it go)
+  if (H && H.hold) { if (H.hold !== true && H.hold !== dir) return; H.hold = false; }
   Snd.ctx();
   G.input(dir);
 }
@@ -406,6 +408,7 @@ function loop(ts) {
   // 120Hz screens: draw about 60 times a second; dt below is the real time since the last drawn frame
   if (last && ts - last < 12) { raf = requestAnimationFrame(loop); return; }
   const dt = last ? Math.min(0.1, (ts - last) / 1000) : 0; last = ts;
+  if (window.__crossy && window.__crossy.hold) { scene.render(G, 0); raf = requestAnimationFrame(loop); return; }
   if (countdown > 0) { countdown -= dt; showCount(); scene.render(G, 0); raf = requestAnimationFrame(loop); return; }
   advance(dt);
   if (G.state === 'play' && !document.hidden) Mus.tick(); else if (G.state !== 'ready') Mus.stop(G.isDying());
@@ -428,7 +431,10 @@ window.__crossy = {
   adv(sec, n) { for (let i = 0; i < n; i++) { advance(sec); if (G.state === 'dead') { finish(); break; } } return G.state; },
   run(sec, n) { for (let i = 0; i < n; i++) { advance(sec); if (G.state === 'dead') { finish(); break; } } scene.render(G, sec); return this.state(); },
   render() { scene.render(G, 0); }, pause: pauseGame, resume: resumeGame, save, finish, info: () => scene.info(),
-  countdown: () => countdown, skipCount() { countdown = 0; showCount(); }, renderer: () => renderer
+  countdown: () => countdown, skipCount() { countdown = 0; showCount(); }, renderer: () => renderer,
+  // (the demo, games/demos/crossyroad.js: start a given world, and hold it still: true, or the one hop that lets it go)
+  start(name, seed) { who = name || 'Player'; session = { runs: 0, best: 0 }; clearSave(); startGame(null, seed); },
+  hold: false
 };
 
 // ═══ Boot ════════════════════════════════════════════════════════════════════════
