@@ -1902,12 +1902,19 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
         who: function (d) {
           var seats = d.seats; whoCard.hidden = !seats || !seats.length; if (whoCard.hidden) return;
           whoT.textContent = d.one ? 'Player' : 'Players';
-          var chips = Kit.whoChips(seats, d.teams, 'qs'); whoChips.parentNode.replaceChild(chips, whoChips); whoChips = chips;
-          // how many are playing, − and + on the card's top right (the setup in the frame does the change, kitSheet 'step')
-          if (whoN) { whoN.remove(); whoN = null; }
+          // how many are playing: the dial (the setup in the frame does the change, kitSheet 'step'). The dial stays while
+          // the count changes, so a finger turning it keeps hold, and the players bubble in and out (Kit.bubbleSwap)
           var many = !d.one && d.hi > d.lo && Kit.countStepper;
           whoBox.classList.toggle('has-n', !!many);
-          if (many) { whoN = Kit.countStepper(d.count || seats.length, d.lo, d.hi, function (k) { frame.contentWindow.postMessage({ kitSheet: 'step', d: k }, location.origin); }); whoBox.appendChild(whoN); }
+          var keep = many && whoN && +whoN.getAttribute('aria-valuemin') === d.lo && +whoN.getAttribute('aria-valuemax') === d.hi;
+          var chips = Kit.whoChips(seats, d.teams, 'qs');
+          if (keep && Kit.bubbleSwap && whoChips.isConnected) Kit.bubbleSwap(whoChips, chips); else whoChips.parentNode.replaceChild(chips, whoChips);
+          whoChips = chips;
+          if (keep) whoN.__set(d.count || seats.length);
+          else {
+            if (whoN) { whoN.remove(); whoN = null; }
+            if (many) { whoN = Kit.countStepper(d.count || seats.length, d.lo, d.hi, function (k) { frame.contentWindow.postMessage({ kitSheet: 'step', d: k }, location.origin); }); whoBox.appendChild(whoN); }
+          }
           whoCard.setAttribute('aria-label', (d.one ? 'Change who is playing: ' : 'Change the players: ') + Kit.whoSaid(seats, d.teams));
         },
         fit: function () { var h = Math.max(GS.fh || 360, GS.inner || 0, 8); frame.style.height = (GS.fh && GS.fh <= 40 && !GS.inner ? 0 : h) + 'px'; },   // (a setup with nothing but its players (the card above) takes no room)   // (as tall as the setup says: with the players on their own card, some setups have nothing else)

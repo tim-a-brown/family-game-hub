@@ -2535,13 +2535,50 @@
   // Rows of players are even (Tim, 2026-11-15: six players were four on top and two below; "keep it even if it has to go
   // to two lines"): when the tokens wrap, each row holds as many as the others, the last at most one fewer, centered.
   // Sides that wrap stack one over the other with "vs" on a line of its own between them.
+  // The players swapped for a new count (Tim, 2026-11-16: "make player icons pop in and out kind of like bubbles moving
+  // the others around into position as the player count goes up and down on the dial"): each player already seated
+  // glides from where they were to where they now stand (growing or shrinking with the card's sizes), a new player pops
+  // up out of nothing with a little overshoot, and one who leaves swells for a moment and shrinks away. Measured from
+  // where each token is on the screen, mid-glide too, so quick turns of the dial chain smoothly; transform and opacity
+  // only. A calm screen just swaps them.
+  function bubbleSwap(oldEl, newEl) {
+    if (!oldEl || !oldEl.parentNode || !newEl) return;
+    var SEL = '.k-tok:not(.k-ghost), .qs-tok:not(.k-ghost)', VS = ':is(.k-vs,.qs-vs)';
+    var olds = [].map.call(oldEl.querySelectorAll(SEL), function (t) { return { el: t, r: t.getBoundingClientRect() }; });
+    var ov = oldEl.querySelector(VS), ovr = ov && ov.getBoundingClientRect();
+    oldEl.parentNode.replaceChild(newEl, oldEl);
+    try { fitTokNames(newEl); evenToks(newEl); } catch (e) {}
+    var calm = false; try { calm = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    if (calm || !newEl.animate) return;
+    var news = newEl.querySelectorAll(SEL), base = newEl.getBoundingClientRect();
+    [].forEach.call(news, function (t, i) {
+      var o = olds[i], q = t.getBoundingClientRect();
+      if (o) {
+        var dx = o.r.left - q.left, dy = o.r.top - q.top, k = o.r.width / (q.width || 1);
+        if (Math.abs(dx) + Math.abs(dy) < .5 && Math.abs(k - 1) < .01) return;
+        t.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + k + ')' }, { transform: 'none' }], { duration: 300, easing: 'cubic-bezier(.22,1,.36,1)' });
+        t.style.transformOrigin = '0 0'; setTimeout(function () { t.style.transformOrigin = ''; }, 320);
+      } else t.animate([{ transform: 'scale(.15)', opacity: 0 }, { transform: 'scale(1.14)', opacity: 1, offset: .55 }, { transform: 'scale(.97)', offset: .8 }, { transform: 'none', opacity: 1 }], { duration: 360, easing: 'cubic-bezier(.3,.7,.3,1)' });
+    });
+    var nv = newEl.querySelector(VS);
+    if (nv) { var nvr = nv.getBoundingClientRect(); if (ovr) nv.animate([{ transform: 'translate(' + (ovr.left - nvr.left) + 'px,' + (ovr.top - nvr.top) + 'px)' }, { transform: 'none' }], { duration: 300, easing: 'cubic-bezier(.22,1,.36,1)' }); else nv.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220 }); }
+    // the ones who leave: a copy where they stood, in the new box (so it keeps the card's look), swelling and shrinking away
+    for (var i = news.length; i < olds.length; i++) {
+      var o = olds[i], g = o.el.cloneNode(true);
+      g.classList.add('k-ghost'); g.removeAttribute('id');
+      g.style.cssText = 'position:absolute;left:' + (o.r.left - base.left) + 'px;top:' + (o.r.top - base.top) + 'px;width:' + o.r.width + 'px;margin:0;pointer-events:none;z-index:2;';
+      newEl.appendChild(g);
+      var a = g.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(1.1)', opacity: .55, offset: .25 }, { transform: 'scale(.15)', opacity: 0 }], { duration: 240, easing: 'cubic-bezier(.4,0,.8,.4)' });
+      a.onfinish = a.oncancel = (function (x) { return function () { if (x.parentNode) x.parentNode.removeChild(x); }; })(g);
+    }
+  }
   function evenToks(box) {
     if (!box || !box.isConnected) return;
     // one or two players beside the dial stand larger, to fill the card the dial makes tall (Tim, 2026-11-16)
     // (where they fit side by side: two large tokens and the vs between take about 200px)
     if (box.closest('.has-n')) {
       if (!box.clientWidth) { requestAnimationFrame(function () { evenToks(box); }); return; }   // (a card just drawn has no width yet: on the next frame)
-      var nt = box.querySelectorAll('.k-tok, .qs-tok').length; box.classList.toggle('few', nt === 1 || (nt === 2 && box.clientWidth >= 200));
+      var nt = box.querySelectorAll('.k-tok:not(.k-ghost), .qs-tok:not(.k-ghost)').length; box.classList.toggle('few', nt === 1 || (nt === 2 && box.clientWidth >= 200));
     }
     if (box.classList.contains('teams')) {
       box.classList.remove('stack');
@@ -2549,7 +2586,7 @@
       if (sides.length > 1 && [].some.call(sides, function (sd) { return Math.abs(sd.offsetTop - sides[0].offsetTop) > 4; })) box.classList.add('stack');
       return;
     }
-    var toks = box.children, n = toks.length; if (n < 2) return;
+    var toks = [].filter.call(box.children, function (c) { return !c.classList.contains('k-ghost'); }), n = toks.length; if (n < 2) return;
     box.style.paddingLeft = box.style.paddingRight = '';
     // beside the dial, a crowd of players takes smaller tokens rather than a tall column of rows (Tim, 2026-11-16, the
     // dial always upright at the left): one size smaller past two rows, two sizes past three (from the full token's
@@ -2620,7 +2657,14 @@
       if (end) stops.push(f.firstChild);
     }
     w.appendChild(drum); w.appendChild(el('i', { class: 'k-dl-win' }));
-    var pos = n, raf = 0, anim = null, vert = null, lastI = n, drag = null;
+    var pos = n, raf = 0, anim = null, vert = null, lastI = n, drag = null, lastLocal = 0;
+    // the count set from outside (the players sheet, the home screen's card catching up): the wheel turns to it, unless
+    // a finger or the wheel's own motion is turning it now, or it turned a moment ago (the setup may still be catching up)
+    w.__set = function (v) {
+      v = Math.max(lo, Math.min(hi, +v || lo));
+      if (v === n || drag || anim || performance.now() - lastLocal < 800) return;
+      n = v; lastI = v; pos = v; w.setAttribute('aria-valuenow', String(v)); w.setAttribute('aria-valuetext', v + (v === 1 ? ' player' : ' players')); paint();
+    };
     function V() { return w.classList.contains('v'); }
     function gap() { return SIZE; }
     // while a finger turns it, the wheel holds at each number and then gives to the next, so the number clicks into place
@@ -2642,6 +2686,13 @@
       });
       var near = Math.round(p);
       if (near !== lastI && near >= lo && near <= hi) { lastI = near; sfx('tick'); haptic('tick'); }
+      // the count changes as each number reaches the window, not when the wheel comes to rest (Tim, 2026-11-16: "i'm
+      // imagining quick swipes up and down on the dial and want the visuals to keep up"); the players bubble in and out
+      if (near !== n && near >= lo && near <= hi) {
+        var dn = near - n; n = near; lastLocal = performance.now();
+        w.setAttribute('aria-valuenow', String(n)); w.setAttribute('aria-valuetext', n + (n === 1 ? ' player' : ' players'));
+        for (var s2 = 0; s2 < Math.abs(dn); s2++) step(dn > 0 ? 1 : -1, true);
+      }
     }
     function draw() { if (!raf) raf = requestAnimationFrame(paint); }
     // turned against an end: the wheel gives a little toward the stop and springs back, the stop lights, a firm tick
@@ -2660,9 +2711,6 @@
         pos = from + (to - from) * e; paint();
         if (f < 1) { anim = requestAnimationFrame(go); return; }
         anim = null; pos = to; paint();
-        var d = to - n; if (!d) return;
-        w.setAttribute('aria-valuenow', String(to));
-        n = to; for (var s = 0; s < Math.abs(d); s++) step(d > 0 ? 1 : -1);
       })(t0);
     }
     // a drag: the drum follows the finger (past the first or last number it gives, like a rubber band)
@@ -3340,14 +3388,14 @@
     // One more or one fewer seat, from the Players card's own − and + (Tim, 2026-11-15): a seat added is filled the
     // way the players sheet fills one (a robot where the computer plays the other seats, otherwise an open seat), and the
     // last seat is the one that leaves
-    function stepSeats(d) {
+    function stepSeats(d, quiet) {
       var r = range(), n = state.count + d;
       if (n < Math.max(1, r[0]) || n > r[1]) return;
       var M = seatModel();
       while (M.names.length < M.count) M.names.push('');
       if (d > 0) { M.count = n; if (M.names.length < n) M.names.push(''); }
       else { var k = M.count - 1; M.names.splice(k, 1); delete M.robots[k]; delete M.levels[k]; M.count = n; }
-      sfx(d > 0 ? 'pop' : 'whoosh'); haptic('light');
+      if (!quiet) { sfx(d > 0 ? 'pop' : 'whoosh'); haptic('light'); }   // (the dial ticks for itself)
       seatApply(M);
     }
     // Change who's playing: one seat and nothing else to set is just the name picker; anything more is the players
@@ -3381,16 +3429,22 @@
       return n === 2 && P.vs !== false ? [[0], [1]] : null;
     }
     function renderSeats() {
-      seatsBox.innerHTML = ''; seatsBox.style.display = '';
-      if (!P) { renderOptions(); tellWho(null); return; }
+      // (the card with the dial stays on the page while the count changes, so a finger turning the dial keeps hold of it;
+      // only the players are swapped, and they bubble in and out: bubbleSwap)
+      var keepBox = seatsBox.querySelector(':scope > .k-whobox.has-n'), keepDial = keepBox && keepBox.querySelector(':scope > .k-dial');
+      [].slice.call(seatsBox.childNodes).forEach(function (c) { if (c !== keepBox) seatsBox.removeChild(c); });
+      function dropKeep() { if (keepBox && keepBox.parentNode) keepBox.parentNode.removeChild(keepBox); keepBox = keepDial = null; }
+      seatsBox.style.display = '';
+      if (!P) { dropKeep(); renderOptions(); tellWho(null); return; }
       var r = range(), cpu = cpuFor();
       if (!state.count) state.count = Math.min(r[1], Math.max(r[0], saved.count || P.count || r[0]));
       state.count = Math.min(r[1], Math.max(r[0], state.count));
       if (merged) { state.mode = resolved(); if (!robotsOk(state.count)) robots = {}; cpu = cpuFor(); }
       renderOptions();
-      if (r[1] === 0) { tellWho(null); return; }   // a mode with nobody to seat (Bingo's caller)
+      if (r[1] === 0) { dropKeep(); tellWho(null); return; }   // a mode with nobody to seat (Bingo's caller)
       var label = el('div', { class: 'label grow', style: { margin: 0 }, text: P.label || "Who's playing?" });
       if (P.names === false) {   // nobody is named: just how many
+        dropKeep();
         var head = el('div', { class: 'row' }, [label]);
         if (r[1] > r[0]) {
           var out = el('output', { text: String(state.count) });
@@ -3425,15 +3479,20 @@
       });
       var one = r[1] <= 1 && !cpu, teams = teamsAt(state.count);
       lastWho = { seats: told, teams: teams };   // (the Play online review shows the same chips)
-      if (IN_SHEET) { seatsBox.style.display = 'none'; tellWho(told, one, teams); return; }
+      if (IN_SHEET) { dropKeep(); seatsBox.style.display = 'none'; tellWho(told, one, teams); return; }
       // the Players card: who is already seated as chips (robots with their skill; partners and sides as people say
       // them), and a tap opens the players sheet
       var chips = whoChips(told, teams, 'k');
       var card = el('button', { type: 'button', class: 'k-who', 'aria-label': (one ? 'Change who is playing: ' : 'Change the players: ') + whoSaid(told, teams), onclick: openPlayers },
         [el('span', { class: 'k-who-tx' }, [el('div', { class: 'k-who-t', text: one ? 'Player' : 'Players' }), chips]), el('span', { class: 'k-who-go', html: icon('right') })]);
       var lo = Math.max(1, r[0]);
-      if (r[1] > lo) seatsBox.appendChild(el('div', { class: 'k-whobox has-n' }, [card, countStepper(state.count, lo, r[1], stepSeats)]));
-      else seatsBox.appendChild(card);
+      if (r[1] > lo && keepDial && +keepDial.getAttribute('aria-valuemin') === lo && +keepDial.getAttribute('aria-valuemax') === r[1] && keepBox.querySelector(':scope > .k-who .k-toks')) {
+        var oldCard = keepBox.querySelector(':scope > .k-who');
+        bubbleSwap(oldCard.querySelector('.k-toks'), chips);
+        oldCard.setAttribute('aria-label', card.getAttribute('aria-label'));
+        keepDial.__set(state.count);
+      } else if (r[1] > lo) { dropKeep(); seatsBox.appendChild(el('div', { class: 'k-whobox has-n' }, [card, countStepper(state.count, lo, r[1], stepSeats)])); }
+      else { dropKeep(); seatsBox.appendChild(card); }
     }
     // a short line for the Game defaults list: the mode, the player count and each option shown
     function summary() {
@@ -5856,7 +5915,7 @@
     orient: function (want, tablets) { orientGate(want, tablets); },
     theme: { list: THEME_LIST, get: themeGet, set: themeSet, name: function () { return themeRec(themeGet()).name; }, pick: themePick },
     spotifyOwns: spotifyOwns, music: spotifySheet, musicMini: spotifyMini, offline: offlineSheet, offlineTag: offlineTag,
-    whoChips: whoChips, whoSaid: whoSaid, countStepper: countStepper,
+    whoChips: whoChips, whoSaid: whoSaid, countStepper: countStepper, bubbleSwap: bubbleSwap,
     facts: facts, factParts: factParts, titleSwitch: titleSwitch, resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, loadHistView: loadHistView, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, playersSheet: playersSheet, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
   };
   window.GN = window.GN || { _loaded: true, haptic: haptic, toast: toast, sheet: sheet, confirm: confirmSheet };
