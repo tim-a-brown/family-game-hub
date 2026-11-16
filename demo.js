@@ -96,16 +96,16 @@
       'box-shadow:inset 0 0 0 1px rgba(255,255,255,.13),0 22px 44px -14px rgba(0,0,0,.75);color:#f3f1fb;font-weight:600;font-size:16.5px;line-height:1.36;letter-spacing:-.008em;text-wrap:pretty;' +
       'opacity:0;transform:translateY(6px) scale(.98);transition:opacity .28s,transform .38s cubic-bezier(.2,.9,.25,1.2);cursor:pointer;}' +
     '.k-demo-cap.show{opacity:1;transform:none;}' +
-    '.k-demo-cap .ln{position:absolute;left:14px;right:14px;top:0;height:2px;border-radius:2px;overflow:hidden;}' +
-    '.k-demo-cap .ln::before{content:"";position:absolute;inset:0;background:rgba(255,211,77,.25);}' +
-    '.k-demo-cap .ln i{position:absolute;inset:0;background:var(--lit,#ffd34d);box-shadow:0 0 10px 1px rgba(255,190,60,.7);transform-origin:0 50%;transform:scaleX(0);}' +
+    '.k-demo-cap .kd-ln{position:absolute;left:14px;right:14px;top:0;height:2px;border-radius:2px;overflow:hidden;}' +
+    '.k-demo-cap .kd-ln::before{content:"";position:absolute;inset:0;background:rgba(255,211,77,.25);}' +
+    '.k-demo-cap .kd-ln i{position:absolute;inset:0;background:var(--lit,#ffd34d);box-shadow:0 0 10px 1px rgba(255,190,60,.7);transform-origin:0 50%;transform:scaleX(0);}' +
     '.k-demo-cap.you{padding-left:16px;display:flex;align-items:center;gap:12px;box-shadow:inset 0 0 0 1px rgba(255,211,77,.45),0 0 0 4px rgba(255,211,77,.08),0 22px 44px -14px rgba(0,0,0,.75);}' +
-    '.k-demo-cap.you .ln i{transform:none;}' +
-    '.k-demo-cap .hd{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:12px;background:linear-gradient(180deg,#ffe486,#f6b93b);color:#2a1c00;}' +
-    '.k-demo-cap .hd svg{width:20px;height:20px;}' +
-    '.k-demo-cap .nub{position:absolute;width:14px;height:14px;background:rgba(22,24,46,.96);box-shadow:inset 1px 1px 0 rgba(255,255,255,.13);transform:rotate(45deg);}' +
-    '.k-demo-cap.you .nub{box-shadow:inset 1px 1px 0 rgba(255,211,77,.45);}' +
-    '.k-demo-cap .nub.up{top:-7px;} .k-demo-cap .nub.dn{bottom:-7px;transform:rotate(225deg);} .k-demo-cap .nub.lf{left:-7px;transform:rotate(-45deg);} .k-demo-cap .nub.rt{right:-7px;transform:rotate(135deg);}' +
+    '.k-demo-cap.you .kd-ln i{transform:none;}' +
+    '.k-demo-cap .kd-hd{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:12px;background:linear-gradient(180deg,#ffe486,#f6b93b);color:#2a1c00;}' +
+    '.k-demo-cap .kd-hd svg{width:20px;height:20px;}' +
+    '.k-demo-cap .kd-nub{position:absolute;width:14px;height:14px;background:rgba(22,24,46,.96);box-shadow:inset 1px 1px 0 rgba(255,255,255,.13);transform:rotate(45deg);}' +
+    '.k-demo-cap.you .kd-nub{box-shadow:inset 1px 1px 0 rgba(255,211,77,.45);}' +
+    '.k-demo-cap .kd-nub.up{top:-7px;} .k-demo-cap .kd-nub.dn{bottom:-7px;transform:rotate(225deg);} .k-demo-cap .kd-nub.lf{left:-7px;transform:rotate(-45deg);} .k-demo-cap .kd-nub.rt{right:-7px;transform:rotate(135deg);}' +
     '.k-demo-ring{position:fixed;z-index:9050;left:0;top:0;pointer-events:none;border-radius:16px;box-shadow:0 0 0 2px var(--lit,#ffd34d),0 0 18px 3px rgba(255,190,60,.55);opacity:0;transition:opacity .25s;}' +
     '.k-demo-ring.show{opacity:1;}' +
     '.k-demo-ring.spot{box-shadow:0 0 0 2px var(--lit,#ffd34d),0 0 18px 3px rgba(255,190,60,.55),0 0 0 200vmax rgba(5,6,16,.5);}' +
@@ -376,8 +376,8 @@
     }
     c.style.transform = '';
     c.style.left = Math.round(x) + 'px'; c.style.top = Math.round(y) + 'px';
-    var nb = c.querySelector('.nub');
-    if (nb) { nb.className = 'nub ' + (nub || ''); nb.style.display = nub ? '' : 'none'; if (nub === 'up' || nub === 'dn') { nb.style.left = nubAt + 'px'; nb.style.top = ''; } else if (nub) { nb.style.top = nubAt + 'px'; nb.style.left = ''; } }
+    var nb = c.querySelector('.kd-nub');
+    if (nb) { nb.className = 'kd-nub ' + (nub || ''); nb.style.display = nub ? '' : 'none'; if (nub === 'up' || nub === 'dn') { nb.style.left = nubAt + 'px'; nb.style.top = ''; } else if (nub) { nb.style.top = nubAt + 'px'; nb.style.left = ''; } }
   }
   function readMs(text) { var w = String(text).split(/\s+/).length; return Math.max(2300, Math.min(7500, 1100 + w * 270)); }
   function caption(text, o) {
@@ -385,8 +385,8 @@
     clearCap();
     var c = el('div', 'k-demo-ui k-demo-cap' + (o.you ? ' you' : ''));
     c.setAttribute('role', 'status'); c.setAttribute('aria-live', 'polite');
-    c.innerHTML = '<span class="ln"><i></i></span><span class="nub"></span>' + (o.you ? '<span class="hd">' + (window.Kit ? Kit.icon('tap') : '') + '</span>' : '') + '<span class="tx"></span>';
-    c.querySelector('.tx').textContent = text;
+    c.innerHTML = '<span class="kd-ln"><i></i></span><span class="kd-nub"></span>' + (o.you ? '<span class="kd-hd">' + (window.Kit ? Kit.icon('tap') : '') + '</span>' : '') + '<span class="kd-tx"></span>';
+    c.querySelector('.kd-tx').textContent = text;
     root.appendChild(c);
     st.cap = c; st.capAt = o.at || null; st.capPos = o.pos; st.capPlace = o.place || null; st.avoid = o.avoid ? [].concat(o.avoid) : [];
     var g = group(o.at); placeCap(c, g.length ? g : null, o.pos);
@@ -406,7 +406,7 @@
     try { Kit.sfx('pop', 0.35); } catch (e) {}
     if (o.wait === false) return Promise.resolve();
     var ms = o.wait != null ? o.wait : readMs(text);
-    var line = c.querySelector('.ln i');
+    var line = c.querySelector('.kd-ln i');
     if (line && line.animate && !reduce) line.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: ms, easing: 'linear', fill: 'forwards' });
     else if (line) line.style.transform = 'scaleX(1)';
     return new Promise(function (res) {

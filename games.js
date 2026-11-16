@@ -190,17 +190,17 @@ var GAMES = [
   { id: 'junglehunt',  name: 'Jungle Hunt',  color: '#2f8a3a', cat: 'console', min: 1, max: 1, tag: 'Swing, swim and leap to rescue Lady Penelope', play: 'junglehunt', hidden: true },   // (played from its Atari 2600 cartridge: see CONSOLE_NATIVE)
   { id: 'goblindefenders', name: 'Goblin Defenders', color: '#4f9a2c', cat: 'arcade', min: 1, max: 1, tag: 'Build towers of steel and wood, stop the march on the village', play: 'goblindefenders', demo: 1 },
   { id: 'galaga',      name: 'Galaga',       color: '#2a5cff', cat: 'arcade', min: 1, max: 1, tag: 'Blast the swarm, dodge the tractor beam', play: 'galaga', demo: 1 },
-  { id: 'invaders',    name: 'Space Invaders', color: '#2fd35a', cat: 'arcade', min: 1, max: 2, tag: 'Stop the invaders before they land', play: 'invaders' },
-  { id: 'asteroids',   name: 'Asteroids',   color: '#6366f1', cat: 'arcade', min: 1, max: 1, tag: 'Blast rocks, stay alive', play: 'asteroids' },
-  { id: 'peggle',      name: 'Peggle',       color: '#fb923c', cat: 'arcade', min: 1, max: 1, tag: 'Aim, bounce, clear the orange pegs', play: 'peggle' },
-  { id: 'cubehopper',  name: 'Q*bert',       color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Hop the pyramid, change every cube', play: 'cubehopper' },
-  { id: 'paddleball',  name: 'Pong',         color: '#000', cat: 'arcade', min: 1, max: 2, tag: 'Classic two-paddle table tennis', play: 'paddleball' },
-  { id: 'pinball',     name: 'Pinball',      color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Six 3D tables: flip, ramp, lock, multiball', play: 'pinball' },
-  { id: 'minesweeper', name: 'Minesweeper',  color: '#64748b', cat: 'arcade', min: 1, max: 1, tag: 'Clear the field without a boom', play: 'minesweeper' },
-  { id: 'carmen',      name: 'Carmen Sandiego', color: '#c81e24', cat: 'arcade', min: 1, max: 1, tag: 'Track V.I.L.E. thieves around the world and through time', play: 'carmen' },
-  { id: 'hotdogstand', name: 'Hot Dog Stand', color: '#d6402f', cat: 'arcade', min: 1, max: 1, tag: 'Run the stadium stand for a season', play: 'hotdogstand' },
-  { id: 'oregon',      name: 'The Oregon Trail', color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Lead your wagon party 2,000 miles west in 1848', play: 'oregon' },
-  { id: 'candymatch',  name: 'Candy Match',  color: '#ff4f9a', cat: 'arcade', min: 1, max: 1, tag: 'Swap candies, match three, beat the level', play: 'candymatch' },
+  { id: 'invaders',    name: 'Space Invaders', color: '#2fd35a', cat: 'arcade', min: 1, max: 2, tag: 'Stop the invaders before they land', play: 'invaders', demo: 1 },
+  { id: 'asteroids',   name: 'Asteroids',   color: '#6366f1', cat: 'arcade', min: 1, max: 1, tag: 'Blast rocks, stay alive', play: 'asteroids', demo: 1 },
+  { id: 'peggle',      name: 'Peggle',       color: '#fb923c', cat: 'arcade', min: 1, max: 1, tag: 'Aim, bounce, clear the orange pegs', play: 'peggle', demo: 1 },
+  { id: 'cubehopper',  name: 'Q*bert',       color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Hop the pyramid, change every cube', play: 'cubehopper', demo: 1 },
+  { id: 'paddleball',  name: 'Pong',         color: '#000', cat: 'arcade', min: 1, max: 2, tag: 'Classic two-paddle table tennis', play: 'paddleball', demo: 1 },
+  { id: 'pinball',     name: 'Pinball',      color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Six 3D tables: flip, ramp, lock, multiball', play: 'pinball', demo: 1 },
+  { id: 'minesweeper', name: 'Minesweeper',  color: '#64748b', cat: 'arcade', min: 1, max: 1, tag: 'Clear the field without a boom', play: 'minesweeper', demo: 1 },
+  { id: 'carmen',      name: 'Carmen Sandiego', color: '#c81e24', cat: 'arcade', min: 1, max: 1, tag: 'Track V.I.L.E. thieves around the world and through time', play: 'carmen', demo: 1 },
+  { id: 'hotdogstand', name: 'Hot Dog Stand', color: '#d6402f', cat: 'arcade', min: 1, max: 1, tag: 'Run the stadium stand for a season', play: 'hotdogstand', demo: 1 },
+  { id: 'oregon',      name: 'The Oregon Trail', color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Lead your wagon party 2,000 miles west in 1848', play: 'oregon', demo: 1 },
+  { id: 'candymatch',  name: 'Candy Match',  color: '#ff4f9a', cat: 'arcade', min: 1, max: 1, tag: 'Swap candies, match three, beat the level', play: 'candymatch', demo: 1 },
 
   // ── Consoles: your own cartridges. The consoles' shelves have no tiles (Edit on the home screen opens them);
   // each game gets its own tile (addConsoleGames below) ──

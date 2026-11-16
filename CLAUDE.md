@@ -546,8 +546,14 @@ Underlying principles for everything:
   Card! and going out), and Arvela (its quick start).
 - **Scope for the rest**: 130 catalog entries. No demo for the 6 console entries (emulator games; the cartridges are
   the house library's), the 7 tools (scorecard, dice-roller, randomtools, ranker, players, history, hiscores) and the 2
-  hidden entries that play inside another game (arrowjam in Mazes, tetrinet beside Tetris): 115 games can have one, 5
-  have one, 110 to go. The score keepers (hearts.html,
+  hidden entries that play inside another game (arrowjam in Mazes, tetrinet beside Tetris): every one of the other 115
+  has one (the rollout of 2026-11-16, in twelve batches by kind; each game's own page has its small `window.__<game>`
+  hooks, inert outside a demo). What the rollout added to the player: the Kit keyboard types in a demo (untrusted keys pass
+  the key guard) and the demo's strip, ring and captions live on `<html>`, so the keyboard's lift never carries them off;
+  `D.drag(from, [to1, to2, ...])` passes through each point without lifting (Boggle); the caption's parts are `kd-ln`,
+  `kd-nub`, `kd-hd` and `kd-tx`, so a page's own `.hd` or `.tx` never restyles them (Hot Dog Stand's page is `.hd`);
+  `ArcadeHi.check` files nothing and asks for no initials in a demo. Stock Market and Sportsbook play on fixed sample
+  data in a demo (`Kit.inDemo()`), and say so; Lorcana needs the network for its card list. The score keepers (hearts.html,
   spades.html and the rest) are tools of their games and share the game's demo.
 
 ## Accounts: PIN or Google

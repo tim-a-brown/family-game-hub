@@ -16,10 +16,6 @@
     beats: 11,
     end: 'Read the ticket, order what the crowd will want, price it right and watch the line. Grow your $500 into the season goal.',
     start: function () {
-      // (the game's page is .hd too, so the caption's pointing hand, also .hd, would take the page's layout)
-      var st = document.createElement('style');
-      st.textContent = '.k-demo-cap .hd{max-width:none;margin:0;padding:0;gap:0;display:grid;height:34px!important;}';
-      document.head.appendChild(st);
       H.start('rookie', 4242);
     },
     steps: async function (D) {
