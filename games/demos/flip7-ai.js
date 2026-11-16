@@ -22,7 +22,7 @@
 
   Kit.demoScript({
     intro: 'Here’s a round of Flip 7. You’ll decide when to flip and when to stop.',
-    beats: 15,
+    beats: 14,
     end: 'Flip for more points, but stay before a repeat number busts you. Seven different numbers is a Flip 7, and the first to 200 wins.',
     start: function () {
       var me = (localStorage.getItem('my_name') || '').trim() || 'You';
@@ -42,7 +42,7 @@
       await D.wait(500);
       await D.say('Bender flipped a second 6. Flipping a number you already have is a bust, so Bender scores nothing this round.', { at: spot(1) });
       await D.wait(myTurn, 9000);
-      await D.tap(flip, { say: 'You flip again.' });
+      await D.tap(flip);
       await D.wait(1400);
       await D.say('An 11 brings you to 24. Each new number adds points, and each one is another number that could repeat.', { at: myRow });
       await D.wait(myTurn, 9000);
