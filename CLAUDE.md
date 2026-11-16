@@ -747,11 +747,12 @@ Underlying principles for everything:
     played so far"): an older `anoria_coll` or `anoria_decks` becomes the first run, and a game in progress finishes and
     earns nothing (`G.cv`). Nothing of the old economy is left: no copies, no ready decks to unlock, no wins counted
     for Guides.
-  - **The sphere's screen** (`path()` in rewards.js; Tim, 2026-11-16: it had "no styling and there's no explanation for
-    what we mean by when the sphere comes around") says it in one sentence under the sphere and its count: "The sphere
-    comes round when all twelve signs on its ring are lit. Each time it does, you get a pack of 5 cards, and the ring
-    starts again from the first sign." Then stone panels with a label over each: what the sphere brings (a step for
-    each turn as far as the next Guide), how signs are lit, a pack for each first, and the callings.
+  - **The sphere's screen** (`path()` in rewards.js; Tim, 2026-11-16: first "no styling and there's no explanation for
+    what we mean by when the sphere comes around", then of a long explanation "too many words ... and also doesn't say
+    why they're lit"): the sphere, its count ("0 of 12 lit"), one line ("Your games light the signs. When all twelve
+    are lit, the sphere turns and brings you a pack."), then pictures, not sentences: three stone tiles for what lights
+    how many signs (A game, A win, First win today), the turns ahead as a step each with the pack and, on the last, the
+    Guide's flag, and a key under them (5 cards, A new Guide). Then a pack for each first and the callings.
   - The screens: `packs.js` (choosing one of the twelve Guides, the first deck forming, packs where a new finish lands
     on top of the card as you had it, a Guide joining with their set), `library.js`, `decks.js`, and `rewards.js`
     (`AnoriaRewards`: the sphere, its screen with the callings, the collection's rings, and the results card's panel
