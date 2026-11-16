@@ -110,11 +110,13 @@
     const big = sphere({ lit: sp.lit, cls: 'big' });
     L.appendChild(big);
     L.appendChild(el('div', { class: 'rw-count' }, [el('b', { text: String(sp.lit) }), el('span', { text: 'of ' + sp.of + ' lit' })]));
-    L.appendChild(el('p', { class: 'rw-lede', text: 'Your games light the signs. When all ' + (WORD[sp.of] || sp.of) + ' are lit, the sphere turns and brings you a pack.' }));
     if (Coll.pending().n && window.AnoriaPacks && window.AnoriaPacks.pending) L.appendChild(el('button', { type: 'button', class: 'btn btn-primary rw-pick', html: A.MARK.guide + '<span>Choose your new Guide</span>',
       onclick: () => { tap(); sc.close(); window.AnoriaPacks.pending(() => path(done)); } }));
     // what lights how many: a tile each, the signs over the word
     const LG = [[sp.light.game, 'A game'], [sp.light.game + sp.light.win, 'A win'], [sp.light.game + sp.light.win + sp.light.daily, 'First win today']];
+    // (each line stands over the boxes it is about, so the words and the pictures read as one: Tim, 2026-11-16, a line
+    // above them on its own "didn't seem connected")
+    L.appendChild(el('p', { class: 'rw-lead', text: 'Your games light the signs' }));
     L.appendChild(el('ul', { class: 'rw-lights', 'aria-label': 'A finished game lights ' + signs(LG[0][0]) + ', a win ' + signs(LG[1][0]) + ', your first win of the day ' + signs(LG[2][0]) }, LG.map(x =>
       el('li', {}, [el('span', { class: 'rw-dm' }, Array.from({ length: x[0] }, () => el('i'))), el('span', { text: x[1] })]))));
     // the turns ahead as far as the next Guide: a step for each, a pack on every one and the Guide on the last
@@ -124,7 +126,7 @@
       for (let t = 1; t <= sp.toGuide; t++) tr.appendChild(el('li', { class: 'rw-t' + (t === sp.toGuide ? ' g' : '') }, [
         el('span', { class: 'rw-t-ic' }, [packFace()].concat(t === sp.toGuide ? [el('span', { class: 'rw-t-gd', html: A.MARK.guide })] : [])),
         el('small', { text: ORD[t] || t + 'th' })]));
-      L.appendChild(el('div', { class: 'rw-next' }, [tr, el('p', { class: 'rw-key' }, [packFace(), el('span', { text: Coll.PACK + ' cards' }), el('span', { class: 'rw-key-g', html: A.MARK.guide }), el('span', { text: 'A new Guide' })])]));
+      L.appendChild(el('div', { class: 'rw-next' }, [el('p', { class: 'rw-lead in', text: 'When all ' + (WORD[sp.of] || sp.of) + ' are lit, the sphere turns' }), tr, el('p', { class: 'rw-key' }, [packFace(), el('span', { text: Coll.PACK + ' cards' }), el('span', { class: 'rw-key-g', html: A.MARK.guide }), el('span', { text: 'A new Guide' })])]));
     }
     // the firsts still to come
     const firsts = Coll.nextUp().filter(x => Coll.FIRSTS[x.id]);

@@ -749,9 +749,10 @@ Underlying principles for everything:
     for Guides.
   - **The sphere's screen** (`path()` in rewards.js; Tim, 2026-11-16: first "no styling and there's no explanation for
     what we mean by when the sphere comes around", then of a long explanation "too many words ... and also doesn't say
-    why they're lit"): the sphere, its count ("0 of 12 lit"), one line ("Your games light the signs. When all twelve
-    are lit, the sphere turns and brings you a pack."), then pictures, not sentences: three stone tiles for what lights
-    how many signs (A game, A win, First win today), the turns ahead as a step each with the pack and, on the last, the
+    why they're lit"): the sphere and its count ("0 of 12 lit"), then pictures, not sentences, each under the
+    one line it is about (a line on its own above them "didn't seem connected"): "Your games light the signs" over three
+    stone tiles for what lights how many signs (A game, A win, First win today), and "When all twelve are lit, the
+    sphere turns" heading a panel of the turns ahead as a step each with the pack and, on the last, the
     Guide's flag, and a key under them (5 cards, A new Guide). Then a pack for each first and the callings.
   - The screens: `packs.js` (choosing one of the twelve Guides, the first deck forming, packs where a new finish lands
     on top of the card as you had it, a Guide joining with their set), `library.js`, `decks.js`, and `rewards.js`
