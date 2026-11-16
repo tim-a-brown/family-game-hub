@@ -132,7 +132,7 @@
   // ── State ─────────────────────────────────────────────────────────────────
   // pits 0-5 = player 0's pits, 6 = player 0's store, 7-12 = player 1's pits, 13 = player 1's store.
   // S.stones[i] = {c: colour index, p: pit, k: arrival order}. Pit counts are derived from stones.
-  var S = null, undoStack = [], cpuToken = 0, busy = false, K = 0;
+  var S = null, undoStack = [], cpuToken = 0, busy = false, K = 0, HOLD = false;   // (HOLD: a demo keeps the computer waiting)
   // Online (turnnet.js): NET is the table while playing at one; S is then the table's state (never saved here).
   // RE: a move being played out on this screen (sown stone by stone), then the table's state takes over
   var NET = null, LEFT = null, WINO = null, NETREC = {}, NETQ = [], RE = null;
@@ -229,7 +229,7 @@
     return best;
   }
   function maybeCpu() {
-    if (NET || !S || S.over || !S.players[S.cur].cpu) return;
+    if (NET || !S || S.over || !S.players[S.cur].cpu || HOLD) return;
     busy = true; paint();
     var tk = ++cpuToken;
     setTimeout(function () { if (tk !== cpuToken) return; play(cpuPick(), true); }, 750);
@@ -665,7 +665,15 @@
       render(); maybeCpu();
     } else showSetup();
   }
-  window.__mancala = { state: function () { return S; }, counts: function () { return counts(); }, tap: function (p) { tap(p); }, busy: function () { return busy || !!RE; } };
+  window.__mancala = { state: function () { return S; }, counts: function () { return counts(); }, tap: function (p) { tap(p); }, busy: function () { return busy || !!RE; },
+    // (the demo: a game with these players, and a board set pit by pit: n[0..13], the stores at 6 and 13)
+    start: function (o) { S = { mode: o.mode || 'cpu', level: o.level || 'med', per: o.per || 4, players: o.players, wins: [0, 0, 0], first: 0 }; newRound(); },
+    board: function (n, cur) {
+      cpuToken++; busy = false; S.stones = []; K = 0; var ci = 0;
+      n.forEach(function (c, p) { for (var j = 0; j < c; j++) S.stones.push({ c: (ci++ * 5 + p) % GLASS.length, p: p, k: ++K }); });
+      S.cur = cur || 0; S.last = -1; render(); maybeCpu();
+    },
+    hold: function (on) { HOLD = !!on; if (!on) maybeCpu(); } };
 
   var rT = null;
   // (also mid-move: render rebuilds from S, stones in hand included, and the sowing carries on in the new layout)

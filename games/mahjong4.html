@@ -1323,6 +1323,22 @@
     }, 150);
   });
 
+  // (the demo: a quick game against the computer, then the hands, ponds and wall set by hand; a hand left at a discard
+  // goes on to the claims as it would at the table)
+  window.__mahjong = {
+    state: function () { return S; }, kind: kindOf, canWin: function (p) { return canWin(S.hands[p], S.melds[p].length); },
+    start: function (o) {
+      S = { mode: 'cpu', me: 0, len: 'quick', players: o.players, scores: [0, 0, 0, 0], log: [], handNo: 0, wind: 0, dealer: 0, startDealer: 0, started: Date.now(),
+        stats: { kongs: [0, 0, 0, 0], claims: [0, 0, 0, 0] } };
+      startHandCore(); save(); render();
+    },
+    set: function (fn) {
+      tok++; sel = null; busy = false; undoStack = []; closeSheet();
+      fn(S); save(); render();
+      if (S.phase === 'claim' && !S.claim && S.last) afterDiscard(); else flow(600);
+    }
+  };
+
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.hands && saved.players && saved.players.length === 4) { S = saved; if (S.me == null) S.me = 0; S.cover = false; render(); resumeFlow(); }
   else { try { localStorage.removeItem(SAVE); } catch (e) {} showSetup(); }

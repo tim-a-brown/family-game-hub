@@ -1081,6 +1081,13 @@
     start: netStart, turn: netTurn, over: netOver, show: netShow, leave: netLeave
   });
 
+  // (the demo: a battle against the computer, the table set by hand, and whether a shot is still playing out)
+  window.__battleship = {
+    state: function () { return S; }, busy: function () { return busy; },
+    start: function (o) { S = { mode: 'cpu', level: o.level || 'normal', players: o.players }; newBattle(); },
+    set: function (fn) { token++; busy = false; fn(S); save(); render(); maybeCpu(); }
+  };
+
   // ── Boot ──────────────────────────────────────────────────────────────────
   function boot() {
     var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
