@@ -1058,6 +1058,14 @@
     } else pump(700);
   } else showSetup();
 
+  // Test hook (the demo, games/demos/flip7-ai.js): start a game, then arrange the round (the deck's order, the rows)
+  // and carry on from there
+  window.__flip7 = {
+    state: function () { return S; },
+    start: function (cfg) { token++; clearTimeout(timer); newGame(cfg.players, cfg.target || 200); },
+    set: function (fn, ms) { token++; clearTimeout(timer); if (fn) fn(S); undoStack = []; save(); render(); if (!(ms < 0)) pump(ms == null ? 400 : ms); }
+  };
+
   // online tables (after the local game is drawn): opens ?online=1&room=CODE from the home screen
   TurnNet.setup({
     game: 'flip7', title: 'Flip 7', min: 2, max: 8, botMs: 750,

@@ -1269,7 +1269,10 @@
   } else showSetup();
 
   // test hook (harmless): lets the test harness inspect the solver
-  window.__fc = { solve: solve, arrange: arrange, state: function () { return S; } };
+  window.__fc = { solve: solve, arrange: arrange, state: function () { return S; },
+    // (the demo, games/demos/fivecrownss-ai.js: start a game, then set the round's hands and carry on)
+    start: function (cfg) { token++; newGame(cfg.players, cfg.len || 11, cfg.mode || 'cpu'); },
+    set: function (fn) { token++; fn(S); undoStack = []; save(); render(); next(); } };
 
   // online tables (after the local game is drawn): opens ?online=1&room=CODE from the home screen
   TurnNet.setup({
