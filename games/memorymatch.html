@@ -576,7 +576,7 @@ body{overflow:hidden;}
     if (solo()) {
       statMoves.textContent = S.moves; statPairs.textContent = got + '/' + total; statTime.textContent = fmt(S.time);
       turnEl.innerHTML = '';
-      turnEl.appendChild(el('div', { class: 'dim', style: { 'font-weight': '800', 'font-size': '.9rem' }, text: S.moves ? (total - got) + ' pairs to go' : 'Tap any card to start' }));
+      turnEl.appendChild(el('div', { class: 'dim', style: { 'font-weight': '800', 'font-size': '.9rem' }, text: S.moves ? (total - got) + (total - got === 1 ? ' pair to go' : ' pairs to go') : 'Tap any card to start' }));
     } else {
       S.players.forEach(function (p, i) {
         scoreEls[i].classList.toggle('on', i === S.turn && !S.done);
@@ -771,7 +771,7 @@ body{overflow:hidden;}
   });
 
   // Test hook
-  window.__mm = { get: function () { return S; }, tap: function (i) { tap(i); } };
+  window.__mm = { get: function () { return S; }, tap: function (i) { tap(i); }, start: function (deck, size, players) { newGame(deck, size, players); }, redraw: function () { build(false); save(); }, name: function (i) { return artName(S.deck, S.cards[i]); } };
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
