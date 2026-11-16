@@ -340,7 +340,8 @@ Underlying principles for everything:
   target) is a row of buttons on it, with a ? at the end that opens what it means (`inlineKind` in kit.js; Tim, 2026-11-15);
   longer choices keep the row that opens them, with the same ? at its end when the setting has words about it, which come up
   only from the ? (Tim, 2026-11-16: "found some rules with explanations but no question mark"; `.k-scrw`). The online
-  review's choices that only matter online have a ? beside their name too.
+  review's choices that only matter online have a ? beside their name too. A setting where only some choices have
+  words keeps its ? whichever is chosen (it then says what the others mean), so give every choice its words.
   `Kit.win`'s rank rows take `me: true`: your row is ringed in your color and shows your own name, never "You".
   An online.js game whose table takes the setup's robots says `players.onlineBots: true`, and its review shows them.
   Results cards use `Kit.win`'s slots (`again`, `look`, `extra`, `setup`, `scores`, `stats`, close) rather

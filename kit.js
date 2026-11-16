@@ -3312,6 +3312,9 @@
         var cur = choices.filter(function (c) { return String(c[0]) === String(state.options[op.id]); })[0];
         var note = devWord([op.help, cur && cur[2]].filter(Boolean).join(' '));
         var hasHelp = op.help || choices.some(function (c) { return c[2]; });
+        // (a setting where some choices have words and the chosen one has none still keeps its ?, which says what the
+        // others mean, so the ? never comes and goes as the choice changes)
+        if (hasHelp && !note) note = devWord(choices.filter(function (c) { return c[2]; }).map(function (c) { return chText(c) + ': ' + c[2]; }).join(' '));
         // In the home screen's sheet each option is one row, its name and what it's set to; tap it to open its
         // choices (and what they mean), pick one and it folds back up
         if (IN_SHEET || fold) {
@@ -3706,7 +3709,8 @@
           choices.forEach(function (c) { seg.appendChild(el('button', { type: 'button', class: (String(state.options[op.id]) === String(c[0]) ? 'on' : '') + (chSub(c) ? ' k-two' : ''), html: chHtml(c), onclick: function () { state.options[op.id] = c[0]; sfx('tap'); paint(); } })); });
           var cur = choices.filter(function (c) { return String(c[0]) === String(state.options[op.id]); })[0];
           // (what a choice means comes up under it from the ? beside its name, as in the setup)
-          var lab = el('div', { class: 'label' }, [el('span', { text: op.label })]), hlp = cur && cur[2];
+          var lab = el('div', { class: 'label' }, [el('span', { text: op.label })]), hlp = devWord([op.help, cur && cur[2]].filter(Boolean).join(' '));
+          if (!hlp) hlp = devWord(choices.filter(function (c) { return c[2]; }).map(function (c) { return chText(c) + ': ' + c[2]; }).join(' '));
           if (hlp) lab.appendChild(el('button', { type: 'button', class: 'k-q', 'aria-label': 'What does ' + op.label + ' mean?', 'aria-expanded': String(!!revHelp[op.id]), text: '?',
             onclick: function () { revHelp[op.id] = !revHelp[op.id]; sfx('tap'); paint(); } }));
           box.appendChild(el('div', { class: 'k-opt' + (revHelp[op.id] ? ' help-on' : '') }, [lab, seg, hlp ? el('p', { class: 'k-help', text: hlp }) : null]));
