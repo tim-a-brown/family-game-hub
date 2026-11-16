@@ -1662,7 +1662,16 @@
     show: netShow, leave: netLeave
   });
   // (tests)
-  window.__pino = { get S() { return S; }, get busy() { return busy; }, get seat() { return NET ? MYSEAT : LME; }, get net() { return !!NET; }, move: move, core: Core, record: recordGame };
+  window.__pino = { get S() { return S; }, get busy() { return busy; }, get seat() { return NET ? MYSEAT : LME; }, get net() { return !!NET; }, move: move, core: Core, record: recordGame,
+    // (a demo: a new game, {players, level, target}, with fix(S) arranging the first deal; set(fn) arranges the table)
+    start: function (cfg, fix) {
+      token++; busy = false; BLIND = false; sel = [];
+      S = Core.newGame({ kind: kindFor(cfg.players.length), players: cfg.players, target: cfg.target || 1500, passN: 4, level: cfg.level || 'normal' });
+      S.mode = 'cpu'; S.me = 0; S.seen = 0;
+      if (fix) fix(S);
+      LME = 0; Kit.gameStart(); undoStack = []; startHand(true);
+    },
+    set: function (f) { token++; busy = false; sel = []; f(S); ST0 = S; save(); render(); next(); } };
 })();
 </script>
 </body>

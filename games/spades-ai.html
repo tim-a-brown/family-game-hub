@@ -1290,6 +1290,18 @@
     } else showSetup();
   }
   resumeLocal();
+  // (a demo: a fresh game, {players, target, level, dealer}; set(fn) arranges the hand and draws it again)
+  window.__spades = {
+    state: function () { return S; },
+    get busy() { return busy; },
+    start: function (cfg) {
+      token++; BLIND = false; LME = 0; busy = false;
+      S = freshGame(cfg.players, cfg.target || 500, false, true, 'cpu', cfg.level);
+      if (cfg.dealer != null) S.dealer = (cfg.dealer + 3) % 4;
+      Kit.gameStart(); undoStack = []; newHand();
+    },
+    set: function (fn) { token++; busy = false; fn(S); save(); render(); next(); }
+  };
   TurnNet.setup({
     game: 'spades', title: 'Spades', min: 2, max: 4, botMs: 1100,
     seats: function () { return 4; },
