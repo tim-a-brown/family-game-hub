@@ -250,7 +250,7 @@ html.pd-land .ar-pbtn{width:100%;height:44px;}
       var s = server();
       if (G.mode === 'net' && s === 1 && !NET.peer) G.serveT = 0;   // (the other player's device is away: nobody serves for them)
       if (!human(s) && G.serveT > G.ai.serveAt) doServe();
-      else if (human(s) && G.serveT > 4) doServe(); // auto-serve if nobody does
+      else if (human(s) && G.serveT > 4 && !demoWait) doServe(); // auto-serve if nobody does (a demo waits for its own tap)
       return;
     }
     if (G.phase !== 'play') return;
@@ -1465,8 +1465,15 @@ html.pd-land .ar-pbtn{width:100%;height:44px;}
     },
     diff: function (d) { G.diff = d; },
     toCourt: function (x, y) { return toCourt(x, y); },
+    // the demo: a game against the computer with you serving first, your paddle's hits, and the big paddle for a while
+    begin: function (who) { startGame({ mode: 'cpu', diff: 'normal', to: 11, players: [{ name: who || 'You' }, { name: 'Computer', cpu: true }] }); G.firstServer = 0; readyServe(); fx.banner = { text: 'FIRST TO ' + G.to, sub: name(0) + ' serves', c: '#fff', life: 1.8, max: 1.8 }; },
+    hits: function () { return G ? G.hits.slice() : [0, 0]; },
+    big: function (p, sec) { G.pw.big[p] = sec; },
+    land: function () { return LAND; },
+    waitServe: function (on) { demoWait = !!on; },
     shotAt: function (l, c, vl, vc) { var b = balls[0]; if (!b) return; b.held = null; b.l = l; b.c = c; b.vl = vl; b.vc = vc; b.speed = Math.hypot(vl, vc); G.phase = 'play'; }
   };
+  var demoWait = false;
   // Test autopilot: human paddle(s) track the ball (the timer only runs while it is on)
   var autoT = 0, autoSv = 0;
   function autoTick() {

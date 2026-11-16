@@ -638,7 +638,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       }
     }
     // ship vs rocks / ufo
-    if (ship && !ship.dead && !ship.hyper && ship.inv <= 0) {
+    if (ship && !ship.dead && !ship.hyper && ship.inv <= 0 && !demoGhost) {
       for (var k = rocks.length - 1; k >= 0; k--) {
         var rk = rocks[k];
         if (near(ship.x, ship.y, rk.x, rk.y, rk.r * 0.88 + SHIP_R * 0.7)) {
@@ -1034,8 +1034,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     spawnUfo: function (big) { spawnUfo(); if (big != null) { ufo.big = big; ufo.r = big ? 13 : 8; } },
     lives: function (n) { G.lives = n; hudDirty = true; },
     kill: function () { if (ship && !ship.dead) killShip('a test'); },
-    rockAt: function () { if (ship) rocks.push(mkRock(ship.x + 60, ship.y, 2, -80, 0)); }
+    rockAt: function () { if (ship) rocks.push(mkRock(ship.x + 60, ship.y, 2, -80, 0)); },
+    // the demo: a game for one, rocks laid by hand, no saucer, and rocks that pass through the ship
+    begin: function (who) { startGame({ who: who, steer: 'stick' }); },
+    rock: function (x, y, size, vx, vy) { rocks.push(mkRock(x, y, size, vx || 0, vy || 0)); },
+    noUfo: function () { if (G) G.ufoT = 1e9; },
+    ghost: function (on) { demoGhost = !!on; },
+    WW: function () { return WW; }, WH: function () { return WH; }
   };
+  var demoGhost = false;
 
   // ═══ Boot ═══════════════════════════════════════════════════════════════
   var saved = loadSave();
