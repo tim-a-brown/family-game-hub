@@ -91,7 +91,8 @@ function serve() {
     function tile(kind, key, art, cart) {
       const at = cell();
       const gi = art.cloneNode ? art : null;
-      const t = h('div', { class: 'g gr tl' + (cart ? ' cart' : ''), style: 'width:' + U + 'px;--bl:' + (BLUR * U / TILE) + 'px' }, [h('button', { class: 'go', type: 'button' }, [gi])]);
+      const gm = kind === 't' ? GAMES.find(g => g && g.id === key) : null;   // (its section, for rules a section has of its own: the puzzle pieces stand higher)
+      const t = h('div', { class: 'g gr tl' + (cart ? ' cart' : ''), 'data-cat': (gm && gm.cat) || '', style: 'width:' + U + 'px;--bl:' + (BLUR * U / TILE) + 'px' }, [h('button', { class: 'go', type: 'button' }, [gi])]);
       st.appendChild(t);
       const top = gi.offsetHeight;   // the band starts where the art's own box ends
       t.style.height = (top + TH) + 'px'; t.style.left = at[0] + 'px'; t.style.top = (at[1] - top) + 'px';

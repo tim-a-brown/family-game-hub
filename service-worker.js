@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v866-2026-11-16-stamp-fainter';
+const CACHE_VERSION = 'v867-2026-11-16-puzzle-art';
 // Preview channels (familygames-da3e5--name-xyz.web.app) and local testing: pages and code always from the network
 const PREVIEW = self.location.hostname.includes('--') || /^(localhost|127\.0\.0\.1)$/.test(self.location.hostname);
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
