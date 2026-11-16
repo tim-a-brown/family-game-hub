@@ -85,20 +85,20 @@ var GAMES = [
   { id: 'codebreaker', name: 'Mastermind', color: '#000', cat: 'board', min: 1, max: 2, tag: 'Crack the secret color code', play: 'codebreaker', demo: 1 },
   { id: 'dominoes',    name: 'Dominoes',     color: '#000', cat: 'board', min: 1, max: 8, tag: 'Match the ends, block your rivals', play: 'dominoes', demo: 1 },
   { id: 'marbles',     name: 'Marbles',      color: '#7c3aed', cat: 'board', min: 2, max: 6, tag: 'Race home with cards or dice, bump rivals', play: 'marbles', demo: 1 },
-  { id: 'axisallies',  name: 'Axis & Allies', color: '#000', cat: 'board', min: 1, max: 5, tag: 'Command the armies of 1942 and win the war', play: 'axisallies', score: 'axisallies-score' },
+  { id: 'axisallies',  name: 'Axis & Allies', color: '#000', cat: 'board', min: 1, max: 5, tag: 'Command the armies of 1942 and win the war', play: 'axisallies', demo: 1, score: 'axisallies-score' },
   { id: 'go',          name: 'Go',           color: '#000', cat: 'board', min: 1, max: 2, tag: 'Surround territory, capture stones', play: 'go', demo: 1 },
   { id: 'othello',     name: 'Othello',      color: '#15803d', cat: 'board', min: 1, max: 2, tag: 'Flip discs, own the board', play: 'othello', demo: 1 },
-  { id: 'backgammon',  name: 'Backgammon',   color: '#b45309', cat: 'board', min: 1, max: 2, tag: 'Race your checkers home', play: 'backgammon' },
-  { id: 'battleship',  name: 'Battleship',   color: '#0369a1', cat: 'board', min: 1, max: 2, tag: 'Hunt down the hidden fleet', play: 'battleship' },
-  { id: 'dotsboxes',   name: 'Dots & Boxes', color: '#ec4899', cat: 'board', min: 1, max: 4, tag: 'Close the most boxes', play: 'dotsboxes' },
-  { id: 'mancala',     name: 'Mancala',      color: '#a16207', cat: 'board', min: 1, max: 2, tag: 'Sow stones, fill your store', play: 'mancala' },
-  { id: 'mahjong4',    name: 'Mahjong',      color: '#b91c1c', cat: 'board', min: 1, max: 4, tag: 'Four-player Mahjong with the computer or friends', play: 'mahjong4' },
-  { id: 'monopoly',    name: 'Monopoly',     color: '#c8102e', cat: 'board', min: 1, max: 8, tag: 'Buy, build and bankrupt, vs computer, pass and play, or online', play: 'monopoly',
+  { id: 'backgammon',  name: 'Backgammon',   color: '#b45309', cat: 'board', min: 1, max: 2, tag: 'Race your checkers home', play: 'backgammon', demo: 1 },
+  { id: 'battleship',  name: 'Battleship',   color: '#0369a1', cat: 'board', min: 1, max: 2, tag: 'Hunt down the hidden fleet', play: 'battleship', demo: 1 },
+  { id: 'dotsboxes',   name: 'Dots & Boxes', color: '#ec4899', cat: 'board', min: 1, max: 4, tag: 'Close the most boxes', play: 'dotsboxes', demo: 1 },
+  { id: 'mancala',     name: 'Mancala',      color: '#a16207', cat: 'board', min: 1, max: 2, tag: 'Sow stones, fill your store', play: 'mancala', demo: 1 },
+  { id: 'mahjong4',    name: 'Mahjong',      color: '#b91c1c', cat: 'board', min: 1, max: 4, tag: 'Four-player Mahjong with the computer or friends', play: 'mahjong4', demo: 1 },
+  { id: 'monopoly',    name: 'Monopoly',     color: '#c8102e', cat: 'board', min: 1, max: 8, tag: 'Buy, build and bankrupt, vs computer, pass and play, or online', play: 'monopoly', demo: 1,
     launch: [
       { icon: 'phone', title: 'Play on this device', desc: 'Against the computer or pass and play', file: 'monopoly.html' },
       { icon: 'users', title: 'Play online', desc: '2 to 8 players, each on their own device', file: 'monopoly.html?online=1' }
     ] },
-  { id: 'scrabble',    name: 'Scrabble',     color: '#c0392b', cat: 'board', min: 1, max: 4, tag: 'Build words, hit the bonus squares, vs robots, a friend, or online', play: 'scrabble',
+  { id: 'scrabble',    name: 'Scrabble',     color: '#c0392b', cat: 'board', min: 1, max: 4, tag: 'Build words, hit the bonus squares, vs robots, a friend, or online', play: 'scrabble', demo: 1,
     launch: [
       { icon: 'phone', title: 'Play on this device', desc: 'Against the computer or pass and play', file: 'scrabble.html' },
       { icon: 'users', title: 'Play online', desc: '2 to 4 players, each on their own device', file: 'scrabble.html?online=1' }
