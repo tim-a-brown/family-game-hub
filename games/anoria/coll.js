@@ -74,19 +74,21 @@ let ED_ODDS = [0, 0.085, 0.04, 0.018, 0.007];
 // a calling is met about as soon as the sphere would bring that Guide (pacing.js, calls.txt for how often each happens).
 // Each need is about 80 games' worth of what the robots did (scripts/anoria/calls.js, calls.txt). `say` is the calling
 // as a player reads it, with # for the number.
+// (needs set for about 30 games each, ten days at three games a day, so a calling brings its Guide well before the
+// sphere would; Tim, 2026-11-16: "the arvela thresholds for guides seem lofty", then "about 30 games". Each was about 80 games, the sphere's own pace)
 const CALLS = {
-  cleopatra: { per: 'game', m: 'hold4', need: 30, say: 'Hold four Domains when a round ends, in # games.' },
-  leonardo: { per: 'game', m: 'relics2', need: 40, say: 'Have two Relics in play at once, in # games.' },
-  tubman: { per: 'game', m: 'sealsWin', need: 8, say: 'Win # games by breaking all of the other player\'s Seals.' },
-  suntzu: { per: 'game', m: 'noSealLost', need: 20, say: 'Win # games without losing a Seal.' },
-  shakespeare: { per: 'count', m: 'lines', need: 130, say: 'Make # Legacy Lines.' },
-  curie: { per: 'count', m: 'play3', need: 250, say: 'Play three cards in one turn, # times.' },
-  joan: { per: 'game', m: 'behindWin', need: 30, say: 'Win # games in which you were behind when a round ended.' },
-  saladin: { per: 'game', m: 'clash3', need: 65, say: 'Win three clashes you started in one game, in # games.' },
-  wuzetian: { per: 'count', m: 'most', need: 225, say: 'Hold more Domains than the other player when a round ends, # times.' },
-  akbar: { per: 'game', m: 'facs5', need: 50, say: 'Play Figures of all five factions in one game, in # games.' },
-  mansamusa: { per: 'packs', need: 18, say: 'Open # packs.' },
-  sorjuana: { per: 'game', m: 'scholars3', need: 50, say: 'Play three Scholars in one game, in # games.' }
+  cleopatra: { per: 'game', m: 'hold4', need: 11, say: 'Hold four Domains when a round ends, in # games.' },
+  leonardo: { per: 'game', m: 'relics2', need: 15, say: 'Have two Relics in play at once, in # games.' },
+  tubman: { per: 'game', m: 'sealsWin', need: 3, say: 'Win # games by breaking all of the other player\'s Seals.' },
+  suntzu: { per: 'game', m: 'noSealLost', need: 7, say: 'Win # games without losing a Seal.' },
+  shakespeare: { per: 'count', m: 'lines', need: 50, say: 'Make # Legacy Lines.' },
+  curie: { per: 'count', m: 'play3', need: 100, say: 'Play three cards in one turn, # times.' },
+  joan: { per: 'game', m: 'behindWin', need: 11, say: 'Win # games in which you were behind when a round ended.' },
+  saladin: { per: 'game', m: 'clash3', need: 25, say: 'Win three clashes you started in one game, in # games.' },
+  wuzetian: { per: 'count', m: 'most', need: 85, say: 'Hold more Domains than the other player when a round ends, # times.' },
+  akbar: { per: 'game', m: 'facs5', need: 20, say: 'Play Figures of all five factions in one game, in # games.' },
+  mansamusa: { per: 'packs', need: 7, say: 'Open # packs.' },
+  sorjuana: { per: 'game', m: 'scholars3', need: 18, say: 'Play three Scholars in one game, in # games.' }
 };
 const FIRSTS = { win: 'Your first win', normal: 'Your first win against Normal', hard: 'Your first win against Hard', built: 'Your first win with a deck you built' };
 // Rarity. The cards of each tier, from "node scripts/anoria/rarity.js 6000" (rarity.txt has the table). A card on

@@ -730,17 +730,18 @@ Underlying principles for everything:
   - **Callings** (`CALLS`): each Guide has one, something done in games that brings that Guide sooner ("Win 20 games in
     which you were behind when a round ended"). The table counts what a game did with `track()` (ui.js `callTrack`,
     from the engine's events, for the first player, whoever holds the device) and `gameOver` adds it up. How often each
-    happens is `scripts/anoria/calls.js` (`calls.txt`); the needs are set so a calling is met about when the sphere
-    would bring that Guide. A move taken back is taken out of the count too (the undo snapshot keeps `G.cl` as `cl0`),
+    happens is `scripts/anoria/calls.js` (`calls.txt`); each need is set for about 30 games of its
+    measure (Tim, 2026-11-16: "the arvela thresholds for guides seem lofty", then "about 30 games"; they had been about
+    80 games each, the sphere's own pace, so a calling hardly brought a Guide sooner). A move taken back is taken out of the count too (the undo snapshot keeps `G.cl` as `cl0`),
     so playing a card and taking it back again and again does not meet a calling.
   - **Packs**: every slot is a card you don't have or a finish you don't have, the finish rolled first (`ED_ODDS`), the
     card weighted by its tier (`TIER_W`); packs draw the cards of Guides who haven't joined you too, and never hold a
     Domain. Two welcome packs come with the first Guide (`WELCOME`), and four firsts give a pack each (`FIRSTS`: your
     first win, against Normal, against Hard, with a deck you built).
   - Pace at 3 games a day (pacing.txt; Tim: "same pace is fine"): Guides join on turns 1, 2, 4, 6, 9, 12, 15, 18, 21,
-    24 and 27 of the sphere, and with the callings (about 5 of the 11 come that way) all twelve are with you in about
-    29 days, as the design had it. Since the 68 cards of 2026-11-13, 74 cards are found only in packs, and every card
-    takes about 52 days (middle 52, slowest tenth 56); every finish of every card about 640 days. **Packs stay at 5**
+    24 and 27 of the sphere, and with the callings at about 30 games (about 7 of the 11 come that way) all twelve are
+    with you in about 12 days (it was 29 with callings at the sphere's pace). Since the 68 cards of 2026-11-13, 74 cards are found only in packs, and every card
+    takes about 40 days (middle 39, slowest tenth 43); every finish of every card about 630 days. **Packs stay at 5**
     (Tim, 2026-11-13: "packs of 5 is still fine"; packs of 3 would make every card take about 76 days, against the design's
     68, and pacing.txt keeps that run for comparison).
   - **v 6 is a clean start** (Tim: "you can wipe any existing collections and start over too. i'm the only one that's
