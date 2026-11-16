@@ -116,18 +116,18 @@ var GAMES = [
   { id: 'fortune',     name: 'Fortune Teller', color: '#000', cat: 'dice', min: 1, max: 0, tag: 'Cookies, an oracle dial, a carnival swami and the 8 ball', play: 'fortune', demo: 1 },
 
   // ── Puzzles ──────────────────────────────────────────────────────────────
-  { id: '2048',        name: '2048',         color: '#f97316', cat: 'puzzle', min: 1, max: 1, tag: 'Slide and merge to 2048', play: '2048' },
-  { id: 'marblesolitaire', name: 'Marble Solitaire', color: '#000', cat: 'puzzle', min: 1, max: 1, tag: 'Jump marbles until only one is left', play: 'marblesolitaire' },
-  { id: 'slidepuzzle', name: 'Slide Puzzle', color: '#000', cat: 'puzzle', min: 1, max: 1, tag: 'Slide the tiles back in order', play: 'slidepuzzle' },
-  { id: 'sudoku',      name: 'Sudoku',       color: '#3b82f6', cat: 'puzzle', min: 1, max: 1, tag: 'Fill the grid, 1 to 9', play: 'sudoku' },
-  { id: 'memorymatch', name: 'Memory Match', color: '#d946ef', cat: 'puzzle', min: 1, max: 4, tag: 'Flip two, find the pairs', play: 'memorymatch' },
-  { id: 'mahjong',     name: 'Mahjong Tiles', color: '#059669', cat: 'puzzle', min: 1, max: 1, tag: 'Match free tiles, clear the stack', play: 'mahjong' },
-  { id: 'mathpuzzles', name: 'Math Puzzles', color: '#0891b2', cat: 'puzzle', min: 1, max: 1, tag: 'Patterns, sequences and brain teasers', play: 'mathpuzzles' },
-  { id: 'mazes',       name: 'Mazes',        color: '#000', cat: 'puzzle', min: 1, max: 1, tag: 'Draw your way out, tilt a steel ball, or clear an arrow jam', play: 'mazes' },
+  { id: '2048',        name: '2048',         color: '#f97316', cat: 'puzzle', min: 1, max: 1, tag: 'Slide and merge to 2048', play: '2048', demo: 1 },
+  { id: 'marblesolitaire', name: 'Marble Solitaire', color: '#000', cat: 'puzzle', min: 1, max: 1, tag: 'Jump marbles until only one is left', play: 'marblesolitaire', demo: 1 },
+  { id: 'slidepuzzle', name: 'Slide Puzzle', color: '#000', cat: 'puzzle', min: 1, max: 1, tag: 'Slide the tiles back in order', play: 'slidepuzzle', demo: 1 },
+  { id: 'sudoku',      name: 'Sudoku',       color: '#3b82f6', cat: 'puzzle', min: 1, max: 1, tag: 'Fill the grid, 1 to 9', play: 'sudoku', demo: 1 },
+  { id: 'memorymatch', name: 'Memory Match', color: '#d946ef', cat: 'puzzle', min: 1, max: 4, tag: 'Flip two, find the pairs', play: 'memorymatch', demo: 1 },
+  { id: 'mahjong',     name: 'Mahjong Tiles', color: '#059669', cat: 'puzzle', min: 1, max: 1, tag: 'Match free tiles, clear the stack', play: 'mahjong', demo: 1 },
+  { id: 'mathpuzzles', name: 'Math Puzzles', color: '#0891b2', cat: 'puzzle', min: 1, max: 1, tag: 'Patterns, sequences and brain teasers', play: 'mathpuzzles', demo: 1 },
+  { id: 'mazes',       name: 'Mazes',        color: '#000', cat: 'puzzle', min: 1, max: 1, tag: 'Draw your way out, tilt a steel ball, or clear an arrow jam', play: 'mazes', demo: 1 },
 
   // ── Logic and riddles (in Puzzles & Words) ──────────────────────────────
-  { id: 'mysteries',   name: 'Picture Mysteries', color: '#b45309', cat: 'puzzle', min: 1, max: 1, tag: 'Study the scene, crack the case', play: 'mysteries' },
-  { id: 'logicgrid',   name: 'Logic Grids',  color: '#0f766e', cat: 'puzzle', min: 1, max: 1, tag: 'Read the clues, fill the grid', play: 'logicgrid' },
+  { id: 'mysteries',   name: 'Picture Mysteries', color: '#b45309', cat: 'puzzle', min: 1, max: 1, tag: 'Study the scene, crack the case', play: 'mysteries', demo: 1 },
+  { id: 'logicgrid',   name: 'Logic Grids',  color: '#0f766e', cat: 'puzzle', min: 1, max: 1, tag: 'Read the clues, fill the grid', play: 'logicgrid', demo: 1 },
   { id: 'truthlies',   name: 'Truth or Lies', color: '#7c3aed', cat: 'puzzle', min: 1, max: 1, tag: 'Someone is lying. Who?', play: 'truthlies', demo: 1 },
   { id: 'ciphers',     name: 'Cipher Cases', color: '#1e3a8a', cat: 'puzzle', min: 1, max: 1, tag: 'Crack the code, open the lock', play: 'ciphers', demo: 1 },
   { id: 'riddles',     name: 'Riddles',      color: '#a16207', cat: 'puzzle', min: 1, max: 1, tag: 'Classic riddles and new ones', play: 'riddles', demo: 1 },
