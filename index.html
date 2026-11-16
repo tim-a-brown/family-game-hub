@@ -1473,6 +1473,15 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
 :root.look:not(.ng-x) .sbox .art{aspect-ratio:1/.66;}
 :root.look:not(.ng-x) .sbox .art::after{display:none;}
 :root.look:not(.ng-x) .sbox.old .art,:root.look:not(.ng-x) .sbox.old .art .gicon{filter:none;}
+/* (Tim, 2026-11-16: "adjust the bottom part of keep playing tiles to fit game names up to two lines long. move the
+   details into the bottom left of the colorful top part"): the glass foot holds the name alone, always two lines tall so
+   every card's foot is the same, and where you are stands at the lower left of the card's color, over the stamped art */
+:root.look:not(.ng-x) .sbox .art{aspect-ratio:1/.92;justify-content:flex-end;padding:0 10px 8px;}
+:root.look:not(.ng-x) .sbox .nm,:root.look:not(.ng-x) .sbox .nm.two{flex:none;height:calc(.86rem * 2.3 + 18px);justify-content:center;padding:9px 10px;}
+:root.look:not(.ng-x) .sbox .art .st,:root.look:not(.ng-x) .sbox.ct .art .st{position:relative;z-index:2;display:flex;flex-direction:column;align-self:stretch;margin:0;padding:0;color:#fff;font-size:.76rem;font-weight:650;line-height:1.22;text-shadow:0 1px 2px rgba(0,0,0,.55),0 0 10px rgba(0,0,0,.4);}
+:root.look:not(.ng-x) .sbox .art .st > span:first-child,:root.look:not(.ng-x) .sbox .art .st.one{color:#fff;font-weight:750;}
+:root.look:not(.ng-x) .sbox .art .st > span + span{color:rgba(255,255,255,.88);font-weight:600;font-size:1em;}
+:root.look:not(.ng-x) .sbox .art .st > span{white-space:nowrap;}
 :root.look:not(.ng-x) .sbox.old .art .gicon{filter:drop-shadow(-4px 8px 10px rgba(0,0,0,.3));}
 
 :root.look:not(.ng-x) :is(.sbox,.sbox.ct) :is(.st,.ago){z-index:2;}
@@ -2324,8 +2333,8 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     var a = el('a', { class: 'sbox' + (ct ? ' ct' : '') + (old ? ' old' : ''), href: 'games/' + f + (/\.html/.test(f) ? '' : '.html'), draggable: 'false', style: { '--c': cat ? 'hsl(' + cat.hue + ' ' + cat.sat + '% 46%)' : g.color, '--h': catHsl(g, 58), '--gc': ct ? catHsl(ct, 30) : g.color }, title: g.name + ': ' + (x.r.label || 'In progress') }, [
       // (in the tile look where you are stands under the name on the card's glass foot, so nothing lies over the art: Tim,
       // 2026-11-15, "I don't want that dark haze over the logos")
-      el('span', { class: 'art' }, [ct ? el('span', { class: 'gicon mini-ct ct-' + ct.sys }, [cartBody(ct)]) : el('span', { html: GameIcon(g.id, { bare: !glassOn() }), style: { display: 'contents' } })].concat(document.documentElement.classList.contains('look') ? [] : [stLines(x.r.label || 'In progress')], [el('span', { class: 'ago', text: ago(x.r.ts, true) })])),
-      el('span', { class: 'nm' }, [el('span', { class: 'bn' }, wholeWords(g.name))].concat(document.documentElement.classList.contains('look') ? [stLines(x.r.label || 'In progress')] : []))
+      el('span', { class: 'art' }, [ct ? el('span', { class: 'gicon mini-ct ct-' + ct.sys }, [cartBody(ct)]) : el('span', { html: GameIcon(g.id, { bare: !glassOn() }), style: { display: 'contents' } })].concat([stLines(x.r.label || 'In progress')], [el('span', { class: 'ago', text: ago(x.r.ts, true) })])),
+      el('span', { class: 'nm' }, [el('span', { class: 'bn' }, wholeWords(g.name))])
     ]);
     // (the name's glass shows the art glowing through it, as a tile's band does; and the texture in the card's color,
     // while there are three to choose from)
