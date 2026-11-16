@@ -106,14 +106,14 @@ var GAMES = [
 
   // ── Dice & luck ──────────────────────────────────────────────────────────
   { id: 'yahtzee',     name: 'Yahtzee',      color: '#ef4444', cat: 'dice', min: 1, max: 8, tag: 'Roll for the best combos', play: 'yahtzee', demo: 1 },
-  { id: 'plinko',      name: 'Plinko',       color: '#eab308', cat: 'dice', min: 1, max: 4, tag: 'Drop the chip, hope for the big slot', play: 'plinko' },
-  { id: 'wheeloffortune', name: 'Wheel of Fortune', color: '#7c3aed', cat: 'dice', min: 1, max: 3, tag: 'Spin, guess, solve the puzzle', play: 'wheeloffortune' },
-  { id: 'dealornodeal',name: 'Deal or No Deal', color: '#ca8a04', cat: 'dice', min: 1, max: 4, tag: 'Take the offer or risk it all', play: 'dealornodeal' },
-  { id: 'pressyourluck', name: 'Press Your Luck', color: '#000', cat: 'dice', min: 1, max: 3, tag: 'Big bucks, no Whammies! Stop the board', play: 'pressyourluck' },
-  { id: 'shellgame',   name: 'Shell Game',   color: '#0d9488', cat: 'dice', min: 1, max: 4, tag: 'Keep your eye on the ball', play: 'shellgame' },
-  { id: 'farkle',      name: 'Farkle',       color: '#000', cat: 'dice', min: 1, max: 6, tag: 'Push your luck to 10,000', play: 'farkle' },
-  { id: 'lrc',         name: 'Left Right Center', color: '#000', cat: 'dice', min: 2, max: 10, tag: 'Roll and pass the chips', play: 'lrc' },
-  { id: 'fortune',     name: 'Fortune Teller', color: '#000', cat: 'dice', min: 1, max: 0, tag: 'Cookies, an oracle dial, a carnival swami and the 8 ball', play: 'fortune' },
+  { id: 'plinko',      name: 'Plinko',       color: '#eab308', cat: 'dice', min: 1, max: 4, tag: 'Drop the chip, hope for the big slot', play: 'plinko', demo: 1 },
+  { id: 'wheeloffortune', name: 'Wheel of Fortune', color: '#7c3aed', cat: 'dice', min: 1, max: 3, tag: 'Spin, guess, solve the puzzle', play: 'wheeloffortune', demo: 1 },
+  { id: 'dealornodeal',name: 'Deal or No Deal', color: '#ca8a04', cat: 'dice', min: 1, max: 4, tag: 'Take the offer or risk it all', play: 'dealornodeal', demo: 1 },
+  { id: 'pressyourluck', name: 'Press Your Luck', color: '#000', cat: 'dice', min: 1, max: 3, tag: 'Big bucks, no Whammies! Stop the board', play: 'pressyourluck', demo: 1 },
+  { id: 'shellgame',   name: 'Shell Game',   color: '#0d9488', cat: 'dice', min: 1, max: 4, tag: 'Keep your eye on the ball', play: 'shellgame', demo: 1 },
+  { id: 'farkle',      name: 'Farkle',       color: '#000', cat: 'dice', min: 1, max: 6, tag: 'Push your luck to 10,000', play: 'farkle', demo: 1 },
+  { id: 'lrc',         name: 'Left Right Center', color: '#000', cat: 'dice', min: 2, max: 10, tag: 'Roll and pass the chips', play: 'lrc', demo: 1 },
+  { id: 'fortune',     name: 'Fortune Teller', color: '#000', cat: 'dice', min: 1, max: 0, tag: 'Cookies, an oracle dial, a carnival swami and the 8 ball', play: 'fortune', demo: 1 },
 
   // ── Puzzles ──────────────────────────────────────────────────────────────
   { id: '2048',        name: '2048',         color: '#f97316', cat: 'puzzle', min: 1, max: 1, tag: 'Slide and merge to 2048', play: '2048' },
@@ -143,7 +143,7 @@ var GAMES = [
   { id: 'arrowjam',    name: 'Arrow Jam',    color: '#1e88e5', cat: 'puzzle', min: 1, max: 1, tag: 'Slide every arrow off the board without a bump', play: 'arrowjam', hidden: true },   // (played from Mazes, beside the Labyrinth)
 
   // ── Party ────────────────────────────────────────────────────────────────
-  { id: 'trivia',      name: 'Trivia',       color: '#f59e0b', cat: 'party', min: 1, max: 24, tag: 'Who knows the most?', play: 'trivia' },
+  { id: 'trivia',      name: 'Trivia',       color: '#f59e0b', cat: 'party', min: 1, max: 24, tag: 'Who knows the most?', play: 'trivia', demo: 1 },
   { id: 'wouldyourather', name: 'Would You Rather', color: '#ec4899', cat: 'party', min: 2, max: 0, tag: 'Tough choices, big debates', play: 'wouldyourather', demo: 1 },
   { id: 'applestoapples', name: 'Apples to Apples', color: '#e0303f', cat: 'party', min: 1, max: 24, tag: 'Match a red card to the green card', play: 'applestoapples', demo: 1 },
   { id: 'mindmeld',  name: 'Mind Meld',  color: '#0ea5b7', cat: 'party', min: 1, max: 24, tag: 'Write what everyone else will write', play: 'mindmeld', demo: 1 },
