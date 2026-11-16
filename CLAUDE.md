@@ -1280,6 +1280,24 @@ Underlying principles for everything:
   in play. A card name tapped in the log opens in the same panel with the way back to the log. Turning the iPad upright
   closes it; a phone and an upright iPad keep the sheets. While the panel is open the dock lays out as an upright
   iPad's (the caption and the button over a hand the table's full width), so the hand keeps its names.
+- **The set-up's Domains are a strip** (Tim, 2026-11-16: "this is a group of cards i should be able to flip through with
+  the carousel and have actions available to select while reviewing ... context-aware"). `suScan` in ui.js: the four
+  Domains you drew on the strip (`makeFlow`), opened by a second tap on one in your hand (a first tap still picks it up
+  for tap-then-tap on the board, which the lesson uses) or a hold on any of yours, at that card. Under the card lies the
+  set-up's road (`suRoad`): your Gate, your Outpost and the Crossroads in the order they lie on the table, then your
+  stack, each a small tile with this Domain laid there, its power struck through and its picture grayed where it would
+  do nothing (`suIdle`, E.pw's own exceptions; the board's tiles use it too), what lies there now in a medallion, and the
+  pill: Lay, Offer, Under, Swap, Replace or Here, with a small star on a good place (the robots' `E.layScore`, never an
+  idle place when another lay avoids it). A tap lays it (`suPut`: a swap, or the one there back to the hand, the last one
+  laying itself; `put.under` holds a Domain put under the stack early), the Domain flies down into its tile, the strip
+  moves on to the next one in your hand and closes onto the table once three are laid; a laid one has Back into your
+  hand. The table is drawn once, as the strip closes. A new kind of set-up action is a place in `SU_PL` (with `suOrder`
+  and `suOcc`) or a button on the road's line in `suRoad`.
+  **The set-up's flicker** (the same day): every change of the window's size redraws the table, and Safari's bar coming
+  and going (a tap near the foot of the screen) moves an iPhone's height across 740, where the hand's layout used to
+  switch, so the Domains redrew in the other size and back. The hand's layout reads `tallH()` (the tallest the window has
+  been at this width), and the set-up's hand keeps its buttons from one redraw to the next (`suBtns`). A new layout
+  choice by height reads `tallH()`, not `innerHeight`.
 - **Gallery stone is Arvela's look** (Tim, 2026-11-15: "we're locking in gallery stone as THE winning arvela look"; chosen
   from three rounds of looks laid over the game). A contemporary sculpture gallery after hours: honed charcoal stone, flat
   and matte, no veins and no textures; bone-white words (`--g-bone`), labels in dust (`--g-dust`); and bronze, the one

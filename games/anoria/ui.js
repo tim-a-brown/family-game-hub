@@ -1360,7 +1360,7 @@
     for (let i = 0; i < 6 && mid.scrollHeight > mid.clientHeight + 1; i++) { const t = Math.round(parseFloat(box.style.getPropertyValue('--tw')) * .9); box.style.setProperty('--tw', t + 'px'); box.style.setProperty('--th', Math.round(t * .56) + 'px'); }
   }
   function scan(at) {
-    if (at && at.su) return openView(at.su);   // (a Domain at the set-up: read it on its own)
+    if (at && at.su) return suScan(at.su);   // (a Domain at the set-up: the Domains drawn, on the set-up's strip)
     at = at || {}; if (!G || !S || !V) return; closeView(); Kit.sfx('flip'); Kit.haptic('light');
     const me = ui.view, opp = 1 - me, role = p => { const w = E.ownerOfSpoke(S, p); return w < 0 ? 'The Crossroads' : (w === me ? 'Your ' : Kit.poss(pname(w)) + ' ') + (E.isGate(S, p) ? 'Gate' : 'Outpost'); };
     // (a Domain's cards lie as they do on the table: the other player's Figures, the Domain's own card, yours. A
@@ -1809,6 +1809,7 @@
   // picks a Domain up and a tap on a slot lays it (the last one lays itself); a tap on a laid one picks it up again,
   // and a second tap on one in the hand, or a hold, reads it. The engine's E.setupLay and E.setupRoll do the rest.
   const SU_SLOT = { gate: 0, out: 1 };
+  let suBtns = {};
   function suBegin() {
     if (!G || G.ph !== 'setup') return;
     if (NET) return NET.su();   // NET hook
@@ -1833,9 +1834,8 @@
     tile.appendChild(art);
     tile.appendChild(el('span', { class: 'pl-plate' }, [el('span', { class: 'pl-name' + (pi.n.length > 15 ? ' long' : ''), text: pi.n }), DSHORT[pi.pw] ? el('span', { class: 'pl-rule', text: DSHORT[pi.pw] }) : null]));
     if (AD) AD.tile(tile, { key: pk, reg: pi.reg });
-    // (a power that does nothing where it is laid looks idle: Commerce and Greenwich at a Gate, Lisbon away from the
-    // Crossroads, Citadelle Laferrière at a Gate, L'Anse aux Meadows on its own side: E.pw, and actions() for L'Anse)
-    if ((at === 'gate' && (pi.d === 'Commerce' || pi.pw === 'clock' || pi.pw === 'citadel')) || ((at === 'gate' || at === 'out') && (pi.pw === 'monopoly' || pi.pw === 'landing'))) tile.classList.add('idle');
+    // (a power that does nothing where it is laid looks idle: suIdle)
+    if (at && suIdle(pk, at === 'cross' ? 'offer' : at)) tile.classList.add('idle');
     return tile;
   }
   const suBack = cls => el('span', { class: 'su-back' + (cls ? ' ' + cls : ''), 'aria-label': 'A Domain laid face down' });
@@ -1900,37 +1900,227 @@
     n.appendChild(el('div', { class: 'cap-txt' + (me ? '' : ' dim'), text: shown || !me ? '' : full ? (next ? (N > 2 ? 'Your Domains lie face down until everyone has laid theirs.' : 'Your Domains lie face down until both of you have laid yours.') : (N > 2 ? 'The highest roll’s offer is the Crossroads.' : 'The higher roll’s offer is the Crossroads.')) : 'Lay three of your ' + ['', 'one', 'two', 'three', 'four', 'five'][su.drew[v].length] + ' Domains.' }));
     // the hand: the Domains drawn and not yet laid
     const h = dom.hand; h.innerHTML = ''; h.classList.add('su');
+    if (suBtns._o !== v || suBtns._d !== su.drew[v]) { suBtns = { _o: v, _d: su.drew[v] }; }   // (another player's Domains, or a new game: new buttons)
     // (each Domain drawn is shown as the tile it will be on the map, its name and rule as large as the hand's room allows:
     // layoutHand, suHand. Audit 4.1, 2026-11-14: as small upright cards their rules were 7px)
-    const face = id => suTile(id, '', null, 'span');
+    const face = id => suTile(id, '', null, 'span'), inHand = {};
     if (me) su.drew[v].filter(id => id !== put.gate && id !== put.out && id !== put.offer).forEach(id => {
       // (once three are laid, the one left over turns face down and is tucked under a card back that stands for the stack:
       // it goes under the stack. Tim: "animate the unchosen domain card to flip face down as it is tucked under". It can
       // still be picked up, face up again, and laid in place of another)
-      const tuck = full && sel !== id;
-      if (!tuck) { h.appendChild(el('button', { type: 'button', class: 'hc su-h' + (sel === id ? ' sel' : ' ok'), 'data-su': id, 'aria-label': C.PLACES[id].n }, [face(id)])); return; }
+      const tuck = (full || put.under === id) && sel !== id;
+      // (a Domain in the hand keeps its button from one redraw to the next, so a redraw changes nothing you can see and
+      // picking one up glides it up, .hc's transition: a new button for every Domain on every tap was painted afresh)
+      if (!tuck) { const k = 'hc su-h' + (sel === id ? ' sel' : ' ok'); let b = suBtns[id];
+        if (b) { const im = artImg(id, true); if (im && !b.contains(im)) b = null; }   // (its picture is the one this redraw hands out for it: artImg's pass)
+        if (!b) b = el('button', { type: 'button', 'data-su': id, 'aria-label': C.PLACES[id].n }, [face(id)]);
+        if (b.className !== k) b.className = k; suBtns[id] = b; inHand[id] = 1; h.appendChild(b); return; }
       const go = me.tucked !== id; me.tucked = id;
       const c = el('button', { type: 'button', class: 'hc su-h su-under', 'data-su': id, 'aria-label': C.PLACES[id].n + ', going under your stack' }, [el('span', { class: 'su-tk' }, [el('span', { class: 'su-tf' }, [face(id)]), el('span', { class: 'su-tb' }, [suBack()])])]);
       h.appendChild(el('span', { class: 'su-stack' + (go ? ' go' : '') }, [c, suBack('stk')]));
       if (go) { setTimeout(() => Kit.sfx('flip', .5), 380); setTimeout(() => { Kit.sfx('deal', .5); Kit.haptic('light'); }, 820); }
     });
+    Object.keys(suBtns).forEach(id => { if (id[0] !== '_' && !inHand[id]) delete suBtns[id]; });
   }
   function suTap(e) {
     const me = ui.su; if (!me || ui.busy || ui.hideHand || G.ph !== 'setup' || S.su.step === 'done') return;
     const slot = e.target.closest('[data-slot]'), d = e.target.closest('[data-su]');
     if (slot && me.sel) {
-      const k = slot.dataset.slot; me.put[k] = me.sel; me.sel = null;
-      const left = S.su.drew[me.o].filter(id => id !== me.put.gate && id !== me.put.out && id !== me.put.offer), free = ['gate', 'out', 'offer'].filter(x => !me.put[x]);
-      if (left.length === 1 && free.length === 1) me.put[free[0]] = left[0];   // (the last one lays itself)
+      const k = slot.dataset.slot; suPut(me, k, me.sel); me.sel = null;   // (what was there goes back to the hand, or changes places with it; the last one lays itself)
       Kit.sfx('deal'); Kit.haptic('light'); render();
       const land = dom.root.querySelector('.pl-tile.placed[data-su="' + me.put[k] + '"], .su-off[data-su="' + me.put[k] + '"]'); if (land) land.classList.add('in');
       return;
     }
     if (!d) { if (me.sel) { me.sel = null; render(); } return; }
     const id = d.dataset.su, inHand = !!d.closest('.an-hand');
-    if (inHand) { if (me.sel === id) { openView(id); return; } me.sel = id; Kit.sfx('tap'); Kit.haptic('light'); render(); return; }
+    if (inHand) { if (me.sel === id) { suScan(id); return; } me.sel = id; Kit.sfx('tap'); Kit.haptic('light'); render(); return; }
     for (const k in me.put) if (me.put[k] === id) delete me.put[k];   // (a laid one is picked up again)
     me.sel = id; Kit.sfx('tap'); render();
+  }
+  // ── Where each Domain lies at the set-up ──
+  // A place at the set-up is 'gate', 'out', 'offer' (your offer for the Crossroads) or 'under' (your stack). ui.su.put
+  // holds the first three, and 'under' only for a Domain put under the stack before three are laid; once three are laid,
+  // the one left over is the one that goes under.
+  const SU_KS = ['gate', 'out', 'offer'];
+  // where a Domain's power does nothing, as E.pw has it: a Commerce Domain and Greenwich at a Gate, Citadelle Laferrière
+  // away from an Outpost, Lisbon away from the Crossroads, Machu Picchu at the Crossroads, and L'Anse aux Meadows on its
+  // own player's side (actions())
+  function suIdle(pk, k) {
+    const pi = C.PLACES[pk]; if (!pi || !k || k === 'under') return false; const w = pi.pw;
+    if (w === 'monopoly' || w === 'landing') return k !== 'offer';
+    if (w === 'citadel') return k !== 'out';
+    if (w === 'closed') return k === 'offer';
+    return k === 'gate' && (pi.d === 'Commerce' || w === 'clock');
+  }
+  const suFull = me => SU_KS.every(k => me.put[k]);
+  const suLeft = me => S.su.drew[me.o].filter(id => SU_KS.every(k => me.put[k] !== id) && me.put.under !== id);
+  // the Domain at place k now, or null
+  function suOcc(me, k) { if (k !== 'under') return me.put[k] || null; if (me.put.under) return me.put.under; const l = suLeft(me); return suFull(me) && l.length === 1 ? l[0] : null; }
+  const suWhere = (me, id) => SU_KS.concat(['under']).find(k => suOcc(me, k) === id) || null;
+  // Lay Domain id at place k. What was there changes places with it, or goes back to the hand when id came from the
+  // hand; the last one lays itself. False when it is there already.
+  function suPut(me, k, id) {
+    const was = suWhere(me, id), there = suOcc(me, k); if (was === k) return false;
+    if (was && was !== 'under') delete me.put[was]; if (me.put.under === id) delete me.put.under;
+    if (k === 'under') me.put.under = id; else me.put[k] = id;
+    if (there && there !== id && was) { if (was === 'under') me.put.under = there; else me.put[was] = there; }
+    const left = suLeft(me), free = SU_KS.filter(x => !me.put[x]);
+    if (left.length === 1 && free.length === 1) me.put[free[0]] = left[0];
+    if (suFull(me)) delete me.put.under;
+    return true;
+  }
+
+  // ═══ The set-up's strip ═══════════════════════════════════════════════════════════════════════════════════
+  // Tim, 2026-11-16: "this is a group of cards i should be able to flip through with the carousel and have actions
+  // available to select while reviewing, well-designed in line with the rest of the game, thoughtful, and context-aware".
+  // The Domains you drew go by on the strip (makeFlow, as in the scan and the Library), opened by a second tap on one in
+  // your hand or a hold on any of yours, hand or table, at that card. Under the card in front lies the set-up's road
+  // (suRoad), the scan's road for the set-up: your Gate, your Outpost and the Crossroads in the order they lie on the
+  // table, then your stack. Each is a small tile with this Domain laid there, its power struck through where it would do
+  // nothing (suIdle); what lies there now in a medallion at its corner; and what a tap does on its pill: Lay, Offer,
+  // Under, Swap (the one there changes places with this one), Replace (the one there goes back to your hand) or Here. A
+  // tap lays it (suPut): the Domain flies down into its tile and the strip moves on to the next Domain still in your hand;
+  // once three are laid it closes onto the table, where Roll the dice waits. A laid Domain can go to any other place, or
+  // Back into your hand. A small star on a pill marks a good place for it (the best lay for your deck by the robots' own
+  // measure, E.layScore, avoiding a place where its power does nothing). The table is drawn once, as the strip closes, with each Domain that moved coming into its place.
+  // A new kind of set-up action is a place in SU_PL (and suOrder, suOcc) or a button on the road's line in suRoad.
+  const SU_STACK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><rect x="7" y="3" width="12" height="15" rx="2"/><path d="M4.5 7v11.5A2.5 2.5 0 0 0 7 21h9"/></svg>';
+  const SU_PL = { gate: { n: 'Gate', at: 'Laid at your Gate', lay: 'Lay', ic: () => SVG.posGate, say: 'your Gate' },
+    out: { n: 'Outpost', at: 'Laid at your Outpost', lay: 'Lay', ic: () => SVG.posOut, say: 'your Outpost' },
+    offer: { n: 'Crossroads', at: 'Your offer for the Crossroads', lay: 'Offer', ic: () => SVG.posCross, say: 'your offer for the Crossroads' },
+    under: { n: 'Stack', at: 'Going under your stack', lay: 'Under', ic: () => SU_STACK, say: 'under your stack' } };
+  // (as they lie on the table: the battle line runs Gate, Outpost, Crossroads from the left; upright, the Crossroads is at the top)
+  const suOrder = () => (ui.lay && ui.lay.ln ? ['gate', 'out', 'offer'] : ['offer', 'out', 'gate']).concat(['under']);
+  // a Domain as a small tile at place k: its picture, its kind's frame, its name and its power, struck where it does nothing
+  function suMini(pk, k) {
+    const pi = C.PLACES[pk], AD = window.AnoriaDomains, t = el('span', { class: 'pl-tile rd-tile' + (suIdle(pk, k) ? ' idle' : '') });
+    const art = el('span', { class: 'pl-art' }, [el('span', { class: 'na' })]), im = artImg(pk, true, true); if (im) art.appendChild(im); t.appendChild(art);
+    t.appendChild(el('span', { class: 'pl-plate' }, [el('span', { class: 'pl-name', text: domShort(pi.n) }), DSHORT[pi.pw] ? el('span', { class: 'pl-rule', text: DSHORT[pi.pw] }) : null]));
+    if (AD) AD.tile(t, { key: pk, reg: pi.reg });
+    if (!im && AD) art.style.setProperty('--kc', (AD.KINDS[AD.kindOf(pk)] || {}).c || '#223');
+    return t;
+  }
+  function suDims(box) {
+    const W = window.innerWidth, H = window.innerHeight, side = W > H * 1.15 && (H <= 560 || W >= 960);
+    const w = box && box.clientWidth ? box.clientWidth : side ? (W - 16) / 2.15 - 20 : Math.min(W - 24, 640), gap = W < 500 ? 5 : 8;
+    const rw = Math.max(52, Math.min(side ? 118 : 132, Math.floor((w - 3 * gap) / 4))), rh = Math.round(rw * .62);
+    return { rw: rw, rh: rh, gap: gap, h: 18 + rh + 22 + 8 + 52, chips: 52 };
+  }
+  // the words on the road's tiles stay on them: smaller, then the power's words go (the struck picture still says it)
+  function suFitRoad(box) {
+    box.querySelectorAll('.su-k').forEach(k => { k.classList.remove('sm', 'xs'); if (k.scrollWidth > k.clientWidth + 1) k.classList.add('sm'); if (k.scrollWidth > k.clientWidth + 1) k.classList.add('xs'); });
+    box.querySelectorAll('.su-rt > .rd-tile').forEach(t => { const p = t.querySelector('.pl-plate'); if (!p) return; t.classList.remove('sm', 'nr');
+      const bad = () => p.offsetHeight > t.offsetHeight * .8 || p.scrollWidth > p.clientWidth + 1 || Array.prototype.some.call(p.children, c => c.scrollWidth > c.clientWidth + 1);
+      if (bad()) t.classList.add('sm'); if (bad()) t.classList.add('nr'); });
+  }
+  function suScan(id0) {
+    const me = ui.su;
+    if (!G || !S || !S.su || !me || me.o !== ui.view || ui.hideHand || S.su.step !== 'lay' || S.su.drew[me.o].indexOf(id0) < 0) return openView(id0);   // (not yours to lay: read it on its own)
+    closeView(); Kit.sfx('flip'); Kit.haptic('light');
+    const keys = S.su.drew[me.o].slice(), n = keys.length, put0 = Object.assign({}, me.put);
+    let dirty = !!me.sel, nxT = 0, F = null; me.sel = null;
+    const can = () => ui.su === me && !ui.busy && !me.wait && G && G.ph === 'setup' && S.su.step === 'lay';
+    // (a good place for each: the best lay for your deck by the robots' own measure, E.layScore as E.setupPick weighs it,
+    // and never where a power would do nothing while another lay avoids that)
+    const best = {}; try { const P = S.P[me.o], info = E.deckInfo(P.deck.concat(P.hand)), lv = S.cfg.layv, off = x => (suIdle(x.gate, 'gate') ? 1 : 0) + (suIdle(x.out, 'out') ? 1 : 0) + (suIdle(x.offer, 'offer') ? 1 : 0);
+      let a = null, bv = -1e9; E.setupOptions(S, me.o).forEach(x => { const v = E.layScore(x.gate, 0, info, lv) + E.layScore(x.out, 1, info, lv) + .5 * E.layScore(x.offer, 2, info, lv) - 5 * off(x); if (v > bv) { bv = v; a = x; } });
+      if (a) { best[a.gate] = 'gate'; best[a.out] = 'out'; best[a.offer] = 'offer'; keys.forEach(k => { if (!best[k]) best[k] = 'under'; }); } } catch (e) {}
+    const flow = el('div', { class: 'vf-flow' }), body = el('div', { class: 'sc-body' }, [flow]), road = el('div', { class: 'sc-road su-road' }), under = el('div', { class: 'vf-notes' }), hb = el('b'), hs = el('small');
+    const strip = el('div', { class: 'vf-strip' }, keys.map((k, i) => { const t = el('button', { type: 'button', class: 'vf-t su-tt', 'aria-label': C.PLACES[k].n, onclick: e => { e.stopPropagation(); F.settle(i, 0); } });
+      const im = artImg(k, true, true); if (im) t.appendChild(im); t.appendChild(el('span', { class: 'su-tm', 'aria-hidden': 'true' })); return t; }));
+    const v = el('div', { class: 'view flow scan su-scan', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Your Domains', onclick: e => { if (F && F.moved()) return; if (e.target === v || e.target === flow || e.target === body) closeView(); } }, [
+      el('button', { type: 'button', class: 'icon-btn view-x', 'aria-label': 'Close', html: Kit.icon('close'), onclick: closeView }), el('div', { class: 'vf-head' }, [hb, hs]), body, strip, road, under]);
+    // the head, the marks on the thumbnails, the road and the notes, for the card in front (k: a tile just laid, waiting for its Domain to land)
+    function paint(i, k) {
+      const id = keys[i], w = suWhere(me, id), on = can();
+      hb.textContent = suFull(me) ? 'Your three Domains are laid' : 'Lay three of your four Domains';
+      hs.textContent = w ? SU_PL[w].at : 'In your hand'; hs.className = w ? 'own o' + me.o : '';
+      keys.forEach((x, j) => { const t = strip.children[j], at = suWhere(me, x), m = t.querySelector('.su-tm'), ic = at ? SU_PL[at].ic() : ''; t.classList.toggle('laid', !!at); if (m.innerHTML !== ic) m.innerHTML = ic; t.setAttribute('aria-label', C.PLACES[x].n + (at ? ', ' + SU_PL[at].say : ', in your hand')); });
+      suRoad(i, w, on, k);
+      under.innerHTML = ''; const nt = notesFor(id); while (nt.firstChild) under.appendChild(nt.firstChild); under.scrollTop = 0;
+    }
+    function suRoad(i, w, on, fresh) {
+      const id = keys[i], D = suDims(road), nm = C.PLACES[id].n;
+      road.innerHTML = ''; road.className = 'sc-road su-road' + (on ? '' : ' off'); road.style.setProperty('--mc', 'var(--pc' + me.o + ')');
+      [['--rw', D.rw], ['--rh', D.rh], ['--rg', D.gap], ['--rc', D.chips]].forEach(x => road.style.setProperty(x[0], x[1] + 'px')); road.style.height = D.h + 'px';
+      const row = el('div', { class: 'rd-row' });
+      suOrder().forEach(k => {
+        const now = suOcc(me, k), here = now === id, lit = on && !here, idle = suIdle(id, k);
+        const word = here ? 'Here' : !now ? SU_PL[k].lay : w ? 'Swap' : 'Replace';
+        const said = here ? nm + ' is ' + SU_PL[k].say : (k === 'under' ? 'Put ' + nm + ' under your stack' : (k === 'offer' ? 'Offer ' + nm + ' for the Crossroads' : 'Lay ' + nm + ' at ' + SU_PL[k].say)) + (now ? (w ? ', and ' + C.PLACES[now].n + ' takes its place' : ', and ' + C.PLACES[now].n + ' goes back to your hand') : '') + (idle ? '. Its power does nothing there' : '') + (best[id] === k && on ? '. This is a good place for it' : '');
+        const b = el(lit ? 'button' : 'span', { class: 'rd-t su-rt' + (lit ? ' lit' : '') + (here ? ' here' : '') + (idle ? ' idle' : ''), type: lit ? 'button' : null, 'data-k': k, 'aria-label': said });
+        b.appendChild(el('span', { class: 'su-k', html: SU_PL[k].ic() + '<span>' + SU_PL[k].n + '</span>' }));
+        const tile = k === 'under' ? el('span', { class: 'pl-tile rd-tile su-stk' }, [suBack()]) : suMini(id, k);
+        if (fresh === k) tile.classList.add('wait');
+        b.appendChild(tile);
+        if (now && !here) { const pic = el('span', { class: 'rd-pic su-now' }), im = artImg(now, true, true); if (im) pic.appendChild(im); b.appendChild(pic); }
+        b.appendChild(el('span', { class: 'rd-g' + (here ? ' here' : '') }, [best[id] === k && !here && on ? el('span', { class: 'su-sug' }) : null, el('span', { text: word })]));
+        if (lit) b.addEventListener('click', e => { e.stopPropagation(); lay(k); });
+        row.appendChild(b);
+      });
+      road.appendChild(el('div', { class: 'rd-rows' }, [row]));
+      const line = el('div', { class: 'rd-chips' });
+      if (on && w && (w !== 'under' || me.put.under === id)) line.appendChild(el('button', { type: 'button', class: 'btn btn-sm btn-soft rd-b', onclick: e => { e.stopPropagation(); back(); } }, [el('span', { text: 'Back into your hand' })]));
+      road.appendChild(line);
+      suFitRoad(road);
+    }
+    function lay(k) {
+      if (!can() || !F) return; const i = Math.round(F.pos), id = keys[i];
+      const c = F.items[i] && F.items[i].querySelector('.ac'), r0 = c ? c.getBoundingClientRect() : null;
+      if (!suPut(me, k, id)) return;
+      dirty = true; Kit.sfx('deal'); Kit.haptic('light');
+      paint(i, k); fly(id, k, r0, road.querySelector('[data-k="' + k + '"] > .rd-tile'));
+      clearTimeout(nxT);
+      if (suFull(me)) { nxT = setTimeout(() => { if (viewEl === v) closeView(); }, 820); return; }
+      // (on to the next Domain still in your hand)
+      let nx = -1; for (let d = 1; d < n && nx < 0; d++) { const j = (i + d) % n; if (!suWhere(me, keys[j])) nx = j; }
+      if (nx >= 0) nxT = setTimeout(() => { if (viewEl === v && F && Math.round(F.pos) === i && !F.moved()) F.settle(nx, 0); }, 560);
+    }
+    function back() {
+      if (!can() || !F) return; const i = Math.round(F.pos), id = keys[i];
+      SU_KS.forEach(k => { if (me.put[k] === id) delete me.put[k]; }); if (me.put.under === id) delete me.put.under;
+      dirty = true; Kit.sfx('tap'); Kit.haptic('light'); paint(i);
+    }
+    // the Domain flies down from the card in front into its tile on the road
+    function fly(id, k, r0, tile) {
+      if (!tile) return; const done = () => { tile.classList.remove('wait'); tile.classList.add('pop'); };
+      if (!r0 || !document.body.animate || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return done();
+      const r1 = tile.getBoundingClientRect(); if (!r1.width) return done();
+      const g = k === 'under' ? el('span', { class: 'pl-tile rd-tile su-stk' }, [suBack()]) : suMini(id, k);
+      const box = el('div', { class: 'su-fly', 'aria-hidden': 'true', style: { width: r1.width + 'px', height: r1.height + 'px', '--rw': r1.width + 'px', '--rh': r1.height + 'px' } }, [g]);
+      const s0 = Math.max(1, Math.min(1.8, r0.width * .6 / r1.width)), x0 = r0.left + (r0.width - r1.width * s0) / 2, y0 = r0.top + r0.height * .22;   // (it lifts off the card's picture, a little larger than its tile)
+      document.body.appendChild(box);
+      const a = box.animate([{ transform: 'translate(' + x0 + 'px,' + y0 + 'px) scale(' + s0 + ')', opacity: 0 }, { transform: 'translate(' + x0 + 'px,' + (y0 + 10) + 'px) scale(' + s0 + ')', opacity: 1, offset: .14 },
+        { transform: 'translate(' + r1.left + 'px,' + r1.top + 'px) scale(1)', opacity: 1 }], { duration: 480, easing: 'cubic-bezier(.35,.6,.25,1)' });
+      a.onfinish = a.oncancel = () => { box.remove(); done(); };
+    }
+    // Upright the card is as tall as the room left once the road and the longest of the four notes have theirs, so nothing
+    // moves from card to card; sideways the road and notes have the right-hand side to themselves (the scan's layout)
+    function size() {
+      const W = window.innerWidth, H = window.innerHeight, side = W > H * 1.15 && H <= 560; v.classList.toggle('sd', scanWide());
+      flow.style.removeProperty('--cu'); if (side || scanWide()) return;
+      let most = 0; under.style.flex = 'none'; under.style.height = 'auto';   // (each one's own height, not the room the column gives it)
+      keys.forEach(k => { under.innerHTML = ''; const nt = notesFor(k); while (nt.firstChild) under.appendChild(nt.firstChild); most = Math.max(most, under.scrollHeight); }); under.style.flex = ''; under.style.height = ''; under.innerHTML = '';
+      const cs = getComputedStyle(v), room = H - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - v.querySelector('.vf-head').offsetHeight - (strip.offsetHeight || 46) - suDims(road).h - 4 * 8;
+      flow.style.setProperty('--cu', Math.round(Math.max(200, Math.min(520, W * 1.3, room - Math.min(most, Math.max(96, H * .22))))) + 'px');
+    }
+    const resize = () => { size(); if (F) { F.reset(); paint(Math.round(F.pos)); } };
+    const resize2 = () => { resize(); setTimeout(() => { if (v.isConnected) resize(); }, 350); };
+    const key = e => { if (F) F.key(e); };
+    document.addEventListener('keydown', key); window.addEventListener('resize', resize2); window.addEventListener('orientationchange', resize2);
+    // closing: the table is drawn once, with each Domain that moved coming into its place
+    v._off = () => {
+      if (F) F.stop(); clearTimeout(nxT); document.removeEventListener('keydown', key); window.removeEventListener('resize', resize2); window.removeEventListener('orientationchange', resize2);
+      if (!dirty || ui.su !== me || !G || G.ph !== 'setup' || !dom.root || !dom.root.isConnected) return;
+      render();
+      SU_KS.forEach(k => { const id = me.put[k]; if (!id || id === put0[k]) return; const t = dom.root.querySelector('.pl-tile.placed[data-su="' + id + '"], .su-off[data-su="' + id + '"]'); if (t) t.classList.add('in'); });
+    };
+    document.body.appendChild(v); viewEl = v; document.addEventListener('keydown', viewKey);
+    const at0 = Math.max(0, keys.indexOf(id0));
+    F = makeFlow({ flow: flow, strip: strip, n: n, at: at0, wheel: v, rest: i => { paint(i); warm(keys); },
+      make: j => el('div', { class: 'vf-c', onclick: e => { e.stopPropagation(); if (F.moved()) return; if (j !== Math.round(F.pos)) F.settle(j, 0); } }, [cardEl(keys[j], { now: true, tg: true })]) });
+    paint(at0); size(); F.render(); paint(at0);
+    requestAnimationFrame(() => requestAnimationFrame(() => v.classList.add('show')));
   }
   function suDone() {
     const me = ui.su; if (!me || ui.busy) return;
@@ -2621,6 +2811,14 @@
   // Sizes from the room there is
   function layout() { if (!dom.map) return; layoutHand(); layoutMap(); }
   function layoutHand() { layoutHandPlay(); if (G && G.ph === 'setup' && dom.hand && dom.hand.classList.contains('su')) suHand(); }
+  // The window's height with Safari's bars tucked away: the tallest it has been at this width. (Tim, 2026-11-16: the
+  // set-up's Domains redrew as he tapped them and closed the reader, changing size and place for a few frames. A tap
+  // brings Safari's bar up or lets it go, the window's height changes by about 40px, and every change of size redraws
+  // the table, twice. The hand's layout was chosen by the window's height, at 740: an iPhone 17 Pro in Safari stands
+  // either side of that as its bar comes and goes, so each time the hand was drawn in the other layout and back.)
+  // The hand's layout reads this, so the bar coming and going changes only the room the map has.
+  var tallW = 0, tallV = 0;   // (var and a function: read by the first layout, wherever that comes in the page's start)
+  function tallH() { const W = window.innerWidth, H = window.innerHeight; if (W !== tallW) { tallW = W; tallV = 0; } if (H > tallV) tallV = H; return tallV; }
   // The set-up's hand: the Domains drawn, as tiles in one row or two, whichever makes them bigger, in the room the hand
   // keeps for the game, so nothing moves when the first turn begins (a short phone, which keeps none, gives it about two
   // rows' worth). The words on them are fitted with the map's (fitPlates).
@@ -2630,7 +2828,7 @@
     const cs = getComputedStyle(h), W = h.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0) - 2, L = ui.lay || {};
     const g = W > 600 ? 10 : 6, top = (parseFloat(cs.paddingTop) || 0) + 6;
     let R = parseFloat(h.style.minHeight) || 0, A = L.short ? .5 : .56, own = false;
-    if (R < W * .4 && !L.ln) { R = Math.round(Math.min(W * .46, window.innerHeight * .24)); own = true; A = .38; }   // (a short phone: wider, lower tiles)
+    if (R < W * .4 && !L.ln) { R = Math.round(Math.min(W * .46, tallH() * .24)); own = true; A = .38; }   // (a short phone: wider, lower tiles)
     // (sized for all four drawn, so a tile keeps its size as the others are laid and the last is tucked under the stack)
     const room = R - top, cap = L.short ? 150 : 220, nn = Math.max(n, 4);
     let best = 0, rows = 1, per = n;
@@ -2650,7 +2848,7 @@
     h.classList.remove('two'); Array.prototype.forEach.call(h.children, c => c.classList.remove('r0'));
     h.style.setProperty('--ho', g + 'px'); h.style.paddingBottom = '';
     let hw, rows = 1, per = n;
-    const cap = Math.min(132, Math.max(window.innerHeight, window.innerWidth) * .098);
+    const cap = Math.min(132, Math.max(tallH(), window.innerWidth) * .098);
     h.style.minHeight = '';
     if (ui.lay && ui.lay.ln) {
       // The battle line: the hand is one row of whole cards along the dock, as big as eight of them side by side allow;
@@ -2673,7 +2871,7 @@
       for (let rw = 1; rw <= 3; rw++) { const pr = Math.ceil(n / rw), v = fit(rw, pr); if (v > hw + 2) { hw = v; rows = rw; per = pr; } }
     } else {
       // upright: one row while the names stay readable, else two (a phone keeps room for two rows, so the map never jumps)
-      const phone = W < 560 && window.innerHeight >= 740; if (phone) per = Math.max(4, Math.ceil(n / 2));   // (a short phone keeps one row of small cards)
+      const phone = W < 560 && tallH() >= 740; if (phone) per = Math.max(4, Math.ceil(n / 2));   // (a short phone keeps one row of small cards)
       rows = phone ? 2 : 1;
       const hw4 = Math.min((W - 3 * g) / 4, cap);
       hw = Math.min((W - (per - 1) * g) / per, cap);
@@ -2690,7 +2888,7 @@
           const hw5 = Math.floor(Math.min((W - 4 * g) / 5, cap)); per = Math.max(5, Math.ceil(n / 2)); rows = n > per ? 2 : 1;
           hw = Math.min((W - (per - 1) * g) / per, cap); h.style.minHeight = Math.ceil(2 * hw5 * 1.4 + g + 18) + 'px'; h.style.paddingBottom = '10px';   // (the last row clear of the screen's rounded corners)
         }
-        else if (window.innerHeight >= 740) {
+        else if (tallH() >= 740) {
           const hr8 = Math.floor(Math.min((W - 7 * g) / 8, cap)); per = Math.max(n, 5); rows = 1;
           hw = Math.min((W - (per - 1) * g) / per, hr8); h.style.minHeight = Math.ceil(hr8 * 1.4 + 8) + 'px';
           // (more than eight: the cards keep the size of eight and overlap, as a hand of cards is held, each name down the
