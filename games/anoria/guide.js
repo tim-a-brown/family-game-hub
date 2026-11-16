@@ -441,6 +441,7 @@
         await L.say('The Silk Road is joined to every Domain on the map, so it makes a strong offer for the Crossroads in the middle.', { at: card('silk') });
         await L.press(card('silk')); await L.press(slot('offer'));
         await L.say('Greenwich is the one left over. It turns face down and goes under your stack, so it can still come up later in the game.', { at: '.an-hand' });
+        await L.say('When you lay your own Domains, tap one twice or hold it to look through all four on a strip. Your Gate, your Outpost, the Crossroads and your stack lie under each one, and a tap there lays it.', { at: '.an-hand' });
         await L.say('Sprocket has laid three Domains face down too. Now both of you roll a die, and the higher roll’s offer is laid at the Crossroads.', { at: '.an .st-go' });
         L.hush(); const fin = UI().demo.suDone(); await L.press('.an .st-go'); await fin; await L.pause(300);
         await L.say('Your roll was higher, so the Silk Road lies at the Crossroads as your Domain, with your avatar on its lower edge. Sprocket takes the first turn.', { at: tile(CROSS) });
