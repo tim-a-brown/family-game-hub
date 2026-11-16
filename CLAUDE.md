@@ -1078,6 +1078,9 @@ Underlying principles for everything:
   (the other way round, every card drawn flattened the board for a moment); and a lesson's caption that has to move
   comes up in its new place, it does not slide across the table. Check with the scratchpad's `gd/film.js` (films a
   game) and `gd/blink.js` (lists anything that changes and changes back within a few frames).
+- **A chosen card is lit where it lies, never raised** (Tim, 2026-11-16: "highlight but don't raise the card"; raised, a
+  hand card covered the caption over the hand): `.hc.sel`, `.fp.sel`, `.fp.card.sel` and `.stk.sel` in ui.css keep their
+  place and take a bronze ring and glow.
 - **The two-player table is the battle line** (A3, Tim, 2026-11-13: "in the battle line layout, try putting my mat on
   the left side, opponent's on the right and moving the opponent's scorebar to the right corner as well ... i still
   wanted the domains horizontal. switching the mat layout would better denote which gate/outpost belongs to whom",
