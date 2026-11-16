@@ -146,7 +146,7 @@ Underlying principles for everything:
   in the category's color. The tile view is the art up close (Tim, 2026-11-15, chosen from six looks: "use the art up close, but i want
   the art even bigger"): each game a tile of its own color with its art drawn large and tilted, running off the top right
   corner, the name and player count at the lower left on the color, a console game's cartridge the same way, and the Keep
-  playing cards to match (`html.look`, the `==LOOKS==` block in index.html). Quick notes (`Kit.toast`) are lifted glass with a hairline lit along the top.
+  playing cards to match (`html.look`, the `==LOOKS==` block in index.html). The game's own art is stamped faintly into each tile's empty color, large and turned the other way at the lower left (Tim, 2026-11-16, chosen from three textures: "definitely do art stamped in but more subtle"; `.emb`, `embEl` in index.html, opacity .06), on the Keep playing cards too; a console game keeps its plain color. Quick notes (`Kit.toast`) are lifted glass with a hairline lit along the top.
 - **What keeps the home screen smooth** (Tim, 2026-11-16: "lagginess, scrolling up and down on the iPad mini in
   landscape"; measured with the CPU slowed 4x at 1024x768). Scrolling: **no `backdrop-filter` on anything repeated per
   tile or card**. A tile's glass band and a Keep playing card's name panel are painted glass, with the art clipped at the

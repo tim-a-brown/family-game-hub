@@ -52,14 +52,7 @@ if ('serviceWorker' in navigator) {
 // name at the lower left on the color. The class keeps the look's rules apart from the list view's.
 document.documentElement.classList.add('look');
 try { localStorage.removeItem('gn_tile_look'); } catch (e) {}
-// (for now, three textures for the tiles' empty color to choose from, 2026-11-16: ?emb=1 the name pressed in, 2 the
-// game's own art stamped in, 3 a pattern for each section; ?emb=0 goes back to plain color)
-try {
-  var embQ = /[?&]emb=(\d)/.exec(location.search);
-  if (embQ) { if (/^[123]$/.test(embQ[1])) localStorage.setItem('gn_tile_emb', embQ[1]); else localStorage.removeItem('gn_tile_emb'); }
-  var embV = localStorage.getItem('gn_tile_emb');
-  if (/^[123]$/.test(embV || '')) document.documentElement.classList.add('emb' + embV);
-} catch (e) {}
+try { localStorage.removeItem('gn_tile_emb'); } catch (e) {}   // (the textures' trial switch of 2026-11-16, gone)
 // Not signed in yet (no PIN, no guest choice): send to the gate first.
 if (typeof FGHSync !== 'undefined' && !FGHSync.mode()) location.replace('./gate.html');
 document.addEventListener('visibilitychange', function () {
@@ -1471,33 +1464,17 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
 
 :root.look:not(.ng-x) :is(.sbox,.sbox.ct) :is(.st,.ago){z-index:2;}
 
-/* ── For now (2026-11-16): three textures pressed into the empty color, for Tim to choose from (?emb=1, 2 or 3, kept in
-   gn_tile_emb; ?emb=0 is plain). Each is still paint in the tile's own layer: no filter that changes, nothing moving.
-   A console game keeps its plain tile, its cartridge's label fills that part of it. ── */
+/* ── The game's own art stamped faintly into a tile's empty color (Tim, 2026-11-16, chosen from three textures:
+   "definitely do art stamped in but more subtle"): the icon very large and turned the other way at the lower left, its
+   light parts pressed in darker and its dark marks lighter, the stamp's lower edge catching the light. Paint in the
+   tile's own layer: nothing that changes, nothing moving. A console game keeps its plain tile, its cartridge's label
+   fills that part of it. ── */
 :root.look:not(.ng-x) .g.gr.tl .emb{grid-row:1;grid-column:1;z-index:0;position:relative;overflow:hidden;pointer-events:none;}
 :root.look:not(.ng-x) .sbox .art .emb{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;}
-/* 1. the name pressed into the color: set very large across the left and middle, a shade darker, its lower edges
-   catching the light */
-:root.look:not(.ng-x) .emb-t{position:absolute;left:-.05em;bottom:-.2em;font-family:var(--display);font-weight:800;font-size:38cqw;line-height:1;letter-spacing:-.04em;white-space:nowrap;
-  color:rgba(0,0,0,.085);text-shadow:0 1px 0 rgba(255,255,255,.09),0 -1px 0 rgba(0,0,0,.05);}
-:root.look:not(.ng-x) .sbox .emb-t{font-size:34cqw;bottom:-.24em;}
-/* 2. the game's own art stamped in, very large and turned the other way, at the lower left: its light parts pressed in
-   darker and its dark marks lighter, the stamp's lower edge catching the light */
-:root.look:not(.ng-x) .g.gr.tl .emb > svg.gicon,:root.look:not(.ng-x) .sbox .art .emb > svg.gicon{position:absolute;inset:auto auto -52cqw -34cqw;width:120cqw;height:120cqw;margin:0;z-index:auto;transform:rotate(16deg);opacity:.1;
-  filter:grayscale(1) invert(1) drop-shadow(0 -1px 0 #000) drop-shadow(0 1.5px 0 #fff);}
+:root.look:not(.ng-x) .g.gr.tl .emb > svg.gicon,:root.look:not(.ng-x) .sbox .art .emb > svg.gicon{position:absolute;inset:auto auto -52cqw -34cqw;width:120cqw;height:120cqw;margin:0;z-index:auto;transform:rotate(16deg);opacity:var(--emb-o,.06);
+  filter:grayscale(1) invert(1) drop-shadow(0 -1px 0 #000) drop-shadow(0 1px 0 #fff);}
 :root.look:not(.ng-x) .sbox .art .emb > svg.gicon{inset:auto auto -46cqw -30cqw;width:104cqw;height:104cqw;}
 :root.look:not(.ng-x) .emb > svg.gicon > rect:nth-of-type(-n+2){display:none;}
-/* 3. a pattern for each section, printed like a game box's background: suits, a card back's lattice, a checkerboard,
-   pips, jigsaw pieces, confetti, the weave of felt, a screen's pixels, graph paper */
-:root.emb3.look:not(.ng-x) [data-cat="cards"] .emb{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='30'%3E%3Cg transform='translate(0 1)'%3E%3Cpath d='M12 2.5s-8.2 6.4-8.2 11a4.1 4.1 0 0 0 7.1 2.8c-.2 1.8-.9 3.4-2.3 5.2h6.8c-1.4-1.8-2.1-3.4-2.3-5.2a4.1 4.1 0 0 0 7.1-2.8c0-4.6-8.2-11-8.2-11z' fill='rgba(255,255,255,0.08)' transform='translate(4 4) rotate(0 12 12) scale(0.42)'/%3E%3Cpath d='M12 21s-8.5-5.3-8.5-11.2A4.6 4.6 0 0 1 12 7.1a4.6 4.6 0 0 1 8.5 2.7C20.5 15.7 12 21 12 21z' fill='rgba(255,255,255,0.08)' transform='translate(26 4) rotate(0 12 12) scale(0.42)'/%3E%3Cpath d='M12 2L20.5 12L12 22L3.5 12z' fill='rgba(255,255,255,0.08)' transform='translate(15 19) rotate(0 12 12) scale(0.42)'/%3E%3Cpath d='M12 2.8a4.3 4.3 0 0 1 3.9 6.1a4.3 4.3 0 1 1-2.6 7.2c.2 1.9.9 3.5 2.3 5.4H8.4c1.4-1.9 2.1-3.5 2.3-5.4a4.3 4.3 0 1 1-2.6-7.2A4.3 4.3 0 0 1 12 2.8z' fill='rgba(255,255,255,0.08)' transform='translate(37 19) rotate(0 12 12) scale(0.42)'/%3E%3C/g%3E%3Cpath d='M12 2.5s-8.2 6.4-8.2 11a4.1 4.1 0 0 0 7.1 2.8c-.2 1.8-.9 3.4-2.3 5.2h6.8c-1.4-1.8-2.1-3.4-2.3-5.2a4.1 4.1 0 0 0 7.1-2.8c0-4.6-8.2-11-8.2-11z' fill='rgba(0,0,0,0.1)' transform='translate(4 4) rotate(0 12 12) scale(0.42)'/%3E%3Cpath d='M12 21s-8.5-5.3-8.5-11.2A4.6 4.6 0 0 1 12 7.1a4.6 4.6 0 0 1 8.5 2.7C20.5 15.7 12 21 12 21z' fill='rgba(0,0,0,0.1)' transform='translate(26 4) rotate(0 12 12) scale(0.42)'/%3E%3Cpath d='M12 2L20.5 12L12 22L3.5 12z' fill='rgba(0,0,0,0.1)' transform='translate(15 19) rotate(0 12 12) scale(0.42)'/%3E%3Cpath d='M12 2.8a4.3 4.3 0 0 1 3.9 6.1a4.3 4.3 0 1 1-2.6 7.2c.2 1.9.9 3.5 2.3 5.4H8.4c1.4-1.9 2.1-3.5 2.3-5.4a4.3 4.3 0 1 1-2.6-7.2A4.3 4.3 0 0 1 12 2.8z' fill='rgba(0,0,0,0.1)' transform='translate(37 19) rotate(0 12 12) scale(0.42)'/%3E%3C/svg%3E") 0 0 / 44px 30px;}
-:root.emb3.look:not(.ng-x) [data-cat="specialty"] .emb{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18'%3E%3Cg transform='translate(0 1)'%3E%3Cpath d='M0 9L9 0L18 9L9 18z' fill='none' stroke='rgba(255,255,255,0.08)' stroke-width='1.2'/%3E%3Ccircle cx='9' cy='9' r='1.6' fill='rgba(255,255,255,0.08)'/%3E%3C/g%3E%3Cpath d='M0 9L9 0L18 9L9 18z' fill='none' stroke='rgba(0,0,0,0.1)' stroke-width='1.2'/%3E%3Ccircle cx='9' cy='9' r='1.6' fill='rgba(0,0,0,0.1)'/%3E%3C/svg%3E") 0 0 / 18px 18px;}
-:root.emb3.look:not(.ng-x) [data-cat="board"] .emb{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Cg transform='translate(0 1)'%3E%3Crect x='0' y='0' width='14' height='14' fill='rgba(255,255,255,0.08)'/%3E%3Crect x='14' y='14' width='14' height='14' fill='rgba(255,255,255,0.08)'/%3E%3C/g%3E%3Crect x='0' y='0' width='14' height='14' fill='rgba(0,0,0,0.1)'/%3E%3Crect x='14' y='14' width='14' height='14' fill='rgba(0,0,0,0.1)'/%3E%3C/svg%3E") 0 0 / 28px 28px;}
-:root.emb3.look:not(.ng-x) [data-cat="dice"] .emb{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cg transform='translate(0 1)'%3E%3Ccircle cx='7' cy='7' r='2.6' fill='rgba(255,255,255,0.08)'/%3E%3Ccircle cx='25' cy='7' r='2.6' fill='rgba(255,255,255,0.08)'/%3E%3Ccircle cx='16' cy='16' r='2.6' fill='rgba(255,255,255,0.08)'/%3E%3Ccircle cx='7' cy='25' r='2.6' fill='rgba(255,255,255,0.08)'/%3E%3Ccircle cx='25' cy='25' r='2.6' fill='rgba(255,255,255,0.08)'/%3E%3C/g%3E%3Ccircle cx='7' cy='7' r='2.6' fill='rgba(0,0,0,0.1)'/%3E%3Ccircle cx='25' cy='7' r='2.6' fill='rgba(0,0,0,0.1)'/%3E%3Ccircle cx='16' cy='16' r='2.6' fill='rgba(0,0,0,0.1)'/%3E%3Ccircle cx='7' cy='25' r='2.6' fill='rgba(0,0,0,0.1)'/%3E%3Ccircle cx='25' cy='25' r='2.6' fill='rgba(0,0,0,0.1)'/%3E%3C/svg%3E") 0 0 / 32px 32px;}
-:root.emb3.look:not(.ng-x) [data-cat="puzzle"] .emb{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Cg transform='translate(0 1)'%3E%3Cpath d='M0 .6H11a3.2 3.2 0 1 1 6 0H28M27.4 0V11a3.2 3.2 0 1 0 0 6V28' fill='none' stroke='rgba(255,255,255,0.08)' stroke-width='1.2'/%3E%3C/g%3E%3Cpath d='M0 .6H11a3.2 3.2 0 1 1 6 0H28M27.4 0V11a3.2 3.2 0 1 0 0 6V28' fill='none' stroke='rgba(0,0,0,0.1)' stroke-width='1.2'/%3E%3C/svg%3E") 0 0 / 28px 28px;}
-:root.emb3.look:not(.ng-x) [data-cat="party"] .emb{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Cg transform='translate(0 1)'%3E%3Crect x='5' y='6' width='7' height='3' rx='1' fill='rgba(255,255,255,0.08)' transform='rotate(-24 8 7)'/%3E%3Ccircle cx='30' cy='9' r='2.2' fill='rgba(255,255,255,0.08)'/%3E%3Crect x='38' y='26' width='7' height='3' rx='1' fill='rgba(255,255,255,0.08)' transform='rotate(32 41 27)'/%3E%3Ccircle cx='12' cy='34' r='1.8' fill='rgba(255,255,255,0.08)'/%3E%3Cpath d='M20 22q3-4 6 0t6 0' fill='none' stroke='rgba(255,255,255,0.08)' stroke-width='1.6' stroke-linecap='round'/%3E%3Crect x='27' y='40' width='3.4' height='3.4' fill='rgba(255,255,255,0.08)' transform='rotate(20 28 41)'/%3E%3C/g%3E%3Crect x='5' y='6' width='7' height='3' rx='1' fill='rgba(0,0,0,0.1)' transform='rotate(-24 8 7)'/%3E%3Ccircle cx='30' cy='9' r='2.2' fill='rgba(0,0,0,0.1)'/%3E%3Crect x='38' y='26' width='7' height='3' rx='1' fill='rgba(0,0,0,0.1)' transform='rotate(32 41 27)'/%3E%3Ccircle cx='12' cy='34' r='1.8' fill='rgba(0,0,0,0.1)'/%3E%3Cpath d='M20 22q3-4 6 0t6 0' fill='none' stroke='rgba(0,0,0,0.1)' stroke-width='1.6' stroke-linecap='round'/%3E%3Crect x='27' y='40' width='3.4' height='3.4' fill='rgba(0,0,0,0.1)' transform='rotate(20 28 41)'/%3E%3C/svg%3E") 0 0 / 48px 48px;}
-:root.emb3.look:not(.ng-x) [data-cat="casino"] .emb{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Cg transform='translate(0 1)'%3E%3Cpath d='M0 6L6 0M-1 1L1 -1M5 7L7 5' stroke='rgba(255,255,255,0.08)' stroke-width='1'/%3E%3Cpath d='M0 0L6 6' stroke='rgba(255,255,255,0.08)' stroke-width='.6'/%3E%3C/g%3E%3Cpath d='M0 6L6 0M-1 1L1 -1M5 7L7 5' stroke='rgba(0,0,0,0.1)' stroke-width='1'/%3E%3Cpath d='M0 0L6 6' stroke='rgba(0,0,0,0.1)' stroke-width='.6'/%3E%3C/svg%3E") 0 0 / 6px 6px;}
-:root.emb3.look:not(.ng-x) [data-cat="arcade"] .emb{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Cg transform='translate(0 1)'%3E%3Crect x='1' y='1' width='4' height='4' fill='rgba(255,255,255,0.08)'/%3E%3C/g%3E%3Crect x='1' y='1' width='4' height='4' fill='rgba(0,0,0,0.1)'/%3E%3C/svg%3E") 0 0 / 6px 6px;}
-:root.emb3.look:not(.ng-x) [data-cat="tools"] .emb{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Cg transform='translate(0 1)'%3E%3Cpath d='M0 .5H14M.5 0V14' stroke='rgba(255,255,255,0.08)' stroke-width='1'/%3E%3C/g%3E%3Cpath d='M0 .5H14M.5 0V14' stroke='rgba(0,0,0,0.1)' stroke-width='1'/%3E%3C/svg%3E") 0 0 / 14px 14px;}
 
 /* ==/LOOKS== */
 </style>
@@ -1767,14 +1744,11 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     document.head.appendChild(Object.assign(document.createElement('style'), { textContent: css.join('\n') }));
     try { new Image().src = G.src; } catch (e) {}   // (fetched now, so it is there when the tiles first paint)
   })();
-  // (the texture pressed into a tile's empty color, while there are three to choose from: ?emb=1, 2 or 3. A console
-  // game keeps its plain color: its cartridge's label fills that part of the tile.)
-  function embEl(g, name) {
-    var m = /\bemb([123])\b/.exec(document.documentElement.className);
-    if (!m || g.cart) return null;
-    var e = el('span', { class: 'emb', 'aria-hidden': 'true' });
-    if (m[1] === '1') e.appendChild(el('span', { class: 'emb-t', text: name }));
-    if (m[1] === '2') e.innerHTML = GameIcon(g.id);
+  // (the game's own art stamped faintly into a tile's empty color; a console game keeps its plain color, its
+  // cartridge's label fills that part of the tile)
+  function embEl(g) {
+    if (g.cart) return null;
+    var e = el('span', { class: 'emb', 'aria-hidden': 'true' }); e.innerHTML = GameIcon(g.id);
     return e;
   }
   function glassRow(g, fav, tile) {
