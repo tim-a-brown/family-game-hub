@@ -4598,6 +4598,7 @@
   }
   Kit.init({
     id: KEY, color: '#d39b62', mark: false, rules: RULES, guide: () => { if (window.AnoriaGuide) window.AnoriaGuide.open(); else rulesScreen(); },
+    demo: () => { if (window.AnoriaGuide && !(G && G.demo)) window.AnoriaGuide.quickStart(); },   // (Watch a demo: the quick start is Arvela's demo)
     theme: { felt: ['#1b1a19', '#151413', '#121211'], wood: ['#242321', '#1b1a19'], back: ['#171615', '#8f5f33'] },
     onNew: () => { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } if (G && G.demo) demo.end(); else showSetup(); }, undo: undo,   // (NET hook)
     menu: (window.TurnNet ? TurnNet.menu() : []).concat([   // (NET hook: Play online, Leave the online game)
@@ -4768,12 +4769,14 @@
   }
 
   const saved = readSave();
-  const want = (/[?&](library|packs|decks|guide)(=|&|$)/.exec(location.search) || [])[1];   // (a row of the home screen's sheet)
+  const want = (/[?&](library|packs|decks|guide|quick)(=|&|$)/.exec(location.search) || [])[1];   // (a row of the home screen's sheet; quick: its demo button)
   if (!/[?&]art(=|&|$)/.test(location.search)) warmSmall();   // (the proof draws every picture itself)
   if (/[?&]art(=|&|$)/.test(location.search)) artProof();
   else if (saved && saved.v === 1 && saved.G && saved.G.S && !saved.G.over && saved.G.S.figs) { try { restore(saved); } catch (e) { showSetup(); } }
+  else if (want === 'quick' && window.AnoriaGuide) { try { history.replaceState(null, '', location.pathname); } catch (e) {} window.AnoriaGuide.quickStart(); return; }   // (the demo button on the home screen's sheet)
   else if (window.AnoriaGuide && window.AnoriaGuide.firstTime()) { window.AnoriaGuide.quickStart(); return; }   // (the first time here: two minutes of the game being played)
   else showSetup();
   if (want === 'guide') { if (window.AnoriaGuide) window.AnoriaGuide.open(); }
+  else if (want === 'quick') { try { history.replaceState(null, '', location.pathname); } catch (e) {} if (window.AnoriaGuide) window.AnoriaGuide.quickStart(); }   // (over a game in progress, which waits in its save)
   else if (want && Coll.load().starter) tool(want);
 })();

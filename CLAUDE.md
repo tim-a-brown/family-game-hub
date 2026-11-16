@@ -481,6 +481,65 @@ Underlying principles for everything:
 - Test hook `window.__tunnel`: `get`, `auto(on, missEvery, curve)`, `sim(seconds, untilPhase)` (full speed, no
   drawing), `hold`, `level`, `pts`, `lives`, `diff`, `tune`, `miss`, `point`, `curve`, `quality(q, lock)`, `perf`.
 
+## Demos (2026-11-16; Tim: "add demo button and develop interactive animated demos to all games possible to walk first time players through animated versions of the game accessible with a small icon on the game menu")
+
+- **What a player sees**: on the home screen's game sheet, a small round button at the header's top right (`.pk-demo`,
+  the `demo` icon, a play mark in a circle), only for a game with `demo` in games.js; it glows (a ring that grows and fades
+  on `::before`) for a game never played (no `gh_<id>` history, nothing to resume) whose demo hasn't been watched
+  (`gn_demo_seen`, a list of game ids, follows the PIN). Every such game's menu has Watch a demo under How to play
+  (`Kit.demo()`). Both open `games/<play>.html?demo=1` (`&from=home` from the sheet, so the strip's X goes back to that
+  sheet through `index.html#sheet=<id>`). A curtain with the game's icon, name and one line covers the table while the
+  script sets it, then the demo plays on the game's own table: a glass strip over the game bar (X to leave, the game's
+  icon, a dot for each beat filling in gold, Skip), caption plates (Night glass, a gold hairline along the top that fills
+  as the time to read it runs out; a tap on the caption moves on), a gold ring on what a caption is about, and a finger
+  (a translucent disc) that glides to a piece, presses with a ripple, and sends real pointer and click events so the
+  game's own animation, sound and haptic play. On the player's turns (`D.you`) the rest dims, the caption has a gold
+  pointing hand, only the ringed thing takes a tap, and a ghost finger shows the way after five seconds. The end is a
+  card: the game's icon, "You’re ready to play", the script's line, Play now (the game's page as usual: its setup, or the
+  game in progress) and Watch again (the same demo again, dealt the same).
+- **Files**: `demo.js` (the player, `KitDemo`, loaded only on a demo page; its CSS is inside it), `games/demos/<page>.js`
+  (a game's script, named after its play page: `hearts-ai.js`), the `demo` field in games.js (true, or a page of its own:
+  Arvela's is `anoria.html?quick=1`, its quick start, and its menu's Watch a demo runs `AnoriaGuide.quickStart()` through
+  `Kit.init`'s `demo` option). kit.js has `Kit.demo`, `Kit.demoScript`, `Kit.hasDemo`, `Kit.demoSeen`, `Kit.demoHref`,
+  `Kit.inDemo`, and loads demo.js and the script on a demo page. Add new scripts to `PRECACHE_URLS`.
+- **The sandbox** (the top of sync.js, before anything else runs): on a `?demo=1` page under /games/ localStorage is
+  wrapped (`Storage.prototype`, so sync.js's own handle too): settings, names, scores and history (`gn_`, `fgh_`, `hi_`,
+  `gh_`, `my_name`, `frequent_players`, `casino_bank` and the other KEEP keys) read from the device, a game's own saves
+  read as empty, and every write goes into memory for that page only. sync.js never boots, `loadFirebase` refuses,
+  `noteWrite` does nothing, the FGHSync calls that reach other people (linkSend, bankRemote, inboxAdd and the rest) are
+  no-ops, `fetch` refuses Firestore's REST address and anything sent (not fetched) to another site, `sendBeacon` sends
+  nothing, `Kit.record` files nothing, turn banners stay off and Play online says to wait. `window.__KIT_DEMO.writes`
+  lists the keys a demo wrote (in memory) and `.blocked` every cloud call it refused. `Math.random` is seeded (mulberry32,
+  `&seed=<n>` for another), so a deal or a roll comes out the same each time.
+- **A script**: `Kit.demoScript({intro, beats, end, start(D), steps: async D => {...}})`. `start` sets the table through
+  the game's test hook (behind the curtain); `beats` is the number of dots (each `D.say` and `D.you` fills one); `end` is
+  the closing card's line. In `steps`: `D.say(text, {at, ring, spot, pos, wait, avoid, dot})` (at: an element, selector or
+  function, which may give a list; the caption goes above, below or beside it, never over it or over `avoid`; pos 'top' |
+  'bottom' | 'center' with nothing to point at; `wait: false` goes on at once and leaves it up), `D.tap(target, {say})`,
+  `D.drag(from, to)`, `D.you(target, text, {allow, until, autoTap, avoid})` (allow: what may be tapped, default the target;
+  until: done when this is true, default the first tap), `D.wait(ms | fn, maxMs)`, `D.set(fn)`, `D.ring`, `D.clear`.
+  `&demoauto=1` lets the demo take the player's turns (tests and recordings). `window.__demo` has `says`, `step`, `done`.
+- **Writing one** (Tim's bar for every game applies): 45 to 90 seconds; the game's real table and real moves, never a
+  drawing of them; a position set through a hook (`window.__<game>`: start a game with given players, set the hands or
+  the board, draw again, carry on; add a small one if the game has none, as Yahtzee's `rig`, Hearts' `set` and Chess's
+  `start` were added) and robots that choose the same way every time (Spanish One's `Core.C.rng`); one or two real moves
+  by the player with `D.you`, limited to the move the story needs; the game's own rare moments where they fit (Yahtzee's
+  Yahtzee, Chess's checkmate). Captions are Tim's: whole sentences a person would say, one idea each, naming the cards and
+  pieces, said from where the player stands ("Bender took that trick, with a heart and the Queen of Spades in it. That’s
+  14 points against Bender."). Check it with the scratchpad's `demo/tools/run.js <page> <phone|side|ipad|ipadside>
+  --shots` (screenshots of every caption, whether a caption is off the screen or over its ring, and the sandbox check:
+  localStorage byte for byte before and after, requests to other hosts) and `--video`.
+- **The pilot** (for Tim to approve the look before the rest): Hearts (pass three, lead the 2 of Clubs, then the last
+  four tricks: hearts broken, the Queen of Spades on Bender, following suit, the hand's scores), Yahtzee (holding the
+  sixes, the top section's bonus, a Large Straight, a Yahtzee), Chess (pawn, bishop, knight and queen, then the player
+  checkmates with Scholar's mate), Spanish One (a number match, a Draw Two, the player's Wild and color, drawing, One
+  Card! and going out), and Arvela (its quick start).
+- **Scope for the rest**: 130 catalog entries. No demo for the 6 console entries (emulator games; the cartridges are
+  the house library's), the 7 tools (scorecard, dice-roller, randomtools, ranker, players, history, hiscores) and the 2
+  hidden entries that play inside another game (arrowjam in Mazes, tetrinet beside Tetris): 115 games can have one, 5
+  have one, 110 to go. The score keepers (hearts.html,
+  spades.html and the rest) are tools of their games and share the game's demo.
+
 ## Accounts: PIN or Google
 
 - A PIN account lives at `pins/{pin}`; a Google account (mode `google`, `FGHSync.isGoogle()`) at `users/{uid}`, readable

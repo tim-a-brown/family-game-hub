@@ -13,6 +13,8 @@
 //   play    file for "play on the phone" (vs computer / solo)
 //   score   file for "keep score for a real-life game" (optional)
 // A game with both `play` and `score` asks which one when launched.
+//   demo    (optional) the game has a demo: true plays games/demos/<play>.js on <play>.html?demo=1, a string is a page of
+//           its own (Arvela's quick start); the home sheet's round button and the game menu's Watch a demo open it
 // ═══════════════════════════════════════════════════════════════════════════
 var GAME_CATS = [
   // hue: each section has its own colour family; every game icon in the
@@ -31,7 +33,7 @@ var GAME_CATS = [
 
 var GAMES = [
   // ── Cards ────────────────────────────────────────────────────────────────
-  { id: 'hearts',      name: 'Hearts',       color: '#ff4d6d', cat: 'cards', min: 3, max: 6, tag: 'Dodge hearts and the Queen of Spades', play: 'hearts-ai', score: 'hearts' },
+  { id: 'hearts',      name: 'Hearts',       color: '#ff4d6d', cat: 'cards', min: 3, max: 6, tag: 'Dodge hearts and the Queen of Spades', play: 'hearts-ai', demo: 1, score: 'hearts' },
   { id: 'spades',      name: 'Spades',       color: '#5b6cff', cat: 'cards', min: 4, max: 4, tag: 'Bid your tricks with a partner', play: 'spades-ai', score: 'spades' },
   { id: 'pinochle',    name: 'Pinochle',     color: '#c0662e', cat: 'cards', min: 2, max: 4, tag: 'Bid, meld and take the counters', play: 'pinochle' },
   { id: 'euchre',      name: 'Euchre',       color: '#22b07d', cat: 'cards', min: 4, max: 4, tag: 'Call trump and take three tricks', play: 'euchre-ai', score: 'euchre' },
@@ -46,7 +48,7 @@ var GAMES = [
   { id: 'flip7',       name: 'Flip 7',       color: '#ff8a00', cat: 'specialty', min: 2, max: 8, tag: 'Push your luck to 200', play: 'flip7-ai', score: 'flip7' },
   { id: 'five-crowns', name: 'Five Crowns',  color: '#e2a400', cat: 'specialty', min: 2, max: 7, tag: 'Eleven rounds, the wilds keep moving', play: 'fivecrownss-ai', score: 'five-crowns' },
   { id: 'rook',        name: 'Rook',         color: '#3a86ff', cat: 'specialty', min: 4, max: 4, tag: 'Bid, name trump, capture the Rook', play: 'rook-ai', score: 'rook' },
-  { id: 'spanishone',  name: 'Spanish One',  color: '#7b3fc4', cat: 'specialty', min: 2, max: 10, tag: 'Match the color or the number, and call Last card', play: 'spanishone' },
+  { id: 'spanishone',  name: 'Spanish One',  color: '#7b3fc4', cat: 'specialty', min: 2, max: 10, tag: 'Match the color or the number, and call One Card!', play: 'spanishone', demo: 1 },
   { id: 'phase10',     name: 'Phase 10',     color: '#f72585', cat: 'specialty', min: 2, max: 6, tag: 'Race through ten phases', play: 'phase10-ai', score: 'phase10' },
   { id: 'solitaire',   name: 'Solitaire',    color: '#16a34a', cat: 'cards', min: 1, max: 1, tag: 'Classic Klondike', play: 'solitaire' },
   { id: 'freecell',    name: 'FreeCell',     color: '#0ea5e9', cat: 'cards', min: 1, max: 1, tag: 'Every deal is winnable', play: 'freecell' },
@@ -61,7 +63,7 @@ var GAMES = [
       { icon: 'pencil', title: 'Keep score', desc: 'Playing with real cards? Track the lore here', file: 'lorcana' },
       { icon: 'book', title: 'Cards and decks', desc: 'Browse every card and build your decks. Leaves any game as it is', file: 'lorcana-play.html?library=1', tool: true }
     ] },
-  { id: 'anoria',      name: 'Arvela',       color: '#c9a24a', cat: 'specialty', min: 1, max: 6, tag: 'The great figures of every age hold the wonders of the world', play: 'anoria',
+  { id: 'anoria',      name: 'Arvela',       color: '#c9a24a', cat: 'specialty', min: 1, max: 6, tag: 'The great figures of every age hold the wonders of the world', play: 'anoria', demo: 'anoria.html?quick=1',
     launch: [
       { icon: 'book', title: 'Library', desc: 'Every card in the set, and the ones you have', file: 'anoria.html?library=1', tool: true },
       { icon: 'sparkle', title: 'Packs', desc: 'Open your packs, and see the sphere and the callings', file: 'anoria.html?packs=1', tool: true },
@@ -71,7 +73,7 @@ var GAMES = [
     ] },
 
   // ── Board ────────────────────────────────────────────────────────────────
-  { id: 'chess',       name: 'Chess',        color: '#64748b', cat: 'board', min: 1, max: 2, tag: 'The classic, vs computer, a friend, or online', play: 'chess',
+  { id: 'chess',       name: 'Chess',        color: '#64748b', cat: 'board', min: 1, max: 2, tag: 'The classic, vs computer, a friend, or online', play: 'chess', demo: 1,
     launch: [
       { icon: 'phone', title: 'Play on this device', desc: 'Against the computer or pass and play', file: 'chess.html' },
       { icon: 'users', title: 'Play online', desc: 'Two devices, each signed in with its own PIN', file: 'chess.html?online=1' }
@@ -103,7 +105,7 @@ var GAMES = [
     ] },
 
   // ── Dice & luck ──────────────────────────────────────────────────────────
-  { id: 'yahtzee',     name: 'Yahtzee',      color: '#ef4444', cat: 'dice', min: 1, max: 8, tag: 'Roll for the best combos', play: 'yahtzee' },
+  { id: 'yahtzee',     name: 'Yahtzee',      color: '#ef4444', cat: 'dice', min: 1, max: 8, tag: 'Roll for the best combos', play: 'yahtzee', demo: 1 },
   { id: 'plinko',      name: 'Plinko',       color: '#eab308', cat: 'dice', min: 1, max: 4, tag: 'Drop the chip, hope for the big slot', play: 'plinko' },
   { id: 'wheeloffortune', name: 'Wheel of Fortune', color: '#7c3aed', cat: 'dice', min: 1, max: 3, tag: 'Spin, guess, solve the puzzle', play: 'wheeloffortune' },
   { id: 'dealornodeal',name: 'Deal or No Deal', color: '#ca8a04', cat: 'dice', min: 1, max: 4, tag: 'Take the offer or risk it all', play: 'dealornodeal' },

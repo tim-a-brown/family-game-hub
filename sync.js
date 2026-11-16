@@ -29,8 +29,48 @@
 // Each deck and each bookmark goes by its own timestamp, so edits, deletes and
 // un-bookmarks on one device carry over to the others.
 // Each PIN (and guest play) keeps its own space on a shared device (fgh_space, fgh_space_<id>): see switchSpace.
+// ── A demo (games/<page>.html?demo=1, demo.js): a sandbox, set up before anything else reads or writes ─────────
+// The game's own saves read as empty (so the demo deals a fresh table) while settings, names, scores and history read as
+// they are; every write lands in memory for this page only and is gone when it closes; the cloud is never loaded (see
+// loadFirebase, boot and noteWrite below), and the dice and shuffles come from a seeded generator, so a demo plays out
+// the same every time. window.__KIT_DEMO keeps what it kept from the device: writes (keys) and blocked (cloud calls).
+(function(){
+  if(!/\/games\//.test(location.pathname) || !/[?&]demo=1(&|$)/.test(location.search)) return;
+  var D = window.__KIT_DEMO = { writes: [], blocked: [] };
+  var ls; try{ ls = window.localStorage; }catch(e){ return; }
+  var SP = Storage.prototype, get = SP.getItem, set = SP.setItem, del = SP.removeItem, key = SP.key, clr = SP.clear;
+  var lenD = Object.getOwnPropertyDescriptor(SP, 'length');
+  var KEEP = /^(gn_|fgh_|hi_|gh_|lorcana_(?!play_state)|my_name$|frequent_players$|casino_bank$|rklists$|fav_games$)/;
+  var mem = Object.create(null), GONE = {};
+  function rd(k){ k = String(k); if(k in mem) return mem[k] === GONE ? null : mem[k]; return KEEP.test(k) ? get.call(ls, k) : null; }
+  function keys(){
+    var out = [], n = lenD && lenD.get ? lenD.get.call(ls) : 0;
+    for(var i = 0; i < n; i++){ var k = key.call(ls, i); if(k != null && KEEP.test(k) && !(k in mem)) out.push(k); }
+    for(var m in mem) if(mem[m] !== GONE) out.push(m);
+    return out;
+  }
+  function note(k){ if(D.writes.indexOf(k) < 0) D.writes.push(k); }
+  SP.getItem = function(k){ return this === ls ? rd(k) : get.apply(this, arguments); };
+  SP.setItem = function(k, v){ if(this !== ls) return set.apply(this, arguments); note(String(k)); mem[String(k)] = String(v); };
+  SP.removeItem = function(k){ if(this !== ls) return del.apply(this, arguments); note(String(k)); mem[String(k)] = GONE; };
+  SP.key = function(i){ if(this !== ls) return key.apply(this, arguments); var a = keys(); return i >= 0 && i < a.length ? a[i] : null; };
+  SP.clear = function(){ if(this !== ls) return clr.apply(this, arguments); keys().forEach(function(k){ note(k); mem[k] = GONE; }); };
+  try{ Object.defineProperty(SP, 'length', { configurable: true, enumerable: true, get: function(){ return this === ls ? keys().length : lenD.get.call(this); } }); }catch(e){}
+  // the deal and the dice: mulberry32 from a fixed seed (&seed=<n> tries another)
+  var s = +((/[?&]seed=(\d+)/.exec(location.search) || [])[1]) || 20261116;
+  Math.random = function(){ s = s + 0x6D2B79F5 | 0; var t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  // nothing leaves for the cloud by any road: Firestore's REST address and anything sent (not fetched) to another site
+  var f0 = window.fetch;
+  if(f0) window.fetch = function(u, o){
+    var url = String(u && u.url ? u.url : u), m = String((o && o.method) || (u && u.method) || 'GET').toUpperCase(), away = url.indexOf('http') === 0 && url.indexOf(location.origin) !== 0;
+    if(/firestore\.googleapis\.com|identitytoolkit|securetoken/.test(url) || (away && m !== 'GET' && m !== 'HEAD')){ D.blocked.push('fetch ' + m + ' ' + url.split('?')[0]); return Promise.reject(new TypeError('Not during a demo')); }
+    return f0.apply(this, arguments);
+  };
+  if(navigator.sendBeacon) navigator.sendBeacon = function(u){ D.blocked.push('beacon ' + String(u).split('?')[0]); return true; };
+})();
 (function(){
   'use strict';
+  var DEMO = !!window.__KIT_DEMO;
   // This file reads and writes the device's storage directly; everything else goes through Storage.prototype, which
   // is wrapped below (stWatch) so saves made by games are noticed and sent to the PIN's cloud copy
   var LS = (function(){
@@ -185,6 +225,7 @@
     return loadFirebase().then(function(fb){ return isGoogle() ? googleReady().then(function(){ return fb; }) : fb; });
   }
   function loadFirebase(){
+    if(DEMO){ window.__KIT_DEMO.blocked.push('cloud'); return Promise.reject(new Error('Not during a demo')); }   // (a demo never reaches the cloud)
     if(_fb) return Promise.resolve(_fb);
     if(_fbP) return _fbP;   // one load at a time: a second caller waits for the first
     var V = '10.12.2';
@@ -1556,7 +1597,7 @@
   }
 
   function noteWrite(key){
-    if(/\/games\//.test(location.pathname) && /[?&]defaults=1(&|$)/.test(location.search)) return;
+    if(DEMO || (/\/games\//.test(location.pathname) && /[?&]defaults=1(&|$)/.test(location.search))) return;
     if(!key) return;
     if(key.indexOf('hi_') !== 0 && key.indexOf('gh_') !== 0 && key.indexOf('lorcana_decks') !== 0 && key.indexOf('lorcana_marks') !== 0 && key.indexOf('lorcana_art') !== 0 && key.indexOf('lorcana_fancy') !== 0 && key !== 'fgh_avatars' && key !== 'fgh_players_at' && key !== 'fgh_gh_del' && key !== 'fgh_links' && key !== 'casino_bank' && key !== 'rklists' && key !== 'fav_games' && !PROG_RE.test(key) && !(PREF_RE.test(key) && stampPrefs())) return;
     if(isPin()){ markWrite(); schedulePush(); }
@@ -1642,7 +1683,7 @@
   // ── Bootstrap ─────────────────────────────────────────────────────────
   function boot(){
     // a page opened to edit a game's defaults (?defaults=1) changes nothing but that game's setup: no sync
-    if(/\/games\//.test(location.pathname) && /[?&]defaults=1(&|$)/.test(location.search)){ notifyReady(); return; }
+    if(DEMO || (/\/games\//.test(location.pathname) && /[?&]defaults=1(&|$)/.test(location.search))){ notifyReady(); return; }
     var m = mode();
     if(isPin() && stampPrefs()) markWrite();   // settings changed since the last sync
     if(isPin()){
@@ -2746,6 +2787,10 @@
     hiReset: HI_RESET, hiKeep: hiKeep,
     _scanLocal: scanLocal, _myHi: myHi, _mergeHi: mergeHi, _hiFromFirestore: hiFromFirestore
   };
+  // a demo: nothing goes to linked players, the inbox or the cloud (each call is noted for the demo's own check)
+  if(DEMO) ['linkSend', 'linkMark', 'linkPublish', 'linkPublishSoon', 'linkPoll', 'linkBackfill', 'bankRemote', 'inboxAdd', 'inboxRead', 'syncNow', 'forceOverwriteCloud', 'forceOverwriteLocal', 'setLabel'].forEach(function(f){
+    window.FGHSync[f] = function(){ window.__KIT_DEMO.blocked.push(f); return f === 'bankRemote' ? false : f === 'syncNow' ? Promise.resolve() : undefined; };
+  });
 
   if(document.readyState === 'loading'){
     document.addEventListener('DOMContentLoaded', boot);

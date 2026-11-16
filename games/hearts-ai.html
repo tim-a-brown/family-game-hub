@@ -1086,6 +1086,19 @@
     resumeLocal();
   } else showSetup();
 
+  // (a demo or a test: start a game for these players, change the table and draw it again, carry on playing)
+  window.__hearts = {
+    state: function () { return S; },
+    start: function (cfg) {
+      token++; ME = 0; BLIND = false;
+      S = { mode: cfg.mode || 'cpu', me: 0, target: cfg.target || 100, level: lvName(cfg.level), round: 0, rounds: [], highlights: [], started: Date.now(), qs: zeros(cfg.players.length), moons: zeros(cfg.players.length),
+        players: cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu ? lvName(p.level || cfg.level) : undefined, total: p.total || 0 }; }) };
+      undoStack = []; newHand();
+    },
+    set: function (fn) { token++; fn(S); ME = S.me || 0; BLIND = false; save(); render(); },
+    go: function () { if (S && S.phase === 'play') next(); }
+  };
+
   // online tables (after the local game is drawn): opens ?online=1&room=CODE from the home screen
   TurnNet.setup({
     game: 'hearts', title: 'Hearts', min: 2, max: 6, botMs: 800,
