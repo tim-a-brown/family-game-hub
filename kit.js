@@ -2593,6 +2593,10 @@
     var w = el('div', { class: 'k-wn k-dial', role: 'spinbutton', tabindex: '0', 'aria-label': 'How many players', 'aria-valuemin': String(lo), 'aria-valuemax': String(hi), 'aria-valuenow': String(n), 'aria-valuetext': n + (n === 1 ? ' player' : ' players') });
     var drum = el('div', { class: 'k-dl-drum' }), nums = [];
     for (var k = lo; k <= hi; k++) { var b = el('b', { class: 'k-dl-n', text: String(k) }); nums.push(b); drum.appendChild(b); }
+    // an end stop in the place past the first number and past the last (Tim, 2026-11-16: "make it clear when dials can't
+    // go any further forward or backward"): a hatched block the wheel can't turn past, which lights when it is hit
+    var stops = [[lo - 1, el('i', { class: 'k-dl-stop' })], [hi + 1, el('i', { class: 'k-dl-stop' })]];
+    stops.forEach(function (x) { drum.appendChild(x[1]); });
     w.appendChild(el('i', { class: 'k-dl-rib a' })); w.appendChild(el('i', { class: 'k-dl-rib b' }));
     w.appendChild(drum); w.appendChild(el('i', { class: 'k-dl-win' }));
     var pos = n, shown = null, raf = 0, anim = null, vert = false, lastI = n;
@@ -2601,14 +2605,15 @@
     function paint() {
       raf = 0; vert = V();
       var g = gap(), R = g * 1.9;   // (the drum's radius: three numbers a side would wrap it halfway round)
-      for (var i = 0; i < nums.length; i++) {
-        var a = (lo + i - pos) * g / R;   // (the number's angle round the drum)
-        var x = nums[i];
+      var all = nums.map(function (x, i) { return [lo + i, x]; }).concat(stops);
+      for (var i = 0; i < all.length; i++) {
+        var a = (all[i][0] - pos) * g / R;   // (the number's angle round the drum)
+        var x = all[i][1];
         if (Math.abs(a) > 1.45) { if (x.__v !== 0) { x.style.opacity = '0'; x.__v = 0; } continue; }
         var off = R * Math.sin(a), sc = Math.max(.05, Math.cos(a)), op = Math.pow(Math.cos(a), 2.2);
         var t = vert ? 'translate3d(0,' + off.toFixed(2) + 'px,0) scale(1,' + sc.toFixed(3) + ')' : 'translate3d(' + off.toFixed(2) + 'px,0,0) scale(' + sc.toFixed(3) + ',1)';
         x.style.transform = t; x.style.opacity = op.toFixed(3); x.__v = 1;
-        x.classList.toggle('on', Math.abs(lo + i - pos) < .5);
+        if (x.tagName === 'B') x.classList.toggle('on', Math.abs(all[i][0] - pos) < .5);
       }
       // the ribbed edges roll with the numbers
       w.style.setProperty('--dl-rib', ((pos - lo) * g * .6).toFixed(1) + 'px');
@@ -2616,6 +2621,13 @@
       if (near !== lastI && near >= lo && near <= hi) { lastI = near; sfx('tick'); haptic('tick'); }
     }
     function draw() { if (!raf) raf = requestAnimationFrame(paint); }
+    // turned against an end: the wheel gives a little toward the stop and springs back, the stop lights, a firm tick
+    function hitStop(d) { var st = stops[d < 0 ? 0 : 1][1]; st.classList.remove('hit'); void st.offsetWidth; st.classList.add('hit'); haptic('medium'); sfx('tap'); }
+    function bump(d) {
+      hitStop(d); if (anim) cancelAnimationFrame(anim);
+      var t0 = performance.now(), base = n;
+      (function go(now) { var f = Math.min(1, (now - t0) / 320); pos = base + d * .28 * Math.sin(f * Math.PI) * (1 - f * .4); paint(); if (f < 1) anim = requestAnimationFrame(go); else { anim = null; pos = base; paint(); } })(t0);
+    }
     function settle(to) {
       to = Math.max(lo, Math.min(hi, to));
       if (anim) cancelAnimationFrame(anim);
@@ -2645,6 +2657,7 @@
       var p = drag.p0 - d / gap();
       if (p < lo) p = lo - (1 - 1 / (1 + (lo - p) * .55)) / .55 * .6;
       if (p > hi) p = hi + (1 - 1 / (1 + (p - hi) * .55)) / .55 * .6;
+      if ((p < lo - .2 || p > hi + .2) && !drag.hit) { drag.hit = true; hitStop(p < lo ? -1 : 1); } else if (p >= lo - .1 && p <= hi + .1) drag.hit = false;
       pos = p; drag.hist.push([performance.now(), pos]); if (drag.hist.length > 6) drag.hist.shift();
       draw();
     });
@@ -2653,7 +2666,8 @@
       var dr = drag; drag = null;
       if (!dr.moved) {   // a tap: the number before the window turns it down one, the number after it up one
         var r = w.getBoundingClientRect(), c = V() ? e.clientY - (r.top + r.height / 2) : e.clientX - (r.left + r.width / 2);
-        if (Math.abs(c) > 8) settle(n + (c > 0 ? 1 : -1)); else settle(n);
+        var to = n + (c > 0 ? 1 : -1);
+        if (Math.abs(c) <= 8) settle(n); else if (to < lo || to > hi) bump(c > 0 ? 1 : -1); else settle(to);
         return;
       }
       var h = dr.hist, a = h[0], z = h[h.length - 1], dt = Math.max(16, z[0] - a[0]), v = (z[1] - a[1]) / dt;   // numbers per ms
@@ -2663,7 +2677,7 @@
     w.addEventListener('click', function (e) { e.stopPropagation(); });
     w.addEventListener('keydown', function (e) {
       var d = { ArrowUp: 1, ArrowRight: 1, PageUp: 1, ArrowDown: -1, ArrowLeft: -1, PageDown: -1 }[e.key];
-      if (!d) return; e.preventDefault(); if (n + d >= lo && n + d <= hi) settle(n + d);
+      if (!d) return; e.preventDefault(); if (n + d >= lo && n + d <= hi) settle(n + d); else bump(d);
     });
     // the first frame (and any change of direction) is drawn once the dial is on the page
     var mo = new MutationObserver(function () { lastI = Math.round(pos); paint(); });

@@ -66,8 +66,8 @@
     const WHY = { game: 'for the game', win: 'for the win', daily: 'for today\u2019s first win' };
     const lit = el('ul', { class: 'rw-e-lit' }, R.lit.map(x => el('li', {}, [el('b', { text: '+' + x.n }), el('span', { text: WHY[x.why] })])));
     const packsNow = R.list.filter(x => x.t === 'pack' && x.pack.k === 'sphere').length;
-    const say = round ? (packsNow > 1 ? 'The sphere came round ' + WORD[packsNow] + ' times, and a pack is waiting for each time.' : 'The sphere came round, and a pack of\u00a0' + Coll.PACK + ' is waiting for you.')
-      : (N - R.signs) + ' more ' + ((N - R.signs) === 1 ? 'sign brings' : 'signs bring') + ' the sphere round.';
+    const say = round ? (packsNow > 1 ? 'You lit the sphere ' + WORD[packsNow] + ' times, and a pack is waiting for each one.' : 'You lit the sphere, and a pack of\u00a0' + Coll.PACK + ' is waiting for you.')
+      : (N - R.signs) + ' more ' + ((N - R.signs) === 1 ? 'sign' : 'signs') + ' to light for a pack.';
     const top = el('div', { class: 'rw-e-top' }, [sp, el('div', { class: 'rw-e-say' }, [el('span', { class: 'rw-k', text: 'This game lit ' + signs(total) }), lit, el('p', { class: 'rw-e-p' + (round ? ' gold' : ''), text: say })])]);
     const box = el('div', { class: 'rw-end' + (round ? ' round' : '') }, [top]);
     // a Guide who joined: by the sphere (chosen by you) or by their calling; the sphere's choice if it is still to make
@@ -121,12 +121,12 @@
       el('li', {}, [el('span', { class: 'rw-dm' }, Array.from({ length: x[0] }, () => el('i'))), el('span', { text: x[1] })]))));
     // the turns ahead as far as the next Guide: a step for each, a pack on every one and the Guide on the last
     if (sp.next) {
-      const ORD = ['', 'Next turn', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th'];
-      const tr = el('ol', { class: 'rw-turns', role: 'img', 'aria-label': 'A pack each time the sphere turns, and a new Guide in ' + sp.toGuide + (sp.toGuide === 1 ? ' turn' : ' turns') });
+      const ORD = ['', 'Next', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th'];
+      const tr = el('ol', { class: 'rw-turns', role: 'img', 'aria-label': 'A pack each time you light the sphere, and a new Guide in ' + sp.toGuide + (sp.toGuide === 1 ? ' time' : ' times') });
       for (let t = 1; t <= sp.toGuide; t++) tr.appendChild(el('li', { class: 'rw-t' + (t === sp.toGuide ? ' g' : '') }, [
         el('span', { class: 'rw-t-ic' }, [packFace()].concat(t === sp.toGuide ? [el('span', { class: 'rw-t-gd', html: A.MARK.guide })] : [])),
         el('small', { text: ORD[t] || t + 'th' })]));
-      L.appendChild(el('div', { class: 'rw-next' }, [el('p', { class: 'rw-lead in', text: 'When all ' + (WORD[sp.of] || sp.of) + ' are lit, the sphere turns' }), tr, el('p', { class: 'rw-key' }, [packFace(), el('span', { text: Coll.PACK + ' cards' }), el('span', { class: 'rw-key-g', html: A.MARK.guide }), el('span', { text: 'A new Guide' })])]));
+      L.appendChild(el('div', { class: 'rw-next' }, [el('p', { class: 'rw-lead in', text: 'Light all ' + (WORD[sp.of] || sp.of) + ' for a pack' }), tr, el('p', { class: 'rw-key' }, [packFace(), el('span', { text: Coll.PACK + ' cards' }), el('span', { class: 'rw-key-g', html: A.MARK.guide }), el('span', { text: 'A new Guide' })])]));
     }
     // the firsts still to come
     const firsts = Coll.nextUp().filter(x => Coll.FIRSTS[x.id]);

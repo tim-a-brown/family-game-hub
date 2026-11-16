@@ -215,7 +215,7 @@
       dots.innerHTML = ''; dots.removeAttribute('aria-label');
       const R = window.AnoriaRewards, head = R ? R.sphere({ lit: Coll.SIGNS, size: 52, cls: 'pk-ch-sph' }) : el('img', { class: 'pk-ch-logo', src: IMG + 'logo-mark.webp', alt: '', draggable: 'false' });
       const root = chooser({ keys: P.from, inSc: true, head: head, title: 'Choose who joins you',
-        sub: 'The sphere came round. The Guide you choose joins your company, with their set of 20 cards.',
+        sub: 'You lit the sphere. The Guide you choose joins your company, with their set of 20 cards.',
         see: g => { const set = Coll.setCards(g), G = TX.GUIDES[g]; return ['See the ' + set.length + ' cards of ' + Kit.poss(G.n) + ' set', () => A.browse(set, { title: Kit.poss(G.n) + ' set', sub: set.length + ' cards' })]; },
         go: g => 'Welcome ' + TX.GUIDES[g].n,
         commit: (g, again) => { root.classList.add('gone'); setTimeout(() => chosen(x, g, again), calm() ? 0 : 220); } });
@@ -258,7 +258,7 @@
         el('span', { class: 'gj-t' }, [nC, el('small', { text: 'cards' })]),
         el('span', { class: 'gj-t' }, [nD, el('small', { text: nd === doms.length ? 'Domains' : nd === 1 ? 'new Domain' : 'new Domains' })])]),
         MT ? el('span', { class: 'gj-mt' }, [el('small', { text: 'Play mat' }), el('span', { text: MT.n })]) : null]);
-      const kick = x.why === 'call' ? 'A calling is met' : x.chose ? 'You chose' : 'The sphere came round';
+      const kick = x.why === 'call' ? 'A calling is met' : x.chose ? 'You chose' : 'You lit the sphere';
       const callSay = x.why === 'call' && Coll.CALLS[g] ? Coll.CALLS[g].say.replace('#', Coll.CALLS[g].need) : '';
       const go = el('button', { type: 'button', class: 'btn btn-primary btn-lg gj-go', text: onLabel(), onclick: e => { e.stopPropagation(); Kit.sfx('tap'); Kit.haptic('light'); next(); } });
       const m = el('div', { class: 'pk-moment gj', style: { '--f': col(g) } }, [el('div', { class: 'gj-sc' }, [

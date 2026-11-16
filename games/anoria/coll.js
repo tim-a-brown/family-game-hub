@@ -318,7 +318,7 @@ function gameOver(o) {
   let n = R.lit.reduce((a, x) => a + x.n, 0); s.signs += n;
   while (s.signs >= SIGNS) {
     s.signs -= SIGNS; s.turns++; R.turns++;
-    R.list.push({ t: 'pack', pack: addPack(s, 'sphere', 'The sphere came round', PACK) });
+    R.list.push({ t: 'pack', pack: addPack(s, 'sphere', 'You lit the sphere', PACK) });
     // (a Guide the sphere brings waits for you to choose them: a guide entry with pick and no g yet, which join() fills)
     if (GUIDE_TURNS.indexOf(s.turns) >= 0 && leftOf(s).length > s.pick) { s.pick++; R.list.unshift({ t: 'guide', g: null, why: 'sphere', pick: true }); }
   }
@@ -349,7 +349,7 @@ function sphere() { const s = load(), next = GUIDE_TURNS.filter(t => t > s.turns
   return { lit: s.signs, of: SIGNS, turns: s.turns, next: left ? next : 0, toGuide: left && next ? next - s.turns : 0, guideSay: left && next ? guideWhen(next - s.turns) : '', light: Object.assign({}, LIGHT), today: s.day === dayKey() }; }
 // when the sphere brings the next Guide, as a sentence (a calling met can bring one sooner)
 const MORE = ['', '', 'twice more', 'three more times', 'four more times', 'five more times', 'six more times'];
-const guideWhen = n => (n === 1 ? 'The next time the sphere comes round, a new Guide comes with it.' : 'A new Guide joins you once the sphere has come round ' + (MORE[n] || n + ' more times') + '.');
+const guideWhen = n => (n === 1 ? 'Light the sphere once more and a new Guide joins you.' : 'Light the sphere ' + (MORE[n] || n + ' more times') + ' and a new Guide joins you.');
 // what's next to earn, for the screens to show: the next turn of the sphere and the firsts not had yet
 function nextUp() {
   const s = load(), sp = sphere(), out = [];

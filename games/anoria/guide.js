@@ -531,7 +531,7 @@
         await L.scene('guides');
         await L.say('There are ' + NUM(Object.keys(UI().C.GUIDES).length) + ' Guides, and each has a different power. You start with the one you chose, and with that Guide\'s set of ' + UI().Coll.GSET.cleopatra.length + ' cards.', { scene: 1 });
         await L.scene('guides2');
-        await L.say('The other ' + NUM(Object.keys(UI().C.GUIDES).length - 1) + ' join you as you play. Every game you finish lights signs on a great sphere, and each time the sphere comes round it brings a pack. On some of its turns you choose a new Guide, who joins you with their set.', { scene: 1 });
+        await L.say('The other ' + NUM(Object.keys(UI().C.GUIDES).length - 1) + ' join you as you play. Every game you finish lights signs on a great sphere. Light all twelve and you earn a pack, and some of those times you also choose a new Guide, who joins you with their set.', { scene: 1 });
         await L.scene('guides3');
         await L.say('A new Guide is a new way to play. Each Guide also has a calling, something to do in your games that brings that Guide sooner.', { scene: 1 });
       } },
