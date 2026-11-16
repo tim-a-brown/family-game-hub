@@ -761,7 +761,9 @@ html.k-kb .rd{padding-bottom:6px;}
   }
   glider('.rd .slab, .rd .acts .btn, .rd .pips, .rd .tally', fitRd);
 
-  window.__rd = { get: function () { return S; }, start: startRound, cur: cur, hint: hint, next: next, type: function (g) { V.input.value = g; submit(); } };
+  window.__rd = { get: function () { return S; }, start: startRound, cur: cur, hint: hint, next: next, type: function (g) { V.input.value = g; submit(); },
+    // a round of these riddles, in this order (the demo's)
+    round: function (ids) { S = { mode: 'mixed', daily: 0, ids: ids.slice(), i: 0, res: ids.map(fresh), pts: 0, over: false, started: Date.now() }; Kit.gameStart(); markSeen(ids[0]); save(); play(true); } };
   function leave() {
     if (S && !S.over && S.res.some(function (x) { return x.done || x.t.length || x.h; })) {
       Kit.confirm('Choose another level?', { ok: 'Choose', body: 'This round will be dropped.' }).then(function (ok) { if (ok) { Kit.resume.clear(); store(SKEY, null); showSetup(); } });
