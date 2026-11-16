@@ -1197,6 +1197,12 @@ html.ls .trumpbox{--cw:clamp(34px,calc((100dvh - var(--bar)) * .08),54px);}
     } else showSetup();
   }
   boot();
+  // Test hook (the demo, games/demos/wizard-ai.js): start a game with given players, then set the hands and carry on
+  window.__wizard = {
+    state: function () { return S; },
+    start: function (cfg) { token++; newGame(cfg.players, cfg.options || {}, cfg.mode || 'cpu'); },
+    set: function (fn) { token++; fn(S); S.hands.forEach(sortHand); undoStack = []; save(); render(); next(); }
+  };
   TurnNet.setup({
     game: 'wizard', title: 'Wizard', min: 2, max: 6, botMs: 800,
     seats: netSeats,

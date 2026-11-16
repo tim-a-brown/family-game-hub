@@ -1406,6 +1406,9 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
       onStart: function (cfg) { start(cfg.mode, cfg.players, cfg.options); }
     });
   }
+  // Test hook (the demo, games/demos/horserace.js): start a session, and say which horse (its index in the field) wins
+  var DEMO_WIN = null;
+  window.__hr = { start: function (players, o) { start('solo', players, o || {}); }, state: function () { return S; }, winner: function (i) { DEMO_WIN = i; } };
   function start(mode, players, o) {
     var pass = mode === 'pass' && players.length > 1;
     if (pass) moneyHome(); else moneyFor(players[0].name, true);   // pass and play is table money
@@ -1841,6 +1844,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
   function makeRace() {
     var F = S.field, r = Math.random;
     var order = harville(F.horses.map(function (h) { return h.p; }), r);
+    if (DEMO_WIN != null) { order.splice(order.indexOf(DEMO_WIN), 1); order.unshift(DEMO_WIN); DEMO_WIN = null; }   // (a demo's winner, __hr.winner)
     // Winning margins in lengths: often clear, sometimes a blanket finish
     var gaps = [];
     for (var i = 0; i < F.n - 1; i++) {

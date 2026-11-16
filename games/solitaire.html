@@ -147,13 +147,14 @@
     });
   }
 
-  function newGame(draw, scoring) {
+  function newGame(draw, scoring, set) {
     abandon();
     var d = []; 'shdc'.split('').forEach(function (s) { RANKS.split('').forEach(function (r) { d.push(r + s); }); });
     Cards.shuffle(d);
     var tab = [], down = [];
     for (var i = 0; i < 7; i++) { tab.push([]); down.push(i); }
     for (var r = 0; r < 7; r++) for (var c = r; c < 7; c++) tab[c].push(d.pop());
+    if (set) { tab = set.tab.map(function (p) { return p.slice(); }); d = set.stock.slice(); }   // (a deal laid out by a demo)
     S = { draw: draw, scoring: scoring, stock: d, waste: [], fan: 0, found: [[], [], [], []], tab: tab, down: down,
       score: 0, moves: 0, time: 0, passes: 0, flips: 0, undos: 0, auto: 0, counted: false, won: false, started: Date.now() };
     U = []; I = JSON.stringify(S); token++; busy = false;
@@ -733,6 +734,8 @@
     build(); place(true); updBar();
     if (nextAuto()) after();
   } else showSetup();
+  // (demos and tests: a deal laid out card by card, columns bottom card first, the stock's top card last)
+  window.__solitaire = { deal: function (o) { newGame(o.draw || 1, o.scoring || 'std', o); }, state: function () { return S; }, get busy() { return busy; } };
 })();
 </script>
 </body>

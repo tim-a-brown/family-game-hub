@@ -1371,6 +1371,17 @@
     } else showSetup();
   }
   boot();
+  // (a demo: a fresh game, {players, target, level, dealer}; set(fn) arranges the deal and draws it again)
+  window.__euchre = {
+    state: function () { return S; },
+    start: function (cfg) {
+      token++; BLIND = false; ME = 0;
+      S = freshGame(cfg.players, { target: cfg.target || 10, stick: false, mode: 'cpu', level: lvName(cfg.level) });
+      if (cfg.dealer != null) S.dealer = cfg.dealer;
+      undoStack = []; Kit.gameStart(); newHand();
+    },
+    set: function (fn) { token++; fn(S); save(); render(); next(true); }
+  };
   TurnNet.setup({
     game: 'euchre', title: 'Euchre', min: 2, max: 4, botMs: 900,
     seats: function () { return 4; },

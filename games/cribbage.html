@@ -644,6 +644,7 @@
     S.phase = 'discard';
     undoStack = [];
     for (var p = 0; p < n; p++) if (isCpu(p)) tossCards(p, cpuDiscard(S.hands[p], p, lvOf(p)));
+    if (DEMO && DEMO.deal) { DEMO.deal(S); DEMO.deal = null; }   // (a demo's own deal)
     if (S.mode === 'pass') S.revealed = false;
     if (discardActor() < 0) S.phase = 'cut';
     Kit.sfx('deal');
@@ -706,7 +707,8 @@
     if (NET) { netAct(function (st, me) { return nCut(st, me); }); return; }
     if (S.phase !== 'cut' || S.starter) return;
     var k = 4 + Math.floor(Math.random() * (S.deck.length - 8));
-    S.starter = S.deck[k];
+    S.starter = DEMO && DEMO.cut ? DEMO.cut : S.deck[k];
+    if (DEMO) DEMO.cut = null;
     undoStack = [];
     Kit.sfx('flip'); Kit.haptic('medium');
     var heels = S.starter.r === 'J';
@@ -1709,6 +1711,15 @@
     } else showSetup();
   }
   boot();
+  // (a demo: a game for these players with this dealer, dealt by fix(S) after the computer has thrown its crib cards,
+  // and cut to this starter)
+  var DEMO = null;
+  window.__crib = {
+    state: function () { return S; },
+    start: function (players, dealer, fix, cut) {
+      newGame('cpu', players); S.dealer = dealer; DEMO = { deal: fix, cut: cut }; deal();
+    }
+  };
   TurnNet.setup({
     game: 'cribbage', title: 'Cribbage', min: 2, max: 4, botMs: 900,
     seats: function (n, o) { return Math.max(n, Math.min(4, +(o && o.seats) || n)); },

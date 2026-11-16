@@ -1445,6 +1445,13 @@ html.ls .p10-play .mat .mc{--cw:clamp(30px,calc((100dvh - var(--bar)) * .06),44p
     else next();
   } else showSetup();
 
+  // Test hook (the demo, games/demos/phase10-ai.js): start a game with given players, then set the hands and carry on
+  window.__p10 = {
+    state: function () { return S; },
+    start: function (cfg) { token++; S = freshGame(cfg.players, cfg.last || 10, cfg.mode || 'cpu'); Kit.gameStart(); newHand(); },
+    set: function (fn) { token++; fn(S); undoStack = []; save(); render(); next(); }
+  };
+
   // online tables (after the local game is drawn): opens ?online=1&room=CODE from the home screen
   TurnNet.setup({
     game: 'phase10', title: 'Phase 10', min: 2, max: 6, botMs: 850,

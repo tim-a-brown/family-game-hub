@@ -1276,7 +1276,15 @@
   });
   // (tests)
   window.__gf = { get S() { return S; }, get busy() { return busy; }, get me() { return ME; }, get net() { return !!NET; }, move: function (a) { move(ME, a); }, core: Core,
-    redraw: function () { render(); }, face: function (th, r, s) { return themedFace(th, { r: r, s: s || 'h' }); },
+    redraw: function () { render(); },
+    // (a demo: a new game, {players, level, next, theme, col}, then f(S) to set the hands before the deal is shown)
+    start: function (o, f) {
+      token++; BLIND = false; SEL = { to: -1, r: null }; busy = false; clearBubs();
+      S = Core.newGame(o); S.mode = 'cpu'; S.me = 0; ME = 0;
+      if (f) f(S);
+      Kit.gameStart(); startGame();
+    },
+    face: function (th, r, s) { return themedFace(th, { r: r, s: s || 'h' }); },
     finishNow: function () { while (S && S.phase !== 'over') { var p = Core.turn(S); Core.apply(S, p, Core.bot(S, p)); } save(); render(); next(); } };
 })();
 </script>

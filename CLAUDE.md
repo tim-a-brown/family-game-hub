@@ -321,7 +321,11 @@ Underlying principles for everything:
   or vs Computer, and online: Centipede, TetriNET) is one table too, its other seats the computer's. The robots keep
   their names from one setup to the next (`bots` in `gn_setup_*`), so the robots named on the home sheet are the ones
   that sit down. Every page that calls `Kit.setup` is in `SETUP_PAGES` (kit.js), or its home sheet has no setup in
-  it. Pass & play hands the device over
+  it. **A button a game adds to its own setup that starts play** (Mazes', Mysteries' and Word Search's daily puzzle) says
+  `data-sheet-go="<name>"`: on the home screen's sheet the kit catches it and starts the game on its own page as the start
+  button does, and there presses it (`el:<name>` in `kit_go`; Tim, 2026-11-16: "The maze game never breaks out of the game
+  setup panel"). Without it the game plays inside the sheet's small frame; the scratchpad's `kp/sheetscan.js` lists every
+  game's own buttons in its framed setup. Pass & play hands the device over
   with `Kit.handoff` between people only. The start button
   stays in view (the kit's `.k-startdock`; insert game extras before the dock, not before `.k-start`), 18px off the
   bottom and at least 17px in from each side of the screen whatever the page's own padding (`dockInset`).

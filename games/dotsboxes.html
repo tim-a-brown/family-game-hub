@@ -647,7 +647,10 @@ html[data-o=land] .desk{padding:10px 10px 12px;}
     var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
     if (sv && sv.h && sv.players && !sv.over) { S = sv; render(); maybeCpu(); } else showSetup();
   }
-  window.__dots = { state: function () { return S; }, play: function (t, i) { play(t, i); } };
+  window.__dots = { state: function () { return S; }, play: function (t, i) { play(t, i); },
+    // (the demo: a game with these players on an n-by-n sheet, then lines and boxes set by hand)
+    start: function (o) { S = { mode: o.mode || 'cpu', level: o.level || 'normal', n: o.n || 3, players: o.players, first: 0 }; newGame(); },
+    set: function (fn) { token++; fn(S); fresh = {}; save(); render(); maybeCpu(); } };
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}

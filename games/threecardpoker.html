@@ -184,7 +184,7 @@
 .sh-side .cards{--cw:clamp(40px,11.4dvh,50px);gap:5px;} .sh-side .zone.you .cards{--cw:clamp(44px,13dvh,56px);}
 .sh-side .spot{width:clamp(58px,16dvh,68px);} .sh-side .spot .lab{font-size:.68rem;} .sh-side .spot.has .lab{font-size:.52rem;bottom:5px;}
 .sh-side .shoe{top:8px;right:auto;left:10px;--cw:22px;}
-.sh-side .acts .btn{min-height:50px;padding:0 8px;}
+.sh-side .acts .btn{min-height:50px;padding:0 8px;white-space:normal;line-height:1.1;min-width:0;}
 .sh-side .cz-rack{--cs:40px;}
 .sh-side .status .big{font-size:1.5rem;}
 /* the pieces that glide to their new places when the device turns */
@@ -373,18 +373,24 @@
       options: [{ id: 'flush', label: 'Pair Plus: a flush pays', help: 'Pair Plus is a side bet that pays if your three cards have a pair or better.', value: 4, choices: [[4, '4 to 1\nClassic', 'The classic pay table.'], [3, '3 to 1', 'Pays a little less, as some casino tables do.']] },
         Coach.option({ on: 'A “best move” tag when you decide to play or fold; tap it for the exact odds.' }), CasinoNet.moneyOption(), CasinoNet.stakeOption()],
       start: 'Take a seat',
-      onStart: function (cfg) {
-        var nm = cfg.players[0].name; if (/^Player \d+$/.test(nm)) nm = 'You';
-        moneyFor(nm, true);
-        S = {
-          name: nm, opts: { flush: +cfg.options.flush || 4, coach: cfg.options.coach === 'on' ? 'on' : 'off' }, started: Date.now(), hand: 0, net: 0,
-          phase: 'bet', target: 'ante', bets: { ante: 0, pp: 0, play: 0 }, last: null, p: null, d: null, res: null,
-          log: [], ev: [], st: { won: 0, lost: 0, push: 0, folds: 0, streak: 0, best: 0, ppPaid: 0, bonusPaid: 0, noQual: 0, big: null, bestCat: -1 }
-        };
-        Kit.gameStart(); save(); render();
-      }
+      onStart: begin
     });
   }
+  function begin(cfg) {
+    var nm = cfg.players[0].name; if (/^Player \d+$/.test(nm)) nm = 'You';
+    moneyFor(nm, true);
+    S = {
+      name: nm, opts: { flush: +cfg.options.flush || 4, coach: cfg.options.coach === 'on' ? 'on' : 'off' }, started: Date.now(), hand: 0, net: 0,
+      phase: 'bet', target: 'ante', bets: { ante: 0, pp: 0, play: 0 }, last: null, p: null, d: null, res: null,
+      log: [], ev: [], st: { won: 0, lost: 0, push: 0, folds: 0, streak: 0, best: 0, ppPaid: 0, bonusPaid: 0, noQual: 0, big: null, bestCat: -1 }
+    };
+    Kit.gameStart(); save(); render();
+  }
+  // Test hook (the demo, games/demos/threecardpoker.js): start at the table, and say what the next deal is (your three cards
+  // and the dealer's, as 'As', '10h')
+  var DEMO_DEAL = null;
+  window.__tcp = { start: function (name) { begin({ players: [{ name: name }], options: { flush: 4, coach: 'off' } }); }, state: function () { return S; }, busy: function () { return busy; },
+    next: function (p, d) { var c = function (k) { return { r: k.slice(0, -1), s: k.slice(-1) }; }; DEMO_DEAL = { p: p.map(c), d: d.map(c) }; } };
 
   // ── Betting ───────────────────────────────────────────────────────────────
   function pending() { return S.phase === 'bet' ? S.bets.ante + S.bets.pp : 0; }
@@ -423,6 +429,7 @@
     bankAdd(-(a + pp));
     var d = Cards.shuffle(Cards.deck());
     S.p = [d[0], d[2], d[4]]; S.d = [d[1], d[3], d[5]];
+    if (DEMO_DEAL) { S.p = DEMO_DEAL.p; S.d = DEMO_DEAL.d; DEMO_DEAL = null; }   // (a demo's deal, __tcp.next)
     S.hand++; S.phase = 'decide'; S.bets.play = 0; S.res = null; S.last = { ante: a, pp: pp };
     undoStack = []; save(); render({ deal: true });
   }

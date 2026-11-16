@@ -927,6 +927,11 @@
     S.deck = S.deck.filter(function (id) { return BYID[id]; });
     render();
   } else showSetup();
+  // (demos and tests: a talk with these options, and the cards with these questions on top of the deck)
+  window.__conv = { state: function () { return S; },
+    start: function (cfg, qs) { start(cfg); if (qs) { var ids = qs.map(function (q) { return (ALL.filter(function (p) { return p.q === q; })[0] || {}).id; }).filter(Boolean); S.deck = ids.concat(S.deck.filter(function (id) { return ids.indexOf(id) < 0; })); save(); render(); } },
+    top: function (qs) { var ids = qs.map(function (q) { return (ALL.filter(function (p) { return p.q === q; })[0] || {}).id; }).filter(Boolean); S.deck = ids.concat(S.deck.filter(function (id) { return ids.indexOf(id) < 0; })); save(); },
+    all: ALL };
 })();
 </script>
 </body>

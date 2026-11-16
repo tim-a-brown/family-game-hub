@@ -3591,6 +3591,14 @@
       var sAlt = o.alt ? o.alt : sNet ? { label: 'Play online', icon: 'globe', online: true } : null;
       if (sAlt) sDock.push(el('button', { type: 'button', class: 'btn btn-soft btn-lg k-start-alt', html: (sAlt.icon ? icon(sAlt.icon) : '') + '<span>' + esc(sAlt.label) + '</span>', onclick: function () { sheetGo(sAlt.online ? 'online' : 'alt'); } }));
       wrap.appendChild(el('div', { class: 'k-startdock' + (sAlt ? ' has-alt' : '') }, sDock));
+      // (a button a game adds to its own setup that starts play, like Mazes' daily maze, says data-sheet-go="<name>":
+      // here it starts the game on its own page as the start button does, and there it is pressed. Tim, 2026-11-16: "The
+      // maze game never breaks out of the game setup panel")
+      wrap.addEventListener('click', function (e) {
+        var t = e.target && e.target.closest && e.target.closest('[data-sheet-go]');
+        if (!t || !wrap.contains(t)) return;
+        e.preventDefault(); e.stopPropagation(); sheetGo('el:' + t.getAttribute('data-sheet-go'));
+      }, true);
       host.appendChild(wrap);
       renderModes(); renderSeats();
       // the sheet sizes its frame to the whole setup (one scroll, the sheet's) and shows these start buttons pinned
@@ -3802,9 +3810,9 @@
     window.addEventListener('resize', function () { setTimeout(fitFold, 60); setTimeout(dockInset, 60); });
     // started from the home screen's sheet: press start (or Play online) once the game has added its own parts
     if (GO && Date.now() - GO.at < 15000) {
-      var how = GO.how; if (how !== 'start' && GO.id) HOME_BACK = GO.id; GO = null;
+      var how = GO.how, own = /^el:/.test(how); if (how !== 'start' && !own && GO.id) HOME_BACK = GO.id; GO = null;
       setTimeout(function () {
-        var b = wrap.querySelector(how === 'start' ? '.k-start' : '.k-start-alt');
+        var b = own ? doc.querySelector('[data-sheet-go="' + how.slice(3).replace(/"/g, '') + '"]') : wrap.querySelector(how === 'start' ? '.k-start' : '.k-start-alt');
         root.classList.remove('k-going');
         if (b && wrap.isConnected) b.click();
       }, 0);

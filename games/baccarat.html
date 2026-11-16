@@ -332,6 +332,10 @@
       onStart: function (cfg) { start(cfg.players[0].name, cfg.options.reveal, cfg.options.coach); }
     });
   }
+  // Test hook (the demo, games/demos/baccarat.js): start a session, and put cards next in the shoe in the order they are
+  // dealt ('Ks', '4h'; Player, Banker, Player, Banker, then any third cards)
+  window.__bc = { start: function (n, r) { start(n, r || 'squeeze', 'off'); }, state: function () { return S; }, busy: function () { return busy; },
+    stack: function (codes) { var sh = S.shoe; sh.cards.splice.apply(sh.cards, [sh.pos, 0].concat(codes)); } };
   function start(name, reveal, coach) {
     moneyFor(name, true);
     S = { name: name, reveal: reveal || 'squeeze', coach: coach === 'on' ? 'on' : 'off', started: Date.now(), startBank: Casino.balance(), bets: {}, placed: [], last: null, hand: null, frac: 0, st: blankStats(), shoe: null, roads: [] };

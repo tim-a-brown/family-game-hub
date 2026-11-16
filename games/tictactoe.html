@@ -785,7 +785,14 @@ html[data-o=land] .slate{padding:12px 12px 22px;}
     var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
     if (sv && sv.G && sv.players) { S = sv; render(); maybeCpu(); } else showSetup();
   }
-  window.__ttt = { state: function () { return S; }, legal: function (b, i) { return S && S.G && legal(S.G, b, i); }, play: function (b, i) { play(b, i); } };
+  window.__ttt = { state: function () { return S; }, legal: function (b, i) { return S && S.G && legal(S.G, b, i); }, play: function (b, i) { play(b, i); },
+    // (a demo: a fresh classic game for these players, {mode: '2p' | 'cpu', level, players: [{name, cpu}]}, the first one X)
+    start: function (cfg) {
+      S = { mode: cfg.mode || '2p', variant: 'classic', level: cfg.level || 'med', nboards: 1,
+        players: cfg.players.map(function (p, i) { return { name: p.name, cpu: !!p.cpu, sym: ['X', 'O', 'T'][i] }; }),
+        wins: cfg.players.map(function () { return 0; }), draws: 0, first: 0 };
+      newGame(true);
+    } };
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}

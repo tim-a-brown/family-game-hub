@@ -1468,5 +1468,19 @@
         S = keep; break;
       }
       token++; busy = false; BLIND = false; LME = 0; D = null; render(); save(); if (!o.stop) next(); return { decl: S.k && S.k.decl, k: S.k && E.contractText(S.k) };
+    },
+    // a demo: a new game with this deal (four PBN hands, South first) and dealer
+    start: function (cfg, pbns, dealer) {
+      token++; busy = false; BLIND = false; LME = 0;
+      S = fresh(cfg.players, { mode: 'cpu', fmt: 'chicago', level: cfg.level || 'normal', aids: true });
+      S.dealer = (dealer + 3) % 4; Kit.gameStart(); undoStack = []; startDeal(S);
+      S.hands = pbns.map(E.pbnHand); S.dealt = pbns.slice();
+      afterDeal();
+    },
+    // a demo: the computer plays on (both sides, the way it would) until this many tricks are done
+    playTo: function (n) {
+      token++; busy = false;
+      while (S.phase === 'play' && S.tricks.length < n) { var q = S.turn, c = ctrl(q); if (!nCard(S, q, E.chooseCard(Gv(), q, person(c) ? 'hard' : lvOf(c)).id)) break; }
+      D = null; render(); save(); next();
     } };
 })();

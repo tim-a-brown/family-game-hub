@@ -442,6 +442,8 @@ body{overflow-x:hidden;}
   'use strict';
   var el = Kit.el, esc = Kit.esc, app = document.getElementById('app');
   var API = 'https://site.api.espn.com/apis/site/v2/sports/';
+  // (a demo plays on a sample slate its script hands over, __sb.demoSlate, and never reaches the network)
+  var DEMO = !!(Kit.inDemo && Kit.inDemo());
 
   // ── Leagues ─────────────────────────────────────────────────────────────
   // days: how far ahead the board looks; sd: how far a final margin strays from the spread (points), used only to
@@ -865,7 +867,7 @@ body{overflow-x:hidden;}
   // ESPN takes one date at a time (US Eastern dates); with none it gives the current week or tournament
   function ymdET(t) { try { return new Date(t).toLocaleDateString('en-CA', { timeZone: 'America/New_York' }).replace(/-/g, ''); } catch (e) { return ymd(new Date(t)); } }
   function sbUrl(path, q, day) { var a = []; if (day) a.push('dates=' + day); if (q) a.push(q); return API + path + '/scoreboard' + (a.length ? '?' + a.join('&') : ''); }
-  function getJSON(u) { return fetch(u, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }); }
+  function getJSON(u) { if (DEMO) return Promise.reject(new Error('demo')); return fetch(u, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }); }
   function parseAll(lg, j, path) {
     var k = LG[lg].kind;
     if (!(k === 'tennis' && LGLOGO[lg])) keepLgLogo(lg, j);   // (tennis: the first tour's)
@@ -927,6 +929,7 @@ body{overflow-x:hidden;}
     }));
   }
   function loadLeague(lg, force) {
+    if (DEMO) { if (!BOARD[lg] || BOARD[lg].p) BOARD[lg] = { games: BOARD[lg] && BOARD[lg].games || [], at: Date.now() }; return Promise.resolve(BOARD[lg]); }
     var b = BOARD[lg];
     if (b && b.p) return b.p;
     var live = b && b.games && b.games.some(function (g) { return g.state === 'in'; });
@@ -2444,7 +2447,13 @@ body{overflow-x:hidden;}
   setInterval(tick, 30000);
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') tick(); });
 
-  window.__sb = { GAMES: GAMES, BOARD: BOARD, bets: function () { return bets; }, slip: slip, settle: settle, gradeAll: gradeAll, paintAll: paintAll, showResults: showResults, parseEvent: parseEvent, says: says, paintTicker: function () { paintTicker(); }, loadTeams: function (lg) { return loadTeams(lg); } };
+  window.__sb = {
+    // (the demo, games/demos/sportsbook.js) a league's board from a sample slate (games as parseEvent makes them), the book
+    // opened at a depth on that league; and a game brought to its final score, with the tickets on it graded
+    demoSlate: function (lg, games, depth) { take(games); BOARD[lg] = { games: games, at: Date.now() }; tab = lg; setDepth(depth || 'fan'); },
+    finish: function (gid, as, hs) { var g = GAMES[gid]; g.state = 'post'; g.done = true; g.detail = 'Final'; g.sname = 'STATUS_FINAL'; g.away.score = as; g.home.score = hs; if (view === 'board') paintBoard(); return gradeAll(); },
+    view: function () { return view; },
+    GAMES: GAMES, BOARD: BOARD, bets: function () { return bets; }, slip: slip, settle: settle, gradeAll: gradeAll, paintAll: paintAll, showResults: showResults, parseEvent: parseEvent, says: says, paintTicker: function () { paintTicker(); }, loadTeams: function (lg) { return loadTeams(lg); } };
 })();
 </script>
 </body>
