@@ -1337,7 +1337,7 @@
       tot(sd[0], M && rivalAt(p) < 0 ? null : riv, wonL, lName),
       el('span', { class: 'fo-beam' }, [el('span', { class: 'fo-arm' }, [el('i', { style: { flex: String(sd[0] || .001), background: 'var(--pc' + riv + ')' } }), el('i', { style: { flex: String(sd[1] || .001), background: 'var(--pc' + me + ')' } })]), el('span', { class: 'fo-pivot' })]),
       tot(sd[1], me, wonR, pname(me))]));
-    mid.appendChild(el('p', { class: 'fo-who', text: DW(holdSay(p)) }));
+    mid.appendChild(el('p', { class: 'fo-who', html: esc(DW(holdSay(p))).replace(/(\S*\w-\w\S*)/g, '<span class="nw">$1</span>') }));   // (a name with a hyphen, WALL-E, never breaks at it)
     if (on) { const R = roadOf({ p: p, key: S.places[p] }); if (R.btns.length) mid.appendChild(el('div', { class: 'fo-pw' }, R.btns.map(x => el('button', { type: 'button', class: 'btn btn-sm btn-soft rd-b', onclick: e => { e.stopPropagation(); runActs(x.acts, C.PLACES[S.places[p]].n); } },
       [el('span', { text: x.label }), x.cost != null ? el('span', { class: 'sc-cost' }, [el('b', { text: String(x.cost) })]) : null])))); }
     // (along the road: a pager at the foot, plainly a way to look, not a move: the Domains on either side by name with a
