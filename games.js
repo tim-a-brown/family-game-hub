@@ -128,18 +128,18 @@ var GAMES = [
   // ── Logic and riddles (in Puzzles & Words) ──────────────────────────────
   { id: 'mysteries',   name: 'Picture Mysteries', color: '#b45309', cat: 'puzzle', min: 1, max: 1, tag: 'Study the scene, crack the case', play: 'mysteries' },
   { id: 'logicgrid',   name: 'Logic Grids',  color: '#0f766e', cat: 'puzzle', min: 1, max: 1, tag: 'Read the clues, fill the grid', play: 'logicgrid' },
-  { id: 'truthlies',   name: 'Truth or Lies', color: '#7c3aed', cat: 'puzzle', min: 1, max: 1, tag: 'Someone is lying. Who?', play: 'truthlies' },
-  { id: 'ciphers',     name: 'Cipher Cases', color: '#1e3a8a', cat: 'puzzle', min: 1, max: 1, tag: 'Crack the code, open the lock', play: 'ciphers' },
-  { id: 'riddles',     name: 'Riddles',      color: '#a16207', cat: 'puzzle', min: 1, max: 1, tag: 'Classic riddles and new ones', play: 'riddles' },
+  { id: 'truthlies',   name: 'Truth or Lies', color: '#7c3aed', cat: 'puzzle', min: 1, max: 1, tag: 'Someone is lying. Who?', play: 'truthlies', demo: 1 },
+  { id: 'ciphers',     name: 'Cipher Cases', color: '#1e3a8a', cat: 'puzzle', min: 1, max: 1, tag: 'Crack the code, open the lock', play: 'ciphers', demo: 1 },
+  { id: 'riddles',     name: 'Riddles',      color: '#a16207', cat: 'puzzle', min: 1, max: 1, tag: 'Classic riddles and new ones', play: 'riddles', demo: 1 },
 
   // ── Words (in Puzzles & Words) ──────────────────────────────────────────
-  { id: 'wordle',      name: 'Wordle',       color: '#22c55e', cat: 'puzzle', min: 1, max: 1, tag: 'Guess the word in six tries', play: 'wordle' },
-  { id: 'spellingbee', name: 'Spelling Bee', color: '#facc15', cat: 'puzzle', min: 1, max: 1, tag: 'Make words from seven letters', play: 'spellingbee' },
-  { id: 'crossword',   name: 'Crossword', color: '#2563eb', cat: 'puzzle', min: 1, max: 1, tag: 'Mini and big crosswords', play: 'crossword' },
-  { id: 'boggle',      name: 'Boggle',       color: '#f97316', cat: 'puzzle', min: 1, max: 4, tag: 'Find words in the letter grid', play: 'boggle' },
-  { id: 'hangman',     name: 'Hangman',      color: '#8b5cf6', cat: 'puzzle', min: 1, max: 2, tag: 'Guess the word, letter by letter', play: 'hangman' },
-  { id: 'wordscramble',name: 'Word Scramble', color: '#14b8a6', cat: 'puzzle', min: 1, max: 4, tag: 'Unscramble against the clock', play: 'wordscramble' },
-  { id: 'wordsearch',  name: 'Word Search',  color: '#e11d48', cat: 'puzzle', min: 1, max: 1, tag: 'Find every hidden word', play: 'wordsearch' },
+  { id: 'wordle',      name: 'Wordle',       color: '#22c55e', cat: 'puzzle', min: 1, max: 1, tag: 'Guess the word in six tries', play: 'wordle', demo: 1 },
+  { id: 'spellingbee', name: 'Spelling Bee', color: '#facc15', cat: 'puzzle', min: 1, max: 1, tag: 'Make words from seven letters', play: 'spellingbee', demo: 1 },
+  { id: 'crossword',   name: 'Crossword', color: '#2563eb', cat: 'puzzle', min: 1, max: 1, tag: 'Mini and big crosswords', play: 'crossword', demo: 1 },
+  { id: 'boggle',      name: 'Boggle',       color: '#f97316', cat: 'puzzle', min: 1, max: 4, tag: 'Find words in the letter grid', play: 'boggle', demo: 1 },
+  { id: 'hangman',     name: 'Hangman',      color: '#8b5cf6', cat: 'puzzle', min: 1, max: 2, tag: 'Guess the word, letter by letter', play: 'hangman', demo: 1 },
+  { id: 'wordscramble',name: 'Word Scramble', color: '#14b8a6', cat: 'puzzle', min: 1, max: 4, tag: 'Unscramble against the clock', play: 'wordscramble', demo: 1 },
+  { id: 'wordsearch',  name: 'Word Search',  color: '#e11d48', cat: 'puzzle', min: 1, max: 1, tag: 'Find every hidden word', play: 'wordsearch', demo: 1 },
   { id: 'arrowjam',    name: 'Arrow Jam',    color: '#1e88e5', cat: 'puzzle', min: 1, max: 1, tag: 'Slide every arrow off the board without a bump', play: 'arrowjam', hidden: true },   // (played from Mazes, beside the Labyrinth)
 
   // ── Party ────────────────────────────────────────────────────────────────
