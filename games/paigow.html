@@ -510,17 +510,23 @@
       players: { min: 1, max: 1, count: 1, label: "Who's at the table?" },
       options: [Coach.option({ on: 'A “best split” tag while you set your hands; tap it to compare the best ways to set them.' }), CasinoNet.moneyOption(), CasinoNet.stakeOption()],
       start: 'Take a seat',
-      onStart: function (cfg) {
-        var nm = cfg.players[0].name; if (/^Player \d+$/.test(nm)) nm = 'You';
-        moneyFor(nm, true);
-        S = {
-          name: nm, opts: { coach: cfg.options.coach === 'on' ? 'on' : 'off' }, started: Date.now(), hand: 0, net: 0, phase: 'bet', bet: 0, last: 0, p: null, d: null, low: [], hw: null, res: null,
-          log: [], ev: [], st: { won: 0, lost: 0, push: 0, streak: 0, best: 0, comm: 0, big: null, own: 0, house: 0, bestHi: null }
-        };
-        Kit.gameStart(); save(); render();
-      }
+      onStart: begin
     });
   }
+  function begin(cfg) {
+    var nm = cfg.players[0].name; if (/^Player \d+$/.test(nm)) nm = 'You';
+    moneyFor(nm, true);
+    S = {
+      name: nm, opts: { coach: cfg.options.coach === 'on' ? 'on' : 'off' }, started: Date.now(), hand: 0, net: 0, phase: 'bet', bet: 0, last: 0, p: null, d: null, low: [], hw: null, res: null,
+      log: [], ev: [], st: { won: 0, lost: 0, push: 0, streak: 0, best: 0, comm: 0, big: null, own: 0, house: 0, bestHi: null }
+    };
+    Kit.gameStart(); save(); render();
+  }
+  // Test hook (the demo, games/demos/paigow.js): start at the table, and say what the next deal is (your seven cards and the
+  // dealer's, as 'As', '10h', 'JK' for the joker)
+  var DEMO_DEAL = null;
+  window.__pg = { start: function (name) { begin({ players: [{ name: name }], options: { coach: 'off' } }); }, state: function () { return S; }, busy: function () { return busy; },
+    next: function (p, d) { var n = 0, c = function (k) { return k === 'JK' ? { r: 'JK', s: 'j', id: 'jk' } : { r: k.slice(0, -1), s: k.slice(-1), id: 'dm' + (n++) }; }; DEMO_DEAL = { p: p.map(c), d: d.map(c) }; } };
 
   // ── Betting ───────────────────────────────────────────────────────────────
   function pending() { return S.phase === 'bet' ? S.bet : 0; }
@@ -553,6 +559,7 @@
     bankAdd(-S.bet);
     var d = newDeck();
     S.p = sortHand(d.slice(0, 7)); S.d = sortHand(d.slice(7, 14));
+    if (DEMO_DEAL) { S.p = sortHand(DEMO_DEAL.p); S.d = sortHand(DEMO_DEAL.d); DEMO_DEAL = null; }   // (a demo's deal, __pg.next)
     S.hand++; S.phase = 'set'; S.low = []; S.hw = null; S.res = null; S.last = S.bet;
     undoStack = []; save(); render({ deal: true });
   }
