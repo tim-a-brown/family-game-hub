@@ -1856,6 +1856,18 @@
     show: netShow, leave: netLeave
   });
 
+  // Test hook (the demo, games/demos/blackjack.js): start a session at once, and put cards on top of the shoe in the order
+  // they will be drawn ('As', '10h'; the deal goes your card, the dealer's up card, your card, the hole card)
+  var stackN = 0;
+  window.__bj = {
+    state: function () { return S; },
+    start: function (players, o) { startSession(players, players.length > 1 ? 'cpu' : 'solo', o || {}); },
+    stack: function (codes) {
+      codes.slice().reverse().forEach(function (k) { S.shoe.push({ r: k.slice(0, -1), s: k.slice(-1), id: 'dm' + (stackN++) }); });
+      if (S.shoe.length <= S.cutLeft) S.cutLeft = 0;
+    }
+  };
+
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.v === 1 && saved.seats && saved.shoe) {
     S = saved; if (migrateSeats()) save(); Kit.gameStart(); markSeen(); render(); resumeFlow();

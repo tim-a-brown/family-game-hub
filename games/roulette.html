@@ -389,6 +389,11 @@
       onStart: function (cfg) { start(cfg.options.wheel || 'eu', cfg.players[0] ? cfg.players[0].name : 'You', cfg.options.coach); }
     });
   }
+  // Test hook (the demo, games/demos/roulette.js): start a session, find a betting cell by its number or name (red, d1,
+  // c2, even...), and say where the next spin's ball lands
+  var DEMO_N = null;
+  window.__rl = { start: function (w, p) { start(w, p, 'off'); }, state: function () { return S; }, cell: function (k) { return R.cells && R.cells[k]; },
+    next: function (n) { DEMO_N = n; }, busy: function () { return busy; } };
   function start(wheel, player, coach) {
     moneyFor(player || 'You', true);
     S = { v: 2, wheel: wheel === 'us' ? 'us' : 'eu', player: player || 'You', coach: coach === 'on' ? 'on' : 'off', bets: {}, undo: [], last: null, recent: [], wAng: -Math.PI / 2, sess: newSess(), spin: null };
@@ -865,6 +870,7 @@
     if (!stake) { Kit.toast('Place a bet first'); return; }
     clearResult();
     var idx = Math.floor(Math.random() * ORDER[S.wheel].length);
+    if (DEMO_N != null) { idx = ORDER[S.wheel].indexOf(DEMO_N); DEMO_N = null; }   // (a demo's spin, __rl.next)
     // Settle the money now so leaving mid-spin can't lose the result; reveal when the ball drops.
     settleSpin(idx);
     save();

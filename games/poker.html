@@ -4619,11 +4619,13 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   }
 
   // ── Computer players ───────────────────────────────────────────────────────
+  var DEMO_MOVES = [], DEMO_HOLD = false;   // (set only by the demo's test hook: __pk.moves, __pk.hold)
   function cpuAct() {
     var H = S.hand; if (!H || H.phase !== 'bet') return;
     var i = H.actor; if (i < 0 || !S.players[i].cpu) return;
     // decided now, played after a think as long as the decision deserves (so a quick fold is quick and a big call is not)
     var a = cpuDecide(i), no = H.no, street = H.street;
+    if (DEMO_MOVES.length) a = DEMO_MOVES.shift();   // (a demo's script says what the computer players do)
     later(function () { var h = S && S.hand; if (h && h.no === no && h.street === street && h.phase === 'bet' && h.actor === i) act(i, a); }, thinkMs(i, a));
   }
   // Every computer player weighs its chances against what the others probably hold (from how they've bet), the price
@@ -6425,7 +6427,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var no = S.hand && S.hand.no;
     later(function () {
       if (!S || !S.hand || S.hand.no !== no || S.hand.phase !== 'done') return;
-      if (document.hidden || document.querySelector('.k-sheet, .k-win')) return autoNext(1500);
+      if (document.hidden || document.querySelector('.k-sheet, .k-win') || DEMO_HOLD) return autoNext(1500);
       startHand();
     }, ms);
   }
@@ -7164,7 +7166,21 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   // Test hook: computer players of the given skills play n cash hands against each other; resolves with each seat's
   // result in big blinds per 100 hands
   window.__pk = {
-    get S() { return S; }, get EV() { return EV; }, render: function () { renderTable(); }, act: function (a) { humanAct(a); }, undo: function () { undo(); }, deal: function () { startHand(); }, learn: function (g) { learnSheet(g); }, oneLine: function (b, w, m) { oneLine(b, w, m); }, _net: { start: netStart, move: netMove, turn: netTurn, bot: netBot, resign: netResign, decide: function (st, i) { return quiet(st, function () { return cpuDecide(i); }); } }, lobby: function () { circLobby(); }, end: function () { endEvent(); },
+    get S() { return S; }, get EV() { return EV; }, render: function () { renderTable(); },
+    // (the demo, games/demos/poker.js) a table as the setup starts one, and this hand's cards: each seat's hole cards and
+    // the five shared cards ('As', '10h'), with the rest of the deck left in its shuffled order
+    table: function (cfg) { newTable(cfg); },
+    moves: function (list) { DEMO_MOVES = list.slice(); }, hold: function (on) { DEMO_HOLD = !!on; },
+    rig: function (holes, board) {
+      var H = S.hand, ix = function (k) { return RN.indexOf(k.slice(0, -1)) * 4 + SU.indexOf(k.slice(-1)); }, used = {};
+      holes.forEach(function (h, i) { if (h) { H.hole[i] = h.map(ix); h.forEach(function (k) { used[ix(k)] = 1; }); } });
+      H.hole.forEach(function (h) { h.forEach(function (c) { used[c] = 1; }); });
+      var b = board.map(ix); b.forEach(function (c) { used[c] = 1; });
+      var rest = H.deck.filter(function (c) { return !used[c]; });
+      // (popped from the end: a burn, the flop, a burn, the turn, a burn, the river)
+      H.deck = rest.slice(3).concat([b[4], rest[0], b[3], rest[1], b[2], b[1], b[0], rest[2]]);
+      renderTable();
+    }, act: function (a) { humanAct(a); }, undo: function () { undo(); }, deal: function () { startHand(); }, learn: function (g) { learnSheet(g); }, oneLine: function (b, w, m) { oneLine(b, w, m); }, _net: { start: netStart, move: netMove, turn: netTurn, bot: netBot, resign: netResign, decide: function (st, i) { return quiet(st, function () { return cpuDecide(i); }); } }, lobby: function () { circLobby(); }, end: function () { endEvent(); },
     ring: function (rec, rain) { if (rain) { var art = el('div', { class: 'pbr-art' }), ov = el('div', { class: 'pbr-ov' }, [art]); document.body.appendChild(ov); braceletInto(art, Object.assign(ringPlate(rec), { rain: true })); } else ringShow(rec); },
     bracelet: function (rec, rain) { if (rain) { var art = el('div', { class: 'pbr-art' }), ov = el('div', { class: 'pbr-ov' }, [art]); document.body.appendChild(ov); braceletInto(art, Object.assign(braceletPlate(rec), { rain: true })); } else braceletShow(rec); },
     odds: function (hole, board, nOpp, fx) { var r = holdemOdds(hole, board, nOpp, fx || [], false, 'test', S && S.hand); return r; },

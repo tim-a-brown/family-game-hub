@@ -287,7 +287,9 @@ body{overflow-x:hidden;}
   // anything an account owns or watches), each with its last 30 closes. all.json: every US stock and fund, price only.
   // d/<SYM>.json: one symbol's year of closes and its long view, fetched when it's opened.
   var Q = lsGet('mk_quotes_cache', null), qErr = false;
-  function getJson(u) { return fetch(u, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }); }
+  // (a demo plays on a sample market its script hands over, __mk.demoMarket, and never reaches the network)
+  var DEMO = !!(Kit.inDemo && Kit.inDemo());
+  function getJson(u) { if (DEMO) return Promise.reject(new Error('demo')); return fetch(u, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }); }
   function loadQuotes() {
     var t = '&t=' + Math.floor(Date.now() / 60000);
     return getJson(QURL + t).catch(function () { return getJson(QURL_OLD + t); }).then(function (j) {
@@ -1556,11 +1558,11 @@ body{overflow-x:hidden;}
   // First load: how deep to go (an account already in use starts with everything, so nothing it holds goes missing)
   if (!DEPTH) Kit.depth({ host: app, key: 'mk_depth', levels: DEPTHS, value: A.dep || A.lots.length || A.tx.length ? 'pro' : 'basic', start: 'Open the market', onPick: setDepth });
   else layout();
-  loadQuotes().then(ensureAll).then(start);
+  if (!DEMO) loadQuotes().then(ensureAll).then(start);
   // the latest prices, and anything they settle (orders filled, options expired, dividends): on coming back, or Sync now
   function refreshAll() { return loadQuotes().then(ensureAll).then(function () { var ev = catchUp(); if (ev.length) report = (report || []).concat(ev); save(); if (dom.main && !dom.pane.classList.contains('on')) paint(); }); }
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') refreshAll(); });
-  window.__mk = { loadAll: loadAll, depth: function () { return DEPTH; }, setDepth: setDepth, ALL: function () { return ALL; }, open: function (s) { openSym(s); }, A: function () { return A; }, Q: function () { return Q; }, catchUp: catchUp, taxYears: taxYears, withdrawPlan: withdrawPlan, buy: buy, sell: sell, paint: paint, setQ: function (q) { Q = q; }, totals: totals };
+  window.__mk = { demoMarket: function (q, depth) { Q = q; setDepth(depth || 'basic'); start(); }, tab: function (t) { closePane(); tab = t; paint(); }, loadAll: loadAll, depth: function () { return DEPTH; }, setDepth: setDepth, ALL: function () { return ALL; }, open: function (s) { openSym(s); }, A: function () { return A; }, Q: function () { return Q; }, catchUp: catchUp, taxYears: taxYears, withdrawPlan: withdrawPlan, buy: buy, sell: sell, paint: paint, setQ: function (q) { Q = q; }, totals: totals };
 })();
 </script>
 </body>

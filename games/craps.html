@@ -365,6 +365,9 @@
       onStart: function (cfg) { start(cfg.players[0] ? cfg.players[0].name : 'You', cfg.options); }
     });
   }
+  // Test hook (the demo, games/demos/craps.js): start a session and say what the next rolls will be ([[4, 4], [5, 4]])
+  var DEMO_DICE = [];
+  window.__cr = { start: function (p) { start(p, {}); }, state: function () { return S; }, busy: function () { return busy; }, dice: function (l) { DEMO_DICE = l.slice(); } };
   function start(player, opts) {
     moneyFor(player || 'You', true);
     S = { v: 2, player: player || 'You', opts: { odds: String(opts.odds || '345'), f12: +opts.f12 === 3 ? 3 : 2, coach: opts.coach === 'on' ? 'on' : 'off' }, point: 0, bets: {}, undo: [], recent: [], dice: [5, 2], sess: newSess(), anim: null };
@@ -696,7 +699,7 @@
     if (busy) return;
     if (NET) { netBet(); return; }
     if (!total(S.bets)) { Kit.toast('Put a chip on the Pass line first'); Kit.sfx('bad'); flash('pass'); return; }
-    var d = [1 + rnd(6), 1 + rnd(6)];
+    var d = DEMO_DICE.length ? DEMO_DICE.shift() : [1 + rnd(6), 1 + rnd(6)];   // (a demo's rolls, __cr.dice)
     var res = resolve(d[0], d[1]);   // money moves now; the dice reveal it
     S.anim = res; S.undo = []; save();
     busy = true; paintBank();
