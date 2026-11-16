@@ -1249,6 +1249,23 @@
     } else showSetup();
   }
   boot();
+  // (demos and tests: a hand laid out card by card; o: {players, target, dealer, hands [[{r, s}]], discard, stock (top last), turn, phase})
+  window.__gin = {
+    state: function () { return S; },
+    start: function (o) {
+      token++; Kit.handoff.close();
+      var deck = Cards.deck(), used = {};
+      function card(x) { for (var i = 0; i < deck.length; i++) if (!used[i] && deck[i].r === x.r && deck[i].s === x.s) { used[i] = 1; return deck[i]; } return null; }
+      S = freshGame(o.players, o.target || 100, 'cpu');
+      S.hand = 1; S.dealer = o.dealer != null ? o.dealer : 1; S.sameDealer = false;
+      S.hands = o.hands.map(function (h) { return h.map(card); });
+      S.discard = o.discard.map(card); S.stock = o.stock.map(card);
+      S.turn = o.turn || 0; S.phase = o.phase || 'draw'; S.upStep = 2; S.took = null; S.stockOnly = false; S.turnNo = o.turnNo || 4;
+      S.pubTook = [[], []]; S.disBy = [[], []];
+      S.order = orderFor(S.hands[S.me]); S.manual = false; S.sel = null; S.newId = null; S.res = null; S.msg = '';
+      undoStack = []; Kit.gameStart(); save(); render(); next(true);
+    }
+  };
   TurnNet.setup({
     game: 'gin-rummy', title: 'Gin Rummy', min: 2, max: 2, botMs: 900,
     opts: netOpts, start: netStart, turn: netTurn, over: netOver, bot: netBot,

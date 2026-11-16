@@ -144,10 +144,11 @@
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
   function snapshot() { var sel = S.sel; S.sel = null; U.push(JSON.stringify(S)); S.sel = sel; }
 
-  function newGame() {
+  function newGame(set) {
     abandon();
     var d = []; 'shdc'.split('').forEach(function (s) { RANKS.split('').forEach(function (r) { d.push(r + s); }); });
     Cards.shuffle(d);
+    if (set && set.pyr) d = set.pyr.concat(set.stock);   // (a deal laid out by a demo: the stock's top card last)
     S = { pyr: d.slice(0, 28), stock: d.slice(28), waste: [], disc: [], pass: 1, sel: null,
       moves: 0, pairs: 0, kings: 0, time: 0, undos: 0, clearedOnPass: 0, counted: false, won: false, over: false, recorded: false, started: Date.now() };
     U = []; I = JSON.stringify(S);
@@ -648,6 +649,8 @@
     build(); place(true); updBar();
     if (S.over) setTimeout(lose, 300);
   } else newGame();
+  // (demos and tests: a deal laid out card by card, the pyramid row by row from the top)
+  window.__pyramid = { deal: function (o) { newGame(o); }, state: function () { return S; } };
 })();
 </script>
 </body>

@@ -234,10 +234,12 @@
       onStart: function (cfg) { start(cfg.players[0].name, cfg.options.system); }
     });
   }
-  function start(name, system) {
+  function start(name, system, set) {
     var deck = Cards.shuffle(Cards.deck()).slice(0, 25);
+    if (set) deck = set.deck.slice();   // (a demo's own 25 cards, in the order they come)
     S = { name: name || 'You', system: system === 'british' ? 'british' : 'american', deck: deck, grid: [], n: 0, phase: 'play', started: Date.now() };
     for (var i = 0; i < 25; i++) S.grid.push(null);
+    if (set && set.grid) set.grid.forEach(function (sq) { S.grid[sq] = S.deck[S.n++]; });   // (and the squares the first cards already lie in)
     undoStack = []; Kit.gameStart();
     save(); render({ deal: true });
     Kit.sfx('deal');
@@ -580,6 +582,8 @@
     if (S.phase === 'scoring') { render(); setTimeout(reveal, 400); }
     else render();
   } else showSetup();
+  // (demos and tests: start(name, system, {deck: 25 cards, grid: the squares the first cards are already in})
+  window.__pokersquares = { start: start, state: function () { return S; } };
 })();
 </script>
 <script>
