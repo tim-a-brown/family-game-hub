@@ -12,7 +12,7 @@
    a strip is from the front, set by makeFlow, so the light slides over the cards as they pass). A small card (hand,
    table, Library) has no layers and nothing that moves: its finish is drawn still, so nothing on the table blinks.
    The three are set on the few elements the light falls on (AnoriaEd.lights: the two layers, the gilt name, the rule
-   under the dates, and a Rainbow card's own frame), never on the whole card: a custom property is inherited, so one
+   under the dates, and a Rainbow card's frame, which is a leaf of its own, .ed-fx.r), never on the whole card: a custom property is inherited, so one
    set on the card would work out the style of every element in it again, every frame the light moves. Each of those
    elements works out where the light falls (--el to --gy) for itself. */
 
@@ -110,6 +110,10 @@
 /* ══ Rainbow foil, borderless: the picture runs to the edge, the words on a dark panel, a holographic foil over all ══ */
 .ac.ed-rainbow{padding:0;background:#090b14;--an-paper:#0a0c16;--an-ink:#fbf4df;}
 .ac.ed-rainbow::after{inset:0;border-radius:1.3em;border-width:.14em;background:var(--ed-rain) border-box;background-size:240% 240%;background-position:var(--px) var(--py);z-index:7;opacity:.9;}
+/* (a full card's frame is .ed-fx.r, a leaf the light is set on, drawn as the ::after above was) */
+.ac.ed-rainbow:not(.mini)::after{content:none;}
+.ac.ed-rainbow:not(.mini) > .ed-fx.r{display:block;inset:0;height:auto;border-radius:1.3em;border:.14em solid transparent;background:var(--ed-rain) border-box;background-size:240% 240%;background-position:var(--px) var(--py);
+  -webkit-mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;z-index:7;opacity:.9;}
 .ac.ed-rainbow .ac-in{border-radius:1.3em;}
 .ac.ed-rainbow .ac-art{overflow:visible;}
 .ac.ed-rainbow:not(.mini) .ac-art :is(img,canvas){bottom:auto;height:42em;object-position:50% 12%;filter:saturate(1.1) contrast(1.04);}
@@ -230,6 +234,7 @@
 .pk-ed.e4,.pk-p-e.e4,.pk-t-e.e4{--eb:linear-gradient(115deg,#ffa3e0,#ffe08f 26%,#a6ffd4 50%,#9cd6ff 74%,#d9bcff);}
 @keyframes pk-edIn{0%{opacity:0;transform:translate(-50%,68%) scale(.5);}100%{opacity:1;transform:translate(-50%,68%) scale(1);}}
 .pk-fc:not(.front) .pk-ed{opacity:calc(1 - var(--dim,0) * .5);}
+.pk-fc .pk-ed{will-change:opacity;}   /* (its shade follows the strip every frame: a layer of its own, so the card under it is not drawn again) */
 .pk-field.foils .pk-strip{margin-top:16px;}
 .pk-field.foils .pk-flow{margin-bottom:0;}
 /* on the plate beside the card: the edition's name on its own metal */
