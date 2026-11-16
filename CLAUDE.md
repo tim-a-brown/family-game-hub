@@ -138,6 +138,25 @@ Underlying principles for everything:
   the art even bigger"): each game a tile of its own color with its art drawn large and tilted, running off the top right
   corner, the name and player count at the lower left on the color, a console game's cartridge the same way, and the Keep
   playing cards to match (`html.look`, the `==LOOKS==` block in index.html). Quick notes (`Kit.toast`) are lifted glass with a hairline lit along the top.
+- **What keeps the home screen smooth** (Tim, 2026-11-16: "lagginess, scrolling up and down on the iPad mini in
+  landscape"; measured with the CPU slowed 4x at 1024x768). Scrolling: **no `backdrop-filter` on anything repeated per
+  tile or card**. A tile's glass band and a Keep playing card's name panel are painted glass (the dark gradient, and on a
+  tile a soft light at the band's upper right standing in for the art glowing through), with the art clipped at the
+  band's top edge (`clip-path` on `.gi`); a live blur on every tile made each one a layer of its own, about 320 layers in
+  all against 13 now. The few blurred controls in the header are fine. **A looping animation moves only `transform` and
+  `opacity`**: the gold edge of an online game whose turn is yours (`ngTurn`) and the green ring of a friend's live table
+  (`livePulse`) animated `box-shadow`, which repainted the page every frame for as long as they showed, scrolling or not
+  (the page at rest used 2.3 s of every 3 s of the main thread); now a brighter copy of the edge fades in and out on
+  `::after`, and the ring scales and fades on `::before`. Finished animations are let go (the logo's bounce cancels its
+  own animations once they end; a `fill` that holds keeps a layer forever). Together these took scrolling from about 35 ms
+  a frame (a 95th percentile of 67) to about 18 (33). Loading and redraws: **read everything, then write everything**.
+  `markWraps` fits every tile's name at once, a step for all names together (never read, write, read name by name, which
+  laid the page out once a name), starts each name's steps from the size its own width says, and remembers each fit by
+  text, width and size (`FIT`, only once the font has loaded), so a redraw for a search letter or a favorite measures
+  nothing new; `fitNames` reads every Keep playing card before it writes. A redraw nobody asked for (`fghsync:updated`,
+  coming back to the page) is `render(true)`: when the tiles would come out the same (compared without the icons'
+  gradient numbers) the ones on the screen stay, so a sync costs about 0.1 s instead of about 1 s. A new per-tile effect is
+  checked the same way: layer count (`LayerTree`) and scroll frame times at 4x before it goes in.
 - **Typing is on the Kit keyboard, never the phone's** (Tim, 2026-11-15: "any opportunity to type is done with a
   thoughtful onscreen keyboard not the device keyboard -- and make sure that doesn't mess up any of the formatting").
   `KitOsk` in kit.js: on a touch screen every text box (`input` text/search/email/tel/number/password/url, `textarea`)

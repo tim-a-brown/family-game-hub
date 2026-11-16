@@ -657,8 +657,13 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
 @keyframes otbPing{40%{transform:scale(1.025)}}
 @keyframes otbGlow{0%{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,#4ade80 50%,transparent),0 3px 0 color-mix(in srgb,#4ade80 28%,transparent),0 0 0 0 rgba(74,222,128,.55)}
   70%,100%{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,#4ade80 50%,transparent),0 3px 0 color-mix(in srgb,#4ade80 28%,transparent),0 0 0 12px rgba(74,222,128,0)}}
-.live-dot{position:absolute;right:-2px;top:-2px;width:9px;height:9px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 2px var(--surface);animation:livePulse 1.6s ease-out infinite;}
-@keyframes livePulse{0%{box-shadow:0 0 0 2px var(--bg),0 0 0 2px rgba(74,222,128,.6)}70%,100%{box-shadow:0 0 0 2px var(--bg),0 0 0 9px rgba(74,222,128,0)}}
+.live-dot{position:absolute;right:-2px;top:-2px;width:9px;height:9px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 2px var(--bg);}
+/* (the ring spreads by scale and fades by opacity on a layer of its own, which the compositor runs without repainting
+   the page; the dot and its dark edge are drawn again over it) */
+.live-dot::before,.live-dot::after{content:"";position:absolute;inset:-2px;border-radius:50%;pointer-events:none;}
+.live-dot::before{background:rgba(74,222,128,.6);animation:livePulse 1.6s ease-out infinite;}
+.live-dot::after{inset:0;background:inherit;box-shadow:0 0 0 2px var(--bg);}
+@keyframes livePulse{0%{transform:scale(1);opacity:1}70%,100%{transform:scale(2.077);opacity:0}}
 /* Open tables sheet: a group per friend, a row per table */
 .ots{display:flex;flex-direction:column;gap:16px;margin-top:6px;}
 .ots-g{display:flex;flex-direction:column;gap:8px;}
@@ -679,7 +684,7 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
 .ots-r:not(.live) .ots-join{background:var(--w1);color:var(--text);}
 .ots-r.arrive{animation:otbIn .45s var(--spring) both;}
 .ots-none{text-align:center;padding:20px 0;}
-@media (prefers-reduced-motion:reduce){.live-dot,.otb,.ots-r{animation:none!important;}}
+@media (prefers-reduced-motion:reduce){.live-dot,.live-dot::before,.otb,.ots-r{animation:none!important;}}
 /* Edit: every tile shows its trash, plus Clear all */
 .sec-h .cont-edit{margin-left:auto;min-height:34px;padding:0 15px;border:0;border-radius:999px;background:var(--w08);color:var(--text);font:inherit;font-weight:800;font-size:.86rem;cursor:pointer;}
 .sec-h .cont-edit.on{background:var(--yellow-fill,var(--yellow));color:#16102e;}
@@ -1092,8 +1097,12 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
 :root:not(.ng-x) .nbar b{font-family:var(--display);font-weight:800;font-size:1rem;letter-spacing:-.015em;white-space:normal;}
 :root:not(.ng-x) .nbar small{font-weight:550;color:var(--text-2);}
 :root:not(.ng-x) .nbar.turn{color:var(--text);background:linear-gradient(135deg,color-mix(in srgb,var(--h) 22%,transparent),var(--gl) 70%);
-  box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.65),0 0 20px rgba(255,190,60,.16);animation:ngTurn 2.6s ease-in-out infinite;}
-@keyframes ngTurn{50%{box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.95),0 0 26px rgba(255,190,60,.3);}}
+  box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.65),0 0 20px rgba(255,190,60,.16);animation:none;position:relative;}
+/* (the edge brightens and dims by the opacity of a second, brighter edge laid over it, which the compositor fades on its
+   own: animating the box-shadow itself repainted the page every frame for as long as it was your turn somewhere) */
+:root:not(.ng-x) .nbar.turn::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;
+  box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.86),0 0 26px rgba(255,190,60,.17);animation:ngTurn 2.6s ease-in-out infinite;}
+@keyframes ngTurn{50%{opacity:1;}}
 :root:not(.ng-x) .nbar.turn b{color:var(--text);}
 :root:not(.ng-x) .nbar.turn small{color:var(--text-2);}
 :root:not(.ng-x) .nbar .yt{padding:0 2px;background:none;color:var(--lit-ink);text-transform:none;letter-spacing:0;font-size:.84rem;font-weight:700;}
@@ -1101,7 +1110,7 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
 :root:not(.ng-x) .nbar .yt i{background:var(--lit);box-shadow:0 0 8px var(--litg);}
 :root:not(.ng-x) .nbar .pl{background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--gold-ink);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 8px 18px -10px rgba(255,190,60,.6);}
 :root:not(.ng-x) .nbar.wait{opacity:.85;}
-@media (prefers-reduced-motion:reduce){:root:not(.ng-x) .nbar.turn{animation:none;}}
+@media (prefers-reduced-motion:reduce){:root:not(.ng-x) .nbar.turn,:root:not(.ng-x) .nbar.turn::after{animation:none;}}
 :root:not(.ng-x) #cont-n.yt-n{color:var(--lit-ink);font-weight:700;}
 :root:not(.ng-x) .sec-h .cont-edit{border-radius:12px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);font-weight:700;}
 :root:not(.ng-x) .sec-h .cont-edit.on{background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--gold-ink);box-shadow:none;}
@@ -1376,8 +1385,12 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
 :root.look:not(.ng-x) .g.gr.tl .go::before{content:"";grid-row:1;grid-column:1;z-index:0;pointer-events:none;background:linear-gradient(to top,rgba(6,4,20,.3),transparent 45%);}
 /* the foot of the tile is a band of Night glass, as the list's rows are (Tim, 2026-11-15: "style the bottom part of the
    tiles and name of the game to look more like the other night glass styling"): smoked frosted glass with a hairline lit
-   along its top, the name in white and how many play in the quieter gray under it */
-:root.look:not(.ng-x) .g.gr.tl .go::after{content:"";display:block;grid-row:2 / 4;grid-column:1;z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(24,22,46,.84),rgba(15,14,32,.92));-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);box-shadow:inset 0 1px 0 rgba(255,255,255,.13);}
+   along its top, the name in white and how many play in the quieter gray under it.
+   (The glass is painted, not a live backdrop blur: some 130 blurred layers made the home screen stutter as it scrolled
+   on an iPad mini, 2026-11-16. The art stops at the band's top edge, and a soft light at the band's upper right stands
+   for the art glowing through the frosting, so the band looks as it did.) */
+:root.look:not(.ng-x) .g.gr.tl .go::after{content:"";display:block;grid-row:2 / 4;grid-column:1;z-index:1;pointer-events:none;background:radial-gradient(60% 80% at 84% 0%,rgba(255,255,255,.075),transparent 75%),linear-gradient(180deg,rgba(24,22,46,.84),rgba(15,14,32,.92));box-shadow:inset 0 1px 0 rgba(255,255,255,.13);}
+:root.look:not(.ng-x) .g.gr.tl .gi{clip-path:inset(-100vmax -100vmax 0 -100vmax);}
 :root.look:not(.ng-x) .g.gr.tl{--bpt:7px;}
 :root.look:not(.ng-x) .g.gr.tl .tx b{min-height:calc(var(--tfs) * 1.42 + var(--bpt,7px));line-height:1.12;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;text-align:left;}
 :root.look:not(.ng-x) .g.gr.tl.cart .tx b{min-height:calc(var(--tfs) * 1.42 + var(--bpt,7px) + var(--mr,25px));justify-content:center;padding-bottom:var(--bpt,7px);}
@@ -1405,7 +1418,7 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
 :root.look:not(.ng-x) .sbox .ago{left:auto;right:auto;}
 :root.look:not(.ng-x) .sbox,:root.look:not(.ng-x) .shelf.two .sbox{background:linear-gradient(to top,rgba(6,4,20,.62),rgba(6,4,20,.18) 48%,transparent 66%),linear-gradient(150deg,var(--gc1),var(--gc2) 85%);}
 :root.look:not(.ng-x) .sbox.ct{background:linear-gradient(to top,rgba(6,4,20,.62),rgba(6,4,20,.18) 48%,transparent 66%),radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--h) 34%,#1d2236),#10131f 80%);}
-:root.look:not(.ng-x) .sbox .nm,:root.look:not(.ng-x) .sbox .nm.two{background:linear-gradient(180deg,rgba(24,22,46,.84),rgba(15,14,32,.92));-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);box-shadow:inset 0 1px 0 rgba(255,255,255,.13);text-shadow:none;}
+:root.look:not(.ng-x) .sbox .nm,:root.look:not(.ng-x) .sbox .nm.two{background:linear-gradient(180deg,rgba(24,22,46,.84),rgba(15,14,32,.92));-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.13);text-shadow:none;}   /* (no live blur: the card's own color is all that lies under the name) */
 :root.look:not(.ng-x) .sbox .art::after{display:block;z-index:0;height:60%;background:linear-gradient(to top,rgba(6,4,20,.55),rgba(6,4,20,.2) 50%,transparent);}
 /* (the art lies over the shade, never under it, so every game's art is as bright as its own icon: Tim, 2026-11-15, "I don't
    want that dark haze over the logos"; the words keep a shadow of their own where they cross the art) */
@@ -2530,16 +2543,25 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
 
   function fitNames(box) {
     function fit() {
-      Array.prototype.forEach.call(box.querySelectorAll('.sbox .nm'), function (n) {
-        n.style.fontSize = ''; n.classList.remove('two'); n.parentNode.classList.remove('n2');
+      // (every box is read first and every name measured on one line at once, so the shelf lays out a few times, not
+      // several times a box; only a name that doesn't fit is worked on one by one after that)
+      var nms = [].slice.call(box.querySelectorAll('.sbox .nm'));
+      nms.forEach(function (n) { n.style.fontSize = ''; n.classList.remove('two'); n.parentNode.classList.remove('n2'); });
+      var ms = nms.map(function (n) {
+        var cs = getComputedStyle(n), w = n.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+        var bf = getComputedStyle(n, '::before');
+        var rg = document.createRange(); rg.selectNodeContents(n.querySelector('.bn') || n);
+        return { n: n, cs: cs, w: w, s: parseFloat(cs.fontSize), w1: w - (bf.float === 'right' ? parseFloat(bf.width) || 0 : 0), rg: rg };   // (w1: the first line's room, beside the time)
+      });
+      nms.forEach(function (n) { n.style.whiteSpace = 'nowrap'; });
+      ms.forEach(function (m) { m.need = m.rg.getBoundingClientRect().width; });
+      nms.forEach(function (n) { n.style.whiteSpace = ''; });
+      ms.forEach(function (m) {
         // (the text's own width on one line against the room inside the padding, which keeps clear of the time at the
         // corner: a name a little too long eases down to stay on one line; a long one (Mike Tyson's Punch-Out!!) takes
         // two lines at its own size, smaller only if two lines still can't hold it)
-        var cs = getComputedStyle(n), w = n.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), s = parseFloat(cs.fontSize);
-        var bf = getComputedStyle(n, '::before'), w1 = w - (bf.float === 'right' ? parseFloat(bf.width) || 0 : 0);   // (the first line's room, beside the time)
-        var rg = document.createRange(); rg.selectNodeContents(n.querySelector('.bn') || n);
+        var n = m.n, cs = m.cs, w = m.w, s = m.s, w1 = m.w1, rg = m.rg, need = m.need;
         var oneW = function () { n.style.whiteSpace = 'nowrap'; var x = rg.getBoundingClientRect().width; n.style.whiteSpace = ''; return x; };
-        var need = oneW();
         if (w1 <= 0 || need <= w1) return;
         var to = Math.floor(s * w1 / need * 10) / 10;
         if (to >= s * .86) {
@@ -2555,9 +2577,9 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
       });
       // (and each fact under the name keeps to one line: "Round 7 of 13" never breaks; a long one eases down to 78% of
       // its size, and only past that does it wrap)
-      Array.prototype.forEach.call(box.querySelectorAll('.sbox .st > span, .sbox .st.one'), function (f) {
-        f.style.fontSize = ''; f.classList.remove('wrap');
-        if (f.scrollWidth <= f.clientWidth + 1) return;
+      var fcs = [].slice.call(box.querySelectorAll('.sbox .st > span, .sbox .st.one'));
+      fcs.forEach(function (f) { f.style.fontSize = ''; f.classList.remove('wrap'); });
+      fcs.filter(function (f) { return f.scrollWidth > f.clientWidth + 1; }).forEach(function (f) {
         var s0 = parseFloat(getComputedStyle(f).fontSize), s = s0;
         while (s > s0 * 0.78 && f.scrollWidth > f.clientWidth + 1) { s -= 0.25; f.style.fontSize = s + 'px'; }
         if (f.scrollWidth > f.clientWidth + 1) { f.style.fontSize = ''; f.classList.add('wrap'); }
@@ -2574,50 +2596,108 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
 
   // Preferences changed the section order: redraw
   window.addEventListener('kit:cats', function () { render(); });
-  function render() {
+  // soft: a redraw nobody asked for (a sync bringing other devices' data, coming back to the page) keeps the tiles on
+  // the screen when they would come out exactly the same, so nothing is laid out, painted or fitted again
+  var listSig = '';
+  function render(soft) {
     dailyBy = null;
     renderChips();
     renderRail();
-    var list = $('list'); list.innerHTML = '';
+    var list = $('list'), box = document.createDocumentFragment();
     var vis = visibleGames();
     var all = !state.cats.length, on = function (id) { return all || state.cats.indexOf(id) >= 0; };
     var favs = vis.filter(isFav);
-    if (favs.length && (all ? !state.q : on('fav'))) list.appendChild(section('Favorites', 'star', favs, null, true));
+    if (favs.length && (all ? !state.q : on('fav'))) box.appendChild(section('Favorites', 'star', favs, null, true));
     Kit.cats().forEach(function (c) {
       if (!on(c.id)) return;
       var gs = vis.filter(function (g) { return g.cat === c.id; });
       // Consoles stays even with everything hidden, so its Edit button can bring things back
-      if (gs.length || (c.id === 'console' && !state.q && (!Kit.catOn || Kit.catOn('console')))) list.appendChild(section(c.name, c.id, gs, secExtra(c.id)));
+      if (gs.length || (c.id === 'console' && !state.q && (!Kit.catOn || Kit.catOn('console')))) box.appendChild(section(c.name, c.id, gs, secExtra(c.id)));
     });
     $('empty').classList.toggle('show', !vis.length);
+    // (the icons number their gradients afresh each time they are drawn: the numbers are left out of the comparison)
+    var sig = [].map.call(box.childNodes, function (n) { return n.outerHTML; }).join('').replace(/\b(g[ic])\d+\b/g, '$1');
+    if (soft && !wiggling && sig === listSig && list.firstChild) return;
+    listSig = sig;
+    list.innerHTML = ''; list.appendChild(box);
     markWraps();
   }
   // Tiles whose name runs to two lines: the icon steps down and in so the name stays on the shade, clear of the art.
   // (Also fits over-wide names.)
+  var FIT = {};   // (each name's fitted size, by its text, width, size and the fonts' state)
   function markWraps() {
     // (game tiles: does any name on the screen need two lines at this width? then every tile keeps room for two)
     // (a long name first eases its size down, to 74% at most, to stay on one line, so one long name doesn't make every tile taller)
-    var two = false, rg = document.createRange();
+    // (Every name is measured together, step by step: all the names are read, then all the sizes that change are written,
+    // so the page lays out once a step instead of once a name. Read, write, read for each of some 140 names in turn laid
+    // the whole page out hundreds of times, and took seconds on an iPad mini. A name's size never changes a tile's width,
+    // so each name comes out exactly as it would on its own.)
+    var two = false, rg = document.createRange(), look = document.documentElement.classList.contains('look');
     function lines(b) { rg.selectNodeContents(b.querySelector('.bn') || b); var ys = {}; [].forEach.call(rg.getClientRects(), function (r) { if (r.width > 1) ys[Math.round(r.top)] = 1; }); return Object.keys(ys).length; }
-    document.querySelectorAll('.g.gr .tx b').forEach(function (b) {
-      if (!b.offsetWidth) return; b.style.fontSize = '';
-      var over = function () { return lines(b) > 1 || b.scrollWidth > b.clientWidth; };
-      if (!over()) return;
-      var fs0 = parseFloat(getComputedStyle(b).fontSize), fs = fs0;
-      while (over() && fs > fs0 * .74) { fs -= .5; b.style.fontSize = fs + 'px'; }
-      if (lines(b) > 1) {
-        // (the tile look keeps its glass foot one name's height: Tim, 2026-11-15, "these bottom bands are too tall. Reduce
-        // them, and if text needs to go over two lines, just make that text smaller": a name that won't fit on one line
-        // takes two lines at a size that fits them in the same room)
-        if (b.closest('.tl') && document.documentElement.classList.contains('look')) {
-          // (a console game's name has the count's line too, so it takes two lines at its own size)
-          fs = b.closest('.cart') ? fs0 : Math.round(fs0 * .62 * 2) / 2; b.style.fontSize = fs + 'px';
-          while ((lines(b) > 2 || b.scrollWidth > b.clientWidth) && fs > fs0 * .5) { fs -= .5; b.style.fontSize = fs + 'px'; }
-          return;
-        }
-        b.style.fontSize = ''; if (b.closest('.tl')) two = true;
+    function over(b) { return lines(b) > 1 || b.scrollWidth > b.clientWidth; }
+    function past2(b) { return lines(b) > 2 || b.scrollWidth > b.clientWidth; }
+    // (each job: a name easing down half a pixel at a time while go(name) holds and it is above its least size)
+    function shrinkAll(jobs) {
+      while (jobs.length) {
+        jobs = jobs.filter(function (j) { return j.go(j.b) && j.fs > j.min; });
+        jobs.forEach(function (j) { j.fs -= .5; j.b.style.fontSize = j.fs + 'px'; });
+      }
+    }
+    function jobFor(b, k, go) { var f = parseFloat(getComputedStyle(b).fontSize); return { b: b, fs0: f, fs: f, min: f * k, go: go }; }
+    var names = [].slice.call(document.querySelectorAll('.g.gr .tx b'));
+    names.forEach(function (b) { if (b.style.fontSize) b.style.fontSize = ''; });
+    // (a name measured before at this width, size and font state takes the size it found then, with nothing measured:
+    // a redraw for a search letter, a favorite or a sync costs one layout)
+    // (only once the names' own font has loaded: a size found with a stand-in font is never kept)
+    var seen = names.filter(function (b) { return b.offsetWidth; }).map(function (b) {
+      var cs = getComputedStyle(b);
+      return { b: b, k: [b.textContent, b.getBoundingClientRect().width.toFixed(2), cs.fontSize, b.closest('.tl') ? 1 : 0, b.closest('.cart') ? 1 : 0, look ? 1 : 0].join('|'), f: cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily };
+    });
+    var keep = false; try { keep = !!seen.length && !!document.fonts && document.fonts.check(seen[0].f); } catch (e) {}
+    if (!keep) seen.forEach(function (x) { x.k = ''; });
+    var fresh = seen.filter(function (x) { return (x.fresh = !x.k || !FIT[x.k]); });
+    var jobs = fresh.filter(function (x) { return over(x.b); }).map(function (x) { var j = jobFor(x.b, .74, over); j.k = x.k; return j; });
+    // (the half-pixel steps start just above the size the name's own width says it needs, so the ones that are surely
+    // too big are skipped: the name's lines laid end to end, without the spaces where it broke, are never wider than the
+    // name on one line, so the size worked out from them is never smaller than the size that fits)
+    jobs.forEach(function (j) {
+      var b = j.b, cs = getComputedStyle(b), room = b.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), need = 0;
+      rg.selectNodeContents(b.querySelector('.bn') || b); [].forEach.call(rg.getClientRects(), function (r) { if (r.width > 1) need += r.width; });
+      need = Math.max(need, b.scrollWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
+      if (room > 0 && need > room) {
+        var to = j.fs0 * room / need + .5, last = j.fs0 - Math.ceil((j.fs0 - j.min) / .5 - 1e-9) * .5;   // (last: where the steps would stop anyway)
+        j.start = Math.max(last, j.fs0 - Math.floor((j.fs0 - to) / .5) * .5);
       }
     });
+    jobs.forEach(function (j) { if (j.start && j.start < j.fs) { j.fs = j.start; j.b.style.fontSize = j.fs + 'px'; } });
+    seen.forEach(function (x) { var r = !x.fresh && FIT[x.k]; if (!r) return; if (r.fs) x.b.style.fontSize = r.fs + 'px'; if (r.two) two = true; });
+    fresh.forEach(function (x) { if (x.k) FIT[x.k] = { fs: 0 }; });
+    shrinkAll(jobs.slice());
+    // (and a name that fitted right where its steps started tries the sizes above, half a pixel at a time, until one is
+    // too big: it ends at the size the steps from the top would have found)
+    var up = jobs.filter(function (j) { return j.start && j.fs === j.start && j.fs < j.fs0; });
+    while (up.length) {
+      up.forEach(function (j) { j.fs += .5; j.b.style.fontSize = j.fs + 'px'; });
+      var back = up.filter(function (j) { return over(j.b); });
+      up = up.filter(function (j) { return back.indexOf(j) < 0 && j.fs < j.fs0; });
+      back.forEach(function (j) { j.fs -= .5; j.b.style.fontSize = j.fs + 'px'; });
+    }
+    var twoJobs = [];
+    jobs.filter(function (j) { return lines(j.b) > 1; }).forEach(function (j) {
+      var b = j.b;
+      // (the tile look keeps its glass foot one name's height: Tim, 2026-11-15, "these bottom bands are too tall. Reduce
+      // them, and if text needs to go over two lines, just make that text smaller": a name that won't fit on one line
+      // takes two lines at a size that fits them in the same room)
+      if (b.closest('.tl') && look) {
+        // (a console game's name has the count's line too, so it takes two lines at its own size)
+        j.fs = b.closest('.cart') ? j.fs0 : Math.round(j.fs0 * .62 * 2) / 2; b.style.fontSize = j.fs + 'px';
+        j.min = j.fs0 * .5; j.go = past2; twoJobs.push(j);
+        return;
+      }
+      b.style.fontSize = ''; if (b.closest('.tl')) two = j.two = true;
+    });
+    shrinkAll(twoJobs);
+    jobs.forEach(function (j) { if (j.k) FIT[j.k] = { fs: parseFloat(j.b.style.fontSize) || 0, two: !!j.two }; });
     // (list rows: every one as tall as the tallest, so the rows are all the same shape)
     // (the games all share one height; the Tools, which say what each does instead of who plays, share their own)
     var root = document.documentElement, tools = document.querySelector('#list .sec-tools');
@@ -2626,13 +2706,12 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     var rows = [].slice.call(document.querySelectorAll('#list .g.gr:not(.tl)'));
     even(rows.filter(function (g) { return !g.closest('.sec-tools'); }), root);
     if (tools) even(rows.filter(function (g) { return g.closest('.sec-tools'); }), tools);
-    if (two) document.querySelectorAll('.g.gr.tl .tx b').forEach(function (b) {
-      b.style.fontSize = '';   // (room for two lines anyway: every name at its own size)
+    if (two) {
+      var tl = [].slice.call(document.querySelectorAll('.g.gr.tl .tx b'));
+      tl.forEach(function (b) { b.style.fontSize = ''; });   // (room for two lines anyway: every name at its own size)
       // (and none past two, so no tile is taller than the rest: a longer name, like a console game's, eases down)
-      if (!b.offsetWidth || (lines(b) <= 2 && b.scrollWidth <= b.clientWidth)) return;
-      var fs0 = parseFloat(getComputedStyle(b).fontSize), fs = fs0;
-      while ((lines(b) > 2 || b.scrollWidth > b.clientWidth) && fs > fs0 * .62) { fs -= .5; b.style.fontSize = fs + 'px'; }
-    });
+      shrinkAll(tl.filter(function (b) { return b.offsetWidth && past2(b); }).map(function (b) { return jobFor(b, .62, past2); }));
+    }
     document.documentElement.classList.toggle('tl2', two);
     document.querySelectorAll('.tiles .g').forEach(function (g) {
       var b = g.querySelector('.txt b'); if (!b) return;
@@ -2726,17 +2805,24 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
       if (!mover.animate) return;
       logo.classList.remove('spin'); fx.classList.remove('on'); void logo.offsetWidth;
       logo.classList.add('spin'); fx.classList.add('on');   // the glint and the corner wink (CSS)
-      mover.animate(BOUNCE, { duration: 900, fill: 'both' });
-      mark.animate(SPIN, { duration: 950, fill: 'both' });
+      ran.forEach(function (a) { a.cancel(); });
+      ran = [
+        mover.animate(BOUNCE, { duration: 900, fill: 'both' }),
+        mark.animate(SPIN, { duration: 950, fill: 'both' })];
       LAG.forEach(function (d, i) {
-        tiles[i].animate(BOUNCE, { duration: 900, delay: d, fill: 'both' });
-        tiles[i].animate(fade(ALPHA[i], .5), { duration: 900, fill: 'both' });   // the drop's trail: gone once it lands and hops
-        tiles[i].firstChild.querySelector('svg').animate(SPIN, { duration: 950, delay: d, fill: 'both' });
-        marks[i].firstChild.animate(SPIN, { duration: 950, delay: d, fill: 'both' });
-        marks[i].animate(fade(ALPHA[i], .68), { duration: 950, fill: 'both' });   // the spin's trail: gone as it slows
+        ran.push(tiles[i].animate(BOUNCE, { duration: 900, delay: d, fill: 'both' }),
+          tiles[i].animate(fade(ALPHA[i], .5), { duration: 900, fill: 'both' }),   // the drop's trail: gone once it lands and hops
+          tiles[i].firstChild.querySelector('svg').animate(SPIN, { duration: 950, delay: d, fill: 'both' }),
+          marks[i].firstChild.animate(SPIN, { duration: 950, delay: d, fill: 'both' }),
+          marks[i].animate(fade(ALPHA[i], .68), { duration: 950, fill: 'both' }));   // the spin's trail: gone as it slows
       });
+      // (every one ends where the page's own style already stands, so once they are done they are let go: a finished
+      // animation that fills holds a layer of its own for as long as the page is open, some 26 of them here)
+      var mine = ran;
+      Promise.all(mine.map(function (a) { return a.finished; })).then(function () { if (ran === mine) { mine.forEach(function (a) { a.cancel(); }); ran = []; } }, function () {});
       setTimeout(function () { logo.classList.remove('spin'); fx.classList.remove('on'); }, 1700);
     }
+    var ran = [];
     requestAnimationFrame(play);
     window.addEventListener('pageshow', function (e) { if (e.persisted) play(); });   // back to home from a game
   })();
@@ -3191,8 +3277,8 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     s = Kit.sheet({ title: 'Recent games', node: box, actions: [{ label: 'Done', cls: 'btn-soft' }] });
   }
 
-  document.addEventListener('fghsync:updated', function () { render(); });
-  window.addEventListener('pageshow', function (e) { if (e.persisted) render(); openDailyIfAsked(); reseatFilters(); });
+  document.addEventListener('fghsync:updated', function () { render(true); });
+  window.addEventListener('pageshow', function (e) { if (e.persisted) render(true); openDailyIfAsked(); reseatFilters(); });
   // iPad can bring the page back (back from a game, a reload) with the pinned search bar drawn partway down the
   // screen until the next scroll: lay it out again
   function reseatFilters() {
