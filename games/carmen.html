@@ -457,9 +457,9 @@ html.cs-land .cs-act{overflow-y:auto;}
 
   // ── Case generation ──────────────────────────────────────────────────────
   var C = null, UNDO = [], busy = false;
-  function newCase(v, player, solved) {
+  function newCase(v, player, solved, seed) {
     var car = solved != null ? { solved: solved } : careerOf(player, v), rk = rankOf(car.solved), stops = RANKS[rk][2];
-    var r = seeded(Date.now() + ':' + Math.random());
+    var r = seeded(seed != null ? seed : Date.now() + ':' + Math.random());
     // the trail: no hop longer than 8 hours (so a 7-stop case leaves room for a wrong turn by Sunday) and none to
     // the place right next door, if it can be helped
     var trail = [pick(DATA, r)];
@@ -1219,7 +1219,10 @@ html.cs-land .cs-act{overflow-y:auto;}
   }
 
   // test hooks
-  window.__cs = { C: function () { return C; }, newCase: newCase, loadData: loadData, SUS: SUS, ROSTER: ROSTER, RANKS: RANKS, place: place, hopHours: hopHours, place: place, fly: fly, win: win, lose: lose, caseFile: caseFile, investigate: investigate };
+  window.__cs = { C: function () { return C; },
+    // (the demo: a Gumshoe's case dealt from a set seed, opened at its briefing)
+    start: function (v, player, seed) { loadData(v); clearSave(); C = newCase(v, player, 0, seed); UNDO = []; busy = false; screen(); return briefing(); },
+    city: function (id) { return city(id); }, busy: function () { return busy; }, newCase: newCase, loadData: loadData, SUS: SUS, ROSTER: ROSTER, RANKS: RANKS, place: place, hopHours: hopHours, place: place, fly: fly, win: win, lose: lose, caseFile: caseFile, investigate: investigate };
 
   // Resume a case in progress, or start at the setup screen
   var sv = rd(SAVE, null);

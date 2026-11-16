@@ -1271,7 +1271,13 @@ html.qb-land .ar-hud{padding:0;}
     noSpawn: function () { G.spawnT = 1e9; },
     place: function (r, c) { placeQ(r, c); q.lastOn = { r: r, c: c }; },
     lives: function (n) { G.lives = n; hudDirty = true; },
-    level: function (l, rd) { G.level = l; G.round = rd || 1; G.ri = (l - 1) * 4 + G.round; startRound(true); }
+    level: function (l, rd) { G.level = l; G.round = rd || 1; G.ri = (l - 1) * 4 + G.round; startRound(true); },
+    // the demo: a new game, and where things are on the board (in the board's own units, FW by FH)
+    begin: function (who) { startGame({ who: who, startLevel: 1, pace: 'arcade' }); },
+    at: function (r, c) { var p = cellXY(r, c); return { x: p.x, y: p.y, FW: FW, FH: FH }; },
+    qAt: function () { return q ? { x: q.x, y: q.y, FW: FW, FH: FH } : null; },
+    done: function (r, c) { return cubes[idx(r, c)] >= rule().steps; },
+    leave: function (list) { var t = rule().steps; for (var j = 0; j < NCUBES; j++) cubes[j] = t; list.forEach(function (p) { cubes[idx(p[0], p[1])] = 0; }); }
   };
 
   // ═══ Boot ════════════════════════════════════════════════════════════════
