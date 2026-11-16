@@ -12,7 +12,7 @@
   function pod(i) { return function () { return document.querySelectorAll('.pods .pod')[i]; }; }
   Kit.demoScript({
     intro: 'Here’s how a round of Wheel of Fortune goes. You’ll spin, call a letter and solve the puzzle yourself.',
-    beats: 11,
+    beats: 10,
     end: 'Spin and call consonants to build your money, buy vowels when you need them, and solve when you know it.',
     start: function () {
       var me = (localStorage.getItem('my_name') || '').trim() || 'You';
@@ -34,9 +34,8 @@
       await D.tap(btnOf(/Buy a vowel/), { after: 400 });
       await D.tap(key('E'));
       await D.wait(function () { return S().used.indexOf('E') >= 0 && idle(); }, 8000);
-      await D.say('Three E’s. Now there’s enough on the board to solve it.', { at: '.board' });
       await D.tap(btnOf(/^Solve$/), { after: 400 });
-      await D.you('.kb', 'Fill in the missing letters on the keyboard, one for each blank tile.', {
+      await D.you('.kb', 'Three E’s, and now there’s enough to solve it. Fill in the missing letters on the keyboard.', {
         allow: function () { return D.qa('.kb .key'); }, autoTap: function () { var L = W.nextBlank(); return L ? key(L)() : null; },
         until: function () { return W.filled(); }, spot: false
       });
