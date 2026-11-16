@@ -2591,38 +2591,47 @@
   // (the Players card sets the class, fitDial). The arrow keys turn it too.
   function countStepper(n, lo, hi, step) {
     var w = el('div', { class: 'k-wn k-dial', role: 'spinbutton', tabindex: '0', 'aria-label': 'How many players', 'aria-valuemin': String(lo), 'aria-valuemax': String(hi), 'aria-valuenow': String(n), 'aria-valuetext': n + (n === 1 ? ' player' : ' players') });
-    var drum = el('div', { class: 'k-dl-drum' }), nums = [];
-    for (var k = lo; k <= hi; k++) { var b = el('b', { class: 'k-dl-n', text: String(k) }); nums.push(b); drum.appendChild(b); }
-    // an end stop in the place past the first number and past the last (Tim, 2026-11-16: "make it clear when dials can't
-    // go any further forward or backward"): a hatched block the wheel can't turn past, which lights when it is hit
-    var stops = [[lo - 1, el('i', { class: 'k-dl-stop' })], [hi + 1, el('i', { class: 'k-dl-stop' })]];
-    stops.forEach(function (x) { drum.appendChild(x[1]); });
-    w.appendChild(el('i', { class: 'k-dl-rib a' })); w.appendChild(el('i', { class: 'k-dl-rib b' }));
+    // The wheel is a prism of flat faces, a number on each, with a groove cut between one face and the next (Tim,
+    // 2026-11-16: "instead of the dials being fully round, render them as flatter where the numbers are with grooves
+    // between the numbers they click into place"). It is drawn in 3D once: each face is turned to its place round the
+    // axle, and turning the wheel turns only the axle (one transform a frame). Past the first and the last number is an
+    // end stop (Tim, the same day: "make it clear when dials can't go any further forward or backward"), a hatched face
+    // the wheel can't turn past, which lights when it is hit.
+    var STEP = 36, SIZE = 30, AP = SIZE / 2 / Math.tan(STEP / 2 * Math.PI / 180);   // (degrees a face, its height, the axle's distance)
+    var drum = el('div', { class: 'k-dl-drum' }), faces = [], stops = [];
+    for (var k = lo - 1; k <= hi + 1; k++) {
+      var end = k < lo || k > hi, sh = el('i', { class: 'k-dl-sh' });
+      var f = el('div', { class: 'k-dl-f' + (end ? ' stop' : '') }, [end ? el('i', { class: 'k-dl-stop' }) : el('b', { class: 'k-dl-n', text: String(k) }), sh]);
+      faces.push({ k: k, el: f, sh: sh, vis: null, on: null }); drum.appendChild(f);
+      if (end) stops.push(f.firstChild);
+    }
     w.appendChild(drum); w.appendChild(el('i', { class: 'k-dl-win' }));
-    var pos = n, shown = null, raf = 0, anim = null, vert = false, lastI = n;
+    var pos = n, raf = 0, anim = null, vert = null, lastI = n, drag = null;
     function V() { return w.classList.contains('v'); }
-    function gap() { return V() ? 30 : 30; }
+    function gap() { return SIZE; }
+    // while a finger turns it, the wheel holds at each number and then gives to the next, so the number clicks into place
+    function detent(p) { var k = Math.round(p), f = p - k; return k + .5 * Math.sign(f) * Math.pow(Math.abs(2 * f), 1.9); }
     function paint() {
-      raf = 0; vert = V();
-      var g = gap(), R = g * 1.9;   // (the drum's radius: three numbers a side would wrap it halfway round)
-      var all = nums.map(function (x, i) { return [lo + i, x]; }).concat(stops);
-      for (var i = 0; i < all.length; i++) {
-        var a = (all[i][0] - pos) * g / R;   // (the number's angle round the drum)
-        var x = all[i][1];
-        if (Math.abs(a) > 1.45) { if (x.__v !== 0) { x.style.opacity = '0'; x.__v = 0; } continue; }
-        var off = R * Math.sin(a), sc = Math.max(.05, Math.cos(a)), op = Math.pow(Math.cos(a), 2.2);
-        var t = vert ? 'translate3d(0,' + off.toFixed(2) + 'px,0) scale(1,' + sc.toFixed(3) + ')' : 'translate3d(' + off.toFixed(2) + 'px,0,0) scale(' + sc.toFixed(3) + ',1)';
-        x.style.transform = t; x.style.opacity = op.toFixed(3); x.__v = 1;
-        if (x.tagName === 'B') x.classList.toggle('on', Math.abs(all[i][0] - pos) < .5);
+      raf = 0; var v = V();
+      if (v !== vert) {   // (the faces' places round the axle, for the way the wheel lies)
+        vert = v;
+        faces.forEach(function (F) { F.el.style.transform = (v ? 'rotateX(' + (-F.k * STEP) + 'deg)' : 'rotateY(' + (F.k * STEP) + 'deg)') + ' translateZ(' + AP.toFixed(2) + 'px)'; });
       }
-      // the ribbed edges roll with the numbers
-      w.style.setProperty('--dl-rib', ((pos - lo) * g * .6).toFixed(1) + 'px');
-      var near = Math.round(pos);
+      var p = drag ? detent(pos) : pos;
+      drum.style.transform = 'translateZ(' + (-AP).toFixed(2) + 'px) ' + (vert ? 'rotateX(' + (p * STEP).toFixed(2) + 'deg)' : 'rotateY(' + (-p * STEP).toFixed(2) + 'deg)');
+      faces.forEach(function (F) {
+        var a = (F.k - p) * STEP, vis = Math.abs(a) < 96;
+        if (vis !== F.vis) { F.vis = vis; F.el.style.visibility = vis ? '' : 'hidden'; }
+        if (!vis) return;
+        F.sh.style.opacity = Math.min(1, (1 - Math.cos(a * Math.PI / 180)) * 1.15).toFixed(3);
+        var on = Math.abs(F.k - p) < .5; if (on !== F.on) { F.on = on; F.el.classList.toggle('on', on); }
+      });
+      var near = Math.round(p);
       if (near !== lastI && near >= lo && near <= hi) { lastI = near; sfx('tick'); haptic('tick'); }
     }
     function draw() { if (!raf) raf = requestAnimationFrame(paint); }
     // turned against an end: the wheel gives a little toward the stop and springs back, the stop lights, a firm tick
-    function hitStop(d) { var st = stops[d < 0 ? 0 : 1][1]; st.classList.remove('hit'); void st.offsetWidth; st.classList.add('hit'); haptic('medium'); sfx('tap'); }
+    function hitStop(d) { var st = stops[d < 0 ? 0 : 1]; st.classList.remove('hit'); void st.offsetWidth; st.classList.add('hit'); haptic('medium'); sfx('tap'); }
     function bump(d) {
       hitStop(d); if (anim) cancelAnimationFrame(anim);
       var t0 = performance.now(), base = n;
@@ -2643,7 +2652,6 @@
       })(t0);
     }
     // a drag: the drum follows the finger (past the first or last number it gives, like a rubber band)
-    var drag = null;
     w.addEventListener('pointerdown', function (e) {
       if (e.button) return; e.stopPropagation();
       if (anim) { cancelAnimationFrame(anim); anim = null; }
@@ -2663,7 +2671,7 @@
     });
     function up(e) {
       if (!drag || e.pointerId !== drag.id) return;
-      var dr = drag; drag = null;
+      var dr = drag; drag = null; pos = detent(pos);   // (the wheel goes on from where it was shown)
       if (!dr.moved) {   // a tap: the number before the window turns it down one, the number after it up one
         var r = w.getBoundingClientRect(), c = V() ? e.clientY - (r.top + r.height / 2) : e.clientX - (r.left + r.width / 2);
         var to = n + (c > 0 ? 1 : -1);
