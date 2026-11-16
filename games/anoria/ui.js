@@ -1231,7 +1231,8 @@
   // the plate on a card that can't be played: its cost against your Spark, or the reason in a sentence
   function lockPlate(R) {
     if (!R.plate) return null;
-    if (R.plate.cost != null) return el('div', { class: 'sc-lock' }, [el('span', { class: 'sc-cost big' }, [el('b', { text: String(R.plate.cost) })]), el('span', {}, [document.createTextNode('You have '), el('b', { text: String(R.plate.have) }), document.createTextNode(' Spark.')])]);
+    // (the card's cost on its flame, against the Spark you have on the same flame as the one beside the close button)
+    if (R.plate.cost != null) return el('div', { class: 'sc-lock' }, [el('span', { class: 'sc-cost big' }, [el('b', { text: String(R.plate.cost) })]), el('span', { class: 'sc-lk-t' }, [document.createTextNode('You have '), el('span', { class: 'sc-cost have' + (R.plate.have ? '' : ' zero') }, [el('b', { text: String(R.plate.have) })]), document.createTextNode(' Spark.')])]);
     return el('div', { class: 'sc-lock note' }, [el('span', { text: R.plate.note })]);
   }
 
@@ -1248,18 +1249,19 @@
     const me = ui.view, h = V.hold[p], t = V.tot[p], nm = theName('@' + S.places[p]), you = o => o === me && human(me);
     const mx = Math.max.apply(null, t), tied = t.filter(x => x === mx).length > 1, any = V.figs.some(f => f.p === p), own = E.ownerOfSpoke(S, p), gate = E.isGate(S, p);
     const ren = n => n + ' Renown', who = o => (you(o) ? 'you' : pname(o)), whose = o => (you(o) ? 'your' : Kit.poss(pname(o)));
-    let pre = '';
-    if (h >= 0 && (tied || !any)) {
-      if (!any || mx === 0) pre = 'Nobody has a Figure here, and a Gate with nobody at it is held by its owner. ';
-      else if (p === 2 * S.N && S.dm && S.ban[p] === h) pre = 'The Might is tied at ' + mx + ', and ' + who(h) + (you(h) ? ' win' : ' wins') + ' a tie at the Crossroads, because ' + who(h) + ' laid it and ' + (you(h) ? 'have' : 'has') + ' a Figure here. ';
-      else if (gate && own === h) pre = 'The Might is tied at ' + mx + ', and a tie at a Gate goes to the Gate’s owner. ';
-      else pre = 'The Might is tied at ' + mx + ', and ' + who(h) + (you(h) ? ' win' : ' wins') + ' the tie here. ';
-      pre = cap1(pre);
-    }
+    // (Tim, 2026-11-16: the face-off upright on a phone was "a confusing page to be dropped into". One sentence, the
+    // condition first as the player meets it, then who holds it and what that is worth when the round ends)
     if (h >= 0) {
-      const w = E.rv(S, p, h) * E.stake(S.cfg, V.round);
-      if (gate && own >= 0 && own !== h && !E.ally(S, own, h)) return pre + cap1(who(h)) + (you(h) ? ' hold ' : ' holds ') + nm + ', which is ' + whose(own) + ' Gate, so ' + who(h) + (you(h) ? ' score ' : ' scores ') + ren(w) + ' and one of ' + whose(own) + ' Seals breaks when the round ends.';
-      return pre + cap1(who(h)) + (you(h) ? ' hold ' : ' holds ') + nm + ', and ' + (you(h) ? 'score ' : 'scores ') + ren(w) + ' when the round ends.';
+      const w = E.rv(S, p, h) * E.stake(S.cfg, V.round), H = cap1(who(h)), hs = you(h) ? ' hold ' : ' holds ', sc = you(h) ? ' score ' : ' scores ';
+      let why = '';   // (a tie or an empty Domain settled by a rule: the reason, said with the hold)
+      const ownG = ' because it is ' + (you(h) ? 'your' : 'their') + ' own Gate';
+      if (!any || mx === 0) why = gate && own === h ? ownG : '';
+      else if (tied && p === 2 * S.N && S.dm && S.ban[p] === h) why = ' because ' + who(h) + ' laid it and ' + (you(h) ? 'have' : 'has') + ' a Figure here';
+      else if (tied && gate && own === h) why = ownG;
+      else if (tied) why = ' because ' + who(h) + (you(h) ? ' win' : ' wins') + ' a tie here';
+      const lead = !any || mx === 0 ? 'With no Figures here, ' : tied ? 'With the Might tied at ' + mx + ', ' : '';
+      if (gate && own >= 0 && own !== h && !E.ally(S, own, h)) return (lead ? lead + who(h) : H) + hs + whose(own) + ' Gate' + why + ', so when the round ends ' + who(h) + sc + ren(w) + ' and one of ' + whose(own) + ' Seals breaks.';
+      return (lead ? lead + who(h) : H) + hs + nm + why + ', and' + sc + ren(w) + ' when the round ends.';
     }
     if (!any) return 'Nobody has a Figure here, so nobody holds ' + nm + '.';
     if (tied && S.dm && E.pw(S, p) === 'treaty') { const ts = []; t.forEach((x, o) => { if (x === mx && V.figs.some(f => f.p === p && f.o === o)) ts.push(o); }); if (ts.length > 1) return 'The Might is tied at ' + mx + ', so ' + listOf(ts.map(who)) + ' each score 1 Renown here when the round ends.'; }
@@ -1304,7 +1306,10 @@
     };
     const side = (figs, who) => {
       const s = el('div', { class: 'fo-side ' + who });
-      if (!figs.length) s.appendChild(el('p', { class: 'fo-none', text: who === 'me' ? 'You have no Figures here.' : M ? 'Nobody else has a Figure here.' : pname(riv) + ' has no Figures here.' }));
+      // (a side with nobody there is a slim band: an empty slot where that player's Figures would stand, and one quiet line)
+      if (!figs.length) { s.classList.add('none'); s.style.setProperty('--pc', who === 'me' ? 'var(--pc' + me + ')' : M ? 'var(--g-dust)' : 'var(--pc' + riv + ')');
+        s.appendChild(el('span', { class: 'fo-ghost', 'aria-hidden': 'true' }));
+        s.appendChild(el('p', { class: 'fo-none', text: who === 'me' ? 'You have no Figures here.' : M ? 'Nobody else has a Figure here.' : pname(riv) + ' has no Figures here.' })); }
       figs.forEach(f => {
         const cell = el('div', { class: 'fo-f' }, [cardB(f)]);
         if (who === 'me') { const c = chipsFor(f); if (c) cell.appendChild(c); }
@@ -1318,46 +1323,97 @@
     // the middle: the Domain, the two totals on a balance, the sentence, the Domain's own power, the road on either side
     const hold = V.hold[p], sd = sidesOf(V.tot[p], me), mid = el('div', { class: 'fo-mid' });
     const tb = el('button', { type: 'button', class: 'fo-tile' + (hold >= 0 ? ' held' : ''), style: hold >= 0 ? { '--hc': 'var(--pc' + hold + ')' } : null, 'aria-label': 'Read ' + C.PLACES[S.places[p]].n, onclick: e => { e.stopPropagation(); h.cards(L.items.findIndex(x => x.p === p && x.u == null)); } }, [miniTile(p, { full: true, rule: true })]);
+    // (the Domain's power in its whole sentence where the face-off has room for it, its few words where it hasn't: fitFaceOff)
+    const rl = tb.querySelector('.pl-rule'), whole = S.dm ? DW((TX.DRULE || {})[C.PLACES[S.places[p]].pw] || '') : '';
+    if (rl && whole) { rl.dataset.short = rl.textContent; rl.dataset.long = whole; }
     mid.appendChild(tb);
-    const wonL = hold >= 0 && hold !== me && !E.ally(S, hold, me), wonR = hold >= 0 && !wonL, sum = Math.max(1, sd[0] + sd[1]);
-    mid.appendChild(el('div', { class: 'fo-bal' + (wonL ? ' l' : wonR ? ' r' : ''), role: 'img', 'aria-label': (M ? 'The strongest other side has ' : pname(riv) + ' has ') + sd[0] + ' Might here, and you have ' + sd[1] }, [
-      el('span', { class: 'fo-sh' + (wonL ? ' win' : hold >= 0 ? ' lose' : ''), style: { '--tc': 'var(--pc' + riv + ')' } }, [el('b', { text: String(sd[0]) })]),
+    // (the two totals hang from the ends of a balance: whoever holds the Domain is lit and their end sinks; whose total
+    // each is, is the name under it, in that player's colour. A tie nobody holds, or nobody at all, stays level.)
+    const wonL = hold >= 0 && hold !== me && !E.ally(S, hold, me), wonR = hold >= 0 && !wonL;
+    const lName = M ? (rivalAt(p) >= 0 ? pname(rivalAt(p)) : 'Everyone else') : pname(riv);
+    const tot = (n, o, win, nm) => el('span', { class: 'fo-tot', style: { '--tc': o == null ? 'var(--g-dust)' : 'var(--pc' + o + ')' } }, [
+      el('span', { class: 'fo-sh' + (win ? ' win' : hold >= 0 ? ' lose' : '') }, [el('b', { text: String(n) })]), el('span', { class: 'fo-tn', text: nm })]);
+    mid.appendChild(el('div', { class: 'fo-bal' + (wonL ? ' l' : wonR ? ' r' : ' even'), role: 'img', 'aria-label': lName + (M && rivalAt(p) < 0 ? ' have ' : ' has ') + sd[0] + ' Might here, and you have ' + sd[1] }, [
+      tot(sd[0], M && rivalAt(p) < 0 ? null : riv, wonL, lName),
       el('span', { class: 'fo-beam' }, [el('span', { class: 'fo-arm' }, [el('i', { style: { flex: String(sd[0] || .001), background: 'var(--pc' + riv + ')' } }), el('i', { style: { flex: String(sd[1] || .001), background: 'var(--pc' + me + ')' } })]), el('span', { class: 'fo-pivot' })]),
-      el('span', { class: 'fo-sh' + (wonR ? ' win' : hold >= 0 ? ' lose' : ''), style: { '--tc': 'var(--pc' + me + ')' } }, [el('b', { text: String(sd[1]) })])]));
+      tot(sd[1], me, wonR, pname(me))]));
     mid.appendChild(el('p', { class: 'fo-who', text: DW(holdSay(p)) }));
     if (on) { const R = roadOf({ p: p, key: S.places[p] }); if (R.btns.length) mid.appendChild(el('div', { class: 'fo-pw' }, R.btns.map(x => el('button', { type: 'button', class: 'btn btn-sm btn-soft rd-b', onclick: e => { e.stopPropagation(); runActs(x.acts, C.PLACES[S.places[p]].n); } },
       [el('span', { text: x.label }), x.cost != null ? el('span', { class: 'sc-cost' }, [el('b', { text: String(x.cost) })]) : null])))); }
-    const nav = el('div', { class: 'fo-nav' });
-    if (prev != null) nav.appendChild(el('button', { type: 'button', class: 'fo-go', 'aria-label': 'The next Domain along the road: ' + C.PLACES[S.places[prev]].n, onclick: e => { e.stopPropagation(); h.step(-1); } }, [el('span', { class: 'ar', text: '←' }), el('span', { text: domShort(C.PLACES[S.places[prev]].n) })]));
-    if (next != null) nav.appendChild(el('button', { type: 'button', class: 'fo-go', 'aria-label': 'The next Domain along the road: ' + C.PLACES[S.places[next]].n, onclick: e => { e.stopPropagation(); h.step(1); } }, [el('span', { text: domShort(C.PLACES[S.places[next]].n) }), el('span', { class: 'ar', text: '→' })]));
-    mid.appendChild(nav);
-    box.appendChild(side(th, 'them')); box.appendChild(mid); box.appendChild(side(mi, 'me'));
+    // (along the road: a pager at the foot, plainly a way to look, not a move: the Domains on either side by name with a
+    // chevron, and between them the road itself, a dot for each Domain in the order they lie, this one lit; a dot is a tap
+    // to that Domain. A swipe sideways and the arrow keys do the same.)
+    const chev = d => el('span', { class: 'fo-chev', 'aria-hidden': 'true', html: '<svg viewBox="0 0 12 20"><path d="' + (d < 0 ? 'M9 2 2 10l7 8' : 'M3 2l7 8-7 8') + '" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>' });
+    const goB = (q, d) => q == null ? el('span', { class: 'fo-go none' }) : el('button', { type: 'button', class: 'fo-go ' + (d < 0 ? 'prev' : 'next'), 'aria-label': 'Look at ' + C.PLACES[S.places[q]].n, onclick: e => { e.stopPropagation(); h.step(d); } },
+      d < 0 ? [chev(-1), el('span', { class: 'fo-gn', text: domShort(C.PLACES[S.places[q]].n) })] : [el('span', { class: 'fo-gn', text: domShort(C.PLACES[S.places[q]].n) }), chev(1)]);
+    const dots = el('span', { class: 'fo-dots' + (ord.length > 7 ? ' many' : '') }, ord.map(q => el('button', { type: 'button', class: 'fo-dot' + (q === p ? ' on' : ''), 'aria-label': 'Look at ' + C.PLACES[S.places[q]].n, 'aria-current': q === p ? 'true' : null,
+      onclick: e => { e.stopPropagation(); if (q !== p && h.jump) h.jump(q); } }, [el('i')])));
+    const nav = el('nav', { class: 'fo-road', 'aria-label': 'The Domains along the road' }, [goB(prev, -1), dots, goB(next, 1)]);
+    box.appendChild(side(th, 'them')); box.appendChild(mid); box.appendChild(side(mi, 'me')); box.appendChild(nav);
     return box;
   }
-  // Size a face-off to its box: the cards as large as both sides allow, the same size on both, nothing cut off
+  // Size a face-off to its box (Tim, 2026-11-16: a side with nobody there had half an iPhone's height to itself). An
+  // empty side is a slim band (a min-content track); a side with Figures shares the room that is left, its cards the
+  // largest size at which both sides and the middle fit, the same on both sides so the two face each other as equals.
+  // With nobody there at all the Domain is the hero: large, with its whole power on its plate. Where the middle is short
+  // of room the power goes back to its few words, then the tile gets smaller.
   function fitFaceOff(box) {
     const W = box.clientWidth, H = box.clientHeight; if (!W || !H) return;
     const hz = W > H * 1.05; box.classList.toggle('hz', hz); box.classList.toggle('vt', !hz);
-    const sides = box.querySelectorAll('.fo-side');
-    const tight = !hz && (W < 330 || H < 600); box.classList.toggle('tight', tight);   // (a 320-wide phone: a smaller Domain, the road's arrows left to the swipe and the side map, the chips beside each card)
-    const mw = hz ? Math.round(H < 400 ? Math.max(220, Math.min(290, W * .3)) : Math.max(200, Math.min(360, W * .32))) : W, tw = hz ? mw - 16 : Math.round(Math.min(W * (tight ? .56 : .66), tight ? 200 : 400));
-    box.style.setProperty('--mw', mw + 'px'); box.style.setProperty('--tw', tw + 'px'); box.style.setProperty('--th', Math.round(tw * .56) + 'px');
-    const mid = box.querySelector('.fo-mid'), midH = hz ? 0 : mid.offsetHeight, sw = hz ? (W - mw - 24) / 2 : W - 12, shH = hz ? H - 12 : (H - midH - 24) / 2;
-    // (each side as large as its own cards allow, in one, two or three rows: a side with chips under its cards keeps room
-    // for them; both sides take the smaller size, so the two face each other as equals)
-    // (a phone on its side has no height to spare: there the chips stand beside each card, not under it)
-    const low = (hz && H < 400) || tight; box.classList.toggle('low', low);
-    // (a side with nobody there gives most of its room to the other: upright, its row is a third as tall)
-    sides.forEach(s => box.classList.toggle('e-' + (s.classList.contains('me') ? 'me' : 'them'), !s.querySelector('.fo-f')));
-    const best = s => { const k = s.querySelectorAll('.fo-f').length, ch = s.querySelector('.fo-chips'), chip = ch && !low ? (hz ? 44 : 40) : 0, cx = ch && low ? ch.offsetWidth + 6 : 0; if (!k) return 999; let b = 0;
-      const w = s.clientWidth - 8 || sw, h = s.clientHeight - 8 || shH;   // (the room the grid gives this side)
-      for (let r = 1; r <= 3; r++) { const cols = Math.ceil(k / r); b = Math.max(b, Math.min((w - (cols - 1) * 10) / cols - cx, ((h - (r - 1) * 10) / r - chip) / 1.4)); } return b; };
-    let cw = Math.round(Math.max(54, Math.min(180, Math.min.apply(null, Array.prototype.map.call(sides, best))))); box.style.setProperty('--cw', cw + 'px');
-    const over = () => Array.prototype.some.call(sides, s => s.scrollHeight > s.clientHeight + 1 || s.scrollWidth > s.clientWidth + 1);
-    for (let i = 0; i < 24 && cw > 48 && over(); i++) { cw = Math.round(cw * .94); box.style.setProperty('--cw', cw + 'px'); }
-    sides.forEach(s => s.classList.toggle('scroll', s.scrollHeight > s.clientHeight + 1 || s.scrollWidth > s.clientWidth + 1));   // (still too many to show: that side scrolls, nothing is out of reach)
-    // (a phone: a tile shorter, then smaller words, when the middle is still too tall)
-    for (let i = 0; i < 6 && mid.scrollHeight > mid.clientHeight + 1; i++) { const t = Math.round(parseFloat(box.style.getPropertyValue('--tw')) * .9); box.style.setProperty('--tw', t + 'px'); box.style.setProperty('--th', Math.round(t * .56) + 'px'); }
+    const sides = Array.prototype.slice.call(box.querySelectorAll('.fo-side')), mid = box.querySelector('.fo-mid'), tile = mid.querySelector('.fo-tile');
+    const plate = tile.querySelector('.pl-plate'), rl = tile.querySelector('.pl-rule'), bal = mid.querySelector('.fo-bal');
+    const nf = s => s.querySelectorAll('.fo-f').length, bare = sides.every(s => !nf(s));
+    const tight = !hz && (W < 330 || H < 600), low = hz && H < 400;
+    box.classList.toggle('bare', bare); box.classList.toggle('tight', tight); box.classList.toggle('low', low); box.classList.remove('sq', 'sq2', 'nodots');
+    sides.forEach(s => s.classList.remove('scroll'));
+    const tr = s => nf(s) ? 'minmax(min-content,1fr)' : 'min-content';
+    const mw = hz ? Math.round(bare ? Math.min(560, W - 2 * 126 - 16) : H < 400 ? Math.max(220, Math.min(290, W * .3)) : Math.max(220, Math.min(360, W * .32))) : W;
+    if (hz) { box.style.gridTemplateRows = ''; box.style.gridTemplateColumns = tr(sides[0]) + ' ' + (bare ? 'minmax(' + mw + 'px,1fr)' : mw + 'px') + ' ' + tr(sides[1]); }
+    else { box.style.gridTemplateColumns = ''; box.style.gridTemplateRows = tr(sides[0]) + (bare ? ' minmax(min-content,1fr) ' : ' min-content ') + tr(sides[1]) + ' min-content'; }   // (the middle never shrinks under what it holds)
+    box.style.setProperty('--mw', mw + 'px');
+    const pic = bare ? .5 : hz ? .42 : .38;   // (the picture's height for the tile's width; the plate is added under it)
+    const setRule = long => { if (rl && rl.dataset.long) rl.textContent = long ? rl.dataset.long : rl.dataset.short; };
+    const setTw = t => { box.style.setProperty('--tw', t + 'px'); const ph = plate ? plate.offsetHeight : 0; box.style.setProperty('--plh', ph + 'px'); box.style.setProperty('--th', Math.round(t * pic) + ph + 'px'); };
+    const setCw = c => box.style.setProperty('--cw', c + 'px');
+    const over = () => box.scrollHeight > box.clientHeight + 1 || box.scrollWidth > box.clientWidth + 1 || mid.scrollHeight > mid.clientHeight + 1 || mid.scrollWidth > mid.clientWidth + 1
+      || sides.some(s => s.scrollHeight > s.clientHeight + 1 || s.scrollWidth > s.clientWidth + 1);
+    // (the cards: the largest that fits, found by halving; 0 when even the smallest does not)
+    const cwMax = W >= 700 && H >= 700 ? 200 : 180;
+    const fitCards = () => { if (bare) return over() ? 0 : 1; let lo = 54, hi = cwMax; setCw(lo); if (over()) return 0; setCw(hi); if (!over()) return hi;
+      while (hi - lo > 2) { const m = (lo + hi) >> 1; setCw(m); if (over()) hi = m; else lo = m; } setCw(lo); return lo; };
+    let t = hz ? mw - 16 : Math.round(bare ? Math.min(W - 28, 440) : Math.min(W * (tight ? .62 : .7), tight ? 220 : 400)), long = !!(rl && rl.dataset.long) && (bare || hz);
+    setRule(long); setTw(t);
+    let got = fitCards();
+    // (with Figures there, the whole power stays only while it leaves the cards a good size)
+    if (long && !bare && got < 110) { setRule(false); setTw(t); const g2 = fitCards(); if (g2 > got + 8) { got = g2; long = false; } else { setRule(true); setTw(t); got = fitCards(); } }
+    for (let i = 0; i < 12 && !got; i++) {
+      if (long) { long = false; setRule(false); }
+      else { const t2 = Math.round(t * .9); if (t2 < (tight ? 140 : 160)) break; t = t2; }
+      setTw(t); got = fitCards();
+    }
+    if (!got) { box.classList.add('sq'); got = fitCards(); }   // (the chips a little smaller first)
+    if (!got) {
+      // (still too many to show: the side that fits keeps its own height and the other scrolls, nothing out of reach)
+      setCw(hz ? 64 : tight ? 58 : 72); const need = sides.map(s => s.scrollHeight), room = hz ? H - 16 : H - 16 - mid.offsetHeight - box.querySelector('.fo-road').offsetHeight - 24;
+      // (upright, the side that needs less keeps up to half the room as a fixed band, the other takes the rest)
+      const lo2 = need[0] <= need[1] ? 0 : 1, fix = !hz && nf(sides[0]) && nf(sides[1]) ? Math.round(Math.min(need[lo2], Math.max(room / 2, room - need[1 - lo2]))) : 0;
+      const tr2 = (s, i) => !nf(s) ? 'min-content' : fix && i === lo2 ? fix + 'px' : 'minmax(0,1fr)';
+      if (hz) box.style.gridTemplateColumns = 'minmax(0,1fr) ' + mw + 'px minmax(0,1fr)'; else box.style.gridTemplateRows = tr2(sides[0], 0) + ' min-content ' + tr2(sides[1], 1) + ' min-content';
+      sides.forEach(s => s.classList.toggle('scroll', s.scrollHeight > s.clientHeight + 1 || s.scrollWidth > s.clientWidth + 1));
+    }
+    // (a walk chip whose Domain's name doesn't fit its column: smaller words, then the footprints go; the brass says walk)
+    const chipOver = () => Array.prototype.some.call(box.querySelectorAll('.fo .rd-c'), c => c.scrollWidth > c.clientWidth + 1);
+    if (chipOver()) { box.classList.add('sq'); if (chipOver()) box.classList.add('sq2'); }
+    // (the road's names come first; with many Domains on a narrow screen its dots give way)
+    const dr = box.querySelector('.fo-dots').getBoundingClientRect();
+    if (Array.prototype.some.call(box.querySelectorAll('.fo-go:not(.none)'), g => { const r = g.getBoundingClientRect(); return r.right > dr.left - 2 && r.left < dr.right + 2 || g.offsetHeight > 46; })) box.classList.add('nodots');
+    // (nobody there, upright: the room the slim bands leave goes to the Domain's picture, up to a third more)
+    if (bare && !hz) { const k = Array.prototype.filter.call(mid.children, c => c.offsetHeight), used = k.length ? k[k.length - 1].offsetTop + k[k.length - 1].offsetHeight - k[0].offsetTop : 0, spare = mid.clientHeight - used - 28;
+      if (spare > 16) box.style.setProperty('--th', tile.offsetHeight + Math.min(spare, Math.round(t * .34)) + 'px'); }
+    // (the mats meet under the Domain's middle)
+    box.style.setProperty('--seam', Math.round(hz ? mid.offsetLeft + mid.offsetWidth / 2 : mid.offsetTop + tile.offsetTop + tile.offsetHeight / 2) + 'px');
+    // (the balance: each total hangs where its end of the beam is when the beam tips 4 degrees)
+    if (bal) { const tots = bal.querySelectorAll('.fo-tot'); if (tots.length === 2) { const d = (tots[1].offsetLeft + tots[1].offsetWidth / 2 - tots[0].offsetLeft - tots[0].offsetWidth / 2) / 2; bal.style.setProperty('--bdy', Math.min(10, d * Math.tan(4 * Math.PI / 180)).toFixed(1) + 'px'); } }
   }
   function scan(at) {
     if (at && at.su) return suScan(at.su);   // (a Domain at the set-up: the Domains drawn, on the set-up's strip)
@@ -1388,6 +1444,13 @@
     let flow = el('div', { class: 'vf-flow' }), cuPx = '', mode = '';   // (each level has a strip of its own: a strip's handlers belong to its cards; mode: 'fo' a face-off, 'cards' a Domain's cards on the strip)
     const under = el('div', { class: 'vf-notes' }), strip = el('div', { class: 'vf-strip' }), hb = el('b'), hs = el('small'), road = el('div', { class: 'sc-road' }), body = el('div', { class: 'sc-body' });
     const both = el('button', { type: 'button', class: 'btn btn-sm btn-soft sc-both', text: 'See both sides', onclick: e => { e.stopPropagation(); Kit.sfx('tap'); go(li, 0, 0, 'fo'); } });
+    // (your Spark, in the game's own flame, beside the close button at every level: Tim, 2026-11-16, reading his hand,
+    // wanted "a view where i should be able to see how much spark i have left". A card that costs more says so on its
+    // plate with the same flame.)
+    const spk = el('div', { class: 'sc-spark' }), spB = el('b'), spF = el('span', { class: 'st-spark' }, [spB]);
+    spk.appendChild(el('span', { class: 'sc-spl', text: 'Your Spark' })); spk.appendChild(spF);
+    const paintSpark = () => { const P = V && V.P[me], on = !!P && ui.viewer >= 0 && !ui.hideHand && human(me); spk.hidden = !on; v.classList.toggle('spk', on); if (!on) return;
+      spB.textContent = String(P.spark); spF.classList.toggle('zero', !P.spark); spk.setAttribute('aria-label', 'You have ' + P.spark + ' Spark'); };
     // (the map is the table made small: on each Place, a dot for each Figure and the Might they have there, the
     // other player's at the top left in their colour and yours at the bottom right in yours; a player's Guide with
     // their Relics as brass diamonds, and on the other player's the cards in their hand as a card's back)
@@ -1412,7 +1475,7 @@
       S.N > 2 ? Array.from({ length: S.N - 1 }, (x, k) => el('div', { class: 'sc-grp' }, tabs.slice(3 * k, 3 * k + 3))).concat(tabs.slice(3 * (S.N - 1))) : tabs);
     const v = el('div', { class: 'view flow scan', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'The cards on the table', onclick: e => { if ((F && F.moved()) || held) return; if (e.target === v || e.target === flow || e.target === body) closeView(); } }, [
       el('button', { type: 'button', class: 'icon-btn view-x', 'aria-label': 'Close', html: Kit.icon('close'), onclick: closeView }),
-      el('div', { class: 'vf-head' }, [hb, hs, both]), body, strip, road, under]);
+      el('div', { class: 'vf-head' }, [hb, hs, both]), spk, body, strip, road, under]);
     body.appendChild(map); body.appendChild(flow);
     let F = null, held = false, armed = null;   // (held: a swipe has just ended, and the click that ends it is not a tap)
     const clearLock = () => flow.querySelectorAll('.sc-lock').forEach(n => n.remove());
@@ -1428,7 +1491,8 @@
     }
     // a Domain's face-off, drawn again where it stands (a Clash chip armed, the table moved on)
     function drawFo(dir) {
-      const L = levels[li], node = faceOffEl(L, front, { armed: armed, arm: u => { armed = u; drawFo(0); }, step: roadStep, cards: k => { if (k >= 0) go(li, k, 0, 'cards'); } });
+      const L = levels[li], node = faceOffEl(L, front, { armed: armed, arm: u => { armed = u; drawFo(0); }, step: roadStep, cards: k => { if (k >= 0) go(li, k, 0, 'cards'); },
+        jump: q => { const t = levels.findIndex(x => x.p === q); if (t >= 0 && t !== li) { front = null; go(t, levels[t].at0, t > li ? 2 : -2); } } });
       if (F) { F.stop(); F = null; } const old = flow; flow = node; old.parentNode.replaceChild(flow, old); foGest(flow);
       fitFaceOff(flow);
       if (dir && flow.animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) flow.animate([{ transform: 'translate' + (Math.abs(dir) > 1 ? 'X(' + (dir > 0 ? 46 : -46) : 'Y(' + (dir > 0 ? 46 : -46)) + 'px)', opacity: .15 }, { transform: 'none', opacity: 1 }], { duration: 240, easing: 'cubic-bezier(.22,1,.36,1)' });
@@ -1436,12 +1500,13 @@
     // another level: its name, its thumbnails, its cards; the strip comes in from the side it was swiped from
     // (m: 'cards' reads a Domain's cards on the strip; a Domain's level otherwise opens as its face-off)
     function go(i, j, dir, m) {
-      li = Math.max(0, Math.min(levels.length - 1, i)); const L = levels[li], n = L.items.length;
+      li = Math.max(0, Math.min(levels.length - 1, i)); const L = levels[li], n = L.items.length; paintSpark();
+      folFit();
       mode = L.p != null ? (m === 'cards' ? 'cards' : 'fo') : ''; if (mode !== 'fo' || m !== 'keep') armed = null;
       v.classList.toggle('fo-on', mode === 'fo'); v.classList.toggle('fo-cards', mode === 'cards');
       hb.textContent = L.name;
       tabs.forEach((t, k) => { t.classList.toggle('on', k === li); t.setAttribute('aria-selected', String(k === li)); });
-      if (mode === 'fo') { hs.textContent = L.role; hs.className = ''; strip.innerHTML = ''; road.innerHTML = ''; under.innerHTML = ''; drawFo(dir); if (dir) { Kit.sfx('slide', .6); Kit.haptic('light'); } return; }
+      if (mode === 'fo') { const ow = E.ownerOfSpoke(S, L.p); hs.textContent = ''; hs.className = 'fo-role'; if (ow >= 0) hs.appendChild(el('i', { style: { background: 'var(--pc' + ow + ')' } })); hs.appendChild(document.createTextNode(L.role)); strip.innerHTML = ''; road.innerHTML = ''; under.innerHTML = ''; drawFo(dir); if (dir) { Kit.sfx('slide', .6); Kit.haptic('light'); } return; }
       if (F) F.stop(); const old = flow; flow = el('div', { class: 'vf-flow' }); if (cuPx) flow.style.setProperty('--cu', cuPx); old.parentNode.replaceChild(flow, old); swipes(flow); strip.innerHTML = '';
       // (a card you can do something with now has a gold pip on its thumbnail: what can be played from the hand, which of your Figures can still act)
       L.items.forEach((x, k) => { const c = info(x.key), can = canDo(x), t = el('button', { type: 'button', class: 'vf-t' + (x.o != null ? ' o' + x.o : '') + (x.p != null && n > 1 ? ' mid' : '') + (can ? ' can' : ''), 'aria-label': c.n, style: { '--f': (FAC[c.f] || FAC.N).c }, onclick: e => { e.stopPropagation(); F.settle(k, 0); } }); const im = artImg(x.key, true) || mono(x.key); if (im) t.appendChild(im); strip.appendChild(t); });
@@ -1491,7 +1556,9 @@
       const mapW = map.offsetWidth + 14;
       cuPx = Math.round(Math.max(200, Math.min(520, (W - 2 * mapW) * 1.4, room - notes))) + 'px'; flow.style.setProperty('--cu', cuPx);
     }
-    const resize = () => { if (mode === 'fo') { fitFaceOff(flow); return; } size(); if (F) { F.reset(); rest(Math.round(F.pos)); } };
+    // (the head and the face-off start clear of the map of levels, which is wider with more players and on an iPad)
+    function folFit() { v.style.removeProperty('--fol'); const mW = map.getBoundingClientRect().right, d = parseFloat(getComputedStyle(v).getPropertyValue('--fol')) || 56; if (mW + 8 > d) v.style.setProperty('--fol', Math.round(mW + 8) + 'px'); }
+    const resize = () => { folFit(); if (mode === 'fo') { fitFaceOff(flow); return; } size(); if (F) { F.reset(); rest(Math.round(F.pos)); } };
     const resize2 = () => { resize(); setTimeout(() => { if (v.isConnected) resize(); }, 350); };
     document.addEventListener('keydown', key); window.addEventListener('resize', resize2); window.addEventListener('orientationchange', resize2);
     v._off = () => { if (F) F.stop(); document.removeEventListener('keydown', key); window.removeEventListener('resize', resize2); window.removeEventListener('orientationchange', resize2); };

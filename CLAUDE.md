@@ -1248,21 +1248,43 @@ Underlying principles for everything:
   says why: its cost on a Spark flame against "You have 5 Spark.", or the reason as a sentence (`lockPlate`, the
   reasons from `scanActs`). Every move is checked against the legal moves again when it is tapped (`reAct`,
   `runActs`). A new kind of move gets its place in `roadOf`.
-  **The face-off** (the same day): a Domain's level is not a strip but the two sides facing each other across the
-  Domain (`faceOffEl`, `fitFaceOff`), on the two players' mats, every card large enough to read. Sideways the other
-  player's Figures stand to the left of the Domain and yours to the right; upright theirs are above and yours below.
-  The middle has the Domain's tile with its name and power, both totals on big shields with a balance beam tipped
-  toward whoever holds it, and a sentence (`holdSay`, through `DW`): "Jamie holds the University of Padua, and scores
-  1 Renown when the round ends.", with the reason first when a tie is settled (a Gate's owner, the Crossroads' banner
-  with a Figure there), a Gate held by the other side ("..., which is your Gate, so Jamie scores 1 Renown and one of
-  your Seals breaks"), Tordesillas's tie, or nobody. Under each of your Figures: Clash ("3 vs 5" with one enemy there;
-  with several, Clash marks each enemy with its own chip), a walk chip toward the Domain on either side along the road
-  (brass, with footprints: a move, never mistaken for the dark arrows under the sentence that only page along the road;
-  a card's chips stay inside its own column), and More moves for the rest (the strip with the road). A Domain's power is a button under the sentence. A swipe
-  sideways, the arrow keys or the arrows under the sentence walk along the road; up and down still changes level. A
-  tap on a card reads that Domain's cards on the strip, with See both sides to come back. A tap or hold on a board
-  card, or a stack on a phone held sideways, opens the face-off at its Domain with that card raised in front: on a
-  phone this is how the board's small cards are read.
+  **The face-off** (the same day; redrawn 2026-11-16 when Tim, upright on his iPhone, found "unpolished fonts,
+  misaligned numbers and generally a confusing page to be dropped into"): a Domain's level is not a strip but the two
+  sides facing each other across the Domain (`faceOffEl`, `fitFaceOff`), on the two players' mats, which meet in a seam
+  under the Domain's middle (`--seam`). Sideways the other player's Figures stand to the left of the Domain and yours
+  to the right; upright theirs are above and yours below. The head is the Domain's name in Geist and under it, quiet,
+  whose it is with a dot in the owner's color, at the panel's left edge and clear of the close button. **A side with
+  nobody there is a slim band** (an empty dashed slot in that player's color and "Jamie has no Figures here."; its
+  track is `min-content`), and a side with Figures shares the room left, its cards the largest at which everything
+  fits, the same size on both sides. **With nobody there at all the Domain is the hero**: large, its picture taking the
+  spare height, with its whole power on its plate (`data-long`, text.js `DRULE`); where the middle is short of room the
+  tile shows the power's few words (`DSHORT`) and then gets smaller. Under the tile the two totals hang from the ends
+  of a balance, each a Might shield with whose total it is named under it in that player's color: the holder's is lit
+  and its end sinks (the beam tips 4 degrees and the shields move with its ends, `--bdy`), the other's is gray, and with
+  nobody holding both are alike and level; the digit is centered by its ink (the strut rule after `.ac-cost b`, and
+  placed where the card's own Might shield puts it). Then the sentence (`holdSay`, through `DW`) as a wall label, the
+  condition first: "With no Figures here, Jamie holds Machu Picchu because it is their own Gate, and scores 1 Renown when
+  the round ends.", "With the Might tied at 3, you hold ... because you laid it and have a Figure here, ...", "You hold
+  Jamie's Gate, so when the round ends you score 1 Renown and one of Jamie's Seals breaks.", Tordesillas's tie, or
+  nobody. Under each of your Figures: Clash ("3 vs 5" with one enemy there; with several, Clash marks each enemy with
+  its own chip), a walk chip toward the Domain on either side along the road (brass, with footprints: a move; a card's
+  chips stay in its own column, at least wide enough for a Domain's name; `sq`/`sq2` make them smaller where they
+  aren't), and More moves for the rest (the strip with the road). A Domain's power is a button under the sentence.
+  **The foot is the road, a pager and never a move** (`.fo-road`): the Domains on either side by name with a chevron, in
+  dust, and between them a dot for each Domain in road order, this one lit bronze; a tap on a name or a dot goes there,
+  as do a swipe sideways and the arrow keys; up and down still changes level. Too many Figures to fit: the side that
+  fits keeps its height and the other scrolls. A tap on a card reads that Domain's cards on the strip, with See both
+  sides to come back. A tap or hold on a board card, or a stack on a phone held sideways, opens the face-off at its
+  Domain with that card raised in front: on a phone this is how the board's small cards are read. The scratchpad's
+  `faceoff/fo.js` shoots every state at the five sizes and measures overlaps, clipping and the digits' centers.
+  **The scan's head and your Spark** (Tim, 2026-11-16, of the hand level: "some more overly plain fonts", and "a view
+  where i should be able to see how much spark i have left"): at every level the head is the same, the name in Geist a
+  clear step up in bone and under it, in dust, what it is (with a dot in its player's color), at the left edge of what
+  it heads (`--fol`, clear of the map of levels: `folFit`), and beside the close button your Spark on the flame from
+  your bar with "Your Spark" under it (`.sc-spark`, `paintSpark`, gray at 0; hidden for a spectator or a hidden hand).
+  A card that costs more says so on its plate with the same flame: its cost on the big flame, then "You have [2]
+  Spark." The road's pills, the clash and walk chips, the line under the road and the map's counts are Geist with
+  weight, not the plain book face.
   **On an iPad held sideways the strip is laid out as on a phone on its side** (`scanWide`, the view's `.sd`): the card
   large at the left, the road and the notes in a column of their own at the right, so the notes have the screen's
   height (under the road they were cut off). Upright on an iPad the notes keep a fifth of the screen.
