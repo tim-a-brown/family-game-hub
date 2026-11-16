@@ -22,7 +22,8 @@
 //       is no at; wait: ms to stay before moving on (default: long enough to read it; false: go on at once, the caption
 //       stays); a tap on the caption moves on sooner
 //   D.tap(target, {say})   the finger glides there, presses, and a real pointer and click event is sent where it lands
-//   D.drag(from, to)       the finger presses at one, carries to the other and lets go (pointer events all the way)
+//   D.drag(from, to)       the finger presses at one, carries to the other and lets go (pointer events all the way);
+//                          to may be a list, passed through in turn without lifting (a word traced in Boggle)
 //   D.you(target, text, {allow, until, spot})   the player's turn: the target is ringed and only it (or allow) takes a
 //       tap; resolves once until() is true (default: the first tap); a hint finger shows the way if they wait
 //   D.wait(ms | fn, maxMs)  wait a time, or until fn() is true
@@ -479,25 +480,32 @@
     }).then(check);
   }
 
+  // (to may be a list: the finger passes through each in turn without lifting, as a word is traced in Boggle)
   function drag(from, to, o) {
     o = o || {};
-    var a = resolve(from), b = resolve(to); if (!a || !b) return Promise.resolve(false);
+    var way = Array.isArray(to) ? to : [to];
+    var a = resolve(from), b = resolve(way[way.length - 1]); if (!a || !b) return Promise.resolve(false);
     var p = hitPoint(a);
     return glideTo(p.x, p.y).then(function () {
       check();
       ui.finger.classList.add('down'); ripple(p.x, p.y);
       fire('pointerdown', p.x, p.y, p.hit); fire('mousedown', p.x, p.y, p.hit);
-      var q = rectOf(resolve(to) || b), tx = q.left + q.width / 2, ty = q.top + q.height / 2;
-      var steps = reduce ? 2 : 22, i = 0;
+      var leg = 0, fx = p.x, fy = p.y;
       return new Promise(function (res) {
-        (function step() {
-          i++;
-          var k = i / steps, e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
-          var x = p.x + (tx - p.x) * e, y = p.y + (ty - p.y) * e;
-          moveFinger(x, y, true);
-          var over = doc.elementFromPoint(x, y) || doc.body; if (inUi(over)) over = p.hit;
-          fire('pointermove', x, y, over); fire('mousemove', x, y, over);
-          if (i < steps) setTimeout(step, 22); else res({ x: x, y: y });
+        (function next() {
+          var q = rectOf(resolve(way[leg]) || b), tx = q.left + q.width / 2, ty = q.top + q.height / 2;
+          var steps = reduce ? 2 : way.length > 1 ? 9 : 22, i = 0, x0 = fx, y0 = fy;
+          (function step() {
+            i++;
+            var k = i / steps, e = way.length > 1 ? k : k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+            var x = x0 + (tx - x0) * e, y = y0 + (ty - y0) * e;
+            moveFinger(x, y, true); fx = x; fy = y;
+            var over = doc.elementFromPoint(x, y) || doc.body; if (inUi(over)) over = p.hit;
+            fire('pointermove', x, y, over); fire('mousemove', x, y, over);
+            if (i < steps) setTimeout(step, 22);
+            else if (++leg < way.length) setTimeout(next, 60);
+            else res({ x: x, y: y });
+          })();
         })();
       });
     }).then(function (end) {
