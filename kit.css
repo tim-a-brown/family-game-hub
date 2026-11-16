@@ -2321,6 +2321,49 @@ html.k-kb-short .k-lock p{margin-bottom:4px;}
 :root:not(.ng-x) .k-whobox.has-n .k-who .k-who-go,:root:not(.ng-x) .setup .k-whobox.has-n .k-who .k-who-go,:root:not(.ng-x) .setup.k-snug .k-whobox.has-n .k-who .k-who-go{grid-column:3;grid-row:1 / 4;align-self:center;}
 :root:not(.ng-x) .k-whobox.has-n .k-wn,:root:not(.ng-x) .setup.k-snug .k-whobox.has-n .k-wn{top:47px;right:auto;left:13px;}
 :root:not(.ng-x) .k-whobox.has-n .k-wn-b{width:32px;}
+/* the count as a lock wheel (countStepper in kit.js; Tim, 2026-11-16): a drum of glass the numbers ride on, shaded
+   toward its ends as a cylinder is, ribbed along both edges like a briefcase lock's wheel (the ribs roll with it,
+   --dl-rib), and a window lit in the game's gold round the number chosen. On its side by default, upright (.v) when the
+   players stand in two rows. Only transform and opacity move while it turns. */
+.k-wn.k-dial{display:block;width:98px;height:40px;padding:0;overflow:hidden;border-radius:12px;touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
+  background:var(--gl-3,rgba(255,255,255,.08));box-shadow:inset 0 0 0 1px var(--gl-line,rgba(255,255,255,.12)),inset 0 2px 7px rgba(0,0,0,.35);outline:none;}
+.k-wn.k-dial:active{cursor:grabbing;}
+.k-wn.k-dial:focus-visible{box-shadow:inset 0 0 0 1px var(--gl-line,rgba(255,255,255,.12)),0 0 0 2px color-mix(in srgb,var(--text) 60%,transparent);}
+.k-wn.k-dial.v{width:54px;height:104px;border-radius:14px;}
+.k-dl-drum{position:absolute;inset:0;z-index:1;}
+.k-dl-n{position:absolute;left:50%;top:50%;width:30px;height:30px;margin:-15px 0 0 -15px;display:grid;place-items:center;font:800 1.15rem/1 var(--display);font-variant-numeric:tabular-nums;
+  color:var(--text-2,rgba(255,255,255,.7));will-change:transform,opacity;pointer-events:none;transition:color .12s;}
+.k-dl-n.on{color:var(--dl-lit,var(--lit,#ffd34d));}
+/* the ribbed edges: fine ridges along the two edges the numbers run between */
+.k-dl-rib{position:absolute;z-index:1;pointer-events:none;opacity:.8;}
+.k-dial:not(.v) .k-dl-rib{left:0;right:0;height:5px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.2) 0 1px,rgba(0,0,0,.25) 1px 2px,transparent 2px 5px);background-position-x:calc(var(--dl-rib,0px) * -1);}
+.k-dial:not(.v) .k-dl-rib.a{top:0;} .k-dial:not(.v) .k-dl-rib.b{bottom:0;}
+.k-dial.v .k-dl-rib{top:0;bottom:0;width:5px;background:repeating-linear-gradient(180deg,rgba(255,255,255,.2) 0 1px,rgba(0,0,0,.25) 1px 2px,transparent 2px 5px);background-position-y:calc(var(--dl-rib,0px) * -1);}
+.k-dial.v .k-dl-rib.a{left:0;} .k-dial.v .k-dl-rib.b{right:0;}
+/* the drum's shading: dark toward its ends, where the numbers turn away */
+.k-dial::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;border-radius:inherit;
+  background:linear-gradient(90deg,rgba(0,0,0,.5),rgba(0,0,0,0) 30%,rgba(255,255,255,.04) 50%,rgba(0,0,0,0) 70%,rgba(0,0,0,.5));}
+.k-dial.v::after{background:linear-gradient(180deg,rgba(0,0,0,.55),rgba(0,0,0,0) 30%,rgba(255,255,255,.04) 50%,rgba(0,0,0,0) 70%,rgba(0,0,0,.55));}
+/* the window, lit in the game's gold, with a small notch at either side as on a lock */
+.k-dl-win{position:absolute;left:50%;top:50%;z-index:3;width:32px;height:32px;transform:translate(-50%,-50%);border-radius:9px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,0) 46%,rgba(0,0,0,.1));
+  box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--dl-lit,var(--lit,#ffd34d)) 75%,transparent),0 0 14px -3px var(--dl-glow,var(--litg,rgba(255,190,60,.5)));}
+.k-dial.v .k-dl-win{width:44px;height:32px;}
+.k-dl-win::before,.k-dl-win::after{content:"";position:absolute;background:var(--dl-lit,var(--lit,#ffd34d));border-radius:1px;}
+.k-dial:not(.v) .k-dl-win::before,.k-dial:not(.v) .k-dl-win::after{left:50%;width:6px;height:2px;margin-left:-3px;}
+.k-dial:not(.v) .k-dl-win::before{top:-4px;} .k-dial:not(.v) .k-dl-win::after{bottom:-4px;}
+.k-dial.v .k-dl-win::before,.k-dial.v .k-dl-win::after{top:50%;width:2px;height:6px;margin-top:-3px;}
+.k-dial.v .k-dl-win::before{left:-4px;} .k-dial.v .k-dl-win::after{right:-4px;}
+/* upright, the card keeps the dial's height under the title; the dial lines up with the title's first letter */
+:root:not(.ng-x) .k-whobox.has-n .k-who,:root:not(.ng-x) .setup .k-whobox.has-n .k-who,:root:not(.ng-x) .setup.k-snug .k-whobox.has-n .k-who{grid-template-rows:28px auto 1fr;}
+:root:not(.ng-x) .k-whobox.has-n.dial-v .k-who::before,:root:not(.ng-x) .setup.k-snug .k-whobox.has-n.dial-v .k-who::before{height:104px;}
+:root:not(.ng-x) .k-whobox.has-n.dial-v .k-wn,:root:not(.ng-x) .setup.k-snug .k-whobox.has-n.dial-v .k-wn{left:17px;}
+/* the title and the dial on the top line, the players under them across the card (fitDial: .dial-top) */
+:root:not(.ng-x) .k-whobox.has-n.dial-top .k-who,:root:not(.ng-x) .setup .k-whobox.has-n.dial-top .k-who,:root:not(.ng-x) .setup.k-snug .k-whobox.has-n.dial-top .k-who{grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:40px auto;}
+:root:not(.ng-x) .k-whobox.has-n.dial-top .k-who::before,:root:not(.ng-x) .setup.k-snug .k-whobox.has-n.dial-top .k-who::before{grid-column:2;grid-row:1;width:98px;height:40px;}
+:root:not(.ng-x) .k-whobox.has-n.dial-top .k-who-tx > .k-who-t,:root:not(.ng-x) .setup .k-whobox.has-n.dial-top .k-who-tx > .k-who-t,:root:not(.ng-x) .setup.k-snug .k-whobox.has-n.dial-top .k-who-tx > .k-who-t{grid-column:1;grid-row:1;}
+:root:not(.ng-x) .k-whobox.has-n.dial-top .k-who-tx > :not(.k-who-t),:root:not(.ng-x) .setup .k-whobox.has-n.dial-top .k-who-tx > :not(.k-who-t),:root:not(.ng-x) .setup.k-snug .k-whobox.has-n.dial-top .k-who-tx > :not(.k-who-t){grid-column:1 / 3;grid-row:2;}
+:root:not(.ng-x) .k-whobox.has-n.dial-top .k-who .k-who-go,:root:not(.ng-x) .setup .k-whobox.has-n.dial-top .k-who .k-who-go,:root:not(.ng-x) .setup.k-snug .k-whobox.has-n.dial-top .k-who .k-who-go{grid-column:3;grid-row:2;}
 
 /* while a keyboard is up, a page that scrolls a box (or the region around it a player reads, data-osk-view) into view
    stops short of the keyboard, not at the screen's edge behind it */

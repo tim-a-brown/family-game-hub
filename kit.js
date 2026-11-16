@@ -2582,11 +2582,119 @@
   }
   // How many are playing, with a − and a + either side of the number: the Players card's top right, in a setup and on
   // the home screen's game sheet. step(-1 | 1) changes it; a button at the end of the range fades.
+  // How many are playing, as a dial like the number wheel of a briefcase lock (Tim, 2026-11-16: "instead of + and -, ...
+  // a vertical dial that functions like a briefcase lock dial but styled for this game, and ... a horizontal version").
+  // The numbers ride a drum behind a lit window: a drag or a flick turns it, a click and a tick of the phone on every
+  // number that passes the window, and it settles on the nearest number; a tap on the number before or after the
+  // window turns it one. When it comes to rest on a new number the count changes (step(+1 or -1) for each number
+  // turned). Upright (.v) where the players stand in two rows and the card is tall, on its side where they fit in one
+  // (the Players card sets the class, fitDial). The arrow keys turn it too.
   function countStepper(n, lo, hi, step) {
-    var minus = el('button', { type: 'button', class: 'k-wn-b', 'aria-label': 'One player fewer', html: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg>', onclick: function (e) { e.stopPropagation(); step(-1); } });
-    var plus = el('button', { type: 'button', class: 'k-wn-b', 'aria-label': 'One player more', html: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12M12 6v12"/></svg>', onclick: function (e) { e.stopPropagation(); step(1); } });
-    minus.disabled = n <= lo; plus.disabled = n >= hi;
-    return el('div', { class: 'k-wn', role: 'group', 'aria-label': n + (n === 1 ? ' player' : ' players') }, [minus, el('b', { class: 'k-wn-n', text: String(n) }), plus]);
+    var w = el('div', { class: 'k-wn k-dial', role: 'spinbutton', tabindex: '0', 'aria-label': 'How many players', 'aria-valuemin': String(lo), 'aria-valuemax': String(hi), 'aria-valuenow': String(n), 'aria-valuetext': n + (n === 1 ? ' player' : ' players') });
+    var drum = el('div', { class: 'k-dl-drum' }), nums = [];
+    for (var k = lo; k <= hi; k++) { var b = el('b', { class: 'k-dl-n', text: String(k) }); nums.push(b); drum.appendChild(b); }
+    w.appendChild(el('i', { class: 'k-dl-rib a' })); w.appendChild(el('i', { class: 'k-dl-rib b' }));
+    w.appendChild(drum); w.appendChild(el('i', { class: 'k-dl-win' }));
+    var pos = n, shown = null, raf = 0, anim = null, vert = false, lastI = n;
+    function V() { return w.classList.contains('v'); }
+    function gap() { return V() ? 30 : 30; }
+    function paint() {
+      raf = 0; vert = V();
+      var g = gap(), R = g * 1.9;   // (the drum's radius: three numbers a side would wrap it halfway round)
+      for (var i = 0; i < nums.length; i++) {
+        var a = (lo + i - pos) * g / R;   // (the number's angle round the drum)
+        var x = nums[i];
+        if (Math.abs(a) > 1.45) { if (x.__v !== 0) { x.style.opacity = '0'; x.__v = 0; } continue; }
+        var off = R * Math.sin(a), sc = Math.max(.05, Math.cos(a)), op = Math.pow(Math.cos(a), 2.2);
+        var t = vert ? 'translate3d(0,' + off.toFixed(2) + 'px,0) scale(1,' + sc.toFixed(3) + ')' : 'translate3d(' + off.toFixed(2) + 'px,0,0) scale(' + sc.toFixed(3) + ',1)';
+        x.style.transform = t; x.style.opacity = op.toFixed(3); x.__v = 1;
+        x.classList.toggle('on', Math.abs(lo + i - pos) < .5);
+      }
+      // the ribbed edges roll with the numbers
+      w.style.setProperty('--dl-rib', ((pos - lo) * g * .6).toFixed(1) + 'px');
+      var near = Math.round(pos);
+      if (near !== lastI && near >= lo && near <= hi) { lastI = near; sfx('tick'); haptic('tick'); }
+    }
+    function draw() { if (!raf) raf = requestAnimationFrame(paint); }
+    function settle(to) {
+      to = Math.max(lo, Math.min(hi, to));
+      if (anim) cancelAnimationFrame(anim);
+      var from = pos, t0 = performance.now(), dur = Math.min(420, 160 + Math.abs(to - from) * 90);
+      (function go(now) {
+        var f = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - f, 3);
+        pos = from + (to - from) * e; paint();
+        if (f < 1) { anim = requestAnimationFrame(go); return; }
+        anim = null; pos = to; paint();
+        var d = to - n; if (!d) return;
+        w.setAttribute('aria-valuenow', String(to));
+        n = to; for (var s = 0; s < Math.abs(d); s++) step(d > 0 ? 1 : -1);
+      })(t0);
+    }
+    // a drag: the drum follows the finger (past the first or last number it gives, like a rubber band)
+    var drag = null;
+    w.addEventListener('pointerdown', function (e) {
+      if (e.button) return; e.stopPropagation();
+      if (anim) { cancelAnimationFrame(anim); anim = null; }
+      drag = { id: e.pointerId, x: e.clientX, y: e.clientY, p0: pos, moved: false, hist: [[performance.now(), pos]] };
+      try { w.setPointerCapture(e.pointerId); } catch (er) {}
+    });
+    w.addEventListener('pointermove', function (e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var d = V() ? e.clientY - drag.y : e.clientX - drag.x;
+      if (Math.abs(d) > 4) drag.moved = true;
+      var p = drag.p0 - d / gap();
+      if (p < lo) p = lo - (1 - 1 / (1 + (lo - p) * .55)) / .55 * .6;
+      if (p > hi) p = hi + (1 - 1 / (1 + (p - hi) * .55)) / .55 * .6;
+      pos = p; drag.hist.push([performance.now(), pos]); if (drag.hist.length > 6) drag.hist.shift();
+      draw();
+    });
+    function up(e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var dr = drag; drag = null;
+      if (!dr.moved) {   // a tap: the number before the window turns it down one, the number after it up one
+        var r = w.getBoundingClientRect(), c = V() ? e.clientY - (r.top + r.height / 2) : e.clientX - (r.left + r.width / 2);
+        if (Math.abs(c) > 8) settle(n + (c > 0 ? 1 : -1)); else settle(n);
+        return;
+      }
+      var h = dr.hist, a = h[0], z = h[h.length - 1], dt = Math.max(16, z[0] - a[0]), v = (z[1] - a[1]) / dt;   // numbers per ms
+      settle(Math.round(pos + v * 160));
+    }
+    w.addEventListener('pointerup', up); w.addEventListener('pointercancel', up);
+    w.addEventListener('click', function (e) { e.stopPropagation(); });
+    w.addEventListener('keydown', function (e) {
+      var d = { ArrowUp: 1, ArrowRight: 1, PageUp: 1, ArrowDown: -1, ArrowLeft: -1, PageDown: -1 }[e.key];
+      if (!d) return; e.preventDefault(); if (n + d >= lo && n + d <= hi) settle(n + d);
+    });
+    // the first frame (and any change of direction) is drawn once the dial is on the page
+    var mo = new MutationObserver(function () { lastI = Math.round(pos); paint(); });
+    mo.observe(w, { attributes: true, attributeFilter: ['class'] });
+    requestAnimationFrame(function () {
+      var box = w.parentElement;
+      if (box) { fitDial(box); var tx = box.querySelector('.k-toks, .k-chips, .qs-toks, .qs-chips'); if (tx && typeof ResizeObserver !== 'undefined') new ResizeObserver(function () { if (w.isConnected) fitDial(box); }).observe(tx); }
+      lastI = n; paint();
+    });
+    lastI = n; paint();
+    return w;
+  }
+  // Where the dial stands. At the left under the title, the players beside it, while they fit there in two rows at most:
+  // upright when they take two rows, on its side when one. When they would take three rows or more beside it (a narrow
+  // phone, five or six players), the title and the dial share the top line and the players have the card's whole
+  // width under them (.dial-top), so the card never grows tall with one or two players to a row.
+  function fitDial(box) {
+    var d = box.querySelector(':scope > .k-dial'), card = box.querySelector(':scope > :is(.k-who,.gs-who)'); if (!d || !card) return;
+    var tx = card.querySelector('.k-toks, .k-chips, .qs-toks, .qs-chips'), t = card.querySelector('.k-who-t, .t');
+    var toks = card.querySelectorAll('.k-tok, .qs-tok').length || 1, go = card.querySelector('.k-who-go, .gs-who-go');
+    var cs = getComputedStyle(card), cw = card.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), gw = go ? go.getBoundingClientRect().width + 12 : 0;
+    var per = function (w) { return Math.max(1, Math.floor((w + 4) / 70)); };   // (a token is about 66 wide, 4 apart)
+    var rows = Math.ceil(toks / per(cw - 98 - 12 - gw));
+    var top = rows > 2;
+    box.classList.toggle('dial-top', top);
+    var tall = !top && tx && tx.getBoundingClientRect().height > 104;
+    box.classList.toggle('dial-v', !!tall); d.classList.toggle('v', !!tall); d.classList.toggle('h', !tall);
+    if (top && t) {   // (beside the title: its left is where the title's words end)
+      var bl = box.getBoundingClientRect(), r = document.createRange(); r.selectNodeContents(t); var tr = r.getBoundingClientRect();
+      d.style.left = Math.round(tr.right - bl.left + 12) + 'px'; d.style.top = Math.round(tr.top + tr.height / 2 - bl.top - 20) + 'px';
+    } else { d.style.left = ''; d.style.top = ''; }
   }
   // the same, said aloud: "Tim and Number 5 against Huey and Klaatu"
   function whoSaid(seats, teams) {
