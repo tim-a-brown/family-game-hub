@@ -921,7 +921,10 @@ body{overflow-x:hidden;}
     if (S.mode === 'pass' && S.phase === 'vote') S.phase = 'cover';   // keep the next vote secret
     anim = 'in'; render();
   } else showSetup();
-  window.__wy = { state: function () { return S; }, all: ALL, total: TOTAL };
+  window.__wy = { state: function () { return S; }, all: ALL, total: TOTAL,
+    // (demos and tests: a game with these players, and the question whose first choice is `a` up next)
+    start: function (cfg) { start(cfg, CATS.map(function (c) { return c.id; })); },
+    ask: function (a) { var id = Object.keys(ALL).filter(function (k) { return ALL[k].a === a; })[0]; if (!id || !S) return; S.deck = S.deck.filter(function (k) { return k !== id; }); S.deck.splice(S.qi, 0, id); anim = 'in'; render(); } };
 })();
 </script>
 </body>
