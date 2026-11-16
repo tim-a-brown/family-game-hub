@@ -1161,7 +1161,7 @@ Underlying principles for everything:
   and need to include ways to act on cards as I scan through them in the carousel"). `scan({u} | {p} | {h})` in ui.js:
   a hold on any card on the table (`holdToScan`; a right click with a mouse), or a tap wherever a tap used to open one
   card, opens the table's cards in levels, top to bottom as the table lies: the other player's Guide and Relics, the five
-  Places, your Guide and Relics, and your hand last. Sideways is the strip (`makeFlow`, a fresh one for each level);
+  Places, your hand, and your Guide and Relics last (Tim, 2026-11-16: "put guide below hand"). Sideways is the strip (`makeFlow`, a fresh one for each level);
   up and down is a swipe, the wheel, the arrow keys or a tap on the map at the left. **What the other player has is
   in view at every level** (Tim, the next day: "it's also good to know what opponents have at each level too"): a
   Place's level opens on the Place's own card with the other player's Figures to its left and yours to its right, as

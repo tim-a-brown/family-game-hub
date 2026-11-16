@@ -1376,10 +1376,11 @@
     const levels = S.N > 2 ? seatsFrom(me).slice(1).reduce((a, o) => a.concat([sideOf(o), domLv(2 * o), domLv(2 * o + 1)]), []).concat([domLv(2 * S.N), domLv(2 * me + 1), domLv(2 * me), sideOf(me)])
       : [sideOf(opp)].concat(rowsOrder().map(domLv), [sideOf(me)]);
     const hand = !ui.hideHand && ui.viewer >= 0 && V.P[me] ? V.P[me].hand : [];
-    if (hand.length) levels.push({ hand: true, at0: 0, name: 'Your hand', role: hand.length + (hand.length === 1 ? ' card' : ' cards'), items: hand.map((k, h) => ({ key: k, h: h })) });
+    // (your hand goes in above your Guide, who is the last level: Tim, 2026-11-16, "put guide below hand")
+    if (hand.length) levels.splice(levels.length - 1, 0, { hand: true, at0: 0, name: 'Your hand', role: hand.length + (hand.length === 1 ? ' card' : ' cards'), items: hand.map((k, h) => ({ key: k, h: h })) });
     // where to open
     let li = S.N > 2 ? levels.length - 4 : 1, ii = -1, front = null;
-    if (at.h != null && hand.length) { li = levels.length - 1; ii = Math.max(0, Math.min(hand.length - 1, at.h)); }
+    if (at.h != null && hand.length) { li = levels.length - 2; ii = Math.max(0, Math.min(hand.length - 1, at.h)); }
     else if (at.u != null) { levels.forEach((L, i) => L.items.forEach((x, j) => { if (x.u === at.u) { li = i; ii = j; } })); front = { u: at.u }; }
     else if (at.p != null) levels.forEach((L, i) => { if (L.p === at.p) li = i; });
     else if (at.side != null) levels.forEach((L, i) => { if (L.side === at.side) { li = i; L.items.forEach((x, j) => { if (x.key === at.key) ii = j; }); } });
@@ -4456,7 +4457,7 @@
     '<li>A Figure has <b>+1 Might at a Place in its home region</b> (the small house on it). A Voyager has that +1 Might at every Place, and can walk to any Place in one move.</li></ul>' +
     '<h3>A clash</h3><ul><li>Both sides roll a die. The <b>higher roll adds 1</b> to its Figure\'s Might, or <b>2 if it is higher by 3 or more</b>. Then the Figure with the lower Might is knocked out. If they are tied, nothing happens.</li>' +
     '<li><b>Bounty</b>: knocking out a Figure of a player who is ahead of you on Renown scores 1 Renown.</li></ul>' +
-    '<h3>Looking at cards</h3><ul><li><b>Hold your finger on any card</b>, in your hand or on the table, to look closer. The table\'s cards open in levels, the way they lie: the other player\'s Guide and Relics, each Place, your Guide and Relics, and your hand. Swipe up and down, or tap the small map at the side, to go from level to level.</li>' +
+    '<h3>Looking at cards</h3><ul><li><b>Hold your finger on any card</b>, in your hand or on the table, to look closer. The table\'s cards open in levels, the way they lie: the other player\'s Guide and Relics, each Place, your hand, and your Guide and Relics. Swipe up and down, or tap the small map at the side, to go from level to level.</li>' +
     '<li>At a Place, the two sides face each other across its card, each side\'s Might on a shield and a beam tipped toward whoever holds it. Under each of your Figures are its moves: <b>Clash</b>, with both Mights, and a walk to the Place on either side. Swipe sideways to go along the line from Place to Place, and tap a card to read it large.</li>' +
     '<li>Under a card you read large, the Places lie as small tiles, in the order they lie on the table. The ones the card can go to are lit, each with both Mights as the move would leave them and what the move does: <b>Play</b>, <b>Walk</b>, <b>Jump</b>, or <b>Take it</b> when the move wins you the Place. Tap a tile to make that move. A card you can\'t play yet says why.</li>' +
     '<li>On an iPad held sideways, a card you read and the turn log open in a panel at the right, and the table stays in play beside it.</li>' +
