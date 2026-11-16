@@ -229,7 +229,8 @@
     setTimeout(function () { Kit.callout((first.name === 'You' ? 'You go' : first.name + ' goes') + ' first'); }, 650);
     afterRollCheck(900);
   }
-  function rnd() { return 1 + Math.floor(Math.random() * 6); }
+  var RIG = [];   // (a demo's dice, in the order they are thrown)
+  function rnd() { return RIG.length ? RIG.shift() : 1 + Math.floor(Math.random() * 6); }
 
   // ── Rules engine ──────────────────────────────────────────────────────────
   function own(pos, s, i) { var v = pos.p[i]; return s === 0 ? (v > 0 ? v : 0) : (v < 0 ? -v : 0); }
@@ -1207,7 +1208,15 @@
     if (sv && sv.pos && sv.players && (sv.phase !== 'over' || (sv.score[0] < sv.target && sv.score[1] < sv.target))) { S = sv; render(); resumeFlow(); }
     else showSetup();
   }
-  window.__bg = { state: function () { return S; }, legal: function () { return S && S.phase === 'move' ? legalMoves(S.pos, S.cur, S.left) : []; }, move: function (m) { humanMove(m); }, roll: function () { roll(false); }, dbl: function () { humanDouble(); }, answer: function (t) { netAnswer(t); }, next: function () { netNext(); }, canDouble: function () { return canDouble(); } };
+  window.__bg = { state: function () { return S; }, legal: function () { return S && S.phase === 'move' ? legalMoves(S.pos, S.cur, S.left) : []; }, move: function (m) { humanMove(m); }, roll: function () { roll(false); }, dbl: function () { humanDouble(); }, answer: function (t) { netAnswer(t); }, next: function () { netNext(); }, canDouble: function () { return canDouble(); },
+    // (the demo: a one-game match without the cube, the next dice, and a position set by hand)
+    start: function (o) {
+      S = { mode: 'cpu', level: o.level || 'med', cubeOn: false, target: 1, players: o.players, score: [0, 0], games: [], gameNo: 0, crawfordUsed: false, started: Date.now(),
+        ms: { hits: [0, 0], doubles: [0, 0], maxCube: 1, drops: [], gammons: [] } };
+      newGame();
+    },
+    rig: function (l) { RIG = l.slice(); },
+    set: function (fn) { cpuToken++; rolling = false; sel = null; undoStack = []; fn(S); save(); render(); resumeFlow(); } };
 
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.pos && saved.players && (saved.phase !== 'over' || (saved.score[0] < saved.target && saved.score[1] < saved.target))) { S = saved; render(); resumeFlow(); }

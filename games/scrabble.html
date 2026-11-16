@@ -2032,7 +2032,18 @@
       if (S.mode === 'online') netMove({ k: 'pass' }); else doPass(viewSeat()); return 'pass';
     },
     submit: submit, recall: recall, pass: function () { doPass(S.turn); }, robot: function () { return busy; },
-    newGame: function (o) { newGame(o); }, ready: function () { return !!V.root && !busy; }, myTurn: myTurn, fit: fit
+    newGame: function (o) { newGame(o); }, ready: function () { return !!V.root && !busy; }, myTurn: myTurn, fit: fit,
+    // (the demo: a game against the computer that you start, with your rack's letters given, no draw for first turn,
+    // and the computer thinking on the page so the seeded random numbers choose its words the same way every time)
+    start: function (o, letters) {
+      return loadDict().then(function () {
+        workerOk = false; cancelThink(); pend = []; selId = null; cursor = null; busy = false; veil = false;
+        S = freshState(o); S.turn = 0; S.draw = []; S.log = [{ k: 'first', p: 0 }];
+        var p = P(0); p.rack.forEach(function (t) { S.bag.push(t.l); });
+        p.rack = letters.split('').map(function (l) { var k = S.bag.indexOf(l); if (k >= 0) S.bag.splice(k, 1); return { id: ++S.tid, l: l }; });
+        Kit.gameStart(); save(); buildView(); beginTurn(true);
+      });
+    }
   };
 
   // ═════════════════════════════════════════════════════════════════════════
