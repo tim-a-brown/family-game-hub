@@ -208,6 +208,8 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
 @keyframes bump{0%{transform:none;}35%{transform:scale(1.45);color:var(--yellow);}100%{transform:none;}}
 .bar{padding:12px 4px 4px;display:flex;}
 .bar .btn{flex:1;}
+.bar .endrow{flex:1;display:flex;gap:10px;min-width:0;}
+.bar .endrow > .btn-soft{flex:0 0 auto;padding:0 16px;}
 .rail .bar{padding:2px 12px 10px;}
 .btn.ready{animation:ready 1.6s ease-in-out infinite;}
 @keyframes ready{50%{box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 0 0 6px rgba(255,211,77,.22),0 0 26px var(--litg);}}
@@ -552,6 +554,8 @@ html.lay-side .aa:has(> .scores) > .hint{grid-column:2;margin-top:4px;}
       case 'all': if (g.phase !== 'judge' || !judge) return false; g.subs.forEach(function (s) { s.rev = true; }); return true;
       case 'pick': if (g.phase !== 'judge' || !judge || !g.subs[a.i] || g.subs.some(function (s) { return !s.rev; })) return false; return pickWin(g, a.i, a.why);
       case 'next': if (g.phase !== 'result') return false; nextRound(g); return true;
+      // (end the game after this round: whoever has the most cards wins; Tim, 2026-11-16)
+      case 'end': if (g.phase !== 'result' || g.final) return false; g.final = true; g.ended = true; g.phase = 'over'; return true;
     }
     return false;
   }
@@ -1130,7 +1134,12 @@ html.lay-side .aa:has(> .scores) > .hint{grid-column:2;margin-top:4px;}
     } else if (V.phase === 'judge' && canJudge) {
       if (V.subs.some(function (x) { return !x.c; })) btn = el('button', { type: 'button', class: 'btn btn-soft btn-lg', html: Kit.icon('swap') + '<span>Turn them all over</span>', onclick: function () { Kit.haptic('medium'); doAct({ t: 'all' }); } });
       else btn = el('button', { type: 'button', class: 'btn btn-primary btn-lg' + (ui.jsel >= 0 ? ' ready' : ''), disabled: ui.jsel < 0, html: Kit.icon('trophy') + '<span>' + (ui.jsel < 0 ? 'Tap your favorite' : 'This one wins') + '</span>', onclick: function () { if (ui.jsel >= 0) { Kit.haptic('heavy'); doAct({ t: 'pick', i: ui.jsel }); } } });
-    } else if (V.phase === 'result') btn = el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: V.final ? Kit.icon('trophy') + '<span>See who won</span>' : '<span>Next round</span>' + Kit.icon('right'), onclick: nextRoundTap });
+    } else if (V.phase === 'result') {
+      btn = el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: V.final ? Kit.icon('trophy') + '<span>See who won</span>' : '<span>Next round</span>' + Kit.icon('right'), onclick: nextRoundTap });
+      // after any round the game can end here, with a word first (Tim, 2026-11-16: "give apples to apples/CAH an end game
+      // option with confirmation after each round"); online only the host can, as only the host deals
+      if (!V.final && net.mode !== 'guest') btn = el('div', { class: 'endrow' }, [el('button', { type: 'button', class: 'btn btn-soft btn-lg', html: Kit.icon('flag') + '<span>End game</span>', onclick: endGameTap }), btn]);
+    }
 
     // My hand, on its own rail
     var showHand = V.hand && V.me >= 0 && !(V.mode === 'pass' && V.phase === 'judge');
@@ -1178,6 +1187,23 @@ html.lay-side .aa:has(> .scores) > .hint{grid-column:2;margin-top:4px;}
     if (c) c.classList.add('lift');
     Kit.haptic('medium');
     doAct({ t: 'flip' });
+  }
+  // End the game after this round: who leads, said before it is final
+  function endGameTap() {
+    if (!G || G.phase !== 'result') return;
+    Kit.sfx('tap'); Kit.haptic('light');
+    var P = G.players, sc = P.map(function (p) { return p.won.length; }), top = Math.max.apply(null, sc.concat([0]));
+    var lead = P.filter(function (p, i) { return !p.gone && sc[i] === top && top > 0; }).map(function (p) { return p.name; });
+    var cards = G.deck === 'cah' ? 'black card' : (G.prKind === 'r' ? 'red card' : 'green card');
+    var many = function (n) { return n + ' ' + cards + (n === 1 ? '' : 's'); };
+    var body = !lead.length ? 'Nobody has won a round yet, so the game ends in a tie.'
+      : lead.length === 1 ? lead[0] + ' wins with ' + many(top) + '.'
+      : (lead.length === 2 ? lead[0] + ' and ' + lead[1] : lead.slice(0, -1).join(', ') + ' and ' + lead[lead.length - 1]) + ' tie with ' + many(top) + ' each.';
+    if (G.ghost && G.ghostWon.length > top) body = (G.deck === 'cah' ? 'Rando Cardrissian' : 'The ghost') + ' wins with ' + many(G.ghostWon.length) + '.';
+    Kit.confirm('End the game now?', { ok: 'End the game', body: body + (G.mode === 'online' ? ' The game ends for everyone at the table.' : '') }).then(function (ok) {
+      if (!ok || !G || G.phase !== 'result') return;
+      Kit.haptic('medium'); doAct({ t: 'end' });
+    });
   }
   // Next round: the old cards sweep off the table first
   function nextRoundTap() {
@@ -1279,7 +1305,7 @@ html.lay-side .aa:has(> .scores) > .hint{grid-column:2;margin-top:4px;}
   function summary() {
     var g = G, P = g.players;
     var sc = P.map(function (p) { return p.won.length; }), top = Math.max.apply(null, sc.concat([0]));
-    var ghostWin = g.ghost && g.ghostWon.length >= g.target && g.ghostWon.length >= top;
+    var ghostWin = g.ghost && (g.ghostWon.length >= g.target && g.ghostWon.length >= top || g.ended && g.ghostWon.length > top);
     var winners = ghostWin ? [] : P.map(function (p, i) { return i; }).filter(function (i) { return sc[i] === top && top > 0; });
     function said(list) { return list.map(function (c) { var x = raw(g.ansKind, c); return x.n || x.t; }).join(' / '); }
     var rounds = g.log.map(function (l) {
@@ -1288,7 +1314,7 @@ html.lay-side .aa:has(> .scores) > .hint{grid-column:2;margin-top:4px;}
         pd: p0 && p0.d ? String(p0.d) : '', o: (l.o || []).map(function (x) { return { p: x.p, a: said(x.c) }; }) };
     });
     return { players: P.map(function (p, i) { return { name: p.name, score: sc[i], cpu: p.cpu, color: p.color }; }), winners: winners, ghost: g.ghost ? g.ghostWon.length : -1, ghostWin: ghostWin,
-      rounds: rounds, deck: g.deck, target: g.target, rules: g.rules, mode: g.mode, started: g.started, kinds: [g.prKind, g.ansKind] };
+      rounds: rounds, deck: g.deck, target: g.target, rules: g.rules, mode: g.mode, started: g.started, kinds: [g.prKind, g.ansKind], ended: !!g.ended };
   }
   function ruleList(r, deck) { var a = []; if (deck !== 'cah') { if (r.crab) a.push('Crab Apples'); if (r.pot) a.push('Apple Potpourri'); if (r.two) a.push('2-for-1'); if (r.turn) a.push('Apple Turnovers'); } else if (r.heat) a.push('Packing Heat'); return a; }
   function recordGame(S) {
@@ -1326,7 +1352,7 @@ html.lay-side .aa:has(> .scores) > .hint{grid-column:2;margin-top:4px;}
     while (big() && dt.rs.length > 4) dt.rs.shift();
     Kit.record(KEY, {
       started: S.started,
-      mode: (MODE[S.mode] || '') + ' · first to ' + S.target,
+      mode: (MODE[S.mode] || '') + (S.ended ? ' · ended after ' + S.rounds.length + (S.rounds.length === 1 ? ' round' : ' rounds') : ' · first to ' + S.target),
       players: S.players.map(function (p) { return { name: p.name, score: p.score, cpu: p.cpu }; }),
       winner: S.ghostWin ? null : S.winners.length === 1 ? S.players[S.winners[0]].name : undefined,
       summary: S.ghostWin ? 'The ghost won' : undefined,
@@ -1351,7 +1377,7 @@ html.lay-side .aa:has(> .scores) > .hint{grid-column:2;margin-top:4px;}
     else if (S.winners.length === 1) { var wn = S.players[S.winners[0]].name; title = meName && wn === meName && (G ? G.mode === 'solo' : true) ? 'You win!' : wn + ' wins!'; lose = G && G.mode === 'solo' && S.winners[0] !== 0; }
     else title = 'It’s a tie!';
     setTimeout(function () {
-      Kit.win({ title: title, lose: lose, icon: S.ghostWin ? 'ghost' : lose ? 'meh' : 'trophy', sub: S.ghostWin ? 'Everyone goes home in shame.' : 'First to ' + S.target + ' ' + w, rank: rank,
+      Kit.win({ title: title, lose: lose, icon: S.ghostWin ? 'ghost' : lose ? 'meh' : 'trophy', sub: S.ghostWin ? 'Everyone goes home in shame.' : S.ended ? 'The game ended after ' + S.rounds.length + (S.rounds.length === 1 ? ' round' : ' rounds') : 'First to ' + S.target + ' ' + w, rank: rank,
         again: again, againLabel: net.mode ? 'Back to the table' : undefined,
         look: 'See the rounds',
         setup: net.mode ? null : showSetup,
@@ -1632,6 +1658,7 @@ html.lay-side .aa:has(> .scores) > .hint{grid-column:2;margin-top:4px;}
         if (m.t !== 'a' || !G) return;
         var i = idxOfPid(peer._pid); if (i < 0) return;
         if (m.a && m.a.t === 'next' && G.phase === 'result') { nextRound(G); changed(); return; }
+        if (m.a && m.a.t === 'end') return;   // (only the host ends the game for the table)
         if (apply(G, i, m.a)) changed();
       });
       showWait();

@@ -351,7 +351,7 @@ Underlying principles for everything:
   pass left, right, no pass; 6 passes across to the seat opposite).
 - **Cribbage** plays 2 to 4: three deal one card from the deck to the crib, four are two partnerships across the table
   pegging on one track (`players.teams`); the player on the dealer's left cuts, leads and counts first.
-- **Apples to Apples** mixes robots with people (`cpu: 'mix'`), in pass and play and online (the host's device plays them).
+- **Apples to Apples** mixes robots with people (`cpu: 'mix'`), in pass and play and online (the host's device plays them). After any round the game can end there (Tim, 2026-11-16: "an end game option with confirmation after each round"): End game beside Next round asks first, saying who wins with how many cards, and the results card says the game ended after so many rounds (the `end` action; online only the host has it).
 - **Space Invaders** stays two players at most (Tim: "online game requires two humans on different devices").
 
 ## Bridge (2026-11-14; Tim: "two more classic cards game to add: Bridge and Pinochle")
