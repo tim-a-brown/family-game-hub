@@ -144,14 +144,14 @@ var GAMES = [
 
   // ── Party ────────────────────────────────────────────────────────────────
   { id: 'trivia',      name: 'Trivia',       color: '#f59e0b', cat: 'party', min: 1, max: 24, tag: 'Who knows the most?', play: 'trivia' },
-  { id: 'wouldyourather', name: 'Would You Rather', color: '#ec4899', cat: 'party', min: 2, max: 0, tag: 'Tough choices, big debates', play: 'wouldyourather' },
-  { id: 'applestoapples', name: 'Apples to Apples', color: '#e0303f', cat: 'party', min: 1, max: 24, tag: 'Match a red card to the green card', play: 'applestoapples' },
-  { id: 'mindmeld',  name: 'Mind Meld',  color: '#0ea5b7', cat: 'party', min: 1, max: 24, tag: 'Write what everyone else will write', play: 'mindmeld' },
-  { id: 'madlibs',     name: 'Mad Libs',     color: '#f43f5e', cat: 'party', min: 1, max: 0, tag: 'Fill the blanks, read it aloud', play: 'madlibs' },
-  { id: 'bingo',       name: 'Bingo',        color: '#e11d48', cat: 'party', min: 1, max: 0, tag: 'Call the balls, or play Bingo and Keno cards against the computer', play: 'bingo' },
-  { id: 'riddlestories', name: 'Riddle Stories', color: '#6366f1', cat: 'party', min: 2, max: 0, tag: 'Solve the mystery with yes/no questions', play: 'riddlestories' },
-  { id: 'conversation',name: 'Conversation Starters', tile: 'Conversations',   color: '#10b981', cat: 'party', min: 2, max: 0, tag: 'Questions that get everyone talking', play: 'conversation' },
-  { id: 'minigolf',    name: 'Mini Golf',    color: '#16a34a', cat: 'party', min: 1, max: 6, tag: 'Scorecard for a real round', play: 'minigolf' },
+  { id: 'wouldyourather', name: 'Would You Rather', color: '#ec4899', cat: 'party', min: 2, max: 0, tag: 'Tough choices, big debates', play: 'wouldyourather', demo: 1 },
+  { id: 'applestoapples', name: 'Apples to Apples', color: '#e0303f', cat: 'party', min: 1, max: 24, tag: 'Match a red card to the green card', play: 'applestoapples', demo: 1 },
+  { id: 'mindmeld',  name: 'Mind Meld',  color: '#0ea5b7', cat: 'party', min: 1, max: 24, tag: 'Write what everyone else will write', play: 'mindmeld', demo: 1 },
+  { id: 'madlibs',     name: 'Mad Libs',     color: '#f43f5e', cat: 'party', min: 1, max: 0, tag: 'Fill the blanks, read it aloud', play: 'madlibs', demo: 1 },
+  { id: 'bingo',       name: 'Bingo',        color: '#e11d48', cat: 'party', min: 1, max: 0, tag: 'Call the balls, or play Bingo and Keno cards against the computer', play: 'bingo', demo: 1 },
+  { id: 'riddlestories', name: 'Riddle Stories', color: '#6366f1', cat: 'party', min: 2, max: 0, tag: 'Solve the mystery with yes/no questions', play: 'riddlestories', demo: 1 },
+  { id: 'conversation',name: 'Conversation Starters', tile: 'Conversations',   color: '#10b981', cat: 'party', min: 2, max: 0, tag: 'Questions that get everyone talking', play: 'conversation', demo: 1 },
+  { id: 'minigolf',    name: 'Mini Golf',    color: '#16a34a', cat: 'party', min: 1, max: 6, tag: 'Scorecard for a real round', play: 'minigolf', demo: 1 },
 
   // ── Casino ───────────────────────────────────────────────────────────────
   { id: 'blackjack',   name: 'Blackjack',    color: '#059669', cat: 'casino', min: 1, max: 4, tag: 'Get closer to 21 than the dealer', play: 'blackjack', demo: 1 },
