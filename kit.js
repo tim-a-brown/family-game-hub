@@ -3150,7 +3150,7 @@
     // The computer's skill ({robot: true} on that option): each robot seat carries its own, shown on its tile
     var lvOp = (o.options || []).filter(function (op) { return op.robot; })[0] || null;
     var levels = {}; if (saved.levels) Object.keys(saved.levels).forEach(function (k) { levels[k] = saved.levels[k]; });
-    var openHelp = {}, scOpen = null;   // (scOpen: in the home screen's sheet, the one option row that's open)
+    var openHelp = {}, scOpen = {};   // (scOpen: the folded option rows that are open, each until its own head is tapped again)
     // One table, no mode cards: when a game's ways to play are the standard Just me / vs Computer / Pass & play
     // (plus Play online), the seats say it all. One seat is Just me, robots in every other seat is vs Computer,
     // people (and robots, where the game mixes them) is Pass & play, and Play online is a smaller button beside
@@ -3295,7 +3295,7 @@
     // fold into one row that names the chosen one (a tap opens the cards again).
     var fold = false, snug = false, foldModes = false, modesOpen = false;
     function fitFold() {
-      if (IN_SHEET || !wrap.isConnected || scOpen || modesOpen) return;
+      if (IN_SHEET || !wrap.isConnected || Object.keys(scOpen).length || modesOpen) return;
       var se = document.scrollingElement || document.documentElement;
       for (var i = 0; i < 3 && se.scrollHeight > se.clientHeight + 1; i++) {
         if (!fold && (o.options || []).length) { fold = true; wrap.classList.add('k-folded'); renderOptions(); }
@@ -3359,10 +3359,10 @@
               helpOpen && note ? el('p', { class: 'k-help', text: note }) : null]));
             return;
           }
-          var openNow = scOpen === op.id;
-          // (the choice's own listener has set the value and redrawn; this one folds the row)
-          Array.prototype.forEach.call(seg.children, function (b) { b.addEventListener('click', function () { scOpen = null; renderOptions(); }); });
-          var row = el('button', { type: 'button', class: 'k-scrow', 'aria-expanded': String(openNow), onclick: function () { scOpen = openNow ? null : op.id; sfx('tap'); haptic('light'); renderOptions(); } },
+          var openNow = !!scOpen[op.id];
+          // (a choice keeps the row open, so the choices and what they mean stay in view until the row's own head is tapped
+          // again: Tim, 2026-11-16, "keep the game options visible until the user collapses it back manually")
+          var row = el('button', { type: 'button', class: 'k-scrow', 'aria-expanded': String(openNow), onclick: function () { if (openNow) delete scOpen[op.id]; else scOpen[op.id] = 1; sfx('tap'); haptic('light'); renderOptions(); } },
             [el('span', { class: 'k-scl', text: op.label }), el('span', { class: 'k-scv', text: cur ? chText(cur) : '' }), el('span', { class: 'k-scc', html: icon('down') })]);
           // A setting that has words about it has the same ? at the end of its row as a setting played on its row, and
           // the words come up under it only when the ? is tapped (Tim, 2026-11-16: "found some rules with explanations
