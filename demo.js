@@ -37,6 +37,47 @@
 (function () {
   'use strict';
   if (window.KitDemo) return;
+  // ── Pausing (Tim, 2026-11-16: "allow demos to be paused for reading") ──────────────────────────────────────────
+  // The demo page runs on a clock that can stand still: while paused, Date.now() and performance.now() don't move, a
+  // timeout or a frame waits until play is pressed with the time it had left, intervals skip their ticks, and every
+  // running animation is held. So the game's robots, its animations and the demo's own captions all wait together.
+  // (A game that kept its own handle on setTimeout or requestAnimationFrame from before demo.js loaded keeps going.)
+  var W = window, PERF = W.performance;
+  var N = { st: W.setTimeout.bind(W), ct: W.clearTimeout.bind(W), si: W.setInterval.bind(W), raf: W.requestAnimationFrame.bind(W),
+    caf: W.cancelAnimationFrame.bind(W), pnow: PERF.now.bind(PERF), dnow: Date.now };
+  var PZ = { on: false, at: 0, lost: 0, anims: [] }, PSEQ = 7e8, PT = {};
+  function lost() { return PZ.lost + (PZ.on ? N.pnow() - PZ.at : 0); }
+  function vnow() { return N.pnow() - lost(); }
+  PERF.now = function () { return N.pnow() - lost(); };
+  Date.now = function () { return N.dnow() - lost(); };
+  W.setTimeout = function (fn, ms) {
+    if (typeof fn !== 'function') return N.st.apply(W, arguments);
+    var a = [].slice.call(arguments, 2), id = ++PSEQ, due = vnow() + (+ms || 0);
+    function go() {
+      if (!(id in PT)) return;
+      var left = due - vnow();
+      if (PZ.on) { PT[id] = N.st(go, 100); return; }
+      if (left > 3) { PT[id] = N.st(go, left); return; }
+      delete PT[id]; fn.apply(W, a);
+    }
+    PT[id] = N.st(go, +ms || 0);
+    return id;
+  };
+  W.clearTimeout = function (id) { if (id in PT) { N.ct(PT[id]); delete PT[id]; } else N.ct(id); };
+  W.setInterval = function (fn, ms) {
+    if (typeof fn !== 'function') return N.si.apply(W, arguments);
+    var a = [].slice.call(arguments, 2);
+    return N.si(function () { if (!PZ.on) fn.apply(W, a); }, ms);
+  };
+  W.requestAnimationFrame = function (fn) {
+    var id = ++PSEQ;
+    function go(ts) { if (!(id in PT)) return; if (PZ.on) { PT[id] = N.raf(go); return; } delete PT[id]; fn(ts - lost()); }
+    PT[id] = N.raf(go);
+    return id;
+  };
+  W.cancelAnimationFrame = function (id) { if (id in PT) { N.caf(PT[id]); delete PT[id]; } else N.caf(id); };
+  var setTimeout = W.setTimeout, clearTimeout = W.clearTimeout, setInterval = W.setInterval, requestAnimationFrame = W.requestAnimationFrame;
+
   var doc = document, root = doc.documentElement;
   var Q = location.search;
   var AUTO = /[?&]demoauto=1(&|$)/.test(Q), FROM_HOME = /[?&]from=home(&|$)/.test(Q);
@@ -81,14 +122,17 @@
     '.k-demo-strip .x{flex:none;display:grid;place-items:center;width:42px;height:42px;border:0;border-radius:14px;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);color:#f3f1fb;cursor:pointer;}' +
     '.k-demo-strip .x:active{transform:scale(.93);}' +
     '.k-demo-strip .x svg{width:20px;height:20px;}' +
-    '.k-demo-strip .mid{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:10px;}' +
+    '.k-demo-strip .mid{flex:1;min-width:0;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:10px;}' +
     '.k-demo-strip .gi{flex:none;width:26px;height:26px;display:grid;place-items:center;}' +
     '.k-demo-strip .gi svg{width:26px;height:26px;}' +
     '@media (max-width:360px){.k-demo-strip .gi{display:none;}}' +
-    '.k-demo-dots{--d:min(7px,calc((100vw - 210px) / var(--n,10) / 2));display:flex;gap:var(--d);align-items:center;}' +
+    '.k-demo-dots{--d:min(7px,calc((100vw - 272px) / var(--n,10) / 2));display:flex;gap:var(--d);align-items:center;}' +
     '.k-demo-dots i{flex:none;width:var(--d);height:var(--d);border-radius:50%;background:rgba(255,255,255,.22);transition:background .3s,transform .3s;}' +
     '.k-demo-dots i.on{background:var(--lit,#ffd34d);box-shadow:0 0 8px rgba(255,190,60,.6);}' +
     '.k-demo-dots i.now{transform:scale(1.35);}' +
+    '.k-demo-strip .pz{margin-right:-2px;}' +
+    '.k-demo-strip .pz.on{background:linear-gradient(180deg,var(--gold-hi,#ffe486),var(--gold-lo,#f6b93b));color:var(--gold-ink,#2a1c00);box-shadow:0 0 16px rgba(255,190,60,.45);}' +
+    '.k-demo-strip .pz svg{width:18px;height:18px;}' +
     '.k-demo-strip .sk{flex:none;height:42px;padding:0 16px;border:0;border-radius:14px;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);color:#f3f1fb;font:750 15px/1 var(--font,system-ui);cursor:pointer;}' +
     '.k-demo-strip .sk:active{transform:scale(.96);}' +
     '.k-demo-cap{position:fixed;z-index:9120;left:0;top:0;box-sizing:border-box;width:max-content;max-width:min(430px,calc(100vw - 28px));padding:13px 18px 14px;border-radius:18px;' +
@@ -120,26 +164,27 @@
     '@keyframes kDmRip{0%{opacity:.95;transform:scale(.5);}100%{opacity:0;transform:scale(2);}}' +
     '.k-demo-curtain{position:fixed;inset:0;z-index:9080;display:grid;place-items:center;padding:24px;background:var(--page-bg,#0e0f1b);background-color:var(--bg,#0e0f1b);transition:opacity .5s;}' +
     '.k-demo-curtain.out{opacity:0;pointer-events:none;}' +
-    '.k-demo-curtain .in{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;max-width:420px;animation:kDmUp .6s cubic-bezier(.2,.9,.25,1) both;}' +
-    '.k-demo-curtain .ic{width:92px;height:92px;filter:drop-shadow(0 0 26px color-mix(in srgb,var(--h,#8b7cff) 55%,transparent)) drop-shadow(0 10px 18px rgba(0,0,0,.4));}' +
-    '.k-demo-curtain .ic svg{width:100%;height:100%;}' +
+    '.k-demo-curtain .kd-in{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;max-width:420px;animation:kDmUp .6s cubic-bezier(.2,.9,.25,1) both;}' +
+    '.k-demo-curtain .kd-ic{width:92px;height:92px;filter:drop-shadow(0 0 26px color-mix(in srgb,var(--h,#8b7cff) 55%,transparent)) drop-shadow(0 10px 18px rgba(0,0,0,.4));}' +
+    '.k-demo-curtain .kd-ic svg{width:100%;height:100%;}' +
     '.k-demo-curtain h2{margin:0;font-family:var(--display,system-ui);font-weight:800;font-size:2.1rem;letter-spacing:-.03em;color:#f3f1fb;}' +
     '.k-demo-curtain p{margin:0;color:var(--text-2,#c6c4da);font-size:1.05rem;line-height:1.4;}' +
     '@keyframes kDmUp{0%{opacity:0;transform:translateY(14px) scale(.97);}100%{opacity:1;transform:none;}}' +
     '.k-demo-end{position:fixed;inset:0;z-index:9300;display:grid;place-items:center;padding:24px max(24px,calc(24px + var(--corner-x,0px)));background:rgba(6,7,16,.62);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);opacity:0;transition:opacity .35s;}' +
     '.k-demo-end.show{opacity:1;}' +
-    '.k-demo-end .pn{position:relative;box-sizing:border-box;width:min(400px,100%);padding:30px 24px 22px;border-radius:28px;text-align:center;' +
+    '.k-demo-end .kd-pn{position:relative;box-sizing:border-box;width:min(400px,100%);padding:30px 24px 22px;border-radius:28px;text-align:center;' +
       'background:linear-gradient(160deg,color-mix(in srgb,var(--h,#8b7cff) 22%,transparent),rgba(255,255,255,.04) 60%),rgba(22,24,46,.95);box-shadow:inset 0 0 0 1px rgba(255,255,255,.13),0 30px 60px -20px rgba(0,0,0,.8);' +
       'transform:translateY(16px) scale(.96);transition:transform .5s cubic-bezier(.2,.9,.25,1.15);overflow:hidden;}' +
-    '.k-demo-end.show .pn{transform:none;}' +
-    '.k-demo-end .pn::before{content:"";position:absolute;left:22px;right:22px;top:0;height:2px;border-radius:2px;background:var(--lit,#ffd34d);box-shadow:0 0 12px 1px rgba(255,190,60,.7);}' +
-    '.k-demo-end .ic{width:74px;height:74px;margin:0 auto 12px;filter:drop-shadow(0 0 22px color-mix(in srgb,var(--h,#8b7cff) 55%,transparent));}' +
-    '.k-demo-end .ic svg{width:100%;height:100%;}' +
+    '.k-demo-end.show .kd-pn{transform:none;}' +
+    '.k-demo-end .kd-pn::before{content:"";position:absolute;left:22px;right:22px;top:0;height:2px;border-radius:2px;background:var(--lit,#ffd34d);box-shadow:0 0 12px 1px rgba(255,190,60,.7);}' +
+    '.k-demo-end .kd-ic{width:74px;height:74px;margin:0 auto 12px;filter:drop-shadow(0 0 22px color-mix(in srgb,var(--h,#8b7cff) 55%,transparent));}' +
+    '.k-demo-end .kd-ic svg{width:100%;height:100%;}' +
     '.k-demo-end h2{margin:0 0 8px;font-family:var(--display,system-ui);font-weight:800;font-size:1.7rem;letter-spacing:-.03em;color:#f3f1fb;}' +
     '.k-demo-end p{margin:0 0 20px;color:var(--text-2,#c6c4da);font-size:1rem;line-height:1.4;text-wrap:pretty;}' +
-    '.k-demo-end .acts{display:flex;flex-direction:column;gap:10px;}' +
+    '.k-demo-end .kd-acts{display:flex;flex-direction:column;gap:10px;width:auto;max-width:none;margin:0;}' +
     '.k-demo-end .btn{width:100%;}' +
-    '@media (orientation:landscape) and (max-height:520px){.k-demo-end .pn{padding:22px 22px 18px;}.k-demo-end .ic{width:54px;height:54px;margin-bottom:6px;}.k-demo-end p{margin-bottom:14px;}.k-demo-end .acts{flex-direction:row;}.k-demo-cap{font-size:15.5px;padding:11px 16px 12px;}}' +
+    '@media (orientation:landscape) and (max-height:520px){.k-demo-end .kd-pn{padding:22px 22px 18px;}.k-demo-end .kd-ic{width:54px;height:54px;margin-bottom:6px;}.k-demo-end p{margin-bottom:14px;}.k-demo-end .kd-acts{flex-direction:row;}.k-demo-cap{font-size:15.5px;padding:11px 16px 12px;}}' +
+    '@media (max-width:360px){.k-demo-dots{--d:min(7px,calc((100vw - 236px) / var(--n,10) / 2));}}' +
     '@media (prefers-reduced-motion:reduce){.k-demo-ring::after{animation:none;}.k-demo-cap{transition:opacity .2s;transform:none;}.k-demo-rip{animation-duration:.01s;}}';
 
   var X_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
@@ -156,16 +201,50 @@
     ui.dots = el('div', 'k-demo-dots'); ui.mid.appendChild(ui.dots);
     ui.skip = el('button', 'sk', 'Skip'); ui.skip.type = 'button'; ui.skip.setAttribute('aria-label', 'Skip to the end of the demo');
     ui.skip.onclick = function () { tick(); skip(); };
-    ui.strip.appendChild(ui.x); ui.strip.appendChild(ui.mid); ui.strip.appendChild(ui.skip);
+    ui.pz = el('button', 'x pz'); ui.pz.type = 'button';
+    ui.pz.onclick = function () { tick(); if (PZ.on) resume(); else pause(); };
+    paintPause();
+    ui.strip.appendChild(ui.x); ui.strip.appendChild(ui.mid); ui.strip.appendChild(ui.pz); ui.strip.appendChild(ui.skip);
+    doc.addEventListener('keydown', function (e) {
+      if (e.key !== ' ' || st.ended || e.target.closest && e.target.closest('input, textarea, [contenteditable]')) return;
+      e.preventDefault(); e.stopPropagation(); tick(); if (PZ.on) resume(); else pause();
+    }, true);
     // (the strip, ring, finger and captions live on <html>, as the Kit keyboard does: the keyboard's page lift moves body)
     root.appendChild(ui.strip);
     placeStrip();
-    window.addEventListener('resize', placeStrip);
+    window.addEventListener('resize', function () { placeStrip(); paintDots(); });
     ui.ring = el('div', 'k-demo-ui k-demo-ring'); root.appendChild(ui.ring);
     ui.finger = el('div', 'k-demo-ui k-demo-finger', '<b></b>'); root.appendChild(ui.finger);
     st.fx = vw() / 2; st.fy = vh() + 40; moveFinger(st.fx, st.fy, true);
   }
   function tick() { try { Kit.sfx('tap'); Kit.haptic('light'); } catch (e) {} }
+  function paintPause() {
+    if (!ui.pz) return;
+    ui.pz.innerHTML = window.Kit ? Kit.icon(PZ.on ? 'play' : 'pause') : (PZ.on ? '&#9654;' : '||');
+    ui.pz.setAttribute('aria-label', PZ.on ? 'Play the demo' : 'Pause the demo');
+    ui.pz.setAttribute('aria-pressed', PZ.on ? 'true' : 'false');
+    ui.pz.classList.toggle('on', PZ.on);
+    root.classList.toggle('k-demo-paused', PZ.on);
+  }
+  function pause() {
+    if (PZ.on || st.ended) return;
+    PZ.on = true; PZ.at = N.pnow(); T.paused = true;
+    PZ.anims = [];
+    try {
+      doc.getAnimations().forEach(function (a) {
+        var t = a.effect && a.effect.target;
+        if (a.playState === 'running' && !(t && ui.strip && ui.strip.contains(t))) { a.pause(); PZ.anims.push(a); }
+      });
+    } catch (e) {}
+    paintPause();
+  }
+  function resume() {
+    if (!PZ.on) return;
+    PZ.lost += N.pnow() - PZ.at; PZ.on = false; T.paused = false;
+    PZ.anims.forEach(function (a) { try { if (a.playState === 'paused') a.play(); } catch (e) {} });
+    PZ.anims = [];
+    paintPause();
+  }
   // the strip covers the game bar exactly (its buttons wait until the demo is over)
   function placeStrip() {
     var bar = doc.querySelector('.gbar'), r = bar ? bar.getBoundingClientRect() : null;
@@ -177,6 +256,9 @@
   }
   function paintDots() {
     ui.dots.innerHTML = ''; ui.dots.style.setProperty('--n', Math.max(1, st.dots));
+    // (whole pixels, so every dot comes out the same size)
+    var n = Math.max(1, st.dots), d = Math.max(2, Math.min(7, Math.floor((innerWidth - (innerWidth <= 360 ? 236 : 272)) / n / 2)));
+    ui.dots.style.setProperty('--d', d + 'px');
     for (var i = 0; i < st.dots; i++) { var d = el('i'); if (i < st.beat) d.className = 'on'; if (i === st.beat - 1) d.className += ' now'; ui.dots.appendChild(d); }
   }
 
@@ -194,6 +276,7 @@
       // (the rest of a press the player began on their target goes through too, wherever the game has captured it)
       var ok = allowed(e.target) || (st.allow && type !== 'pointerdown' && type !== 'mousedown' && type !== 'touchstart' && Date.now() < (st.okUntil || 0));
       if (!st.ended && ok) {
+        if (PZ.on) resume();
         if (type === 'pointerdown' || type === 'mousedown' || type === 'touchstart') st.okUntil = Date.now() + 1500;
         if ((type === 'click' || type === 'pointerup') && st.youTap) setTimeout(st.youTap, 0);
         return;
@@ -412,7 +495,7 @@
     return new Promise(function (res) {
       var done = false, t = setTimeout(fin, ms);
       function fin() { if (done) return; done = true; clearTimeout(t); res(); }
-      c.addEventListener('click', function () { tick(); fin(); });
+      c.addEventListener('click', function () { tick(); resume(); fin(); });
       st.onAbort = fin;
     }).then(check);
   }
@@ -520,8 +603,8 @@
   function curtain(script) {
     var g = game();
     ui.cur = el('div', 'k-demo-ui k-demo-curtain');
-    var inner = el('div', 'in');
-    if (g && window.GameIcon) inner.appendChild(el('div', 'ic', GameIcon(g.id)));
+    var inner = el('div', 'kd-in');
+    if (g && window.GameIcon) inner.appendChild(el('div', 'kd-ic', GameIcon(g.id)));
     var h = el('h2'); h.textContent = g ? g.name : doc.title; inner.appendChild(h);
     if (script.intro) { var p = el('p'); p.textContent = script.intro; inner.appendChild(p); }
     ui.cur.appendChild(inner);
@@ -534,19 +617,19 @@
   }
   function homeUrl() { var g = game(); return '../index.html' + (g ? '#sheet=' + encodeURIComponent(g.id) : ''); }
   function plainUrl() { return location.pathname; }
-  function go(u) { st.ended = true; root.classList.add('k-going'); location.replace(u); }
+  function go(u) { resume(); st.ended = true; root.classList.add('k-going'); location.replace(u); }
   function leave() { st.aborted = true; go(FROM_HOME ? homeUrl() : plainUrl()); }
-  function skip() { if (st.ended) return; st.aborted = true; if (st.onAbort) st.onAbort(); end(); }
+  function skip() { if (st.ended) return; resume(); st.aborted = true; if (st.onAbort) st.onAbort(); end(); }
   function end() {
-    if (st.ended) return; st.ended = true; T.done = true; T.phase = 'end';
+    if (st.ended) return; resume(); st.ended = true; T.done = true; T.phase = 'end';
     clearInterval(hintT); clear(); showFinger(false); lift();
     st.beat = st.dots; paintDots();
     var g = game(), sc = st.script || {};
-    var box = el('div', 'k-demo-ui k-demo-end'), pn = el('div', 'pn');
-    if (g && window.GameIcon) pn.appendChild(el('div', 'ic', GameIcon(g.id)));
+    var box = el('div', 'k-demo-ui k-demo-end'), pn = el('div', 'kd-pn');
+    if (g && window.GameIcon) pn.appendChild(el('div', 'kd-ic', GameIcon(g.id)));
     var h = el('h2'); h.textContent = 'You’re ready to play'; pn.appendChild(h);
     if (sc.end) { var p = el('p'); p.textContent = sc.end; pn.appendChild(p); }
-    var acts = el('div', 'acts');
+    var acts = el('div', 'kd-acts');
     var play = el('button', 'btn btn-primary btn-lg', (window.Kit ? Kit.icon('play') : '') + '<span>Play now</span>'); play.type = 'button';
     play.onclick = function () { tick(); go(plainUrl()); };
     var again = el('button', 'btn btn-soft btn-lg', (window.Kit ? Kit.icon('undo') : '') + '<span>Watch again</span>'); again.type = 'button';
