@@ -2590,14 +2590,14 @@
   // turned). Upright (.v) where the players stand in two rows and the card is tall, on its side where they fit in one
   // (the Players card sets the class, fitDial). The arrow keys turn it too.
   function countStepper(n, lo, hi, step) {
-    var w = el('div', { class: 'k-wn k-dial', role: 'spinbutton', tabindex: '0', 'aria-label': 'How many players', 'aria-valuemin': String(lo), 'aria-valuemax': String(hi), 'aria-valuenow': String(n), 'aria-valuetext': n + (n === 1 ? ' player' : ' players') });
+    var w = el('div', { class: 'k-wn k-dial' + (hi >= 10 ? ' dd' : ''), role: 'spinbutton', tabindex: '0', 'aria-label': 'How many players', 'aria-valuemin': String(lo), 'aria-valuemax': String(hi), 'aria-valuenow': String(n), 'aria-valuetext': n + (n === 1 ? ' player' : ' players') });
     // The wheel is a prism of flat faces, a number on each, with a groove cut between one face and the next (Tim,
     // 2026-11-16: "instead of the dials being fully round, render them as flatter where the numbers are with grooves
     // between the numbers they click into place"). It is drawn in 3D once: each face is turned to its place round the
     // axle, and turning the wheel turns only the axle (one transform a frame). Past the first and the last number is an
     // end stop (Tim, the same day: "make it clear when dials can't go any further forward or backward"), a hatched face
     // the wheel can't turn past, which lights when it is hit.
-    var STEP = 36, SIZE = 30, AP = SIZE / 2 / Math.tan(STEP / 2 * Math.PI / 180);   // (degrees a face, its height, the axle's distance)
+    var STEP = 36, SIZE = 34, AP = SIZE / 2 / Math.tan(STEP / 2 * Math.PI / 180);   // (degrees a face, its height, the axle's distance)
     var drum = el('div', { class: 'k-dl-drum' }), faces = [], stops = [];
     for (var k = lo - 1; k <= hi + 1; k++) {
       var end = k < lo || k > hi, sh = el('i', { class: 'k-dl-sh' });
@@ -2690,32 +2690,38 @@
     // the first frame (and any change of direction) is drawn once the dial is on the page
     var mo = new MutationObserver(function () { lastI = Math.round(pos); paint(); });
     mo.observe(w, { attributes: true, attributeFilter: ['class'] });
-    requestAnimationFrame(function () {
-      var box = w.parentElement;
-      if (box) { fitDial(box); var tx = box.querySelector('.k-toks, .k-chips, .qs-toks, .qs-chips'); if (tx && typeof ResizeObserver !== 'undefined') new ResizeObserver(function () { if (w.isConnected) fitDial(box); }).observe(tx); }
-      lastI = n; paint();
-    });
+    // placed before the page is painted (the card puts it on the page in the same task), so a card drawn again for a
+    // new count shows the dial where it was, never for a frame somewhere else
+    var placed = false;
+    function place() {
+      var box = w.parentElement; if (!box || placed) return; placed = true; fitDial(box); lastI = n; paint();
+      // (fitted again when the card's width changes, a turn of the device, or the title's does, as its font arrives)
+      if (typeof ResizeObserver !== 'undefined') { var ro = new ResizeObserver(function () { if (w.isConnected) fitDial(box); else ro.disconnect(); }); ro.observe(box); var tt = box.querySelector('.k-who-t, .gs-who .t'); if (tt) ro.observe(tt); }
+    }
+    (typeof queueMicrotask === 'function' ? queueMicrotask : function (f) { Promise.resolve().then(f); })(place);
+    requestAnimationFrame(place);
     lastI = n; paint();
     return w;
   }
-  // Where the dial stands. At the left under the title, the players beside it, while they fit there in two rows at most:
-  // upright when they take two rows, on its side when one. When they would take three rows or more beside it (a narrow
-  // phone, five or six players), the title and the dial share the top line and the players have the card's whole
-  // width under them (.dial-top), so the card never grows tall with one or two players to a row.
+  // Where the dial stands, and it stays there however the count is turned (Tim, 2026-11-16, of a dial that went from its
+  // side to upright to the top line as players were added: "jumping around like this is no good"). It is chosen once
+  // for the game's whole range of players, from the card's width: under the title at the left, on its side, while the
+  // most players the game seats still fit beside it in two rows; upright there only when even the fewest players take
+  // two rows; and when the most would need three rows or more beside it (a phone, a game for up to 8 or 24), the
+  // title and the dial share the top line and the players have the card's whole width under them (.dial-top).
   function fitDial(box) {
     var d = box.querySelector(':scope > .k-dial'), card = box.querySelector(':scope > :is(.k-who,.gs-who)'); if (!d || !card) return;
-    var tx = card.querySelector('.k-toks, .k-chips, .qs-toks, .qs-chips'), t = card.querySelector('.k-who-t, .t');
-    var toks = card.querySelectorAll('.k-tok, .qs-tok').length || 1, go = card.querySelector('.k-who-go, .gs-who-go');
+    var t = card.querySelector('.k-who-t, .t'), go = card.querySelector('.k-who-go, .gs-who-go');
+    var lo = +d.getAttribute('aria-valuemin') || 1, hi = +d.getAttribute('aria-valuemax') || lo;
     var cs = getComputedStyle(card), cw = card.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), gw = go ? go.getBoundingClientRect().width + 12 : 0;
-    var per = function (w) { return Math.max(1, Math.floor((w + 4) / 70)); };   // (a token is about 66 wide, 4 apart)
-    var rows = Math.ceil(toks / per(cw - 98 - 12 - gw));
-    var top = rows > 2;
+    var per = Math.max(1, Math.floor((cw - 112 - 12 - gw + 4) / 70));   // (players beside the dial in a row: a token is about 66 wide, 4 apart)
+    var top = Math.ceil(hi / per) > 2, tall = !top && Math.ceil(lo / per) >= 2;
     box.classList.toggle('dial-top', top);
-    var tall = !top && tx && tx.getBoundingClientRect().height > 104;
-    box.classList.toggle('dial-v', !!tall); d.classList.toggle('v', !!tall); d.classList.toggle('h', !tall);
+    box.classList.toggle('dial-v', tall); d.classList.toggle('v', tall); d.classList.toggle('h', !tall);
     if (top && t) {   // (beside the title: its left is where the title's words end)
       var bl = box.getBoundingClientRect(), r = document.createRange(); r.selectNodeContents(t); var tr = r.getBoundingClientRect();
-      d.style.left = Math.round(tr.right - bl.left + 12) + 'px'; d.style.top = Math.round(tr.top + tr.height / 2 - bl.top - 20) + 'px';
+      var k = (bl.width / box.offsetWidth) || 1;   // (measured in the box's own units: a card that is just being drawn may be scaled for a moment)
+      d.style.left = Math.round((tr.right - bl.left) / k + 12) + 'px'; d.style.top = Math.round((tr.top + tr.height / 2 - bl.top) / k - 23) + 'px';
     } else { d.style.left = ''; d.style.top = ''; }
   }
   // the same, said aloud: "Tim and Number 5 against Huey and Klaatu"
