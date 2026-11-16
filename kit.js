@@ -2545,6 +2545,14 @@
     }
     var toks = box.children, n = toks.length; if (n < 2) return;
     box.style.paddingLeft = box.style.paddingRight = '';
+    // beside the dial, a crowd of players takes smaller tokens rather than a tall column of rows (Tim, 2026-11-16, the
+    // dial always upright at the left): one size smaller past two rows, two sizes past three (from the full token's
+    // width, 66, so the choice never flips back and forth)
+    if (box.closest('.has-n')) {
+      var W0 = box.clientWidth + (box.classList.contains('crowd') || box.classList.contains('crowd2') ? 0 : 0), per66 = Math.max(1, Math.floor((W0 + 4) / 70)), per52 = Math.max(1, Math.floor((W0 + 4) / 56));
+      var c1 = Math.ceil(n / per66) > 2, c2 = c1 && Math.ceil(n / per52) > 3;
+      box.classList.toggle('crowd', c1 && !c2); box.classList.toggle('crowd2', c2);
+    }
     var W = box.clientWidth, tw = toks[0].offsetWidth; if (!W || !tw) return;
     var gap = parseFloat(getComputedStyle(box).columnGap) || 0, per = Math.max(1, Math.floor((W + gap) / (tw + gap)));
     if (n <= per) return;
@@ -2590,7 +2598,7 @@
   // turned). Upright (.v) where the players stand in two rows and the card is tall, on its side where they fit in one
   // (the Players card sets the class, fitDial). The arrow keys turn it too.
   function countStepper(n, lo, hi, step) {
-    var w = el('div', { class: 'k-wn k-dial' + (hi >= 10 ? ' dd' : ''), role: 'spinbutton', tabindex: '0', 'aria-label': 'How many players', 'aria-valuemin': String(lo), 'aria-valuemax': String(hi), 'aria-valuenow': String(n), 'aria-valuetext': n + (n === 1 ? ' player' : ' players') });
+    var w = el('div', { class: 'k-wn k-dial v' + (hi >= 10 ? ' dd' : ''), role: 'spinbutton', tabindex: '0', 'aria-label': 'How many players', 'aria-valuemin': String(lo), 'aria-valuemax': String(hi), 'aria-valuenow': String(n), 'aria-valuetext': n + (n === 1 ? ' player' : ' players') });
     // The wheel is a prism of flat faces, a number on each, with a groove cut between one face and the next (Tim,
     // 2026-11-16: "instead of the dials being fully round, render them as flatter where the numbers are with grooves
     // between the numbers they click into place"). It is drawn in 3D once: each face is turned to its place round the
@@ -2703,26 +2711,13 @@
     lastI = n; paint();
     return w;
   }
-  // Where the dial stands, and it stays there however the count is turned (Tim, 2026-11-16, of a dial that went from its
-  // side to upright to the top line as players were added: "jumping around like this is no good"). It is chosen once
-  // for the game's whole range of players, from the card's width: under the title at the left, on its side, while the
-  // most players the game seats still fit beside it in two rows; upright there only when even the fewest players take
-  // two rows; and when the most would need three rows or more beside it (a phone, a game for up to 8 or 24), the
-  // title and the dial share the top line and the players have the card's whole width under them (.dial-top).
+  // Where the dial stands: always upright, under the title at the card's left, the players with the rest of the card
+  // (Tim, 2026-11-16: "jumping around like this is no good", then "there should be no orientation where the dial is at
+  // the top either ... primarily it should be a vertical oriented dial"). So it never moves as the count is turned.
   function fitDial(box) {
-    var d = box.querySelector(':scope > .k-dial'), card = box.querySelector(':scope > :is(.k-who,.gs-who)'); if (!d || !card) return;
-    var t = card.querySelector('.k-who-t, .t'), go = card.querySelector('.k-who-go, .gs-who-go');
-    var lo = +d.getAttribute('aria-valuemin') || 1, hi = +d.getAttribute('aria-valuemax') || lo;
-    var cs = getComputedStyle(card), cw = card.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), gw = go ? go.getBoundingClientRect().width + 12 : 0;
-    var per = Math.max(1, Math.floor((cw - 112 - 12 - gw + 4) / 70));   // (players beside the dial in a row: a token is about 66 wide, 4 apart)
-    var top = Math.ceil(hi / per) > 2, tall = !top && Math.ceil(lo / per) >= 2;
-    box.classList.toggle('dial-top', top);
-    box.classList.toggle('dial-v', tall); d.classList.toggle('v', tall); d.classList.toggle('h', !tall);
-    if (top && t) {   // (beside the title: its left is where the title's words end)
-      var bl = box.getBoundingClientRect(), r = document.createRange(); r.selectNodeContents(t); var tr = r.getBoundingClientRect();
-      var k = (bl.width / box.offsetWidth) || 1;   // (measured in the box's own units: a card that is just being drawn may be scaled for a moment)
-      d.style.left = Math.round((tr.right - bl.left) / k + 12) + 'px'; d.style.top = Math.round((tr.top + tr.height / 2 - bl.top) / k - 23) + 'px';
-    } else { d.style.left = ''; d.style.top = ''; }
+    var d = box.querySelector(':scope > .k-dial'); if (!d) return;
+    box.classList.add('dial-v'); box.classList.remove('dial-top'); d.classList.add('v'); d.classList.remove('h');
+    d.style.left = ''; d.style.top = '';
   }
   // the same, said aloud: "Tim and Number 5 against Huey and Klaatu"
   function whoSaid(seats, teams) {
