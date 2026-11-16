@@ -1314,6 +1314,10 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
 :root .pick.gsheet button.pk-demo.new::before{content:"";position:absolute;inset:-1px;border-radius:50%;box-shadow:0 0 0 2px var(--lit,#ffd34d);opacity:0;animation:pkDemo 2.2s ease-out infinite;pointer-events:none;}
 @keyframes pkDemo{0%{opacity:.8;transform:scale(1);}70%,100%{opacity:0;transform:scale(1.45);}}
 @media (prefers-reduced-motion:reduce){:root .pick.gsheet button.pk-demo.new::before{animation:none;}}
+/* (the word under the button, small: Tim, 2026-11-16, "write the word demo underneath the demo play button in a small font") */
+:root .pick.gsheet button.pk-demo{margin-bottom:14px;}
+:root .pick.gsheet button.pk-demo .pk-dl{position:absolute;left:50%;top:calc(100% + 3px);transform:translateX(-50%);font-size:.68rem;font-weight:650;line-height:1;color:var(--text-2);white-space:nowrap;pointer-events:none;}
+:root .pick.gsheet button.pk-demo.new .pk-dl{color:var(--lit-ink,#ffe28a);}
 :root:not(.ng-x) .gs-dock{background:linear-gradient(transparent,var(--sheet-solid) 34%);}
 
 /* the profile and its sheets: plain sentence-case labels */
@@ -1874,7 +1878,7 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     // the game's demo, at the header's top right; it glows for a game you have never played and whose demo you haven't watched
     if (Kit.hasDemo && Kit.hasDemo(g)) {
       var played = !!live; try { var gh = JSON.parse(localStorage.getItem('gh_' + g.id) || '[]'); if (Array.isArray(gh) && gh.length) played = true; } catch (e) {}
-      var db = el('button', { type: 'button', class: 'pk-demo' + (!played && !Kit.demoSeen(g.id) ? ' new' : ''), 'aria-label': 'Watch a demo of ' + g.name, title: 'Watch a demo', html: Kit.icon('demo'),
+      var db = el('button', { type: 'button', class: 'pk-demo' + (!played && !Kit.demoSeen(g.id) ? ' new' : ''), 'aria-label': 'Watch a demo of ' + g.name, title: 'Watch a demo', html: Kit.icon('demo') + '<span class="pk-dl" aria-hidden="true">Demo</span>',
         onclick: function () { Kit.haptic('light'); Kit.sfx('pop'); Kit.demoSeen(g.id, true); s.close(); window.__leaving = true; setTimeout(function () { window.__leaving = false; }, 4000); location.href = 'games/' + Kit.demoHref(g, 'home'); } });
       head.appendChild(db);
     }

@@ -494,7 +494,7 @@ Underlying principles for everything:
 ## Demos (2026-11-16; Tim: "add demo button and develop interactive animated demos to all games possible to walk first time players through animated versions of the game accessible with a small icon on the game menu")
 
 - **What a player sees**: on the home screen's game sheet, a small round button at the header's top right (`.pk-demo`,
-  the `demo` icon, a play mark in a circle), only for a game with `demo` in games.js; it glows (a ring that grows and fades
+  the `demo` icon, a play mark in a circle, with the word Demo small under it, `.pk-dl`), only for a game with `demo` in games.js; it glows (a ring that grows and fades
   on `::before`) for a game never played (no `gh_<id>` history, nothing to resume) whose demo hasn't been watched
   (`gn_demo_seen`, a list of game ids, follows the PIN). Every such game's menu has Watch a demo under How to play
   (`Kit.demo()`). Both open `games/<play>.html?demo=1` (`&from=home` from the sheet, so the strip's X goes back to that
