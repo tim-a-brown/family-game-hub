@@ -155,7 +155,10 @@ Underlying principles for everything:
   section's heading (`.sec-ed`) opens that section alone (`Kit.homeSheet(catId)`: Show this section, then a switch for
   each of its games, Hide all, and All sections), and a pencil in the top bar (`#hedit`) opens every section, the same
   sheet as Home screen in the profile menu (`gn_cat_off`, `gn_games_off`, `gn_cat_order`). With the bell showing the
-  title eases down a step for the fourth button, and at 360 wide or less the top pencil steps aside.
+  title eases down a step for the fourth button, and at 360 wide or less the top pencil steps aside. **The greeting stays on one line**
+  (Tim, the same day: "what happens for long user names?"; it wrapped to four lines and pushed the screen down):
+  `fitHi` in index.html tries the whole name, the first name, "Hi" for the time of day, a household's name without
+  "The" and "Family", then a step smaller, and only then cuts the name short with an ellipsis (user-typed text).
 - **What keeps the home screen smooth** (Tim, 2026-11-16: "lagginess, scrolling up and down on the iPad mini in
   landscape"; measured with the CPU slowed 4x at 1024x768). Scrolling: **no `backdrop-filter` on anything repeated per
   tile or card**. A tile's glass band and a Keep playing card's name panel are painted glass, with the art clipped at the

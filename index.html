@@ -896,7 +896,7 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
    color tinting its games (--h), gold for what is yours or happening now, Schibsted Grotesk throughout, no tracked
    capitals. Games are rows (glassRow), many columns of them where there is room. The other themes keep the rules above. */
 :root:not(.ng-x) .top{gap:8px;}
-:root:not(.ng-x) .top .hi{color:var(--text-2);font-weight:550;font-size:.92rem;line-height:1.2;letter-spacing:0;white-space:normal;overflow:visible;margin-bottom:1px;}
+:root:not(.ng-x) .top .hi{color:var(--text-2);font-weight:550;font-size:.92rem;line-height:1.2;letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px;}
 :root:not(.ng-x) .top h1{font-family:var(--display);font-weight:800;font-size:2.15rem;line-height:1.04;letter-spacing:-.03em;white-space:nowrap;}
 @media (max-width:440px){:root:not(.ng-x) .top{gap:6px;} :root:not(.ng-x) .top :is(.vbtn,.me,.logo){width:36px;height:36px;}
   :root:not(.ng-x) .top h1{font-size:clamp(1.1rem,calc((100vw - 208px) / 5.45),2.15rem);}}
@@ -2978,12 +2978,30 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     if (!w.length) return '#';
     return (w[0][0] + (w[1] ? w[1][0] : '')).toUpperCase();
   }
+  // The greeting stays on one line beside the buttons, said shorter the way a person would when a name is long (Tim,
+  // 2026-11-16: "what happens for long user names?"): the whole name, then the first name, then "Hi" for the time of
+  // day, then a step smaller, and only then the name cut short (user-typed text, the one place an ellipsis may go)
+  var HI_SAY = { greet: '', who: '' }, hiRO = null;
+  function fitHi() {
+    var hi = $('hi'), g = HI_SAY.greet, w = HI_SAY.who;
+    var first = w.split(/\s+/)[0] || '', firstOk = first && first !== w && !/^(the|a|an)$/i.test(first);
+    // (a household's name keeps its own words: "The Brown-Hernandez Family" says "Brown-Hernandez", as its initials do)
+    var core = w.split(/\s+/).filter(function (x, i, l) { return x && !(i === 0 && /^(the|a|an)$/i.test(x)) && !(l.length > 1 && /^(family|fam|crew|team|house|household)$/i.test(x)); }).join(' ');
+    var tries = w ? [g + ', ' + w].concat(firstOk ? [g + ', ' + first] : []).concat(['Hi, ' + w]).concat(firstOk ? ['Hi, ' + first] : []).concat(core && core !== w && core !== first ? [g + ', ' + core, 'Hi, ' + core] : []) : [g];
+    hi.style.fontSize = '';
+    for (var i = 0; i < tries.length; i++) { hi.textContent = tries[i]; if (hi.scrollWidth <= hi.clientWidth + 1) return; }
+    var fs = parseFloat(getComputedStyle(hi).fontSize) || 15;
+    for (var f = fs - 1; f >= 12; f--) { hi.style.fontSize = f + 'px'; if (hi.scrollWidth <= hi.clientWidth + 1) return; }
+    // (still too long: the ellipsis on the shortest form says the rest is there)
+  }
+  if (window.ResizeObserver) { hiRO = new ResizeObserver(function () { if (HI_SAY.greet) fitHi(); }); hiRO.observe(document.querySelector('.top .who')); }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (HI_SAY.greet) fitHi(); });
   function refreshWho() {
     var h = new Date().getHours();
     var greet = h < 5 ? 'Up late' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
     var lbl = mode === 'pin' && window.FGHSync ? FGHSync.label() : '';
     var who = (typeof FrequentPlayers !== 'undefined' && FrequentPlayers.myName ? FrequentPlayers.myName() : '') || lbl;
-    $('hi').textContent = greet + (who ? ', ' + who : '');
+    HI_SAY = { greet: greet, who: who || '' }; fitHi();
     // your avatar (by your name) when you've set one; otherwise the account's initials
     var mn = typeof FrequentPlayers !== 'undefined' && FrequentPlayers.myName ? FrequentPlayers.myName() : null, me = $('me');
     if (mn && Kit.avatar && Kit.avatar.has(mn)) {
