@@ -1230,7 +1230,12 @@ html.cdesk-on #app .roundbox small{font-size:.8em;}
     }
     inner.appendChild(el('div', { class: 'cdk-goal', text: 'The highest score after round ' + T + ' wins.' }));
     // (more rounds than fit: the round in play stays in view)
-    if (liveRow && body.scrollHeight > body.clientHeight + 1) { var a = liveRow.getBoundingClientRect(), b = body.getBoundingClientRect(); body.scrollTop += a.top - b.top - (b.height - a.height) / 2; }
+    // (the body is as tall as a whole number of rows and stops on a row's edge, so no row lies half under the header or the totals)
+    if (liveRow && body.scrollHeight > body.clientHeight + 1) { var a = liveRow.getBoundingClientRect(), rh = a.height;
+      if (rh > 4) { var whole = Math.max(2, Math.floor((body.clientHeight + 0.5) / rh)); body.style.flex = '0 0 auto'; body.style.height = (whole * rh) + 'px'; }
+      var b = body.getBoundingClientRect(); a = liveRow.getBoundingClientRect();
+      var want = body.scrollTop + a.top - b.top - (b.height - a.height) / 2, max = body.scrollHeight - body.clientHeight;
+      body.scrollTop = Math.max(0, Math.min(max, rh > 4 ? Math.round(want / rh) * rh : want)); }
     if (box) {
       var run = S.players.map(function () { return [0]; });
       R.forEach(function (rr) { rr.forEach(function (v, p) { run[p].push(run[p][run[p].length - 1] + v); }); });
