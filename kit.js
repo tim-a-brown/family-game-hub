@@ -5059,7 +5059,7 @@
   }
   function setupSaved(id) { try { return JSON.parse(lsGet('gn_setup_' + id, 'null')); } catch (e) { return null; } }
   function rootPath() { return /\/games\//.test(location.pathname) ? '../' : ''; }
-  function defaultsSheet(part, focus) {
+  function defaultsSheet(part, focus, openId) {
     var list = (typeof GAMES !== 'undefined' ? GAMES : []).filter(function (g) { return !g.hidden && setupPageOf(g); });
     // Home screen sections: move them up and down; Favorites always stays first
     var ord = el('div', { class: 'k-ord' });
@@ -5070,6 +5070,7 @@
       paintOrd();
     }, 'k-ord-grip');
     var openCat = {};   // sections whose game list is open
+    if (openId) openCat[openId] = 1;
     function catsChanged() { try { window.dispatchEvent(new Event('kit:cats')); } catch (e) {} }
     // A to Z: the mark that puts a section (or Favorites) back in alphabetical order; it is there only while the
     // section is in an order of its own
@@ -5230,6 +5231,12 @@
     paint();
     if (part === 'home' && focus) return sheet({ title: focus === 'fav' ? 'Favorites' : catName(focus) || 'Home screen', node: el('div', { class: 'k-ord-one' }, [azSlot, ord]),
       actions: [{ label: 'All sections', cls: 'btn-ghost', onClick: function () { setTimeout(function () { defaultsSheet('home'); }, 260); } }, { label: 'Done', cls: 'btn-soft' }] });
+    // (opened from a section's pencil: the whole sheet, that section open and brought up into view, its row lit a moment)
+    if (part === 'home' && openId) setTimeout(function () {
+      var r = ord.querySelector('[data-k="s:' + openId + '"]'); if (!r) return;
+      try { r.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) { r.scrollIntoView(); }
+      r.classList.add('k-ord-hl'); setTimeout(function () { r.classList.remove('k-ord-hl'); }, 1600);
+    }, 320);
     if (part === 'home') return sheet({ title: 'Home screen', node: el('div', null, [
         el('p', { class: 'muted', style: { margin: '0 0 4px' }, text: 'Drag sections into the order you like. Switch a section off to hide all its games from home, search, Surprise and High Scores, or open a section to switch off single games.' }), ord]),
       actions: [{ label: 'Done', cls: 'btn-soft' }] });
@@ -5237,7 +5244,9 @@
         el('p', { class: 'muted', style: { margin: '0 0 10px' }, text: 'Pick a game to set how it starts: who plays, the computer’s skill and its options. A game also remembers whatever you pick when you start it.' }), q, box]),
       actions: [{ label: 'Done', cls: 'btn-soft' }] });
   }
-  function homeSheet(focus) { defaultsSheet('home', typeof focus === 'string' ? focus : null); }
+  // a section's pencil (Tim, 2026-11-17: "switch all section edits to the same global homepage edits with the associated
+  // section pre-opened"): the whole Home screen sheet, with that section (or Favorites) open
+  function homeSheet(open) { defaultsSheet('home', null, typeof open === 'string' ? open : null); }
   function timerSheet() { sheet({ title: 'Game timer', node: timerPanel(), actions: [{ label: 'Done', cls: 'btn-soft' }] }); }
   // a few words for the menus: what the timer and the sections are set to now
   function timerStatus(t) { t = t === undefined ? timerGet() : t; if (!t) return 'Off'; if (t.cut) return 'Games off'; var ms = t.end - Date.now(); return ms > 0 ? (ms >= 3600000 ? Math.floor(ms / 3600000) + ' hr ' + Math.floor(ms / 60000) % 60 + ' min' : Math.ceil(ms / 60000) + ' min') + ' left' : t.lock && ms <= -60000 ? 'Locked' : 'Time’s up'; }

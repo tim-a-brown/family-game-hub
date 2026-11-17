@@ -152,15 +152,17 @@ Underlying principles for everything:
   the details into the bottom left of the colorful top part", then "make the top part shorter again": the color keeps its
   1 : .66 shape; then "remove the pillboxes and add a subtle dark gradient"; `shelfBox`, the block after `.sbox.old .art` in index.html). Quick notes (`Kit.toast`) are lifted glass with a hairline lit along the top. **Hiding games and sections** (Tim, 2026-11-16: "add a discreet edit option to each
   section to allow hiding games within the section or the section altogether"): a quiet pencil at the end of each
-  section's heading (`.sec-ed`) opens that section alone (`Kit.homeSheet(catId)`: Show this section, then a switch for
-  each of its games, Hide all, and All sections), and a pencil in the top bar (`#hedit`) opens every section, the same
+  section's heading (`.sec-ed`) opens the whole Home screen sheet with that section open, brought up into view and its
+  row lit gold a moment (`Kit.homeSheet(catId)`, `openId` in `defaultsSheet`; Tim, 2026-11-17: "switch all section edits
+  to the same global homepage edits with the associated section pre-opened"; the one-section sheet, `focus`, is no
+  longer opened), and a pencil in the top bar (`#hedit`) opens every section, the same
   sheet as Home screen in the profile menu (`gn_cat_off`, `gn_games_off`, `gn_cat_order`). Keep playing's Edit is the same pencil (`#cont-edit`), the gold Done while its cards are being edited. **Arranging and starring
   games in that sheet** (Tim, 2026-11-17: "allow favoriting and rearranging games per section (including favorites) or
   resetting each section back to alpha order ... design well without using words to explain things"): every game row has
   a grip at its left and a star before its switch (gold and filled for a favorite, popping as it lights); a section's
   games drag into an order of their own (`gn_game_order` {section: [ids]}, follows the PIN; the home screen reads it
   through `Kit.sortCat`), Favorites opens the same way to drag its games or take one out (its row folds away), and its
-  heading on the home screen has the pencil too (`Kit.homeSheet('fav')`). While a section, or Favorites, is open and in
+  heading on the home screen has the pencil too (`Kit.homeSheet('fav')`, the sheet with Favorites open). While a section, or Favorites, is open and in
   an order of its own, an A to Z mark stands in its heading (`.k-ord-az`; in a sheet for one section or Favorites it
   stands in the sheet's top right corner across from the title, `.k-ord-azslot`, so a long list never pushes it out of
   view) and puts it back. Every redraw glides (`paintOrd` keys each row `s:`/`g:`/`f:` and slides it from where it was), so a game
