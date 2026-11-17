@@ -536,6 +536,11 @@
     paper.appendChild(el('div', { class: 'ac-name', text: c.n }));
     // (a small Domain says its power in the few words its tile has: Tim, 2026-11-12)
     if (o.mini && place && C.PLACES[key]) { const w = C.DM_LIVE ? C.PLACES[key].pw : C.PLACES[key].pw0; if (w && DSHORT[w]) paper.appendChild(el('div', { class: 'ac-pw', text: DSHORT[w] })); }
+    // (the desk: a small card 150 px wide and more says what it does under its name, in its own words where they are
+    // few and in its skill words where they are not; fitMid steps the words down or leaves them out where they would
+    // take the picture's room)
+    if (o.mini && o.mid && !place) { n.classList.add('mid'); const tx = c.tx || '', own = tx && tx.length <= 110 ? boldKeys(tx) : '', br = briefOf(c);
+      if (own || br) { const b = el('div', { class: 'ac-br', html: own || br }); if (own && br && br !== own) b.dataset.br = br; paper.appendChild(b); } }
     if (!o.mini) {
       paper.appendChild(el('div', { class: 'ac-when', text: c.cap }));
       paper.appendChild(el('div', { class: 'ac-txt', html: boldKeys(c.tx) }));
@@ -1196,7 +1201,7 @@
   function roadDims(box) {
     const W = window.innerWidth, H = window.innerHeight, side = W > H * 1.15 && (H <= 560 || W >= 960), n = S ? roadOrd().length : 5, per = n > 7 ? Math.ceil(n / 2) : n;
     const w = box && box.clientWidth ? box.clientWidth : side ? (W - 16) / 2.15 - 20 : Math.min(W - 24, 640), gap = W < 500 ? 5 : 8;
-    const rw = Math.max(40, Math.min(side ? 84 : 124, Math.floor((w - (per - 1) * gap) / per))), rh = Math.round(rw * .62), rows = Math.ceil(n / per), chips = 52;   // (chips: the line under the tiles, as tall as its buttons, 50px since the bigger buttons; at 40 a Play button hung over the notes)
+    const rw = Math.max(40, Math.min(deskWin() && side ? 210 : side ? 84 : 124, Math.floor((w - (per - 1) * gap) / per)))   /* (the desk: the road's tiles as wide as its column allows) */, rh = Math.round(rw * .62), rows = Math.ceil(n / per), chips = 52;   // (chips: the line under the tiles, as tall as its buttons, 50px since the bigger buttons; at 40 a Play button hung over the notes)
     return { rw: rw, rh: rh, gap: gap, per: per, h: rows * (rh + 22) + (rows - 1) * 4 + 8 + chips, chips: chips };
   }
   // Your two Relic slots as a row of tiles, for a Relic from your hand (key): the Relic in each slot with its name, a free
@@ -1422,24 +1427,27 @@
     const plate = tile.querySelector('.pl-plate'), rl = tile.querySelector('.pl-rule'), bal = mid.querySelector('.fo-bal');
     const nf = s => s.querySelectorAll('.fo-f').length, bare = sides.every(s => !nf(s));
     const tight = !hz && (W < 330 || H < 600), low = hz && H < 400;
-    box.classList.toggle('bare', bare); box.classList.toggle('tight', tight); box.classList.toggle('low', low); box.classList.remove('sq', 'sq2', 'nodots');
+    // (the desk: the Domain and the balance take a third of a wide window, and the cards grow until they are faces that
+    // can be read where they stand: big)
+    const big = deskWin() && W >= 1100 && H >= 640;
+    box.classList.toggle('bare', bare); box.classList.toggle('tight', tight); box.classList.toggle('low', low); box.classList.toggle('big', big); box.classList.remove('sq', 'sq2', 'nodots');
     sides.forEach(s => s.classList.remove('scroll'));
     const tr = s => nf(s) ? 'minmax(min-content,1fr)' : 'min-content';
-    const mw = hz ? Math.round(bare ? Math.min(560, W - 2 * 126 - 16) : H < 400 ? Math.max(220, Math.min(290, W * .3)) : Math.max(220, Math.min(360, W * .32))) : W;
+    const mw = hz ? Math.round(big ? (bare ? Math.min(980, W * .5, H * 1.05) : Math.max(340, Math.min(760, W * .3, H * .62))) : bare ? Math.min(560, W - 2 * 126 - 16) : H < 400 ? Math.max(220, Math.min(290, W * .3)) : Math.max(220, Math.min(360, W * .32))) : W;
     if (hz) { box.style.gridTemplateRows = ''; box.style.gridTemplateColumns = tr(sides[0]) + ' ' + (bare ? 'minmax(' + mw + 'px,1fr)' : mw + 'px') + ' ' + tr(sides[1]); }
     else { box.style.gridTemplateColumns = ''; box.style.gridTemplateRows = tr(sides[0]) + (bare ? ' minmax(min-content,1fr) ' : ' min-content ') + tr(sides[1]) + ' min-content'; }   // (the middle never shrinks under what it holds)
     box.style.setProperty('--mw', mw + 'px');
-    const pic = bare ? .5 : hz ? .42 : .38;   // (the picture's height for the tile's width; the plate is added under it)
+    const pic = bare ? .5 : hz ? (big ? .5 : .42) : .38;   // (the picture's height for the tile's width; the plate is added under it)
     const setRule = long => { if (rl && rl.dataset.long) rl.textContent = long ? rl.dataset.long : rl.dataset.short; };
     const setTw = t => { box.style.setProperty('--tw', t + 'px'); const ph = plate ? plate.offsetHeight : 0; box.style.setProperty('--plh', ph + 'px'); box.style.setProperty('--th', Math.round(t * pic) + ph + 'px'); };
     const setCw = c => box.style.setProperty('--cw', c + 'px');
     const over = () => box.scrollHeight > box.clientHeight + 1 || box.scrollWidth > box.clientWidth + 1 || mid.scrollHeight > mid.clientHeight + 1 || mid.scrollWidth > mid.clientWidth + 1
       || sides.some(s => s.scrollHeight > s.clientHeight + 1 || s.scrollWidth > s.clientWidth + 1);
     // (the cards: the largest that fits, found by halving; 0 when even the smallest does not)
-    const cwMax = W >= 700 && H >= 700 ? 200 : 180;
+    const cwMax = big ? Math.round(Math.min(600, H * .46)) : W >= 700 && H >= 700 ? 200 : 180;
     const fitCards = () => { if (bare) return over() ? 0 : 1; let lo = 54, hi = cwMax; setCw(lo); if (over()) return 0; setCw(hi); if (!over()) return hi;
       while (hi - lo > 2) { const m = (lo + hi) >> 1; setCw(m); if (over()) hi = m; else lo = m; } setCw(lo); return lo; };
-    let t = hz ? mw - 16 : Math.round(bare ? Math.min(W - 28, 440) : Math.min(W * (tight ? .62 : .7), tight ? 220 : 400)), long = !!(rl && rl.dataset.long) && (bare || hz);
+    let t = hz ? mw - 16 : Math.round(big ? Math.min(W * .74, bare ? 760 : 620, H * .5) : bare ? Math.min(W - 28, 440) : Math.min(W * (tight ? .62 : .7), tight ? 220 : 400)), long = !!(rl && rl.dataset.long) && (bare || hz || big);
     setRule(long); setTw(t);
     let got = fitCards();
     // (with Figures there, the whole power stays only while it leaves the cards a good size)
@@ -1459,6 +1467,15 @@
       if (hz) box.style.gridTemplateColumns = 'minmax(0,1fr) ' + mw + 'px minmax(0,1fr)'; else box.style.gridTemplateRows = tr2(sides[0], 0) + ' min-content ' + tr2(sides[1], 1) + ' min-content';
       sides.forEach(s => s.classList.toggle('scroll', s.scrollHeight > s.clientHeight + 1 || s.scrollWidth > s.clientWidth + 1));
     }
+    // (the desk: a card 330 px wide and more is its whole face, its words, its story and its Legacy Line, as it is when it
+    // is read on its own; one 150 px and more says its power under its name: cardEl's mid. Both are the size the small
+    // card was, so nothing moves.)
+    { const want = !big || got < 150 ? 'mini' : got >= 330 ? 'full' : 'mid';
+      box.querySelectorAll('.fo-c[data-u]').forEach(b => { const cur = b.dataset.face || 'mini'; if (cur === want && want !== 'mid') return;
+        const f = V.figs.filter(x => String(x.u) === b.dataset.u)[0], old = b.querySelector('.ac'); if (!f || !old) return;
+        const cd = cardEl(f.c, want === 'full' ? { now: true, might: f.m, hush: !!f.hush } : { mini: true, mid: want === 'mid', now: true, might: f.m, hush: !!f.hush }); const c0 = CARDS[f.c];
+        if (f.m > c0.m) cd.classList.add('m-up'); else if (f.m < c0.m) cd.classList.add('m-dn'); b.replaceChild(cd, old); b.dataset.face = want; });
+      if (want === 'mid') fitMid(box); }
     // (a walk chip whose Domain's name doesn't fit its column: smaller words, then the footprints go; the brass says walk)
     const chipOver = () => Array.prototype.some.call(box.querySelectorAll('.fo .rd-c'), c => c.scrollWidth > c.clientWidth + 1);
     if (chipOver()) { box.classList.add('sq'); if (chipOver()) box.classList.add('sq2'); }
@@ -1608,7 +1625,7 @@
     // (upright: the card is as big as leaves the map its place at the left and the road and notes theirs below; the
     // notes take what is left and scroll. Sideways on a phone the road and notes have the right-hand side to themselves.)
     function size() {
-      const W = window.innerWidth, H = window.innerHeight, side = W > H * 1.15 && H <= 560; v.classList.toggle('sd', scanWide());
+      const W = window.innerWidth, H = window.innerHeight, side = W > H * 1.15 && H <= 560; v.classList.toggle('sd', scanWide()); v.classList.toggle('dsk', deskWin());
       flow.style.removeProperty('--cu'); cuPx = ''; if (side || scanWide() || mode === 'fo') return;
       const cs = getComputedStyle(v), room = H - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - v.querySelector('.vf-head').offsetHeight - 46 - roadDims().h - 4 * 8, notes = Math.max(96, Math.round(H * (H >= 900 ? .21 : .16)));   // (an iPad upright: room for a Legacy Line's sentence and its row of cards, which ran under the screen's edge)
       const mapW = map.offsetWidth + 14;
@@ -1659,7 +1676,7 @@
     if (!(ui.sel && ui.sel.kind === d.sel.kind && (ui.sel.h === d.sel.h && ui.sel.u === d.sel.u) && !ui.sel.picks.length)) select(d.sel); else render();
     dom.felt.classList.add('dragging');
     lift(true);
-    const c = cardEl(d.key, { mini: true, now: true, might: d.m != null ? d.m : undefined }); c.style.fontSize = (d.w / 30) + 'px';
+    const c = cardEl(d.key, { mini: true, now: true, might: d.m != null ? d.m : undefined, mid: d.w >= 150 && !!(ui.lay && ui.lay.dk) }); c.style.fontSize = (d.w / 30) + 'px';   // (the desk: a card large enough to wear its words wears them in the hand that carries it too)
     d.pv = el('div', { class: 'an-drag-pv' }); d.g = el('div', { class: 'an-drag', style: { width: d.w + 'px' } }, [c, d.pv]);
     document.body.appendChild(d.g); Kit.sfx('slide'); Kit.haptic('light');
   }
@@ -2230,7 +2247,7 @@
     // Upright the card is as tall as the room left once the road and the longest of the four notes have theirs, so nothing
     // moves from card to card; sideways the road and notes have the right-hand side to themselves (the scan's layout)
     function size() {
-      const W = window.innerWidth, H = window.innerHeight, side = W > H * 1.15 && H <= 560; v.classList.toggle('sd', scanWide());
+      const W = window.innerWidth, H = window.innerHeight, side = W > H * 1.15 && H <= 560; v.classList.toggle('sd', scanWide()); v.classList.toggle('dsk', deskWin());
       flow.style.removeProperty('--cu'); if (side || scanWide()) return;
       let most = 0; under.style.flex = 'none'; under.style.height = 'auto';   // (each one's own height, not the room the column gives it)
       keys.forEach(k => { under.innerHTML = ''; const nt = notesFor(k); while (nt.firstChild) under.appendChild(nt.firstChild); most = Math.max(most, under.scrollHeight); }); under.style.flex = ''; under.style.height = ''; under.innerHTML = '';
@@ -2574,7 +2591,90 @@
   function layMode() {
     const W = window.innerWidth, H = window.innerHeight;
     if (W <= H && Math.min(W, H) < 600) return { rows: true, phone: true };
+    const dk = deskPlan();
+    if (dk) return { ln: true, up: !!dk.down, short: false, dk: dk, dock: dk.dock, pil: !!dk.pil };
     return { ln: true, up: W <= H, short: H < 520 };
+  }
+  // ═══ The desk: a window with more room than an iPad's screen ═════════════════════════════════════════════════
+  // Tim, 2026-11-17: "i'll also want to play on my m5 macbook pro at 3024x1964 resolution with the window getting
+  // resized to all kinds of shapes and sizes to fit around other apps. gameplay needs to take up as much screen as the
+  // device will give it, but also adapt to every possible resizing option", and of a page scaled up to fill the window,
+  // "simply scaling things up is not thoughtful design". So nothing is scaled: the battle line is laid out for the room.
+  // Every card on the table (the Figures at the Domains and your hand) is sized together, the largest at which the two
+  // bands of Figures, the Domains between them and the hand all fit, and the table is composed for the window's shape:
+  //   'b'  wide: the hand along the bottom with the caption and the turn's button at its right (the iPad's dock);
+  //   's'  near square and tall: the caption and the button in a row over a hand the table's full width, in one row or
+  //        two, whichever leaves every card larger; in a narrow window the Figures stand down the table (down);
+  //   'r'  wide and low: the line takes the window's whole height at the left, and the hand, the caption, the button and
+  //        both players' bars are a column at the right, where the taps go.
+  // The players' bars ride the mats' corners as on an iPad where the window has height to spare; where height is what
+  // limits the cards (pil), each bar stands on end at its player's end of the line, as a pillar that has the room to
+  // say what a bar cannot: the Guide's name and each Relic's. Cards 150 px wide and more wear their power in words
+  // under their names (cardEl's mid). The iPad's and the phones' layouts are untouched: the desk starts above an iPad
+  // mini's area, 1024 x 768.
+  const DESK = 800000, pxOf = v => parseFloat(v) || 0;
+  // (are the table's cards, 'c', or the hand's, 'h', large enough to wear their words?)
+  const deskMid = w => { const D = !many() && ui.lay && ui.lay.dk; return !!D && (w === 'h' ? D.hmid : D.mid); };
+  // The words under a mid card's name keep to the paper: where they would make the paper more than half the card (the
+  // picture's room), they step down a size, then give way to the card's skill words, then go.
+  function fitMid(root) {
+    if (!root && (!dom.root || !(ui.lay && ui.lay.dk))) return;
+    (root || dom.root).querySelectorAll(root ? '.ac.mini.mid .ac-br' : '.an-map .ac.mini.mid .ac-br, .an-hand .ac.mini.mid .ac-br').forEach(b => {
+      const ac = b.closest('.ac'), p = b.parentNode, H = ac.offsetHeight; b.classList.remove('l2', 'l3'); if (!H) return;
+      const over = () => p.offsetHeight > H * .45 + 1;
+      if (over()) b.classList.add('l2'); if (over()) b.classList.add('l3');
+      if (over() && b.dataset.br) { b.innerHTML = b.dataset.br; delete b.dataset.br; b.classList.remove('l2', 'l3'); if (over()) b.classList.add('l2'); }
+      if (over()) b.remove();
+    });
+  }
+  const deskWin = () => { const W = window.innerWidth, H = window.innerHeight; return W * H > DESK && (W > H ? H >= 520 : W >= 600); };
+  const barScale = c => Math.max(1, Math.min(2, c / 104));
+  function deskPlan() {
+    if (!deskWin() || !dom.felt || !dom.felt.isConnected) return null;
+    const cs = getComputedStyle(dom.felt), W = dom.felt.clientWidth - pxOf(cs.paddingLeft) - pxOf(cs.paddingRight), H = dom.felt.clientHeight - pxOf(cs.paddingTop) - pxOf(cs.paddingBottom);
+    if (W < 560 || H < 400) return null;
+    const g = 8, RG = 8, tkH = c => Math.round(Math.max(14, Math.min(24, c * .12))), trk = c => (dom.track ? tkH(c) + RG : 0);
+    const barH = c => Math.round(42 * barScale(c)) + 12, pilW = c => Math.round(Math.max(92, Math.min(190, c * .98)));
+    // the line in a room Wm wide, its cards c wide: what it is made of and the height it needs
+    const line = (Wm, c, down) => {
+      const cg = Wm > 900 ? 12 : 8, colW = (Wm - 4 * cg) / 5, tw = Math.floor(colW - (down && colW - 12 < 170 ? 30 : 12));
+      const sh = Math.round(Math.max(30, Math.min(64, tw * .17))), bg = Math.round(sh * .62 + 3), th = Math.round(Math.max(tw * .36, Math.min(tw * .62, c * 1.3)));
+      return { cg: cg, colW: colW, tw: tw, sh: sh, bg: bg, tileH: th, cMax: Math.floor(down ? colW - 14 : (colW - 6) / 2), need: 2 * (down ? c * 1.4 * 1.62 + 6 : c * 1.4 + 6) + th + 2 * bg };
+    };
+    // one composition: the largest size u at which the line and the hand both fit. o: {dock, pil, down, rows, hand(u, c)}
+    const solve = o => {
+      for (let u = 460; u >= 34; u -= 2) {
+        // (a pillar is as wide as the cards it stands beside, and the cards as wide as the room the pillars leave)
+        let c = u, Wm = 0, Ln = null, pw = 0;
+        for (let k = 0; k < 3; k++) { pw = o.pil ? pilW(c) : 0; Wm = (o.dock === 'r' ? W - o.rw - 14 : W) - 2 * (pw ? pw + 8 : 0); Ln = line(Wm, u, o.down); c = Math.min(u, Ln.cMax); }
+        if (Wm < 380 || c < 30) continue; if (c < u) Ln = line(Wm, c, o.down);
+        const hd = o.hand(u, c), bars = o.dock === 'r' || o.pil ? 0 : 2 * (barH(c) + 6);
+        const used = Ln.need + bars + trk(c) + hd.hh;
+        if (used <= H && hd.ok !== false) return Object.assign({ c: c, u: u, Wm: Wm, left: H - used, h: hd.h, hh: hd.hh, per: hd.per, rows: hd.rr || o.rows || 1, bs: barScale(c), tk: tkH(c), pw: pw }, o, Ln);
+      }
+      return null;
+    };
+    const aw = Math.round(Math.max(270, Math.min(400, W * .19))), rw = Math.round(Math.max(360, Math.min(470, W * .28)));
+    const handB = u => { const h = Math.floor(Math.min(u * 1.1, (W - aw - 18 - 7 * g) / 8)); return { h: h, per: 8, hh: Math.max(h * 1.4 + 12, 122) + RG }; };
+    const handS = r => u => { const per = r === 1 ? 8 : 4, h = Math.floor(Math.min(u * 1.1, (W - (per - 1) * g) / per)); return { h: h, per: per, hh: 66 + r * h * 1.4 + (r - 1) * g + 12 + RG }; };
+    // (the column at the right: its hand in two rows of four or three of three, whichever leaves the cards larger)
+    const handR = pil => (u, c) => { const room = H - (pil ? 0 : 2 * (barH(c) + RG)) - 48 - 62 - 3 * RG; let best = { h: 0 };
+      [[2, 4], [3, 3], [4, 2]].forEach(x => { const h = Math.floor(Math.min((rw - (x[1] - 1) * g) / x[1], (room - (x[0] - 1) * g) / x[0] / 1.4)); if (h > best.h + 3) best = { h: h, per: x[1], rr: x[0] }; });
+      return { h: best.h, per: best.per, rr: best.rr, hh: 0, ok: best.h >= 44 }; };
+    const a = W / H, side = !!sideEl, cands = [];
+    if (a >= 1.2 && !side) { cands.push(solve({ dock: 'b', aw: aw, hand: handB })); cands.push(solve({ dock: 'b', aw: aw, pil: true, hand: handB })); }
+    if (a >= 1.9 && !side) { cands.push(solve({ dock: 'r', rw: rw, hand: handR(false) })); cands.push(solve({ dock: 'r', rw: rw, pil: true, hand: handR(true) })); }
+    if (a < 1.5 || side) [1, 2].forEach(r => [false, true].forEach(down => cands.push(solve({ dock: 's', rows: r, down: down, hand: handS(r) }))));
+    // (height left over: the hand grows first, as far as its width and a card and a half of the table's allow)
+    cands.forEach(p => { if (p && p.dock !== 'r' && p.left > 2) { const r = p.rows, hMax = Math.floor(Math.min(p.dock === 'b' ? (W - aw - 18 - 7 * g) / 8 : (W - (p.per - 1) * g) / p.per, p.c * 1.5)), dh = Math.max(0, Math.min(hMax - p.h, Math.floor(p.left / (1.4 * r)))); p.h += dh; p.left -= dh * 1.4 * r; } });
+    // (what a composition is worth: its cards' width and half its hand's; pillars and the column at the right have to
+    // earn their place over the iPad's own arrangement, and cards down the table over cards side by side)
+    const worth = p => (p.c + .5 * Math.min(p.h, p.c * 1.5)) * (p.pil ? .97 : 1) * (p.dock === 'r' ? .9 : 1) * (p.down ? .86 : 1);
+    let best = null; cands.forEach(p => { if (p && (!best || worth(p) > worth(best) + .5)) best = p; });
+    if (!best) return null;
+    best.W = W; best.H = H; best.mid = best.c >= 150; best.hmid = best.h >= 150;
+    best.cs = Math.max(1, Math.min(1.5, best.h / 190));   // (the caption's words and the last things that happened grow with the hand they stand beside)
+    return best;
   }
   const rowsOrder = () => { const v = ui.view, t = 1 - v; return ui.lay && ui.lay.ln ? [2 * v, 2 * v + 1, 4, 2 * t + 1, 2 * t] : [2 * t, 2 * t + 1, 4, 2 * v + 1, 2 * v]; };
   const idle = () => !!G && !G.over && !ui.busy && G.ph === 'play' && human(S.turn) && ui.viewer === S.turn && !ui.hideHand && (!G.demo || ui.demoIdle);
@@ -2586,6 +2686,8 @@
     const gb = el('button', { type: 'button', class: 'st-guide' + (spent ? ' used' : ''), 'aria-label': g.n + ', ' + Kit.poss(pl.name) + ' Guide', style: { '--f': FAC[g.f].c }, onclick: () => { if (G.demo) openView(p.guide); else scan({ side: o, key: p.guide }); } }, [el('span', { class: 'na', text: g.n.charAt(0) })]);
     const gi = artImg(p.guide, true); if (gi) gb.appendChild(gi);
     node.appendChild(gb);
+    // (the Guide's name and power in words: shown where a bar stands on end as a pillar, the desk)
+    node.appendChild(el('span', { class: 'st-gn', 'aria-hidden': 'true', text: g.n })); if (g.tx) node.appendChild(el('span', { class: 'st-gp', 'aria-hidden': 'true', html: boldKeys(DW(g.tx)) }));
     const sm = p.sm || 3, seals = el('div', { class: 'st-seals', 'aria-label': p.seals + ' of ' + sm + ' Seals left' });   // (Lincoln begins with four)
     for (let i = 0; i < sm; i++) seals.appendChild(el('span', { class: 'seal' + (i >= p.seals ? ' broken' : '') + (ui.crack && ui.crack.o === o && ui.crack.i === i ? ' crack' : '') + (ui.press && ui.press.o === o && ui.press.i === i ? ' press' : '') }));
     const relics = el('div', { class: 'st-relics' });
@@ -2654,7 +2756,7 @@
       'data-u': f.u, 'aria-label': c.n + ', Might ' + f.m + ', ' + Kit.poss(pname(f.o)), style: { '--f': fac.c } });
     if (asCard) {
       n.classList.add('card'); if (c.reg === pl.reg) n.classList.add('home');
-      const cd = cardEl(f.c, { mini: true, now: true, might: f.m }); if (f.m > c.m) cd.classList.add('m-up'); else if (f.m < c.m) cd.classList.add('m-dn');
+      const cd = cardEl(f.c, { mini: true, now: true, might: f.m, mid: deskMid('c') }); if (f.m > c.m) cd.classList.add('m-up'); else if (f.m < c.m) cd.classList.add('m-dn');
       n.appendChild(cd); n.appendChild(el('i', { class: 'fp-tab' }));
     } else {
     const art = el('span', { class: 'fp-art' }, [noArtLabel(f.c, true, 'na')]); const im = artImg(f.c, true); if (im) art.appendChild(im);
@@ -2797,7 +2899,26 @@
     if (S.cfg.ret && (S.P[o].gone || []).indexOf(key) >= 0) return '<b>Returns for ' + S.cfg.ret + ' less.</b> ';
     return '';
   }
-  function capEl() {
+  function capEl() { capEl0(); capRecent(dom.cap); }
+  // The desk, with the hand along the bottom: the dock's column at the right is as tall as a card, and the caption and
+  // the turn's button need a third of it. Over them stand the last things that happened, the turn log's own sentences,
+  // newest at the foot, as many as the room holds (fitRecent); a tap opens the whole log.
+  function capRecent(n) {
+    if (!(ui.lay && ui.lay.dk && ui.lay.dock === 'b') || !G || G.demo || ui.pend || G.ph !== 'play') return;
+    const last = (G.log || []).filter(e => !e.h && e.x && e.x.length).slice(-9); if (!last.length) return;
+    const name = k => k[0] === '@' ? theName(k) : CARDS[k] ? (CARDS[k].t === 'relic' ? theName(k) : CARDS[k].n) : k;
+    n.insertBefore(el('button', { type: 'button', class: 'cap-rec', 'aria-label': 'Turn log: the last things that happened', onclick: logScreen }, last.map(e => el('p', { class: 'cr-l' + (e.o >= 0 ? ' o' + e.o : '') },
+      e.x.map(x => typeof x === 'string' ? document.createTextNode(DW(x)) : el('b', { text: name(x.k) }))))), n.firstChild);
+  }
+  function fitRecent() {
+    const r = dom.cap && dom.cap.querySelector('.cap-rec'); if (!r) return;
+    // (its room: from the top of the dock's column down to the caption, whatever the caption holds)
+    const tops = Array.prototype.filter.call(dom.cap.children, c => c !== r && c.offsetHeight).map(c => c.offsetTop);
+    r.style.height = Math.max(0, (tops.length ? Math.min.apply(null, tops) : dom.cap.clientHeight - 74) - 12) + 'px';
+    while (r.firstChild && r.scrollHeight > r.clientHeight + 1) r.removeChild(r.firstChild);
+    if (!r.firstChild || r.clientHeight < 30) r.remove(); else r.firstChild.style.marginTop = 'auto';   // (they stand on the caption, the newest last)
+  }
+  function capEl0() {
     const n = dom.cap; n.innerHTML = '';
     if (ui.pend) return pendCap(n);
     const st = E.stake(S.cfg, V.round);
@@ -2836,7 +2957,7 @@
       const ok = can && !ui.discard && (ui.acts.some(a => a.h != null && S.P[o].hand[a.h] === key) || (E.fxOf(key) === 'phalanx' && ui.acts.some(a => a.ph && S.P[o].hand[a.hq] === key)));
       const sel = ui.sel && ui.sel.kind === 'hand' && (ui.sel.h === h || ui.sel.picks.some(p => p.k === 'h' && p.v === h));
       const b = el('button', { type: 'button', class: 'hc' + (ui.discard ? ' toss' : !can ? '' : picking ? (T.hand[h] || sel ? '' : ' no') : ui.sel ? (ok ? '' : ' no') : ok ? ' ok' : ' no') + (sel ? ' sel' : '') + (T.hand[h] ? ' tgt' : '') + (ui.dealt && h >= ui.dealt ? ' in' : ''),
-        'data-h': h, 'aria-label': c.n + ', costs ' + cost }, [cardEl(key, { mini: true, cost: cost })]);
+        'data-h': h, 'aria-label': c.n + ', costs ' + cost }, [cardEl(key, { mini: true, cost: cost, mid: deskMid('h') })]);
       n.appendChild(b);
     });
   }
@@ -2847,7 +2968,9 @@
     ui.lay = M ? (nblFits() ? { ln: true, nbl: true } : {}) : layMode();
     // (the shape of the two-player table, for the style sheet: ln the battle line, up and short its upright and low
     // forms, rw the rows of a phone held upright; and the game bar folds down while a phone on its side plays)
-    if (dom.felt) { const L = ui.lay, want = 'an-felt felt-in' + (dom.track ? ' has-trk' : '') + (M ? ' many' + (G.teams ? ' teams' : '') + (L.nbl ? ' bl' : '') : L.ln ? ' bl' + (L.up ? ' up' : '') + (L.short ? ' short' : '') : ' rw'); if (dom.felt.className !== want) dom.felt.className = want; }
+    if (dom.felt) { const L = ui.lay, want = 'an-felt felt-in' + (dom.track ? ' has-trk' : '') + (M ? ' many' + (G.teams ? ' teams' : '') + (L.nbl ? ' bl' : '') : L.ln ? ' bl' + (L.up ? ' up' : '') + (L.short ? ' short' : '') + (L.dk ? ' desk d-' + L.dock + (L.pil ? ' pil' : '') + (L.dk.mid ? ' fmid' : '') + (L.dk.hmid ? ' hmid' : '') : '') : ' rw'); if (dom.felt.className !== want) dom.felt.className = want;
+      // (the desk's own measures, for the style sheet: the bars' scale, the widths of the dock's column and of a pillar, the track's height)
+      const D = L.dk, fs = dom.felt.style; [['--bs', D && D.bs.toFixed(3)], ['--aw', D && D.dock === 'b' ? D.aw + 'px' : null], ['--rw', D && D.dock === 'r' ? D.rw + 'px' : null], ['--pw', D && D.pil ? D.pw + 'px' : null], ['--dth', D && D.tk + 'px'], ['--cs', D && D.cs.toFixed(3)]].forEach(x => { if (x[1]) fs.setProperty(x[0], x[1]); else fs.removeProperty(x[0]); }); }
     document.documentElement.classList.toggle('an-low', !!((ui.lay.short || (M && window.innerWidth > window.innerHeight && window.innerHeight < 520)) && dom.root && dom.root.isConnected));   // (and with more players too)
     if (M && !ui.lay.nbl && dom.go && dom.go.firstChild) dom.go.innerHTML = '';
     const T = targets();
@@ -2871,7 +2994,7 @@
       // (the slide on the round track: this round, in the colour of whoever's turn it is. Lincoln's Seal is due at round 5.)
       if (dom.track) window.AnoriaDomains.track(dom.track, { round: V.round, turn: G.over ? -1 : V.turn, due: V.P.map((p, o) => (p.guide === 'lincoln' ? { r: 5, o: o } : null)) });
     } finally { pass = null; }
-    fitStrips(); if (!M) layout(); fitPlates(); fitNames(); if (!M) piles(); coverNames(); lines(); fitSides();
+    fitStrips(); if (!M) layout(); fitPlates(); fitNames(); if (!M) { fitMid(); fitRecent(); } if (!M) piles(); coverNames(); lines(); fitSides();
     dom.root.querySelectorAll('.st-name').forEach(n => Kit.fitText(n, .6));
     relicChooser();   // (a Relic picked up that has to go over one of yours: the slots it can go to, over your bar)
   }
@@ -2881,7 +3004,7 @@
   // far as it has to: smaller gaps and marks first, then smaller words, then the colour dot goes (the bar is in that colour).
   function fitStrips() {
     [dom.opp, dom.me].forEach(s => {
-      if (!s || !s.isConnected) return; s.classList.remove('n1', 'n2', 'n3'); if ((ui.lay || {}).short) return;   // (a phone on its side stands the bars on end, with a layout of their own)
+      if (!s || !s.isConnected) return; s.classList.remove('n1', 'n2', 'n3'); if ((ui.lay || {}).short || (ui.lay || {}).pil) return;   // (a phone on its side stands the bars on end, with a layout of their own)
       const over = () => { const r = s.getBoundingClientRect(); return r.width > 0 && Array.prototype.some.call(s.querySelectorAll(':scope > *, .st-top > *, .st-bot > *'), c => { const b = c.getBoundingClientRect(); return b.width > 0 && b.right > r.right - 1; }); };
       ['n1', 'n2', 'n3'].forEach(k => { if (over()) s.classList.add(k); });
     });
@@ -2966,13 +3089,13 @@
     let R = parseFloat(h.style.minHeight) || 0, A = L.short ? .5 : .56, own = false;
     if (R < W * .4 && !L.ln) { R = Math.round(Math.min(W * .46, tallH() * .24)); own = true; A = .38; }   // (a short phone: wider, lower tiles)
     // (sized for all four drawn, so a tile keeps its size as the others are laid and the last is tucked under the stack)
-    const room = R - top, cap = L.short ? 150 : 220, nn = Math.max(n, 4);
+    const room = R - top, cap = L.short ? 150 : L.dk ? 520 : 220, nn = Math.max(n, 4);   // (the desk: the Domains drawn as large as the dock's room for the hand)
     let best = 0, rows = 1, per = n;
     for (let rw = 1; rw <= 2; rw++) { const pr = Math.ceil(nn / rw), tw = Math.min((W - (pr - 1) * g) / pr, (room - (rw - 1) * g) / rw / A, cap); if (tw > best + 2) { best = tw; rows = rw; per = Math.min(pr, n); } }
     const tw = Math.floor(best), th = Math.floor(tw * A);
     if (own) h.style.minHeight = Math.ceil(rows * th + (rows - 1) * g + top + 2) + 'px';
     h.classList.toggle('su2', rows > 1); h.style.setProperty('--per', per); h.style.setProperty('--ho', g + 'px');
-    [['--stw', tw], ['--sth', th], ['--spn', Math.max(10, Math.min(16, tw * .08))], ['--spr', Math.max(9.5, Math.min(14, tw * .068))]].forEach(x => h.style.setProperty(x[0], (Math.round(x[1] * 10) / 10) + 'px'));
+    [['--stw', tw], ['--sth', th], ['--spn', Math.max(10, Math.min(16, tw * .08), L.dk ? Math.min(28, tw * .062) : 0)], ['--spr', Math.max(9.5, Math.min(14, tw * .068), L.dk ? Math.min(22, tw * .05) : 0)]].forEach(x => h.style.setProperty(x[0], (Math.round(x[1] * 10) / 10) + 'px'));
   }
   function layoutHandPlay() {
     if (!dom.map) return;
@@ -2986,6 +3109,29 @@
     let hw, rows = 1, per = n;
     const cap = Math.min(132, Math.max(tallH(), window.innerWidth) * .098);
     h.style.minHeight = '';
+    if (ui.lay && ui.lay.dk) {
+      // The desk: the hand's cards at the size the table's plan gave them (deskPlan), in the rows it chose, with the room
+      // for eight kept so the table never jumps. More than eight overlap in one row, as a held hand does, or step down
+      // a size where the hand is laid in rows.
+      const D = ui.lay.dk, hw0 = D.h, g2 = hw0 >= 150 ? 10 : 8;
+      h.style.setProperty('--hw', hw0 + 'px'); h.classList.remove('small');
+      if (D.rows > 1) {
+        const rws = Math.max(D.rows, 1), per0 = D.per, per1 = Math.max(per0, Math.ceil(n / rws));
+        hw = Math.floor(Math.min(hw0, (W - (per1 - 1) * g2) / per1));
+        h.classList.remove('over'); h.classList.add('two'); h.style.setProperty('--per', per1); h.style.setProperty('--ho', g2 + 'px'); h.style.setProperty('--hw', hw + 'px');
+        if (hw < 150) h.querySelectorAll('.ac.mini.mid').forEach(a => { a.classList.remove('mid'); const b = a.querySelector('.ac-br'); if (b) b.remove(); });
+        h.style.minHeight = Math.ceil(rws * hw0 * 1.4 + (rws - 1) * 6 + 8) + 'px';
+        return;
+      }
+      // (more than fit at that size step down, whole, as far as two thirds of it; past that they overlap as a held hand does)
+      hw = Math.floor(Math.max(Math.min(hw0, n ? (W - (n - 1) * g2) / n : hw0), Math.min(hw0, Math.max(96, hw0 * .66))));
+      const ov = n > 1 && n * hw + (n - 1) * g2 > W ? (W - n * hw) / (n - 1) : g2;
+      h.style.setProperty('--hw', hw + 'px'); h.style.setProperty('--ho', ov.toFixed(1) + 'px'); h.classList.toggle('over', ov < 0);
+      h.style.minHeight = Math.ceil(hw0 * 1.4 + 8) + 'px';
+      // (cards that stepped down under the size that wears its words go back to their names alone)
+      if (hw < 150) h.querySelectorAll('.ac.mini.mid').forEach(a => { a.classList.remove('mid'); const b = a.querySelector('.ac-br'); if (b) b.remove(); });
+      return;
+    }
     if (ui.lay && ui.lay.ln) {
       // The battle line: the hand is one row of whole cards along the dock, as big as eight of them side by side allow;
       // its room is kept at that size, so the table never jumps as cards come and go. More than fit at a readable size
@@ -3092,24 +3238,46 @@
     // portrait, whose ring and aria name say whose bar it is)
     [dom.opp, dom.me].forEach(b => { b.classList.remove('t1', 't2'); if (!L.short) return; const room = M.getBoundingClientRect().height;
       if (b.offsetHeight > room) b.classList.add('t1'); if (b.offsetHeight > room) b.classList.add('t2'); });
-    const oh = L.short ? 0 : dom.opp.offsetHeight, mh = L.short ? 0 : dom.me.offsetHeight, gapB = L.short ? 2 : 6;
-    const ow = L.short ? dom.opp.offsetWidth + 6 : 0, mw = L.short ? dom.me.offsetWidth + 6 : 0;
+    // (a pillar that holds more than its height steps down: the Guide's power in words goes first, then the Relics'
+    // names, then the portrait is cut square, then the Guide's name goes)
+    [dom.opp, dom.me].forEach(b => { b.classList.remove('q1', 'q2', 'q3', 'q4'); if (!(L.dk && L.pil)) return;
+      ['q1', 'q2', 'q3', 'q4'].forEach(k => { if (b.scrollHeight > b.clientHeight + 1) b.classList.add(k); }); });
+    // (the desk: the bars ride the corners, or stand on end at the line's two ends as pillars, or are in the column at
+    // the right with the hand, where the map keeps its whole height and width)
+    const D = L.dk, ends = L.short || (D && L.pil), off = D && L.dock === 'r' && !L.pil;
+    const oh = ends || off ? 0 : dom.opp.offsetHeight, mh = ends || off ? 0 : dom.me.offsetHeight, gapB = L.short ? 2 : off || (D && L.pil) ? 0 : 6;
+    const ow = ends ? dom.opp.offsetWidth + (D ? 8 : 6) : 0, mw = ends ? dom.me.offsetWidth + (D ? 8 : 6) : 0;
     st.paddingTop = (oh + gapB) + 'px'; st.paddingBottom = (mh + gapB) + 'px'; st.paddingLeft = mw + 'px'; st.paddingRight = ow + 'px';
     const r0 = M.getBoundingClientRect(); if (!r0.width || !r0.height) return;
     const W = r0.width - ow - mw, H = r0.height - oh - mh - 2 * gapB;
     const cg = L.short ? 14 : W > 900 ? 12 : 8, colW = (W - 4 * cg) / 5;
-    const tw = Math.floor(colW - (L.up ? 30 : L.short ? 4 : 12)), sh = Math.round(L.short ? 24 : Math.max(30, Math.min(44, tw * .21)));
-    const th = Math.floor(Math.min(tw * (L.short ? .5 : L.up ? .86 : .62), H * (L.short ? .3 : L.up ? .2 : .32)));
-    const bg = Math.round(sh * .62 + (L.short ? 1 : 3)), band = (H - th - 2 * bg) / 2;
+    let tw, sh, th, bg, band, fw, pn, pr, fl;
+    if (D) {
+      // The desk: the Domains as wide as their columns, the shields, the flag and the words on the tiles grown with them,
+      // and the Figures the size the plan found (deskPlan), never more than their band and column hold. Height the cards
+      // leave goes to the Domains' pictures.
+      tw = Math.floor(colW - (L.up && colW - 12 < 170 ? 30 : 12)); sh = Math.round(Math.max(30, Math.min(64, tw * .17))); bg = Math.round(sh * .62 + 3);
+      const ch = c => (L.up ? c * 1.4 * 1.62 + 6 : c * 1.4 + 6), cFit = t => Math.floor(Math.max(30, Math.min(D.c, L.up ? Math.min(colW - 14, ((H - t - 2 * bg) / 2 - 6) / 1.62 / 1.4) : Math.min((colW - 6) / 2, ((H - t - 2 * bg) / 2 - 6) / 1.4))));
+      th = Math.round(Math.min(D.tileH, tw * .62)); fw = cFit(th);
+      // (a narrow column's Domain stands taller than it is wide where the window is tall, its picture over its words)
+      th = Math.floor(Math.max(th, Math.min(tw * (L.up ? (tw < 150 ? 1.25 : .8) : .66), H - 2 * bg - 2 * ch(fw) - 8))); band = (H - th - 2 * bg) / 2;
+      pn = Math.max(Math.min(16.8, Math.max(11, tw * .075)), Math.min(30, tw * .062)); pr = Math.max(Math.min(14.4, Math.max(10, tw * .064)), Math.min(23, tw * .05)); fl = Math.round(Math.max(Math.min(32, Math.max(18, tw * .16)), Math.min(52, tw * .13)));
+      // (the tile's own furniture, its frame, marks, tokens and avatar, grows with it: --ts, 1 at an iPad's tile)
+      st.setProperty('--ts', Math.max(1, Math.min(2.5, tw / 230)).toFixed(3)); st.setProperty('--dpn', pn.toFixed(1) + 'px'); st.setProperty('--dpr', pr.toFixed(1) + 'px'); st.setProperty('--dfl', fl + 'px');
+    } else {
+    tw = Math.floor(colW - (L.up ? 30 : L.short ? 4 : 12)); sh = Math.round(L.short ? 24 : Math.max(30, Math.min(44, tw * .21)));
+    th = Math.floor(Math.min(tw * (L.short ? .5 : L.up ? .86 : .62), H * (L.short ? .3 : L.up ? .2 : .32)));
+    bg = Math.round(sh * .62 + (L.short ? 1 : 3)); band = (H - th - 2 * bg) / 2;
     // (the cards: two side by side in a column on the iPad sideways; one a column wide, overlapping down the table, upright)
-    const fw = Math.floor(Math.max(30, L.up ? Math.min(colW - 14, (band - 6) / 1.62 / 1.4, 124) : Math.min((colW - 6) / 2, (band - 4) / 1.4, 124)));
+    fw = Math.floor(Math.max(30, L.up ? Math.min(colW - 14, (band - 6) / 1.62 / 1.4, 124) : Math.min((colW - 6) / 2, (band - 4) / 1.4, 124)));
+    pn = Math.max(11, Math.min(15, tw * .075)); pr = Math.max(10, Math.min(13.5, tw * .064)); fl = Math.round(Math.max(18, Math.min(32, tw * .16)));
+    }
     const sw = Math.floor(Math.max(22, Math.min((band - 4) / 1.36, colW * .4, 60)));
-    const pn = Math.max(11, Math.min(15, tw * .075)), pr = Math.max(10, Math.min(13.5, tw * .064));
     // (the set-up's offers, in the bands above and below the Crossroads, which hold no Figures yet: tiles the Crossroads'
     // size, smaller on a phone on its side where the bands are short; upright on an iPad, where the tiles are narrow and the
     // bands tall, a wide tile reaching over the empty bands either side)
     const os = Math.min(1, (band - 6) / th), ofw = L.up ? Math.min(colW * 1.85, (band - 6) / .62, 300) : tw * os, ofh = L.up ? ofw * .62 : th * os;
-    [['--ry', oh + gapB + H / 2], ['--cg', cg], ['--colw', colW], ['--tw', tw], ['--th', th], ['--sh', sh], ['--bg', bg], ['--band', band], ['--fw', fw], ['--sw', sw], ['--pn', pn], ['--pr', pr], ['--fl', Math.round(Math.max(18, Math.min(32, tw * .16)))],
+    [['--ry', oh + gapB + H / 2], ['--cg', cg], ['--colw', colW], ['--tw', tw], ['--th', th], ['--sh', sh], ['--bg', bg], ['--band', band], ['--fw', fw], ['--sw', sw], ['--pn', pn], ['--pr', pr], ['--fl', fl],
       ['--ofw', ofw], ['--ofh', ofh], ['--opn', Math.max(L.short ? 10 : 11, Math.min(16, ofw * .075))], ['--opr', Math.max(L.short ? 9.5 : 10.5, Math.min(14, ofw * .064))]].forEach(x => st.setProperty(x[0], (Math.round(x[1] * 10) / 10) + 'px'));
     M.classList.remove('tight', 'pos2', 'mini');
   }
@@ -3134,7 +3302,7 @@
       if (n < 2) { sd.style.removeProperty('--ov'); return; }
       const r = sd.getBoundingClientRect(), b = ks[0].getBoundingClientRect(), gap = L.ln ? 6 : 3;
       if (L.ln && L.up) {
-        const ch = b.height, step = Math.min(ch * .58, Math.max(ch * .3, (r.height - ch) / (n - 1))); sd.style.setProperty('--ov', (step - ch).toFixed(1) + 'px');   // (a third of a card at least: its name shows)
+        const ch = b.height, step = Math.min(L.dk ? ch + 6 : ch * .58, Math.max(ch * .3, (r.height - ch) / (n - 1))); sd.style.setProperty('--ov', (step - ch).toFixed(1) + 'px');   // (a third of a card at least: its name shows; the desk: whole cards one under another while its taller bands hold them)
         if (sd.classList.contains('R')) ks.forEach((k, j) => { if (!k.classList.contains('sel')) k.style.zIndex = String(n - j + 1); });   // (yours: each card over the next, so the names below show)
         // (theirs: the card farther from the line over the one nearer it, as they lie. Every card gets its own z-index so
         // it is a layer of its own: without one, the cost and Might marks of the card underneath came up through the
@@ -3761,7 +3929,7 @@
     if (o.arc) frames.splice(1, 0, { transform: 'translate(' + (from.left + to.left) / 2 + 'px,' + (Math.min(from.top, to.top) - o.arc) + 'px) scale(' + (s0 + s1) / 2 * 1.15 + ')', opacity: 1 });
     return anim(node, frames, { duration: o.ms || 450, easing: o.ease || 'cubic-bezier(.22,1,.36,1)', fill: 'forwards' }).then(() => node.remove());
   }
-  function flyCard(key, from, to, o) { const c = cardEl(key, { mini: true, now: true }); c.style.fontSize = (from.width / 30) + 'px'; return fly(c, from, to, o); }
+  function flyCard(key, from, to, o) { const c = cardEl(key, { mini: true, now: true, mid: from.width >= 150 && !!(ui.lay && ui.lay.dk) }); c.style.fontSize = (from.width / 30) + 'px'; return fly(c, from, to, o); }
   // "+2" drifting from where it was won to that player's wreath
   function plus(n, from, o, what) {
     const dest = rc(q('.an-strip.p' + o + (what === 'spark' ? ' .st-spark' : ' .lau'))); if (!from || !dest) return Promise.resolve();

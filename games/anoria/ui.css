@@ -2228,3 +2228,197 @@ html.an-low .gbar .ttl{font-size:1rem;} html.an-low .gbar .ttl .gi .gicon{width:
 .an-felt.many .pl-tot{font-size:max(8px,var(--pt,.82rem));}
 
 .fo-who .nw{white-space:nowrap;}
+
+/* ══ The desk: a window with more room than an iPad's screen (Tim, 2026-11-17: "gameplay needs to take up as much
+   screen as the device will give it, but also adapt to every possible resizing option", and of a page scaled up,
+   "simply scaling things up is not thoughtful design"). ui.js deskPlan sizes the cards and composes the table for the
+   window's shape; the felt says which composition (.desk with .d-b, .d-s or .d-r, and .pil where the bars stand on end),
+   and carries its measures: --bs the bars' scale, --aw and --rw the dock's column, --pw a pillar's width, --dth the
+   track's height. Nothing here applies on an iPad or a phone. ══ */
+.st-gn,.st-gp,.ac-br{display:none;}
+.an .an-felt.bl.desk{row-gap:8px;column-gap:18px;}
+.an .an-felt.bl.desk > .dm-track{--th:var(--dth,14px);}
+/* 's': the caption and the turn's button in a row over a hand the table's full width */
+.an .an-felt.bl.desk.d-s{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"map map" "trk trk" "cap go" "hand hand";}
+.an .an-felt.bl.desk.d-s > .an-cap{align-self:center;}
+.an .an-felt.bl.desk.d-s > .an-go .st-go{min-width:190px;min-height:54px;}
+/* 'r': the hand, the caption, the button and both bars in a column at the right, the line the window's whole height */
+.an .an-felt.bl.desk.d-r{grid-template-columns:minmax(0,1fr) var(--rw,380px);grid-template-rows:auto auto minmax(0,1fr) auto auto auto;grid-template-areas:"map opp" "map cap" "map hand" "map go" "map me" "trk me";column-gap:14px;}
+.an .an-felt.bl.desk.d-r:not(.pil) > .an-strip{width:auto;max-width:none;align-self:start;justify-self:stretch;margin:0;z-index:auto;}
+.an .an-felt.bl.desk.d-r:not(.pil) > .an-strip.opp{grid-area:opp;} .an .an-felt.bl.desk.d-r:not(.pil) > .an-strip.me{grid-area:me;align-self:end;}
+/* (with the bars as pillars at the line's ends, the column is the caption, the hand and the button) */
+.an .an-felt.bl.desk.d-r.pil{grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-areas:"map cap" "map hand" "map go" "trk go";}
+.an .an-felt.bl.desk.d-r.pil > .an-go{align-self:start;}
+.an .an-felt.bl.desk.d-r > .an-cap{align-self:center;}
+.an .an-felt.bl.desk.d-r > .an-go .st-go{flex:1;min-height:52px;}
+.an .an-felt.bl.desk.d-r > .an-hand{align-content:center;padding:0;min-height:0;}
+/* 'b': the button keeps a button's height; the caption sits on it, and over the caption the last things that happened
+   (capRecent in ui.js), so the column beside the hand says what the other player just did */
+.an .an-felt.bl.desk.d-b > .an-go{align-items:flex-end;}
+.an .an-felt.bl.desk.d-b > .an-go .st-go{flex:1;height:64px;min-height:0;max-height:64px;margin:0;}
+.an .an-felt.bl.desk.d-b > .an-cap{position:relative;grid-area:auto;grid-row:3 / 5;grid-column:2;align-self:stretch;align-items:flex-end;padding:0 2px 74px;min-height:0;}
+.cap-rec{position:absolute;left:2px;right:2px;top:2px;height:0;min-width:0;box-sizing:border-box;transition:none !important;display:flex;flex-direction:column;justify-content:flex-start;gap:0;margin:0;padding:0 2px 6px;border:0;border-bottom:1px solid var(--g-line);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;overflow:hidden;-webkit-tap-highlight-color:transparent;}
+.cap-rec .cr-l{position:relative;margin:0;padding:.2em 0 .2em 1.1em;font:500 calc(.86rem * var(--cs,1))/1.28 var(--sans);color:#c9c4bb;}
+.cap-rec .cr-l::before{content:"";position:absolute;left:.08em;top:.62em;width:.45em;height:.45em;border-radius:50%;background:var(--g-dust);}
+/* (the caption's own words grow with the hand they stand beside; its buttons keep a button's size) */
+.an-felt.desk > .an-cap .cap-txt{font-size:calc(1.25rem * var(--cs,1));} .an-felt.desk > .an-cap .cap-card .tx{font-size:calc(1rem * var(--cs,1));}
+.an-felt.desk > .an-cap .cap-round .n{width:calc(32px * var(--cs,1));height:calc(32px * var(--cs,1));font-size:calc(1.05rem * var(--cs,1));} .an-felt.desk > .an-cap .cap-round .w img{width:calc(23px * var(--cs,1));height:calc(23px * var(--cs,1));}
+.cap-rec .cr-l.o0::before{background:var(--pc0);} .cap-rec .cr-l.o1::before{background:var(--pc1);}
+.cap-rec .cr-l b{font-weight:600;color:var(--g-bone);}
+.cap-rec .cr-l:last-child{color:var(--g-bone);}
+@media (hover:hover) and (pointer:fine){ .cap-rec:hover .cr-l{color:var(--g-bone);} }
+.an .an-felt.bl.desk > .an-hand{align-items:center;}
+.an .an-felt.bl.desk > .an-hand.two{align-content:center;gap:6px var(--ho,8px);}
+/* the Domains' words, flags, frames, marks, tokens and avatars grow with the tiles (--dpn, --dpr, --dfl, --ts from layoutLine) */
+.an-felt.desk .an-map.bl .pl{--pn:var(--dpn,1.05rem);--pr:var(--dpr,.9rem);--fl:var(--dfl,32px);}
+.an-felt.desk .an-map.bl .pl-tile.dm{--db:calc(6px * var(--ts,1));--dm:calc(23px * var(--ts,1));--dr:calc(7px * var(--ts,1));border-radius:calc(5px * var(--ts,1));}
+.an-felt.desk .an-map.bl .pl-tile.dm:not(.f1,.f2,.f3) .pl-plate{padding-top:calc(8px * var(--ts,1));padding-bottom:calc(6px * var(--ts,1));}
+.an-felt.desk .an-map.bl .pl-tile.dm.roomy .pl-plate{padding-left:calc(var(--dm) + 12px * var(--ts,1));padding-right:calc(var(--dm) + 12px * var(--ts,1));}
+.an-felt.desk .an-map.bl .pl-tile.dm.roomy .pl-plate > .dm-clasp.L{left:calc(6px * var(--ts,1));} .an-felt.desk .an-map.bl .pl-tile.dm.roomy .pl-plate > .dm-clasp.R{right:calc(6px * var(--ts,1));}
+.an-felt.desk .an-map.bl .pl-toks{--dm:calc(19px * var(--ts,1));}
+.an-felt.desk .an-map.bl .pl-tile > .pl-av{width:calc(20px * var(--ts,1));height:calc(20px * var(--ts,1));} .an-felt.desk .an-map.bl .pl-av .avatar{font-size:calc(11px * var(--ts,1));}
+.an-felt.desk .an-map.bl .pl-pos.L{width:calc(20px * var(--ts,1));height:calc(20px * var(--ts,1));padding:calc(3px * var(--ts,1));}
+.an-felt.desk .an-map.bl .fp-tab{height:calc(6px + 2px * var(--ts,1));}
+/* the bars grow with the table's cards */
+.an .an-felt.bl.desk > .an-strip{--gw:calc(34px * var(--bs,1));gap:calc(10px * var(--bs,1));padding:6px calc(13px * var(--bs,1)) 6px 6px;border-radius:calc(12px * var(--bs,1));}
+.an-felt.desk .an-strip :is(.st-top,.st-bot){gap:calc(9px * var(--bs,1));}
+.an-felt.desk .an-strip .st-name{font-size:calc(1.2rem * var(--bs,1));gap:calc(5px * var(--bs,1));}
+.an-felt.desk .an-strip .st-name i{width:calc(9px * var(--bs,1));height:calc(9px * var(--bs,1));} .an-felt.desk .an-strip .st-name .ico{width:calc(14px * var(--bs,1));height:calc(14px * var(--bs,1));}
+.an-felt.desk .an-strip .seal{width:calc(22px * var(--bs,1));height:calc(22px * var(--bs,1));}
+.an-felt.desk .an-strip .relic{width:calc(30px * var(--bs,1));height:calc(30px * var(--bs,1));}
+.an-felt.desk .an-strip .st-ren .lau{width:calc(42px * var(--bs,1));height:calc(32px * var(--bs,1));} .an-felt.desk .an-strip .st-ren b{font-size:calc(.95rem * var(--bs,1));}
+.an-felt.desk .an-strip .st-spark{width:calc(32px * var(--bs,1));height:calc(38px * var(--bs,1));} .an-felt.desk .an-strip .st-spark b{font-size:calc(1rem * var(--bs,1));}
+.an-felt.desk .an-strip .st-hand{width:calc(22px * var(--bs,1));height:calc(30px * var(--bs,1));margin-right:calc(4px * var(--bs,1));}
+.an-felt.desk .an-strip .st-hand b{font-size:calc(.72rem * var(--bs,1));min-width:calc(18px * var(--bs,1));height:calc(18px * var(--bs,1));line-height:calc(18px * var(--bs,1));border-radius:calc(9px * var(--bs,1));right:calc(-8px * var(--bs,1));bottom:calc(-5px * var(--bs,1));}
+/* a pillar: the bar on end at its player's end of the line, the Guide's portrait and name at its head, then the name,
+   the Renown, the Seals and the Relics, each Relic with its name, and the Spark at its foot */
+.an .an-felt.bl.desk.pil > .an-strip{flex-direction:column;align-items:center;justify-content:flex-start;align-self:stretch;width:var(--pw,140px);max-width:none;box-sizing:border-box;margin:0;
+  gap:calc(8px * var(--bs,1));padding:8px 8px calc(10px * var(--bs,1));--gw:calc(var(--pw,140px) - 16px);border-radius:14px;}
+.an .an-felt.bl.desk.pil > .an-strip.on{box-shadow:inset 0 0 0 1px var(--g-line),inset 0 -3px 0 var(--pc),0 8px 18px rgba(0,0,0,.4);}
+.an-felt.desk.pil .an-strip .st-guide{width:var(--gw);border-radius:9px;}
+.an-felt.desk.pil .an-strip .st-gn{display:block;margin-top:calc(-3px * var(--bs,1));max-width:100%;font:500 calc(.74rem * var(--bs,1))/1.1 var(--sans);color:var(--g-dust);text-align:center;text-wrap:balance;}
+.an-felt.desk.pil .an-strip :is(.st-top,.st-bot){flex-direction:column;align-items:center;width:100%;}
+.an-felt.desk.pil .an-strip .st-bot{flex:1 0 auto;}
+.an-felt.desk.pil .an-strip .st-bot > .st-fill{display:block;flex:1;}
+.an-felt.desk.pil .an-strip .st-name{justify-content:center;flex-wrap:wrap;max-width:100%;white-space:normal;overflow:visible;text-align:center;line-height:1.05;overflow-wrap:anywhere;}
+.an-felt.desk.pil .an-strip .st-name i{display:none;}   /* (the portrait's ring is in the player's color) */
+/* (the Guide's power in the Guide's own words, under the name: what the pillar has the room to say) */
+.an-felt.desk.pil .an-strip .st-gp{display:block;max-width:100%;margin-top:calc(-4px * var(--bs,1));padding-bottom:calc(7px * var(--bs,1));font:500 calc(.72rem * var(--bs,1))/1.2 var(--cardtxt);color:#c9c4bb;text-align:center;text-wrap:balance;
+  border-bottom:1px solid rgba(114,111,104,.35);}
+.an-felt.desk.pil .an-strip .st-gp b{font-weight:700;color:var(--g-bone);}
+.an-felt.desk.pil .an-strip.q1 .st-gp{display:none;}
+.an-felt.desk.pil .an-strip.q2 .relic[data-relic]::after{display:none;}
+.an-felt.desk.pil .an-strip.q3 .st-guide{aspect-ratio:1;}
+.an-felt.desk.pil .an-strip.q4 .st-gn{display:none;} .an-felt.desk.pil .an-strip.q4{gap:4px;} .an-felt.desk.pil .an-strip.q4 :is(.st-top,.st-bot){gap:5px;}
+.an-felt.desk.pil .an-strip.q4 .relic[data-relic] :is(img,.relic-nm),.an-felt.desk.pil .an-strip.q4 .relic{width:calc(var(--pw,140px) * .32);height:calc(var(--pw,140px) * .32);}
+.an-felt.desk.pil .an-strip .st-ren .lau{width:calc(56px * var(--bs,1));height:calc(43px * var(--bs,1));} .an-felt.desk.pil .an-strip .st-ren b{font-size:calc(1.2rem * var(--bs,1));}
+.an-felt.desk.pil .an-strip .st-spark{width:calc(40px * var(--bs,1));height:calc(48px * var(--bs,1));} .an-felt.desk.pil .an-strip .st-spark b{font-size:calc(1.25rem * var(--bs,1));}
+.an-felt.desk.pil .an-strip :is(.st-relics,.st-dip){flex-direction:column;align-items:center;width:100%;padding:calc(8px * var(--bs,1)) 0 0;gap:calc(7px * var(--bs,1));}
+.an-felt.desk.pil .an-strip :is(.st-relics,.st-dip)::before{left:14%;right:14%;top:0;bottom:auto;width:auto;height:1px;background:linear-gradient(90deg,transparent,rgba(114,111,104,.45),transparent);}
+.an-felt.desk.pil .an-strip .relic{width:calc(var(--pw,140px) * .44);height:calc(var(--pw,140px) * .44);border-radius:8px;}
+.an-felt.desk.pil .an-strip .relic[data-relic]{display:flex;flex-direction:column;align-items:center;gap:calc(3px * var(--bs,1));width:100%;height:auto;overflow:visible;background:none;box-shadow:none;color:var(--g-bone);}
+.an-felt.desk.pil .an-strip .relic[data-relic] :is(img,.relic-nm){position:relative;inset:auto;display:block;width:calc(var(--pw,140px) * .44);height:calc(var(--pw,140px) * .44);border-radius:8px;box-shadow:0 0 0 1px rgba(0,0,0,.6),0 0 0 2px var(--g-joint);}
+.an-felt.desk.pil .an-strip .relic[data-relic] .relic-nm{display:grid;background:#21201e;}
+.an-felt.desk.pil .an-strip .relic[data-relic]::after{content:attr(aria-label);max-width:100%;font:500 calc(.7rem * var(--bs,1))/1.1 var(--sans);text-align:center;text-wrap:balance;}
+.an-felt.desk.pil .an-strip .relic[data-relic].tgt :is(img,.relic-nm){box-shadow:0 0 0 2px var(--an-gilt),0 0 12px var(--an-gilt);}
+.an-felt.desk.pil .an-strip .relic[data-relic].tgt{animation:none;}
+/* the face-off on the desk (.big, fitFaceOff): the Domain, the balance and the sentence grow with the middle column, and
+   the cards beside it are faces large enough to read */
+.fo.big{gap:14px;padding:14px;}
+.fo.big .fo-side{gap:22px;padding:8px;}
+.fo.big .fo-f{gap:10px;}
+.fo.big .fo-mid{gap:clamp(12px,calc(var(--tw) * .03),24px);}
+.fo.big .fo-tile .rd-tile .pl-name{font-size:clamp(13px,calc(var(--tw) * .056),40px);}
+.fo.big .fo-tile .rd-tile .pl-rule{font-size:clamp(12px,calc(var(--tw) * .038),27px);}
+.fo.big .fo-tile .rd-tile .pl-plate{padding:calc(var(--tw) * .022) calc(var(--tw) * .034) calc(var(--tw) * .024);row-gap:calc(var(--tw) * .01);}
+.fo.big .fo-tile .rd-tile.dm{--db:max(5px,calc(var(--tw) * .016));--dm:max(16px,calc(var(--tw) * .05));}
+.fo.big .fo-bal{--shw:clamp(46px,calc(var(--tw) * .17),112px);}
+.fo.big .fo-tot{width:max(var(--shw),calc(var(--tw) * .22));}
+.fo.big .fo-tn{font-size:clamp(.8rem,calc(var(--tw) * .034),1.4rem);}
+.fo.big .fo-arm{height:clamp(8px,calc(var(--tw) * .02),14px);border-radius:7px;}
+.fo.big .fo-who{max-width:min(100%,calc(var(--tw) + 40px));padding:calc(var(--tw) * .024) calc(var(--tw) * .04);font-size:clamp(.95rem,calc(var(--tw) * .037),1.7rem);border-radius:16px;}
+.fo.big.hz .fo-side.none{width:clamp(118px,11vw,230px);gap:16px;} .fo.big .fo-ghost{width:54px;height:76px;border-radius:7px;} .fo.big .fo-none{font-size:1.08rem;}
+.fo.big:not(.sq) .rd-c{min-height:40px;font-size:1rem;padding:4px 13px;}
+.fo.big .fo-chips{gap:7px;width:max(calc(var(--cw) + 8px),132px);}
+.fo.big .fo-pw .rd-b{min-height:46px;font-size:1.1rem;padding:0 18px;}
+.view .fo.big .fo-c .ac.mini.mid .ac-name{font-size:clamp(3.2em,11px,4.2em);}
+@media (hover:hover) and (pointer:fine){ .fo.big .fo-c:hover > .ac{filter:brightness(1.07);} .fo.big .fo-tile:hover{filter:brightness(1.06);} }
+/* reading the table's cards on the desk (.dsk on the view, scan's size()): the card in front as large as the window's
+   height and its half of the width allow, and the road beside it with tiles a Domain's name reads on */
+.view.flow.scan.sd.dsk:not(.fo-on) .vf-flow{--cu:min(calc(100vh - 190px),41vw,1150px);}
+.view.flow.scan.sd.dsk:not(.fo-on){column-gap:28px;}
+.view.scan.dsk .rd-tile .pl-name{font-size:clamp(9px,calc(var(--rw) * .1),20px);}
+.view.scan.dsk .rd-tile.dm{--db:max(3px,calc(var(--rw) * .022));--dm:max(10px,calc(var(--rw) * .08));}
+.view.scan.dsk .rd-m{max-width:44px;font-size:clamp(9px,calc(var(--rw) * .1),19px);}
+.view.scan.dsk .rd-t{height:calc(var(--rh) + 28px);} .view.scan.dsk .rd-g{height:28px;border-radius:14px;padding:0 13px;font-size:clamp(.72rem,calc(var(--rw) * .09),1.05rem);}
+.view.scan.dsk .vf-head b{font-size:1.7rem;} .view.scan.dsk .vf-head small{font-size:1rem;}
+/* a card large enough to say what it does (cardEl's mid): the picture gives the paper room for the words under the name */
+.ac.mini.mid .ac-art,.ac.mini.mid.hasst .ac-art{height:63%;}
+.ac.mini.mid .ac-paper,.ac.mini.mid.hasst .ac-paper{min-height:40%;flex-direction:column;padding:1.7em 1.1em 1.1em 2.7em;}
+.cv > .ac.mini.mid .ac-br{display:none;}   /* (a card under the next one in a pile: its name is on its spine, and half a sentence says nothing) */
+.ac.mini.mid.sp .ac-kind{bottom:42%;}
+/* (and with no words to hold, its paper is the small card's, so more of its picture shows beside the spine) */
+.cvv > .ac.mini.mid .ac-art,.cvv > .ac.mini.mid.hasst .ac-art{height:76%;} .cvv > .ac.mini.mid .ac-paper,.cvv > .ac.mini.mid.hasst .ac-paper{min-height:27%;} .cvv > .ac.mini.mid.sp .ac-kind{bottom:29.5%;}
+.ac.mini.mid .ac-br{display:block;margin-top:.45em;font:500 2.2em/1.13 var(--cardtxt);color:#3a3023;text-align:center;text-wrap:balance;transition:none !important;}   /* (measured as it steps down: fitMid) */
+.ac.mini.mid .ac-br.l2{font-size:1.95em;} .ac.mini.mid .ac-br.l3{font-size:1.75em;line-height:1.1;}
+.ac.mini.mid .ac-br b{font-weight:700;}
+/* a mouse: what can be picked up answers the pointer */
+@media (hover:hover) and (pointer:fine){
+  .an-felt.desk .an-hand .hc:not(.no):hover > .ac{filter:brightness(1.08);}   /* (lit where it lies, never raised) */
+  .an-felt.desk .an-map .pl-tile:hover{filter:brightness(1.08);}
+  .an-felt.desk .an-map .fp.card:hover > .ac{filter:brightness(1.07);}
+  .an-felt.desk .an-strip :is(.st-guide,.relic[data-relic]):hover{filter:brightness(1.15);}
+}
+/* the setup on the desk: two columns, so it is composed across the window instead of standing as a narrow strip down its
+   middle. At the left the name over who is playing and the way into the Library, the packs and the decks; at the right,
+   where the taps go, the decks to choose and the button that deals. Every piece keeps its own size. */
+@media (min-width:1280px) and (min-height:700px){
+  #app.stage:has(> .setup){max-width:1240px;padding-left:28px;padding-right:28px;}
+  #app.stage > .setup{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);grid-template-rows:auto auto auto auto;column-gap:56px;row-gap:20px;align-content:center;align-items:center;min-height:calc(100dvh - var(--bar) - 44px);box-sizing:border-box;padding-top:0;}
+  #app.stage > .setup > *{grid-column:1;min-width:0;}
+  #app.stage > .setup > .setup-hero{grid-row:1;flex-direction:column;gap:18px;padding:0 0 10px;}
+  :root:not(.ng-x) #app.stage > .setup > .setup-hero .k-hero-ic{width:150px;height:126px;}
+  :root:not(.ng-x) #app.stage > .setup > .setup-hero.k-row h1{font-size:3.1rem;}
+  #app.stage > .setup > .k-seats{grid-row:3;}
+  #app.stage > .setup > .an-hub{grid-row:4;}
+  /* (the decks stand level with the name and the Players card, and the button that deals is on the line of the three doors) */
+  #app.stage > .setup > .k-opts{grid-column:2;grid-row:1 / 4;align-self:end;}
+  #app.stage > .setup > .k-startdock{grid-column:2;grid-row:4;position:static;margin:0;padding:0;background:none;box-shadow:none;}
+  #app.stage > .setup .dk-row{gap:10px;}
+}
+/* the results card on the desk: the plaque is wider, so the race for Renown is drawn larger and the winner, the sentence
+   and the standings are set a size up; its buttons keep a button's size */
+@media (min-width:1400px) and (min-height:860px){
+  .k-win .card.aw{max-width:min(1180px,calc(100vw - 64px));--pad:36px;}
+  .k-win .card.aw:not(.earn){grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);max-width:min(1040px,calc(100vw - 64px));}
+  .aw-game{padding:36px 14px 32px var(--pad);}
+  .k-win .card.aw h2{font-size:2.35rem;} .k-win .card.aw .sub{font-size:1.15rem;margin-top:9px;}
+  .aw-med{width:92px;height:92px;} .aw-hd{gap:20px;}
+  .k-win .card.aw .k-win-notes{font-size:1.16rem;margin-top:12px;}
+  .k-win .card.aw .rank{margin-top:18px;}
+  .k-win .card.aw .rank > div:not(.aw-cols){min-height:54px;font-size:1.3rem;}
+  .k-win .card.aw .rank .p{font-size:1.7rem;} .k-win .card.aw .rank .avatar{width:36px;height:36px;} .k-win .card.aw .rank .rk-sl .seal{width:21px;height:21px;}
+  .k-win .card.aw .rank > div{grid-template-columns:24px 36px minmax(0,1fr) 58px;} .k-win .card.aw .rank.sl > div{grid-template-columns:24px 36px minmax(0,1fr) 78px 58px;}
+  .an-race .rc-k,.aw-cols span,.k-win .card.aw .rw-k{font-size:.92rem;}
+  .k-win .card.aw > .k-acts{padding:16px var(--pad) 28px 20px;}
+}
+/* (a wide window that is low: the same two columns with a smaller name, so nothing scrolls) */
+@media (min-width:1100px) and (min-height:540px) and (max-height:699.98px){
+  #app.stage:has(> .setup){max-width:1180px;padding-left:24px;padding-right:24px;}
+  #app.stage > .setup{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);grid-template-rows:auto auto auto auto;column-gap:44px;row-gap:12px;align-content:center;align-items:center;min-height:calc(100dvh - var(--bar) - 30px);box-sizing:border-box;padding-top:0;}
+  #app.stage > .setup > *{grid-column:1;min-width:0;}
+  #app.stage > .setup > .setup-hero{grid-row:1;padding:0;}
+  #app.stage > .setup > .k-seats{grid-row:3;}
+  #app.stage > .setup > .an-hub{grid-row:4;}
+  #app.stage > .setup > .k-opts{grid-column:2;grid-row:1 / 4;align-self:end;}
+  #app.stage > .setup > .k-startdock{grid-column:2;grid-row:4;position:static;margin:0;padding:0;background:none;box-shadow:none;}
+}
+/* a clash on the desk: the two cards, the dice and the shields at a size that fills the stage the clash is given */
+@media (min-width:1280px) and (min-height:800px){
+  .clash:not(.su-n) .cl-in{width:min(100%,1080px);--cw:clamp(78px,min(30vw,30vh),340px);--sh:clamp(32px,min(10vw,11vh),80px);gap:clamp(10px,3vh,36px) clamp(4px,3vw,64px);}
+  .clash:not(.su-n) .cl-vs svg{width:72px;}
+  .clash:not(.su-n) .cl-sum .op{font-size:1.6rem;}
+}
+/* (while the computer's turn is fast-forwarded every transition on the table runs short, sizes included; the desk lays
+   itself out from the dock's measured sizes, so the dock's own boxes change size at once there) */
+.an-fast .an .an-felt.desk > *{transition-property:none !important;}
