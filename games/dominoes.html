@@ -198,6 +198,156 @@
 }
 ::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.7,.25,1);}
 ::view-transition-old(root),::view-transition-new(root){animation:none;}
+
+/* ── A large window (a computer) ──────────────────────────────────────────
+   deskPlan() in the script chooses a composition from the window and sets .dk and .dk-wide, .dk-strip, .dk-tall or
+   .dk-square on .dw (and .dkapp on the stage) only while one shows, so a phone, a tablet and every window between
+   them and a desk keep the layouts above. The table takes the window and its tiles and plaques step up with it
+   (--k, from the tile the window allows); the score sheet stands at the left and the hand in play at the right. */
+/* (windows between the devices and a desk: the table still runs the full width) */
+@media (orientation:portrait) and (min-width:621px) and (max-width:699.98px), (orientation:portrait) and (min-width:780px), (orientation:landscape) and (max-width:899.98px) and (min-height:600px){ .dw{max-width:none;} }
+.dk-panel{display:none;position:relative;flex-direction:column;min-width:0;min-height:0;border-radius:22px;overflow:hidden;color:var(--text);
+  background:linear-gradient(165deg,color-mix(in srgb,var(--h,#6c7bff) 13%,transparent),transparent 46%),var(--gl);
+  box-shadow:inset 0 0 0 1px var(--gl-line),inset 0 1px 0 rgba(255,255,255,.1),var(--shadow-sm);container-type:size;}
+.dk-panel::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:color-mix(in srgb,var(--h,#6c7bff) 70%,transparent);opacity:.8;}
+#app.stage.dmapp.dkapp{padding:2px 20px 18px;}
+#app .dw.dk{max-width:none;min-height:0;height:calc(100dvh - var(--barh,60px) - 20px);display:grid;gap:12px 16px;}
+#app .dw.dk .dk-panel{display:flex;}
+#app .dw.dk .dk-sheet{grid-area:sheet;}
+#app .dw.dk .dk-side{grid-area:side;}
+#app .dw.dk .pan{display:contents;}
+#app .dw.dk .scores{display:none;}
+#app .dw.dk .tbl{grid-area:tbl;margin:0;border-radius:clamp(24px,2.2vmin,40px);}
+#app .dw.dk .tbl>.felt-in{inset:clamp(9px,.75vmin,14px);border-radius:clamp(17px,1.7vmin,30px);}
+#app .dw.dk .rack{grid-area:rack;align-self:end;margin:0;padding:17px 14px 15px;gap:10px 8px;}
+#app .dw.dk .status{grid-area:foot;display:flex;min-width:0;min-height:0;gap:10px;}
+#app .dw.dk .msg{grid-area:auto;align-self:auto;font-size:1.1rem;} #app .dw.dk .msg small{font-size:.88rem;}
+#app .dw.dk .acts{grid-area:auto;align-self:auto;display:flex;}
+#app .dw.dk .acts:empty{display:none;}
+#app .dw.dk .acts .btn{min-height:50px;min-width:0;padding:0 20px;white-space:nowrap;}
+/* wide: the sheet, the table over your tiles, the hand in play over whose turn it is and the buttons */
+#app .dw.dk-wide{grid-template-columns:var(--lw) minmax(0,1fr) var(--rw);grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"sheet tbl side" "sheet rack foot";}
+#app .dw.dk-wide .status{flex-direction:column;justify-content:center;align-items:stretch;align-self:stretch;gap:12px;padding:14px 18px;border-radius:22px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),inset 0 1px 0 rgba(255,255,255,.1);}
+#app .dw.dk-wide .msg{flex:0 0 auto;font-size:clamp(1.1rem,1.15vw,1.4rem);} #app .dw.dk-wide .msg small{font-size:.8em;margin-top:.15em;}
+#app .dw.dk-wide .acts{flex-direction:column;}
+/* a short wide strip: the table the whole height, your tiles and the buttons in the right column under the hand in play */
+#app .dw.dk-strip{grid-template-columns:var(--lw) minmax(0,1fr) var(--rw);grid-template-rows:minmax(0,1fr) auto auto;grid-template-areas:"sheet tbl side" "sheet tbl foot" "sheet tbl rack";gap:8px 14px;}
+#app .dw.dk-strip .status{align-items:center;min-height:46px;}
+#app .dw.dk-strip .msg{font-size:.96rem;line-height:1.15;} #app .dw.dk-strip .msg small{font-size:.78rem;}
+#app .dw.dk-strip .acts .btn{min-height:44px;padding:0 14px;}
+#app .dw.dk-strip .rack{padding:14px 10px 12px;gap:8px 6px;}
+/* tall: the sheet and the hand in play side by side over the table; whose turn and your tiles at the foot */
+#app .dw.dk-tall{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:var(--ph) minmax(0,1fr) auto auto;grid-template-areas:"sheet side" "tbl tbl" "foot foot" "rack rack";gap:10px 12px;}
+#app .dw.dk-tall .status{align-items:center;min-height:50px;}
+/* nearly square: the sheet over the hand in play at the left, the table at the right; whose turn, your tiles and the buttons below */
+#app .dw.dk-square{grid-template-columns:var(--lw) minmax(0,1fr) auto;grid-template-rows:minmax(0,3fr) minmax(0,2fr) auto;grid-template-areas:"sheet tbl tbl" "side tbl tbl" "msg rack acts";gap:10px 14px;}
+#app .dw.dk-square .status{display:contents;}
+#app .dw.dk-square .msg{grid-area:msg;align-self:center;}
+#app .dw.dk-square .acts{grid-area:acts;flex-direction:column;justify-content:center;align-self:stretch;}
+#app .dw.dk-square .acts .btn{min-width:130px;}
+#app .dw.dk-square:has(.acts:empty) .rack{grid-column:2 / 4;}
+/* on the felt: the plaques, the boneyard and the count of the ends step up with the table */
+#app .dw.dk .plq{left:calc(10px * var(--k));right:calc(10px * var(--k));top:calc(8px * var(--k));height:calc(48px * var(--k));font-size:calc(1rem * var(--k));gap:.5em;}
+#app .dw.dk .layer{left:calc(10px * var(--k));right:calc(10px * var(--k));top:calc(60px * var(--k));bottom:calc(46px * var(--k));}
+#app .dw.dk .pq{gap:.2em;padding:.3em .72em .36em;border-radius:.95em;}
+#app .dw.dk .pq .nm{font-size:.86em;gap:.36em;}
+#app .dw.dk .pq .nm .ico{width:.92em;height:.92em;}
+#app .dw.dk .pq .nm i{width:.56em;height:.56em;}
+#app .dw.dk .pq .bk{height:1.28em;padding-left:.12em;}
+#app .dw.dk .pq .bk .dm{--tw:.62em;margin-left:.13em;}
+#app .dw.dk .pq .bk b{margin-left:.36em;font-size:.8em;}
+#app .dw.dk .pq .say{font-size:max(.84rem,.8em);}
+#app .dw.dk .rk-say{font-size:max(.84rem,calc(.8rem * var(--k)));}
+#app .dw.dk .bone{left:calc(12px * var(--k));bottom:calc(8px * var(--k));font-size:calc(.82rem * var(--k));gap:.6em;padding:.3em .9em .3em .5em;border-radius:1.05em;min-height:2.7em;}
+#app .dw.dk .bone .pile{width:2.6em;height:2em;}
+#app .dw.dk .ends{right:calc(12px * var(--k));bottom:calc(8px * var(--k));font-size:calc(.8rem * var(--k));padding:.4em .95em;border-radius:1.05em;gap:.45em;}
+#app .dw.dk .ends b{font-size:1.56em;}
+#app .dw.dk .ghost{border-radius:calc(7px * var(--k));}
+#app .dw.dk .ghost b{font-size:calc(1.1rem * var(--k));}
+@media (hover:hover){ #app .dw.dk .rack .dm:not(.no):not(.sel):not(.back):hover{transform:translateY(-5px);} }
+/* what is written on a panel grows a little with the panel, as a sheet on a wall would */
+.dk-in{flex:1 1 0;min-height:0;min-width:0;display:flex;flex-direction:column;font-size:clamp(.9rem,min(4.4cqw,3.4cqh),1.25rem);}
+.dk-h{flex:none;display:flex;align-items:baseline;justify-content:space-between;gap:.6em;padding:1em 1em .5em;}
+.dk-h h2{margin:0;font-family:var(--display);font-size:1.28em;letter-spacing:-.02em;line-height:1.1;color:var(--text);}
+.dk-h small{font-size:.8em;font-weight:650;color:var(--text-3);white-space:nowrap;font-variant-numeric:tabular-nums;}
+.dk-lbl{flex:none;display:flex;align-items:baseline;justify-content:space-between;gap:.6em;padding:.75em 1.1em .35em;font-size:.8em;font-weight:650;color:var(--text-3);font-variant-numeric:tabular-nums;}
+/* the score sheet: a ruled pad, a column a player or a side, a row a hand, the totals and the race to the target at its foot */
+.dk-pad{position:relative;flex:1 1 0;min-height:0;display:flex;flex-direction:column;justify-content:flex-end;--n:2;--mi:-1;--rh:2.3em;--lc:2.5em;--px:.55em;}
+.dk-pad .pr{position:relative;display:grid;grid-template-columns:var(--lc) repeat(var(--n),minmax(0,1fr));align-items:center;padding:0 var(--px);}
+.dk-pad .meb{position:absolute;top:0;bottom:0;left:calc(var(--px) + var(--lc) + (100% - var(--px) * 2 - var(--lc)) * var(--mi) / var(--n));width:calc((100% - var(--px) * 2 - var(--lc)) / var(--n));pointer-events:none;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--lit) 11%,transparent),color-mix(in srgb,var(--lit) 5%,transparent));box-shadow:inset 1px 0 0 color-mix(in srgb,var(--lit) 22%,transparent),inset -1px 0 0 color-mix(in srgb,var(--lit) 22%,transparent);}
+.dk-pad .ph{flex:none;align-items:end;padding-bottom:.5em;border-bottom:3px double color-mix(in srgb,var(--h,#6c7bff) 55%,var(--gl-line));}
+.dk-pad .ph .pc{display:flex;flex-direction:column;align-items:center;gap:.28em;min-width:0;padding:0 1px;font-size:.8em;font-weight:700;line-height:1.05;text-align:center;overflow-wrap:anywhere;color:var(--text-2);}
+.dk-pad .ph .pc .avs{display:flex;justify-content:center;}
+.dk-pad .ph .pc .avatar{width:2em;height:2em;font-size:.95em;flex:none;}
+.dk-pad .ph .pc .avatar + .avatar{margin-left:-.45em;}
+.dk-pad .ph .pc.me{color:var(--lit-ink);}
+.dk-pad .pb{flex:1 1 0;min-height:var(--rh);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;scroll-snap-type:y mandatory;
+  background:repeating-linear-gradient(180deg,transparent 0 calc(var(--rh) - 1px),var(--gl-line) calc(var(--rh) - 1px) var(--rh)) local;}
+.dk-pad .pb::-webkit-scrollbar{display:none;}
+.dk-pad .pb .pr{height:var(--rh);scroll-snap-align:start;}
+.dk-pad .rl{font-size:.74em;font-weight:700;color:var(--text-3);text-align:center;font-variant-numeric:tabular-nums;}
+.dk-pad .cv{position:relative;text-align:center;font-family:var(--hand);font-size:1.42em;line-height:1;color:var(--text);white-space:nowrap;}
+.dk-pad .cv.z{color:var(--text-3);}
+.dk-pad .cv.hot{color:var(--lit-ink);}
+.dk-pad .cv .mk{display:inline-block;margin-left:.3em;vertical-align:.12em;font-family:var(--font);font-style:normal;font-weight:700;font-size:.44em;line-height:1;color:var(--text-3);}
+.dk-pad .pr.live{background:color-mix(in srgb,var(--lit) 9%,transparent);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--lit) 50%,transparent),inset 0 -1px 0 color-mix(in srgb,var(--lit) 50%,transparent);}
+.dk-pad .pr.live .rl{color:var(--lit-ink);}
+.dk-pad .pr.just .cv{animation:dkwrite .5s ease-out;}
+@keyframes dkwrite{from{clip-path:inset(0 100% 0 0);}to{clip-path:inset(0 0 0 0);}}
+.dk-pad .pf{flex:none;padding-top:.3em;border-top:2px solid color-mix(in srgb,var(--h,#6c7bff) 55%,var(--gl-line));background:var(--gl-3);}
+.dk-pad .pf .cv{font-size:1.95em;}
+.dk-pad .pf .cv.lead{color:var(--lit-ink);}
+.dk-pad .pm{flex:none;padding-bottom:.7em;background:var(--gl-3);}
+.dk-pad .pm .rl{font-size:.68em;}
+.dk-pad .mt{display:block;height:.34em;margin:.3em 12% 0;border-radius:1em;background:var(--gl-2);overflow:hidden;}
+.dk-pad .mt b{display:block;height:100%;min-width:0;border-radius:1em;background:var(--c);transition:width .5s var(--ease,ease);}
+.dk-goal{flex:none;padding:.6em 1.2em .85em;font-size:.78em;font-weight:600;line-height:1.3;color:var(--text-3);text-align:center;text-wrap:balance;}
+/* the hand in play: who holds how many tiles and what they drew or passed, the open ends, the hand play by play */
+.dk-pl{flex:none;display:flex;flex-direction:column;padding:0 1em;}
+.dk-pl .row{--c:#888;display:flex;align-items:center;gap:.6em;min-height:2.5em;padding:.3em 0;border-bottom:1px solid var(--gl-line);}
+.dk-pl .row:last-child{border-bottom:0;}
+.dk-pl .row .avatar{width:1.7em;height:1.7em;font-size:.82em;flex:none;box-shadow:0 0 0 2px var(--c);}
+.dk-pl .row.on .avatar{box-shadow:0 0 0 2px var(--lit),0 0 10px var(--litg);}
+.dk-pl .tx{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:.1em;}
+.dk-pl .nm{font-weight:750;font-size:.92em;line-height:1.15;overflow-wrap:anywhere;}
+.dk-pl .row.me .nm{color:var(--lit-ink);}
+.dk-pl .mk{font-size:.74em;font-weight:600;line-height:1.2;color:var(--text-3);}
+.dk-pl .bk{flex:none;display:flex;align-items:center;gap:.14em;}
+.dk-pl .bk .dm{--tw:.52em;}
+.dk-pl .ct{flex:none;min-width:1.5em;text-align:right;font:800 1.12em/1 var(--display);font-variant-numeric:tabular-nums;}
+.dk-ends{flex:none;display:flex;align-items:center;flex-wrap:wrap;gap:.45em;padding:.1em 1.1em .3em;}
+.dk-ends .dm{--tw:1.7em;}
+.dk-ends .dm.one{height:var(--tw);} .dk-ends .dm.one::before,.dk-ends .dm.one .pin{display:none;}
+.dk-ends .dm.lie{transform:rotate(-90deg);margin:calc(var(--tw) * -.5) calc(var(--tw) * .5);}
+.dk-ends .op{font-weight:800;color:var(--text-3);}
+.dk-ends .sum{font:800 1.5em/1 var(--display);font-variant-numeric:tabular-nums;margin-left:.1em;}
+.dk-ends .sum.hot{color:var(--lit-ink);}
+.dk-ends .note{flex-basis:100%;font-size:.78em;font-weight:600;color:var(--text-3);}
+.dk-log{flex:1 1 0;min-height:0;margin:0 1em .9em;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;scroll-snap-type:y mandatory;--lh:2.1em;}
+.dk-log::-webkit-scrollbar{display:none;}
+.dk-log .lr{--c:#888;display:flex;align-items:center;gap:.55em;height:var(--lh);border-bottom:1px solid var(--gl-line);scroll-snap-align:start;box-sizing:border-box;}
+.dk-log .lr > i{width:.6em;height:.6em;border-radius:50%;background:var(--c);flex:none;}
+.dk-log .lr .n{flex:1 1 0;min-width:0;font-size:.86em;font-weight:650;white-space:nowrap;overflow:hidden;}
+.dk-log .lr .w{flex:none;font-size:.78em;font-weight:650;color:var(--text-3);}
+.dk-log .lr .p{flex:none;font:800 .9em/1 var(--display);color:var(--lit-ink);}
+.dk-log .lr .dm{--tw:1.08em;transform:rotate(-90deg);margin:calc(var(--tw) * -.5) calc(var(--tw) * .5);}
+.dk-log .lr .dm.back{--tw:.6em;transform:none;margin:0 0 0 .12em;}
+.dk-log .lr.new{animation:dkwrite .4s ease-out;}
+/* a hand that has been counted: what everyone was left holding */
+.dk-res{flex:1 1 0;min-height:0;display:flex;flex-direction:column;padding:0 1em .9em;}
+.dk-res .head{flex:none;margin:0 0 .5em;font-size:.94em;font-weight:650;line-height:1.3;color:var(--text-2);text-wrap:balance;}
+.dk-res .head b{color:var(--lit-ink);}
+.dk-res .row2{--c:#888;flex:none;display:flex;align-items:center;gap:.6em;min-height:2.6em;padding:.4em 0;border-top:1px solid var(--gl-line);}
+.dk-res .row2 .avatar{width:1.7em;height:1.7em;font-size:.82em;flex:none;box-shadow:0 0 0 2px var(--c);}
+.dk-res .row2 .who{flex:none;width:5.4em;font-weight:750;font-size:.92em;line-height:1.15;overflow-wrap:anywhere;}
+.dk-res .row2 .tl{flex:1 1 0;min-width:0;display:flex;flex-wrap:wrap;gap:.3em;align-items:center;}
+.dk-res .row2 .tl .dm{--tw:1.7em;transform:rotate(-90deg);margin:calc(var(--tw) * -.5) calc(var(--tw) * .5);}
+.dk-res .row2 .tl em{font-style:normal;color:var(--green);font-weight:800;font-size:.86em;}
+.dk-res .row2 .pp{flex:none;text-align:right;font:800 1.12em/1 var(--display);font-variant-numeric:tabular-nums;}
+.dk-res .row2 .pp small{display:block;margin-top:.15em;font:650 .62em/1 var(--font);color:var(--text-3);}
+.dk-res.tight .row2 .tl .dm{--tw:1.15em;} .dk-res.tiny .row2 .tl .dm{--tw:.8em;}
+.dk-res.bare .row2 .tl{display:none;} .dk-res.bare .row2 .who{flex:1 1 0;width:auto;}
 </style>
 </head>
 <body>
@@ -733,18 +883,22 @@
     if (r.side >= 0 && (!S.hl.bigHand || r.pts > S.hl.bigHand.pts)) S.hl.bigHand = { name: sideName(r.side), pts: r.pts, hand: S.hand };
     return r;
   }
-  var handSheet = null;
+  var handSheet = null, handKeep = null, handX = null;
+  function handHead(r) {
+    if (r.kind === 'domino') return '<b>' + Kit.esc(who(r.wi)) + '</b> ' + (who(r.wi) === 'You' ? 'domino' : 'dominoes') + (r.pts ? ' and ' + (S.teams ? 'the team scores ' : 'scores ') + '<b>' + r.pts + '</b>' : '');
+    if (r.side >= 0) return 'Lowest count: <b>' + Kit.esc(who(r.wi)) + '</b> with ' + r.low + (r.low === 1 ? ' dot' : ' dots') + (r.pts ? ', scores <b>' + r.pts + '</b>' : '');
+    return 'A tie for the lowest count. Nobody scores.';
+  }
   // X (online): the hand just counted ({res, score, handPts, hand}); the next hand is already dealt, so the sheet just closes
   function showHandSheet(X) {
     if (!X && (!S || S.phase !== 'handend' || !S.res)) return;
+    if (deskSet()) { deskHand(X); return; }   // (a large window: the count is written beside the table, nothing covers it)
     if (handSheet) return;
+    handX = X || null;
     X = X || { res: S.res, score: S.score, handPts: S.handPts, hand: S.hand };
     var r = X.res, over = X.score.some(function (x) { return x >= S.target; });
     var box = el('div', { class: 'hres' });
-    var head;
-    if (r.kind === 'domino') head = '<b>' + Kit.esc(who(r.wi)) + '</b> ' + (who(r.wi) === 'You' ? 'domino' : 'dominoes') + (r.pts ? ' and ' + (S.teams ? 'the team scores ' : 'scores ') + '<b>' + r.pts + '</b>' : '');
-    else if (r.side >= 0) head = 'Lowest count: <b>' + Kit.esc(who(r.wi)) + '</b> with ' + r.low + (r.low === 1 ? ' dot' : ' dots') + (r.pts ? ', scores <b>' + r.pts + '</b>' : '');
-    else head = 'A tie for the lowest count. Nobody scores.';
+    var head = handHead(r);
     box.appendChild(el('div', { class: 'head', html: head }));
     S.players.forEach(function (p, i) {
       var tl = el('div', { class: 'tl' });
@@ -766,7 +920,8 @@
     var t = tok, go = false;
     if (NET) { handSheet = Kit.sheet({ title: 'Hand ' + X.hand + ': ' + title, node: box, actions: [{ label: 'Play hand ' + (X.hand + 1), primary: true }], onClose: function () { handSheet = null; } }); return handSheet; }
     function proceed() { handSheet = null; if (go || t !== tok) return; go = true; if (over) finishMatch(); else deal(); }
-    handSheet = Kit.sheet({ title: 'Hand ' + S.hand + ': ' + title, node: box, actions: [{ label: over ? 'See the results' : 'Deal the next hand', primary: true, onClick: proceed }], onClose: function () { setTimeout(proceed, 0); } });
+    var keep = handKeep = { v: false };   // (v: the window grew to a desk, and the count moved to the panel beside the table)
+    handSheet = Kit.sheet({ title: 'Hand ' + S.hand + ': ' + title, node: box, actions: [{ label: over ? 'See the results' : 'Deal the next hand', primary: true, onClick: proceed }], onClose: function () { if (keep.v) return; setTimeout(proceed, 0); } });
     if (!humans()) later(function () { if (handSheet) handSheet.close(); }, 1800);
   }
 
@@ -1048,7 +1203,7 @@
   }
   function back(cls) { var d = tile(0, 0, 'back' + (cls ? ' ' + cls : '')); d.setAttribute('aria-label', 'Face-down tile'); return d; }
 
-  var dw, scoresEl, tblEl, feltEl, plqEl, layerEl, boneEl, endsEl, hlabelEl, statusEl, msgEl, actsEl, rackEl;
+  var dw, scoresEl, tblEl, feltEl, plqEl, layerEl, boneEl, endsEl, hlabelEl, statusEl, msgEl, actsEl, rackEl, sheetEl, sideEl;
   var nodes = {};
   function buildUI() {
     app.innerHTML = ''; app.className = 'stage dmapp';
@@ -1073,8 +1228,13 @@
     rackEl = el('div', { class: 'rack', style: { 'view-transition-name': 'dm-rack' } });
     scoresEl.style.setProperty('view-transition-name', 'dm-scores');
     dw.appendChild(pan); dw.appendChild(tblEl); dw.appendChild(rackEl);
+    // (a large window: the score sheet and the hand in play, drawn only while a desk layout shows)
+    sheetEl = el('aside', { class: 'dk-panel dk-sheet', 'aria-label': 'Score sheet', style: { 'view-transition-name': 'dm-sheet' } });
+    sideEl = el('aside', { class: 'dk-panel dk-side', 'aria-label': 'This hand', style: { 'view-transition-name': 'dm-side' } });
+    dw.appendChild(sheetEl); dw.appendChild(sideEl);
+    deskRes = null; deskKey = '';
     app.appendChild(dw);
-    setBarH();
+    setBarH(); deskSet();
   }
   function setBarH() {
     var b = document.querySelector('.gbar');
@@ -1084,7 +1244,8 @@
   function paint(o) {
     o = o || {};
     if (!S || !dw) return;
-    paintScores(); paintSeats(o); paintStatus(); paintRack(o); paintBoard(o);
+    deskSet();
+    paintScores(); paintSeats(o); paintStatus(); paintRack(o); paintBoard(o); paintDesk();
   }
   function paintScores() {
     scoresEl.innerHTML = '';
@@ -1153,6 +1314,11 @@
       var r = S.res; line = r && r.kind === 'domino' ? who(r.wi) + (who(r.wi) === 'You' ? ' domino!' : ' dominoes!') : r && r.kind === 'match' ? sideName(r.side) + ' reached ' + S.target + '!' : 'Blocked!';
       sub = S.phase === 'over' ? 'Match over' : 'Counting the dots…';
       if (r && r.side >= 0) col = S.players[r.side].color;
+      // (a desk: the hand is counted on the panel beside the table, and the way on is a button here)
+      if (DK && deskRes && deskRes.go) {
+        sub = deskRes.over ? 'The match is over.' : 'First to ' + S.target + ' wins the match.';
+        actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary dk-go', html: '<span>' + deskRes.label + '</span>', onclick: deskRes.go }));
+      }
     } else if (cur.cpu || (NET && S.viewer !== S.cur)) {
       if (lock && S.last && S.last.p === S.cur && !S.last.pass) { line = lastLine().replace(/\.$/, ''); sub = S.players[S.cur].hand.length + ' tiles left'; }
       else { line = NET && !isCpu(S.cur) ? Kit.poss(cur.name) + ' turn' : cur.name + ' is thinking'; sub = S.last && S.last.p !== S.cur ? lastLine() : ''; }
@@ -1180,6 +1346,7 @@
     msgEl.appendChild(el('span', null, [document.createTextNode(line), sub ? el('small', { text: sub }) : null]));
   }
   function rackSize(n) {
+    if (DK) return deskRack(n);
     var w = rackEl.clientWidth - 20, big = Math.min(innerWidth, innerHeight) >= 700;
     var maxW = big ? 50 : innerHeight < 500 ? 32 : 40, gap = 6, rows = 1;   // (a phone on its side keeps the table tall)
     var tw = Math.min(maxW, (w - (n - 1) * gap) / Math.max(n, 1));
@@ -1194,7 +1361,7 @@
     rackEl.classList.toggle('on', turn);
     rackEl.style.setProperty('--c', P.color);
     var sz = rackSize(Math.max(P.hand.length, S.players.length === 2 ? 7 : 5));
-    rackEl.style.minHeight = (sz.tw * 2 * sz.rows + (sz.rows - 1) * 8 + 26) + 'px';
+    rackEl.style.minHeight = (sz.tw * 2 * sz.rows + (sz.rows - 1) * (DK && DK.pl !== 'strip' ? 10 : 8) + (DK && DK.pl !== 'strip' ? 32 : 26)) + 'px';
     rackEl.appendChild(el('div', { class: 'lbl', html: hidden ? 'Hidden tiles' : P.name === 'You' ? 'Your tiles' : '<b>' + Kit.esc(P.name) + '</b>’s tiles' }));   // (the rack names whose tiles they are)
     var ms = turn && !lock ? legalFor(v) : [];
     var fit = {}; ms.forEach(function (m) { fit[tid(m.t)] = 1; });
@@ -1218,12 +1385,244 @@
     addBubble(v);
   }
 
+  // ═════════════════════════════════════════════════════════════════════════
+  // A large window (a computer). The table takes the window, and what the window has to spare holds what was a tap
+  // away or not shown: the score sheet hand by hand at the left (to look at), the hand in play at the right (who
+  // holds how many tiles and what they drew or passed, the open ends, the hand play by play), over whose turn it is
+  // and the buttons (to act on). A counted hand is written on those two panels; no sheet covers the table.
+  //   wide    1200 or more across, 640 or more tall      sheet | table over your tiles | hand over the buttons
+  //   strip   1200 or more across, 430 to 639 tall       sheet | table | hand, the buttons, your tiles
+  //   tall    1200 or more tall, a quarter taller than wide   sheet and hand side by side, the table, your tiles
+  //   square  900 or more each way, short of the others  sheet over hand | table; whose turn, your tiles, the buttons
+  // DK is set only while one of them shows ({pl, u: the tile the window allows, k: the step of what lies on the
+  // felt, rt: your tiles}); every other window keeps the phone's and the tablet's layouts.
+  // ═════════════════════════════════════════════════════════════════════════
+  var DK = null, DESK_U = 104, deskRes = null, deskKey = '', deskRounds = -1, deskLog = -1, deskFor = 0;
+  function clampN(a, x, b) { return Math.max(a, Math.min(b, x)); }
+  function deskPlan(W, H) {
+    if (H >= 1200 && H >= W * 1.25 && W >= 560) return 'tall';
+    if (W >= 1200 && H >= 640) return 'wide';
+    if (W >= 1200 && H >= 430) return 'strip';
+    if (W >= 900 && H >= 900) return 'square';
+    return null;
+  }
+  function deskSet() {
+    if (!dw) return null;
+    var W = innerWidth, H = innerHeight, pl = deskPlan(W, H), st = dw.style;
+    if (!pl) {
+      if (DK) { dw.className = 'dw'; app.classList.remove('dkapp'); ['--k', '--lw', '--rw', '--ph'].forEach(function (k) { st.removeProperty(k); }); }
+      DK = null; return null;
+    }
+    var lw = 0, rw = 0, ph = 0, u;
+    if (pl === 'wide') { lw = clampN(250, W * .18, 480); rw = clampN(250, W * .17, 440); u = Math.min((W - 112 - lw - rw) / 9.6, (H - 250) / 11.6); }
+    else if (pl === 'strip') { lw = clampN(250, W * .19, 330); rw = clampN(300, W * .25, 420); var cw = W - 108 - lw - rw; u = Math.min(cw / 9.6, Math.max((H - 196) / 9.6, Math.min((H - 196) / 6.5, cw / 16))); }
+    else if (pl === 'tall') { ph = clampN(250, H * .24, 440); u = Math.min((W - 80) / 9.6, (H - ph - 330) / 11.6); }
+    else { lw = clampN(250, W * .28, 320); u = Math.min((W - 94 - lw) / 9.6, (H - 250) / 11.6); }
+    u = clampN(34, u, DESK_U);
+    DK = { pl: pl, u: u, k: clampN(pl === 'strip' ? .8 : 1, u / 52, 1.8), rt: pl === 'strip' ? clampN(34, Math.min(u * 1.1, (rw - 56) / 7), 52) : Math.max(40, u) };
+    var cls = 'dw dk dk-' + pl;
+    if (dw.className !== cls) dw.className = cls;
+    app.classList.add('dkapp');
+    st.setProperty('--k', DK.k.toFixed(3)); st.setProperty('--lw', Math.round(lw) + 'px'); st.setProperty('--rw', Math.round(rw) + 'px'); st.setProperty('--ph', Math.round(ph) + 'px');
+    return DK;
+  }
+  // your tiles at a desk: the size of the tiles on the table, in one row while that keeps them large
+  function deskRack(n) {
+    var strip = DK.pl === 'strip', gap = strip ? 6 : 8, rg = strip ? 8 : 10, pad = strip ? 26 : 32, w = rackEl.clientWidth - (strip ? 20 : 28);
+    var hMax = strip ? Math.max(150, innerHeight * 0.42) : Math.max(2 * DK.rt + pad, innerHeight * 0.3), best = null;
+    for (var rows = 1; rows <= 3; rows++) {
+      var per = Math.ceil(n / rows), tw = Math.min(DK.rt, (w - (per - 1) * gap) / per);
+      tw = Math.min(tw, (hMax - pad - (rows - 1) * rg) / (rows * 2));
+      if (!best || tw > best.tw * 1.3) best = { tw: tw, rows: rows };   // (another row only when it makes the tiles a good deal larger)
+    }
+    return { tw: Math.max(18, Math.floor(best.tw)), rows: best.rows };
+  }
+  // The count of a hand at a desk. Local: the way on is a button where the turn's buttons are. Online (X, the hand
+  // before this one, already counted while the next is dealt): it stays until you make your next move.
+  function deskHand(X) {
+    if (X) { deskRes = { X: X }; deskKey = ''; paint(); return; }
+    if (deskRes && deskRes.go) return;
+    var over = S.score.some(function (x) { return x >= S.target; }), t = tok, gone = false;
+    deskRes = { over: over, label: over ? 'See the results' : 'Deal the next hand', go: function () { if (gone || t !== tok) return; gone = true; deskRes = null; if (over) finishMatch(); else deal(); } };
+    paint();
+    if (!humans()) later(function () { if (deskRes && deskRes.go) deskRes.go(); }, 1800);
+  }
+  // the window changed between a desk and a device's size while a hand is counted: the count moves with it
+  function deskSync() {
+    if (!S || !dw) return;
+    var on = !!deskPlan(innerWidth, innerHeight);
+    if (on && handSheet) { var X = handX; if (handKeep) handKeep.v = true; try { handSheet.close(); } catch (e) {} handSheet = null; deskSet(); deskHand(X); }
+    else if (!on && deskRes) { var X2 = deskRes.X || null; deskRes = null; deskSet(); if (X2 || (S.phase === 'handend' && S.res && S.res.kind !== 'match')) showHandSheet(X2 || undefined); }
+  }
+  function avOf(i) { var p = S.players[i]; return isCpu(i) ? el('span', { class: 'avatar', style: { '--c': p.color }, html: Kit.icon('bot') }) : Kit.avatar.el(p.name, 'sm', p.color); }
+  // this hand, play by play, from the record the history keeps (S.pl): a tile played, tiles drawn, a pass
+  function handLog() {
+    var out = [];
+    String(S.pl || '').split(' ').forEach(function (w) {
+      var m = /^(\d)(\d)(\d)([LEWNS])(\d*)$/.exec(w);
+      if (m) { out.push({ p: +m[1], t: [+m[2], +m[3]], lead: m[4] === 'L', pts: +m[5] || 0 }); return; }
+      m = /^(\d)([dx])$/.exec(w); if (!m) return;
+      var p = +m[1], l = out[out.length - 1];
+      if (m[2] === 'x') out.push({ p: p, pass: 1 });
+      else if (l && l.p === p && l.drew) l.drew++;
+      else out.push({ p: p, drew: 1 });
+    });
+    return out.filter(function (e) { return !!S.players[e.p]; });
+  }
+  // what the ends count in All Fives, piece by piece (as endCount adds them)
+  function endParts(L) {
+    var r = L.root, A = L.arms, out = [];
+    if (L.spin) { if (!A.E.length || !A.W.length) out.push({ v: r.t[0], dbl: true }); }
+    else { if (!A.E.length) out.push({ v: r.t[1] }); if (!A.W.length) out.push({ v: r.t[0] }); }
+    ['E', 'W', 'N', 'S'].forEach(function (k) { var a = A[k]; if (!a.length) return; var t = last(a).t; out.push(t[0] === t[1] ? { v: t[0], dbl: true } : { v: t[1] }); });
+    return out;
+  }
+  function face(v) {
+    var d = el('span', { class: 'dm one' }), h = el('span', { class: 'hf', 'data-v': v });
+    for (var i = 0; i < 9; i++) h.appendChild(document.createElement('i'));
+    d.appendChild(h); d.setAttribute('aria-label', String(v));
+    return d;
+  }
+  function paintDesk() {
+    if (!DK || !sheetEl) { deskKey = ''; return; }
+    if (deskRes && deskRes.X && deskRes.X.hand !== S.hand - 1) deskRes = null;   // (online: a later hand has been counted since)
+    var key = JSON.stringify([DK.pl, innerWidth, innerHeight, S.started, S.hand, S.phase, S.cur, S.score, S.handPts, S.rounds.length, S.pl || '', S.players.map(function (p, i) { return p.hand.length + (isCpu(i) ? 'c' : 'h') + p.name; }), S.viewer, S.bone.length,
+      deskRes ? (deskRes.X ? 'x' + deskRes.X.hand : 'r') : '', sheetEl.clientWidth, sheetEl.clientHeight, sideEl.clientWidth, sideEl.clientHeight]);
+    if (key === deskKey) return;
+    deskKey = key;
+    if (deskFor !== S.started) { deskFor = S.started; deskRounds = -1; deskLog = -1; }
+    paintSheet(); paintSide();
+  }
+  // the score sheet: a column a player (or a side), a row a hand, the hand in play lit, the totals and the race to the target
+  function paintSheet() {
+    var n = nSides(), me = NET || humans() === 1 ? sideOf(viewerIdx()) : -1, top = Math.max.apply(null, S.score);
+    var inn = el('div', { class: 'dk-in' });
+    inn.appendChild(el('div', { class: 'dk-h' }, [el('h2', { text: 'Score sheet' }), el('small', { text: VNAME[S.variant] + ', to ' + S.target })]));
+    var pad = el('div', { class: 'dk-pad', style: { '--n': String(n), '--mi': String(me) } });
+    if (me >= 0) pad.appendChild(el('div', { class: 'meb' }));
+    function row(cls, label, cells) { return el('div', { class: 'pr ' + cls }, [el('span', { class: 'rl', text: label == null ? '' : String(label) })].concat(cells)); }
+    function cell(v, cls) { return el('span', { class: 'cv' + (cls ? ' ' + cls : ''), text: v == null ? '' : String(v) }); }
+    var heads = [];
+    for (var s = 0; s < n; s++) {
+      var mem = S.players.map(function (p, i) { return i; }).filter(function (i) { return sideOf(i) === s; });
+      heads.push(el('span', { class: 'pc' + (s === me ? ' me' : '') }, [el('span', { class: 'avs' }, mem.map(avOf)), el('span', { text: sideName(s) })]));
+    }
+    pad.appendChild(row('ph', '', heads));
+    var body = el('div', { class: 'pb' }), just = deskRounds >= 0 && S.rounds.length === deskRounds + 1;
+    S.rounds.forEach(function (r, i) {
+      body.appendChild(row(just && i === S.rounds.length - 1 ? 'just' : '', i + 1, r.map(function (v) { return v ? cell(v) : cell('–', 'z'); })));
+    });
+    deskRounds = S.rounds.length;
+    if (S.phase === 'play' || S.phase === 'deal') body.appendChild(row('live', S.hand, S.handPts.map(function (v) { return cell(v ? v : '', 'hot'); })));
+    pad.appendChild(body);
+    pad.appendChild(row('pf', 'Total', S.score.map(function (v) { return cell(v, top > 0 && v === top ? 'lead' : ''); })));
+    var race = row('pm', 'to ' + S.target, S.score.map(function (v, k) {
+      return el('i', { class: 'mt', style: { '--c': S.players[k].color } }, [el('b', { style: { width: Math.round(clampN(0, v / S.target, 1) * 100) + '%' } })]);
+    }));
+    pad.appendChild(race);
+    inn.appendChild(pad);
+    var goal = el('div', { class: 'dk-goal', text: 'The first ' + (S.teams ? 'team ' : '') + 'to ' + S.target + ' points wins the match.' });
+    inn.appendChild(goal);
+    sheetEl.innerHTML = ''; sheetEl.appendChild(inn);
+    // a short panel gives up the sentence, then the race; then the rows are made whole (none half under the heads)
+    var rh0 = parseFloat(getComputedStyle(pad).fontSize) * 2.3, want = Math.min(4, body.children.length + 1);
+    if (body.clientHeight < rh0 * want) goal.remove();
+    if (body.clientHeight < rh0 * want) race.remove();
+    var bh = body.clientHeight, rows = Math.max(1, Math.floor(bh / rh0)), rh = Math.max(12, Math.floor(bh / rows));
+    pad.style.setProperty('--rh', rh + 'px'); body.style.flex = '0 0 ' + (rh * rows) + 'px';
+    body.scrollTop = body.scrollHeight;
+  }
+  // the hand in play (or, once it is counted, what everyone was left holding)
+  function paintSide() {
+    var inn = el('div', { class: 'dk-in' }), v = viewerIdx(), n = S.players.length, i;
+    var X = deskRes && deskRes.X ? deskRes.X : (S.phase === 'handend' || S.phase === 'over') && S.res ? { res: S.res, score: S.score, handPts: S.handPts, hand: S.hand } : null;
+    sideEl.innerHTML = ''; sideEl.appendChild(inn);
+    if (X) {
+      var r = X.res, hd = r.kind === 'match' ? '<b>' + Kit.esc(sideName(r.side)) + '</b> reached ' + S.target : handHead(r);
+      inn.appendChild(el('div', { class: 'dk-h' }, [el('h2', { text: 'Hand ' + X.hand }), el('small', { text: r.kind === 'domino' ? 'Domino' : r.kind === 'match' ? VNAME[S.variant] : 'Blocked' })]));
+      var box = el('div', { class: 'dk-res hres' });
+      box.appendChild(el('p', { class: 'head', html: hd + (/\.$/.test(hd) ? '' : '.') }));
+      S.players.forEach(function (p, k) {
+        var tl = el('div', { class: 'tl' });
+        if (!r.hands[k].length) tl.appendChild(el('em', { text: 'Domino!' }));
+        r.hands[k].forEach(function (t) { tl.appendChild(tile(t[0], t[1])); });
+        box.appendChild(el('div', { class: 'row2', style: { '--c': p.color } }, [avOf(k), el('div', { class: 'who', text: p.name }), tl,
+          el('div', { class: 'pp', html: r.pips[k] + '<small>' + (r.pips[k] === 1 ? 'dot' : 'dots') + '</small>' })]));
+      });
+      inn.appendChild(box);
+      // (the tiles as large as the panel has room for; a panel too short for them keeps the dots alone)
+      ['tight', 'tiny', 'bare'].forEach(function (c) { if (box.scrollHeight > box.clientHeight + 1) box.classList.add(c); });
+      deskLog = -1;
+      return;
+    }
+    inn.appendChild(el('div', { class: 'dk-h' }, [el('h2', { text: 'Hand ' + S.hand }), el('small', { text: VNAME[S.variant] })]));
+    var log = S.pl != null ? handLog() : null, drew = {}, passed = {};
+    (log || []).forEach(function (e) { if (e.drew) drew[e.p] = (drew[e.p] || 0) + e.drew; if (e.pass) passed[e.p] = (passed[e.p] || 0) + 1; });
+    if (!log) S.players.forEach(function (p, k) { if (p.drew) drew[k] = p.drew; });
+    var lbl1 = el('div', { class: 'dk-lbl' }, [el('span', { text: 'Tiles in hand' })]), pl = el('div', { class: 'dk-pl' }), maxB = sideEl.clientWidth < 290 ? 6 : 9;
+    for (i = 0; i < n; i++) {
+      var k = (Math.max(0, v) + i) % n, p = S.players[k], cnt = p.hand.length, bk = el('div', { class: 'bk' }), tx = el('div', { class: 'tx' }, [el('div', { class: 'nm', text: p.name })]);
+      for (var j = 0; j < Math.min(cnt, maxB); j++) bk.appendChild(back('mini'));
+      if (drew[k]) tx.appendChild(el('div', { class: 'mk', text: 'Drew ' + drew[k] + (drew[k] === 1 ? ' tile' : ' tiles') }));
+      if (passed[k]) tx.appendChild(el('div', { class: 'mk', text: 'Passed ' + (passed[k] === 1 ? 'once' : passed[k] === 2 ? 'twice' : passed[k] + ' times') }));
+      pl.appendChild(el('div', { class: 'row' + (S.phase === 'play' && S.cur === k ? ' on' : '') + (k === v && (NET || humans() === 1) ? ' me' : ''), style: { '--c': p.color } }, [avOf(k), tx, bk, el('div', { class: 'ct', text: String(cnt) })]));
+    }
+    inn.appendChild(lbl1); inn.appendChild(pl);
+    var lbl2 = null, en = null;
+    if (S.line) {
+      en = el('div', { class: 'dk-ends' });
+      if (S.variant === 'fives') {
+        var parts = endParts(S.line), sum = endCount(S.line);
+        lbl2 = el('div', { class: 'dk-lbl' }, [el('span', { text: 'The ends add up to' })]);
+        parts.forEach(function (q, x) { if (x) en.appendChild(el('span', { class: 'op', text: '+' })); en.appendChild(q.dbl ? tile(q.v, q.v, 'lie') : face(q.v)); });
+        en.appendChild(el('span', { class: 'op', text: '=' }));
+        en.appendChild(el('span', { class: 'sum' + (sum > 0 && sum % 5 === 0 ? ' hot' : ''), text: String(sum) }));
+      } else {
+        lbl2 = el('div', { class: 'dk-lbl' }, [el('span', { text: 'Open ends' })]);
+        ends(S.line).forEach(function (e) { en.appendChild(face(e.v)); });
+      }
+      inn.appendChild(lbl2); inn.appendChild(en);
+    }
+    var lbl3 = null, lg = null;
+    if (log && log.length) {
+      lbl3 = el('div', { class: 'dk-lbl' }, [el('span', { text: 'This hand, play by play' })]);
+      lg = el('div', { class: 'dk-log' });
+      log.forEach(function (e, x) {
+        var P = S.players[e.p], kids = [el('i'), el('span', { class: 'n', text: P.name })], say = P.name;
+        if (e.t) {
+          if (e.lead) kids.push(el('span', { class: 'w', text: 'Led' }));
+          kids.push(tile(e.t[0], e.t[1])); if (e.pts) kids.push(el('span', { class: 'p', text: '+' + e.pts }));
+          say += (e.lead ? ' led the ' : ' played the ') + tname(e.t) + (e.pts ? ' for ' + e.pts + ' points' : '');
+        } else if (e.drew) { kids.push(el('span', { class: 'w', text: 'Drew ' + e.drew })); say += ' drew ' + e.drew + (e.drew === 1 ? ' tile' : ' tiles'); }
+        else { kids.push(el('span', { class: 'w', text: 'Passed' })); say += ' passed'; }
+        var rw = el('div', { class: 'lr' + (deskLog >= 0 && x >= deskLog ? ' new' : ''), style: { '--c': P.color } }, kids);
+        rw.setAttribute('aria-label', say + '.');
+        lg.appendChild(rw);
+      });
+      inn.appendChild(lbl3); inn.appendChild(lg);
+    }
+    deskLog = log ? log.length : -1;
+    // a short panel gives up its least needed part first: the play by play, the ends, then what each player drew or passed
+    function over() { return inn.scrollHeight > inn.clientHeight + 1; }
+    if (lg) {
+      var lh0 = parseFloat(getComputedStyle(lg).fontSize) * 2.1, hc = lg.clientHeight, rows = Math.floor(hc / lh0);
+      if (rows < 2 || over()) { lbl3.remove(); lg.remove(); lg = null; }
+      else { var lh = Math.floor(hc / rows); lg.style.setProperty('--lh', lh + 'px'); lg.style.flex = '0 0 ' + (lh * Math.min(rows, log.length)) + 'px'; lg.scrollTop = lg.scrollHeight; }
+    }
+    if (en && over()) { lbl2.remove(); en.remove(); }
+    if (over()) [].forEach.call(pl.querySelectorAll('.mk'), function (m) { m.remove(); });
+    if (over()) [].forEach.call(pl.querySelectorAll('.bk'), function (m) { m.remove(); });
+    if (over()) lbl1.remove();
+  }
+
   // ── Board ────────────────────────────────────────────────────────────────
   var curLay = null, curXf = null, ghostEls = [];
   function areaSize() { return { w: layerEl.clientWidth, h: layerEl.clientHeight }; }
   function computeLayout() {
-    var A = areaSize(), maxU = Math.min(innerWidth, innerHeight) >= 700 ? 62 : 46;
+    var A = areaSize(), maxU = DK ? DESK_U : Math.min(innerWidth, innerHeight) >= 700 ? 62 : 46;
     var u = Math.max(14, Math.min(A.w / 9.6, A.h / 9.6, maxU));
+    // (a desk's short wide table: the line runs across it, so its tiles needn't be held to a ninth of its height)
+    if (DK) u = Math.max(14, Math.min(A.w / 9.6, Math.max(A.h / 9.6, Math.min(A.h / 6.5, A.w / 16)), maxU));
     var lay = null;
     for (var k = 0; k < 7; k++) {
       lay = layout(S.line, A.w / u - .3, A.h / u - .3, 0);
@@ -1293,7 +1692,8 @@
     // Boneyard and ends
     boneEl.innerHTML = '';
     var pile = el('div', { class: 'pile' }), nb = Math.min(S.bone.length, 4);
-    for (var i = 0; i < nb; i++) { var b = back('mini'); b.style.setProperty('--tw', '11px'); b.style.left = (i * 6) + 'px'; b.style.top = (i % 2 ? 3 : 0) + 'px'; b.style.transform = 'rotate(' + (i % 2 ? 90 : 84) + 'deg)'; pile.appendChild(b); }
+    var bk_ = DK ? DK.k : 1;   // (a desk: the pile steps up with the table)
+    for (var i = 0; i < nb; i++) { var b = back('mini'); b.style.setProperty('--tw', (11 * bk_) + 'px'); b.style.left = (i * 6 * bk_) + 'px'; b.style.top = ((i % 2 ? 3 : 0) * bk_) + 'px'; b.style.transform = 'rotate(' + (i % 2 ? 90 : 84) + 'deg)'; pile.appendChild(b); }
     boneEl.appendChild(pile);
     boneEl.appendChild(el('span', { text: S.variant === 'block' ? 'Block: no drawing' : S.bone.length ? S.bone.length + ' in the boneyard' : 'Boneyard empty' }));
     var canD = myTurn() && !legalFor(S.cur).length && canDraw();
@@ -1323,7 +1723,7 @@
     if (q) { var rq = q.getBoundingClientRect(); return { x: rq.left + rq.width / 2, y: rq.top + rq.height / 2, w: 14 }; }
     return null;
   }
-  function boneRect() { var r = boneEl.getBoundingClientRect(); return { x: r.left + 22, y: r.top + r.height / 2, w: 11 }; }
+  function boneRect() { var r = boneEl.getBoundingClientRect(), k = DK ? DK.k : 1; return { x: r.left + 22 * k, y: r.top + r.height / 2, w: 11 * k }; }
   function destRect(pi, id) {
     if (pi === viewerIdx() && S.viewer === pi) {
       var n = rackEl.querySelector('.dm[data-id="' + id + '"]');
@@ -1474,8 +1874,8 @@
     rT = setTimeout(function () {
       if (!(S && dw && dw.isConnected)) return;
       var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (document.startViewTransition && !reduce && !document.hidden && !drag) { try { vtGo(function () { setBarH(); paint(); }); return; } catch (e) {} }
-      setBarH(); paint();
+      if (document.startViewTransition && !reduce && !document.hidden && !drag) { try { vtGo(function () { setBarH(); deskSync(); paint(); }); return; } catch (e) {} }
+      setBarH(); deskSync(); paint();
     }, 80);
   });
 
@@ -1644,6 +2044,7 @@
     if (!NET) return;
     if (!NET.myTurn()) { done = false; Kit.toast('Wait for your turn'); Kit.haptic('error'); return; }
     var seat = NET.seat;
+    if (deskRes && deskRes.X) { deskRes = null; deskKey = ''; }
     NET.act(function (st) { return netApply(st, seat, a); }).then(function (ok) { if (!ok && NET) { done = false; if (S) paint(); } });
   }
 
