@@ -29,92 +29,12 @@
 // Each deck and each bookmark goes by its own timestamp, so edits, deletes and
 // un-bookmarks on one device carry over to the others.
 // Each PIN (and guest play) keeps its own space on a shared device (fgh_space, fgh_space_<id>): see switchSpace.
-// ── A game in a computer's window (Tim, 2026-11-17: "gameplay needs to take up as much screen as the device will give
-// it, but also adapt to every possible resizing option") ───────────────────────────────────────────────────────────
-// Every game is laid out for a phone and a tablet, upright and sideways. A computer's window can be any size and shape,
-// and far larger than a tablet (Tim's MacBook at 3024 by 1964), where a layout drawn for a tablet is a small island.
-// So on a computer a game page is its own frame: this script, the first on every game page, stops the page it was
-// loaded in and puts the same page in a frame that fills the window. The frame is given the size the layouts are
-// drawn for (a long side of 1100 and the window's own shape: LONG_ALL below) and
-// scaled up to the window, so the game sees a tablet's screen and every size in it (media queries, vw and vh,
-// innerWidth, a canvas's pixels) is true for it. Where the browser carries `zoom` on a frame into the frame's page
-// (Chrome), that is how it is scaled; elsewhere the frame is scaled with a transform and the page inside is told the
-// finer devicePixelRatio so a canvas is still drawn sharp. A window no larger than a tablet is not scaled at all.
-// Phones and tablets (a touch screen as the main pointer) never get the frame. `gn_fit` '0' (Settings on a computer,
-// Fit games to the window) or ?fit=0 turns it off. The page in the frame leaves for the home screen at the top: a
-// page that is not a game takes the whole window itself. window.__gnFit (in the top page) is the frame's keeper.
-(function(){
-  var W = window, d = document, GAME = /\/games\/[^\/]+\.html$/;
-  var isGame = GAME.test(location.pathname), sh = null;
-  try{ if(W.parent !== W && W.parent.__gnFit) sh = W.parent.__gnFit; }catch(e){}
-  if(sh){
-    if(!isGame){ W.__gnShellTop = 1; try{ W.parent.location.replace(location.href); }catch(e){} d.write('<plaintext style="display:none">'); return; }
-    sh.inner(W); return;
-  }
-  if(!isGame || W.top !== W) return;
-  try{
-    if(/[?&]fit=0(&|$)/.test(location.search) || localStorage.getItem('gn_fit') === '0') return;
-    if(!W.matchMedia || !W.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
-  }catch(e){ return; }
-  // The long side a game sees is a tablet's, 1100, whatever the window's shape; its short side follows from the shape
-  // and is never under a phone's (402), so a very long thin window sees a longer side than 1100. Measured over every
-  // game at eight window shapes (the scratchpad's fill/audit.js), against a short side held to 768 (a square window then
-  // fell under the layouts' own widths and drew the phone's layout: 18 games scrolled where 5 do now) and against a
-  // phone's long side for thin windows (26 games scrolled in a 16:9 window where 15 do). LONG gives one game its own
-  // long side: Axis & Allies' map already grows with any window, so it sees more room and keeps its panel slim (its map
-  // covers 82% of a large window at 1600, 75% at 1100).
-  var SMIN = 402, LONG = { axisallies: 1600 }, LONG_ALL = 1100;
-  var ref = d.referrer, start = location.href, K = 1, zoomOK = false, cur = 0;
-  var tryLong = +((/[?&]fitlong=(\d+)/.exec(location.search) || [])[1]) || 0;   // (a test: another long side)
-  W.__gnShellTop = 1;
-  d.write('<body style="margin:0;overflow:hidden;background:#0e0f1b"><iframe id="gnfit" title="Game" allowfullscreen allow="fullscreen; autoplay; gamepad; camera; microphone; clipboard-read; clipboard-write; screen-wake-lock; accelerometer; gyroscope" style="position:fixed;left:0;top:0;border:0;display:block;transform-origin:0 0;background:transparent"></iframe><plaintext style="display:none">');
-  var f = d.getElementById('gnfit'); if(!f){ W.__gnShellTop = 0; return; }
-  try{
-    var t = d.createElement('iframe'); t.style.cssText = 'position:absolute;left:-400px;top:0;width:100px;height:50px;border:0;visibility:hidden;zoom:2';
-    d.body.appendChild(t); zoomOK = 'zoom' in t.style && Math.abs(t.contentWindow.innerWidth - 100) < 3; d.body.removeChild(t);
-  }catch(e){}
-  try{ if(localStorage.getItem('gn_fit_mode') === 't') zoomOK = false; }catch(e){}   // (a test: the transform way in a browser that has the other)
-  function fit(){
-    var Wr = W.innerWidth, Hr = W.innerHeight; if(!Wr || !Hr) return;
-    var lg = Math.max(Wr, Hr), st = Math.min(Wr, Hr), a = lg / st;
-    var vs = Math.max(SMIN, (tryLong || cur || LONG_ALL) / a), k = st / vs;
-    if(k < 1.04) k = 1;
-    var vw = Math.round(Wr / k), vh; k = Wr / vw; vh = Math.round(Hr / k);
-    K = k;
-    f.style.width = vw + 'px'; f.style.height = vh + 'px';
-    if(zoomOK){ f.style.zoom = k === 1 ? '' : String(k); f.style.transform = ''; }
-    else f.style.transform = k === 1 ? '' : 'scale(' + k + ')';
-  }
-  function page(path){ var m = /\/games\/([^\/]+)\.html$/.exec(path || ''); cur = (m && LONG[m[1]]) || 0; }
-  W.__gnFit = {
-    k: function(){ return K; }, zoom: function(){ return zoomOK; }, frame: f, fit: fit,
-    // the page in the frame, as its first script runs: its room is set before anything in it is laid out
-    inner: function(w){
-      page(w.location.pathname); fit();
-      try{ if(w.document.referrer === start || w.document.referrer === location.href) Object.defineProperty(w.document, 'referrer', { configurable: true, get: function(){ return ref; } }); }catch(e){}
-      if(!zoomOK) try{ Object.defineProperty(w, 'devicePixelRatio', { configurable: true, get: function(){ return (W.devicePixelRatio || 1) * K; } }); }catch(e){}
-    }
-  };
-  f.addEventListener('load', function(){
-    var w = f.contentWindow, u; try{ u = w.location.href; }catch(e){ return; }
-    if(!u || u === 'about:blank') return;
-    if(!GAME.test(w.location.pathname)){ location.replace(u); return; }   // (a page with no sync.js of its own)
-    try{ if(u !== location.href) history.replaceState(history.state, '', u); }catch(e){}
-    try{ d.title = w.document.title || d.title; }catch(e){}
-    try{ w.focus(); }catch(e){}
-  });
-  W.addEventListener('resize', fit);
-  W.addEventListener('keydown', function(){ try{ f.contentWindow.focus(); }catch(e){} }, true);
-  page(location.pathname); fit();
-  f.src = location.href;
-})();
 // ── A demo (games/<page>.html?demo=1, demo.js): a sandbox, set up before anything else reads or writes ─────────
 // The game's own saves read as empty (so the demo deals a fresh table) while settings, names, scores and history read as
 // they are; every write lands in memory for this page only and is gone when it closes; the cloud is never loaded (see
 // loadFirebase, boot and noteWrite below), and the dice and shuffles come from a seeded generator, so a demo plays out
 // the same every time. window.__KIT_DEMO keeps what it kept from the device: writes (keys) and blocked (cloud calls).
 (function(){
-  if(window.__gnShellTop) return;   // (the page this was loaded in is now only the game's frame: see above)
   if(!/\/games\//.test(location.pathname) || !/[?&]demo=1(&|$)/.test(location.search)) return;
   var D = window.__KIT_DEMO = { writes: [], blocked: [] };
   var ls; try{ ls = window.localStorage; }catch(e){ return; }
@@ -150,7 +70,6 @@
 })();
 (function(){
   'use strict';
-  if(window.__gnShellTop) return;
   var DEMO = !!window.__KIT_DEMO;
   // This file reads and writes the device's storage directly; everything else goes through Storage.prototype, which
   // is wrapped below (stWatch) so saves made by games are noticed and sent to the PIN's cloud copy
@@ -588,7 +507,7 @@
   var ST = 'fgh_st', ST_MAX = 300000, ST_PULL = 'fgh_st_pull_at', ST_BATCH = 40;
   var ST_SKIP = /^(hi_|gh_|prog_|fgh_|firebase|lorcana_(decks|marks)_|lorcana_(art|fancy)_v1$|casino_bank$|rklists$|fav_games|my_name$|gn_hidden_names$)/;
   // on this device only: online seats, table codes and device ids, sign-ins, caches, emulator settings, one-time markers
-  var ST_DEVICE = /^(online_.*|spotify_.*|tn_.*|.*_dev|.*_online|.*_net[a-z]*(_.*)?|lorc_lktag|lorc_newrel|console_local|lorcana_(cards|story).*|lorcana_slips|lorc_(art|fancy)|slots_thumbs.*|gn_console_(idx|house)|gn_con_ram|gn_offline.*|pinball_qauto|gn_fit(_mode)?|peggle_hi_mig|centi_2d|.*_cache(_.*)?)$/;
+  var ST_DEVICE = /^(online_.*|spotify_.*|tn_.*|.*_dev|.*_online|.*_net[a-z]*(_.*)?|lorc_lktag|lorc_newrel|console_local|lorcana_(cards|story).*|lorcana_slips|lorc_(art|fancy)|slots_thumbs.*|gn_console_(idx|house)|gn_con_ram|gn_offline.*|pinball_qauto|peggle_hi_mig|centi_2d|.*_cache(_.*)?)$/;
   // each game file's saved-game keys (the home screen's Keep playing deletes these; sync uses them to tell which device
   // played a game last: stTie)
   var ST_SAVES = {"2048":["2048_state"],"asteroids":["asteroids_state"],"baccarat":["baccarat_state"],"backgammon":["backgammon_state"],"battleship":["battleship_state"],"bingo":["bingo_state"],"blackjack":["blackjack_state"],"boggle":["boggle_state"],"breakout":["breakout_state"],"checkers":["checkers_state"],"chess":["chess_state"],"chinesecheckers":["chinesecheckers_state"],"codebreaker":["codebreaker_state"],"connectfour":["c4_state"],"conversation":["conversation_state"],"craps":["cr_state"],"cribbage":["cribbage_state"],"crossword":["crossword_state"],"cubehopper":["cubehopper_state"],"dealornodeal":["dond_state"],"dice-roller":["diceroller_state"],"dotsboxes":["dotsboxes_state"],"euchre-ai":["euchre_state"],"farkle":["farkle_state"],"fivecrownss-ai":["fivecrowns_state"],"flip7-ai":["flip7_state"],"freecell":["freecell_state"],"gin-rummy-ai":["gin_state"],"hangman":["hangman_state"],"hearts-ai":["hearts_state"],"horserace":["horserace_state"],"hotdogstand":["hotdogstand_state"],"oregon":["oregon_state"],"drugwars":["drugwars_state"],"jokerrun":["jokerrun_state"],"lorcana":["lorcana_state"],"lrc":["lrc_state"],"madlibs":["madlibs_state"],"mahjong":["mahjong_state"],"mahjong4":["mj4_state"],"mancala":["mancala_state"],"marbles":["marbles_state"],"mathpuzzles":["mathpuzzles_state"],"memorymatch":["memorymatch_state"],"minesweeper":["minesweeper_state"],"minigolf":["mg_state"],"othello":["othello_state"],"pacman":["pacman_state"],"paddleball":["paddleball_state"],"paigow":["paigow_state"],"peggle":["peggle_state"],"phase10-ai":["phase10_state"],"plinko":["plinko_state"],"poker":["poker_vp","poker_he_cash","poker_he_tourn","poker_om_cash","poker_om_tourn","poker_circ","poker_circ_om","poker_circ_mx","poker_last"],"pokersquares":["pokersquares_state"],"pyramid":["pyramid_state"],"riddlestories":["riddlestories_state"],"rook-ai":["rook_state"],"roulette":["rl_state"],"scorecard":["scorecard_state"],"shellgame":["shellgame_state"],"slidepuzzle":["slidepuzzle_state"],"slots":["slots_state"],"snake":["snake_state"],"solitaire":["solitaire_state"],"spades-ai":["spades_state"],"spellingbee":["spellingbee_state"],"sudoku":["sdk_state","sudoku_state"],"tetris":["tetris_state"],"threecardpoker":["threecardpoker_state"],"tictactoe":["tictactoe_state"],"trivia":["trivia_state"],"wheeloffortune":["wof_state"],"wizard-ai":["wizard_state"],"wordle":["wordle_state"],"wordscramble":["wordscramble_state"],"wordsearch":["wordsearch_state"],"wouldyourather":["wyr_state"],"yahtzee":["yahtzee_state"],"hearts":["pad_ht"],"flip7":["pad_f7"],"rook":["pad_rk"],"spades":["pad_sp"],"euchre":["pad_eu"],"five-crowns":["pad_fc"],"gin-rummy":["pad_rm"],"phase10":["pad_p10"],"wizard":["pad_wz","wizard_pad_bids"],"carmen":["carmen_case"],"ciphers":["ciphers_state"],"donkeykong":["dk_state"],"go":["go_state"],"invaders":["invaders_state"],"galaga":["galaga_state"],"goblindefenders":["goblin_run"],"junglehunt":["junglehunt_state"],"logicgrid":["logicgrid_state"],"lorcana-play":["lorcana_play_state"],"marblesolitaire":["marblesolitaire_state"],"mazes":["mazes_state"],"mysteries":["mysteries_state"],"pressyourluck":["pyl_state"],"riddles":["riddles_state"],"sandlot":["sandlot_state"],"scrabble":["scrabble_state"],"truthlies":["truthlies_state"]};

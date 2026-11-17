@@ -106,27 +106,6 @@ Underlying principles for everything:
   a `.k-scrim` is up the page is locked (`html:has(body > .k-scrim)` in kit.css: overflow hidden, so iOS can't hand a drag
   that reached the end of the sheet on to the page), and `trapScroll` in kit.js stops a drag that would carry on past an
   end from its very first pixels, since iOS decides on the first move whether a drag scrolls.
-- **A computer's window: the game at a tablet's size, scaled to fill it** (Tim, 2026-11-17, of a MacBook at 3024 by
-  1964 where Pac-Man was a small island: "gameplay needs to take up as much screen as the device will give it, but also
-  adapt to every possible resizing option in there"; measured, 80 of 114 games used under a fifth of such a window).
-  Layouts are drawn for a phone and a tablet, so on a computer (a mouse as the main pointer; never a phone or tablet) a
-  game page is its own frame: the first script on every game page (the top of sync.js) stops the page it was loaded in
-  with a `<plaintext>` and loads the same address in a frame that fills the window. The frame is given the size the
-  layouts are drawn for (`LONG_ALL`: a long side of 1100 in the window's own shape, a short side never under 402; chosen
-  by measuring every game at eight window shapes under three rules; `LONG` gives a game its own long side: Axis &
-  Allies, whose map already grows with any window, sees 1600) and scaled up, so inside it media queries, vw and vh, innerWidth and a canvas's pixels are all a
-  tablet's and everything, the bar and the words too, is as large as the window allows; a window no larger than a tablet
-  is not scaled. Chrome carries `zoom` on a frame into its page; where a browser doesn't, the frame is scaled by a
-  transform and the page inside is told the finer devicePixelRatio so a canvas is drawn sharp (`gn_fit_mode` 't' tries
-  that way in Chrome). The page at the top keeps its address and title level with the frame's, takes the theme's color
-  for the window's bar, and hands the keyboard to the frame; a page that is not a game, loaded in the frame, takes the
-  whole window itself (the home screen is never framed). Settings on a computer has Fit games to the window (`gn_fit`,
-  this device only); `?fit=0` is the page without it and `?fitlong=<n>` tries another long side. A new game needs
-  nothing, as long as sync.js is its first script. **What is still each game's own work**: a window shape between the
-  ones a game was drawn for (a square, a long strip) can leave a band empty or bring a scroll; the scratchpad's
-  `fill/audit.js <shapes> [games] --shots` opens every game's table (through its demo) at eight window shapes and
-  measures the share of the window it covers and how far it reaches, `fill/rank.js` lists the worst, `fill/flow.js`
-  checks getting in and out, the keyboard, a reload and a resize, and `fill/others.js` the pages with no demo.
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
