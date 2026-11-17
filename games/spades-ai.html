@@ -163,6 +163,183 @@
   #app.stage > .cbar .bidbox .bh small{display:none;}   /* (the tip is outlined in the grid and your partner's bid is at their seat) */
   #app.stage > .cbar .bidbox{gap:5px;} #app.stage > .cbar .bidgrid{gap:5px;} #app.stage > .cbar .bidgrid button{min-height:38px;}
 }
+/* ── A large window (Cards.desk in cards.js lays the page out; html.cdesk-on while it does) ───────────────────────
+   At the left stands the partnership score sheet, hand by hand: each side's bid, the tricks it took, its bags, the
+   hand's score and the running total, with a Nil marked beside the bid, and under the totals each side's bags toward
+   the next 10. At the right is the hand in play: whether spades are broken, the last trick, every player's bid with
+   the tricks taken against it, and who took each trick. Both panels are in the page at every size and drawn only at
+   a desk. On the felt the two side plaques grow with the table. */
+html.cdesk-on #app .plq{bottom:clamp(8px,1.6cqmin,24px);width:auto;min-width:7.4em;max-width:30cqw;padding:.5em .75em .6em;border-radius:.95em;font-size:clamp(.98rem,2cqmin,1.85rem);}
+html.cdesk-on #app .plq.l{left:clamp(8px,1.6cqmin,24px);} html.cdesk-on #app .plq.r{right:clamp(8px,1.6cqmin,24px);}
+html.cdesk-on #app .plq .t{font-size:.78em;} html.cdesk-on #app .plq .v{font-size:1.95em;} html.cdesk-on #app .plq .d{font-size:.8em;}
+html.cdesk-on #app .plq .bags{gap:.14em;margin-top:.3em;} html.cdesk-on #app .plq .bags i{width:.5em;height:.5em;border-radius:.14em;}
+html.cdesk-on #app .cseat .ptn{font-size:.72em;margin-left:.1em;}
+html.cdesk-on #app .cseat .tag > span:nth-child(2){max-width:8.4em;overflow-wrap:anywhere;}
+/* a short felt at a desk: the side seats sit above the plaques and the trick a little higher */
+@container cfelt (max-height:500px){
+  html.cdesk-on #app .cseat.w,html.cdesk-on #app .cseat.e{top:30%;}
+  html.cdesk-on #app .ctrick{top:50%;}
+  html.cdesk-on #app .plq .t small{display:none;}
+  html.cdesk-on #app .cmsg{bottom:auto;top:50%;transform:translate(-50%,-50%);}
+}
+/* a small window, upright or square (cards.js lays it out): the table's message lies clear of your seat */
+@media (orientation:portrait) and (min-width:480px) and (max-height:759.98px){
+  html.cdesk #app .cmsg{bottom:auto;top:60%;transform:translate(-50%,-50%);}
+}
+/* a narrow table at a desk (a tall, narrow window): the trick's cards keep clear of the side seats */
+@container cfelt (max-width:520px){
+  html.cdesk-on #app.stage .ctable .ctrick .pcard{--cw:clamp(40px,min(15cqw,15cqh),210px);}
+}
+/* the bids in the bar beside a short table */
+@media (min-width:1200px) and (max-height:699.98px){
+  #app.stage > .cbar .bidgrid button{min-height:38px;}
+  #app.stage > .cbar .bidbox .bh small{display:none;}
+}
+/* a mouse over the bids */
+@media (hover:hover){html.cdesk-on #app .bidgrid button:hover{filter:brightness(1.18);}}
+/* the Blind Nil question in a narrow bar: a button a line */
+html.cdesk-on #app.stage > .cbar .blindbox .row{flex-wrap:wrap;}
+html.cdesk-on #app.stage > .cbar .blindbox .btn{flex:1 1 9.5em;width:auto;}
+/* the score sheet: the kit's ruled pad (.cdk-pad) with five columns a side (a window wide enough gives it the width) */
+#app{--cdk-lmin:300px;}
+@media (min-width:1360px){#app{--cdk-lmin:412px;} #app.nobags{--cdk-lmin:364px;}}
+.sp-pad{--lc:2.3em;--px:.35em;--k:5;--half:calc((100% - var(--px) * 2 - var(--lc)) / 2);}
+.sp-pad.nobags{--k:4;}
+.sp-pad .pr{grid-template-columns:var(--lc) repeat(2,minmax(0,1.7fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.35fr) minmax(0,1.45fr));}
+.sp-pad .pb .cv{font-size:1.22em;}
+.sp-pad .rl{font-size:.68em;}
+.sp-pad.nobags .pr{grid-template-columns:var(--lc) repeat(2,minmax(0,1.7fr) minmax(0,1fr) minmax(0,1.35fr) minmax(0,1.45fr));}
+.sp-pad .sp-meb{position:absolute;top:0;bottom:0;left:calc(var(--px) + var(--lc) + var(--half) * var(--mt,0));width:var(--half);pointer-events:none;background:linear-gradient(180deg,color-mix(in srgb,var(--lit) 11%,transparent),color-mix(in srgb,var(--lit) 5%,transparent));box-shadow:inset 1px 0 0 color-mix(in srgb,var(--lit) 22%,transparent),inset -1px 0 0 color-mix(in srgb,var(--lit) 22%,transparent);}
+.sp-pad::after{content:"";position:absolute;top:0;bottom:0;left:calc(var(--px) + var(--lc) + var(--half));width:1px;background:color-mix(in srgb,var(--h,#6c7bff) 45%,var(--gl-line));pointer-events:none;}
+.sp-pad .tm{grid-column:span var(--k);display:flex;flex-direction:column;align-items:center;gap:.3em;min-width:0;padding:0 .3em;font-size:.82em;font-weight:700;line-height:1.1;text-align:center;overflow-wrap:anywhere;color:var(--text-2);}
+.sp-pad .tm.me{color:var(--lit-ink);}
+.sp-pad .tm .av{display:flex;}
+.sp-pad .tm .avatar{width:2em;height:2em;font-size:.95em;}
+.sp-pad .tm .avatar + .avatar{margin-left:-.35em;box-shadow:0 0 0 2px var(--sheet-solid,#1d1b2e);}
+.sp-pad .ph.sp-tms{border-bottom:0;padding-bottom:.3em;}
+.sp-pad .sp-hd{flex:none;align-items:end;padding-bottom:.35em;border-bottom:3px double color-mix(in srgb,var(--h,#6c7bff) 55%,var(--gl-line));}
+.sp-pad .sp-hd span{font-size:.6em;font-weight:700;color:var(--text-3);text-align:center;white-space:nowrap;}
+.sp-pad .pb .cv.pts{font-size:1.02em;color:var(--text-2);}
+.sp-pad .cv.pts.neg,.sp-pad .cv.set{color:var(--bad-ink);}
+.sp-pad .cv.tot.neg{color:var(--bad-ink);}
+.sp-pad .cv.pen{color:var(--bad-ink);}
+.sp-pad .cv.pen b{display:inline-grid;place-items:center;min-width:1.25em;height:1.25em;border-radius:50%;font-weight:400;box-shadow:inset 0 0 0 1.5px var(--bad-ink);}
+.sp-pad .cv .mk{margin-left:.16em;gap:.1em;font-size:.52em;}
+.sp-pad .cv .mk .sp-nil.bl{font-size:.84em;padding:.26em .3em;}
+.sp-nil{display:inline-block;padding:.22em .38em;letter-spacing:-.02em;border-radius:.5em;background:#1d1b2e;color:#fff;font-family:var(--font);font-style:normal;font-weight:800;line-height:1;white-space:nowrap;box-shadow:inset 0 0 0 1px rgba(255,255,255,.28);}
+.sp-nil.ok{background:var(--green);color:#06301a;box-shadow:none;}
+.sp-nil.bad{background:var(--red);color:#fff;box-shadow:none;}
+.sp-pad .pf .tot{grid-column:span var(--k);}
+.sp-pad .pm .mt{grid-column:span var(--k);margin:.25em 12% 0;}
+.sp-pad .pm{padding-bottom:.35em;}
+.sp-pad .sp-bg{flex:none;padding-bottom:.65em;background:var(--gl-3);}
+.sp-pad .sp-bg .rl{font-size:.68em;}
+.sp-pad .sp-bg .bg{grid-column:span var(--k);display:flex;align-items:center;justify-content:center;gap:.18em;}
+.sp-pad .sp-bg .bg i{width:.56em;height:.56em;border-radius:.16em;background:var(--gl-2);box-shadow:inset 0 0 0 1px var(--gl-line);}
+.sp-pad .sp-bg .bg i.on{background:#e8d9b0;box-shadow:inset 0 0 0 1px rgba(0,0,0,.22);}
+.sp-pad .sp-bg .bg.warn i.on{background:var(--lit);box-shadow:0 0 6px var(--litg);}
+.sp-pad .sp-bg .bg b{margin-left:.5em;min-width:1.2em;font-size:.76em;font-weight:750;color:var(--text-2);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.sp-pad .sp-bg .bg.warn b{color:var(--lit-ink);}
+/* a narrow sheet (a tall, narrow window) keeps the bid, the tricks and the total; the bags are under the totals */
+@container cdkp (max-width:372px){
+  .sp-pad,.sp-pad.nobags{--k:3;}
+  .sp-pad .pr,.sp-pad.nobags .pr{grid-template-columns:var(--lc) repeat(2,minmax(0,1.6fr) minmax(0,1fr) minmax(0,1.4fr));}
+  .sp-pad .pb .cv{font-size:1.42em;}
+  .sp-pad .sp-hd span{font-size:.66em;}
+  .sp-pad .c-bg,.sp-pad .c-pt{display:none;}
+}
+@container cdkp (max-height:430px){.sp-pad .sp-bg{padding-bottom:.5em;} .sp-pad .tm .av{display:none;}}
+/* the hand in play, at the right */
+.sp-st{flex:none;display:flex;align-items:center;gap:.6em;padding:0 1.25em .25em;font-size:.86em;font-weight:650;line-height:1.25;color:var(--text-2);}
+.sp-st .sg{flex:none;display:grid;place-items:center;width:1.75em;height:1.75em;border-radius:.5em;font-size:1.05em;line-height:1;color:var(--text-3);box-shadow:inset 0 0 0 1.5px var(--gl-line);}
+.sp-st .sg .ico{width:1.05em;height:1.05em;}
+.sp-st.on .sg{color:#1d1b2e;background:linear-gradient(160deg,#fff,#f1ead9);box-shadow:0 0 0 2px var(--lit),0 0 12px var(--litg);}
+.sp-st.on{color:var(--text);}
+.sp-g1{flex:1 1 0;min-height:0;max-height:calc(125cqw + 4.2em);display:flex;flex-direction:column;}
+.sp-g2{flex:none;display:flex;flex-direction:column;min-height:0;padding-bottom:.8em;}
+.sp-g3,.sp-g4{flex:none;display:flex;flex-direction:column;min-height:0;padding-bottom:.9em;}
+.sp-g4 > .cdk-lbl{padding-top:.5em;margin-top:.2em;border-top:1px solid var(--gl-line);margin-left:1.05em;margin-right:1.05em;padding-left:.2em;padding-right:.2em;}
+.sp-sfh{display:flex;}
+.sp-sfh span{width:3.4em;text-align:right;}
+.sp-pl.sp-sf{flex-wrap:nowrap;}
+.sp-pl.sp-sf .n{min-width:0;width:3.1em;font-family:var(--display);font-size:1em;color:var(--text);}
+.sp-pl.sp-sf .n.under{color:var(--bad-ink);}
+.sp-took{flex:none;display:flex;align-items:center;gap:.5em;min-height:2.3em;padding:.45em 1.25em 0;font-size:.86em;font-weight:650;line-height:1.2;color:var(--text-2);}
+.sp-took .avatar{width:1.8em;height:1.8em;font-size:.85em;}
+.sp-team{display:flex;flex-direction:column;min-width:0;}
+.sp-tm{display:flex;align-items:baseline;justify-content:space-between;gap:.6em;margin:0 1.05em;padding:.1em .2em .15em;font-size:.8em;font-weight:700;line-height:1.2;color:var(--text-2);}
+.sp-team + .sp-team .sp-tm{margin-top:.3em;padding-top:.4em;border-top:1px solid var(--gl-line);}
+.sp-tm span:last-child{flex:none;font-weight:650;color:var(--text-3);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.sp-tm span:last-child b{color:var(--lit-ink);font-weight:800;}
+.sp-tm.made span:last-child b{color:var(--green);}
+.sp-pl{display:flex;flex-wrap:wrap;align-items:center;gap:.2em .5em;min-height:2.15em;padding:.1em 1.25em;font-size:.86em;font-weight:650;line-height:1.2;color:var(--text-2);}
+.sp-pl .avatar{flex:none;width:1.8em;height:1.8em;font-size:.85em;}
+.sp-pl .nm{flex:1 1 auto;min-width:0;overflow-wrap:anywhere;}
+.sp-pl.now .nm{color:var(--lit-ink);}
+.sp-pl .pp{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:.24em;margin-left:auto;max-width:100%;}
+.sp-pl .pp i{width:.74em;height:.74em;border-radius:50%;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--text) 34%,transparent);}
+.sp-pl .pp i.on{background:var(--c);box-shadow:none;}
+.sp-pl .pp i.bag{border-radius:.2em;background:#e8d9b0;box-shadow:inset 0 0 0 1px rgba(0,0,0,.22);}
+.sp-pl .pp i.bad{background:var(--red);box-shadow:none;}
+.sp-pl .pp .sp-nil{font-size:.74em;margin-right:.2em;}
+.sp-pl .n{flex:none;min-width:3.5em;text-align:right;font-size:.9em;color:var(--text-3);font-variant-numeric:tabular-nums;white-space:nowrap;}
+/* who took each trick: a disc in the taker's color; the tricks to come are rings */
+.sp-tl{flex:none;display:grid;grid-template-columns:repeat(var(--tc,7),minmax(0,1fr));gap:.45em 0;padding:0 .9em;}
+.sp-tk{display:flex;flex-direction:column;align-items:center;min-width:0;}
+.sp-tk .avatar{width:2em;height:2em;font-size:.8em;}
+.sp-tk .o{display:grid;place-items:center;width:2.35em;height:2.35em;border-radius:50%;font-size:.68em;font-weight:700;color:var(--text-3);box-shadow:inset 0 0 0 1.5px var(--gl-line);font-variant-numeric:tabular-nums;}
+.sp-tk .n,.sp-tk .nm{display:none;}
+.sp-tk.done .o{background:var(--gl-2);}
+.sp-tk.now .o{color:var(--lit-ink);box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.7),0 0 10px var(--litg);}
+/* a hand just scored: what happened, a line a side */
+.sp-notes{flex:none;list-style:none;margin:0;padding:0 1.25em .3em;display:flex;flex-direction:column;gap:.4em;}
+.sp-notes li{display:flex;gap:.55em;align-items:flex-start;font-size:.86em;font-weight:650;line-height:1.3;color:var(--text-2);}
+.sp-notes li .ico{flex:none;width:1.15em;height:1.15em;margin-top:.08em;color:var(--green);}
+.sp-notes li.bad .ico{color:var(--red);}
+/* a panel too short for everything keeps what matters most: the bids against the tricks, then the last trick */
+@container cdkp (max-height:640px){.sp-g3{display:none;}}
+@container cdkp (max-height:470px){.sp-g4{display:none;}}
+@container cdkp (max-height:439px){.sp-g1{display:none;} .sp-g3{display:flex;}}
+@container cdkp (max-height:372px){.sp-g3{display:none;}}
+@container cdkp (max-height:300px){.sp-st{display:none;}}
+@container cdkp (max-height:275px){.sp-tm{display:none;} .sp-pl{min-height:1.9em;}}
+@container cdkp (max-height:190px){.sp-g2 > .cdk-lbl{display:none;} .sp-side > .cdk-h{padding:.6em 1em .3em;} .sp-pl{min-height:1.7em;}}
+@container cdkp (max-height:130px){.sp-g2,.sp-notes{display:none;}}
+/* (a hand just scored: what happened comes first, then the bids against the tricks, then the last trick) */
+@container cdkp (max-height:760px){.sp-side.over:has(.sp-notes li:nth-child(3)) .sp-g3{display:none;}}
+@container cdkp (max-height:660px){.sp-side.over .sp-g3,.sp-side.over:has(.sp-notes li:nth-child(3)) .sp-g1{display:none;}}
+@container cdkp (max-height:540px){.sp-side.over .sp-g1{display:none;}}
+@container cdkp (max-height:480px){.sp-side.over:has(.sp-notes li:nth-child(3)) .sp-g2{display:none;}}
+@container cdkp (max-height:380px){.sp-side.over .sp-g2{display:none;}}
+/* a tall panel: the tricks are a ruled list down the panel, a line a trick */
+@container cdkp (min-height:1000px) and (max-width:520px){
+  .sp-side:not(.over) .sp-g1{flex:1 1 min(100cqw,34cqh);max-height:min(120cqw,42cqh);}
+  .sp-side:not(.over) .sp-g3{flex:1 1 auto;}
+  .sp-side:not(.over) .sp-tl{flex:1 1 calc(13 * 3em);min-height:calc(13 * 1.55em);max-height:calc(13 * 4.4em);grid-template-columns:minmax(0,1fr);grid-auto-rows:minmax(0,1fr);gap:0;padding:0 1.1em;}
+  .sp-side:not(.over) .sp-tk{flex-direction:row;gap:.6em;padding:0 .2em;border-bottom:1px solid var(--gl-line);}
+  .sp-side:not(.over) .sp-tk .n{display:block;width:1.6em;font-size:.74em;font-weight:700;color:var(--text-3);text-align:center;font-variant-numeric:tabular-nums;}
+  .sp-side:not(.over) .sp-tk .o{color:transparent;}
+  .sp-side:not(.over) .sp-tk .nm{display:block;flex:1;min-width:0;font-size:.86em;font-weight:650;color:var(--text-2);overflow-wrap:anywhere;}
+}
+/* a panel wider than tall (a strip of a window): the last trick at the left, the rest at the right */
+@container cdkp (min-aspect-ratio:5/4) and (min-width:460px){
+  .sp-side{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);grid-auto-rows:auto;align-content:start;}
+  .sp-side > *,.sp-side > .sp-g1 > *{grid-column:2;}
+  .sp-side > .sp-g1,.sp-side.over > .sp-g1{display:contents;}
+  .sp-side > .sp-g1 > .cdk-lt{grid-column:1;grid-row:1 / span 8;margin:1em 0 1em 1em;}
+  .sp-side > .sp-g1 > .cdk-lbl{display:none;}
+  .sp-side > .sp-g2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-content:start;padding-bottom:0;}
+  .sp-side > .sp-g2 > .cdk-lbl{grid-column:1 / -1;}
+  .sp-side .sp-team + .sp-team .sp-tm{margin-top:0;padding-top:.1em;border-top:0;}
+  .sp-side .sp-team + .sp-team{box-shadow:-1px 0 0 var(--gl-line);}
+  .sp-side .sp-tm{margin:0 .7em;}
+  .sp-side .sp-pl{padding:.1em .85em;}
+  .sp-side .sp-pl .n{display:none;}
+  .sp-side > .sp-g3{display:none;}
+  .sp-side > .sp-g4{display:none;}
+  .sp-side.bid{grid-template-columns:minmax(0,1fr);}
+  .sp-side.bid > *{grid-column:1;}
+}
 </style>
 </head>
 <body>
@@ -322,6 +499,7 @@
     S.bids = [null, null, null, null]; S.blind = [false, false, false, false];
     S.taken = [0, 0, 0, 0]; S.trick = []; S.trickNo = 0; S.broken = false; S.gone = []; S.sb = 0;
     S.voids = [{}, {}, {}, {}];
+    S.tl = []; S.lt = null; handBar = false;   // (for the desk's panels: who took each trick, and the last trick)
     S.dtHand = S.hands[0].map(key);
     S.turn = (S.dealer + 1) % 4; S.leader = S.turn;
     // Blind Nil: each person on a team behind by 100 or more chooses before seeing their cards
@@ -583,6 +761,7 @@
     } else if (!isNil(win.p) && teamOf(win.p) === MT() && wonFor(MT()) === contract(MT()) && contract(MT()) > 0) {
       Kit.callout('Bid made!', 'var(--green)'); Kit.sfx('good'); Kit.haptic('success');
     } else if (win.p === me()) Kit.haptic('light');
+    S.lt = { t: S.trick.slice(), w: win.p }; if (S.tl) S.tl.push(win.p);
     S.trick = []; S.trickNo++; S.leader = win.p; S.turn = win.p;
     var done = S.trickNo === 13;
     save(); paintSeats(); paintPlaques();
@@ -640,9 +819,9 @@
     });
     S.rounds.push([res[0].pts, res[1].pts]);
     (S.hx = S.hx || []).push(hxEntry(S, res, S.dtHand));
-    S.last = { res: res.map(function (r) { return { bid: r.bid, took: r.took, pts: r.pts, bags: r.bags, penalty: r.penalty }; }), notes: notes };
+    S.last = { res: res.map(function (r) { return { bid: r.bid, took: r.took, won: r.won, pts: r.pts, bags: r.bags, penalty: r.penalty, set: r.set, made: r.made, nils: r.nils }; }), notes: notes };
     S.phase = 'handover';
-    clearUndo(); save(); paintPlaques();
+    clearUndo(); save(); paintPlaques(); paintDesk();
     // Big moments (from the side of whoever holds the device)
     var us = res[MT()], them = res[1 - MT()];
     // The rare hands have their moment on the table, the rarest the biggest: a Blind Nil made, all 13 tricks, a
@@ -692,6 +871,9 @@
   }
   function nilTag(t) { return [t, t + 2].some(function (p) { return isNil(p); }) ? ' + Nil' : ''; }
   function showHandSummary() {
+    // (a desk: the hand is already written on the score sheet beside the table and told at the right, so nothing
+    // covers the table; the bar has the button for the next hand)
+    if (DESK && DESK.on() && !NET && S.phase === 'handover') { handBar = true; paintSeats(); paintBar(); return; }
     var node = el('div');
     node.appendChild(scoreTable(true));
     if (S.last.notes.length) {
@@ -731,6 +913,7 @@
     var players = S.players, target = S.target, blind = S.blindOpt, bagsOn = !S.bagsOff, mode = S.mode;
     var lose = !person(w) && !person(w + 2), mine = w === MT() && onePerson();
     clearSave(); S.phase = 'over';
+    paintDesk();   // (a desk: the last hand is on the score sheet behind the results)
     Kit.win({
       title: mine ? 'You win!' : teamShort(w) + ' win',
       sub: (mine ? 'You and ' + players[partnerOf(me())].name + ' won by ' : onePerson() ? 'They won by ' : 'Won by ') + (S.scores[w] - S.scores[l]),
@@ -755,6 +938,7 @@
 
   // ── Render ────────────────────────────────────────────────────────────────
   var seatEls = [], trickEl, handEl, barEl, msgEl, plqEls = [], sortRow;
+  var DESK = Cards.desk(app), deskKey = '', deskLt = '', deskRounds = -1, handBar = false, netWait = null;   // (a large window: cards.js)
   function render() {
     app.innerHTML = '';
     var table = el('div', { class: 'ctable wood' }), felt = el('div', { class: 'felt-in' });
@@ -773,6 +957,7 @@
     app.appendChild(handEl);
     barEl = el('div', { class: 'cbar' });
     app.appendChild(barEl);
+    if (DESK) { app.classList.toggle('nobags', !!S.bagsOff); app.appendChild(DESK.l); app.appendChild(DESK.r); }
     (S.trick || []).forEach(function (t) { trickEl.appendChild(Cards.el(t.c, { cls: 'p-' + posOf(t.p) })); });
     paintSeats(); paintHand(); paintMsg(); paintPlaques();
     if (S.phase === 'handover') setTimeout(showHandSummary, 200);
@@ -831,6 +1016,7 @@
         }
       }
     });
+    paintDesk();
   }
   function paintHand() {
     handEl.innerHTML = '';
@@ -858,6 +1044,11 @@
   function paintBar() {
     barEl.innerHTML = '';
     if (NET) { netBar(); return; }
+    if (S.phase === 'handover' && handBar) {
+      barEl.appendChild(el('span', { class: 'hint', text: 'Hand ' + S.round + ' is on the score sheet.' }));
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Deal next hand', onclick: function () { if (S && S.phase === 'handover' && !NET) newHand(); } }));
+      return;
+    }
     if (BLIND) { barEl.appendChild(el('span', { class: 'hint', text: '' })); return; }
     if (S.phase === 'blind' && blindAsk().indexOf(me()) < 0) {
       barEl.appendChild(el('span', { class: 'hint', text: blindAsk().length ? 'Pass the device to ' + S.players[blindAsk()[0]].name : '' }));
@@ -911,7 +1102,196 @@
     var b = el('div', { class: 'say', text: t }); seatEls[p].appendChild(b);
     setTimeout(function () { b.remove(); }, 1500);
   }
-  window.addEventListener('resize', function () { if (handEl) Cards.fan(handEl); });
+  window.addEventListener('resize', function () { if (handEl) Cards.fan(handEl); if (S && S.players && S.hands && handEl) { paintDesk(); var pb = DESK && DESK.l.querySelector('.pb'); if (pb) pb.scrollTop = pb.scrollHeight; } });   // (the sheet keeps its newest hand in view)
+
+  // ── A large window (Cards.desk) ───────────────────────────────────────────
+  // Beside the table at a desk: the partnership score sheet at the left (every hand: each side's bid, tricks, bags,
+  // score and running total, the hand in play lit, the totals, how near each side is to the score the game is played
+  // to, and its bags toward the next 10) and the hand in play at the right (whether spades are broken, the last
+  // trick, every player's bid with the tricks taken against it, who took each trick; once a hand is scored, what
+  // happened to each side). Both are drawn from the game as it stands, and only when a desk layout shows: a phone
+  // and a tablet never draw them.
+  function seatDisc(p) { return el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: S.players[p].cpu ? Kit.icon('bot') : Kit.esc(S.players[p].name.charAt(0).toUpperCase()) }); }
+  function nilChip(text, state) { return '<b class="sp-nil' + (text === 'Blind' ? ' bl' : '') + (state ? ' ' + state : '') + '">' + text + '</b>'; }
+  function sideSay(t) { return onePerson() && t === MT() ? 'You and ' + S.players[partnerOf(me())].name : S.players[t].name + ' and ' + S.players[t + 2].name; }
+  function paintDesk() {
+    if (!DESK) return;
+    if (!DESK.on() || !S || !S.players || !S.bids || !S.taken || !S.rounds) { deskKey = ''; return; }
+    var key = JSON.stringify([S.round, S.phase, S.trickNo, S.taken, S.bids, S.blind, S.broken, S.scores, S.bags, S.rounds.length, S.turn, S.dealer, me(), BLIND, S.players, S.tl, S.lt && S.lt.w, S.target, S.bagsOff, !!S.last]);
+    if (key === deskKey) return;
+    deskKey = key;
+    paintSheet(); paintSide();
+  }
+  // every scored hand by side: {bid, nils, took, bags, set, pen, pts, total} (the bids and tricks come from the
+  // hand's history entry; a hand from before those were kept has its score and total alone)
+  function handRows() {
+    var hx = S.dhx || S.hx || [], off = S.rounds.length - hx.length, tot = [0, 0];
+    return S.rounds.map(function (r, i) {
+      var h = hx[i - off], b = h && h.b ? String(h.b).split('.') : null, t = h && h.t ? String(h.t).split('.').map(Number) : null;
+      return [0, 1].map(function (tm) {
+        var o = { pts: r[tm], total: (tot[tm] += r[tm]) };
+        if (b && t && b.length === 4 && t.length === 4) {
+          var bid = 0, won = 0, nt = 0; o.nils = [];
+          [tm, tm + 2].forEach(function (p) {
+            if (b[p] === 'N' || b[p] === 'B') { o.nils.push({ blind: b[p] === 'B', state: t[p] === 0 ? 'ok' : 'bad' }); nt += t[p]; }
+            else { bid += +b[p] || 0; won += t[p]; }
+          });
+          o.bid = bid; o.took = t[tm] + t[tm + 2]; o.set = bid > 0 && won < bid; o.bags = (bid > 0 && won >= bid ? won - bid : 0) + nt;
+          o.pen = String(h.r || '').indexOf(tm ? 'q' : 'p') >= 0;
+        }
+        return o;
+      });
+    });
+  }
+  function paintSheet() {
+    var bagsOn = !S.bagsOff, playing = S.phase === 'bid' || S.phase === 'blind' || S.phase === 'play';
+    var mine = BLIND ? -1 : MT(), all = S.bids.every(function (b) { return b != null; });
+    var inner = el('div', { class: 'cdk-in' }, [el('div', { class: 'cdk-h' }, [el('h2', { text: 'Score sheet' })])]);
+    DESK.l.innerHTML = ''; DESK.l.appendChild(inner);
+    var root = el('div', { class: 'cdk-pad sp-pad' + (bagsOn ? '' : ' nobags'), style: { '--mt': String(Math.max(0, mine)) } });
+    if (mine >= 0) root.appendChild(el('div', { class: 'sp-meb' }));
+    function cv(cls, v, mark) { return el('span', { class: 'cv ' + cls, html: (v == null ? '' : v) + (mark ? '<i class="mk">' + mark + '</i>' : '') }); }
+    function signed(v) { return (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v); }
+    function row(cls, label, cells) { return el('div', { class: 'pr ' + cls }, [el('span', { class: 'rl', text: label == null ? '' : String(label) })].concat(cells)); }
+    function side(o) {
+      var chips = (o.nils || []).map(function (x) { return nilChip(x.blind ? 'Blind' : 'Nil', x.state); }).join('');
+      var c = [cv('', o.bid == null ? '' : o.bid > 0 || !chips ? o.bid : '', chips), cv(o.set ? 'set' : '', o.took == null ? '' : o.took)];
+      if (bagsOn) c.push(cv('c-bg' + (o.pen ? ' pen' : o.bags ? '' : ' z'), o.bags == null ? '' : o.pen ? '<b>' + o.bags + '</b>' : o.bags));
+      c.push(cv('c-pt pts' + (o.pts < 0 ? ' neg' : ''), o.pts == null ? '' : signed(o.pts)));
+      c.push(cv('tot' + (o.total < 0 ? ' neg' : ''), o.total == null ? '' : o.total < 0 ? '−' + Math.abs(o.total) : o.total));
+      return c;
+    }
+    root.appendChild(row('ph sp-tms', '', [0, 1].map(function (t) {
+      return el('span', { class: 'tm' + (t === mine ? ' me' : '') }, [el('span', { class: 'av' }, [seatDisc(t), seatDisc(t + 2)]), el('span', { text: teamName(t) })]);
+    })));
+    var heads = ['Bid', 'Took'].concat(bagsOn ? ['Bags'] : [], ['Score', 'Total']);
+    root.appendChild(row('sp-hd', '', [0, 1].reduce(function (a) {
+      return a.concat(heads.map(function (h) { return el('span', { class: h === 'Bags' ? 'c-bg' : h === 'Score' ? 'c-pt' : '', text: h }); }));
+    }, [])));
+    var body = el('div', { class: 'pb' }), rows = handRows(), just = deskRounds >= 0 && S.rounds.length === deskRounds + 1;
+    rows.forEach(function (r, i) { body.appendChild(row(just && i === rows.length - 1 ? 'just' : '', i + 1, side(r[0]).concat(side(r[1])))); });
+    if (playing) body.appendChild(row('live', S.round, [0, 1].reduce(function (a, t) {
+      var ps = [t, t + 2], any = ps.some(function (p) { return S.bids[p] != null; }), nilTk = 0, o = { pts: null, total: null };
+      o.nils = ps.filter(function (p) { return S.bids[p] === 0; }).map(function (p) { nilTk += S.taken[p]; return { blind: S.blind[p], state: S.taken[p] ? 'bad' : '' }; });
+      if (any) o.bid = contract(t);
+      if (all) { o.took = teamTaken(t); o.bags = (contract(t) > 0 ? Math.max(0, wonFor(t) - contract(t)) : 0) + nilTk; }
+      return a.concat(side(o));
+    }, [])));
+    root.appendChild(body);
+    var lead = S.scores[0] === S.scores[1] || !S.rounds.length ? -1 : S.scores[0] > S.scores[1] ? 0 : 1;
+    root.appendChild(row('pf', 'Total', [0, 1].map(function (t) { return cv('tot' + (t === lead ? ' lead' : '') + (S.scores[t] < 0 ? ' neg' : ''), S.scores[t] < 0 ? '−' + Math.abs(S.scores[t]) : S.scores[t]); })));
+    root.appendChild(row('pm', 'to ' + S.target, [0, 1].map(function (t) {
+      return el('i', { class: 'mt', style: { '--c': Kit.color(t) } }, [el('b', { style: { width: Math.round(Math.max(0, Math.min(1, S.scores[t] / S.target)) * 100) + '%' } })]);
+    })));
+    if (bagsOn) root.appendChild(row('sp-bg', 'Bags', [0, 1].map(function (t) {
+      var pips = ''; for (var i = 0; i < 10; i++) pips += '<i' + (i < S.bags[t] ? ' class="on"' : '') + '></i>';
+      return el('span', { class: 'bg' + (S.bags[t] >= 7 ? ' warn' : ''), html: pips + '<b>' + S.bags[t] + '</b>' });
+    })));
+    inner.appendChild(root);
+    body.scrollTop = body.scrollHeight;
+    // (the newest hand stays in view when the sheet changes height: the bar beside it growing for the bids, a resize)
+    if (window.ResizeObserver) new ResizeObserver(function () { body.scrollTop = body.scrollHeight; }).observe(body);
+    deskRounds = S.rounds.length;
+    inner.appendChild(el('div', { class: 'cdk-goal', text: 'The first team to reach ' + S.target + ' wins' + (bagsOn ? ', and every 10 bags cost a team 100 points.' : '.') }));
+  }
+  // what happened to each side in the hand just scored, as sentences
+  function handNotes() {
+    var L = S.last, out = [];
+    if (!L || !L.res) return out;
+    if (!L.res[0].nils) return (L.notes || []).map(function (n) { return { bad: n.bad, text: n.text }; });   // (scored before the details were kept)
+    L.res.forEach(function (r, t) {
+      var who = sideSay(t), mine = t === MT(), over = r.won - r.bid;
+      if (r.set) out.push({ bad: mine, text: who + ' bid ' + r.bid + ' and took ' + r.won + ', so the bid was set.' });
+      else if (r.made) out.push({ text: who + ' bid ' + r.bid + ' and took ' + (!over ? 'exactly ' + r.won + '.' : r.won + (S.bagsOff ? ', ' + over + ' more than the bid.' : over === 1 ? ', so 1 trick is a bag.' : ', so ' + over + ' tricks are bags.')) });
+      r.nils.forEach(function (x) {
+        var label = x.blind ? 'Blind Nil' : 'Nil', tk = S.taken[x.p];
+        if (x.ok) out.push({ text: short(x.p) + ' made ' + label + ', worth ' + x.v + ' points.' });
+        else out.push({ bad: mine, text: short(x.p) + ' took ' + (tk === 1 ? '1 trick' : tk + ' tricks') + ', so the ' + label + ' failed and cost ' + x.v + ' points.' });
+      });
+      if (r.penalty) out.push({ bad: mine, text: who + ' reached 10 bags, which cost 100 points.' });
+    });
+    return out;
+  }
+  function paintSide() {
+    var m = me(), over = S.phase === 'handover' || S.phase === 'over', bidding = S.phase === 'bid' || S.phase === 'blind', play = S.phase === 'play';
+    var all = S.bids.every(function (b) { return b != null; }), done = bidding ? 0 : Math.min(S.trickNo || 0, 13);
+    var inner = el('div', { class: 'cdk-in sp-side' + (bidding ? ' bid' : '') + (over ? ' over' : '') }, [el('div', { class: 'cdk-h' }, [el('h2', { text: 'Hand ' + (S.last && S.last.round && over ? S.last.round : S.round) }), el('small', { text: play ? 'Trick ' + Math.min(done + 1, 13) + ' of 13' : bidding ? 'Bidding' : '' })])]);
+    if (over) {
+      var ul = el('ul', { class: 'sp-notes' });
+      handNotes().forEach(function (n) { ul.appendChild(el('li', { class: n.bad ? 'bad' : '', html: Kit.icon(n.bad ? 'close' : 'check') + '<span>' + Kit.esc(n.text) + '</span>' })); });
+      if (ul.childNodes.length) inner.appendChild(ul);
+    } else if (bidding) {
+      var first = (S.dealer + 1) % 4, solo = onePerson();
+      inner.appendChild(el('div', { class: 'sp-st', html: '<span class="sg">♠︎</span><span>' + Kit.esc((S.dealer === m && solo ? 'You' : S.players[S.dealer].name) + ' dealt, so ' + (first === m && solo ? 'you bid' : S.players[first].name + ' bids') + ' first.') + '</span>' }));
+    } else {
+      inner.appendChild(el('div', { class: 'sp-st' + (S.broken ? ' on' : ''), html: '<span class="sg">♠︎</span><span>' + (S.broken ? 'Spades are broken.' : 'Spades are not broken yet.') + '</span>' }));
+    }
+    // the last trick, lying as it lay on the table
+    if (!bidding) {
+      var lt = S.lt && S.lt.t && S.lt.t.length === 4 ? S.lt : null, ltKey = S.round + ':' + S.trickNo, g1 = el('div', { class: 'sp-g1' });
+      g1.appendChild(el('div', { class: 'cdk-lbl' }, [el('span', { text: 'Last trick' })]));
+      Cards.lastTrick(g1, { fresh: !!lt && deskLt !== ltKey, plays: lt ? lt.t.map(function (x) { return { c: x.c, pos: posOf(x.p), win: x.p === lt.w }; }) : [] });
+      if (lt) deskLt = ltKey;
+      var took = el('div', { class: 'sp-took' });
+      if (lt) { took.appendChild(seatDisc(lt.w)); took.appendChild(el('span', { text: short(lt.w) + ' took this trick' })); }
+      g1.appendChild(took); inner.appendChild(g1);
+    }
+    // every player's bid, and the tricks taken against it: a ring for each trick bid, filled as it is taken; a trick
+    // over the bid is a bag (a square), and a trick taken on a Nil is red
+    var g2 = el('div', { class: 'sp-g2' });
+    g2.appendChild(el('div', { class: 'cdk-lbl' }, [el('span', { text: 'Bids and tricks' }), el('span', { text: bidding ? '' : done + ' of 13' })]));
+    [MT(), 1 - MT()].forEach(function (t) {
+      var con = contract(t), won = wonFor(t);
+      var tb = el('div', { class: 'sp-team' });
+      tb.appendChild(el('div', { class: 'sp-tm' + (all && con > 0 && won >= con ? ' made' : '') }, [el('span', { text: teamName(t) }), el('span', { html: all && con > 0 ? 'Won <b>' + won + '</b> of ' + con : '' })]));
+      [t, t + 2].forEach(function (p) {
+        var b = S.bids[p], tk = S.taken[p], pips = '', n = '', i;
+        if (b == null) n = S.phase === 'bid' && S.turn === p ? 'Bidding…' : '';
+        else if (b === 0) {
+          pips = nilChip(S.blind[p] ? 'Blind Nil' : 'Nil', tk ? 'bad' : over ? 'ok' : '');
+          for (i = 0; i < tk; i++) pips += '<i class="bad"></i>';
+          n = tk ? 'Took ' + tk : '';
+        } else {
+          for (i = 0; i < Math.max(b, tk); i++) pips += '<i class="' + (i >= b ? 'bag' : i < tk ? 'on' : '') + '"></i>';
+          n = tk + ' of ' + b;
+        }
+        tb.appendChild(el('div', { class: 'sp-pl' + (!over && S.turn === p ? ' now' : '') }, [seatDisc(p), el('span', { class: 'nm', text: S.players[p].name }),
+          el('span', { class: 'pp', style: { '--c': Kit.color(p) }, html: pips }), el('span', { class: 'n', text: n })]));
+      });
+      g2.appendChild(tb);
+    });
+    inner.appendChild(g2);
+    // while the bids are made: what each player has bid and taken over the game so far (the hands they bid Nil left out)
+    var hx = S.dhx || S.hx || [];
+    if (bidding && hx.length) {
+      var sum = [0, 1, 2, 3].map(function () { return { b: 0, t: 0 }; }), g4 = el('div', { class: 'sp-g4' });
+      hx.forEach(function (h) {
+        var b = String(h.b || '').split('.'), t = String(h.t || '').split('.');
+        if (b.length === 4 && t.length === 4) for (var p = 0; p < 4; p++) if (b[p] !== 'N' && b[p] !== 'B') { sum[p].b += +b[p] || 0; sum[p].t += +t[p] || 0; }
+      });
+      g4.appendChild(el('div', { class: 'cdk-lbl' }, [el('span', { text: 'So far this game' }), el('span', { class: 'sp-sfh' }, [el('span', { text: 'Bid' }), el('span', { text: 'Took' })])]));
+      [MT(), 1 - MT()].forEach(function (t) { [t, t + 2].forEach(function (p) {
+        g4.appendChild(el('div', { class: 'sp-pl sp-sf' }, [seatDisc(p), el('span', { class: 'nm', text: S.players[p].name }), el('span', { class: 'n', text: String(sum[p].b) }), el('span', { class: 'n' + (sum[p].t < sum[p].b ? ' under' : ''), text: String(sum[p].t) })]));
+      }); });
+      inner.appendChild(g4);
+    }
+    // who took each trick of the hand (the tricks whose taker is known: all of them, unless the hand was picked up
+    // part way through)
+    if (!bidding) {
+      var tl = S.tl && S.tl.length <= done ? S.tl : null, off = tl ? done - tl.length : 0, g3 = el('div', { class: 'sp-g3' }), list = el('div', { class: 'sp-tl' });
+      g3.appendChild(el('div', { class: 'cdk-lbl' }, [el('span', { text: 'Tricks this hand' })]));
+      for (var k = 0; k < 13; k++) {
+        var w = tl && k >= off && k < done ? tl[k - off] : -1;
+        list.appendChild(el('div', { class: 'sp-tk' + (k < done ? ' done' : '') + (k === done && play ? ' now' : '') }, [
+          el('span', { class: 'n', text: String(k + 1) }),
+          w >= 0 ? seatDisc(w) : el('span', { class: 'o', text: k < done ? '' : String(k + 1) }),
+          el('span', { class: 'nm', text: w >= 0 ? short(w) : '' })
+        ]));
+      }
+      g3.appendChild(list); inner.appendChild(g3);
+    }
+    DESK.r.innerHTML = ''; DESK.r.appendChild(inner);
+  }
 
   // ── Online (turnnet.js) ───────────────────────────────────────────────────
   // The table's state is the game in fixed positions 0 S, 1 W, 2 N, 3 E (teams 0 = 0+2, 1 = 1+3). Table seats map
@@ -942,6 +1322,7 @@
     st.bids = [null, null, null, null]; st.blind = [false, false, false, false];
     st.taken = [0, 0, 0, 0]; st.trick = []; st.trickNo = 0; st.broken = false; st.gone = []; st.sb = 0;
     st.voids = [{}, {}, {}, {}];
+    st.tl = []; st.lt = null;
     st.dt = st.hands.map(function (h) { return h.map(key); });
     st.turn = st.leader = (st.dealer + 1) % 4;
     // Blind Nil: people on a team behind by 100 or more choose before they see their cards (all at once)
@@ -982,6 +1363,7 @@
     var win = trickWinner(st.trick);
     st.taken[win.p]++; st.tricksAll[win.p]++;
     st.trick.forEach(function (x) { st.gone.push(key(x.c)); });
+    st.lt = { t: st.trick.slice(), w: win.p }; if (st.tl) st.tl.push(win.p);
     st.trick = []; st.trickNo++; st.leader = st.turn = win.p; mv.w = win.p;
     if (st.trickNo === 13) { nEndHand(st); mv.end = 1; }
     return mv;
@@ -1004,7 +1386,7 @@
     });
     st.rounds.push([res[0].pts, res[1].pts]);
     (st.hx = st.hx || []).push(hxEntry(st, res, null));
-    st.last = { round: n, bids: st.bids.slice(), blind: st.blind.slice(), taken: st.taken.slice(),
+    st.last = { round: n, bids: st.bids.slice(), blind: st.blind.slice(), taken: st.taken.slice(), tl: st.tl || null, lt: st.lt || null,
       res: res.map(function (r) { return { bid: r.bid, took: r.took, won: r.won, pts: r.pts, bags: r.bags, penalty: r.penalty, set: r.set, made: r.made, nils: r.nils }; }) };
     var hi = Math.max(st.scores[0], st.scores[1]);
     if (hi >= st.target && st.scores[0] !== st.scores[1]) {
@@ -1076,7 +1458,17 @@
     if (V.last) {
       V.last.res = tm(V.last.res); V.last.res.forEach(function (x) { x.nils.forEach(function (y) { y.p = pv(y.p); }); });
       V.last.bids = r(V.last.bids); V.last.blind = r(V.last.blind); V.last.taken = r(V.last.taken);
+      if (V.last.tl) V.last.tl = V.last.tl.map(pv);
+      if (V.last.lt) V.last.lt = { t: V.last.lt.t.map(function (t) { return { p: pv(t.p), c: t.c }; }), w: pv(V.last.lt.w) };
     }
+    if (V.tl) V.tl = V.tl.map(pv);
+    if (V.lt) V.lt = { t: V.lt.t.map(function (t) { return { p: pv(t.p), c: t.c }; }), w: pv(V.lt.w) };
+    // (the hands so far for the desk's score sheet, turned to this seat: the bids and tricks by place, the results by side)
+    V.dhx = (st.hx || []).map(function (h) {
+      var x = String(h.r || ''), fl = x.slice(0, 2), pq = x.slice(2);
+      if (me % 2) { fl = fl.charAt(1) + fl.charAt(0); pq = pq.replace(/[pq]/g, function (c) { return c === 'p' ? 'q' : 'p'; }); }
+      return { b: r(String(h.b).split('.')).join('.'), t: r(String(h.t).split('.')).join('.'), r: fl + pq };
+    });
     V.dt = null; V.hx = null;
     return V;
   }
@@ -1085,6 +1477,12 @@
     function hint(t) { barEl.appendChild(el('span', { class: 'hint', text: t })); }
     function waitFor(verb) { return !pl ? '' : pl.cpu ? pl.name + ' is ' + verb + '…' : 'Waiting for ' + pl.name; }
     if (S.phase === 'over') return;
+    if (S.phase === 'handover') {   // (a desk: a hand just scored is on the score sheet, and the next one waits for this button)
+      if (!netWait) return;
+      hint('Hand ' + S.last.round + ' is on the score sheet.');
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Next hand', onclick: function () { var f = netWait; netWait = null; NOVER = null; if (f) f(); } }));
+      return;
+    }
     if (S.phase === 'blind') {
       if (S.blindAsk.indexOf(0) >= 0 && up) {
         barEl.appendChild(el('div', { class: 'blindbox' }, [
@@ -1198,8 +1596,11 @@
   function netHandEnd(st, done) {
     var hv = netView(st), g = NGEN;
     hv.bids = hv.last.bids; hv.blind = hv.last.blind; hv.taken = hv.last.taken;
+    hv.tl = hv.last.tl || null; hv.lt = hv.last.lt || null;
+    var atDesk = DESK && DESK.on();   // (a desk: the table stays as the hand left it until the button for the next hand)
+    if (atDesk) { hv.phase = 'handover'; hv.trickNo = 13; hv.turn = -1; hv.hands = [[], [], [], []]; }
     var res = hv.last.res;
-    S = hv; paintPlaques();
+    S = hv; paintPlaques(); paintDesk();
     if (res[0].nils.some(function (x) { return x.ok; })) { Kit.callout('Nil made!', 'var(--green)'); Kit.sfx('good'); }
     else if (res[0].set) { Kit.callout('Set!', 'var(--red)'); Kit.sfx('bad'); Kit.haptic('error'); }
     else if (res[1].set) { Kit.callout('They went set!', 'var(--green)'); Kit.sfx('good'); }
@@ -1230,6 +1631,11 @@
       });
       var shown = false;
       function deal() { if (shown || g !== NGEN || !NET) return; shown = true; S = netView(st); render(); Kit.sfx('deal'); done(); }
+      // (a desk: the hand is on the score sheet and told at the right; the bar has the button for the next hand)
+      if (atDesk) {
+        netWait = deal; NOVER = { close: function () { netWait = null; } };
+        paintSeats(); paintBar(); return;
+      }
       NOVER = Kit.sheet({ title: 'Hand ' + hv.last.round + ' done', node: node, onClose: function () { NOVER = null; deal(); }, actions: [{ label: 'Next hand', primary: true }] });
     }, 900);
   }
@@ -1331,14 +1737,22 @@
       nodes.forEach(function (n) {
         for (var p = n.parentElement; p && p !== root; p = p.parentElement) if (set.has(p)) return;   // (moves with its seat)
         var a = before.get(n) || (n.dataset && n.dataset.id && beforeId[n.dataset.id]), b = n.getBoundingClientRect();
-        if (!a || !b.width || !n.animate) return;
+        if (!b.width || !n.animate) return;
+        // (a desk panel that wasn't showing, or that changes shape and so lays its contents out anew, comes up in its
+        // new place; stretched from the old shape its words would be pulled out of true)
+        var panel = n.classList.contains('cdk-panel');
+        if (panel && (!a || Math.abs((a.width / b.width) / (a.height / b.height) - 1) > .12)) {
+          try { n.animate([{ opacity: 0, scale: '.97' }, { opacity: 1, scale: '1' }], { duration: 360, easing: 'cubic-bezier(.25,.8,.25,1)' }); } catch (e) {}
+          return;
+        }
+        if (!a) return;
         var dx = a.left + a.width / 2 - b.left - b.width / 2, dy = a.top + a.height / 2 - b.top - b.height / 2, sx = a.width / b.width, sy = a.height / b.height;
         if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < .02 && Math.abs(sy - 1) < .02) return;
         try { n.animate([{ translate: dx + 'px ' + dy + 'px', scale: sx + ' ' + sy }, { translate: '0px 0px', scale: '1 1' }], { duration: 440, easing: 'cubic-bezier(.25,.8,.25,1)' }); } catch (e) {}
       });
     });
   });
-})('.pcard, .cseat, .plq, .pstack, .cmsg');
+})('.pcard, .cseat, .plq, .pstack, .cmsg, .cdk-panel');
 </script>
 </body>
 </html>

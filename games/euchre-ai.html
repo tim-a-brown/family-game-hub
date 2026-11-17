@@ -140,6 +140,198 @@
   #app.stage > .ctable .felt-in{flex:1 1 0;height:auto;min-height:0;}
   #app.stage > .chand{--cw:clamp(84px,11dvh,100px);}
 }
+/* ── A large window (Cards.desk in cards.js lays the page out; html.cdesk-on while it does) ───────────────────────
+   At the left stands the score sheet, hand by hand: who made trump and in which suit (alone or not), the tricks and
+   the points of each side, a euchre marked on the side that was euchred, and under the totals a pip for each point
+   toward the score the game is played to. At the right is the hand in play: the trump and how it came to be (the
+   turned-up card and what happened to it), each player's call while trump is being picked, the tricks of each side
+   against the three it needs, who took each trick, and the last trick. Both panels are in the page at every size
+   and drawn only at a desk. On the felt the turned-up card and the two plaques grow with the table. */
+html.cdesk-on #app .kitty{--cw:clamp(54px,min(13cqw,12cqh),170px);gap:clamp(8px,1.2cqmin,16px);}
+html.cdesk-on #app .kitty .stack{width:calc(var(--cw) * 1.22);height:calc(var(--cw) * 1.5);}
+html.cdesk-on #app .kitty .stack .pcard:nth-child(2){left:calc(var(--cw) * .045);top:calc(var(--cw) * .03);}
+html.cdesk-on #app .kitty .stack .pcard:nth-child(3){left:calc(var(--cw) * .09);top:calc(var(--cw) * .06);}
+html.cdesk-on #app .kitty .stack .pcard.up{left:calc(var(--cw) * .18);top:calc(var(--cw) * .06);}
+html.cdesk-on #app .kitty .klbl{font-size:clamp(.82rem,1.7cqmin,1.5rem);padding:.3em .85em;border-radius:.85em;}
+html.cdesk-on #app .plaque{top:clamp(10px,1.8cqmin,26px);width:6.9em;padding:.5em .5em .55em;border-radius:.75em;font-size:clamp(.98rem,2cqmin,1.85rem);}
+html.cdesk-on #app .plaque.tl{left:clamp(10px,1.8cqmin,26px);} html.cdesk-on #app .plaque.tr{right:clamp(10px,1.8cqmin,26px);}
+html.cdesk-on #app .plaque .lb{font-size:.7em;} html.cdesk-on #app .plaque .st{font-size:2.9em;} html.cdesk-on #app .plaque .by{font-size:1.1em;}
+html.cdesk-on #app .plaque .al{font-size:.7em;padding:.08em .6em;margin-top:.25em;}
+html.cdesk-on #app .plaque .row2{gap:.3em;} html.cdesk-on #app .plaque .row2 .dot{width:.58em;height:.58em;}
+html.cdesk-on #app .plaque .row2 .t{font-size:.86em;} html.cdesk-on #app .plaque .row2 .n{font-size:1.55em;} html.cdesk-on #app .plaque .goal{font-size:1em;}
+html.cdesk-on #app .cseat .tag .nm{max-width:9em;}
+html.cdesk-on #app .dbtn{width:1.5em;height:1.5em;margin-left:-.1em;font-size:.72em;}
+/* a short felt at a desk: the side seats sit lower, clear of the plaques in the top corners */
+@container cfelt (max-height:500px){
+  html.cdesk-on #app .cseat.w,html.cdesk-on #app .cseat.e{top:62%;}
+}
+/* a small window, upright or square (cards.js lays it out): the side seats sit below the plaques */
+@media (orientation:portrait) and (min-width:480px) and (max-height:759.98px){
+  html.cdesk #app .cseat.w,html.cdesk #app .cseat.e{top:66%;}
+  html.cdesk #app .kitty{top:57%;gap:4px;--cw:clamp(34px,16cqh,66px);}
+  html.cdesk #app .kitty .klbl{font-size:.72rem;padding:3px 9px;}
+  html.cdesk #app .cseat.n .say{top:2px;left:100%;margin:0 0 0 6px;}
+  html.cdesk #app .felt-in:has(.cmsg:not([hidden])) .kitty{top:44%;}
+  html.cdesk #app .felt-in:has(.cmsg:not([hidden])) .kitty .klbl{display:none;}
+}
+/* a narrow table at a desk (a tall, narrow window, or a strip): the trick's cards and the side seats keep clear of each other */
+@container cfelt (max-width:540px){
+  html.cdesk-on #app.stage .ctable .ctrick .pcard{--cw:clamp(40px,min(14cqw,15cqh),210px);}
+  html.cdesk-on #app .cseat.w .info,html.cdesk-on #app .cseat.e .info{flex-direction:column;align-items:center;}
+}
+@container cfelt (max-width:460px){
+  html.cdesk-on #app .cseat.w,html.cdesk-on #app .cseat.e{top:70%;}
+  html.cdesk-on #app.stage .ctable .cmsg{font-size:.8rem;padding:.4em .7em;}
+}
+@container cfelt (max-height:500px){
+  html.cdesk-on #app .felt-in:has(.cmsg:not([hidden])) .kitty .klbl{display:none;}
+}
+/* a window a little wider than a tablet on its side (the tablet's layout, the table the full width): the turned-up card and the
+   trick sit a little lower, clear of the seat across the table, and the side seats clear of the plaques */
+@media (orientation:landscape) and (min-width:1100px) and (max-width:1199.98px) and (max-height:720px){
+  html.cdesk #app .kitty{top:53%;--cw:64px;}
+  html.cdesk #app .ctrick{top:52%;}
+  html.cdesk #app .cseat.w,html.cdesk #app .cseat.e{top:53%;}
+  html.cdesk #app .felt-in:has(.cmsg:not([hidden])) .kitty .klbl{display:none;}
+}
+/* a mouse over the calls */
+@media (hover:hover){html.cdesk-on #app .suitbtn:hover{filter:brightness(1.18);}}
+/* calling trump in a narrow bar beside the table */
+html.cdesk-on #app.stage > .cbar .bidbox .q{font-size:.95rem;line-height:1.25;}
+/* the score sheet: the kit's ruled pad (.cdk-pad): the trump and who made it, then each side's tricks and points
+   (a window wide enough gives it the width) */
+#app{--cdk-lmin:340px;}
+@media (min-width:1360px){#app{--cdk-lmin:384px;}}
+.eu-pad{--lc:2em;--px:.35em;--side:calc((100% - var(--px) * 2 - var(--lc)) * 1.8 / 6.3);}
+.eu-pad .pr{grid-template-columns:var(--lc) minmax(0,2.7fr) repeat(4,minmax(0,.9fr));}
+.eu-pad .eu-meb{position:absolute;top:0;bottom:0;left:calc(var(--px) + var(--lc) + (100% - var(--px) * 2 - var(--lc)) * (2.7 + 1.8 * var(--mt,0)) / 6.3);width:var(--side);pointer-events:none;background:linear-gradient(180deg,color-mix(in srgb,var(--lit) 11%,transparent),color-mix(in srgb,var(--lit) 5%,transparent));box-shadow:inset 1px 0 0 color-mix(in srgb,var(--lit) 22%,transparent),inset -1px 0 0 color-mix(in srgb,var(--lit) 22%,transparent);}
+.eu-pad::before,.eu-pad::after{content:"";position:absolute;top:0;bottom:0;width:1px;background:color-mix(in srgb,var(--h,#6c7bff) 45%,var(--gl-line));pointer-events:none;}
+.eu-pad::before{left:calc(var(--px) + var(--lc) + (100% - var(--px) * 2 - var(--lc)) * 2.7 / 6.3);}
+.eu-pad::after{left:calc(var(--px) + var(--lc) + (100% - var(--px) * 2 - var(--lc)) * 4.5 / 6.3);}
+.eu-pad .tm{grid-column:span 2;display:flex;flex-direction:column;align-items:center;gap:.3em;min-width:0;padding:0 .2em;font-size:.8em;font-weight:700;line-height:1.1;text-align:center;overflow-wrap:anywhere;color:var(--text-2);}
+.eu-pad .tm.me{color:var(--lit-ink);}
+.eu-pad .tm .av{display:flex;}
+.eu-pad .tm .avatar{width:2em;height:2em;font-size:.95em;}
+.eu-pad .tm .avatar + .avatar{margin-left:-.35em;box-shadow:0 0 0 2px var(--sheet-solid,#1d1b2e);}
+.eu-pad .tm .nm2{display:block;}
+.eu-pad .ph.eu-tms{border-bottom:0;padding-bottom:.3em;}
+.eu-pad .eu-hd{flex:none;align-items:end;padding-bottom:.35em;border-bottom:3px double color-mix(in srgb,var(--h,#6c7bff) 55%,var(--gl-line));}
+.eu-pad .eu-hd span{font-size:.6em;font-weight:700;color:var(--text-3);text-align:center;white-space:nowrap;}
+.eu-pad .eu-hd span.l{text-align:left;padding-left:.6em;}
+.eu-pad .pb .cv{font-size:1.3em;}
+.eu-pad .cv.bad{color:var(--bad-ink);}
+.eu-pad .cv.pt{color:var(--lit-ink);}
+.eu-pad .cv .eu-eu{display:inline-block;padding:.26em .34em;border-radius:.5em;background:var(--red);color:#fff;font-family:var(--font);font-size:.46em;font-weight:800;letter-spacing:-.02em;line-height:1;vertical-align:.3em;white-space:nowrap;}
+/* (the trump and who made it: the suit on a small card face, the name, and Alone when they went alone) */
+.eu-mk{display:flex;align-items:center;gap:.4em;min-width:0;padding-left:.35em;font-size:.8em;font-weight:700;line-height:1.05;color:var(--text);white-space:nowrap;}
+.eu-mk .nw{display:flex;align-items:center;gap:.4em;min-width:0;}
+.eu-mk .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.eu-s{flex:none;display:inline-grid;place-items:center;width:1.5em;height:1.7em;border-radius:.34em;background:linear-gradient(160deg,#fff,#f1ead9);color:#1d1b2e;font-family:var(--font);font-size:1.05em;font-weight:900;line-height:1;box-shadow:0 0 0 1px rgba(0,0,0,.1),0 1px 3px rgba(0,0,0,.35);}
+.eu-s.red{color:#d81e3a;}
+:root.k-4c .eu-s[data-s="c"]{color:#14803e;}
+:root.k-4c .eu-s[data-s="d"]{color:#1c5fd0;}
+.eu-al{flex:none;padding:.22em .5em;border-radius:1em;background:#c8102e;color:#fff;font-size:.8em;font-weight:750;line-height:1;}
+.eu-pad .pf .tot{grid-column:span 2;}
+.eu-pad .pf .rl2{grid-column:span 1;}
+.eu-pad .eu-pp{flex:none;padding:.15em var(--px) .7em;background:var(--gl-3);}
+.eu-pad .eu-pp .rl{font-size:.64em;grid-column:1 / span 2;text-align:right;padding-right:.9em;}
+.eu-pad .eu-pp .pp{grid-column:span 2;display:grid;grid-template-columns:repeat(5,auto);justify-content:center;gap:.24em;padding:0 .2em;}
+.eu-pad .eu-pp .pp i{width:.62em;height:.62em;border-radius:50%;background:var(--gl-2);box-shadow:inset 0 0 0 1px var(--gl-line);}
+.eu-pad .eu-pp .pp i.on{background:var(--c);box-shadow:0 0 6px color-mix(in srgb,var(--c) 60%,transparent);}
+.eu-pad .pf .rl{grid-column:1 / span 2;text-align:right;padding-right:.9em;}
+@container cdkp (max-height:430px){.eu-pad .tm .av{display:none;}}
+@container cdkp (max-width:336px){.eu-pad .cv .eu-eu{font-size:.38em;padding:.26em .22em;} .eu-mk .nw{flex-direction:column;align-items:flex-start;gap:.12em;} .eu-al{font-size:.66em;padding:.16em .45em;}}
+/* the hand in play, at the right */
+.eu-tr{flex:none;display:flex;align-items:center;gap:.7em;padding:0 1.25em .5em;font-size:.86em;font-weight:650;line-height:1.3;color:var(--text-2);}
+.eu-tr .big{flex:none;display:grid;place-items:center;width:2.2em;height:2.9em;border-radius:.45em;background:linear-gradient(180deg,#fffaf0,#f1e6cc);color:#1d1b2e;font-size:1.25em;font-weight:900;line-height:1;box-shadow:0 0 0 2px var(--lit),0 0 12px var(--litg),0 3px 8px rgba(0,0,0,.4);}
+.eu-tr .big.red{color:#d81e3a;}
+:root.k-4c .eu-tr .big[data-s="c"]{color:#14803e;}
+:root.k-4c .eu-tr .big[data-s="d"]{color:#1c5fd0;}
+.eu-tr .big span{font-size:1.5em;}
+.eu-tr .pcard{flex:none;--cw:2.9em;}
+.eu-tr .pcard.sm{--cw:2.2em;}
+.eu-tr .pcard.dn{opacity:.75;}
+.eu-tr .tx{flex:1 1 auto;min-width:0;}
+.eu-tr .tx b{color:var(--text);font-weight:750;}
+.eu-g1{flex:1 1 0;min-height:0;max-height:calc(125cqw + 4.2em);display:flex;flex-direction:column;}
+.eu-g2,.eu-g3,.eu-g4,.eu-g5{flex:none;display:flex;flex-direction:column;min-height:0;padding-bottom:.6em;}
+.eu-took{flex:none;display:flex;align-items:center;gap:.5em;min-height:2.3em;padding:.45em 1.25em .3em;font-size:.86em;font-weight:650;line-height:1.2;color:var(--text-2);}
+.eu-took .avatar{width:1.8em;height:1.8em;font-size:.85em;}
+/* each side's tricks: five places, the three a side needs marked off */
+.eu-sd{display:flex;flex-wrap:wrap;align-items:center;gap:.2em .5em;min-height:2.3em;padding:.1em 1.25em;font-size:.86em;font-weight:650;line-height:1.2;color:var(--text-2);}
+.eu-sd .nm{flex:1 1 auto;min-width:0;overflow-wrap:anywhere;}
+.eu-sd .mkr{flex:none;padding:.16em .5em;border-radius:.55em;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--gold-ink);font-size:.82em;font-weight:750;line-height:1.1;white-space:nowrap;}
+.eu-sd .pn{flex:none;display:flex;align-items:center;gap:.5em;margin-left:auto;}
+.eu-sd .pp{flex:none;display:flex;align-items:center;gap:.26em;}
+.eu-sd .pp i{width:.9em;height:.9em;border-radius:50%;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--text) 34%,transparent);}
+.eu-sd .pp i.on{background:var(--c);box-shadow:none;}
+.eu-sd .pp i:nth-child(3){margin-right:.4em;}
+.eu-sd .pp i:nth-child(n+4){box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--text) 16%,transparent);}
+.eu-sd .pp i.on:nth-child(n+4){box-shadow:none;}
+.eu-sd .n{flex:none;min-width:1.2em;text-align:right;font-family:var(--display);font-size:1.15em;color:var(--text);font-variant-numeric:tabular-nums;}
+.eu-sd.done .n{color:var(--lit-ink);}
+/* who took each trick */
+.eu-tl{flex:none;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:.2em .9em 0;}
+.eu-tk{display:flex;flex-direction:column;align-items:center;gap:.2em;min-width:0;}
+.eu-tk .avatar{width:2em;height:2em;font-size:.8em;}
+.eu-tk .o{display:grid;place-items:center;width:2.35em;height:2.35em;border-radius:50%;font-size:.68em;font-weight:700;color:var(--text-3);box-shadow:inset 0 0 0 1.5px var(--gl-line);font-variant-numeric:tabular-nums;}
+.eu-tk.now .o{color:var(--lit-ink);box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.7),0 0 10px var(--litg);}
+.eu-tk .nm{min-height:1.1em;font-size:.66em;font-weight:650;line-height:1.1;color:var(--text-3);text-align:center;overflow-wrap:anywhere;}
+/* the trumps from the highest down, as small card faces; one that has been played is faded */
+.eu-ts{flex:none;display:flex;flex-wrap:wrap;gap:.24em;padding:.1em 1.25em 0;}
+.eu-c{display:inline-grid;place-items:center;min-width:2.05em;height:1.75em;padding:0 .18em;border-radius:.4em;background:linear-gradient(160deg,#fff,#f1ead9);color:#1d1b2e;font-family:var(--font);font-weight:900;font-size:.84em;letter-spacing:-.04em;line-height:1;white-space:nowrap;box-shadow:0 0 0 1px rgba(0,0,0,.1),0 1px 3px rgba(0,0,0,.35);}
+.eu-c.red{color:#d81e3a;}
+:root.k-4c .eu-c[data-s="c"]{color:#14803e;}
+:root.k-4c .eu-c[data-s="d"]{color:#1c5fd0;}
+.eu-c.out{opacity:.42;box-shadow:0 0 0 1px rgba(0,0,0,.1);text-decoration:line-through;}
+/* each player's call while trump is being picked */
+.eu-cl{display:flex;align-items:center;gap:.5em;min-height:2.2em;padding:.1em 1.25em;font-size:.86em;font-weight:650;line-height:1.2;color:var(--text-2);}
+.eu-cl .avatar{flex:none;width:1.8em;height:1.8em;font-size:.85em;}
+.eu-cl .nm{flex:1 1 auto;min-width:0;overflow-wrap:anywhere;}
+.eu-cl.now .nm{color:var(--lit-ink);}
+.eu-cl .dbtn{font-size:.62em;width:1.6em;height:1.6em;margin-left:.9em;vertical-align:.1em;}
+.eu-cl .c{flex:none;margin-left:auto;padding:.2em .6em;border-radius:.6em;font-size:.9em;color:var(--text-3);white-space:nowrap;}
+.eu-cl .c.pass{background:var(--gl-2);color:var(--text-2);}
+.eu-cl .c.call{background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--gold-ink);font-weight:750;}
+/* a hand just scored */
+.eu-res{flex:none;display:flex;flex-direction:column;gap:.2em;margin:0 1em .7em;padding:.7em .85em .8em;border-radius:.9em;background:var(--gl-2);box-shadow:inset 0 0 0 1px var(--gl-line);}
+.eu-res .w{font-family:var(--display);font-size:1.35em;line-height:1.1;color:var(--lit-ink);}
+.eu-res.bad .w{color:var(--red);}
+.eu-res .y{font-size:.86em;font-weight:650;line-height:1.3;color:var(--text-2);}
+/* a panel too short for everything keeps what matters most: the trump, then the tricks, then who took each, then the last trick */
+@container cdkp (max-height:600px){.eu-g1{display:none;}}
+@container cdkp (max-height:440px){.eu-g3{display:none;}}
+@container cdkp (max-height:410px){.eu-side.pick .eu-g5{display:none;}}
+@container cdkp (max-height:370px){.eu-g5{display:none;}}
+@container cdkp (max-height:300px){.eu-tr .tx2,.eu-tr .pcard.sm{display:none;} .eu-side.pick .eu-tr{display:none;} .eu-g2 > .cdk-lbl{display:none;}}
+@container cdkp (max-height:230px){.eu-side:not(.over) .eu-tr{display:none;} .eu-side.pick .eu-g4 > .cdk-lbl{display:none;}}
+@container cdkp (max-height:190px){.eu-side > .cdk-h{padding:.6em 1em .3em;} .eu-cl{min-height:1.75em;} .eu-sd{min-height:1.9em;}}
+@container cdkp (max-height:130px){.eu-g2,.eu-g4,.eu-side .eu-tr,.eu-res .y{display:none;}}
+/* (a hand just scored: how it came out first, then the tricks, then the trump, who took each trick, the last trick) */
+@container cdkp (max-height:700px){.eu-side.over .eu-g1{display:none;}}
+@container cdkp (max-height:500px){.eu-side.over .eu-g3{display:none;}}
+@container cdkp (max-height:430px){.eu-side.over .eu-tr{display:none;}}
+@container cdkp (max-height:330px){.eu-side.over .eu-g2{display:none;} .eu-side.over .eu-tr{display:flex;}}
+@container cdkp (max-height:290px){.eu-side.over .eu-tr{display:none;}}
+@container cdkp (max-width:270px){.eu-tr .pcard.sm{display:none;}}
+/* a panel wider than tall (a strip of a window): the last trick at the left, the rest at the right */
+@container cdkp (min-aspect-ratio:5/4) and (min-width:460px){
+  .eu-side{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);grid-auto-rows:auto;align-content:start;}
+  .eu-side > *,.eu-side > .eu-g1 > *{grid-column:2;}
+  .eu-side > .eu-g1,.eu-side.over > .eu-g1{display:contents;}
+  .eu-side > .eu-g1 > .cdk-lt{grid-column:1;grid-row:1 / span 8;margin:1em 0 1em 1em;}
+  .eu-side > .eu-g1 > .cdk-lbl,.eu-side > .eu-g1 > .eu-took{display:none;}
+  .eu-side > .eu-g3{display:none;}
+  .eu-side > .eu-g5 > .cdk-lbl{display:none;}
+  .eu-side.pick > .eu-g5{grid-column:1;}
+  .eu-side.pick > .eu-tr,.eu-side:not(.over) > .eu-tr{display:flex;}
+  .eu-side.pick{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+  .eu-side.pick > .cdk-h{grid-column:1 / -1;}
+  .eu-side.pick > .eu-tr{grid-column:1;align-self:start;}
+  .eu-side.pick > .eu-g4{grid-column:2;grid-row:2;padding-bottom:0;}
+  .eu-side.pick > .eu-g4 > .cdk-lbl{display:none;}
+  .eu-side.pick .eu-cl{min-height:1.75em;padding:0 1.1em;}
+}
 </style>
 </head>
 <body>
@@ -328,6 +520,7 @@
     S.trump = null; S.maker = -1; S.alone = false; S.out = -1; S.callRound = 0; S.picked = false;
     S.bids = [null, null, null, null]; S.passes = 0;
     S.trick = []; S.trickNo = 0; S.tricks = [0, 0, 0, 0]; S.played = []; S.voids = [{}, {}, {}, {}]; S.lastWin = -1;
+    S.tl = []; S.lt = null; handBar = false;   // (for the desk's panels: who took each trick, and the last trick)
     S.phase = 'bid1'; S.turn = (S.dealer + 1) % 4; S.wantAlone = false;
     undoStack = [];
     save(); render(); Kit.sfx('deal');
@@ -715,6 +908,7 @@
         trickEl.innerHTML = '';
         S.trick.forEach(function (x) { S.played.push(x.c.id); });
         S.tricks[win.p]++; S.lastWin = win.p;
+        S.lt = { t: S.trick.slice(), w: win.p }; if (S.tl) S.tl.push(win.p);
         S.trick = []; S.trickNo++; S.leader = win.p; S.turn = win.p;
         if (S.trickNo === 5) endHand(); else { save(); next(); }
       }, 380);
@@ -767,6 +961,9 @@
     return t;
   }
   function showHandSummary() {
+    // (a desk: the hand is already written on the score sheet beside the table and told at the right, so nothing
+    // covers the table; the bar has the button for the next hand)
+    if (DESK && DESK.on() && !NET && S.phase === 'handover') { handBar = true; paintSeats(); paintBar(); return; }
     var L = S.log[S.log.length - 1], r = resultText(L);
     var node = el('div', null, [
       el('div', { class: 'hsum' }, [
@@ -808,6 +1005,7 @@
           if (L.w) o.w = L.w; if (L.y) o.y = L.y; if (L.sc) o.s = L.sc; return o; }) }
     });
     clearSave();
+    paintDesk();   // (a desk: the last hand is on the score sheet behind the results)
     var mine = w === MT() && onePerson(), lose = !person(w) && !person(w + 2);
     Kit.win({
       title: mine ? (S.players[ME].name === 'You' ? 'You win!' : 'You win, ' + S.players[ME].name + '!') : team(w) + ' win',
@@ -835,6 +1033,7 @@
 
   // ── Render ────────────────────────────────────────────────────────────────
   var seatEls = [], trickEl, handEl, barEl, msgEl, kittyEl, trumpEl, scoreEl, msgT = null;
+  var DESK = Cards.desk(app), deskKey = '', deskLt = '', deskRounds = -1, handBar = false;   // (a large window: cards.js)
   function render() {
     app.innerHTML = '';
     var table = el('div', { class: 'ctable wood' }), felt = el('div', { class: 'felt-in' });
@@ -852,6 +1051,7 @@
     app.appendChild(handEl);
     barEl = el('div', { class: 'cbar' });
     app.appendChild(barEl);
+    if (DESK) { app.appendChild(DESK.l); app.appendChild(DESK.r); }
     (S.trick || []).forEach(function (t) { trickEl.appendChild(Cards.el(t.c, { cls: 'p-' + posOf(t.p) })); });
     paintAll();
     if (S.phase === 'handover') setTimeout(function () { if (S && S.phase === 'handover') showHandSummary(); }, 250);
@@ -885,6 +1085,7 @@
       }
       if (bidding() && S.bids[p]) s.appendChild(el('div', { class: 'say stay' + (S.bids[p] === 'Pass' ? '' : ' call'), text: S.bids[p] }));
     });
+    paintDesk();
   }
   function paintCenter() {
     kittyEl.innerHTML = '';
@@ -947,6 +1148,11 @@
   function paintBar() {
     barEl.innerHTML = '';
     var hint = function (t) { barEl.appendChild(el('span', { class: 'hint', html: t })); };
+    if (S.phase === 'handover' && handBar && !NET) {
+      hint('Hand ' + S.handNo + ' is on the score sheet.');
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Deal next hand', onclick: function () { if (S && S.phase === 'handover' && !NET) newHand(); } }));
+      return;
+    }
     if (BLIND) { hint(''); return; }
     if (S.phase === 'bid1' && S.turn === ME) {
       var me = S.dealer === ME, pd = S.dealer === partner(ME);
@@ -1000,7 +1206,178 @@
     clearTimeout(msgT); msgEl.hidden = false; msgEl.textContent = t;
     msgT = setTimeout(function () { msgT = null; if (S && msgEl) paintMsg(); }, 1700);
   }
-  window.addEventListener('resize', function () { if (handEl) Cards.fan(handEl); });
+  window.addEventListener('resize', function () { if (handEl) Cards.fan(handEl); if (S && S.players && S.hands && handEl) { paintDesk(); var pb = DESK && DESK.l.querySelector('.pb'); if (pb) pb.scrollTop = pb.scrollHeight; } });   // (the sheet keeps its newest hand in view)
+
+  // ── A large window (Cards.desk) ───────────────────────────────────────────
+  // Beside the table at a desk: the score sheet at the left (every hand: who made trump, in which suit, alone or
+  // not, each side's tricks and points, a euchre marked, the hand in play lit, the totals and a pip for each point
+  // toward the score the game is played to) and the hand in play at the right (the trump and what happened to the
+  // turned-up card, each player's call while trump is being picked, each side's tricks, who took each trick, the
+  // last trick; once a hand is scored, how it came out). Both are drawn from the game as it stands, and only when
+  // a desk layout shows: a phone and a tablet never draw them.
+  var RNAME = { '9': '9', '10': '10', J: 'Jack', Q: 'Queen', K: 'King', A: 'Ace' };
+  function seatDisc(p) { return el('span', { class: 'avatar', style: { '--c': Kit.color(p % 2) }, html: S.players[p].cpu ? Kit.icon('bot') : Kit.esc(S.players[p].name.charAt(0).toUpperCase()) }); }
+  function suitChip(s, cls) { return '<span class="' + cls + (s === 'h' || s === 'd' ? ' red' : '') + '" data-s="' + s + '">' + (cls === 'big' ? '<span>' : '') + GLYPH[s] + '︎' + (cls === 'big' ? '</span>' : '') + '</span>'; }
+  function whoL(p) { return p === ME && onePerson() ? 'you' : S.players[p].name; }
+  function sideSay(t, low) { return onePerson() && t === MT() ? (low ? 'you and ' : 'You and ') + S.players[partner(ME)].name : S.players[t].name + ' and ' + S.players[t + 2].name; }
+  function cardSay(c) { return RNAME[c.r] + ' of ' + SNAME[c.s].toLowerCase(); }
+  function paintDesk() {
+    if (!DESK) return;
+    if (!DESK.on() || !S || !S.players || !S.tricks || !S.log) { deskKey = ''; return; }
+    var key = JSON.stringify([S.handNo, S.phase, S.trickNo, S.tricks, S.bids, S.trump, S.maker, S.alone, S.out, S.picked, S.callRound, S.up && S.up.id, S.scores, S.log.length, S.turn, S.dealer, ME, BLIND, S.players, S.tl, S.lt && S.lt.w, S.target, (S.trick || []).length]);
+    if (key === deskKey) return;
+    deskKey = key;
+    paintSheet(); paintSide();
+  }
+  function paintSheet() {
+    var mine = BLIND ? -1 : MT(), over = S.phase === 'handover' || S.phase === 'over', playing = !over && S.phase !== 'thrown';
+    var inner = el('div', { class: 'cdk-in' }, [el('div', { class: 'cdk-h' }, [el('h2', { text: 'Score sheet' })])]);
+    DESK.l.innerHTML = ''; DESK.l.appendChild(inner);
+    var root = el('div', { class: 'cdk-pad eu-pad', style: { '--mt': String(Math.max(0, mine)) } });
+    if (mine >= 0) root.appendChild(el('div', { class: 'eu-meb' }));
+    function cv(cls, html) { return el('span', { class: 'cv ' + cls, html: html == null ? '' : String(html) }); }
+    function row(cls, label, cells) { return el('div', { class: 'pr ' + cls }, [el('span', { class: 'rl', text: label == null ? '' : String(label) })].concat(cells)); }
+    function called(maker, trump, alone) {
+      if (!(maker >= 0) || !trump) return el('span', { class: 'eu-mk' });
+      return el('span', { class: 'eu-mk', html: suitChip(trump, 'eu-s') + '<span class="nw"><span class="nm">' + Kit.esc(S.players[maker].name) + '</span>' + (alone ? '<span class="eu-al">Alone</span>' : '') + '</span>' });
+    }
+    root.appendChild(row('ph eu-tms', '', [el('span')].concat([0, 1].map(function (t) {
+      return el('span', { class: 'tm' + (t === mine ? ' me' : '') }, [el('span', { class: 'av' }, [seatDisc(t), seatDisc(t + 2)]), el('span', { html: Kit.esc(S.players[t].name) + ' &amp; <span class="nm2">' + Kit.esc(S.players[t + 2].name) + '</span>' })]);
+    }))));
+    root.appendChild(row('eu-hd', '', [el('span', { class: 'l', text: 'Trump' }), el('span', { text: 'Tricks' }), el('span', { text: 'Points' }), el('span', { text: 'Tricks' }), el('span', { text: 'Points' })]));
+    var body = el('div', { class: 'pb' }), just = deskRounds >= 0 && S.log.length === deskRounds + 1;
+    S.log.forEach(function (L, i) {
+      var mt = L.maker % 2, w = L.w ? String(L.w).split('.').map(Number) : null, tk = w && w.length === 4 ? [w[0] + w[2], w[1] + w[3]] : mt ? [5 - L.tricks, L.tricks] : [L.tricks, 5 - L.tricks], cells = [called(L.maker, L.trump, L.alone)];
+      [0, 1].forEach(function (t) {
+        var eu = L.res === 'euchred' && t === mt;
+        cells.push(cv(eu ? 'bad' : '', tk[t]));
+        cells.push(cv(L.pts[t] ? 'pt' : '', eu ? '<b class="eu-eu">Euchred</b>' : L.pts[t] ? '+' + L.pts[t] : ''));
+      });
+      body.appendChild(row(just && i === S.log.length - 1 ? 'just' : '', L.hand, cells));
+    });
+    if (playing) {
+      var inPlay = S.phase === 'play', live = [called(S.maker, S.trump, S.alone)];
+      [0, 1].forEach(function (t) { live.push(cv('', inPlay ? S.tricks[t] + S.tricks[t + 2] : '')); live.push(cv('', '')); });
+      body.appendChild(row('live', S.handNo, live));
+    }
+    root.appendChild(body);
+    var lead = S.scores[0] === S.scores[1] ? -1 : S.scores[0] > S.scores[1] ? 0 : 1;
+    root.appendChild(row('pf', 'Total', [0, 1].map(function (t) { return cv('tot' + (t === lead ? ' lead' : ''), S.scores[t]); })));
+    root.appendChild(row('eu-pp', 'to ' + S.target, [0, 1].map(function (t) {
+      var pips = ''; for (var i = 0; i < S.target; i++) pips += '<i' + (i < S.scores[t] ? ' class="on"' : '') + '></i>';
+      return el('span', { class: 'pp', style: { '--c': Kit.color(t) }, html: pips });
+    })));
+    inner.appendChild(root);
+    body.scrollTop = body.scrollHeight;
+    // (the newest hand stays in view when the sheet changes height: the bar beside it growing for the bids, a resize)
+    if (window.ResizeObserver) new ResizeObserver(function () { body.scrollTop = body.scrollHeight; }).observe(body);
+    deskRounds = S.log.length;
+    inner.appendChild(el('div', { class: 'cdk-goal', text: 'The first team to reach ' + S.target + ' points wins.' }));
+  }
+  // the trump and how it came to be, as a sentence (and before there is one, where the turned-up card stands)
+  function trumpSay() {
+    var up = S.up ? cardSay(S.up) : '', d = S.dealer, m = S.maker, cap = function (t) { return t.charAt(0).toUpperCase() + t.slice(1); };
+    if (S.phase === 'bid1') return cap(whoL(d)) + ' dealt and turned up the ' + up + '.';
+    if (S.phase === 'bid2') return 'Everyone passed on the ' + up + ', so it was turned down. ' + SNAME[S.up.s] + ' can’t be trump.';
+    if (S.phase === 'thrown') return 'Everyone passed twice, so the cards are thrown in.';
+    if (!(m >= 0) || !S.trump) return '';
+    var alone = S.alone ? cap(whoL(m)) + (m === ME && onePerson() ? ' are' : ' is') + ' going alone, so ' + whoL(partner(m)) + (partner(m) === ME && onePerson() ? ' sit out.' : ' sits out.') : '';
+    if (S.callRound === 2) return [cap(whoL(m)) + ' named ' + SNAME[S.trump].toLowerCase() + ' after the ' + up + ' was turned down.', alone];
+    if (!S.picked) return cap(whoL(m)) + ' ordered up the ' + up + ' and ' + (m === ME && onePerson() ? 'are' : 'is') + ' going alone, so ' + whoL(d) + ', the dealer, ' + (d === ME && onePerson() ? 'sit' : 'sits') + ' out and the card stays face down.';
+    var picks = S.phase === 'discard' ? (d === ME && onePerson() ? 'pick' : 'picks') : 'picked';
+    if (m === d) return [cap(whoL(d)) + ' ' + (S.phase === 'discard' ? picks + ' up' : 'picked up') + ' the ' + up + '.', alone];
+    return [cap(whoL(m)) + ' ordered up the ' + up + ', and ' + whoL(d) + ' ' + picks + ' it up.', alone];
+  }
+  // the seven trumps from the highest down (both bowers first); one that has been played, or lies turned down, is faded
+  function trumpStrip(t, live) {
+    var gone = {}, row = el('div', { class: 'eu-ts' }), n = 0;
+    if (live) {
+      (S.played || []).forEach(function (id) { gone[id] = 1; }); (S.trick || []).forEach(function (x) { gone[x.c.id] = 1; });
+      if (S.up && !S.picked && S.callRound) gone[S.up.id] = 1;
+    }
+    [{ r: 'J', s: t }, { r: 'J', s: SAME[t] }].concat(['A', 'K', 'Q', '10', '9'].map(function (r) { return { r: r, s: t }; })).forEach(function (c) {
+      var d = DECK_IDS.filter(function (x) { return x.r === c.r && x.s === c.s; })[0], out = !!(d && gone[d.id]); if (out) n++;
+      row.appendChild(el('span', { class: 'eu-c' + (c.s === 'h' || c.s === 'd' ? ' red' : '') + (out ? ' out' : ''), 'data-s': c.s, text: c.r + GLYPH[c.s] + '\uFE0E' }));
+    });
+    row._out = n;
+    return row;
+  }
+  // how the hand just scored came out: {big, text, bad}
+  function handSay(L) {
+    var mt = L.maker % 2, n = L.tricks, bad = (L.res === 'euchred') === (mt === MT());
+    if (L.res === 'euchred') return { big: 'Euchred', bad: bad, text: sideSay(mt) + ' made trump and took ' + (n === 0 ? 'no tricks' : n === 1 ? 'only 1 trick' : 'only ' + n + ' tricks') + '. That is a euchre, and ' + sideSay(1 - mt, true) + ' scored 2 points.' };
+    if (L.res === 'alone-march') return { big: 'Alone march', bad: bad, text: (L.maker === ME && onePerson() ? 'You' : S.players[L.maker].name) + ' went alone and took all 5 tricks, for 4 points.' };
+    if (L.res === 'march') return { big: 'March', bad: bad, text: sideSay(mt) + ' made trump and took all 5 tricks, a march, for 2 points.' };
+    return { big: 'Made it', bad: bad, text: sideSay(mt) + ' made trump and took ' + n + ' of the 5 tricks, for 1 point.' };
+  }
+  function paintSide() {
+    var over = S.phase === 'handover' || S.phase === 'over', play = S.phase === 'play', pick = !over && !play, done = play || over ? Math.min(S.trickNo || 0, 5) : 0;
+    var L = over && S.log.length ? S.log[S.log.length - 1] : null;
+    var inner = el('div', { class: 'cdk-in eu-side' + (pick ? ' pick' : '') + (over ? ' over' : '') }, [el('div', { class: 'cdk-h' }, [el('h2', { text: 'Hand ' + (L ? L.hand : S.handNo) }), el('small', { text: play ? 'Trick ' + Math.min(done + 1, 5) + ' of 5' : pick ? 'Picking trump' : '' })])]);
+    if (L) { var hs = handSay(L); inner.appendChild(el('div', { class: 'eu-res' + (hs.bad ? ' bad' : '') }, [el('div', { class: 'w', text: hs.big }), el('div', { class: 'y', text: hs.text })])); }
+    // the trump, or the turned-up card it may come from, and what happened to that card
+    var tr = el('div', { class: 'eu-tr' }), say = trumpSay(), say2 = '';
+    if (say && say.pop) { say2 = say[1]; say = say[0]; }
+    function txt() { return el('span', { class: 'tx' }, [document.createTextNode(say), say2 ? el('span', { class: 'tx2', text: ' ' + say2 }) : null]); }
+    if (S.trump && S.phase !== 'thrown') {
+      tr.innerHTML = suitChip(S.trump, 'big');
+      tr.appendChild(txt());
+      if (S.up && S.up.r) tr.appendChild(S.picked ? Cards.el(S.up, { cls: 'sm' }) : Kit.card('', '', { back: true, cls: 'sm dn' }));
+    } else if (S.up && S.up.r) {
+      tr.appendChild(S.phase === 'bid1' ? Cards.el(S.up) : Kit.card('', '', { back: true, cls: 'dn' }));
+      tr.appendChild(txt());
+    }
+    if (say && !(L && !S.trump)) inner.appendChild(tr);
+    if (pick) {
+      // each player's call, in the order they speak (from the dealer's left)
+      var g4 = el('div', { class: 'eu-g4' });
+      g4.appendChild(el('div', { class: 'cdk-lbl' }, [el('span', { text: S.phase === 'bid2' ? 'Naming a suit' : 'Calls' })]));
+      for (var i = 1; i <= 4; i++) {
+        var p = (S.dealer + i) % 4, b = S.bids ? S.bids[p] : null, turn = bidding() && S.turn === p;
+        g4.appendChild(el('div', { class: 'eu-cl' + (turn ? ' now' : '') }, [seatDisc(p),
+          el('span', { class: 'nm', html: Kit.esc(S.players[p].name) + (p === S.dealer ? '<span class="dbtn" title="Dealer">D</span>' : '') }),
+          el('span', { class: 'c' + (b === 'Pass' ? ' pass' : b ? ' call' : ''), text: b || (turn ? 'Deciding…' : '') })]));
+      }
+      inner.appendChild(g4);
+      if (S.phase === 'bid1' && S.up && S.up.s) {
+        var g5a = el('div', { class: 'eu-g5' });
+        g5a.appendChild(el('div', { class: 'cdk-lbl' }, [el('span', { text: SNAME[S.up.s] + ' as trump, highest first' })]));
+        g5a.appendChild(trumpStrip(S.up.s, false)); inner.appendChild(g5a);
+      }
+    } else {
+      // each side's tricks, the makers marked; then who took each trick
+      var g2 = el('div', { class: 'eu-g2' }), mt = S.maker >= 0 ? S.maker % 2 : -1;
+      g2.appendChild(el('div', { class: 'cdk-lbl' }, [el('span', { text: 'Tricks' }), el('span', { text: done + ' of 5' })]));
+      [MT(), 1 - MT()].forEach(function (t) {
+        var n = S.tricks[t] + S.tricks[t + 2], pips = '';
+        for (var k = 0; k < 5; k++) pips += '<i' + (k < n ? ' class="on"' : '') + '></i>';
+        g2.appendChild(el('div', { class: 'eu-sd' + (n >= 3 ? ' done' : '') }, [el('span', { class: 'nm', text: team(t) }), t === mt ? el('span', { class: 'mkr', text: 'Makers' }) : null,
+          el('span', { class: 'pn' }, [el('span', { class: 'pp', style: { '--c': Kit.color(t) }, html: pips }), el('span', { class: 'n', text: String(n) })])]));
+      });
+      inner.appendChild(g2);
+      var tl = S.tl && S.tl.length <= done ? S.tl : null, off = tl ? done - tl.length : 0, g3 = el('div', { class: 'eu-g3' }), list = el('div', { class: 'eu-tl' });
+      for (var j = 0; j < 5; j++) {
+        var w = tl && j >= off && j < done ? tl[j - off] : -1;
+        list.appendChild(el('div', { class: 'eu-tk' + (j === done && play ? ' now' : '') }, [w >= 0 ? seatDisc(w) : el('span', { class: 'o', text: j < done ? '' : String(j + 1) }),
+          el('span', { class: 'nm', text: w >= 0 ? (w === ME && onePerson() ? 'You' : S.players[w].name) : '' })]));
+      }
+      g3.appendChild(list); inner.appendChild(g3);
+      if (play && S.trump) {
+        var g5 = el('div', { class: 'eu-g5' }), strip = trumpStrip(S.trump, true);
+        g5.appendChild(el('div', { class: 'cdk-lbl' }, [el('span', { text: 'Trumps, highest first' }), el('span', { text: strip._out ? strip._out + ' played' : '' })]));
+        g5.appendChild(strip); inner.appendChild(g5);
+      }
+      // the last trick, lying as it lay on the table
+      var lt = S.lt && S.lt.t && S.lt.t.length ? S.lt : null, ltKey = S.handNo + ':' + S.trickNo, g1 = el('div', { class: 'eu-g1' });
+      g1.appendChild(el('div', { class: 'cdk-lbl' }, [el('span', { text: 'Last trick' })]));
+      Cards.lastTrick(g1, { fresh: !!lt && deskLt !== ltKey, plays: lt ? lt.t.map(function (x) { return { c: x.c, pos: posOf(x.p), win: x.p === lt.w }; }) : [] });
+      if (lt) deskLt = ltKey;
+      var took = el('div', { class: 'eu-took' });
+      if (lt) { took.appendChild(seatDisc(lt.w)); took.appendChild(el('span', { text: (lt.w === ME && onePerson() ? 'You' : S.players[lt.w].name) + ' took this trick' })); }
+      g1.appendChild(took); inner.appendChild(g1);
+    }
+    DESK.r.innerHTML = ''; DESK.r.appendChild(inner);
+  }
 
   // ── Online (turnnet.js) ───────────────────────────────────────────────────
   // The table holds the whole game in fixed places 0 S, 1 W, 2 N, 3 E (partners 0 + 2 and 1 + 3). st.pos[seat] is
@@ -1057,6 +1434,7 @@
     st.trump = null; st.maker = -1; st.alone = false; st.out = -1; st.callRound = 0; st.picked = false;
     st.bids = [null, null, null, null]; st.passes = 0;
     st.trick = []; st.trickNo = 0; st.tricks = [0, 0, 0, 0]; st.played = []; st.voids = [{}, {}, {}, {}]; st.lastWin = -1;
+    st.tl = []; st.lt = null;
     st.phase = 'bid1'; st.turn = (st.dealer + 1) % 4;
   }
   // The moves, on the table's state (S is st while they run): each returns the move, or null when it isn't allowed
@@ -1120,6 +1498,7 @@
     if (st.trick.length < activeCount()) { st.turn = nextActive(p); return mv; }
     var win = trickWinner(st.trick, st.trump);
     mv.t = st.trick.slice(); mv.w = win.p;
+    st.lt = { t: mv.t, w: win.p }; if (st.tl) st.tl.push(win.p);
     st.trick.forEach(function (x) { st.played.push(x.c.id); });
     st.tricks[win.p]++; st.lastWin = win.p;
     st.trick = []; st.trickNo++; st.leader = st.turn = win.p;
@@ -1294,6 +1673,12 @@
     render();
     if (st.phase === 'over') { setTimeout(function () { if (g === NGEN && NET) netEnd(); }, L.res === 'made' ? 700 : 1300); done(); return; }
     Kit.sfx('deal'); dealAnim();
+    // (a desk: the hand is on the score sheet beside the table, and the felt says how it came out)
+    if (DESK && DESK.on()) {
+      var tn = team(L.res === 'euchred' ? 1 - mt : mt);
+      flash(L.res === 'euchred' ? tn + ' score 2 points for the euchre' : L.res === 'alone-march' ? S.players[L.maker].name + ' marches alone for 4 points' : L.res === 'march' ? tn + ' march for 2 points' : tn + ' score 1 point');
+      done(); return;
+    }
     var r = resultText(L);
     var node = el('div', null, [
       el('div', { class: 'hsum' }, [
@@ -1411,14 +1796,22 @@
       nodes.forEach(function (n) {
         for (var p = n.parentElement; p && p !== root; p = p.parentElement) if (set.has(p)) return;   // (moves with its seat)
         var a = before.get(n) || (n.dataset && n.dataset.id && beforeId[n.dataset.id]), b = n.getBoundingClientRect();
-        if (!a || !b.width || !n.animate) return;
+        if (!b.width || !n.animate) return;
+        // (a desk panel that wasn't showing, or that changes shape and so lays its contents out anew, comes up in its
+        // new place; stretched from the old shape its words would be pulled out of true)
+        var panel = n.classList.contains('cdk-panel');
+        if (panel && (!a || Math.abs((a.width / b.width) / (a.height / b.height) - 1) > .12)) {
+          try { n.animate([{ opacity: 0, scale: '.97' }, { opacity: 1, scale: '1' }], { duration: 360, easing: 'cubic-bezier(.25,.8,.25,1)' }); } catch (e) {}
+          return;
+        }
+        if (!a) return;
         var dx = a.left + a.width / 2 - b.left - b.width / 2, dy = a.top + a.height / 2 - b.top - b.height / 2, sx = a.width / b.width, sy = a.height / b.height;
         if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < .02 && Math.abs(sy - 1) < .02) return;
         try { n.animate([{ translate: dx + 'px ' + dy + 'px', scale: sx + ' ' + sy }, { translate: '0px 0px', scale: '1 1' }], { duration: 440, easing: 'cubic-bezier(.25,.8,.25,1)' }); } catch (e) {}
       });
     });
   });
-})('.pcard, .cseat, .plq, .pstack, .cmsg');
+})('.pcard, .cseat, .plaque, .kitty, .cmsg, .cdk-panel');
 </script>
 </body>
 </html>
