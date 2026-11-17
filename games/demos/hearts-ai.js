@@ -51,7 +51,7 @@
         H.set(function (s) {
           var o = function (l) { return sortH(l.map(cardOf)); };
           s.hands = [o(['4d', '2h', '9h', 'Jh']), o(['Kd', '3h', '5h', '7h']), o(['Ah', 'Qh', '8h', '4h']), o(['Qs', 'Kh', '10h', '6h'])];
-          s.trick = []; s.trickNo = 9; s.turn = 0; s.leader = 0; s.broken = false; s.taken = [0, 0, 0, 0]; s.tw = [2, 3, 2, 2]; s.received = []; s.recvAll = null;
+          s.trick = []; s.trickNo = 9; s.turn = 0; s.leader = 0; s.broken = false; s.taken = [0, 0, 0, 0]; s.tw = [2, 3, 2, 2]; s.received = []; s.recvAll = null; s.last = null; s.tl = []; s.sentAll = null;
         });
       });
       await D.say('Now we skip ahead to the last four tricks of the hand.', { pos: 'center', ring: false, wait: 2400 });
@@ -69,10 +69,11 @@
       await D.tap(mine('9h'), { say: 'The rest of the hand plays out the same way.' });
       await D.wait(function () { return S().turn === 0 && S().trickNo === 12; }, 9000);
       await D.tap(mine('Jh'));
-      await D.wait(function () { return document.querySelector('.k-sheet .sum'); }, 9000);
+      // (the hand's scores: a sheet over the table on a phone or a tablet; at a desk, the score sheet beside the table)
+      await D.wait(function () { return document.querySelector('.k-sheet .sum') || (S().phase === 'handover' && document.querySelector('.cdk-l .cdk-pad .pb .pr')); }, 9000);
       await D.wait(500);
-      await D.say('Each heart counts 1 point and the Queen of Spades counts 13. You took none this hand.', { at: function () { return [].slice.call(document.querySelectorAll('.k-sheet .sum tr')).slice(0, 3); } });
-      await D.say('Hands go on until someone reaches 100. Then the lowest score wins.', { at: '.k-sheet p.muted' });
+      await D.say('Each heart counts 1 point and the Queen of Spades counts 13. You took none this hand.', { at: function () { var rows = [].slice.call(document.querySelectorAll('.k-sheet .sum tr')).slice(0, 3); return rows.length ? rows : [].slice.call(document.querySelectorAll('.cdk-l .cdk-pad .ph, .cdk-l .cdk-pad .pb .pr')); } });
+      await D.say('Hands go on until someone reaches 100. Then the lowest score wins.', { at: function () { return document.querySelector('.k-sheet p.muted') || document.querySelector('.cdk-l .cdk-pad .pf'); } });
     }
   });
 })();

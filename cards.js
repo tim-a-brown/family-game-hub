@@ -35,6 +35,11 @@
 //       <div class="csort-row"> placed right above the hand (right-aligned).
 //   Cards.sortMode(key, def, ids)        -> remembered mode (or def)
 //
+//   A large window (a laptop, any shape of window; see "The desk" below):
+//   Cards.desk(stage)                    -> {l, r, on()}  the table takes the window, with a panel at each side
+//   Cards.pad(host, {cols, rows, live, total, meter})   the ruled score sheet for the left panel
+//   Cards.lastTrick(host, {plays, cls, fresh})          the trick just taken, on a small felt, for the right panel
+//
 //   Scorepad(host, opts)                 paper scorepad for "keep score" games
 //     (see the comment above Scorepad for options)
 //
@@ -352,11 +357,245 @@ var Cards = (function () {
     '.rrow .pm button{width:40px;height:40px;border:0;border-radius:13px;background:var(--gl-2);box-shadow:inset 0 0 0 1px var(--gl-line);color:var(--text);font-weight:800;font-size:1.1rem;}',
     '.rrow .pm button:active{transform:scale(.9);}',
     '.rnote{color:var(--text-3);font-weight:700;font-size:.85rem;text-align:center;}',
-    '.rnote.bad{color:var(--red);}'
+    '.rnote.bad{color:var(--red);}',
+    // ── The desk (Cards.desk): the panels beside a table in a large window. They are in the page at every size and
+    // shown only by the desk's own layouts, so a phone or a tablet never draws them.
+    '.cdk-panel{display:none;position:relative;flex-direction:column;border-radius:22px;overflow:hidden;color:var(--text);background:linear-gradient(165deg,color-mix(in srgb,var(--h,#6c7bff) 13%,transparent),transparent 46%),var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),inset 0 1px 0 rgba(255,255,255,.1),var(--shadow-sm);container:cdkp / size;}',
+    '.cdk-panel::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:color-mix(in srgb,var(--h,#6c7bff) 70%,transparent);opacity:.8;}',
+    // (what is written on a panel grows a little with the panel, as a sheet on the wall would; never past 1.3rem)
+    '.cdk-in{flex:1 1 0;min-height:0;min-width:0;display:flex;flex-direction:column;font-size:clamp(.92rem,min(4.4cqw,3.4cqh),1.3rem);}',
+    '.cdk-h{flex:none;display:flex;align-items:baseline;justify-content:space-between;gap:.6em;padding:1em 1em .55em;}',
+    '.cdk-h h2{margin:0;font-family:var(--display);font-size:1.28em;letter-spacing:-.02em;line-height:1.1;color:var(--text);}',
+    '.cdk-h small{font-size:.8em;font-weight:650;color:var(--text-3);white-space:nowrap;font-variant-numeric:tabular-nums;}',
+    '.cdk-lbl{flex:none;display:flex;align-items:baseline;justify-content:space-between;gap:.6em;padding:.7em 1.25em .35em;font-size:.8em;font-weight:650;color:var(--text-3);font-variant-numeric:tabular-nums;}',
+    // The pad (Cards.pad): a ruled score sheet, a column a player, a row a hand, the totals along its foot
+    '.cdk-pad{position:relative;flex:1 1 0;min-height:0;display:flex;flex-direction:column;--n:4;--mi:-1;--rh:2.3em;--lc:2.7em;--px:.55em;}',
+    '.cdk-pad .pr{position:relative;display:grid;grid-template-columns:var(--lc) repeat(var(--n),minmax(0,1fr));align-items:center;padding:0 var(--px);}',
+    '.cdk-pad .meb{position:absolute;top:0;bottom:0;left:calc(var(--px) + var(--lc) + (100% - var(--px) * 2 - var(--lc)) * var(--mi) / var(--n));width:calc((100% - var(--px) * 2 - var(--lc)) / var(--n));pointer-events:none;background:linear-gradient(180deg,color-mix(in srgb,var(--lit) 11%,transparent),color-mix(in srgb,var(--lit) 5%,transparent));box-shadow:inset 1px 0 0 color-mix(in srgb,var(--lit) 22%,transparent),inset -1px 0 0 color-mix(in srgb,var(--lit) 22%,transparent);}',
+    '.cdk-pad .ph{flex:none;align-items:end;padding-bottom:.5em;border-bottom:3px double color-mix(in srgb,var(--h,#6c7bff) 55%,var(--gl-line));}',
+    '.cdk-pad .ph .pc{display:flex;flex-direction:column;align-items:center;gap:.28em;min-width:0;padding:0 1px;font-size:.8em;font-weight:700;line-height:1.05;text-align:center;overflow-wrap:anywhere;color:var(--text-2);}',
+    '.cdk-pad .ph .pc .avatar{width:2em;height:2em;font-size:.95em;}',
+    '.cdk-pad .ph .pc.me{color:var(--lit-ink);}',
+    '.cdk-pad .pb{flex:1 1 0;min-height:var(--rh);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;background:repeating-linear-gradient(180deg,transparent 0 calc(var(--rh) - 1px),var(--gl-line) calc(var(--rh) - 1px) var(--rh)) local;}',
+    '.cdk-pad .pb::-webkit-scrollbar{display:none;}',
+    '.cdk-pad .pb .pr{height:var(--rh);}',
+    '.cdk-pad .rl{font-size:.74em;font-weight:700;color:var(--text-3);text-align:center;font-variant-numeric:tabular-nums;}',
+    '.cdk-pad .cv{position:relative;text-align:center;font-family:var(--hand);font-size:1.42em;line-height:1;color:var(--text);white-space:nowrap;}',
+    '.cdk-pad .cv.z{color:var(--text-3);}',
+    '.cdk-pad .cv.hot{color:var(--lit-ink);}',
+    // (a mark beside a number: who took the Queen, who shot the moon)
+    '.cdk-pad .cv .mk{display:inline-flex;align-items:center;margin-left:.22em;vertical-align:.16em;font-family:var(--font);font-style:normal;font-weight:800;font-size:.5em;line-height:1;color:var(--text-2);}',
+    '.cdk-pad .cv .mk .ico{width:1.45em;height:1.45em;color:var(--lit-ink);}',
+    '.cdk-pad .pr.live{background:color-mix(in srgb,var(--lit) 9%,transparent);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--lit) 50%,transparent),inset 0 -1px 0 color-mix(in srgb,var(--lit) 50%,transparent);}',
+    '.cdk-pad .pr.live .rl{color:var(--lit-ink);}',
+    '.cdk-pad .pr.just .cv{animation:write .5s ease-out;}',
+    '.cdk-pad .pf{flex:none;padding-top:.3em;border-top:2px solid color-mix(in srgb,var(--h,#6c7bff) 55%,var(--gl-line));background:var(--gl-3);}',
+    '.cdk-pad .pf .cv{font-size:1.95em;}',
+    '.cdk-pad .pf .cv.lead{color:var(--lit-ink);}',
+    '.cdk-pad .pm{flex:none;padding-bottom:.6em;background:var(--gl-3);}',
+    '.cdk-pad .pm .rl{font-size:.68em;}',
+    '.cdk-pad .mt{display:block;height:.3em;margin:.25em 14% 0;border-radius:1em;background:var(--gl-2);overflow:hidden;}',
+    '.cdk-pad .mt b{display:block;height:100%;min-width:0;border-radius:1em;background:var(--c);transition:width .5s var(--ease,ease);}',
+    '.cdk-pad .mt.warn b{background:var(--bad-ink);}',
+    '@container cdkp (max-height:430px){.cdk-goal{display:none;}.cdk-pad .pm{padding-bottom:.75em;}}',
+    '.cdk-goal{flex:none;padding:.6em 1.2em .85em;font-size:.78em;font-weight:600;line-height:1.3;color:var(--text-3);text-align:center;text-wrap:balance;}',
+    // The last trick (Cards.lastTrick): its cards lie on a small felt the way they lay on the table
+    '.cdk-lt{position:relative;flex:1 1 0;min-height:7.6em;margin:0 1em;border-radius:14px;overflow:hidden;container-type:size;}',
+    '.cdk-lt .ctrick{top:50%;}',
+    '.cdk-lt .ctrick .pcard{box-shadow:0 0 0 1px rgba(0,0,0,.08),0 3px 8px rgba(0,0,0,.35);}',
+    '.cdk-lt.new .ctrick .pcard{animation:cdkIn .32s var(--spring,ease-out) both;}',
+    '@keyframes cdkIn{from{opacity:0;scale:.8;}}'
   ].join('\n');
   document.head.appendChild(css);
 
-  return { RANKS: RANKS, SUITS: SUITS, GLYPH: GLYPH, deck: deck, shuffle: shuffle, sort: sort, sortBy: sortBy, el: el, label: label, fan: fan, fly: fly, flip: flip, wait: wait, rankIndex: rankIndex, sortToggle: sortToggle, sortMode: sortMode };
+  // ── The desk: a card table in a large window (a laptop, any shape of window) ─────────────────────────────────
+  // Cards.desk(stage) -> {l, r, on()}
+  //   A table page lays itself out for a phone and a tablet. A window larger than those gets the desk's layouts
+  //   instead: the felt takes the room, the cards and the pieces on the felt step up with it, and two panels stand
+  //   beside the table: l at the left for what there is to look at (the score sheet), r at the right for the hand in
+  //   play (the last trick), over the bar and the sort toggle. The stage needs an id and the usual children
+  //   (.ctable > .felt-in, .csort-row, .chand, .cbar). l and r are made once: append them to the stage after the
+  //   bar each time the stage is rebuilt, fill them with a <div class="cdk-in">, or leave either out. on() is true
+  //   while a desk layout is showing (so nothing is drawn for a phone). Nothing here changes a window of 1024 by
+  //   768 or smaller, upright or sideways, beyond closing two gaps no device has (sideways 520 to 600 tall, and
+  //   sideways under 1000 wide).
+  //     wide (1200 or more across, under 1.85 times as wide as tall, or under 2.1 times when 700 or more tall):
+  //                                                                l | table | r over the bar; the hand below
+  //     strip (wider than that):                                   l | table | r, the bar and the hand at the right
+  //     square (900 to 1199 across, upright but nearly square):    l over r | table; the hand and the bar below
+  //     tall (1200 or more high, well taller than wide):           the table, the hand, the bar; l and r below
+  //   A sheet of 5 or 6 columns: set --cdk-lmin on the stage (the least width l needs).
+  var DESK = {
+    wide: '(min-width:1200px) and (min-aspect-ratio:77/100) and (max-aspect-ratio:1849/1000), (min-width:1200px) and (min-aspect-ratio:37/20) and (max-aspect-ratio:2099/1000) and (min-height:700px)',
+    strip: '(min-width:1200px) and (min-aspect-ratio:21/10), (min-width:1200px) and (min-aspect-ratio:37/20) and (max-height:699.98px)',
+    square: '(min-width:900px) and (max-width:1199.98px) and (min-aspect-ratio:77/100) and (max-aspect-ratio:1/1)',
+    tall: '(max-aspect-ratio:7699/10000) and (min-height:1200px)'
+  };
+  function deskCss(S) {
+    var any = '@media ' + [DESK.wide, DESK.strip, DESK.square, DESK.tall].join(', ');
+    function rules(a) { return a.map(function (r) { return r.replace(/(^|,)\s*&/g, '$1' + S); }).join('\n'); }
+    return [
+      any + '{' + rules([
+        '&:has(> .ctable){max-width:none;height:calc(100dvh - var(--bar));display:grid;column-gap:0;row-gap:0;padding:4px 20px max(calc(var(--safe-b) + 8px),18px);}',
+        '& > .ctable{grid-area:table;display:flex;flex-direction:column;min-width:0;min-height:0;margin:0 0 6px;padding:clamp(9px,.75vmin,14px);border-radius:clamp(28px,2.2vmin,40px);}',
+        '& > .ctable .felt-in{flex:1 1 0;height:auto;min-height:0;container:cfelt / size;border-radius:clamp(21px,1.7vmin,30px);}',
+        '& > .csort-row{grid-area:sort;}',
+        '& > .cbar{grid-area:bar;}',
+        '& > .chand{grid-area:hand;justify-self:center;width:100%;max-width:calc(var(--cw) * 8.7 + 16px);padding:calc(var(--cw) * .22) 8px 4px;}',
+        '& > .chand .pcard.sel{transform:translateY(calc(var(--cw) * -.19));}',
+        '& > .chand .pcard.play:hover:not(.sel){transform:translateY(calc(var(--cw) * -.09));}',
+        '& > .cdk-panel{display:flex;min-width:0;min-height:0;}',
+        '& > .cdk-l{grid-area:left;}',
+        '& > .cdk-r{grid-area:right;}',
+        // the pieces on the felt step up with the felt (container units of the felt), to a largest size
+        '& .cseat{font-size:clamp(.98rem,2cqmin,1.85rem);gap:.22em;}',
+        '& .cseat.n{top:clamp(8px,1.6cqmin,24px);}',
+        '& .cseat.s{bottom:clamp(8px,1.6cqmin,24px);}',
+        '& .cseat.w{left:clamp(6px,1.6cqmin,24px);}',
+        '& .cseat.e{right:clamp(6px,1.6cqmin,24px);}',
+        '& .cseat .tag{font-size:1em;padding:.32em .82em .32em .32em;gap:.5em;border-radius:.85em;}',
+        '& .cseat .tag .avatar{width:2.05em;height:2.05em;font-size:.9em;}',
+        '& .cseat .info{gap:.28em;}',
+        '& .cseat .chip-s{font-size:.86em;padding:.12em .65em;border-radius:.55em;}',
+        '& .cseat .backs{--cw:1.95em;}',
+        '& .cseat .backs .pcard + .pcard{margin-left:-1.36em;}',
+        '& .cseat .say{font-size:.9em;}',
+        '& .ctrick .pcard{--cw:clamp(40px,min(17cqw,15cqh),210px);}',
+        '& .cmsg{font-size:clamp(.98rem,1.9cqmin,1.7rem);padding:.5em 1em;}',
+        '& .cdk-lt .ctrick .pcard{--cw:min(25cqw,27cqh);}'
+      ]) + '}',
+      any + '{@container cfelt (max-height:500px){' + rules(['& .cseat .backs{display:none;}']) + '}}',
+      '@media ' + DESK.wide + '{' + rules([
+        '&:has(> .ctable){grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) auto auto auto;grid-template-areas:"left table right" "left table bar" "left table sort" "hand hand hand";--cdk-lw:clamp(260px,21vw,520px);--cdk-rw:clamp(230px,17vw,420px);}',
+        '& > .cdk-l{width:max(var(--cdk-lw),var(--cdk-lmin,0px));margin:0 16px 6px 0;}',
+        '& > .cdk-r{width:var(--cdk-rw);margin:0 0 10px 16px;}',
+        '& > .cbar{width:var(--cdk-rw);min-height:52px;margin:0 0 10px 16px;align-self:end;flex-wrap:wrap;text-align:center;}',
+        '& > .cbar .btn{width:100%;}',
+        '& > .csort-row{width:var(--cdk-rw);margin:0 0 6px 16px;justify-content:center;}',
+        '& > .chand{--cw:clamp(84px,min(12.4vw,12.5dvh),210px);}'
+      ]) + '}',
+      '@media ' + DESK.strip + '{' + rules([
+        '&:has(> .ctable){grid-template-columns:auto minmax(0,min(38vw,calc((100dvh - var(--bar)) * 1.3))) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto auto auto;grid-template-areas:"left table right" "left table bar" "left table sort" "left table hand";--cdk-lw:clamp(260px,21vw,460px);}',
+        '& > .cdk-l{width:max(var(--cdk-lw),var(--cdk-lmin,0px));margin:0 16px 0 0;}',
+        '& > .ctable{margin:0;}',
+        '& > .cdk-r{margin:0 0 8px 18px;}',
+        '& > .cbar{min-height:44px;margin:0 0 0 18px;align-self:center;flex-wrap:wrap;text-align:center;}',
+        '& > .csort-row{margin:0 0 0 18px;}',
+        '& > .chand{--cw:clamp(56px,17dvh,150px);justify-self:stretch;width:auto;max-width:none;min-height:0;margin-left:18px;padding:calc(var(--cw) * .22) 0 0;}'
+      ]) + '}',
+      '@media (min-width:1200px) and (min-aspect-ratio:37/20) and (max-height:480px){' + rules(['& > .cdk-r{display:none;}']) + '}',
+      '@media ' + DESK.square + '{' + rules([
+        '&:has(> .ctable){grid-template-columns:auto minmax(0,1fr);grid-template-rows:minmax(0,3fr) minmax(0,2fr) auto auto auto;grid-template-areas:"left table" "right table" "sort sort" "hand hand" "bar bar";--cdk-lw:clamp(250px,27vw,300px);}',
+        '& > .cdk-l{width:max(var(--cdk-lw),var(--cdk-lmin,0px));margin:0 14px 10px 0;}',
+        '& > .cdk-r{width:max(var(--cdk-lw),var(--cdk-lmin,0px));margin:0 14px 6px 0;}',
+        '&:not(:has(> .cdk-r)) > .cdk-l{grid-row:1 / span 2;margin-bottom:6px;}',
+        '& > .chand{--cw:clamp(84px,min(11vw,10.5dvh),210px);}'
+      ]) + '}',
+      '@media ' + DESK.tall + '{' + rules([
+        '&:has(> .ctable){grid-template-columns:minmax(0,5fr) minmax(0,4fr);grid-template-rows:minmax(0,1fr) auto auto auto clamp(250px,27dvh,540px);grid-template-areas:"table table" "sort sort" "hand hand" "bar bar" "left right";}',
+        '& > .cdk-l{margin:6px 7px 0 0;}',
+        '& > .cdk-r{margin:6px 0 0 7px;}',
+        '&:not(:has(> .cdk-r)) > .cdk-l{grid-column:1 / -1;margin-right:0;}',
+        '& > .chand{--cw:clamp(56px,min(15vw,9dvh),170px);}'
+      ]) + '}',
+      '@media ' + DESK.tall + ' and (max-width:519.98px){' + rules([
+        '&:has(> .ctable){grid-template-areas:"table table" "sort sort" "hand hand" "bar bar" "left left";}',
+        '& > .cdk-r{display:none;}',
+        '& > .cdk-l{margin-right:0;}'
+      ]) + '}',
+      // Between the devices and the desk: a window no phone or tablet has still fills itself
+      // (upright and wider than an iPad mini: the table runs the full width)
+      '@media (orientation:portrait) and (min-width:621px) and (max-width:699.98px), (orientation:portrait) and (min-width:780px){' + rules(['&:has(> .ctable){max-width:none;}']) + '}',
+      '@media (orientation:landscape) and (min-width:1100px){' + rules(['&:has(> .ctable){max-width:none;}']) + '}',
+      // (a small window, upright or square, wider than a phone and under 760 tall: what's happening and the sort toggle
+      // share a line, so the table keeps the height)
+      '@media (orientation:portrait) and (min-width:480px) and (max-height:759.98px){' + rules([
+        '&:has(> .ctable){max-width:none;height:calc(100dvh - var(--bar));display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) auto auto;grid-template-areas:"table table" "bar sort" "hand hand";padding-bottom:max(calc(var(--safe-b) + 6px),18px);}',
+        '& > .ctable{grid-area:table;display:flex;flex-direction:column;min-height:0;margin-bottom:6px;}',
+        '& > .ctable .felt-in{flex:1 1 0;height:auto;min-height:0;container-type:size;}',
+        '& > .cbar{grid-area:bar;justify-content:flex-start;min-height:52px;margin:0 0 0 4px;}',
+        '& > .csort-row{grid-area:sort;align-self:center;margin:0;}',
+        '& > .chand{grid-area:hand;--cw:clamp(56px,min(17vw,13dvh),80px);}'
+      ]) + '}',
+      // (sideways, 520 to 600 tall: the phone's sideways layout, the table at the left and the hand at the right)
+      '@media (orientation:landscape) and (min-height:520.02px) and (max-height:599.98px) and (max-width:1199.98px){' + rules([
+        '&:has(> .ctable){max-width:none;height:calc(100dvh - var(--bar));display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto auto;grid-template-areas:"table bar" "table sort" "table hand";column-gap:14px;padding:0 calc(12px + var(--corner-x)) max(calc(var(--safe-b) + 6px),18px);}',
+        '& > .ctable{grid-area:table;margin:0;display:flex;flex-direction:column;min-height:0;}',
+        '& > .ctable .felt-in{flex:1 1 0;height:auto;min-height:0;container-type:size;}',
+        '& > .cbar{grid-area:bar;align-self:center;flex-wrap:wrap;margin:0;min-height:0;text-align:center;}',
+        '& > .csort-row{grid-area:sort;margin:0;}',
+        '& > .chand{grid-area:hand;--cw:clamp(48px,min(18dvh,12.5vw),104px);padding:14px 0 0;min-height:0;}'
+      ]) + '}',
+      // (sideways, under 1000 wide and 600 or more tall: the tablet's sideways layout with a narrower side column)
+      '@media (orientation:landscape) and (max-width:999.98px) and (min-height:600px){' + rules([
+        '&:has(> .ctable){max-width:none;height:calc(100dvh - var(--bar));display:grid;grid-template-columns:minmax(0,1fr) clamp(170px,24vw,240px);grid-template-rows:minmax(0,1fr) auto auto;grid-template-areas:"table bar" "table sort" "hand hand";column-gap:16px;padding-bottom:max(calc(var(--safe-b) + 6px),18px);}',
+        '& > .ctable{grid-area:table;display:flex;flex-direction:column;min-height:0;margin-bottom:6px;}',
+        '& > .ctable .felt-in{flex:1 1 0;height:auto;min-height:0;container-type:size;}',
+        '& > .cbar{grid-area:bar;align-self:end;flex-wrap:wrap;margin:0 0 14px;text-align:center;}',
+        '& > .cbar .btn{width:100%;}',
+        '& > .csort-row{grid-area:sort;align-self:end;justify-content:center;margin:0 0 8px;}',
+        '& > .chand{grid-area:hand;--cw:clamp(64px,min(11dvh,11vw),100px);}'
+      ]) + '}'
+    ].join('\n');
+  }
+  function desk(stage) {
+    if (!stage || !stage.id) return null;
+    var S = 'html.cdesk #' + stage.id + '.stage';
+    var st = document.createElement('style'); st.textContent = deskCss(S); document.head.appendChild(st);
+    var root = document.documentElement, mq = window.matchMedia([DESK.wide, DESK.strip, DESK.square, DESK.tall].join(', '));
+    root.classList.add('cdesk');
+    // html.cdesk-on while a desk layout shows, for a page's own rules about its pieces at a desk
+    function sync() { root.classList.toggle('cdesk-on', mq.matches); }
+    sync();
+    if (mq.addEventListener) mq.addEventListener('change', sync); else if (mq.addListener) mq.addListener(sync);
+    function panel(side) { var p = document.createElement('aside'); p.className = 'cdk-panel cdk-' + side; return p; }
+    return { l: panel('l'), r: panel('r'), on: function () { return mq.matches; } };
+  }
+
+  // Cards.pad(host, o): the ruled score sheet on a desk panel. o = {
+  //   cols:  [{name, color, cpu, me}]            a column for each player (or side); me is ruled in gold
+  //   rows:  [{label, cells: [cell]}]            the hands played
+  //   live:  {label, cells: [cell]} or null      the hand in play, lit
+  //   total: [{v, lead, pct, warn}]              the totals; lead lights the one ahead, pct (0 to 1) fills a meter
+  //   meter: text for the meters' row label (the score the game is played to), or nothing for no meters
+  //   just:  true writes the last row in (a hand just scored) }
+  //   cell = {v, mark (html beside the number), zero (faded), hot (lit)}
+  // It fills its panel: the rows played, then empty ruled lines down to the totals. More hands than fit scroll, the
+  // newest in view (give it a host that is already in the page).
+  function pad(host, o) {
+    var E = Kit.el, n = o.cols.length, mi = -1;
+    o.cols.forEach(function (c, i) { if (c.me) mi = i; });
+    var root = E('div', { class: 'cdk-pad', style: { '--n': String(n), '--mi': String(mi) } });
+    if (mi >= 0) root.appendChild(E('div', { class: 'meb' }));
+    function cell(c) { c = c || {}; return E('span', { class: 'cv' + (c.zero ? ' z' : '') + (c.hot ? ' hot' : '') + (c.lead ? ' lead' : ''), html: Kit.esc(c.v == null ? '' : String(c.v)) + (c.mark ? '<i class="mk">' + c.mark + '</i>' : '') }); }
+    function row(cls, label, cells) { return E('div', { class: 'pr ' + cls }, [E('span', { class: 'rl', text: label == null ? '' : String(label) })].concat(cells)); }
+    root.appendChild(row('ph', '', o.cols.map(function (c) {
+      return E('span', { class: 'pc' + (c.me ? ' me' : '') }, [E('span', { class: 'avatar', style: { '--c': c.color }, html: c.cpu ? Kit.icon('bot') : Kit.esc(String(c.name || '?').charAt(0).toUpperCase()) }), E('span', { text: c.name })]);
+    })));
+    var body = E('div', { class: 'pb' });
+    (o.rows || []).forEach(function (r, i) { body.appendChild(row(o.just && i === o.rows.length - 1 ? 'just' : '', r.label, r.cells.map(cell))); });
+    if (o.live) body.appendChild(row('live', o.live.label, o.live.cells.map(cell)));
+    root.appendChild(body);
+    root.appendChild(row('pf', 'Total', o.total.map(cell)));
+    if (o.meter != null) root.appendChild(row('pm', o.meter, o.total.map(function (t, i) {
+      return E('i', { class: 'mt' + (t.warn ? ' warn' : ''), style: { '--c': o.cols[i].color } }, [E('b', { style: { width: Math.round(Math.max(0, Math.min(1, t.pct || 0)) * 100) + '%' } })]);
+    })));
+    host.appendChild(root);
+    body.scrollTop = body.scrollHeight;   // (the host must be in the page already, or nothing is measured)
+    return root;
+  }
+
+  // Cards.lastTrick(host, {plays: [{c: {r, s}, pos, win}], cls, fresh}): the trick just taken, lying on a small felt
+  // as it lay on the table (pos is the seat's place there: s, w, n, e, ...; cls the table's own classes, so the
+  // page's rules for its trick apply), the winning card ringed. fresh plays the cards in.
+  function lastTrick(host, o) {
+    var box = Kit.el('div', { class: 'cdk-lt felt-in' + (o.cls ? ' ' + o.cls : '') + (o.fresh ? ' new' : '') }), t = Kit.el('div', { class: 'ctrick' });
+    (o.plays || []).forEach(function (p) { t.appendChild(el(p.c, { cls: 'p-' + p.pos + (p.win ? ' win' : '') })); });
+    box.appendChild(t); host.appendChild(box);
+    return box;
+  }
+
+  return { RANKS: RANKS, SUITS: SUITS, GLYPH: GLYPH, deck: deck, shuffle: shuffle, sort: sort, sortBy: sortBy, el: el, label: label, fan: fan, fly: fly, flip: flip, wait: wait, rankIndex: rankIndex, sortToggle: sortToggle, sortMode: sortMode, desk: desk, pad: pad, lastTrick: lastTrick, DESK: DESK };
 })();
 
 // ═══════════════════════════════════════════════════════════════════════════
