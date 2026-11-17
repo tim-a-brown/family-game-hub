@@ -150,6 +150,25 @@ Underlying principles for everything:
   180 points as one bar with the bid marked, the counters each side has captured as small cards, the nest, the last trick.
   Both fit the right panel by measuring it (`f1` to `f7`: the least needed part goes first), and keep `html.cdesk` on only
   while a desk layout shows, since Cards.desk's in-between layouts assume Hearts' stage.
+  **Five Crowns and Phase 10 at a desk** (rummy tables, so not Hearts' panels; `build`, `placeSeats`/`paintFeltDesk`,
+  `fitLaid`, `paintSheet`, `paintSide` in fivecrownss-ai.html and phase10-ai.html; their rules hang off `html.rdesk`): the
+  felt is laid as a table is, the first player on your left beside the piles, the rest across the top, the last on your
+  right (`RING`; `RING_N` for a narrow felt), and what is public at a real table lies in front of its player at one card
+  size for every seat, the largest that fits (`--lcw`). Five Crowns: a player who goes out, and everyone else after their
+  one last turn, has their books and runs face up with the cards left over (`laidOf`; a felt too small keeps the cards left
+  over, then only what they come to: `lo1`, `lo2`); the sheet is a row a round under the round's wild card with the race
+  under it (0 at the top, the fewest points win), and at the right what is wild, who is doing what round the table, a crown
+  for each round a player went out first, and what a card left in the hand costs. Phase 10: each player's laid-down phase
+  with what has been hit onto it, your own along the foot where the builder stands, the cards a player was caught with
+  face up when the hand is counted; the sheet is a row a hand (the phase each player was on, filled when they made it,
+  and their points) with the climb through the phases under it, and at the right the ladder of the phases in words with
+  every player's token on their rung (a green check: laid down this hand; a red mark: loses a turn). A counted round or
+  hand goes onto the sheet and the bar deals the next (online keeps its sheet). **Smaller windows no phone or tablet has**
+  (`LITE_P`, `LITE_L` in both pages: 480 or more wide and 560 to 760 tall and upright or nearly square; wider than tall,
+  over 520 tall, under 1200 wide but not 1000 to 1040) get the same table without the panels, fitted to the window so
+  nothing scrolls; a Phase 10 felt with no room for every phase scrolls inside itself (`pd-over`). The scripts are the
+  scratchpad's `big/fivecrowns/` (`lib.js` positions for both games, `snap.js` the device proof, `shots.js` the scan of
+  every phase at any size, `resize.js`, `online.js`, `demo.js`).
   **The setup and the results card at a desk, for every game** (kit.js "The desk" and the last section of kit.css; every
   rule hangs off `.k-dk`, which kit.js sets only in a window wider than 1024 or more than 768 the shorter way, taller
   than 520 and 480 wide at least: `deskShape`, `winShape`, `Kit.desk()`. The devices are drawn by the rules they always
