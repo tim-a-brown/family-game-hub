@@ -1780,6 +1780,52 @@ Underlying principles for everything:
   `cfg.handMax`: the end of a turn, the page's discard screen and its caption. `scripts/anoria/relicfx.js` measures
   every Relic power on the same games (`relics-2026-11-13.txt`). The wider spread of Relic powers proposed in
   `scripts/anoria/relics-proposal.md` is built (below).
+- **Any number of a player's Figures can stand at a Domain, unless the players choose a limit** (Tim, 2026-11-17: "is
+  there a good reason for the three card limit at a domain in arvela?" There wasn't: at most three of one player's
+  Figures at a Domain was in the first version's rules, and no balance run had ever tested it. Then, the same day: "give
+  game options to cap domains at 4-6 cards apiece"). A new game has no limit (`cap: 0` in `STD`), and the setup's option
+  Figures at a Domain (No limit, 4, 5 or 6: `capOf`, `capRule` in ui.js) gives one game a limit, online too (the host's
+  choice is the table's `cap` in net.js, and the review shows it with the rules). Thermopylae keeps its own two whatever
+  the game's limit (`capAt` in engine.js: the Domain's power). **A game keeps the limit it began with** as `G.cap`, as
+  it keeps `G.sc`, `G.tg` and `G.rfx`: a saved game or an online table from before has none, and finishes under the old
+  limit of three (`E.OLD_CAP`, `cfgOf`). Lessons play with no limit. **Every sentence that says the rule is made from the
+  game's own limit, never typed** (`capRule`, `fullSay`): the rules page, the note under a Domain, the plate on a Figure
+  with nowhere to be played, and the road under a card, where a Domain that holds as many of your Figures as it can says
+  Full and a tap says why (`R.full` in `roadOf`; the engine is asked where the card could go with the limits lifted,
+  `cfg.nolim`). Testudo, the Defense of Syracuse, the Great Siege of Malta and Runnymede no longer say "if that Gate has
+  room": only a Gate that is Thermopylae can be full in a game with no limit, the engine still checks it (`room`), and the
+  note under Thermopylae at a Gate says a Figure can't be sent back there. The engraved empty places in your rows with
+  more players are drawn only where a Domain has a limit. The numbers are `scripts/anoria/no-cap-2026-11-17.txt`. The
+  five ready decks (`variant.js`, 80 games a matchup) are 10.2 points apart under the old limit of 3, 14.1 at 4, 14.4 at
+  5, 12.2 at 6 and 11.3 with none, with the rounds (7.6 to 7.7), the knock-outs (8.1 to 8.3) and the games won on Seals
+  (32 to 34%) the same throughout. **The twelve Guides' decks, which were tuned under the limit of three, are further
+  apart the more Figures a Domain holds when each is played by its own robot** (`sets.js`, the styles in `STY`, 240 games
+  a pair): 4.5 points at 3, 5.3 at 4, 9.4 at 5, 8.9 at 6 and 11.7 with none (Sun Tzu 55.1%, Sor Juana 43.4%). With the
+  plain Normal robot on every deck they are no further apart (8.6 at 3, 7.3 with none, 120 games a pair), so part of that
+  is the styles, which were chosen under the old limit, and not the decks. Neither the styles nor the sets have been
+  tuned again: a change to either is measured under no limit from now on (`sets.js` plays `STD`). Tests: deeds-test.js (more than three by
+  every way a Figure arrives, limits of 4, 5 and 6, a game that keeps the old limit, whole robot games), powers-test.js
+  (Thermopylae), players-test.js (four players, teams).
+  **The table shows any number** (`foldPiles`, `pileEls`, `pileBad` in ui.js). A pile shows every card while every card
+  can show its Might and its cost, and on the battle line its name (flat or down its edge: `coverNames`, which now keeps
+  the name clear of the marks on the spine and counts a stack as the thing lying over a card). Past that, the cards that
+  fit stay cards and the rest are **one stack at the pile's top**, the place where a card lies whole (the right end of a
+  row; in a cascade the top of the screen), at a card's size, with how many cards it holds and their Might together
+  (`.stk.pile`). How many fit is found by measuring the pile as it lies, one card fewer until it is right, and remembered
+  for that pile at that window (`ui.folds`), so the next redraw is built folded. A phone held upright keeps three cards
+  beside a Domain as it always did, the covered ones showing their Might, and folds from the fourth; a cascade (an iPad
+  upright, a tall window) keeps a third of every card; your rows with more players hold three things, fewer on a phone
+  on its side (`rowFit`), and on the battle line with more players your columns fold as the two-player ones do. A phone
+  on its side was already one stack a side; its stacks now lie under the line's shields, which three fanned cards had
+  covered. A tap on a stack picks up the Figure in it that can move, or opens the face-off, where every card is whole and
+  a side with too many scrolls (`stackTap`, `fitFaceOff`: unchanged). The scratchpad's `nocap/h.js <tag> <sizes>
+  n4,n6,n9,b6 [--n=4]` shoots 4, 6 and 9 of yours and 6 a side at one Domain, `nocap/fo.js` measures the face-off,
+  `nocap/play.js` plays a game on the page while the piles grow, and `nocap/lessons.js` plays every lesson to its end.
+  **The setup on a phone held upright** fit the screen exactly before the option: with its row, Arvela's own parts draw
+  in (`an-tight` in ui.css, set by `tight` in `showSetup` once the kit's fold and `k-snug` are not enough), so it still
+  fits. The kit folds the option to a row that opens, not a row of buttons, because "No limit" is 8 letters and
+  `inlineKind` takes 7. A chosen option in a row of choices is bronze words on bronze-tinted stone (the kit's `--lit-ink`
+  is this page's dark ink and read dark on dark).
 - **Pictures of the third printing**: all of them are painted (2026-11-11; each batch's notes, candidates and sources are in
   the session scratchpad's `art3/`, not the repo). `PAINTED` in text.js lists the third-printing cards whose pictures
   are in `art/` and `art/t/`, and a card added later without one is in `NOPIC`: the page never asks the network

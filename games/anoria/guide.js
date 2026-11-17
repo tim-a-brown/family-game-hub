@@ -472,7 +472,7 @@
         await L.say('A Figure you have just played can’t walk this turn, but can still clash with an enemy at the same Place.', { at: L.piece('copernicus') });
         await L.walk('hatshepsut', CROSS, { lit: 'Each Figure does one thing a turn: <b>walk</b> one step to the next Place, or <b>clash</b>.', at: L.piece('hatshepsut') });
         await L.say('A Figure that has acted goes dim until your next turn.', { at: L.piece('hatshepsut') });
-        await L.say('Up to 3 of your Figures can stand at one Place.', { at: L.row(MY_OUT) + ' .pl-side.R' });
+        await L.say('Any number of your Figures can stand at one Place.', { at: L.row(MY_OUT) + ' .pl-side.R' });
       } },
     { id: 'might', n: 'Might, home and away', sub: 'Shields, home regions and Voyagers', art: 'marcopolo',
       table: () => ({ round: 4, places: PL, me: { guide: 'cleopatra', hand: ['copernicus', 'coleman', 'galileo'], draw: ['eureka', 'hypatia', 'compass', 'press'] },

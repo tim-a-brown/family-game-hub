@@ -81,6 +81,10 @@ mixed decks 50.2% on average (43.2 to 57.1), one pack twice 49.7% (44.3 to 52.5)
   letting the power count twice (`set-150-balance.txt`). Since 2026-11-17 a Relic can be played over one of the player's
   own, which goes to their discard pile (`{t: 'relic', h, over}`); `'{"relicOver":0}'` plays the rule before, and
   `'{"overAll":1}'` lets the robots weigh every such move (`relic-over-2026-11-17.txt`).
+- Figures at a Domain (`cfg.cap`): any number since 2026-11-17 (`cap: 0` in `STD`), or a limit of 4, 5 or 6 chosen in
+  the setup; `'{"cap":3}'` plays the limit of three that every game had before, which a game saved then keeps
+  (`E.OLD_CAP`). Thermopylae holds two whatever the limit. `no-cap-2026-11-17.txt` has the ready decks and the twelve
+  Guides' decks under each (`variant.js`, `sets.js` with the json as its sixth argument).
 - `node scripts/anoria/relicfx.js [games] [seed] ['<json>'] [relic,relic,...]`: every Relic power on the same games (two
   copies in one player's deck of random cards with no other Relics, against a deck with none), so the lines differ only
   by the Relic. It is how the Timbuktu Manuscripts' power (hold 10 cards) was measured (`relics-2026-11-13.txt`), and

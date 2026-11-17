@@ -121,6 +121,23 @@ const T2 = [[0, 2], [1, 3]];
   ok('3: catching up: behind every other player, 1 more Spark', a === S.P[0].spark + 1, [a, S.P[0].spark]); }
 { const S = game(3, [null, null, null, null, null, null, 'orleans']); fig(S, 'napoleon', 1, 6); const f = fig(S, 'leonidas', 0, 6); fig(S, 'spartacus', 2, 6);
   ok('3: Orléans helps against whoever holds it', E.might(S, f, 1) === E.might(S, f, 0) + 2); }
+// ── Any number of a player's Figures at a Domain, with more players too (2026-11-17); a game begun under the limit of three keeps it ──
+{ const NAMES = ['leonidas', 'boudica', 'spartacus', 'hatshepsut', 'copernicus', 'hammurabi'];
+  const S = game(4); NAMES.forEach(c => fig(S, c, 0, 8)); NAMES.slice(0, 4).forEach(c => fig(S, c, 2, 8)); const f = fig(S, 'yoshitsune', 0, 1), g = fig(S, 'yoshitsune', 2, 5);
+  ok('4: a seventh Figure walks into the Crossroads where six of that player\'s stand', E.walkDests(S, f).indexOf(8) >= 0); ok('4: and a fifth of another player\'s', E.walkDests(S, g).indexOf(8) >= 0);
+  S.P[0].hand = ['socrates']; NAMES.forEach(c => fig(S, c, 0, 0)); ok('4: a Figure is played at a Gate with six of yours', E.actions(S).some(a => a.t === 'fig' && a.p === 0));
+  const T = game(4, [], { cfg: { teams: [[0, 2], [1, 3]] } }); NAMES.slice(0, 4).forEach(c => fig(T, c, 0, 8)); NAMES.slice(0, 4).forEach(c => fig(T, c, 2, 8)); const h = fig(T, 'yoshitsune', 2, 5);
+  ok('teams: a teammate\'s Figures don\'t count against yours, and neither side has a limit', E.walkDests(T, h).indexOf(8) >= 0 && E.cnt(T, 8, 0) === 4);
+  const O = game(4, [], { cfg: { cap: E.OLD_CAP } }); NAMES.slice(0, 3).forEach(c => fig(O, c, 0, 8)); NAMES.slice(0, 2).forEach(c => fig(O, c, 2, 8)); const a = fig(O, 'yoshitsune', 0, 1), b = fig(O, 'yoshitsune', 2, 5);
+  ok('4, a game that keeps the limit of three: no fourth Figure walks in', E.walkDests(O, a).indexOf(8) < 0); ok('4, the limit of three: another player\'s third still does', E.walkDests(O, b).indexOf(8) >= 0); }
+{ const NAMES = ['leonidas', 'boudica', 'spartacus', 'hatshepsut', 'copernicus', 'hammurabi'];   // (a limit chosen in the setup, with more players and with teams)
+  const S = game(4, [], { cfg: { cap: 4 } }); NAMES.slice(0, 4).forEach(c => fig(S, c, 0, 8)); NAMES.slice(0, 3).forEach(c => fig(S, c, 2, 8)); const a = fig(S, 'yoshitsune', 0, 1), b = fig(S, 'yoshitsune', 2, 5);
+  ok('4, a limit of 4: no fifth Figure walks in', E.walkDests(S, a).indexOf(8) < 0); ok('4, a limit of 4: another player\'s fourth does', E.walkDests(S, b).indexOf(8) >= 0);
+  const T = game(4, [], { cfg: { cap: 6, teams: [[0, 2], [1, 3]] } }); NAMES.forEach(c => fig(T, c, 0, 8)); NAMES.slice(0, 5).forEach(c => fig(T, c, 2, 8)); const c2 = fig(T, 'yoshitsune', 0, 1), d = fig(T, 'yoshitsune', 2, 5);
+  ok('teams, a limit of 6: each teammate has their own six', E.walkDests(T, c2).indexOf(8) < 0 && E.walkDests(T, d).indexOf(8) >= 0);
+  for (const cap of [4, 6]) { const decks = [], guides = [], profs = []; for (let o = 0; o < 4; o++) { decks.push(C.ARCH.Legion.cards.concat(C.ARCH.Legion.cards)); guides.push('leonardo'); profs.push(E.PROF.normal); }
+    let err = null, G2 = null; try { G2 = E.play(decks, guides, profs, Object.assign({}, E.STD, { cap: cap }), 77 + cap); } catch (e) { err = e; }
+    ok('4, a limit of ' + cap + ': the robots play a whole game', !err && G2.over, err && err.stack); } }
 // ── A whole game at every count ──
 for (const [N, teams] of [[3], [4], [5], [6], [4, T2], [6, [[0, 2, 4], [1, 3, 5]]], [6, [[0, 3], [1, 4], [2, 5]]]]) {
   const ks = Object.keys(C.ARCH), decks = [], guides = [], profs = [];

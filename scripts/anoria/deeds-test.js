@@ -11,9 +11,9 @@ const ALL = Object.keys(C.PLACES); let fails = 0, oks = 0;
 const ok = (name, cond, more) => { if (cond) oks++; else { fails++; console.log('FAIL ' + name + (more !== undefined ? ' ' + JSON.stringify(more) : '')); } };
 // positions: 0 P0 Gate, 1 P0 Outpost, 2 P1 Gate, 3 P1 Outpost, 4 Crossroads. Fillers have powers that change nothing here.
 const FILL = ['wall', 'thermopylae', 'aachen', 'appian', 'library'];
-function game(lay) {
+function game(lay, cfg) {   // (cfg: rules other than today's, e.g. { cap: E.OLD_CAP } for a game begun under the limit of three Figures at a Domain)
   lay = lay || []; const L = [0, 1, 2, 3, 4].map(i => lay[i] || FILL[i]), rest = ALL.filter(x => L.indexOf(x) < 0);
-  const S = E.newGame([C.ARCH.Legion.cards.concat(C.ARCH.Legion.cards), C.ARCH.Court.cards.concat(C.ARCH.Court.cards)], ['leonardo', 'leonardo'], Object.assign({}, E.STD, { log: 1 }), E.rng(7), [rest.slice(0, 15), rest.slice(15, 30)], { lay: L, first: 0 });
+  const S = E.newGame([C.ARCH.Legion.cards.concat(C.ARCH.Legion.cards), C.ARCH.Court.cards.concat(C.ARCH.Court.cards)], ['leonardo', 'leonardo'], Object.assign({}, E.STD, { log: 1 }, cfg || {}), E.rng(7), [rest.slice(0, 15), rest.slice(15, 30)], { lay: L, first: 0 });
   S.figs = []; S.turn = 0; S.P.forEach(p => { p.spark = 5; p.hand = []; p.reserve = 0; p.gone = []; }); S.ev = [];
   return S;
 }
@@ -86,13 +86,15 @@ function vetoGame(deed, setup) { const S = game(); setup(S); S.P[0].hand = [deed
 { const S = game(); S.P[0].seals = 3; S.P[0].sm = 4; S.P[0].hand = ['walls']; E.apply(S, deeds(S, 'walls')[0]); ok('walls: 3 of 4 mended to 4', S.P[0].seals === 4 && S.P[0].sm === 4); }
 { const S = game(); S.P[0].seals = 4; S.P[0].sm = 4; fig(S, 'leonidas', 1, 0); E.endRound(S); ok('walls: a fourth Seal breaks like any', S.P[0].seals === 3); }
 // ── Testudo: a Figure that loses a clash it started on the other player's side falls back to its Gate ──
-function tGame(at, lay) { const S = game(lay); const a = fig(S, 'spartacus', 0, at), d = fig(S, 'charlemagne', 1, at); S.P[0].hand = ['testudo']; S.P[0].spark = 3; return { S, a, d }; }
+function tGame(at, lay, cfg) { const S = game(lay, cfg); const a = fig(S, 'spartacus', 0, at), d = fig(S, 'charlemagne', 1, at); S.P[0].hand = ['testudo']; S.P[0].spark = 3; return { S, a, d }; }
 { const { S, a, d } = tGame(3); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('testudo: back to the Gate', E.byU(S, a.u) && E.byU(S, a.u).p === 0 && S.P[0].spark === 2 && S.P[0].gone.indexOf('testudo') >= 0, [E.byU(S, a.u), S.P[0].spark]);
   ok('testudo: the event', S.ev.some(e => e.t === 'clash' && e.tq === 'testudo') && S.ev.some(e => e.t === 'fallback' && e.why === 'testudo')); }
 { const { S, a, d } = tGame(4); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('testudo: not at the Crossroads', !E.byU(S, a.u) && S.P[0].hand.length === 1); }
 { const { S, a, d } = tGame(1); S.figs.splice(S.figs.indexOf(a), 1); S.figs.splice(S.figs.indexOf(d), 1); const a2 = fig(S, 'spartacus', 0, 1), d2 = fig(S, 'charlemagne', 1, 1); E.apply(S, { t: 'clash', u: a2.u, v: d2.u }, 0, 0); ok('testudo: not on your own side', !E.byU(S, a2.u)); }
 { const { S, a, d } = tGame(3); S.P[0].spark = 0; E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('testudo: not without Spark', !E.byU(S, a.u) && S.P[0].hand.length === 1); }
-{ const { S, a, d } = tGame(3); fig(S, 'leonidas', 0, 0); fig(S, 'boudica', 0, 0); fig(S, 'yoshitsune', 0, 0); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('testudo: not with no room at the Gate', !E.byU(S, a.u) && S.P[0].hand.length === 1); }
+{ const { S, a, d } = tGame(3); fig(S, 'leonidas', 0, 0); fig(S, 'boudica', 0, 0); fig(S, 'yoshitsune', 0, 0); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('testudo: back to a Gate with three of your Figures there (no limit)', E.byU(S, a.u) && E.byU(S, a.u).p === 0 && !S.P[0].hand.length && E.cnt(S, 0, 0) === 4, [E.byU(S, a.u), S.P[0].hand]); }
+{ const { S, a, d } = tGame(3, ['thermopylae', 'wall']); fig(S, 'leonidas', 0, 0); fig(S, 'boudica', 0, 0); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('testudo: not when your Gate is Thermopylae with two of your Figures there', !E.byU(S, a.u) && S.P[0].hand.length === 1); }
+{ const { S, a, d } = tGame(3, null, { cap: E.OLD_CAP }); fig(S, 'leonidas', 0, 0); fig(S, 'boudica', 0, 0); fig(S, 'yoshitsune', 0, 0); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('testudo: a game begun under the limit of three keeps it', !E.byU(S, a.u) && S.P[0].hand.length === 1); }
 { const { S, a, d } = tGame(3, [null, null, null, 'runnymede']); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('testudo: kept where Runnymede sends the Figure back anyway', E.byU(S, a.u).p === 0 && S.P[0].hand.length === 1); }
 { const { S, a, d } = tGame(3); S.figs.splice(S.figs.indexOf(d), 1); const w = fig(S, 'socrates', 1, 3); a.tb = 3; E.apply(S, { t: 'clash', u: a.u, v: w.u }, 0, 0); ok('testudo: not when the clash is won', !E.byU(S, w.u) && S.P[0].hand.length === 1); }
 // ── The Defence of Syracuse: an enemy that would win a clash it started at your Gate or Outpost is driven back ──
@@ -252,7 +254,8 @@ const turnGame = (lay) => { const S = game(lay); S.P.forEach(p => { p.deck = ['s
 { says('longship', 'You can play your Figures at the Crossroads.'); says('voyagingcanoe', 'You can play your Figures at the Crossroads.'); power('longship', 'longship', 2); power('voyagingcanoe', 'longship', 2);
   const S = game(); S.P[0].hand = ['spartacus']; const at = () => acts(S, 'fig').map(a => a.p).sort().join();
   ok('landing: without it, only at your Gate', at() === '0', at()); S.P[0].relics = ['voyagingcanoe']; ok('landing: at the Crossroads too', at() === '0,4', at());
-  fig(S, 'leonidas', 0, 4); fig(S, 'boudica', 0, 4); fig(S, 'socrates', 0, 4); ok('landing: not where you have 3 Figures already', at() === '0', at()); }
+  fig(S, 'leonidas', 0, 4); fig(S, 'boudica', 0, 4); fig(S, 'socrates', 0, 4); ok('landing: where you have three Figures already, too (no limit)', at() === '0,4', at());
+  S.cfg.cap = E.OLD_CAP; ok('landing: not where you have three Figures in a game that keeps the limit of three', at() === '0', at()); }
 // Convoy: The Wheel
 { says('wheel', 'When one of your Figures walks, one other Figure of yours at the same Domain can walk with it.'); power('wheel', 'wheel', 1);
   const S = game(); const a = fig(S, 'leonidas', 0, 0), b = fig(S, 'boudica', 0, 0), c = fig(S, 'spartacus', 0, 0, { rdy: 0 });
@@ -444,5 +447,73 @@ const turnGame = (lay) => { const S = game(lay); S.P.forEach(p => { p.deck = ['s
   for (let s = 1; s <= 40 && !err; s++) { const k = s % 8, rs = NEWR.slice(2 * k, 2 * k + 2), d = C.ARCH.Legion.cards.slice(0, 16).concat(rs, rs), e = C.ARCH.Court.cards.slice(0, 16).concat(NEWR.slice((2 * k + 4) % 16, (2 * k + 4) % 16 + 2)).concat(['cyruscylinder', 'telescope']);
     try { const S = E.play([d.concat(d.slice(0, 20)), e.concat(e)], ['leonardo', 'suntzu'], [E.PROF.normal, E.PROF.hard], Object.assign({}, E.STD), 300 + s); for (let o = 0; o < 2; o++) Object.keys(S.st.played[o]).forEach(c => { used[c] = 1; }); } catch (x) { err = x; } }
   ok('robots play whole games with the new Relic powers', !err, err && err.stack); ok('robots play every one of them', NEWR.every(k => used[k]), NEWR.filter(k => !used[k])); }
+// ── Any number of a player's Figures can stand at a Domain (Tim, 2026-11-17: "is there a good reason for the three card
+// limit at a domain in arvela?"; no-cap-2026-11-17.txt). Thermopylae keeps its own limit of two, and a game begun under
+// the limit of three finishes under it (cfg.cap: 0 today, E.OLD_CAP for a game saved before) ──
+{ ok('no limit: today\'s rules have none, and the old limit was three', E.STD.cap === 0 && E.OLD_CAP === 3 && E.DEF.cap === E.OLD_CAP, [E.STD.cap, E.OLD_CAP, E.DEF.cap]);
+  const LAY = [null, 'mainz'], CROWD = ['leonidas', 'boudica', 'spartacus', 'hatshepsut', 'copernicus', 'hammurabi', 'yoshitsune', 'galileo', 'hypatia'];   // (Mainz at the first player's Outpost, where the fillers put Thermopylae)
+  const crowd = (S, n, o, p) => CROWD.slice(0, n).map(c => fig(S, c, o, p, { rdy: 0 })), OLD = { cap: E.OLD_CAP };
+  for (const n of [3, 4, 6, 9]) { const S = game(LAY); crowd(S, n, 0, 0); S.P[0].hand = ['socrates'];
+    const a = acts(S, 'fig').find(x => x.p === 0); ok('no limit: a Figure is played at a Gate with ' + n + ' of yours there', !!a); if (a) { E.apply(S, a); ok('no limit: and stands there, ' + (n + 1) + ' in all', E.cnt(S, 0, 0) === n + 1 && E.room(S, 0, 0), E.cnt(S, 0, 0)); } }
+  { const S = game(LAY); crowd(S, 4, 0, 1); const f = fig(S, 'leonidas', 0, 0); ok('no limit: a Figure walks into a Domain with four of yours', E.walkDests(S, f).indexOf(1) >= 0);
+    E.apply(S, { t: 'walk', u: f.u, p: 1 }); ok('no limit: five stand there', E.cnt(S, 1, 0) === 5); }
+  { const S = game(LAY); crowd(S, 6, 0, 4); crowd(S, 6, 1, 4); const f = fig(S, 'leonidas', 0, 1), g = fig(S, 'napoleon', 1, 3); ok('no limit: six of each player\'s at the Crossroads, and a seventh of each can walk in', E.walkDests(S, f).indexOf(4) >= 0 && E.walkDests(S, g).indexOf(4) >= 0);
+    ok('no limit: the Might there adds up over all of them', E.mights(S, 4)[0] === S.figs.filter(x => x.o === 0 && x.p === 4).reduce((n, x) => n + E.might(S, x, 0), 0) && E.mights(S, 4)[0] >= CROWD.slice(0, 6).reduce((n, c) => n + C.CARDS[c].m, 0), E.mights(S, 4)); }
+  { const S = game(LAY); S.P[0].relics = ['wheel']; crowd(S, 3, 0, 1); const a = fig(S, 'leonidas', 0, 0), b = fig(S, 'boudica', 0, 0);
+    ok('no limit: a convoy of two walks into a Domain with three of yours', acts(S, 'walk').some(x => x.u === a.u && x.p === 1 && x.w2 === b.u)); }
+  { const S = game(LAY); S.P[0].relics = ['balloon']; crowd(S, 4, 0, 4); const f = fig(S, 'leonidas', 0, 0); ok('no limit: the jump lands where four of yours stand', acts(S, 'antik').some(x => x.u === f.u && x.p === 4)); }
+  { const S = game(LAY); S.P[0].hand = ['fairwinds']; crowd(S, 4, 0, 4); const f = fig(S, 'leonidas', 0, 0); ok('no limit: Fair Winds carries a Figure to where four of yours stand', deeds(S, 'fairwinds').some(x => x.u === f.u && x.p === 4)); }
+  { const S = game([null, 'mainz', null, 'runnymede']); crowd(S, 4, 0, 0); const a = fig(S, 'spartacus', 0, 3), d = fig(S, 'charlemagne', 1, 3); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0);
+    ok('no limit: Runnymede sends a Figure back to a Gate with four of its player\'s there', E.byU(S, a.u) && E.byU(S, a.u).p === 0 && E.cnt(S, 0, 0) === 5); }
+  { const S = game(LAY); crowd(S, 3, 0, 0); const a = fig(S, 'charlemagne', 0, 3), d = fig(S, 'socrates', 1, 3); S.P[1].hand = ['syracuse']; S.P[1].reserve = 1; E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0);
+    ok('no limit: the Defense of Syracuse drives a Figure back to a Gate with three of its player\'s there', E.byU(S, a.u).p === 0 && !!E.byU(S, d.u) && !S.P[1].hand.length); }
+  // Thermopylae: two of each player's, whatever the game's rule
+  { const S = game(); crowd(S, 2, 0, 1); const f = fig(S, 'leonidas', 0, 0), g = fig(S, 'napoleon', 1, 4); S.P[0].hand = ['socrates']; S.P[0].relics = ['balloon'];
+    ok('Thermopylae: no third Figure of yours walks in', E.walkDests(S, f).indexOf(1) < 0 && E.capAt(S, 1) === 2); ok('Thermopylae: none is played there', !acts(S, 'fig').some(x => x.p === 1) && acts(S, 'fig').some(x => x.p === 0));
+    ok('Thermopylae: none jumps there', !acts(S, 'antik').some(x => x.p === 1)); ok('Thermopylae: the other player\'s Figure still walks in', E.walkDests(S, g).indexOf(1) >= 0);
+    ok('Thermopylae: every other Domain holds any number', [0, 2, 3, 4].every(i => E.capAt(S, i) === Infinity)); }
+  { const S = game(['thermopylae', 'wall']); crowd(S, 2, 0, 0); S.P[0].hand = ['socrates']; ok('Thermopylae at your Gate with two of yours there: a Figure has nowhere to be played', !acts(S, 'fig').length);
+    fig(S, 'leonidas', 0, 1); ok('Thermopylae at your Gate: a Figure is still played at your Outpost, where you have one', acts(S, 'fig').map(x => x.p).join() === '1'); }
+  { const S = game(null, OLD); crowd(S, 1, 0, 1); ok('Thermopylae holds two in a game that keeps the limit of three, too', E.capAt(S, 1) === 2 && E.capAt(S, 0) === 3); }
+  // a game begun under the limit of three
+  { const S = game(LAY, OLD); crowd(S, 3, 0, 0); S.P[0].hand = ['socrates']; ok('the old limit: no fourth Figure is played at a Gate with three', !acts(S, 'fig').length && !E.room(S, 0, 0));
+    const T = game(LAY, OLD); crowd(T, 3, 0, 1); const f = fig(T, 'leonidas', 0, 0); ok('the old limit: no fourth Figure walks in', E.walkDests(T, f).indexOf(1) < 0);
+    const U2 = game(LAY, OLD); crowd(U2, 2, 0, 1); const g = fig(U2, 'leonidas', 0, 0); ok('the old limit: a third still walks in', E.walkDests(U2, g).indexOf(1) >= 0); }
+  // (a saved game carries no rules: the page puts them back from what the game began with, cfgOf in ui.js. The state alone must not decide)
+  { const S = game(LAY); crowd(S, 3, 0, 0); S.P[0].hand = ['socrates']; const T = JSON.parse(JSON.stringify(Object.assign({}, S, { cfg: null, ev: null, st: null })));
+    T.cfg = Object.assign({}, E.DEF, E.STD, { cap: E.OLD_CAP }); T.ev = []; ok('a saved game given the old limit back keeps it', !acts(T, 'fig').length);
+    T.cfg = Object.assign({}, E.DEF, E.STD); ok('and given today\'s rules has none', acts(T, 'fig').some(x => x.p === 0)); }
+  // a limit chosen in the setup (Tim, 2026-11-17: "give game options to cap domains at 4-6 cards apiece"): cfg.cap 4, 5 or 6.
+  // One more than the limit is refused however it would come: played, walked, carried by a Deed, or moved by a Relic's power
+  for (const lim of [4, 5, 6]) { const CAP = { cap: lim }, at = 4, tag = 'a limit of ' + lim + ': ';
+    { const S = game(LAY, CAP); crowd(S, lim, 0, 0); S.P[0].hand = ['socrates']; ok(tag + 'no Figure is played at a Gate with ' + lim + ' of yours', !acts(S, 'fig').length && E.capAt(S, 0) === lim);
+      const T = game(LAY, CAP); crowd(T, lim - 1, 0, 0); T.P[0].hand = ['socrates']; ok(tag + 'one is played where ' + (lim - 1) + ' stand', acts(T, 'fig').some(x => x.p === 0)); }
+    { const S = game(LAY, CAP); crowd(S, lim, 0, 1); const f = fig(S, 'leonidas', 0, 0); ok(tag + 'no Figure walks into a Domain with ' + lim + ' of yours', E.walkDests(S, f).indexOf(1) < 0 && !acts(S, 'walk').some(x => x.p === 1));
+      const T = game(LAY, CAP); crowd(T, lim - 1, 0, 1); const g = fig(T, 'leonidas', 0, 0); ok(tag + 'one walks in where ' + (lim - 1) + ' stand', E.walkDests(T, g).indexOf(1) >= 0);
+      const g2 = fig(T, 'napoleon', 1, 4); crowd(T, 1, 1, 1); ok(tag + 'the other player\'s Figures are counted apart', E.walkDests(T, g2).indexOf(1) >= 0); }
+    { const S = game(LAY, CAP); S.P[0].hand = ['fairwinds']; crowd(S, lim, 0, at); const f = fig(S, 'leonidas', 0, 0); ok(tag + 'Fair Winds carries no Figure there', !deeds(S, 'fairwinds').some(x => x.p === at) && deeds(S, 'fairwinds').some(x => x.u === f.u)); }
+    { const S = game(LAY, CAP); S.P[0].hand = ['crossing', 'socrates']; crowd(S, lim, 0, at); ok(tag + 'Night Crossing lands no Figure there', !deeds(S, 'crossing').some(x => x.p === at) && deeds(S, 'crossing').some(x => x.p === 0)); }
+    { const S = game(LAY, CAP); S.P[0].relics = ['wheel']; crowd(S, lim - 1, 0, 1); const a = fig(S, 'leonidas', 0, 0), b = fig(S, 'boudica', 0, 0);
+      ok(tag + 'a Convoy of two does not walk in where there is room for one', acts(S, 'walk').some(x => x.u === a.u && x.p === 1 && !x.w2) && !acts(S, 'walk').some(x => x.p === 1 && x.w2));
+      const T = game(LAY, CAP); T.P[0].relics = ['wheel']; crowd(T, lim - 2, 0, 1); const c = fig(T, 'leonidas', 0, 0), d = fig(T, 'boudica', 0, 0); ok(tag + 'a Convoy of two walks in where there is room for two', acts(T, 'walk').some(x => x.u === c.u && x.p === 1 && x.w2 === d.u)); }
+    { const S = game(LAY, CAP); S.P[0].relics = ['locomotive']; crowd(S, lim, 0, at); const f = fig(S, 'leonidas', 0, 0); fig(S, 'boudica', 0, 3); ok(tag + 'the Railway takes no Figure there', !acts(S, 'rail').some(x => x.p === at) && acts(S, 'rail').some(x => x.u === f.u && x.p === 3)); }
+    { const S = game(LAY, CAP); S.P[0].relics = ['longship']; S.P[0].hand = ['socrates']; crowd(S, lim, 0, at); ok(tag + 'Landing plays no Figure there', acts(S, 'fig').map(x => x.p).sort().join() === '0');
+      S.figs.pop(); ok(tag + 'Landing plays one where ' + (lim - 1) + ' stand', acts(S, 'fig').some(x => x.p === at)); }
+    { const S = game(LAY, CAP); S.P[0].relics = ['balloon']; crowd(S, lim, 0, at); const f = fig(S, 'leonidas', 0, 0); ok(tag + 'the jump lands no Figure there', !acts(S, 'antik').some(x => x.p === at) && acts(S, 'antik').some(x => x.u === f.u)); }
+    { const S = game(null, CAP); ok(tag + 'Thermopylae still holds two', E.capAt(S, 1) === 2); }
+    { const S = game(LAY, Object.assign({ nolim: 1 }, CAP)); crowd(S, lim, 0, 0); S.P[0].hand = ['socrates']; ok(tag + 'the page can ask where a card could go but for the limit', acts(S, 'fig').some(x => x.p === 0)); } }
+  { const S = game(null, { nolim: 1 }); ok('with the limits lifted for the page\'s question, Thermopylae has none either', E.capAt(S, 1) === Infinity); }
+  // whole games, the robots on both sides: the most of one player's Figures at one Domain after every turn
+  { const most = cfg => { let top = 0, thermo = 0, err = null; const d = C.ARCH.Legion.cards, e = C.ARCH.Court.cards;
+      for (let s = 0; s < 12 && !err; s++) { try { const R = E.rng(500 + s), decks = [d.concat(d), e.concat(e)], S = E.newGame(decks, ['leonardo', 'suntzu'], Object.assign({}, E.STD, cfg), R, E.stacksFor(decks, E.rng(900 + s)), { profs: [E.PROF.normal, E.PROF.hard] });
+        while (!S.over) { const first = E.firstOf(S); for (const o of [first, 1 - first]) { if (S.over) break; S.turn = o; E.startTurn(S); E.aiTurn(S, o ? E.PROF.hard : E.PROF.normal, R); E.endTurn(S);
+            for (let i = 0; i < S.places.length; i++) for (let q = 0; q < 2; q++) { const n = E.cnt(S, i, q); if (E.pw(S, i) === 'narrow') thermo = Math.max(thermo, n); else top = Math.max(top, n); } }
+          if (!S.over) E.endRound(S); } } catch (x) { err = x; } }
+      return { top, thermo, err }; };
+    const now = most({}), was = most({ cap: E.OLD_CAP }), four = most({ cap: 4 }), six = most({ cap: 6 });
+    ok('robots: under a limit of 4 never more than four, and four do gather', !four.err && four.top === 4, four.top); ok('robots: under a limit of 6 never more than six', !six.err && six.top <= 6 && six.top > 3, six.top);
+    ok('robots play whole games with no limit', !now.err, now.err && now.err.stack); ok('robots: more than three of a player\'s Figures do gather at a Domain', now.top > 3, now.top);
+    ok('robots: never more than two of a player\'s at Thermopylae', now.thermo <= 2 && was.thermo <= 2, [now.thermo, was.thermo]);
+    ok('robots: under the old limit never more than three', !was.err && was.top <= 3, was.top); } }
 console.log((fails ? fails + ' failed, ' : '') + oks + ' passed');
 process.exit(fails ? 1 : 0);

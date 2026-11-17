@@ -4,6 +4,10 @@
 (function () {
   'use strict';
   const E = window.AnoriaEngine, C = window.AnoriaCards, TX = window.AnoriaText, LAND = window.AnoriaLand || [];
+  // The limit on one player's Figures at a Domain: none, or the 4, 5 or 6 chosen in the setup (capOf: the setup's choice
+  // as the engine's number). Every sentence that says the rule is made here from the game's own limit, never typed.
+  const capOf = v => (+v >= 4 && +v <= 6 ? +v : 0);
+  const capRule = n => (n ? 'No more than ' + n + ' of your Figures can stand at one Domain.' : 'Any number of your Figures can stand at one Domain.');
   // (every Guide a game can hold: today's, and those who have left the roster, whom a game saved with one still shows)
   const TXG = Object.assign({}, TX.OLD_GUIDES || {}, TX.GUIDES);
   const NUM = n => ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen'][n] || String(n);
@@ -757,6 +761,10 @@
           notes.appendChild(el('p', { html: '<b>' + (who === ui.view && human(who) ? 'Your Domain' : esc(Kit.poss(pname(who))) + ' Domain') + '</b>: ' + (who === ui.view && human(who) ? 'you' : esc(pname(who))) + ' brought it to the table, and ' + (who === ui.view && human(who) ? 'your' : 'their') + ' avatar is on its lower edge.' }));
           if (sil) notes.appendChild(el('p', { html: '<b>Power switched off</b>: ' + esc(sil.k === 'card' ? CARDS[sil.c].n + ' lies on this Domain' : CARDS[E.byU(S, sil.u).c].n + ' is at this Domain') + ', so its power does nothing for now.' })); }
         lyingNotes(notes, o.p, null);
+        // (Thermopylae's limit also stops a Figure being sent back there: Testudo, the Defense of Syracuse, Runnymede)
+        if (S.dm && E.pw(S, o.p) === 'narrow' && gate) notes.appendChild(el('p', { html: '<b>Two Figures each</b>: a Figure can\'t be sent back to ' + esc(c.n) + ' while its player has two Figures there.' }));
+        // (a game with a limit on Figures at a Domain, chosen in the setup or kept from before 2026-11-17, says it here)
+        if (S.cfg.cap && !(S.dm && E.pw(S, o.p) === 'narrow')) notes.appendChild(el('p', { html: '<b>' + cap1(NUM(S.cfg.cap)) + ' Figures each</b>: in this game no more than ' + S.cfg.cap + ' of a player\'s Figures can stand at one Domain.' }));
         // (a game saved under the old rule, when Places scored double from round 4, finishes under it)
         notes.appendChild(el('p', { html: S.cfg.ramp ? DW('<b>This round</b>: holding this Place scores ') + worth + ' Renown.' : DW('<b>Every round</b>: whoever holds this Place when the round ends scores ') + worth + ' Renown.' }));
       }
@@ -1091,7 +1099,10 @@
       else if (E.fxOf(it.key) === 'milan' && c <= P.spark) out.push({ note: nm0 + ' goes on a Domain where you have a Figure.' });
       else if (fig && S.cfg.unique && S.figs.some(f => f.o === o && f.c === it.key)) out.push({ note: nm0 + ' is already in play on your side, and you can have one of each person in play at a time.' });
       else if (c > P.spark) out.push({ note: nm0 + ' costs ' + c + ' Spark, and you have ' + P.spark + '.' });
-      else if (fig) out.push({ note: DW('You play a Figure at your Gate or at a Place where you already have a Figure, and each of those Places has ') + S.cfg.cap + ' of your Figures already.' }); }
+      // (a Figure with nowhere to go: in a game that keeps the old limit, three of yours at each Domain it could go to;
+      // in today's game only a Gate that is Thermopylae, with two of yours there and none anywhere else)
+      else if (fig && S.cfg.cap) out.push({ note: 'You play a Figure at your Gate or at a Domain where you already have a Figure. Every one of those Domains is full: no more than ' + S.cfg.cap + ' of your Figures can stand at one Domain in this game.' });
+      else if (fig) { const g0 = E.gateOf(o); out.push({ note: 'You play a Figure at your Gate or at a Domain where you already have a Figure. Your Gate is ' + theName('@' + S.places[g0]) + ', where each player can have no more than ' + NUM(E.capAt(S, g0)) + ' Figures, and you have ' + NUM(E.cnt(S, g0, o)) + ' there already.' }); } }
     return out;
   }
   // ═══ The road under the card ═════════════════════════════════════════════════════════════════════════════
@@ -1135,7 +1146,7 @@
   // the totals at a Domain: [the strongest other side's, yours] (Ms: E.mights of some state)
   const sidesOf = (Ms, o) => { let t = 0; Ms.forEach((m, q) => { if (q !== o && !E.ally(S, q, o)) t = Math.max(t, m); }); return [t, Ms[o]]; };
   function roadOf(it) {
-    const R = { lit: {}, here: -1, chips: [], btns: [], plate: null, off: false, after: {}, aim: {} };
+    const R = { lit: {}, here: -1, chips: [], btns: [], plate: null, off: false, after: {}, aim: {}, full: {} };
     if (!S || !G || !V || G.demo) return R;
     if (it.u != null) { const f = vfig(it.u); if (f) R.here = f.p; } else if (it.p != null) R.here = it.p;
     if (G.over || !idle()) return R;
@@ -1175,6 +1186,14 @@
       }
       table = true;
     });
+    // (where this Figure could go but for the most Figures a Domain holds, the game's limit or Thermopylae's two: those
+    // tiles say Full, and a tap says why. Asked of the engine with the limits lifted: cfg.nolim)
+    if ((key ? CARDS[key].t === 'fig' : it.u != null) && S.places.some((x, i) => !E.room(S, i, o))) {
+      const T2 = Object.assign({}, S, { cfg: Object.assign({}, S.cfg, { nolim: 1 }), ev: null, st: null });
+      E.actions(T2).forEach(a => { if (!(a.t === 'fig' || a.t === 'walk' || a.t === 'antik' || a.t === 'tub' || a.t === 'rail')) return;
+        if (key ? !(a.h != null && hand[a.h] === key) : a.u !== it.u) return;
+        if (!R.lit[a.p] && !E.room(S, a.p, o)) R.full[a.p] = E.capAt(S, a.p); });
+    }
     order.forEach(k => { const c = chip[k]; if (c.kind === 'clash') { const plain = c.acts.some(a => !a.ph); c.m = clashMights(c.u, c.v, (c.add || 0) + (plain ? 0 : 2), c.rk); } R.chips.push(c); });
     // (what each lit Domain would look like after the move: your total there, and whether you would hold it)
     const cs = {};
@@ -1263,15 +1282,17 @@
     }
     ord.forEach((p, k) => {
       if (k % D.per === 0) { row = el('div', { class: 'rd-row' }); rows.appendChild(row); }
-      const lit = R.lit[p], here = R.here === p, af = R.after[p], m = af ? af.m : sidesOf(V.tot[p], me), hold = V.hold[p];
-      const b = el(lit ? 'button' : 'span', { class: 'rd-t' + (lit ? ' lit' : '') + (here ? ' here' : '') + (R.aim[p] ? ' aim' : '') + (af && af.take ? ' take' : '') + (hold >= 0 ? ' held' : ''), 'data-p': p, type: lit ? 'button' : null, style: hold >= 0 ? { '--hc': 'var(--pc' + hold + ')' } : null,
-        'aria-label': C.PLACES[S.places[p]].n + (lit ? ': ' + af.word + (af.cost != null && R.costly ? ', for ' + af.cost + ' Spark' : '') + ', your Might there ' + m[1] + ' against ' + m[0] : here ? ', where this card is' : '') });
+      const lit = R.lit[p], here = R.here === p, af = R.after[p], m = af ? af.m : sidesOf(V.tot[p], me), hold = V.hold[p], full = !lit && !here && R.full && R.full[p];
+      const b = el(lit || full ? 'button' : 'span', { class: 'rd-t' + (lit ? ' lit' : '') + (here ? ' here' : '') + (full ? ' full' : '') + (R.aim[p] ? ' aim' : '') + (af && af.take ? ' take' : '') + (hold >= 0 ? ' held' : ''), 'data-p': p, type: lit || full ? 'button' : null, style: hold >= 0 ? { '--hc': 'var(--pc' + hold + ')' } : null,
+        'aria-label': (full ? cap1(theName('@' + S.places[p])) : C.PLACES[S.places[p]].n) + (lit ? ': ' + af.word + (af.cost != null && R.costly ? ', for ' + af.cost + ' Spark' : '') + ', your Might there ' + m[1] + ' against ' + m[0] : here ? ', where this card is' : full ? ' is full. ' + fullSay(p, o) : '') });
       b.appendChild(miniTile(p));
       b.appendChild(el('span', { class: 'rd-m L' + (m[0] ? '' : ' zero'), style: { '--tc': 'var(--pc' + (many() ? (rivalAt(p) >= 0 ? rivalAt(p) : 1 - me) : 1 - me) + ')' } }, [el('b', { text: String(m[0]) })]));
       b.appendChild(el('span', { class: 'rd-m R' + (m[1] ? '' : ' zero') + (af ? ' up' : ''), style: { '--tc': 'var(--pc' + me + ')' } }, [el('b', { text: String(m[1]) })]));
       if (lit) { b.appendChild(el('span', { class: 'rd-g' }, [el('span', { text: af.word }), af.cost != null && R.costly ? el('span', { class: 'sc-cost' }, [el('b', { text: String(af.cost) })]) : null]));
         b.addEventListener('click', e => { e.stopPropagation(); runActs(lit, info(it.key).n + ' to ' + theName('@' + S.places[p])); }); }
       else if (here) b.appendChild(el('span', { class: 'rd-g here', text: 'Here' }));
+      // (a Domain that holds as many of your Figures as it can: it says so, and a tap says the limit)
+      else if (full) { b.appendChild(el('span', { class: 'rd-g full', text: 'Full' })); b.addEventListener('click', e => { e.stopPropagation(); Kit.sfx('tap'); Kit.toast(fullSay(p, o)); }); }
       row.appendChild(b);
     });
     box.appendChild(rows);
@@ -1849,7 +1870,14 @@
     // (the computer starts on Easy until you've won a game: a first game is for learning)
     // (the setup's head says the name in the same spaced letters, whenever the kit draws it)
     const nameHead = () => app.querySelectorAll('.setup-hero h1:not(.an-name)').forEach(h => { if (/^arvela$/i.test(h.textContent.trim())) { h.setAttribute('aria-label', 'Arvela'); nameSet(h); } });
-    if (!app._nameObs && window.MutationObserver) { app._nameObs = new MutationObserver(nameHead); app._nameObs.observe(app, { childList: true, subtree: true }); }
+    // (a phone held upright: once the kit has folded the options and drawn the setup in (k-snug) and it is still taller
+    // than the screen, Arvela's own parts draw in as well (an-tight in ui.css), so the setup fits as it did before it had
+    // the option for Figures at a Domain. Not while a folded row is open: that is the player's choice to read more)
+    const tight = () => { const s = app.querySelector(':scope > .setup'); if (!s) return; const se = document.scrollingElement || document.documentElement, open = !!s.querySelector('.k-opt.k-hon, .k-opt.k-scopen, .k-opt.help-on');
+      if (open) return; s.classList.remove('an-tight');
+      if (window.innerWidth <= 520 && window.innerHeight > window.innerWidth && s.classList.contains('k-snug') && se.scrollHeight > se.clientHeight + 1) s.classList.add('an-tight'); };
+    let tightT = 0; const tightSoon = () => { cancelAnimationFrame(tightT); tightT = requestAnimationFrame(tight); };
+    if (!app._nameObs && window.MutationObserver) { app._nameObs = new MutationObserver(() => { nameHead(); tightSoon(); }); app._nameObs.observe(app, { childList: true, subtree: true }); window.addEventListener('resize', tightSoon); }
     const st = Kit.setup(app, {
       modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: 'local' }]),
       options: [0, 1, 2, 3, 4, 5].map(deckOpt).concat([
@@ -1860,6 +1888,9 @@
           choices: n => { const t1 = E.STD.target, t2 = E.targetFor([[0, 1]]), t3 = E.targetFor([[0, 1, 2]]);
             return n === 6 ? [['off', 'No teams', 'Each player plays for themselves, and the first to ' + t1 + ' Renown wins.'], ['three', '3 against 3', 'Two teams of three. The first team to ' + t3 + ' Renown between them wins.'], ['two', 'Three teams of 2', 'Three teams of two. The first team to ' + t2 + ' Renown between them wins.']]
               : [['off', 'No teams', 'Each player plays for themselves, and the first to ' + t1 + ' Renown wins.'], ['two', '2 against 2', 'Two teams of two. The first team to ' + t2 + ' Renown between them wins.']]; } },
+        // (how many of one player's Figures can stand at a Domain: no limit unless the players choose one. Tim, 2026-11-17:
+        // "give game options to cap domains at 4-6 cards apiece". The game keeps the choice as G.cap: capOf, cfgOf)
+        { id: 'cap', label: 'Figures at a Domain', value: 'none', choices: [['none', 'No limit', capRule(0)]].concat([4, 5, 6].map(n => [String(n), String(n), capRule(n)])) },
         { id: 'level', robot: true, label: 'Computer skill', value: Coll.load().wins ? 'normal' : 'easy', choices: [['easy', 'Easy', 'The computer stops early and misses things, which makes for a good first game.'], ['normal', 'Normal', DW('The computer plays to hold Places, with the odd slip.')], ['hard', 'Hard', 'The computer plays its best, and comes for your Gate and your Seals.']] }
       ]),
       players: { range: () => [2, 6], count: 2, cpu: m => m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false, teams: (n, v) => teamsFor(n, v.teams) },
@@ -1869,7 +1900,7 @@
         // (the computer players' decks: the one chosen for all of them, or a different ready deck for each while there are enough)
         const pool = E.shuffle(Object.keys(C.GUIDES), Math.random); let k = 0;
         const theirs = () => { const id = deckChoice(cfg.options.decks, 'cpu'); return readyDeck(id === 'any' ? pool[(k++) % pool.length] : id.slice(6)); };
-        newGame({ mode: cpu ? 'cpu' : 'local', level: LEVEL[cfg.options.level] ? cfg.options.level : 'normal', teams: teams,
+        newGame({ mode: cpu ? 'cpu' : 'local', level: LEVEL[cfg.options.level] ? cfg.options.level : 'normal', teams: teams, cap: capOf(cfg.options.cap),
           players: cfg.players.map((p, i) => { const d = p.cpu ? theirs() : Coll.deck(deckChoice(cfg.options['deck' + i], 'me'));
             return Object.assign({ name: p.name, cpu: !!p.cpu, level: p.cpu && LEVEL[p.level] ? p.level : undefined, color: cols[i], deck: d.n, deckId: d.id, built: !!d.built, guide: d.guide, cards: d.cards.slice() }, p.cpu ? { stack: Coll.guideStack(d.guide) } : {}); }) });
       }
@@ -1887,6 +1918,10 @@
   const ui = { sel: null, busy: false, view: 0, viewer: -1, hideHand: false, discard: false, acts: [], newLine: 0, banner: 0, fresh: {}, crack: null, drop: {} };
   const dom = {};
   const cfgStd = () => Object.assign({}, E.DEF, { log: 1, coin: 1 }, E.STD);
+  // (why no more of player o's Figures can go to Domain p: Thermopylae's own two, or the game's limit)
+  const fullSay = (p, o) => { const n = E.cnt(S, p, o), lim = E.capAt(S, p), nm = theName('@' + S.places[p]), you = o === ui.view && human(o), who = you ? 'You have ' : pname(o) + ' has ';
+    return S.dm && E.pw(S, p) === 'narrow' && lim !== S.cfg.cap ? who + NUM(n) + ' Figures at ' + nm + ', and each player can have no more than ' + NUM(lim) + ' Figures there.'
+      : who + n + ' Figures at ' + nm + ', and no more than ' + lim + ' of ' + (you ? 'your' : 'a player\'s') + ' Figures can stand at one Domain in this game.'; };
   const pname = o => G.players[o].name;
   const human = o => !G.players[o].cpu;
   // (the first person at the table: the seat whose side of the table is drawn large when the computer is playing)
@@ -1935,16 +1970,19 @@
     // (teams: who plays together, and the Renown a team needs, 20 for each player on it and 5 more: engine.js targetFor.
     // Everything else about a game of more players, the engine's rules give it: cfgStd)
     const ecfg = cfgStd(); if (cfg.teams) { ecfg.teams = cfg.teams; ecfg.target = E.targetFor(cfg.teams); }
+    ecfg.cap = cfg.cap || 0;   // (the limit chosen in the setup, or none)
     S = E.newGame(decks, guides, ecfg, E.rng((Math.random() * 4294967296) >>> 0), dmOn ? cfg.players.map(p => p.stack.slice()) : null, { wait: dmOn, profs: cfg.players.map(p => (p.cpu ? profOf(p, cfg.level) : null)) });
     S.st = null; S.ev = [];
     // (rfx: the Relic powers this game is played under, 2 since 2026-11-13: a game saved before then has none and keeps the
     // powers its Relics had, engine.js RFX1)
+    // (cap: how many of one player's Figures a Domain holds in this game: 0 for any number, the rule since 2026-11-17, or
+    // the 4, 5 or 6 chosen in the setup. A game saved before then has none, and keeps the limit of three it began with: cfgOf)
     // (sc: the scoring this game is played under. 2: every Place scores 1 all game. A game saved before that has none,
     // and finishes the way it began, with Places scoring double from round 4. tg: the Renown that wins this game. A
     // game saved when that was 30 has none, and still ends at 30. teams: who plays together, or none.)
     // (ord: the turns of this round in order, E.order(S); k: whose turn it is among them)
     const N = cfg.players.length, seats = () => cfg.players.map(() => ({ ko: 0, lines: 0, seals: 0, held: 0 }));
-    G = { mode: cfg.mode, level: cfg.level, sc: 2, tg: S.cfg.target, rfx: S.cfg.rfx, teams: cfg.teams || null, players: cfg.players, S: S, ord: E.order(S), k: 0, ph: 'start', started: Date.now(), n: 0,
+    G = { mode: cfg.mode, level: cfg.level, sc: 2, tg: S.cfg.target, rfx: S.cfg.rfx, cap: S.cfg.cap, teams: cfg.teams || null, players: cfg.players, S: S, ord: E.order(S), k: 0, ph: 'start', started: Date.now(), n: 0,
       stats: seats(), hist: [], seen: {}, tale: { links: [], seals: [], hold: [], tot: [], ko: cfg.players.map(() => ({})), outs: [] }, cl: Coll.trackStart(), cv: Coll.VER };   // (cl: what the game did, for the callings)
     S.turn = G.ord[0]; setCols(N > 2 || cfg.teams ? cfg.players.map(p => p.color) : null);
     ui.view = G.mode === 'cpu' ? 0 : human(S.turn) ? S.turn : firstHuman(); ui.viewer = G.mode === 'cpu' ? 0 : -1; ui.banner = 0;
@@ -2359,6 +2397,7 @@
     cfg.target = G.tg || E.OLD_TARGET;                 // (and it ends at the Renown it was begun under: 30 before 2026-11-11)
     if (G.teams) cfg.teams = G.teams;                  // (who plays together: S.tm came back with the state)
     if (!(G.rfx >= 2)) cfg.rfx = 0;                    // (and its Relics keep the powers they had when it began: engine.js RFX1)
+    cfg.cap = G.cap == null ? E.OLD_CAP : G.cap;       // (and a Domain holds what it held when the game began: three of a player's Figures before 2026-11-17; since then any number, or the limit chosen in the setup)
     return cfg;
   }
   function restore(d) {
@@ -2838,13 +2877,19 @@
         seatsFrom(v).slice(1).forEach(q => { const fs = V.figs.filter(f => f.p === i && f.o === q); if (fs.length) side.appendChild(stackEl(q, i, fs, T)); });
       } else {
         const figs = V.figs.filter(f => f.p === i && f.o === sd[0]).sort((a, b) => a.u - b.u);
+        side.dataset.o = sd[0];
+        // (where a card picked up would land here: its place in the pile, with what it would cost and its Might)
+        const lim = E.capAt(S, i), pv = tg && sd[0] === S.turn && figs.length < lim ? landPreview(tg) : null;
         // (two players: the cards themselves, no engraved places for the ones not there; a phone on its side has the
         // room for one stack a side, its top card, how many and their Might together, which a tap reads in the scan)
         if (!M && ui.lay && ui.lay.short) { if (figs.length) side.appendChild(stackEl(sd[0], i, figs, T, 0, true)); }
-        else figs.forEach(f => side.appendChild(figEl(f, T, !M || !!o.bl)));
-        let free = M && !o.bl ? Math.min(E.capAt(S, i), o.slots || 9) - figs.length : figs.length < E.capAt(S, i) ? 1 : 0;
+        // (any number of Figures can stand at a Domain: a pile with more cards than its room can show keeps the cards
+        // that fit and holds the rest in one stack. foldPiles, below, finds how many fit; your rows with more players
+        // show three things at most, as they always have)
+        else pileEls(side, sd[0], i, figs, T, !M || !!o.bl, M && !o.bl ? (figs.length > (o.fit || 3) - (pv ? 1 : 0) ? Math.max(0, (o.fit || 3) - 1 - (pv ? 1 : 0)) : null) : foldFor(i, sd[0], figs.length, pv ? 1 : 0)).forEach(nd => side.appendChild(nd));   // (your rows with more players: three things in a row at most, fewer where the row is short of room, the place a card would land among them)
+        // (engraved places only where the Domain has a limit: Thermopylae's two, or three in a game that keeps the old limit)
+        let free = M && !o.bl ? (isFinite(lim) ? Math.min(lim, o.slots || 9) - figs.length : pv ? 1 : 0) : figs.length < lim ? 1 : 0;
         if (tg && sd[0] === S.turn && free > 0) {
-          const pv = landPreview(tg);
           if (pv) { const s = el('span', { class: 'slot land' }); if (pv.cost != null) s.appendChild(el('span', { class: 'pv-c' }, [el('b', { text: String(pv.cost) })])); if (pv.m != null) s.appendChild(el('span', { class: 'pv-m' }, [el('b', { text: String(pv.m) })])); if (pv.via) { const vi = el('span', { class: 'pv-v' }); const im = artImg(pv.via, true) || mono(pv.via); if (im) vi.appendChild(im); s.appendChild(vi); } side.appendChild(s); free--; }
         }
         if (M && !o.bl) for (let k = 0; k < free; k++) side.appendChild(el('span', { class: 'slot' }));
@@ -2995,7 +3040,8 @@
       // (the slide on the round track: this round, in the colour of whoever's turn it is. Lincoln's Seal is due at round 5.)
       if (dom.track) window.AnoriaDomains.track(dom.track, { round: V.round, turn: G.over ? -1 : V.turn, due: V.P.map((p, o) => (p.guide === 'lincoln' ? { r: 5, o: o } : null)) });
     } finally { pass = null; }
-    fitStrips(); if (!M) layout(); fitPlates(); fitNames(); if (!M) { fitMid(); fitRecent(); } if (!M) piles(); coverNames(); lines(); fitSides();
+    ui.T = T;
+    fitStrips(); if (!M) layout(); fitPlates(); fitNames(); if (!M) { fitMid(); fitRecent(); } piles(); coverNames(); foldPiles(); lines(); fitSides();
     dom.root.querySelectorAll('.st-name').forEach(n => Kit.fitText(n, .6));
     relicChooser();   // (a Relic picked up that has to go over one of yours: the slots it can go to, over your bar)
   }
@@ -3295,13 +3341,13 @@
   // name still showing; upright on an iPad they overlap down the table like a column of patience, each card's name
   // showing under the next. (Measured after the tiles' words are fitted, so a pile never runs over its neighbour.)
   function piles() {
-    if (!dom.map || many()) return;
-    const L = ui.lay || {};
-    dom.map.querySelectorAll('.pl-side').forEach(sd => {
+    if (!dom.map || (many() && !(ui.lay && ui.lay.nbl))) return;
+    const L = many() ? {} : ui.lay || {};   // (more players on the battle line: your cards at your three Domains, side by side or overlapping)
+    dom.map.querySelectorAll(many() ? '.pl.wn-bl .pl-side.R' : '.pl-side').forEach(sd => {
       const ks = Array.prototype.filter.call(sd.children, c => c.matches('.fp, .slot, .stk')), n = ks.length;
       ks.forEach(k => { k.style.zIndex = ''; }); sd.classList.remove('ovl');
       if (n < 2) { sd.style.removeProperty('--ov'); return; }
-      const r = sd.getBoundingClientRect(), b = ks[0].getBoundingClientRect(), gap = L.ln ? 6 : 3;
+      const r = sd.getBoundingClientRect(), b = (ks.filter(k => k.matches('.fp'))[0] || ks[0]).getBoundingClientRect(), gap = L.ln || many() ? 6 : 3;
       if (L.ln && L.up) {
         const ch = b.height, step = Math.min(L.dk ? ch + 6 : ch * .58, Math.max(ch * .3, (r.height - ch) / (n - 1))); sd.style.setProperty('--ov', (step - ch).toFixed(1) + 'px');   // (a third of a card at least: its name shows; the desk: whole cards one under another while its taller bands hold them)
         if (sd.classList.contains('R')) ks.forEach((k, j) => { if (!k.classList.contains('sel')) k.style.zIndex = String(n - j + 1); });   // (yours: each card over the next, so the names below show)
@@ -3327,10 +3373,11 @@
   function coverNames() {
     if (!dom.root) return;
     dom.root.querySelectorAll('.cv-v').forEach(n => n.remove());
+    dom.root.querySelectorAll('.cv0').forEach(k => k.classList.remove('cv0'));
     dom.root.querySelectorAll('.cv').forEach(k => { k.classList.remove('cv', 'cvv'); const n = k.querySelector('.ac-name'); if (n) { n.style.paddingRight = ''; n.style.textAlign = ''; n.style.fontSize = n.dataset.fs0 || ''; delete n.dataset.fs0; } });
     const rows = [];
     if (dom.hand && dom.hand.classList.contains('over')) rows.push(Array.prototype.filter.call(dom.hand.children, c => c.matches('.hc')));
-    if (dom.map && !(ui.lay && ui.lay.ln && ui.lay.up)) dom.map.querySelectorAll('.pl-side').forEach(sd => { if (parseFloat(sd.style.getPropertyValue('--ov')) < 0) rows.push(Array.prototype.filter.call(sd.children, c => c.matches('.fp.card'))); });
+    if (dom.map && !(ui.lay && ui.lay.ln && ui.lay.up)) dom.map.querySelectorAll('.pl-side').forEach(sd => { if (parseFloat(sd.style.getPropertyValue('--ov')) < 0) rows.push(Array.prototype.filter.call(sd.children, c => c.matches('.fp.card, .stk, .slot'))); });   // (a stack or the place a card would land lies over the card before it as a card does)
     // (one way for a whole row: if any covered name in it needs the spine, they all have one, so the row reads alike)
     rows.forEach(ks => {
       ks = ks.slice().sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
@@ -3352,11 +3399,79 @@
       cv.forEach(c => { const n = c.n, k = c.k; k.classList.add('cv', 'cvv'); if (n.dataset.fs0 == null) n.dataset.fs0 = n.style.fontSize || ''; n.style.paddingRight = ''; n.style.textAlign = ''; n.style.fontSize = n.dataset.fs0;
         const sp = el('span', { class: 'cv-v', 'aria-hidden': 'true', text: n.textContent }); k.appendChild(sp);
         const ac = k.querySelector('.ac'); if (ac) sp.style.setProperty('--f', ac.style.getPropertyValue('--f')); sp.style.fontSize = c.fs0 + 'px'; sp.style.right = (c.cover + 1) + 'px'; sp.style.maxWidth = Math.max(10, c.vis * .62) + 'px';
-        const over = () => sp.scrollHeight > sp.clientHeight + 1 || sp.scrollWidth > sp.clientWidth + 1;
+        // (the name's letters stand clear of the Might, the cost and the home mark on the card's spine: under them it read
+        // "Austen" for Jane Austen, which four cards beside a Domain on a phone did)
+        const mks = Array.prototype.filter.call(k.querySelectorAll('.ac-st.m, .ac-cost, .ac-mh .dm-home'), m => m.offsetWidth).map(m => m.getBoundingClientRect());
+        const under = () => { const rg = document.createRange(); rg.selectNodeContents(sp); const t = rg.getBoundingClientRect(); return !!t.width && mks.some(m => Math.min(t.right, m.right) - Math.max(t.left, m.left) > m.width * .34 && t.top < m.bottom - 1 && t.bottom > m.top + 1); };   // (a mark's box has clear corners: the letters may stand a third of the way into it)
+        const over = () => sp.scrollHeight > sp.clientHeight + 1 || sp.scrollWidth > sp.clientWidth + 1 || under();
         let f = c.fs0; while (over() && f - .5 >= 8) { f -= .5; sp.style.fontSize = f + 'px'; }
-        if (over()) sp.remove();   // (no room for the name at 8px: the card shows its picture and its Might, and a hold reads it)
+        if (over()) { sp.remove(); k.classList.add('cv0'); }   // (no room for the name at 8px: the card shows its picture and its Might, and a hold reads it. foldPiles puts such a card in the pile's stack where it can)
       });
     });
+  }
+  // ═══ A pile with more cards than its room can show ═══════════════════════════════════════════════════════
+  // Any number of a player's Figures can stand at a Domain (Tim, 2026-11-17). A pile shows every card while every card
+  // can show what the table promises: its Might and its cost on its spine, and on the battle line its name (flat, or down
+  // the edge of the part that shows; coverNames), or in a cascade a third of each card, where its name is. Past that, the cards that
+  // fit stay cards and the rest are one stack (stackEl) at the pile's top, the place where a card lies whole: its
+  // strongest card's picture, how many cards it holds and their Might together. A tap on it picks up the Figure in it
+  // that can move, or opens the face-off, where every card is read whole (stackTap). While a card is picked up and
+  // would land in the pile, covered names may go, as they always could, but a Might may not.
+  // How many cards a pile shows is found by trying (foldPiles: the pile as laid, measured, one card fewer until it is
+  // right) and remembered for that pile at that size of window (ui.folds), so the table is built folded the next time.
+  // (which end of a pile is its top: the card there lies whole. In a row, the card farthest right; in a cascade the
+  // card highest up the table, which is yours nearest the line and theirs farthest from it)
+  const topFirst = sd => { const L = ui.lay || {}, isL = sd.classList.contains('L'); return many() ? false : L.ln ? (L.up ? !isL : false) : isL; };
+  const foldSig = () => window.innerWidth + 'x' + window.innerHeight + (sideEl ? 's' : '') + (S ? S.N : 0) + (ui.lay && ui.lay.dk ? ui.lay.dk.dock + ui.lay.dk.c : '');
+  const foldKey = (p, o) => p + ':' + o;
+  // (how many of a pile's n Figures were found to fit as cards, with or without a place for a card to land: null, not known)
+  function foldFor(p, o, n, slot) { const f = ui.folds && ui.folds[foldKey(p, o)]; return f && f.n === n && f.s === slot && f.sig === foldSig() && f.c < n ? f.c : null; }
+  // a pile's pieces: every Figure a card, or c of them cards and the rest a stack at the pile's top
+  function pileEls(side, o, p, figs, T, asCard, c) {
+    if (c == null || c >= figs.length - 1 || figs.length < 2) return figs.map(f => figEl(f, T, asCard));
+    const first = topFirst(side), n = figs.length, cards = (first ? figs.slice(n - c) : figs.slice(0, c)).map(f => figEl(f, T, asCard));
+    const st = stackEl(o, p, first ? figs.slice(0, n - c) : figs.slice(c), T, 0, true); st.classList.add('pile');
+    return first ? [st].concat(cards) : cards.concat([st]);
+  }
+  function setFold(sd, c) {
+    const p = +sd.parentNode.dataset.p, o = +sd.dataset.o, figs = V.figs.filter(f => f.p === p && f.o === o).sort((a, b) => a.u - b.u);
+    Array.prototype.slice.call(sd.children).forEach(k => { if (k.matches('.fp, .stk')) k.remove(); });
+    const ref = sd.firstChild; pileEls(sd, o, p, figs, ui.T, !many() || sd.parentNode.classList.contains('wn-bl'), c).forEach(nd => sd.insertBefore(nd, ref));
+  }
+  // is a pile as it lies more than its room can show?
+  function pileBad(sd, cards, slot) {
+    const L = many() ? {} : ui.lay || {}, ks = Array.prototype.filter.call(sd.children, c => c.matches('.fp, .slot, .stk')), r = sd.getBoundingClientRect();
+    if (L.ln && L.up) { const ch = cards[0].getBoundingClientRect().height; return ch + (ks.length - 1) * ch * .3 > r.height + 1; }   // (a cascade: a third of every card)
+    const xs = ks.map(k => ({ k: k, r: k.getBoundingClientRect() })).sort((a, b) => a.r.left - b.r.left);
+    return xs.some((x, j) => { const nx = xs[j + 1]; if (!nx) return false;
+      // (the place a card would land lies over the stack: the stack keeps its left half clear, where its count and its Might are)
+      if (x.k.matches('.stk')) return nx.r.left < x.r.left + x.r.width * .55;
+      if (!x.k.matches('.fp')) return false; if (x.r.right - nx.r.left < 1.5) return false;
+      // (its name could not be shown. On a phone held upright a covered card has only ever had the room for its Might,
+      // and a hold reads it: there three cards stay three cards, and a pile folds when a Might would be covered)
+      if (x.k.classList.contains('cv0') && !slot && (many() || L.ln)) return true;
+      // (its Might and its cost under the next thing in the pile; a piece that is not a card shows half of itself at least)
+      const ms = x.k.querySelectorAll('.ac-st.m, .ac-cost'); if (!ms.length) return nx.r.left < x.r.left + x.r.width * .5;
+      return Array.prototype.some.call(ms, m => m.offsetWidth && m.getBoundingClientRect().right > nx.r.left + .5); });
+  }
+  function foldPiles() {
+    if (!dom.map || !V || !G || G.ph === 'setup' || ui.nofold) return;   // (ui.nofold: a test's way to see the piles unfolded)
+    const L = ui.lay || {}, M = many(); if (M ? !L.nbl : L.short) return;
+    const sig = foldSig(); ui.folds = ui.folds || {};
+    for (let g = 0; g < 16; g++) {
+      let again = false;
+      dom.map.querySelectorAll(M ? '.pl.wn-bl .pl-side.R' : '.pl-side').forEach(sd => {
+        if (sd.dataset.o == null) return;
+        const kids = Array.prototype.slice.call(sd.children), cards = kids.filter(k => k.matches('.fp')), stk = kids.filter(k => k.matches('.stk'))[0], slot = kids.filter(k => k.matches('.slot'))[0];
+        if (!cards.length || cards.length + (stk ? 1 : 0) + (slot ? 1 : 0) < 2) return;
+        if (!pileBad(sd, cards, slot)) return;
+        const p = +sd.parentNode.dataset.p, o = +sd.dataset.o, n = V.figs.filter(f => f.p === p && f.o === o).length, c = stk ? cards.length - 1 : cards.length - 2;
+        if (n < 2 || c < 0) return;
+        setFold(sd, c); ui.folds[foldKey(p, o)] = { n: n, s: slot ? 1 : 0, sig: sig, c: c }; again = true;
+      });
+      if (!again) break;
+      fitNames(); if (!M) fitMid(); piles(); coverNames();
+    }
   }
   // Legacy lines: gold thread from each Legacy Figure to the one who inspired it
   function lines() {
@@ -3596,11 +3711,12 @@
     const rh = mine.h / 3, mw = Math.round(Math.min(mine.w * (land ? .4 : mine.w > 560 ? .42 : .38), 300, (rh - 6) * (mine.w > 560 ? 2.4 : 1 / .62))), bh = Math.round(Math.min(rh - 8, mw * .64));
     // (your Figures as cards: as big as the row and the room beside the tile allow for the most you have in one row, two
     // at least; the engraved places for the rest of the three are drawn where they fit)
-    const sideW = (mine.w - mw) / 2 - 10, most = Math.max(2, Math.max.apply(null, [2 * N, 2 * v + 1, 2 * v].map(i => V.figs.filter(f => f.p === i && f.o === v).length + (T.places[i] ? 1 : 0))));
+    // (how many things a row holds beside its tile: three, or as many pieces of the smallest size as fit, a phone on its side)
+    const sideW = (mine.w - mw) / 2 - 10, rowFit = Math.max(1, Math.min(3, Math.floor((sideW + 3) / 27))), most = Math.max(Math.min(2, rowFit), Math.min(rowFit, Math.max.apply(null, [2 * N, 2 * v + 1, 2 * v].map(i => V.figs.filter(f => f.p === i && f.o === v).length + (T.places[i] ? 1 : 0)))));   // (three things in a row at most: more Figures than that are a stack, rowEl)
     const fw = Math.floor(Math.max(24, Math.min((rh - 10) / 1.36, sideW / (most * 1.1), 96))), slots = Math.max(most, Math.min(3, Math.floor((sideW + 4) / (fw * 1.1))));
     const mm = matN(v); mm.className = 'an-pm wn-col wn-mine' + (V.turn === v && !G.over && G.ph !== 'setup' ? ' on' : ''); mm.style.setProperty('--pc', 'var(--pc' + v + ')'); put(mm, mine.x, mine.y + rh - 2, mine.w, mine.h - rh + 2);
     [2 * N, 2 * v + 1, 2 * v].forEach((i, r) => {
-      const row = X ? suRow(i, X) : rowEl(i, T, { many: true, slots: slots });
+      const row = X ? suRow(i, X) : rowEl(i, T, { many: true, slots: slots, fit: rowFit });
       row.style.setProperty('--mw', mw + 'px'); row.style.setProperty('--fw', fw + 'px'); row.style.setProperty('--sw', Math.round(Math.min(fw * .92, X ? (sideW - 4) / (N - 1) - 10 : (sideW - 8) / 2.2, (rh - 12) / 1.42)) + 'px');   // (the set-up: everyone else's offers in one line)
       put(row, mine.x, mine.y + r * rh + (rh - bh) / 2, mine.w, bh);
     });
@@ -4951,7 +5067,7 @@
   // The key to the marks on the map's tiles, drawn with the marks themselves (rules page)
   function kindKey() { const D = window.AnoriaDomains; if (!D) return ''; return '<span class="rk-keys">' + D.ORDER.map(k => '<span class="rk-k">' + D.mark(k).outerHTML + '<b>' + D.KINDS[k].n + '</b></span>').join('') + '</span>'; }
   function homeKey() { const D = window.AnoriaDomains; if (!D || !D.home) return ' '; const regs = ['MED', 'EUR', 'AFR', 'MIDEAST', 'ASIA', 'AMER', 'OCE']; let h = ''; try { h = regs.map(r => '<span class="rk-k">' + D.home(r).outerHTML + '<b>' + REG[r] + '</b></span>').join(''); } catch (e) { return ' '; } return '<span class="rk-keys">' + h + '</span>'; }
-  const RULES = () => { const WIN = (G && S && !G.demo && !G.teams && S.cfg && S.cfg.target) || E.STD.target, RC = (G && S && !G.demo && S.N > 2 && S.cfg) || E.STD; return ('' +
+  const RULES = () => { const WIN = (G && S && !G.demo && !G.teams && S.cfg && S.cfg.target) || E.STD.target, RC = (G && S && !G.demo && S.N > 2 && S.cfg) || E.STD, CAP = (G && S && !G.demo && !G.over && S.cfg && S.cfg.cap) || 0; return ('' +   // (CAP: this game's own limit on Figures at a Domain, where it has one)
     '<p>What the world remembers is never quite gone: it lives on in Arvela, the country of memory, where every age stands at once among the wonders of the world. At its heart turns a great sphere. Each time the sphere comes full circle an age ends, and the world can’t carry everything it knew into the next one.</p>' +
     '<p>So the greats gather companies to keep their people from being forgotten. You lead one, with one of the greats as your Guide. The world remembers whoever stands at its wonders, and that is Renown. A company comes into Arvela through its Gate, which three Seals hold open: a company whose Seals are all broken is shut out and forgotten.</p>' +
     '<p class="goal">Send great Figures from history to hold Places on the map. <b>The first player to reach ' + WIN + ' Renown</b> at the end of a round wins. With two players, breaking all of the other player\'s Seals wins on the spot. Each player starts with <b>3 Seals</b>.</p>' +
@@ -4970,7 +5086,7 @@
     '<li>Some cards lay a new Domain, move Domains or switch off a Domain\'s power. The turn log says what changed.</li></ul>' : '</ul>') +
     '<h3>Your turn</h3><ul><li>Your Figures are ready to act again, you <b>draw 2 cards</b> and you gain <b>Spark</b>: 2 in round 1 and one more each round, up to 7. If you\'re behind on Renown you get 1 extra.</li>' +
     '<li>Then, in any order, play cards and act. When you pick up a card from your hand or one of your Figures, every Place it can go to lights up. Tap one of them, or drag the card there and let go. While you drag, the Place under your finger shows what your Might there would be.</li>' +
-    '<li>You play a <b>Figure</b> at your Gate, or at any Place where you already have one. Up to 3 of your Figures can stand at one Place.</li>' +
+    '<li>You play a <b>Figure</b> at your Gate, or at any Place where you already have one. ' + capRule(CAP) + (CAP ? '' : ' The setup can give a game a limit of 4, 5 or 6.') + '</li>' +
     '<li>Each Figure does one thing a turn: <b>walk</b> one step to the next Place, or <b>clash</b> with an enemy Figure where it stands. A Figure you have just played can clash but not walk.</li>' +
     '<li><b>Relics</b> stay in play. You can have 2 Relics in play at a time, and they have to be Relics with different powers. With 2 Relics in play, you can play a new Relic over either of them, and the Relic underneath goes to your discard pile. A Relic with the same power as one of your Relics in play can go only over that Relic. <b>Deeds</b> happen once and are gone.</li>' +
     '<li>You keep up to 2 Spark you don\'t spend through the other players\' turns. That Spark pays for a Deed with <b>Quick</b>, such as Phalanx, which plays itself when it saves your Figure.</li>' +
@@ -5241,7 +5357,7 @@
   window.AnoriaUI.net = { attach: n => { NET = n; }, get: () => ({ G: G, S: S, V: V }), put: (g, v) => { G = g; S = g ? g.S : null; if (v !== undefined) V = v; },
     swap: (g, fn) => { const g0 = G, s0 = S; G = g; S = g.S; try { return fn(); } finally { G = g0; S = s0; } },
     ui: ui, gen: () => gen, stop: stop, buildTable: buildTable, snap: snap, settle: settle, render: render, legal: legal, setBusy: setBusy, wait: ms => wait(ms), playEvents: playEvents,
-    roundEnd: roundEnd, banner: banner, suRoll: suRoll, tally: tally, logEvs: logEvs, logEnd: logEnd, posOrder: () => posOrder(), quickOf: a => quickOf(a), cfgOf: cfgOf, cfgStd: cfgStd,
+    roundEnd: roundEnd, banner: banner, suRoll: suRoll, tally: tally, logEvs: logEvs, logEnd: logEnd, posOrder: () => posOrder(), quickOf: a => quickOf(a), cfgOf: cfgOf, cfgStd: cfgStd, capOf: capOf,
     deckOf: deckOf, stackOf: stackOf, readyDeck: readyDeck, deckChoice: deckChoice, starterId: starterId, deckPicker: deckPicker, seatColors: seatColors, teamsFor: teamsFor, setCols: setCols,
     profOf: profOf, askPend: () => askPend(), moveSaid: a => moveSaid(a), showWin: showWin, endShow: () => endShow(), record: record, showSetup: showSetup, resume: resume, logScreen: logScreen, LEVEL: LEVEL, matKey: MATK };
   window.__anoria = { seatColors: seatColors, teamsFor: teamsFor, scan: scan, relegal: () => { legal(); V = snap(); render(); }, E: E, ui: ui, mats: MATS, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };

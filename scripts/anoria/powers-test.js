@@ -60,6 +60,15 @@ const has = (acts, f) => acts.some(f);
 { const S = game([null, 'orleans']); const a = fig(S, 'leonidas', 0, 1), d = fig(S, 'charlemagne', 1, 1); ok('relief +2 vs holder', E.might(S, a, 1, d) === 5, E.might(S, a, 1, d)); }
 { const S = game([null, 'siracusa']); const d = fig(S, 'leonidas', 0, 1); S.P[0].relics = ['compass', 'press']; ok('engines +2', E.might(S, d, 2) === 8); }
 { const S = game([null, 'zimbabwe']); const f = fig(S, 'sundiata', 0, 1), g = fig(S, 'hatshepsut', 0, 1); ok('heartland', E.might(S, g, 0) === 3 + 2, E.might(S, g, 0)); }
+// (Thermopylae: two of each player's Figures at most. Every other Domain holds any number since 2026-11-17: no-cap-2026-11-17.txt)
+{ const S = game([null, 'thermopylae']); fig(S, 'boudica', 0, 1); const f = fig(S, 'leonidas', 0, 0); S.P[0].hand = ['spartacus'];
+  ok('narrow: a second Figure walks in', E.walkDests(S, f).indexOf(1) >= 0); ok('narrow: a second Figure is played there', has(E.actions(S), a => a.t === 'fig' && a.p === 1));
+  fig(S, 'hatshepsut', 0, 1); ok('narrow: no third Figure walks in', E.walkDests(S, f).indexOf(1) < 0); ok('narrow: no third Figure is played there', !has(E.actions(S), a => a.t === 'fig' && a.p === 1) && has(E.actions(S), a => a.t === 'fig' && a.p === 0));
+  ok('narrow: two each', E.capAt(S, 1) === 2 && !E.room(S, 1, 0) && E.room(S, 1, 1)); const g = fig(S, 'hammurabi', 1, 4), h = fig(S, 'charlemagne', 1, 4); ok('narrow: the other player\'s Figures still walk in', E.walkDests(S, g).indexOf(1) >= 0);
+  g.p = 1; ok('narrow: and their second', E.walkDests(S, h).indexOf(1) >= 0); h.p = 1; const k = fig(S, 'socrates', 1, 4); ok('narrow: but not their third', E.walkDests(S, k).indexOf(1) < 0);
+  const T = game([null, null, null, null, 'thermopylae']); ['leonidas', 'boudica', 'spartacus', 'hatshepsut', 'hammurabi'].forEach(c => fig(T, c, 0, 1)); const w = fig(T, 'copernicus', 0, 0);
+  ok('narrow: a Domain that is not Thermopylae holds any number', E.walkDests(T, w).indexOf(1) >= 0 && E.capAt(T, 1) === Infinity && E.capAt(T, 4) === 2);
+  const V = game(['thermopylae']); fig(V, 'leonidas', 0, 0); fig(V, 'boudica', 0, 0); V.P[0].hand = ['spartacus']; ok('narrow at a Gate: with two there, no Figure can be played', !has(E.actions(V), a => a.t === 'fig')); }
 { const S = game([null, null, null, 'nanmadol']); const h = fig(S, 'charlemagne', 1, 3), f = fig(S, 'spartacus', 0, 3); ok('islets: can\'t walk out', E.walkDests(S, f).length === 0); ok('islets: holder can', E.walkDests(S, h).length > 0); }
 { const S = game([null, null, null, null, 'sigiriya']); const f = fig(S, 'leonidas', 0, 0), g = fig(S, 'zhenghe', 0, 1), v = fig(S, 'zhenghe', 1, 2);
   S.P[0].relics = ['compass']; ok('rock: no two-step in', E.walkDests(S, f).indexOf(4) < 0); ok('rock: one step in', E.walkDests(S, g).indexOf(4) >= 0); ok('rock: no voyager from afar', E.walkDests(S, v).indexOf(4) < 0);

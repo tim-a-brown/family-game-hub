@@ -173,8 +173,16 @@ const targetFor = (teams) => 20 * (teams && teams.length ? teams[0].length : 1) 
 // newGame() goes only by the stacks it is given, so a lesson's table and a game saved before Domains are untouched.
 // ret: a Figure whose other copy is in your discard pile costs this much less (the return; 1 until 2026-11-12, when Tim
 // removed it: 0 now). A game saved under the return finishes with it (S.cfg).
-const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, rush: 1, target: 25, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1, handMax: 8, dice: 'high', suDraw: 4, unique: 0, inspEach: 1, ret: 0, threads: 2, lineCap: 0, dm: 1, outEnds: 1, tmight: 'add', rfx: 2 };
-const DEF = { rounds: 6, cap: 3, seals: 3, spark: 'round', scoring: 'round', order: 'alt', hand: 5, die: [0, 1, 2], disc: 1, home: 1, lineRen: 1, voyHome: 1, insBonus: 0, sealRen: 1, extraEdge: [] };
+// cap: how many of one player's Figures can stand at a Domain. 0 is no limit, the rule for a new game (Tim, 2026-11-17:
+// "is there a good reason for the three card limit at a domain in arvela?" There wasn't: it was in the first version's
+// rules and no balance run ever tested it; scripts/anoria/no-cap-2026-11-17.txt has the numbers). The setup can give a
+// game a limit of 4, 5 or 6 (Tim, the same day: "give game options to cap domains at 4-6 cards apiece"). It was 3 until
+// then, which DEF still says. A game keeps the limit it began with: the page keeps it as G.cap (an online table as its
+// state's cap), and a saved game without one is played with OLD_CAP (cfgOf in ui.js). Thermopylae's own limit of two is
+// its power, not this (capAt). nolim: no Domain has a limit at all, for the page to ask where a card could go but for one.
+const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, rush: 1, target: 25, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1, handMax: 8, dice: 'high', suDraw: 4, unique: 0, inspEach: 1, ret: 0, threads: 2, lineCap: 0, dm: 1, outEnds: 1, tmight: 'add', rfx: 2, cap: 0 };
+const OLD_CAP = 3;
+const DEF = { rounds: 6, cap: OLD_CAP, seals: 3, spark: 'round', scoring: 'round', order: 'alt', hand: 5, die: [0, 1, 2], disc: 1, home: 1, lineRen: 1, voyHome: 1, insBonus: 0, sealRen: 1, extraEdge: [] };
 function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function shuffle(a, R) { for (let i = a.length - 1; i > 0; i--) { const j = (R() * (i + 1)) | 0, t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
 
@@ -303,7 +311,9 @@ const edictOn = (S, g) => !!S.dip && S.dip.some(d => d.p === g.p && d.o === g.o 
 const clashable = (S, g) => !kOf(S, g).untouchable && !edictOn(S, g) && !(kOf(S, g).shelter && S.figs.some(h => h.o === g.o && h !== g && h.p === g.p && might(S, h, 0) > might(S, g, 0)));
 const peace = (S, i, o) => { if (!S.dm) return false; const w = pw(S, i); return w === 'treeofpeace' || (w === 'peace' && (S.cfg.peaceSym || holder(S, i) !== o)); };
 // how many Figures a player can have at a position
-const capAt = (S, i) => S.dm && pw(S, i) === 'narrow' ? Math.min(2, S.cfg.cap) : S.cfg.cap;
+// How many of one player's Figures a Domain holds: any number (cfg.cap 0), or the game's limit (4, 5 or 6 chosen in the
+// setup; 3 in a game begun before 2026-11-17). Thermopylae holds two of each player's whatever the game's rule is.
+const capAt = (S, i) => { if (S.cfg.nolim) return Infinity; const c = S.cfg.cap || Infinity; return S.dm && pw(S, i) === 'narrow' ? Math.min(2, c) : c; };
 // (a shuffle that needs no dice: an empty Domain stack remade from its discard pile, Al-Idrisi's shuffle)
 function dshuf(a, s) { s = (s * 2654435761) >>> 0; for (let i = a.length - 1; i > 0; i--) { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; const j = (s >>> 8) % (i + 1), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
 // The top card of a player's Domain stack. An empty stack is made again from that player's Domain discard pile.
@@ -700,7 +710,7 @@ function costOf(S, o, ci, place) {
 }
 function ko(S, f, by) {
   const w = S.dm ? pw(S, f.p) : '', g0 = gateOf(f.o);
-  // (Runnymede: a Figure that loses a clash there goes back to its player's Gate, if that Gate has room. One already at its own Gate is knocked out)
+  // (Runnymede: a Figure that loses a clash there goes back to its player's Gate. One already at its own Gate is knocked out, and so is one whose Gate can take no more: Thermopylae with two of its player's Figures there, or three anywhere in a game that keeps the old limit)
   if (by && w === 'charter' && f.p !== g0 && room(S, g0, f.o) && !rockAt(S, g0)) {
     if (S.ev) S.ev.push({ t: 'fallback', u: f.u, c: f.c, o: f.o, from: f.p, to: g0, by: by.u, why: 'charter' });
     f.p = g0; f.stay = 0; f.rdy = 0; f.tb = 0; f.gar = 0; if (S.st) S.st.fallbacks = (S.st.fallbacks || 0) + 1; return; }
@@ -788,7 +798,8 @@ function clash(S, a, d, da, dd, bonus, raw, rk) {
   const at = a.p, w = pw(S, at), arena = w === 'arena';   // (as the Colosseum is: winning a clash there scores 1 Renown. The event still says 'colosseum'.)
   const ar = A.renown, dr = D.renown, maze = am === dm && w === 'maze' && !wardAt(S, a);   // (Himeji Castle: a tie knocks out the Figure that started the clash, unless a Ward is with it)
   // The two Quick Deeds that play themselves at the end of a clash (2026-11-12), each to its Figure's own Gate if that
-  // Gate has room:
+  // Gate can take it (room: it can't when the Gate is Thermopylae with two of that player's Figures there, or in a game
+  // that keeps the old limit of three; the card then stays in the hand):
   //   the Defence of Syracuse (the defender's, on the other player's turn, paid for with Spark kept): an enemy Figure
   //     that would win a clash it started at the defender's Gate or Outpost is driven back to its own Gate, and nobody
   //     is knocked out. A Figure with a Ward is not driven back.
@@ -1411,7 +1422,7 @@ function play(decks, guides, profs, cfg, seed, stacks) {
   }
   return S;
 }
-return { kOf, noClash, clashable, play, ko, PROF, rng, shuffle, DEF, STD, OLD_TARGET, newGame, clone, actions, apply, evalS, mights, holder, holderM, might, costOf, walkDests, cnt, room, stake, gateOf, isGate, ownerOfSpoke, enemySide, byU,
+return { kOf, noClash, clashable, play, ko, PROF, rng, shuffle, DEF, STD, OLD_TARGET, OLD_CAP, newGame, clone, actions, apply, evalS, mights, holder, holderM, might, costOf, walkDests, cnt, room, stake, gateOf, isGate, ownerOfSpoke, enemySide, byU,
   startTurn, endTurn, endRound, firstOf, aiPick, aiTurn, discard, diceOdds, rollClash, threadSrc, fxOf, hasFx, relicOf, handMax, HOLD, quicks, CARDS, PLACES, RFX1, ahead, foreOrder, topOf, FORE, walkIn, clashM, steady,
   targetFor, ally, sideOf, sren, liveSides, nextLive, order, nLive, MW,
   pw, rv, silenced, prot, capAt, track, setupOptions, setupLay, setupRoll, setupAuto, setupPick, setupFixed, stacksFor, pendActions, pendPick, layDomain, turnDomain, permute, deckInfo, layScore, LAYV };

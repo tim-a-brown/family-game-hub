@@ -663,6 +663,8 @@ b.kq{white-space:normal;} .kq-n{white-space:nowrap;} .kq-i{display:inline-block;
   font:650 clamp(.72rem,calc(var(--rw) * .125),.95rem)/1 var(--fell);letter-spacing:-.005em;color:#1b1b19;background:linear-gradient(#e2b078,#ce9a64);box-shadow:0 0 0 1px #b98450,0 2px 4px rgba(0,0,0,.55);pointer-events:none;}
 .rd-t.take .rd-g{background:linear-gradient(#e6b47c,#d8a56e);}
 .rd-g.here{color:#efebe4;background:linear-gradient(#272624,#1f1f1d);box-shadow:0 0 0 1px #8fd3f4,0 2px 4px rgba(0,0,0,.55);}
+.rd-g.full{color:var(--g-dust,#a8a39a);background:linear-gradient(#272624,#1f1f1d);box-shadow:0 0 0 1px var(--g-line,rgba(255,255,255,.14)),0 2px 4px rgba(0,0,0,.55);}   /* (a Domain that holds as many of your Figures as it can: a tap says the limit) */
+.rd-t.full{cursor:pointer;}
 .rd-g .sc-cost{width:16px;height:19px;margin:0 -3px 0 0;} .rd-g .sc-cost b{font-size:.62rem;}
 .sc-road.off .rd-rows{opacity:.5;}
 .rd-chips{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 8px;min-height:var(--rc);max-width:100%;}
@@ -1386,6 +1388,18 @@ button.ll-n{cursor:pointer;}
 /* ── The collection on the setup screen ───────────────────────────────────────────────────────────────────── */
 /* the way in: Library, Packs, Decks, three tiles under who's playing */
 .an-hub{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+/* A phone held upright whose setup, folded and drawn in by the kit, is still taller than the screen (ui.js tight): Arvela's
+   own parts draw in, so the start button and everything above it are in view without scrolling. */
+.setup.an-tight > .an-hub .an-hub-t{grid-template-columns:minmax(0,1fr);min-height:44px;padding:5px 10px;}
+.setup.an-tight > .an-hub .an-hub-t .ic{display:none;}
+/* A chosen option in a row of choices (Teams, Figures at a Domain): bronze words on bronze-tinted stone. The kit's rule
+   colors them with --lit-ink, which on this page is the dark ink for words on a field of bronze, and read dark on dark. */
+:root:not(.ng-x) .seg > :is(button.on,button[aria-pressed="true"]){background:rgba(211,155,98,.16);color:var(--g-br-hi);box-shadow:inset 0 0 0 1px var(--g-br),0 0 14px rgba(211,155,98,.16);}
+.setup.an-tight{gap:8px;}
+.setup.an-tight .dk-pick{gap:5px;} .setup.an-tight .dk-pick > .label{margin-bottom:0;}
+.setup.an-tight .dk-info{padding:6px 12px;}
+.setup.an-tight > .k-opts{gap:6px;}
+.setup.an-tight > .k-opts .k-scrow{min-height:40px;padding-block:5px;}
 .an-hub-t{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;column-gap:8px;align-items:center;min-height:58px;padding:8px 10px;border:0;border-radius:14px;background:transparent;color:var(--text);font:inherit;text-align:left;cursor:pointer;transition:transform .12s var(--spring),background .15s;box-shadow:inset 0 0 0 1px var(--g-line);}
 .an-hub-t:active{transform:scale(.96);}
 .an-hub-t .ic{grid-row:1/3;display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:rgba(239,235,228,.06);color:#bdb8b0;}
@@ -1906,12 +1920,23 @@ button.ll-n{cursor:pointer;}
 .an-map:is(.bl,.rw) .slot{width:var(--fw);height:calc(var(--fw) * 1.4);flex:none;}
 .an-map:is(.bl,.rw) .slot .pv-m{width:46%;} .an-map:is(.bl,.rw) .slot .pv-c{width:38%;}
 .an-felt.short .an-map.bl .slot{width:var(--sw);height:calc(var(--sw) * 1.36);}
-.an-felt.short .an-map.bl .stk{width:var(--sw);--w:var(--sw);}
+.an-felt.short .an-map.bl .stk{width:var(--sw);--w:var(--sw);z-index:6;}   /* (under the line's shields: a stack of several cards fanned over your total) */
 .stk-n{position:absolute;z-index:3;right:-14%;top:-10%;min-width:1.25em;height:1.25em;padding:0 .2em;box-sizing:border-box;border-radius:.65em;display:grid;place-items:center;
   font:400 calc(var(--w,var(--sw,30px)) * .3)/1 var(--slab);color:var(--an-ink);background:#f3e9d2;box-shadow:0 0 0 1.5px var(--pc),0 1px 3px rgba(0,0,0,.6);}
 .an-map.bl .pl-side.L .stk-n{top:auto;bottom:-6%;}
 /* a phone held upright: the cards beside each tile, overlapping when more than fit */
 .an-map.rw .pl-side{gap:0;}
+/* A pile's stack (ui.js foldPiles): the cards a crowded pile has no room to show, at a card's size at the pile's top.
+   Its count and its Might stand inside its corners, so neither lies on the card beside it or on the Domain's totals. */
+.pl .pl-side > .stk.pile{--w:var(--fw);width:var(--fw);height:calc(var(--fw) * 1.4);flex:none;}
+.pl-side > .stk.pile .c,.pl-side > .stk.pile .e{border-radius:calc(var(--fw) * .09);}
+.pl-side > .stk.pile .e{transform:translate(calc(var(--k) * var(--fw) * .045),calc(var(--k) * var(--fw) * -.045));}
+.pl-side > .stk.pile .m{display:block;left:4%;bottom:3%;width:max(21px,46%);}
+.pl-side > .stk.pile .m b{font-size:max(9px,calc(var(--fw) * .2));}
+.pl .pl-side > .stk.pile .stk-n{right:5%;top:4%;bottom:auto;font-size:max(9px,calc(var(--fw) * .2));}
+.pl .pl-side:has(> .slot) > .stk.pile .stk-n{right:auto;left:5%;top:4%;}   /* (a card picked up would land over the stack's right side: its count moves to the left) */
+.pl .pl-side:has(> .slot) > .stk.pile .m{bottom:3%;}
+.an-map.rw .pl-side.L > .stk.pile .e{transform:translate(calc(var(--k) * var(--fw) * -.045),calc(var(--k) * var(--fw) * -.045));}   /* (beside the Domain: its edges fan away from the tile) */
 .an-map.rw .pl-side.R > * + *{margin-left:var(--ov,3px);}
 .an-map.rw .pl-side.L > * + *{margin-right:var(--ov,3px);}
 /* (the name 8px at least: a card about 50px wide had it at 7.7. Its small capitals sit closer, and a name too long for one
@@ -2129,7 +2154,7 @@ html.an-low .gbar .ttl{font-size:1rem;} html.an-low .gbar .ttl .gi .gicon{width:
 .an-map.wn > .pl.wn-bl{display:grid;align-items:stretch;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) var(--th) minmax(0,1fr);row-gap:var(--bg);padding:0;border-radius:12px;z-index:3;}
 .pl.wn-bl .pl-side{height:auto;min-height:0;min-width:0;display:flex;justify-content:center;}
 .pl.wn-bl .pl-side.L{grid-row:1;flex-direction:row;flex-wrap:wrap-reverse;align-items:flex-end;align-content:flex-start;gap:calc(var(--sw) * .3) 6px;}
-.pl.wn-bl .pl-side.R{grid-row:3;flex-direction:row;align-items:flex-start;}
+.pl.wn-bl .pl-side.R{grid-row:3;flex-direction:row;align-items:flex-start;gap:0;}   /* (the pile's own step is its margin: piles) */
 .pl.wn-bl .pl-side.R > * + *{margin-left:var(--ov,6px);}
 .pl.wn-bl .pl-tile{grid-row:2;grid-column:1;justify-self:center;align-self:stretch;width:var(--tw);margin:0;overflow:visible;}
 .pl.wn-bl.tgt{background:linear-gradient(180deg,rgba(114,111,104,.08),rgba(114,111,104,.18) 50%,rgba(114,111,104,.08));box-shadow:inset 0 0 0 1.5px rgba(221,170,115,.7);}
