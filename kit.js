@@ -2185,6 +2185,41 @@
   // Surprise, like a section that's off; the game page itself still opens from a link
   function gamesOff() { try { var a = JSON.parse(lsGet('gn_games_off', '[]')); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
   function gameOff(id) { return gamesOff().indexOf(id) >= 0; }
+  // A section's own order of games (gn_game_order: {section id: [game ids]}, follows the PIN): arranged by dragging in
+  // the Home screen sheet; with none the section is A to Z, and a game the order doesn't name yet comes after it, A to Z
+  function gameOrders() { try { var o = JSON.parse(lsGet('gn_game_order', '{}')); return o && typeof o === 'object' && !Array.isArray(o) ? o : {}; } catch (e) { return {}; } }
+  function byName(a, b) { return String(a.name).localeCompare(String(b.name)); }
+  function sortCat(cat, games) {
+    var o = gameOrders()[cat], gs = (games || []).slice().sort(byName);
+    if (!Array.isArray(o) || !o.length) return gs;
+    var ix = {}; o.forEach(function (id, i) { ix[id] = i; });
+    return gs.sort(function (a, b) { var x = ix[a.id], y = ix[b.id]; return x != null && y != null ? x - y : x != null ? -1 : y != null ? 1 : byName(a, b); });
+  }
+  function setCatOrder(cat, ids) { var o = gameOrders(); if (ids) o[cat] = ids; else delete o[cat]; lsSet('gn_game_order', JSON.stringify(o)); }
+  // Favorites as games, in the order they were arranged (fav_games holds page addresses: games/<page>.html)
+  function hrefsOf(g) { return [g.play, g.score, g.id].filter(Boolean).map(function (k) { return 'games/' + k + '.html'; }); }
+  function favGames() {
+    var all = typeof GAMES !== 'undefined' ? GAMES : [], seen = {}, out = [];
+    favs().forEach(function (h) { for (var i = 0; i < all.length; i++) { var g = all[i]; if (!seen[g.id] && hrefsOf(g).indexOf(h) >= 0) { seen[g.id] = 1; out.push(g); break; } } });
+    return out;
+  }
+  function isFavG(g) { var f = favs(); return hrefsOf(g).some(function (h) { return f.indexOf(h) >= 0; }); }
+  function writeFavs(a) {
+    lsSet('fav_games', JSON.stringify(a)); lsSet('fav_games_updated_at', String(Date.now()));
+    try { if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite('fav_games'); } catch (e) {}
+  }
+  function toggleFavG(g) {
+    var hs = hrefsOf(g), on = isFavG(g), f = favs().filter(function (h) { return hs.indexOf(h) < 0; });
+    if (!on) f.push('games/' + (g.play || g.id) + '.html');
+    writeFavs(f); return !on;
+  }
+  // favorites put in this order (each keeps the address it was saved under; any the catalog doesn't know stay at the end)
+  function setFavOrder(gs) {
+    var f = favs(), out = [];
+    gs.forEach(function (g) { var hs = hrefsOf(g); for (var i = 0; i < f.length; i++) if (hs.indexOf(f[i]) >= 0) { out.push(f[i]); break; } });
+    f.forEach(function (h) { if (out.indexOf(h) < 0 && !gs.some(function (g) { return hrefsOf(g).indexOf(h) >= 0; })) out.push(h); });
+    writeFavs(out);
+  }
   function gameOn(g) { var p = pcGet(); if (g && gameOff(g.id)) return false; return !p || !g || ((p.games || []).indexOf(g.id) < 0 && (p.cats || []).indexOf(g.cat) < 0); }
   function catName(id) { try { for (var i = 0; i < GAME_CATS.length; i++) if (GAME_CATS[i].id === id) return GAME_CATS[i].name; } catch (e) {} return ''; }
   function findGameSafe(k) { try { return typeof findGame === 'function' ? findGame(k) : null; } catch (e) { return null; } }
@@ -5029,30 +5064,97 @@
     // Home screen sections: move them up and down; Favorites always stays first
     var ord = el('div', { class: 'k-ord' });
     // drag a section by its grip into the order you like (the same feel as the Daily puzzles list)
-    var ordGrip = dragGrip(ord, '.k-ord-sec', function () {
-      lsSet('gn_cat_order', JSON.stringify(Array.prototype.map.call(ord.querySelectorAll('.k-ord-sec'), function (r) { return r.getAttribute('data-id'); })));
+    var ordGrip = dragGrip(ord, '.k-ord-sec:not(.fav)', function () {
+      lsSet('gn_cat_order', JSON.stringify(Array.prototype.map.call(ord.querySelectorAll('.k-ord-sec:not(.fav)'), function (r) { return r.getAttribute('data-id'); })));
       try { window.dispatchEvent(new Event('kit:cats')); } catch (e) {}
       paintOrd();
     }, 'k-ord-grip');
     var openCat = {};   // sections whose game list is open
     function catsChanged() { try { window.dispatchEvent(new Event('kit:cats')); } catch (e) {} }
+    // A to Z: the mark that puts a section (or Favorites) back in alphabetical order; it is there only while the
+    // section is in an order of its own
+    var AZ_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 4v15.5M3.5 16.5l3 3 3-3"/><path d="M12.5 10.5 15 4l2.5 6.5M13.3 8.5h3.4"/><path d="M12.8 13.5h4.6l-4.6 6h4.6"/></svg>';
+    var popStar = null, sheetOpen = false;
+    function ids(gs) { return gs.map(function (g) { return g.id; }).join(); }
+    // what changed glides there: every row keeps its key (s: a section, g: a game in a section, f: a favorite), so after
+    // a redraw each slides from where it was; a game just starred flies from its row in the section into Favorites
     function paintOrd() {
+      var before = {};
+      if (sheetOpen) Array.prototype.forEach.call(ord.querySelectorAll('[data-k]'), function (n) { before[n.getAttribute('data-k')] = n.getBoundingClientRect(); });
+      draw();
+      if (!sheetOpen) { sheetOpen = true; return; }
+      Array.prototype.forEach.call(ord.querySelectorAll('[data-k]'), function (n) {
+        var k = n.getAttribute('data-k'), r0 = before[k], r1 = n.getBoundingClientRect();
+        if (!r0 && k.charAt(0) === 'f') { var gid = k.slice(2); for (var kk in before) if (kk.charAt(0) === 'g' && kk.split(':')[2] === gid) { r0 = before[kk]; break; } }
+        if (!n.animate) return;
+        if (r0) {
+          var dx = r0.left - r1.left, dy = r0.top - r1.top;
+          if (Math.abs(dx) > 1 || Math.abs(dy) > 1) n.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'none' }], { duration: 340, easing: 'cubic-bezier(.2,.9,.25,1)' });
+        } else n.animate([{ opacity: 0, transform: 'scale(.96)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: 'ease-out' });
+      });
+    }
+    function starBtn(g, onUnstar) {
+      var fav = isFavG(g);
+      var b = el('button', { type: 'button', class: 'k-ord-star' + (fav ? ' on' : '') + (popStar === g.id ? ' pop' : ''), 'aria-pressed': String(fav), 'aria-label': fav ? 'Take ' + g.name + ' out of Favorites' : 'Add ' + g.name + ' to Favorites', html: icon('star'), onclick: function () {
+        if (onUnstar && fav) { onUnstar(); return; }
+        var now = toggleFavG(g); popStar = now ? g.id : null; sfx(now ? 'pop' : 'tap'); haptic(now ? 'medium' : 'light'); paintOrd(); catsChanged();
+      } });
+      return b;
+    }
+    function azBtn(on, label) { return el('button', { type: 'button', class: 'k-ord-b k-ord-az', 'aria-label': label, html: AZ_SVG, onclick: function () { sfx('tap'); haptic('light'); on(); } }); }
+    function draw() {
       ord.innerHTML = '';
-      // (focus: one section alone, opened from the pencil on its heading, its games always in view)
-      if (!focus) ord.appendChild(el('div', { class: 'k-ord-row fixed' }, [el('span', { class: 'ic', html: icon('star') }), el('span', { class: 'grow' }, [el('b', { text: 'Favorites' }), el('small', { text: 'Always first' })])]));
-      var cs = catsOrdered().filter(function (c) { return !focus || c.id === focus; }), allGames = typeof GAMES !== 'undefined' ? GAMES : [];
+      var allGames = typeof GAMES !== 'undefined' ? GAMES : [];
+      // ── Favorites: always first; open it to arrange them, or take one out with its star ──
+      if (!focus || focus === 'fav') {
+        var fg = favGames().filter(function (g) { return !g.cart; }), fOpen = focus === 'fav' || !!openCat.fav;
+        var fRow = el('div', { class: 'k-ord-row fixed', 'data-k': 's:fav' });
+        var fSec = el('div', { class: 'k-ord-sec fav' }, [fRow]);
+        var fDisc = fg.length && focus !== 'fav' ? el('button', { type: 'button', class: 'k-ord-b k-ord-open' + (fOpen ? ' up' : ''), 'aria-expanded': String(fOpen), 'aria-label': (fOpen ? 'Hide' : 'Show') + ' your favorites', html: icon('down'), onclick: function () { openCat.fav = !openCat.fav; sfx('tap'); paintOrd(); } }) : null;
+        var fCustom = fg.length > 1 && ids(fg) !== ids(fg.slice().sort(byName));
+        var fAz = fOpen && fCustom && focus !== 'fav' ? azBtn(function () { setFavOrder(fg.slice().sort(byName)); catsChanged(); paintOrd(); }, 'Put your favorites in A to Z order') : null;
+        [el('span', { class: 'ic star', html: icon('star') }), el('span', { class: 'grow' }, [el('b', { text: 'Favorites' }), el('small', { text: 'Always first' })]), fAz, fg.length && !fAz ? el('span', { class: 'k-ord-n', text: String(fg.length) }) : null, fDisc].forEach(function (x) { if (x) fRow.appendChild(x); });
+        // (the Favorites sheet is titled Favorites already, so it has no heading row: its A to Z sits under the list)
+        if (focus === 'fav') fSec.removeChild(fRow);
+        ord.appendChild(fSec);
+        if (fOpen && fg.length) {
+          var fl = el('div', { class: 'k-ord-games' });
+          var fGrip = dragGrip(fl, '.k-ord-row.gm', function () {
+            var byId = {}; fg.forEach(function (g) { byId[g.id] = g; });
+            setFavOrder(Array.prototype.map.call(fl.querySelectorAll('.k-ord-row.gm'), function (r) { return byId[r.getAttribute('data-id')]; }).filter(Boolean));
+            catsChanged(); paintOrd();
+          }, 'k-ord-grip');
+          fg.forEach(function (g) {
+            var r = el('div', { class: 'k-ord-row gm mv', 'data-id': g.id, 'data-k': 'f:' + g.id });
+            // taking a favorite out: its row folds away, then the list closes up
+            var st = starBtn(g, function () {
+              sfx('tap'); haptic('light');
+              var h = r.getBoundingClientRect().height, done = function () { toggleFavG(g); popStar = null; paintOrd(); catsChanged(); };
+              if (r.animate) r.animate([{ opacity: 1, height: h + 'px' }, { opacity: 0, height: '0px', marginTop: '-4px', transform: 'scale(.94)' }], { duration: 220, easing: 'ease-in', fill: 'forwards' }).onfinish = done; else done();
+            });
+            [fGrip(), el('span', { class: 'ic gic', html: window.GameIcon && GameIcon.solo ? GameIcon.solo(g.id) : icon('star') }), el('span', { class: 'grow' }, [el('b', { text: g.name })]), st].forEach(function (x) { r.appendChild(x); });
+            fl.appendChild(r);
+          });
+          if (focus === 'fav' && fCustom) fl.appendChild(el('div', { class: 'k-ord-all' }, [azBtn(function () { setFavOrder(fg.slice().sort(byName)); catsChanged(); paintOrd(); }, 'Put your favorites in A to Z order')]));
+          fSec.appendChild(fl);
+        }
+        if (focus === 'fav' && !fg.length) ord.appendChild(el('p', { class: 'muted', style: { margin: '6px 4px' }, text: 'A star on any game puts it here.' }));
+        if (focus === 'fav') return;
+      }
+      var cs = catsOrdered().filter(function (c) { return !focus || c.id === focus; });
       if (focus) openCat[focus] = 1;
-      cs.forEach(function (c, i) {
+      cs.forEach(function (c) {
         // the switch shows or hides the whole section on the home screen (the row dims when it's off)
-        var on = catOn(c.id), pcOff = pcCatOff(c.id), row = el('div', { class: 'k-ord-row mv' + (on ? '' : ' off') });
+        var on = catOn(c.id), pcOff = pcCatOff(c.id), row = el('div', { class: 'k-ord-row mv' + (on ? '' : ' off'), 'data-k': 's:' + c.id });
         var sec = el('div', { class: 'k-ord-sec', 'data-id': c.id }, [row]);
         var sw = pcOff ? el('span', { class: 'k-ord-pc', role: 'img', 'aria-label': 'Turned off by ' + pcNames(), html: icon('lock') }) : el('button', { type: 'button', class: 'k-ord-sw', role: 'switch', 'aria-checked': String(on), 'aria-label': 'Show ' + c.name + ' on the home screen', html: '<i class="sw"></i>', onclick: function () {
           var off = catsOff(), k = off.indexOf(c.id);
           if (k >= 0) off.splice(k, 1); else off.push(c.id);
           lsSet('gn_cat_off', JSON.stringify(off)); sfx('tap'); haptic('light'); paintOrd(); catsChanged();
         } });
-        // the section's games: each with its own switch (console cartridges are managed on their shelf, so they stay out)
-        var games = allGames.filter(function (g) { return g.cat === c.id && !g.hidden && !g.cart; });
+        // the section's games, in the section's own order: each with a grip, its star and its switch (console
+        // cartridges are managed on their shelf, so they stay out)
+        var games = sortCat(c.id, allGames.filter(function (g) { return g.cat === c.id && !g.hidden && !g.cart; }));
         var nOff = games.filter(function (g) { return !gameOn(g); }).length;
         var small = !on ? (pcOff ? 'Turned off by ' + pcNames() : 'Hidden from the home screen') : nOff ? nOff + ' of ' + games.length + ' games hidden' : '';
         var open = !!openCat[c.id];
@@ -5060,9 +5162,15 @@
           openCat[c.id] = !openCat[c.id]; sfx('tap'); paintOrd();
         } }) : null;
         ord.appendChild(sec);
-        [focus ? null : ordGrip(), el('span', { class: 'ic', html: icon(c.id) }), el('span', { class: 'grow' }, [el('b', { text: focus ? 'Show this section' : c.name })].concat(small ? [el('small', { text: small })] : [])), disc, sw].forEach(function (x) { if (x) row.appendChild(x); });
+        var custom = games.length > 1 && ids(games) !== ids(games.slice().sort(byName));
+        var az = open && custom ? azBtn(function () { setCatOrder(c.id, null); catsChanged(); paintOrd(); }, 'Put ' + c.name + ' in A to Z order') : null;
+        [focus ? null : ordGrip(), el('span', { class: 'ic', html: icon(c.id) }), el('span', { class: 'grow' }, [el('b', { text: focus ? 'Show this section' : c.name })].concat(small ? [el('small', { text: small })] : [])), az, disc, sw].forEach(function (x) { if (x) row.appendChild(x); });
         if (!open) return;
         var list = el('div', { class: 'k-ord-games' });
+        var gGrip = dragGrip(list, '.k-ord-row.gm', function () {
+          setCatOrder(c.id, Array.prototype.map.call(list.querySelectorAll('.k-ord-row.gm'), function (r) { return r.getAttribute('data-id'); }));
+          catsChanged(); paintOrd();
+        }, 'k-ord-grip');
         games.forEach(function (g) {
           var gOn = !gameOff(g.id), pcG = pcGet() && (pcGet().games || []).indexOf(g.id) >= 0;
           var gsw = pcG ? el('span', { class: 'k-ord-pc', role: 'img', 'aria-label': 'Turned off by ' + pcNames(), html: icon('lock') }) : el('button', { type: 'button', class: 'k-ord-sw', role: 'switch', 'aria-checked': String(gOn), 'aria-label': 'Show ' + g.name + ' on the home screen', html: '<i class="sw"></i>', onclick: function () {
@@ -5070,10 +5178,11 @@
             if (k >= 0) off.splice(k, 1); else off.push(g.id);
             lsSet('gn_games_off', JSON.stringify(off)); sfx('tap'); haptic('light'); paintOrd(); catsChanged();
           } });
-          list.appendChild(el('div', { class: 'k-ord-row gm' + (gOn && !pcG ? '' : ' off') }, [
+          list.appendChild(el('div', { class: 'k-ord-row gm mv' + (gOn && !pcG ? '' : ' off'), 'data-id': g.id, 'data-k': 'g:' + c.id + ':' + g.id }, [
+            games.length > 1 ? gGrip() : null,
             el('span', { class: 'ic gic', html: window.GameIcon && GameIcon.solo ? GameIcon.solo(g.id) : icon(c.id) }),
             el('span', { class: 'grow' }, [el('b', { text: g.name })].concat(pcG ? [el('small', { text: 'Turned off by ' + pcNames() })] : !gOn ? [el('small', { text: 'Hidden from the home screen' })] : [])),
-            gsw]));
+            starBtn(g), gsw].filter(Boolean)));
         });
         if (games.length > 1 && !pcOff) list.appendChild(el('div', { class: 'k-ord-all' }, [
           el('button', { type: 'button', class: 'btn btn-ghost btn-sm', text: nOff === games.length ? 'Show all' : 'Hide all', onclick: function () {
@@ -5110,7 +5219,7 @@
     }
     q.addEventListener('input', paint);
     paint();
-    if (part === 'home' && focus) return sheet({ title: catName(focus) || 'Home screen', node: el('div', { class: 'k-ord-one' }, [ord]),
+    if (part === 'home' && focus) return sheet({ title: focus === 'fav' ? 'Favorites' : catName(focus) || 'Home screen', node: el('div', { class: 'k-ord-one' }, [ord]),
       actions: [{ label: 'All sections', cls: 'btn-ghost', onClick: function () { setTimeout(function () { defaultsSheet('home'); }, 260); } }, { label: 'Done', cls: 'btn-soft' }] });
     if (part === 'home') return sheet({ title: 'Home screen', node: el('div', null, [
         el('p', { class: 'muted', style: { margin: '0 0 4px' }, text: 'Drag sections into the order you like. Switch a section off to hide all its games from home, search, Surprise and High Scores, or open a section to switch off single games.' }), ord]),
@@ -5985,7 +6094,7 @@
     netTurns: netTurns, turnsMark: turnsMark, turnBanner: turnBanner, turnBadge: turnBadge, badgeAsk: badgeAsk, notify: notifySheet, notifyStatus: notifyStatus, inbox: inboxSheet, inboxNew: inboxNew,
     marquee: marquee, glide: glide, init: init, keepAwake: keepAwake, setup: setup, cashOut: cashOutBtn, fitText: fitText, modes: modes, depth: depth, win: win, winClear: winPeekClear, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout, moment: moment,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, joker: joker, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
-    defaults: { sheet: defaultsSheet, get: setupSaved }, setupPage: function (g) { return g && g.play && SETUP_PAGES.indexOf(g.play) >= 0 ? g.play : null; }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, playing: playing, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },
+    defaults: { sheet: defaultsSheet, get: setupSaved }, setupPage: function (g) { return g && g.play && SETUP_PAGES.indexOf(g.play) >= 0 ? g.play : null; }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, sortCat: sortCat, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, playing: playing, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },
     initials: { of: iniOf, set: iniSet }, player: function () { return curPlayers.length === 1 ? curPlayers[0] : ''; }, players: function () { return curPlayers.slice(); },
     tour: tour, demo: demo, demoScript: demoScript, hasDemo: hasDemo, demoSeen: demoSeen, demoHref: demoHref, inDemo: function () { return DEMO; }, links: { link: linkSheet, profile: profileSheet, review: reviewSheet, fromUrl: linkFromUrl, request: requestSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
     orientOk: function () { return orientOk; },

@@ -154,7 +154,16 @@ Underlying principles for everything:
   section to allow hiding games within the section or the section altogether"): a quiet pencil at the end of each
   section's heading (`.sec-ed`) opens that section alone (`Kit.homeSheet(catId)`: Show this section, then a switch for
   each of its games, Hide all, and All sections), and a pencil in the top bar (`#hedit`) opens every section, the same
-  sheet as Home screen in the profile menu (`gn_cat_off`, `gn_games_off`, `gn_cat_order`). Keep playing's Edit is the same pencil (`#cont-edit`), the gold Done while its cards are being edited. The pencil took the list and
+  sheet as Home screen in the profile menu (`gn_cat_off`, `gn_games_off`, `gn_cat_order`). Keep playing's Edit is the same pencil (`#cont-edit`), the gold Done while its cards are being edited. **Arranging and starring
+  games in that sheet** (Tim, 2026-11-17: "allow favoriting and rearranging games per section (including favorites) or
+  resetting each section back to alpha order ... design well without using words to explain things"): every game row has
+  a grip at its left and a star before its switch (gold and filled for a favorite, popping as it lights); a section's
+  games drag into an order of their own (`gn_game_order` {section: [ids]}, follows the PIN; the home screen reads it
+  through `Kit.sortCat`), Favorites opens the same way to drag its games or take one out (its row folds away), and its
+  heading on the home screen has the pencil too (`Kit.homeSheet('fav')`). While a section, or Favorites, is open and in
+  an order of its own, an A to Z mark stands in its heading (`.k-ord-az`; under the list in the Favorites sheet) and
+  puts it back. Every redraw glides (`paintOrd` keys each row `s:`/`g:`/`f:` and slides it from where it was), so a game
+  just starred flies from its section into Favorites. The pencil took the list and
   tiles button's place (Tim, 2026-11-17: "relegate the list view option to the app menu and put the added pencil in its
   place. Period. Tile view is default for everyone"): Show games as a list is in the profile menu under Home screen
   (`toggleView`, `gn_home_view`), and every device went to tiles once (`gn_tiles_once`, which syncs, so a list chosen

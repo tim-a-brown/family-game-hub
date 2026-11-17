@@ -2064,13 +2064,14 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     if (extra) h.appendChild(extra);
     // a quiet pencil at the heading's end: which of this section's games show, or the whole section (Tim, 2026-11-16:
     // "add a discreet edit option to each section to allow hiding games within the section or the section altogether")
-    if (sc && !favs && Kit.homeSheet) h.appendChild(el('button', { type: 'button', class: 'sec-ed', 'aria-label': 'Show or hide ' + title + ' games', html: Kit.icon('pencil'), onclick: function () { Kit.sfx('tap'); Kit.haptic('light'); Kit.homeSheet(ic); } }));
+    if ((sc || favs) && Kit.homeSheet) h.appendChild(el('button', { type: 'button', class: 'sec-ed', 'aria-label': (favs ? 'Arrange your favorites' : 'Show, hide or arrange ' + title + ' games'), html: Kit.icon('pencil'), onclick: function () { Kit.sfx('tap'); Kit.haptic('light'); Kit.homeSheet(favs ? 'fav' : ic); } }));
     s.appendChild(h);
     // (Night: rows, or tiles in the tile view, the Consoles' cartridges in the same grid as every game)
     var list = el('div', { class: 'list' + (gl ? (tiles ? ' rows gtiles' : ' rows') : tiles ? ' tiles' : '') });
     // Favorites keep the order you arranged them in; other sections are A to Z
     var bySys = ic === 'console' && !favs && consoleSort() === 'sys';
-    games.slice().sort(favs ? function (a, b) { return favIndex(a) - favIndex(b); } : bySys ? consoleOrder : function (a, b) { return a.name.localeCompare(b.name); }).forEach(function (g, i, all) {
+    // (a section in an order of its own, arranged in the Home screen sheet, keeps it: Kit.sortCat)
+    (favs ? games.slice().sort(function (a, b) { return favIndex(a) - favIndex(b); }) : bySys ? games.slice().sort(consoleOrder) : Kit.sortCat ? Kit.sortCat(ic, games) : games.slice().sort(function (a, b) { return a.name.localeCompare(b.name); })).forEach(function (g, i, all) {
       // by console: each console's games under its own logo
       if (bySys && (!i || all[i - 1].sys !== g.sys)) list.appendChild(el('div', { class: 'cs-div' }, [el('img', { src: 'img/consoles/' + g.sys + '.svg', alt: '' }), el('span', { text: CONSOLE_NAME[g.sys] || '' })]));
       list.appendChild(row(g, favs));
