@@ -98,6 +98,149 @@ html.ar-on .bezel{view-transition-name:pm-maze;} html.ar-on .hud{view-transition
 .plate.pb{animation:pm-pb 1.6s var(--ease);}
 .plate.pb b{color:var(--lit);text-shadow:0 0 14px var(--litg);animation:bounce .5s var(--spring);}
 @keyframes pm-pb{0%{box-shadow:inset 0 0 0 1px var(--gl-line)}18%{box-shadow:inset 0 0 0 2px var(--lit),0 0 26px 4px rgba(255,200,60,.55)}100%{box-shadow:inset 0 0 0 1px var(--gl-line)}}
+
+/* ── Large windows (html.pm-big: a window larger than an iPad mini, set by layout()) ─────────────────────────────────
+   The cabinet is laid out from the window by bigPlan() and bigFit(): the maze takes the height or the width, whichever
+   runs out first, and the room that is left holds the cabinet's panels (the score, this level's fruit and dots, the
+   ghosts and their blue time, the high scores with this game's place among them, past games, the keys). Every part
+   is placed by its left, top and width; sizes inside are in em, and the view's font size (--u) follows the maze's
+   tiles, so the panels read at the maze's scale and the bar and sheets keep their own. Phones and the iPad mini
+   never get this class, so they are exactly as they were. */
+.pn{display:none;}
+html.pm-big.ar-on #app{max-width:none;padding:0 0 var(--safe-b);}
+html.pm-big .pm-view{display:block;position:relative;padding:0;font-size:calc(16px * var(--u,1));}
+html.pm-big .pm-view[hidden]{display:none;}
+html.pm-big .pm-view > *{position:absolute;margin:0;}
+html.pm-big .pm-view > .off,html.pm-big .hint{display:none!important;}
+html.pm-big .pn{display:block;padding:.75em .85em .8em;border-radius:1.1em;color:var(--text);background:var(--gl);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px var(--gl-line),var(--shadow-sm);}   /* (no live blur: only the page's plain sky lies behind a panel) */
+html.pm-big .pn small,html.pm-big .pn-hd{font-size:.8em;font-weight:600;color:var(--text-2);white-space:nowrap;}
+html.pm-big .bezel{padding:var(--bz,7px);border-radius:calc(var(--bz,7px) * 2.7);}
+html.pm-big .scr{border-radius:calc(var(--bz,7px) * 1.8);}
+html.pm-big .cab{width:auto;}
+/* the scores: a block of plates at the side of the maze, or a row over it */
+html.pm-big .hud{display:grid;gap:.5em;max-width:none!important;}
+html.pm-big .hud.c2{grid-template-columns:1fr 1fr;}
+html.pm-big .hud.c2 #p-score{grid-column:1 / -1;}
+html.pm-big .hud.row{display:flex;gap:.45em;}
+html.pm-big .plate{flex:1 1 0!important;padding:.5em .85em .55em;border-radius:.95em;align-items:flex-start;}
+html.pm-big .plate small{font-size:.8em;}
+html.pm-big .plate b{font-size:1.55em;}
+html.pm-big .plate.sc b{font-size:2.5em;}
+html.pm-big .hud.c1 .plate.sc b{font-size:2.1em;}
+html.pm-big .hud.row .plate{align-items:center;padding:.3em .6em .35em;}
+html.pm-big .hud.row .plate b,html.pm-big .hud.row .plate.sc b{font-size:1.45em;}
+html.pm-big .hud.row .plate:nth-child(3){flex:.6 1 0!important;}
+html.pm-low .plate{padding:.3em .8em .35em;}
+html.pm-low .plate.sc b,html.pm-low .hud.c1 .plate.sc b{font-size:1.9em;}
+html.pm-big .pbtn{width:auto;height:2.7em;border-radius:.95em;cursor:pointer;}
+html.pm-big .hud.c2 .pbtn{grid-column:1 / -1;}
+html.pm-big .hud.row .pbtn{width:3em;height:auto;}
+html.pm-big .pbtn svg{width:1.4em;height:1.4em;}
+html.pm-big .pbtn:hover{filter:brightness(1.25);}
+html.pm-keys .pbtn{display:none;}
+/* lives and the fruit of the levels so far: a plate at the foot of the column, or bare under the maze */
+html.pm-big .strip{height:auto;max-width:none!important;padding:0 .4em;}
+html.pm-side .strip{padding:.5em .8em;border-radius:.95em;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),var(--shadow-sm);}
+html.pm-big .padwrap{align-items:center;justify-content:center;}
+/* this level's fruit, and the dots eaten with a fruit standing where it comes out */
+.fr-top{display:flex;align-items:center;gap:.7em;}
+.fr-top canvas{flex:none;display:block;}
+.fr-tx{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25;}
+.fr-tx b{font-weight:750;font-size:1.06em;white-space:nowrap;}
+.fr-pt{flex:none;font-family:"Doto",ui-monospace,monospace;font-weight:900;font-size:1.7em;line-height:1;color:var(--lit);text-shadow:0 0 .5em var(--litg);}
+#pn-fruit.live .fr-top canvas{animation:pm-hop .7s var(--ease) infinite alternate;}
+@keyframes pm-hop{to{transform:translateY(-.22em) scale(1.08)}}
+.dt{position:relative;height:1.95em;margin-top:.5em;}
+.dt-bar{position:absolute;left:0;right:0;bottom:0;height:.46em;border-radius:1em;overflow:hidden;background:var(--well,rgba(0,0,0,.35));box-shadow:inset 0 0 0 1px var(--gl-line);}
+.dt-bar i{display:block;height:100%;border-radius:inherit;transform-origin:0 50%;transform:scaleX(0);background:linear-gradient(90deg,#ffb98a,#ffe2c8);transition:transform .25s var(--ease);}
+.dt-mk{position:absolute;bottom:.5em;transform:translateX(-50%);transition:opacity .3s,filter .3s;}
+.dt-mk canvas{display:block;}
+.dt-mk::after{content:"";position:absolute;left:50%;bottom:-.5em;width:2px;height:.46em;margin-left:-1px;background:var(--text-3);opacity:.7;}
+.dt-mk.due{opacity:.55;filter:saturate(.5);}
+.dt-mk.on canvas{animation:pm-hop .7s var(--ease) infinite alternate;filter:drop-shadow(0 0 .35em var(--litg));}
+.dt-mk.gone{opacity:.16;filter:saturate(0);}
+.dt-mk i{position:absolute;right:-.42em;top:-.3em;width:.95em;height:.95em;border-radius:50%;display:none;place-items:center;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--gold-ink);box-shadow:0 0 .5em var(--litg);}
+.dt-mk i svg{width:.62em;height:.62em;}
+.dt-mk.got i{display:grid;animation:pop .35s var(--spring);}
+.dt-row,.bl-row{display:flex;align-items:baseline;justify-content:space-between;gap:.6em;margin-top:.4em;}
+.dt-row b,.bl-row b{font-size:.86em;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}
+/* the four ghosts as they are in the maze, what each one eaten is worth, and how long they stay blue */
+.gh-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.2em;text-align:center;}
+.gh-c canvas{display:block;margin:0 auto;}
+.gh-c small{display:block;margin-top:.1em;font-size:.72em!important;}
+.gh-lad{display:flex;align-items:center;justify-content:space-between;gap:.2em;margin-top:.6em;padding-top:.6em;border-top:1px solid var(--gl-line);}
+.gh-lad canvas{flex:none;display:block;}
+.gh-lad b{font-family:"Doto",ui-monospace,monospace;font-weight:900;font-size:1.08em;line-height:1;padding:.22em .32em;border-radius:.5em;color:var(--text-3);transition:color .2s,box-shadow .2s;}
+.gh-lad b.next{color:var(--text);box-shadow:inset 0 0 0 1px rgba(63,227,255,.55);}
+.gh-lad b.hit{color:#3fe3ff;text-shadow:0 0 .5em rgba(63,227,255,.65);}
+.bl-bar{position:relative;height:.46em;margin-top:.35em;border-radius:1em;overflow:hidden;background:var(--well,rgba(0,0,0,.35));box-shadow:inset 0 0 0 1px var(--gl-line);}
+.bl-bar i{position:absolute;inset:0;border-radius:inherit;transform-origin:0 50%;}
+.bl-bar i.len{background:rgba(84,112,255,.3);}
+.bl-bar i.now{background:linear-gradient(90deg,#2a46ff,#6f8aff);transform:scaleX(0);}
+.bl-bar.end i.now{background:#eef0ff;}
+/* the high scores, with this game's score in its place among them, and the games before this one */
+.pn-hd{display:flex;align-items:center;justify-content:space-between;width:100%;margin:0;padding:0;border:0;background:none;font-family:inherit;text-align:left;cursor:pointer;transition:color .15s;}
+.pn-hd svg{width:1.15em;height:1.15em;opacity:.55;transition:transform .15s var(--ease),opacity .15s;}
+.pn-hd:hover{color:var(--text)!important;}
+.pn-hd:hover svg{opacity:1;transform:translateX(2px);}
+.hi-l,.pa-l{list-style:none;margin:.45em 0 0;padding:0;display:grid;gap:.25em;}
+.hi-l li{display:grid;grid-template-columns:1.5em minmax(0,1fr) auto;align-items:center;gap:.5em;height:1.95em;padding:0 .65em 0 .4em;border-radius:.62em;background:var(--gl-3);box-shadow:inset 0 0 0 1px var(--gl-line);transition:transform .35s var(--ease);}
+.hi-l li.gap{margin-top:.45em;}
+.hi-l li i{font-style:normal;font-size:.74em;font-weight:700;color:var(--text-3);text-align:center;font-variant-numeric:tabular-nums;}
+.hi-l li i.md{justify-self:center;display:grid;place-items:center;width:1.75em;height:1.75em;border-radius:50%;font-weight:800;color:#2b1a00;}
+.hi-l li b{font-family:var(--display);font-weight:800;font-size:.98em;letter-spacing:.1em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hi-l li span{font-family:var(--display);font-weight:800;font-size:.98em;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;}
+.hi-l li.mine b{color:var(--lit-ink);}
+.hi-l li.now{color:var(--lit-ink);background:rgba(255,211,77,.13);box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.6),0 0 1em -.2em var(--litg);}
+.hi-l li.now b{letter-spacing:0;font-family:var(--font);font-weight:750;}
+.hi-l li.now i{color:var(--lit-ink);}
+.hi-l li.up{animation:pm-up .7s var(--ease);}
+@keyframes pm-up{0%{filter:brightness(1.9)}100%{filter:none}}
+.pa-l li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:baseline;gap:.7em;height:1.8em;line-height:1.8em;padding:0 .65em;border-radius:.62em;background:var(--gl-3);box-shadow:inset 0 0 0 1px var(--gl-line);}
+.pa-l.who li{grid-template-columns:4.6em minmax(0,1fr) auto auto;}
+.pa-l li small{overflow:hidden;text-overflow:ellipsis;}
+.pa-l li span{font-size:.86em;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pa-l li em{font-style:normal;font-size:.8em;font-weight:600;color:var(--text-3);white-space:nowrap;}
+.pa-l li b{min-width:3.6em;font-family:var(--display);font-weight:800;font-size:.95em;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;}
+#pn-past.nar .pa-l li em,#pn-tab.nar .tb-l li em{display:none;}
+.tb-l{list-style:none;margin:.45em 0 0;padding:0;display:grid;gap:.25em;}
+.tb-l li{display:grid;grid-template-columns:1.5em minmax(0,1fr) auto 3.4em;align-items:center;gap:.6em;height:1.8em;padding:0 .65em 0 .45em;border-radius:.62em;background:var(--gl-3);box-shadow:inset 0 0 0 1px var(--gl-line);transition:opacity .3s;}
+.tb-l li canvas{display:block;}
+.tb-l li b{font-size:.9em;font-weight:700;white-space:nowrap;}
+.tb-l li em{font-style:normal;font-size:.8em;font-weight:600;color:var(--text-3);white-space:nowrap;}
+.tb-l li span{font-family:var(--display);font-weight:800;font-size:.95em;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;}
+.tb-l li.done{opacity:.42;}
+.tb-l li.now{color:var(--lit-ink);background:rgba(255,211,77,.13);box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.6),0 0 1em -.2em var(--litg);}
+.tb-l li.now em{color:var(--lit-ink);opacity:.8;}
+#pn-tab.nar .tb-l li{grid-template-columns:1.5em minmax(0,1fr) 3.4em;}
+#pn-past.nar .pa-l li{gap:.45em;padding:0 .55em;}
+#pn-past.nar .pa-l.who li{grid-template-columns:4.1em minmax(0,1fr) auto auto;}
+#pn-past.nar .pa-l li b{min-width:0;}
+#pn-gh.nar .gh-lad b{font-size:.92em;padding:.2em .1em;}
+#pn-gh.nar .gh-lad canvas{display:none;}
+#pn-fruit.nar .fr-top{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:.6em;}
+#pn-fruit.nar .fr-top canvas{grid-row:1 / span 2;}
+#pn-fruit.nar .fr-tx small{display:none;}
+#pn-fruit.nar .fr-pt{grid-column:2;font-size:1.35em;}
+/* the keys, drawn: the cap of the way Pac-Man is heading is lit, as the pad's arrow is on a phone */
+#pn-keys{display:none;align-items:flex-end;justify-content:space-between;gap:calc(var(--kc) * .5);}
+html.pm-big #pn-keys{display:flex;}
+.kc-cl{display:grid;grid-template-columns:repeat(3,var(--kc));grid-template-rows:repeat(2,var(--kc));gap:calc(var(--kc) * .14);}
+#pn-keys.nar .kc-cl.wasd{display:none;}
+#pn-keys.nar{justify-content:space-around;}
+.kc{display:grid;place-items:center;width:var(--kc);height:var(--kc);padding:0;border:0;border-radius:calc(var(--kc) * .24);font:750 calc(var(--kc) * .42)/1 var(--font);color:var(--text-2);cursor:pointer;
+  background:linear-gradient(180deg,rgba(255,255,255,.15),rgba(255,255,255,.05));box-shadow:inset 0 0 0 1px var(--gl-line),inset 0 calc(var(--kc) * -.07) 0 rgba(0,0,0,.3),0 calc(var(--kc) * .05) 0 rgba(0,0,0,.35);transition:transform .08s,color .1s,filter .15s;}
+.kc svg{width:calc(var(--kc) * .46);height:calc(var(--kc) * .46);}
+.kc[data-d="0"]{grid-column:2;grid-row:1;} .kc[data-d="1"]{grid-column:1;grid-row:2;} .kc[data-d="2"]{grid-column:2;grid-row:2;} .kc[data-d="3"]{grid-column:3;grid-row:2;}
+.kc:hover{filter:brightness(1.3);}
+.kc.want{color:var(--text);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.5),inset 0 calc(var(--kc) * -.07) 0 rgba(0,0,0,.3),0 calc(var(--kc) * .05) 0 rgba(0,0,0,.35);}
+.kc.on{color:var(--gold-ink);background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 calc(var(--kc) * -.07) 0 rgba(120,70,0,.35),0 0 calc(var(--kc) * .5) calc(var(--kc) * -.1) var(--litg);}
+.kc.dn,.kc:active,.kc-p:active .kc{transform:translateY(calc(var(--kc) * .05));}
+.kc-p{display:flex;align-items:center;gap:calc(var(--kc) * .28);margin:0;padding:0;border:0;background:none;color:var(--text-2);cursor:pointer;}
+.kc-p > svg{width:calc(var(--kc) * .62);height:calc(var(--kc) * .62);transition:color .15s;}
+.kc-p:hover .kc{filter:brightness(1.3);} .kc-p:hover > svg{color:var(--text);}
+html.pm-big .strip{view-transition-name:pm-strip;} #pn-fruit{view-transition-name:pm-fruit;} #pn-gh{view-transition-name:pm-gh;} #pn-hi{view-transition-name:pm-hi;} #pn-past{view-transition-name:pm-past;} #pn-tab{view-transition-name:pm-tab;} #pn-keys{view-transition-name:pm-keys;}
+@media (prefers-reduced-motion:reduce){ #pn-fruit.live .fr-top canvas,.dt-mk.on canvas{animation:none;} }
 </style>
 </head>
 <body>
@@ -126,6 +269,26 @@ html.ar-on .bezel{view-transition-name:pm-maze;} html.ar-on .hud{view-transition
     <span class="nub" id="nub"></span>
   </div></div>
   <div class="hint">Steer with the arrow keys or WASD, and P pauses.</div>
+  <!-- The cabinet's panels, shown in a large window only (html.pm-big; bigFit() places them) -->
+  <section class="pn" id="pn-fruit" aria-label="This level's bonus fruit and the dots eaten">
+    <div class="fr-top"><canvas id="fr-ic"></canvas><div class="fr-tx"><small>Bonus fruit</small><b id="fr-nm">Cherry</b></div><span class="fr-pt" id="fr-pt">100</span></div>
+    <div class="dt"><div class="dt-bar"><i id="dt-fill"></i></div><span class="dt-mk due" id="dt-m0" style="left:28.7%"><canvas></canvas><i></i></span><span class="dt-mk due" id="dt-m1" style="left:69.7%"><canvas></canvas><i></i></span></div>
+    <div class="dt-row"><small>Dots eaten</small><b id="dt-n">0 of 244</b></div>
+  </section>
+  <section class="pn" id="pn-gh" aria-label="The ghosts">
+    <div class="gh-row" id="gh-row"></div>
+    <div class="gh-lad" id="gh-lad"><canvas id="gh-blue"></canvas><b>200</b><b>400</b><b>800</b><b>1,600</b></div>
+    <div class="bl-row"><small>Blue time</small><b id="bl-n">6 seconds</b></div>
+    <div class="bl-bar" id="bl-bar"><i class="len" id="bl-len"></i><i class="now" id="bl-now"></i></div>
+  </section>
+  <section class="pn" id="pn-hi"><button class="pn-hd" id="hi-hd" type="button" tabindex="-1"><span>High scores</span></button><ol class="hi-l" id="hi-l"></ol></section>
+  <section class="pn" id="pn-past"><button class="pn-hd" id="pa-hd" type="button" tabindex="-1"><span>Past games</span></button><ol class="pa-l" id="pa-l"></ol></section>
+  <section class="pn" id="pn-tab"><small>Fruit by level</small><ol class="tb-l" id="tb-l"></ol></section>
+  <section class="pn" id="pn-keys" aria-label="Keys">
+    <div class="kc-cl wasd"><button class="kc" type="button" tabindex="-1" data-d="0" aria-label="Up">W</button><button class="kc" type="button" tabindex="-1" data-d="1" aria-label="Left">A</button><button class="kc" type="button" tabindex="-1" data-d="2" aria-label="Down">S</button><button class="kc" type="button" tabindex="-1" data-d="3" aria-label="Right">D</button></div>
+    <div class="kc-cl"><button class="kc" type="button" tabindex="-1" data-d="0" aria-label="Up"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 5 4 16h16z"/></svg></button><button class="kc" type="button" tabindex="-1" data-d="1" aria-label="Left"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 12 16 4v16z"/></svg></button><button class="kc" type="button" tabindex="-1" data-d="2" aria-label="Down"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 19 4 8h16z"/></svg></button><button class="kc" type="button" tabindex="-1" data-d="3" aria-label="Right"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 12 8 4v16z"/></svg></button></div>
+    <button class="kc-p" id="kc-p" type="button" tabindex="-1" aria-label="Pause"><span class="kc">P</span><span id="kc-pi"></span></button>
+  </section>
 </div>
 <script>
 (function () {
@@ -299,6 +462,7 @@ html.ar-on .bezel{view-transition-name:pm-maze;} html.ar-on .hud{view-transition
   function fit() {
     var view = $('view'), used = 0, n = 0;
     if (view.hidden || !view.clientHeight) return;
+    if (root0.classList.contains('pm-big')) { bigFit(); return; }
     Array.prototype.forEach.call(view.children, function (ch) {
       var cs = getComputedStyle(ch);
       if (ch === cab || cs.display === 'none' || cs.position === 'absolute') return;
@@ -372,8 +536,9 @@ html.ar-on .bezel{view-transition-name:pm-maze;} html.ar-on .hud{view-transition
     if (saved) {
       G.score = saved.score; G.lives = saved.lives; G.level = saved.level; G.extra = !!saved.extra; G.started = saved.started || Date.now();
       G.stats = saved.stats || G.stats; G.levelStart = saved.levelStart != null ? saved.levelStart : saved.score;
+      G.frSaved = Array.isArray(saved.fr) && saved.fr.length === 2 ? saved.fr : null;
     }
-    hiAtStart = topScore();
+    hiAtStart = topScore(); hiData = null; pastData = null;
     Kit.gameStart();
     startLevel(saved && saved.dots);
   }
@@ -388,6 +553,7 @@ html.ar-on .bezel{view-transition-name:pm-maze;} html.ar-on .hud{view-transition
       }
     }
     G.fruitShown = [G.eaten >= 70, G.eaten >= 170];
+    G.fr = dotStr && G.frSaved ? G.frSaved.map(function (v) { return v === 1 ? 3 : v; }) : [G.eaten >= 70 ? 3 : 0, G.eaten >= 170 ? 3 : 0];   // each fruit: 0 due, 1 out, 2 eaten, 3 gone
     G.fruit = null; G.global = null;
     if (!dotStr) G.levelStart = G.score;
     resetActors();
@@ -438,7 +604,7 @@ html.ar-on .bezel{view-transition-name:pm-maze;} html.ar-on .hud{view-transition
         if (v === 1) { add(10); p.stall = 1; Snd.waka(); }
         else { add(50); p.stall = 3; energize(); }
         dotCounters();
-        if (G.eaten === 70 || G.eaten === 170) { var k = G.eaten === 70 ? 0 : 1; if (!G.fruitShown[k]) { G.fruitShown[k] = true; G.fruit = { t: 570 + Math.random() * 60, idx: fruitFor(G.level) }; } }
+        if (G.eaten === 70 || G.eaten === 170) { var k = G.eaten === 70 ? 0 : 1; if (!G.fruitShown[k]) { G.fruitShown[k] = true; G.fruit = { t: 570 + Math.random() * 60, idx: fruitFor(G.level), k: k }; G.fr[k] = 1; } }
         G.elroy = G.left <= S.elroy / 2 ? 2 : G.left <= S.elroy ? 1 : 0;
         if (G.left === 0) { levelClear(); }
       }
@@ -574,12 +740,12 @@ html.ar-on .bezel{view-transition-name:pm-maze;} html.ar-on .hud{view-transition
     for (var i = 0; i < 4; i++) moveGhost(G.ghosts[i]);
     // Fruit
     if (G.fruit) {
-      if (--G.fruit.t <= 0) G.fruit = null;
+      if (--G.fruit.t <= 0) { G.fr[G.fruit.k] = 3; G.fruit = null; }
       else if (Math.abs(G.pac.x - FRUIT_X) < 6 && Math.abs(G.pac.y - FRUIT_Y) < 6) {
         var f = FRUIT[G.fruit.idx]; add(f.p); Snd.fruit(); Kit.haptic('light');
         G.popups.push({ x: FRUIT_X, y: FRUIT_Y, t: 120, txt: String(f.p), col: '#ff9ee2' });
         G.stats.fruit++; if (!G.stats.bestFruit || f.p > G.stats.bestFruit.p) G.stats.bestFruit = { n: f.n, p: f.p };
-        G.fruit = null;
+        G.fr[G.fruit.k] = 2; G.fruit = null;
       }
     }
     collide();
@@ -688,7 +854,8 @@ html.ar-on .bezel{view-transition-name:pm-maze;} html.ar-on .hud{view-transition
     setTimeout(function () {
       overDone = true;   // the loop stops behind the results card
       ArcadeHi.check(HI, r.score, function () {
-        hud();
+        hiData = null; pastData = null; if (G) G.filed = r.score > 0 && ArcadeHi.board(HI).some(function (x) { return x.score === r.score; });
+        hud(); if (BIG.on) bigFit();
         Kit.win({
           lose: !r.newTop, icon: r.newTop ? 'trophy' : 'meh',
           title: r.newTop ? 'New high score!' : 'Game over',
@@ -706,7 +873,7 @@ html.ar-on .bezel{view-transition-name:pm-maze;} html.ar-on .hud{view-transition
     var s = '';
     for (var i = 0; i < COLS * ROWS; i++) { var ch = MAP[Math.floor(i / COLS)].charAt(i % COLS); s += (ch === '.' || ch === 'o') ? (G.dots[i] ? '1' : '0') : '-'; }
     try {
-      localStorage.setItem(SAVE, JSON.stringify({ v: 1, who: G.who, startLives: G.startLives, pad: G.pad, score: G.score, lives: G.lives, level: G.level, extra: G.extra, dots: s, started: G.started, stats: G.stats, levelStart: G.levelStart }));
+      localStorage.setItem(SAVE, JSON.stringify({ v: 1, who: G.who, startLives: G.startLives, pad: G.pad, score: G.score, lives: G.lives, level: G.level, extra: G.extra, dots: s, started: G.started, stats: G.stats, levelStart: G.levelStart, fr: G.fr }));
     } catch (e) {}
     Kit.resume.set('Level ' + G.level + ' · ' + G.score.toLocaleString() + ' pts');
   }
@@ -723,15 +890,17 @@ html.ar-on .bezel{view-transition-name:pm-maze;} html.ar-on .hud{view-transition
     }
     $('h-hi').textContent = Math.max(topScore(), sc).toLocaleString();
     $('h-lvl').textContent = G ? G.level : 1;
+    if (BIG.on) { fitNums(); hiPaint(); }
   }
   function drawStrip() {
     var dpr = Math.min(window.devicePixelRatio || 1, 3);
     var lv = $('lives'), fr = $('fruits');
     var n = G ? Math.max(0, G.lives - 1) : 2;
+    var lvl = G ? G.level : 1, from = Math.max(1, lvl - 6), cnt = lvl - from + 1;
+    if (BIG.on) { bigStrip(lv, fr, n, from, cnt); return; }
     lv.style.width = Math.max(1, n * 22) + 'px'; lv.width = Math.max(1, n * 22) * dpr; lv.height = 20 * dpr; lv.style.height = '20px';
     var a = lv.getContext('2d'); a.setTransform(dpr, 0, 0, dpr, 0, 0);
     for (var i = 0; i < n; i++) drawChomp(a, 11 + i * 22, 10, 8, PI, .55, 1);
-    var lvl = G ? G.level : 1, from = Math.max(1, lvl - 6), cnt = lvl - from + 1;
     fr.style.width = (cnt * 22) + 'px'; fr.width = cnt * 22 * dpr; fr.height = 20 * dpr; fr.style.height = '20px';
     var b = fr.getContext('2d'); b.setTransform(dpr, 0, 0, dpr, 0, 0);
     for (var j = 0; j < cnt; j++) { b.save(); b.translate(11 + j * 22, 10); b.scale(1.25, 1.25); drawFruit(b, fruitFor(from + j)); b.restore(); }
@@ -912,7 +1081,7 @@ html.ar-on .bezel{view-transition-name:pm-maze;} html.ar-on .hud{view-transition
   var PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.2-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>';
   var welcome = false;
   function syncOverlay() {
-    $('btn-pause').innerHTML = paused ? PLAY_SVG : PAUSE_SVG;
+    $('btn-pause').innerHTML = paused ? PLAY_SVG : PAUSE_SVG; $('kc-pi').outerHTML = (paused ? PLAY_SVG : PAUSE_SVG).replace('<svg ', '<svg id="kc-pi" ');
     $('btn-pause').style.visibility = G && phase !== 'over' && phase !== 'idle' ? 'visible' : 'hidden';
     var ov = $('ov'), card = $('ov-card'), h = '';
     if (paused && G && phase !== 'over') {
@@ -992,7 +1161,7 @@ html.ar-on .bezel{view-transition-name:pm-maze;} html.ar-on .hud{view-transition
   var KEYS = { ArrowUp: 0, KeyW: 0, ArrowLeft: 1, KeyA: 1, ArrowDown: 2, KeyS: 2, ArrowRight: 3, KeyD: 3 };
   document.addEventListener('keydown', function (e) {
     if (!G || document.querySelector('.ahi-overlay, .k-scrim, .k-win')) return;
-    if (KEYS[e.code] != null) { e.preventDefault(); steer(KEYS[e.code]); return; }
+    if (KEYS[e.code] != null) { e.preventDefault(); steer(KEYS[e.code]); capDown(e.code); return; }
     if (e.code === 'KeyP' || e.code === 'Escape') { if (G && phase !== 'over') setPaused(!paused); return; }
     if (e.code === 'Space' || e.code === 'Enter') {
       e.preventDefault();
@@ -1036,6 +1205,7 @@ html.ar-on .bezel{view-transition-name:pm-maze;} html.ar-on .hud{view-transition
   function padShow() {
     var d = G ? G.pac.dir : -1, w = G ? G.pac.want : null, map = [0, 1, 2, 3];
     for (var i = 0; i < 4; i++) { padIs[i].classList.toggle('on', map[i] === d); padIs[i].classList.toggle('want', w === map[i]); }
+    if (BIG.on && (d !== capD || w !== capW)) { capD = d; capW = w; for (i = 0; i < caps.length; i++) { var cd = +caps[i].getAttribute('data-d'); caps[i].classList.toggle('on', cd === d); caps[i].classList.toggle('want', cd === w); } }
   }
   $('btn-pause').addEventListener('click', function () { Kit.sfx('tap'); setPaused(!paused); });
   document.addEventListener('visibilitychange', function () { if (document.hidden) { setPaused(true); save(); } else kick(); });
@@ -1058,7 +1228,7 @@ html.ar-on .bezel{view-transition-name:pm-maze;} html.ar-on .hud{view-transition
       if (phase === 'over') { frame++; continue; }
       step();
     }
-    if (G && !paused) padShow();
+    if (G && !paused) { padShow(); if (BIG.on) panelTick(); }
     if (G && (n || paused || overDone)) render();   // 120Hz screens: no step this frame, nothing new to draw
     // Battery: no frames on the setup screen, while paused, once the results card is up or with the page hidden (kick() restarts)
     if (G && phase !== 'idle' && !paused && !overDone && !document.hidden) raf = requestAnimationFrame(loop);
@@ -1105,18 +1275,377 @@ html.ar-on .bezel{view-transition-name:pm-maze;} html.ar-on .hud{view-transition
     canvas: function () { return $('cv'); }
   };
 
-  // The shape decides the layout (a class, so turning the device can glide: a View Transition around the change)
+  // ═══ Large windows: the cabinet laid out from the window ═════════════════
+  // A window larger than an iPad mini (a laptop's, at any shape) gets html.pm-big, and bigPlan() composes it:
+  //   beside  the maze as tall as the room, with columns of panels at its sides: one at the left when the room at the
+  //           sides is narrow, one each side when there is room for both, two each side in a short wide strip
+  //   stacked (a tall window) the scores in a row over a maze as wide as the window, the panels in columns under it
+  // whichever gives the larger maze. bigFit() then measures the panels at their widths and packs each column: a panel
+  // that has no room is left out (the fruit by level first, then past games, the ghosts, this level's fruit, the high
+  // scores), and the lists take the rows the room allows. With a mouse the keys are drawn (the P cap is the pause
+  // button); with a finger the pad stands in their place. Nothing here is read by the play, and a phone or an iPad
+  // mini never comes here (the comparison is in the session's big/pacman folder: devices.js, restore.js).
+  var FINE = !!(window.matchMedia && matchMedia('(hover:hover) and (pointer:fine)').matches);
+  var BIG = { on: false, shape: '', u: 1, cell: 22, sw: 1e9, look: 3, fitAt: 0, lastFit: 0, hiRows: 1, pastRows: 1 };
   var root0 = document.documentElement;
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function bigNow() { return Math.max(innerWidth, innerHeight) > 1024 || Math.min(innerWidth, innerHeight) > 768; }
   function wideNow() { return innerWidth > innerHeight * 1.15; }
+  var PARTS = ['hud', 'strip', 'fruit', 'gh', 'hi', 'past', 'tab', 'keys', 'pad'];
+  function part(id) { var v = $('view'); return id === 'hud' ? v.querySelector('.hud') : id === 'strip' ? v.querySelector('.strip') : id === 'pad' ? v.querySelector('.padwrap') : $('pn-' + id); }
+  var DROP = ['tab', 'past', 'gh', 'fruit', 'hi', 'keys'];
+
+  function bigPlan() {
+    var view = $('view'), VW = view.clientWidth, VH = view.clientHeight, R = LW / LH;
+    var E = clamp(Math.round(Math.min(VW, VH) * .016), 10, 24), gap = E;
+    var pad = TOUCH && G && G.pad, ctl = pad ? 'pad' : FINE ? 'keys' : null;
+    var past = pastList().length > 0;
+    function bzOf(t) { return Math.round(clamp(t * .26, 7, 16)); }
+    function uOf(t) { return clamp(t / 32, 1, 1.9); }
+    // beside: columns at the sides of a maze as tall as the room
+    var bz = bzOf((VH - 2 * E) / 32), mh = VH - 2 * E - 2 * bz, mw = mh * R, uT = uOf(mw / COLS);
+    var cmin = Math.round(184 * Math.sqrt(uT)), spare = VW - 2 * E - mw - 2 * bz, S, two;
+    if ((spare - 2 * gap) / 2 >= 215 * uT || pad) {
+      two = true; S = (spare - 2 * gap) / 2;
+      var need = pad ? Math.max(cmin, 204) : 215 * uT;
+      if (S < need) { S = need; mw = VW - 2 * E - 2 * bz - 2 * gap - 2 * S; mh = mw / R; }
+    } else {
+      two = false; S = spare - gap;
+      if (S < cmin) { S = cmin; mw = VW - 2 * E - 2 * bz - gap - S; mh = mw / R; }
+    }
+    // stacked: the scores in a row over the maze, the rest under it
+    var bz2 = bzOf((VW - 2 * E) / 29), mw2 = VW - 2 * E - 2 * bz2, u2 = uOf(mw2 / COLS);
+    var hudH = Math.round(54 * u2), stH = Math.round(34 * u2), g2 = Math.round(8 * u2);
+    var mh2 = Math.min(mw2 / R, VH - 2 * E - 2 * bz2 - hudH - stH - 2 * g2 - (pad ? 180 : 0)); mw2 = mh2 * R;
+    var P = { VW: VW, VH: VH, E: E, gap: gap, cols: [], ctl: ctl };
+    if (mw > 120 && mw >= mw2 * .97) {
+      P.mode = 'side'; P.mw = Math.floor(mw); P.mh = Math.floor(P.mw / R); P.bz = bz;
+      var u = uOf(P.mw / COLS), Hc = P.mh + 2 * bz;
+      var n = two && S >= 430 * u + gap && (Hc < 600 * u || S > 640 * u) ? 2 : 1;
+      var cw = Math.floor(Math.min(400 * u, (S - (n - 1) * gap) / n));
+      u = clamp(cw / 300, 1, u);   // (a column reads at the maze's scale only as far as its width keeps a fair line)
+      var L = [], Rt = [];
+      if (!two) L = [{ top: ['hud', 'fruit', 'gh', 'hi', 'past', 'tab'], bot: [ctl, 'strip'] }];
+      else if (n === 1) { L = [{ top: ['hud', 'hi', 'tab'], bot: ['strip'] }]; Rt = [{ top: ['fruit', 'gh', 'past', 'tab'], bot: [ctl] }]; }
+      else { L = [{ top: ['hi', 'tab'], bot: [] }, { top: ['hud', 'fruit'], bot: ['strip'] }]; Rt = [{ top: ['gh'], bot: [ctl] }, { top: ['past', 'tab'], bot: [] }]; }
+      var tot = (L.length + Rt.length) * (cw + gap) + P.mw + 2 * bz, x = Math.max(E, Math.round((VW - tot) / 2)), y = Math.round((VH - Hc) / 2);
+      L.concat([null], Rt).forEach(function (c) {
+        if (!c) { P.mx = x; P.my = y; x += P.mw + 2 * bz + gap; return; }
+        c.x = x; c.y = y; c.w = cw; c.h = Hc; c.fill = true; x += cw + gap; P.cols.push(c);
+      });
+      P.u = u; P.hud = cw / u >= 250 ? 'c2' : 'c1'; P.low = Hc / u < 470; P.look = 3;
+    } else {
+      P.mode = 'stack'; P.mw = Math.floor(mw2); P.mh = Math.floor(P.mw / R); P.bz = bz2; P.u = uOf(P.mw / COLS); P.hud = 'row'; P.look = 2;
+      var bw = P.mw + 2 * bz2; P.mx = Math.round((VW - bw) / 2);
+      P.hw = Math.min(VW - 2 * E, Math.max(bw, 360)); P.hx = Math.round((VW - P.hw) / 2);
+      var k = clamp(Math.floor((VW - 2 * E + gap) / (230 * P.u + gap)), 1, 3), gw = Math.min(VW - 2 * E, k * 440 * P.u + (k - 1) * gap), cw2 = Math.floor((gw - (k - 1) * gap) / k), gx = Math.round((VW - gw) / 2);
+      var lists = k === 1 ? [['fruit', 'gh', 'hi', 'past', 'tab', ctl]] : k === 2 ? [['fruit', 'hi', 'tab'], ['gh', 'past', 'tab', ctl]] : past ? [['fruit', 'gh', 'tab'], ['hi', 'tab'], ['past', 'tab', ctl]] : [['fruit', 'tab'], ['hi', 'tab'], ['gh', 'tab', ctl]];
+      if (pad) { lists.forEach(function (l) { var i = l.indexOf('pad'); if (i >= 0) l.splice(i, 1); }); lists[lists.length - 1].unshift('pad'); }
+      lists.forEach(function (l, i) { P.cols.push({ top: l, bot: [], x: gx + i * (cw2 + gap), w: cw2, fill: false }); });
+    }
+    P.cols.forEach(function (c) { c.top = c.top.filter(Boolean); c.bot = c.bot.filter(Boolean); });
+    return P;
+  }
+
+  // The lists' data, read once a game (and again when a score is filed)
+  var hiData = null, pastData = null;
+  function boardList() { return hiData || (hiData = ArcadeHi.board(HI)); }
+  function pastList() {
+    if (pastData) return pastData;
+    var l = []; try { l = GameHistory.load(KEY) || []; } catch (e) {}
+    return (pastData = l.filter(function (e) { return e && e.players && e.players[0]; }).slice(0, 20));
+  }
+  function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function dayOf(ts) {
+    var d = new Date(ts), n = new Date(), k = Math.round((new Date(n.getFullYear(), n.getMonth(), n.getDate()) - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 864e5);
+    return k <= 0 ? 'Today' : k === 1 ? 'Yesterday' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  function shortName(n) { n = String(n || 'Player').trim(); return n.length > 10 && n.indexOf(' ') > 0 ? n.split(' ')[0] : n; }
+  function liveRow() { return !!(G && phase !== 'idle' && !G.filed); }
+  // The board with this game's score standing in its place: the top of the board, and when this game is further down,
+  // the score next above it (the one to beat) and this game's row
+  function hiView(N) {
+    var list = boardList(), live = liveRow(), all = list.map(function (e, i) { return { e: e, rank: i + 1, key: e.name + '|' + e.score + '|' + (e.date || '') }; });
+    var r = -1;
+    if (live) {
+      r = G.score > 0 ? list.filter(function (e) { return e.score >= G.score; }).length : list.length;
+      all.splice(r, 0, { live: true, rank: r + 1, key: 'live' });
+      for (var i = r + 1; i < all.length; i++) all[i].rank++;
+    }
+    if (all.length <= N) return all;
+    if (!live || r < N) return all.slice(0, N);
+    if (N < 2) return [all[r]];
+    var out = all.slice(0, N - 2).concat(all.slice(r - 1, r + 1));
+    if (r - 1 > N - 2) out[N - 2] = Object.assign({ gap: true }, out[N - 2]);
+    return out;
+  }
+  var hiSig = '', hiRank = 1e9, MEDAL = ['#ffc83d', '#cfd6e4', '#d9925a'];
+  function hiPaint(force) {
+    var ol = $('hi-l'), rows = hiView(Math.max(1, BIG.hiRows)), sig = rows.map(function (x) { return x.key + (x.gap ? '^' : '') + x.rank; }).join(',') + (G && G.filed ? 'f' : '');
+    if (sig === hiSig && !force) { var lv = ol.querySelector('li[data-k="live"] span'); if (lv && G) lv.textContent = G.score.toLocaleString(); return; }
+    var was = {}, rank = 1e9, glide = hiSig && !force && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    Array.prototype.forEach.call(ol.children, function (li) { was[li.getAttribute('data-k')] = li.getBoundingClientRect().top; });
+    ol.innerHTML = rows.map(function (x) {
+      var e = x.e, rk = x.rank <= 3 && !x.live ? '<i class="md" style="background:' + MEDAL[x.rank - 1] + '">' + x.rank + '</i>' : '<i>' + x.rank + '</i>';
+      var filed = !x.live && G && G.filed && e.score === G.score && !e.who;
+      if (x.live) rank = x.rank;
+      return '<li data-k="' + esc(x.key) + '" class="' + (x.live || filed ? 'now' : e.mine ? 'mine' : '') + (x.gap ? ' gap' : '') + '">' + rk +
+        '<b>' + esc(x.live ? shortName(G.who) : e.name) + '</b><span>' + (x.live ? G.score : e.score).toLocaleString() + '</span></li>';
+    }).join('');
+    // a row that changed its place glides there, and this game's row lights as it climbs past a score
+    if (glide) Array.prototype.forEach.call(ol.children, function (li) {
+      var k = li.getAttribute('data-k'), o = was[k];
+      if (k === 'live' && rank < hiRank) li.classList.add('up');
+      if (o == null) return;
+      var dy = o - li.getBoundingClientRect().top; if (Math.abs(dy) < 1) return;
+      li.style.transition = 'none'; li.style.transform = 'translateY(' + dy + 'px)'; void li.offsetWidth; li.style.transition = ''; li.style.transform = '';
+    });
+    hiRank = rank; hiSig = sig;
+  }
+  function pastPaint() {
+    var all = pastList(), rows = all.slice(0, Math.max(1, BIG.pastRows)), who = {};
+    all.forEach(function (e) { who[String(e.players[0].name).toLowerCase()] = 1; });
+    var many = Object.keys(who).length > 1;
+    $('pa-l').className = 'pa-l' + (many ? ' who' : '');
+    $('pa-l').innerHTML = rows.map(function (e) {
+      var sc = (e.score != null ? e.score : e.players[0].score) || 0, lv = e.level || (e.dt && e.dt.lv);   // (Kit.record keeps the score and the level on the record itself)
+      return '<li><small>' + esc(dayOf(e._date || e.finishedAt || Date.now())) + '</small>' + (many ? '<span>' + esc(shortName(e.players[0].name)) + '</span>' : '') + '<em>' + (lv ? 'Level ' + lv : '') + '</em><b>' + Number(sc).toLocaleString() + '</b></li>';
+    }).join('');
+  }
+
+  // A score that has outgrown its plate is set a step smaller, never cut off
+  function fitNums(force) {
+    ['h-score', 'h-hi', 'h-lvl'].forEach(function (id) {
+      var b = $(id), p = b.parentNode, len = b.textContent.length;
+      if (b._len === len && !force) return; b._len = len; b.style.fontSize = '';
+      var cs = getComputedStyle(p), room = p.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), w = b.scrollWidth;
+      if (w > room + .5) b.style.fontSize = (parseFloat(getComputedStyle(b).fontSize) * room / w).toFixed(2) + 'px';
+    });
+  }
+
+  // The panels' small pictures, drawn with the maze's own drawing at the panel's size
+  function cvFit(c, w, h) {
+    var d = Math.min(window.devicePixelRatio || 1, 3); w = Math.round(w); h = Math.round(h);
+    c.style.width = w + 'px'; c.style.height = h + 'px'; c.width = Math.round(w * d); c.height = Math.round(h * d);
+    var x = c.getContext('2d'); x.setTransform(c.width / w, 0, 0, c.height / h, 0, 0); return x;
+  }
+  function fruitPic(c, idx, px) { var x = cvFit(c, px, px); px = Math.round(px); x.translate(px / 2, px / 2); x.scale(px / 13.5, px / 13.5); drawFruit(x, idx); }
+  // kind: 'n' as it is, 'f' blue, 'w' blue and flashing white, 'e' eaten (its eyes on the way home)
+  function ghostPic(c, col, kind, px, look) {
+    var x = cvFit(c, px, px); px = Math.round(px); x.translate(px / 2, px / 2 + px * .03); x.scale(px / 16, px / 16);
+    if (kind === 'e') { ghostEyes(x, 0, 0, look); return; }
+    if (kind === 'n') { ghostBody(x, 0, 0, col, false); ghostEyes(x, 0, 0, look); return; }
+    ghostBody(x, 0, 0, kind === 'w' ? '#eef0ff' : '#2a46ff', false);
+    x.fillStyle = kind === 'w' ? '#ff3d4a' : '#ffd2b0'; x.fillRect(-3.2, -3, 1.8, 1.8); x.fillRect(1.4, -3, 1.8, 1.8);
+    x.strokeStyle = x.fillStyle; x.lineWidth = .9; x.beginPath(); x.moveTo(-4.4, 2.4);
+    for (var i = 0; i < 6; i++) x.lineTo(-4.4 + (i + 1) * 1.47, i % 2 ? 2.4 : 1.2);
+    x.stroke();
+  }
+  function bigStrip(lv, fr, n, from, cnt) {
+    var cell = BIG.cell, k = cell / 22, hh = Math.round(20 * k);
+    while (cnt > 1 && (n + cnt) * cell > BIG.sw) { from++; cnt--; }
+    var a = cvFit(lv, Math.max(1, n * cell), hh); a.scale(k, k);
+    for (var i = 0; i < n; i++) drawChomp(a, 11 + i * 22, 10, 8, PI, .55, 1);
+    var b = cvFit(fr, cnt * cell, hh); b.scale(k, k);
+    for (var j = 0; j < cnt; j++) { b.save(); b.translate(11 + j * 22, 10); b.scale(1.25, 1.25); drawFruit(b, fruitFor(from + j)); b.restore(); }
+  }
+
+  // What the panels show follows the game: only what changed is written
+  var PT = {};
+  function panelTick(force) {
+    if (!BIG.on || !G) return;
+    if (force) PT = {};
+    var em = 16 * BIG.u, i;
+    if (PT.lvl !== G.level) {
+      PT.lvl = G.level; var f = FRUIT[fruitFor(G.level)];
+      $('fr-nm').textContent = f.n; $('fr-pt').textContent = f.p.toLocaleString();
+      fruitPic($('fr-ic'), fruitFor(G.level), 2.7 * em);
+      for (i = 0; i < 2; i++) fruitPic($('dt-m' + i).firstChild, fruitFor(G.level), 1.3 * em);
+      ghostPic($('gh-blue'), '', 'f', 1.5 * em, BIG.look);
+      var tb = $('tb-l').children, cur = fruitFor(G.level);
+      for (i = 0; i < tb.length; i++) { if (!tb[i].firstChild.width || force) fruitPic(tb[i].firstChild, i, 1.45 * em); tb[i].className = i === cur ? 'now' : i < cur ? 'done' : ''; }
+      $('bl-n').textContent = S.fright ? S.fright + (S.fright === 1 ? ' second' : ' seconds') : 'None';
+      $('bl-len').style.transform = 'scaleX(' + (S.fright / 6).toFixed(3) + ')';
+    }
+    if (PT.eaten !== G.eaten) { PT.eaten = G.eaten; $('dt-n').textContent = G.eaten + ' of 244'; $('dt-fill').style.transform = 'scaleX(' + (G.eaten / 244).toFixed(4) + ')'; }
+    var fs = G.fr.join('');
+    if (PT.fr !== fs) { PT.fr = fs; for (i = 0; i < 2; i++) $('dt-m' + i).className = 'dt-mk ' + ['due', 'on', 'got', 'gone'][G.fr[i]]; $('pn-fruit').classList.toggle('live', fs.indexOf('1') >= 0); }
+    var blue = G.frightT > 0, end = blue && G.frightT < S.flashes * 28 && Math.floor(G.frightT / 14) % 2 === 0;
+    var cells = $('gh-row').children;
+    for (i = 0; i < 4; i++) {
+      var gh = G.ghosts[i], kd = gh.state === 'eyes' || gh.state === 'enter' ? 'e' : gh.fright ? (end ? 'w' : 'f') : 'n';
+      if (PT['g' + i] !== kd) { PT['g' + i] = kd; ghostPic(cells[i].firstChild, gh.color, kd, 2.4 * em, BIG.look); }
+    }
+    var hit = blue || phase === 'eat' ? G.combo : 0, ls = hit + '|' + (blue ? 1 : 0);
+    if (PT.lad !== ls) { PT.lad = ls; var bs = $('gh-lad').querySelectorAll('b'); for (i = 0; i < 4; i++) bs[i].className = i < hit ? 'hit' : blue && i === hit ? 'next' : ''; }
+    var left = blue && S.fright ? Math.round(G.frightT / (S.fright * 60) * (S.fright / 6) * 400) / 400 : 0;
+    if (PT.bl !== left) { PT.bl = left; $('bl-now').style.transform = 'scaleX(' + left + ')'; }
+    if (PT.end !== end) { PT.end = end; $('bl-bar').classList.toggle('end', end); }
+  }
+  (function () {   // the ghosts' cells, the headings' arrows and the mark of a fruit eaten
+    $('gh-row').innerHTML = GDEF.map(function (d) { return '<div class="gh-c"><canvas></canvas><small>' + d.label + '</small></div>'; }).join('');
+    var chev = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>';
+    $('hi-hd').insertAdjacentHTML('beforeend', chev); $('pa-hd').insertAdjacentHTML('beforeend', chev);
+    var LV = ['Level 1', 'Level 2', 'Levels 3 and 4', 'Levels 5 and 6', 'Levels 7 and 8', 'Levels 9 and 10', 'Levels 11 and 12', 'From level 13'];
+    $('tb-l').innerHTML = FRUIT.map(function (f, i) { return '<li><canvas></canvas><b>' + f.n + '</b><em>' + LV[i] + '</em><span>' + f.p.toLocaleString() + '</span></li>'; }).join('');
+    var tick = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
+    $('dt-m0').lastChild.innerHTML = tick; $('dt-m1').lastChild.innerHTML = tick;
+  })();
+  // The cabinet's own buttons (a mouse): the panels' headings open what the menu opens, the key caps steer, P pauses.
+  // None of them takes the keyboard's focus, so Space and Enter stay the game's.
+  var caps = $('pn-keys').querySelectorAll('.kc[data-d]'), capD = -2, capW = -2;
+  function capDown(code) {
+    if (!BIG.on) return;
+    var d = KEYS[code], wasd = code.indexOf('Key') === 0;
+    for (var i = 0; i < caps.length; i++) if (+caps[i].getAttribute('data-d') === d && (i < 4) === wasd) (function (c) { c.classList.add('dn'); setTimeout(function () { c.classList.remove('dn'); }, 110); })(caps[i]);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.pn button'), function (b) { b.addEventListener('pointerdown', function (e) { e.preventDefault(); }); });
+  Array.prototype.forEach.call(caps, function (c) { c.addEventListener('click', function () { steer(+c.getAttribute('data-d')); }); });
+  $('kc-p').addEventListener('click', function () { Kit.sfx('tap'); setPaused(!paused); });
+  $('hi-hd').addEventListener('click', function () { Kit.sfx('tap'); setPaused(true); ArcadeHi.show(HI, 'Pac-Man'); });
+  $('pa-hd').addEventListener('click', function () { Kit.sfx('tap'); showPast(); });
+
+  // The maze at its size. Its picture is drawn again at the right pixels at once, or, while the window's edge is
+  // being dragged, as soon as the drag rests (until then the last picture is shown at the new size).
+  var sharpT = 0;
+  function mazeSize(w, h) {
+    scr.style.width = w + 'px'; scr.style.height = h + 'px'; cv.style.width = w + 'px'; cv.style.height = h + 'px';
+    var d = Math.min(window.devicePixelRatio || 1, 3, Math.sqrt(16e6 / (w * h))), pw = Math.round(w * d), ph = Math.round(h * d);
+    clearTimeout(sharpT);
+    if (pw === cv.width && ph === cv.height && wallImg) return;
+    function sharp() {
+      DPR = d; cv.width = pw; cv.height = ph; SC = cv.width / LW;
+      wallImg = buildWalls('#5470ff', 'rgba(40,60,190,.2)', 'rgba(80,120,255,.85)');
+      wallFlash = buildWalls('#ffffff', 'rgba(255,255,255,.18)', 'rgba(255,255,255,.9)');
+      render();
+    }
+    if (wallImg && BIG.fitAt - BIG.lastFit < 140) sharpT = setTimeout(sharp, 110); else sharp();
+  }
+
+  function bigFit() {
+    var view = $('view');
+    if (view.hidden || !view.clientHeight || !root0.classList.contains('pm-big')) return;   // (a glide asked for just before the window became small arrives here too)
+    var P = bigPlan(), shape = P.mode + P.cols.length;
+    // a change of arrangement glides (a View Transition); the same arrangement at a new size just follows the window
+    if (BIG.on && BIG.shape && shape !== BIG.shape && !document.hidden) { BIG.shape = shape; Kit.glide(bigFit); return; }
+    BIG.on = true; BIG.shape = shape; BIG.look = P.look; BIG.lastFit = BIG.fitAt; BIG.fitAt = Date.now();
+    var E = P.E, gap = P.gap, em = 16 * P.u, hud = part('hud'), side = P.mode === 'side';
+    // 1. write: the scale, the classes, every part at its column's width and its own height
+    view.style.setProperty('--u', P.u.toFixed(3));
+    root0.classList.toggle('pm-side', side); root0.classList.toggle('pm-stack', !side); root0.classList.toggle('pm-low', !!P.low);
+    hud.classList.toggle('c1', P.hud === 'c1'); hud.classList.toggle('c2', P.hud === 'c2'); hud.classList.toggle('row', P.hud === 'row');
+    $('bezel').style.setProperty('--bz', P.bz + 'px');
+    var colOf = {};
+    P.cols.forEach(function (c) { c.top.concat(c.bot).forEach(function (id) { if (!colOf[id]) colOf[id] = c; }); });
+    if (!side) { colOf.hud = { x: P.hx, w: P.hw }; colOf.strip = { x: P.mx, w: P.mw + 2 * P.bz }; }
+    if (!boardList().length && !liveRow()) delete colOf.hi;
+    if (!pastList().length) delete colOf.past;
+    PARTS.forEach(function (id) {
+      var el = part(id), c = colOf[id];
+      el.classList.toggle('off', !c); if (!c) return;
+      el.style.width = c.w + 'px'; el.style.height = ''; el.style.left = c.x + 'px';
+    });
+    root0.classList.toggle('pm-keys', !!colOf.keys);
+    if (colOf.keys) {
+      var kw = colOf.keys.w - 1.7 * em, kc = kw / 9.9, nar = kc < 24;
+      if (nar) kc = kw / 6.3;
+      $('pn-keys').classList.toggle('nar', nar); $('pn-keys').style.setProperty('--kc', Math.min(kc, 2.3 * em).toFixed(1) + 'px');
+    }
+    if (colOf.past) $('pn-past').classList.toggle('nar', colOf.past.w / P.u < 300);
+    if (colOf.tab) $('pn-tab').classList.toggle('nar', colOf.tab.w / P.u < 290);
+    if (colOf.fruit) $('pn-fruit').classList.toggle('nar', colOf.fruit.w / P.u < 240);
+    if (colOf.gh) $('pn-gh').classList.toggle('nar', colOf.gh.w / P.u < 250);
+    BIG.cell = Math.round(22 * 1.4 * P.u); BIG.sw = colOf.strip.w - (side ? 1.6 * em : .8 * em);
+    var newU = BIG.u !== P.u || !PT.lvl; BIG.u = P.u;
+    drawStrip(); hiPaint(true); if (colOf.past) pastPaint(); panelTick(newU); fitNums(true);
+    // 2. read: how tall each part is, and what a row of each list adds
+    var hOf = {}, row = {}, base = {}, want = {}, least = {}, xg = .45 * em;
+    Object.keys(colOf).forEach(function (id) { hOf[id] = part(id).offsetHeight; });
+    [['hi', 'hi-l', Math.min(30, boardList().length + (liveRow() ? 1 : 0)), 3], ['past', 'pa-l', pastList().length, 2]].forEach(function (a) {
+      var id = a[0]; if (!colOf[id]) return;
+      var ol = $(a[1]), li = ol.firstElementChild, k = ol.children.length, rg = parseFloat(getComputedStyle(ol).rowGap) || 0;
+      row[id] = (li ? li.offsetHeight : 1.95 * em) + rg;
+      base[id] = hOf[id] - k * row[id] - (ol.querySelector('.gap') ? xg : 0) + (id === 'hi' ? xg : 0);
+      want[id] = Math.max(1, a[2]); least[id] = Math.min(a[3], want[id]);
+    });
+    function hWith(id, n) { return row[id] ? base[id] + n * row[id] : hOf[id]; }
+    // 3. pack each column: what has no room is left out, the lists take the rows there is room for
+    var place = {}, rows = { hi: 1, past: 1 };
+    if (!side) {
+      var g2 = Math.round(8 * P.u), y = E;
+      place.hud = { y: y }; y += hOf.hud + g2; P.my = y; y += P.mh + 2 * P.bz + g2; place.strip = { y: y }; y += hOf.strip + gap;
+      P.cols.forEach(function (c) { c.y = y; c.h = P.VH - E - y; });
+    }
+    // (the fruit table is offered to several columns: it stands in the one with the most room to spare, and only where
+    // the lists keep a fair length beside it)
+    function needOf(ids, fair) { return ids.reduce(function (s, id) { return s + hWith(id, fair && row[id] ? Math.min(want[id], id === 'hi' ? 13 : 5) : least[id]); }, 0) + gap * Math.max(0, ids.length - 1); }
+    var lowest = 0, tabAt = null, tabRoom = -1;
+    P.cols.forEach(function (c) {
+      if (c.top.indexOf('tab') < 0) return;
+      var room = c.h - needOf(c.top.concat(c.bot).filter(function (id) { return colOf[id]; }), true);
+      if (room > tabRoom) { tabRoom = room; tabAt = c; }
+    });
+    P.cols.forEach(function (c) {
+      var ids = c.top.concat(c.bot).filter(function (id) { return colOf[id] && (id !== 'tab' || c === tabAt); });
+      function need(fair) { return needOf(ids, fair); }
+      DROP.forEach(function (id) { var i = ids.indexOf(id); if (i >= 0 && need(id === 'tab') > c.h) ids.splice(i, 1); });
+      var left = c.h - need();
+      // (the room left goes to the lists a row at a time, the high scores first, so neither crowds the other out)
+      var el = ['hi', 'past'].filter(function (id) { return ids.indexOf(id) >= 0; }), more = true;
+      el.forEach(function (id) { rows[id] = least[id]; });
+      while (more) { more = false; el.forEach(function (id) { if (rows[id] < want[id] && left >= row[id]) { rows[id]++; left -= row[id]; more = true; } }); }
+      var yt = c.y, yb = c.y + c.h, tops = c.top.filter(function (id) { return ids.indexOf(id) >= 0; }), bots = c.bot.filter(function (id) { return ids.indexOf(id) >= 0; });
+      c.n = tops.length + bots.length;
+      bots.slice().reverse().forEach(function (id) { yb -= hOf[id]; place[id] = { y: yb, x: c.x }; yb -= gap; });
+      tops.forEach(function (id, i) {
+        var h = hWith(id, rows[id]);
+        // (a list that nearly reaches the foot of its column is drawn down to it)
+        place[id] = { y: yt, x: c.x }; if (row[id]) place[id].h = c.fill && i === tops.length - 1 && yb - yt - h < 2.4 * row[id] ? Math.max(h, yb - yt) : h;
+        yt += (place[id].h || h) + gap;
+      });
+      lowest = Math.max(lowest, tops.length ? yt - gap : c.y - gap);
+    });
+    // (a tall window with room to spare under its panels: everything stands in the middle of the height)
+    var dy = !side ? Math.max(0, Math.round((P.VH - E - lowest) / 2)) : 0, dx = 0;
+    // (a column left with nothing in it gives its room back: the cabinet stands in the middle of what is used)
+    if (side) {
+      var used = P.cols.filter(function (c) { return c.n > 0; });
+      var x0 = Math.min.apply(null, used.map(function (c) { return c.x; }).concat([P.mx])), x1 = Math.max.apply(null, used.map(function (c) { return c.x + c.w; }).concat([P.mx + P.mw + 2 * P.bz]));
+      dx = Math.round((P.VW - (x1 - x0)) / 2 - x0);
+    }
+    // 4. write: where each part stands
+    PARTS.forEach(function (id) {
+      var el = part(id), pl = place[id];
+      el.classList.toggle('off', !pl); if (!pl) return;
+      el.style.top = Math.round(pl.y + dy) + 'px'; el.style.height = pl.h ? Math.round(pl.h) + 'px' : '';
+      if (pl.x != null) el.style.left = (pl.x + dx) + 'px';
+    });
+    root0.classList.toggle('pm-keys', !!place.keys);
+    cab.style.left = (P.mx + dx) + 'px'; cab.style.top = Math.round(P.my + dy) + 'px'; cab.style.width = (P.mw + 2 * P.bz) + 'px'; cab.style.height = (P.mh + 2 * P.bz) + 'px';
+    if (rows.hi !== BIG.hiRows || rows.past !== BIG.pastRows) { BIG.hiRows = rows.hi; BIG.pastRows = rows.past; hiPaint(true); if (place.past) pastPaint(); }
+    mazeSize(P.mw, P.mh);
+  }
+  function unBig() {
+    BIG.on = false; BIG.shape = ''; clearTimeout(sharpT);
+    var v = $('view'); v.style.removeProperty('--u'); $('bezel').style.removeProperty('--bz');
+    Array.prototype.forEach.call(v.children, function (ch) { ch.style.left = ch.style.top = ch.style.width = ch.style.height = ''; ch.classList.remove('off'); });
+    part('hud').classList.remove('c1', 'c2', 'row'); root0.classList.remove('pm-side', 'pm-stack', 'pm-low', 'pm-keys');
+    ['h-score', 'h-hi', 'h-lvl'].forEach(function (id) { $(id).style.fontSize = ''; $(id)._len = -1; });
+  }
+
+  // The shape decides the layout (a class, so turning the device or dragging the window's edge can glide: a View
+  // Transition around the change): a phone or an iPad mini upright, sideways (.pm-wide), or a large window (.pm-big)
   function layout() {
-    var w = wideNow(); if (w === root0.classList.contains('pm-wide')) return;
-    function go() { root0.classList.toggle('pm-wide', w); fit(); }
+    var big = bigNow(), w = !big && wideNow();
+    if (big === root0.classList.contains('pm-big') && w === root0.classList.contains('pm-wide')) return;
+    function go() { root0.classList.toggle('pm-big', big); root0.classList.toggle('pm-wide', w); if (!big) unBig(); fit(); }
     if (!$('view').hidden && document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
       try { var t = document.startViewTransition(go); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) {}
     }
     go();
   }
-  root0.classList.toggle('pm-wide', wideNow());
+  root0.classList.toggle('pm-big', bigNow());
+  root0.classList.toggle('pm-wide', !bigNow() && wideNow());
   window.addEventListener('resize', layout);
   new ResizeObserver(function () { fit(); }).observe($('view'));
   var saved0 = loadSave();
