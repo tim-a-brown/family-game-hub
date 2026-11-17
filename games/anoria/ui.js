@@ -725,6 +725,7 @@
     return box;
   }
   // what is written under a card being read: where its Might comes from, its links and its skills, in full
+  const gateCanFill = () => !!(S && (S.cfg.cap || (S.dm && S.places.some((x, i) => E.isGate(S, i) && E.pw(S, i) === 'narrow'))));
   function notesFor(key, o) {
     o = o || {};
     const c = info(key), notes = el('div', { class: 'view-notes' });
@@ -746,6 +747,12 @@
     if (CARDS[key] && CARDS[key].t === 'relic' && RNOTE[E.fxOf(key, S)]) notes.appendChild(el('p', { html: mightMarks(esc(RNOTE[E.fxOf(key, S)](theName(key)))) }));
     // (a Relic that raises the hand limit says what the limit is without it)
     if (CARDS[key] && CARDS[key].t === 'relic' && E.fxOf(key, S) === 'manuscripts') notes.appendChild(el('p', { text: 'Without ' + theName(key) + ', you can hold ' + ((S && S.cfg.handMax) || E.STD.handMax) + ' cards when your turn ends.' }));
+    // (In a game with a limit on Figures at a Domain, or with Thermopylae at a Gate, a Gate can be full, and a card that
+    // sends a Figure back to its Gate can't then: the cards' own words leave it out, since a new game has no limit)
+    if (S && CARDS[key] && CARDS[key].t === 'deed' && gateCanFill()) { const fx = E.fxOf(key, S); const nm = esc(theName(key).replace(/^The /, 'the '));
+      if (fx === 'testudo') notes.appendChild(el('p', { html: '<b>A full Gate</b>: if your Gate has no room for the Figure, ' + nm + ' stays in your hand and the Figure is knocked out.' }));
+      if (fx === 'syracuse') notes.appendChild(el('p', { html: '<b>A full Gate</b>: if the enemy Figure\'s own Gate has no room for it, ' + nm + ' stays in your hand and the clash ends as it would without this card.' })); }
+    if (S && c.kind === 'place' && gateCanFill() && c.pw === 'charter') notes.appendChild(el('p', { html: '<b>A full Gate</b>: a Figure whose Gate has no room for it is knocked out as at any other Domain.' }));
     // A card's Legacy Lines, drawn as the table (lineage(), below): no sentence says when a line counts.
     const ll = lineage(key, { live: !o.lesson, brief: !!o.lesson }); if (ll) notes.appendChild(ll);   // (a lesson shows only what the card grows from: its caption needs the room)
     Object.keys(GLOSS).forEach(k => { if (c.k[k] && new RegExp(GLOSS[k][0] + (GLOSS[k][2] ? '[.:]' : '(\\.|$)')).test(c.tx)) notes.appendChild(el('p', { html: keyMark(GLOSS[k][0]) + ': ' + mightMarks(esc(GLOSS[k][1](c.n))) })); });

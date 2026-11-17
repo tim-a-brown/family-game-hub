@@ -1794,7 +1794,10 @@ Underlying principles for everything:
   Full and a tap says why (`R.full` in `roadOf`; the engine is asked where the card could go with the limits lifted,
   `cfg.nolim`). Testudo, the Defense of Syracuse, the Great Siege of Malta and Runnymede no longer say "if that Gate has
   room": only a Gate that is Thermopylae can be full in a game with no limit, the engine still checks it (`room`), and the
-  note under Thermopylae at a Gate says a Figure can't be sent back there. The engraved empty places in your rows with
+  note under Thermopylae at a Gate says a Figure can't be sent back there. In a game where a Gate can be full (a limit
+  was chosen, or Thermopylae lies at a Gate: `gateCanFill` in ui.js) the notes under those three Deeds and under
+  Runnymede say what a full Gate does ("A full Gate: if your Gate has no room for the Figure, Testudo stays in your hand
+  and the Figure is knocked out."). The engraved empty places in your rows with
   more players are drawn only where a Domain has a limit. The numbers are `scripts/anoria/no-cap-2026-11-17.txt`. The
   five ready decks (`variant.js`, 80 games a matchup) are 10.2 points apart under the old limit of 3, 14.1 at 4, 14.4 at
   5, 12.2 at 6 and 11.3 with none, with the rounds (7.6 to 7.7), the knock-outs (8.1 to 8.3) and the games won on Seals
