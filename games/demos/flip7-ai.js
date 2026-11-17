@@ -19,6 +19,15 @@
   function myRow() { return document.querySelector('.ctable .spot.me .line'); }
   function myTurn() { var s = S(); return s && s.phase === 'play' && !s.choose && !s.queue.length && s.turn === 0 && !s.acted && s.status[0] === 'in'; }
   var flip = '.cbar .btn-primary', stay = '.cbar .btn-soft';
+  // A round's scores: on a sheet over the table, or (a large window) written on the score sheet beside the table,
+  // where the button for the next deal is in the bar
+  function scored() { return document.querySelector('.k-sheet table.sum') || (document.querySelector('.f7.dk .cdk-l .cdk-pad') && S().phase === 'roundover'); }
+  function myScore() {
+    var t = document.querySelectorAll('.k-sheet table.sum tr')[1]; if (t) return t;
+    var rows = document.querySelectorAll('.f7.dk .cdk-l .cdk-pad .pb .pr:not(.live)');
+    return rows[S().rounds.length - 1] || rows[rows.length - 1] || document.querySelector('.f7.dk .cdk-l');
+  }
+  function nextDeal() { return document.querySelector('.k-sheet .k-acts .btn-primary') || document.querySelector('.cbar .btn-primary'); }
 
   Kit.demoScript({
     intro: 'Here’s a round of Flip 7. You’ll decide when to flip and when to stop.',
@@ -48,10 +57,10 @@
       await D.wait(myTurn, 9000);
       await D.say('Your bust risk shows how likely the next card is to repeat one of your numbers.', { at: '.spot.me .risk' });
       await D.you(stay, 'Stay to keep your 24 points for this round.', { until: function () { return S().status[0] === 'stay'; } });
-      await D.wait(function () { return document.querySelector('.k-sheet table.sum'); }, 20000);
+      await D.wait(scored, 20000);
       await D.wait(600);
-      await D.say('The round ends when everyone has stayed or busted. Your 24 points go on your score.', { at: function () { return document.querySelectorAll('.k-sheet table.sum tr')[1]; } });
-      await D.tap('.k-sheet .k-acts .btn-primary');
+      await D.say('The round ends when everyone has stayed or busted. Your 24 points go on your score.', { at: myScore });
+      await D.tap(nextDeal);
       await D.set(function () {
         F.set(function (s) {
           s.round = 5; s.players[0].total = 118; s.players[1].total = 131; s.players[2].total = 97;
@@ -66,9 +75,9 @@
       await D.say('Now we skip ahead to a later round.', { pos: 'center', ring: false, wait: 2200 });
       await D.say('You have six different numbers. A seventh is a Flip 7: it ends the round at once and scores 15 bonus points.', { at: myRow });
       await D.you(flip, 'Tap Flip to go for seven.', { until: function () { return S().status[0] === 'flip7' || S().status[0] === 'bust'; } });
-      await D.wait(function () { return document.querySelector('.k-sheet table.sum'); }, 9000);
+      await D.wait(scored, 9000);
       await D.wait(600);
-      await D.say('A 12 made seven different numbers, so the round ended at once. Your 53 points include the 15 bonus points.', { at: function () { return document.querySelectorAll('.k-sheet table.sum tr')[1]; } });
+      await D.say('A 12 made seven different numbers, so the round ended at once. Your 53 points include the 15 bonus points.', { at: myScore });
     }
   });
 })();
