@@ -5106,7 +5106,12 @@
       } });
       return b;
     }
-    function azBtn(on, label) { return el('button', { type: 'button', class: 'k-ord-b k-ord-az', 'aria-label': label, html: AZ_SVG, onclick: function () { sfx('tap'); haptic('light'); on(); } }); }
+    // (an open section always has its A to Z mark: faint while the games are already A to Z, lit once they are in an
+    // order of their own, Tim 2026-11-17)
+    function azBtn(on, label, done) {
+      return el('button', { type: 'button', class: 'k-ord-b k-ord-az' + (done ? ' done' : ''), 'aria-label': done ? label.replace(/^Put (.*) in A to Z order$/, '$1 are in A to Z order') : label, 'aria-disabled': done ? 'true' : null, html: AZ_SVG,
+        onclick: function () { if (done) return; sfx('tap'); haptic('light'); on(); } });
+    }
     function draw() {
       ord.innerHTML = '';
       if (azSlot) {
@@ -5124,7 +5129,7 @@
         var fSec = el('div', { class: 'k-ord-sec fav' }, [fRow]);
         var fDisc = fg.length && focus !== 'fav' ? el('button', { type: 'button', class: 'k-ord-b k-ord-open' + (fOpen ? ' up' : ''), 'aria-expanded': String(fOpen), 'aria-label': (fOpen ? 'Hide' : 'Show') + ' your favorites', html: icon('down'), onclick: function () { openCat.fav = !openCat.fav; sfx('tap'); paintOrd(); } }) : null;
         var fCustom = fg.length > 1 && ids(fg) !== ids(fg.slice().sort(byName));
-        var fAz = fOpen && fCustom && !focus ? azBtn(function () { setFavOrder(fg.slice().sort(byName)); catsChanged(); paintOrd(); }, 'Put your favorites in A to Z order') : null;
+        var fAz = fOpen && fg.length > 1 && !focus ? azBtn(function () { setFavOrder(fg.slice().sort(byName)); catsChanged(); paintOrd(); }, 'Put your favorites in A to Z order', !fCustom) : null;
         [el('span', { class: 'ic star', html: icon('star') }), el('span', { class: 'grow' }, [el('b', { text: 'Favorites' }), el('small', { text: 'Always first' })]), fAz, fg.length && !fAz ? el('span', { class: 'k-ord-n', text: String(fg.length) }) : null, fDisc].forEach(function (x) { if (x) fRow.appendChild(x); });
         // (the Favorites sheet is titled Favorites already, so it has no heading row: its A to Z sits under the list)
         if (focus === 'fav') fSec.removeChild(fRow);
@@ -5174,7 +5179,7 @@
         } }) : null;
         ord.appendChild(sec);
         var custom = games.length > 1 && ids(games) !== ids(games.slice().sort(byName));
-        var az = open && custom && !focus ? azBtn(function () { setCatOrder(c.id, null); catsChanged(); paintOrd(); }, 'Put ' + c.name + ' in A to Z order') : null;
+        var az = open && games.length > 1 && !focus ? azBtn(function () { setCatOrder(c.id, null); catsChanged(); paintOrd(); }, 'Put ' + c.name + ' in A to Z order', !custom) : null;
         [focus ? null : ordGrip(), el('span', { class: 'ic', html: icon(c.id) }), el('span', { class: 'grow' }, [el('b', { text: focus ? 'Show this section' : c.name })].concat(small ? [el('small', { text: small })] : [])), az, disc, sw].forEach(function (x) { if (x) row.appendChild(x); });
         if (!open) return;
         var list = el('div', { class: 'k-ord-games' });

@@ -162,8 +162,9 @@ Underlying principles for everything:
   a grip at its left and a star before its switch (gold and filled for a favorite, popping as it lights); a section's
   games drag into an order of their own (`gn_game_order` {section: [ids]}, follows the PIN; the home screen reads it
   through `Kit.sortCat`), Favorites opens the same way to drag its games or take one out (its row folds away), and its
-  heading on the home screen has the pencil too (`Kit.homeSheet('fav')`, the sheet with Favorites open). While a section, or Favorites, is open and in
-  an order of its own, an A to Z mark stands in its heading (`.k-ord-az`; in a sheet for one section or Favorites it
+  heading on the home screen has the pencil too (`Kit.homeSheet('fav')`, the sheet with Favorites open). While a section, or Favorites, is open, an A to Z mark
+  stands in its heading, faint while its games are already A to Z and lit once they are in an order of their own (Tim,
+  2026-11-17: "each icon section should still maintain its own A-Z button"; `.k-ord-az`, `.done`; in a sheet for one section or Favorites it
   stands in the sheet's top right corner across from the title, `.k-ord-azslot`, so a long list never pushes it out of
   view) and puts it back. Every redraw glides (`paintOrd` keys each row `s:`/`g:`/`f:` and slides it from where it was), so a game
   just starred flies from its section into Favorites. The pencil took the list and
