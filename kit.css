@@ -2557,3 +2557,220 @@ html[data-theme="forest"]{--sheet-bg:rgba(11,34,23,.95); --sheet-solid:#0b2217; 
 html[data-theme="velvet"]{--sheet-bg:rgba(48,11,24,.95); --sheet-solid:#300b18; --toast-bg:rgba(84,24,46,.9); --well:rgba(20,4,10,.5);}
 /* tables stay night whatever the theme: what lies on the felt or the wood takes the night glass */
 .felt,.wood,.felt-in{--gl:rgba(255,255,255,.07); --gl-2:rgba(255,255,255,.1); --gl-3:rgba(255,255,255,.08); --gl-line:rgba(255,255,255,.12); --lit:#ffd34d; --lit-ink:#ffe28a; --litg:rgba(255,190,60,.55);}
+
+/* ── The desk: Kit.setup and Kit.win in a large window (a laptop or a desktop; kit.js "The desk") ─────────────────────
+   Tim, 2026-11-17: "gameplay needs to take up as much screen as the device will give it, but also adapt to every
+   possible resizing option in there", and "simply scaling things up is not thoughtful design". Every rule here hangs
+   off .k-dk, which kit.js sets only in a window larger than a phone's or a tablet's (deskShape, winShape), so a phone and
+   a tablet are drawn by the rules above and nothing else. The setup's controls keep their own size (a button stays a
+   button); what is new, the room's panels and the name, is sized by --dk (1 to 1.5, from the window). */
+/* (a page with a layout of its own for the setup on an iPad held sideways, two columns or a larger setup, lets go of it
+   here: the desk's composition takes its place) */
+:root :has(> .setup.k-dk){display:block !important;max-width:none !important;min-height:0 !important;margin:0 !important;padding:0 !important;}
+:root .setup.k-dk.k-dk{position:relative;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;box-sizing:border-box;zoom:1;gap:var(--dk-gap);padding:var(--dk-gap) var(--dk-pad) var(--dk-pad);
+  width:auto;max-width:none;margin:0;min-height:calc(var(--dk-min,0px) + var(--dk-gap) + var(--dk-pad));}
+.setup.k-dk > *{min-width:0;}
+.setup.k-dk > .k-opts:empty{display:none;}
+.setup.k-dk > .k-desk{order:99;}
+:root:not(.ng-x) .setup.k-dk > .setup-hero.k-row{justify-content:flex-start;gap:calc(13px * var(--dk));padding:0;}
+:root:not(.ng-x) .setup.k-dk > .setup-hero .k-hero-ic .gicon{width:calc(68px * var(--dk));height:calc(68px * var(--dk));}
+:root:not(.ng-x) .setup.k-dk > .setup-hero.k-row h1{font-size:calc(2.35rem * var(--dk));text-wrap:balance;}
+.setup.k-dk > .k-startdock{position:static;margin:0;padding:0;background:none;}
+.setup.k-dk .k-start{position:static;}
+/* the options standing open, what the chosen one means under each (the ? is not needed while its words are showing) */
+.setup.k-dk-help .k-opt > .k-help{display:block;margin:6px 2px 0;padding:0 4px;background:none;border-radius:0;font-size:.84rem;line-height:1.35;color:var(--text-2);animation:none;}
+.setup.k-dk-help .k-opt > .label > .k-q{display:none;}
+/* the band: the name at the left, the options in columns in the middle, who is playing over the start buttons at the right */
+:root .setup.k-dk.k-dk-band{padding-left:calc(var(--dk-pad) + var(--dk-hw,0px) + var(--dk-gap) * 2.2);padding-right:calc(var(--dk-pad) + var(--dk-rw) + var(--dk-gap) * 1.6);}
+.setup.k-dk-band > .setup-hero{position:absolute;left:var(--dk-pad);top:var(--dk-gap);width:max-content;max-width:min(30vw,calc(100vw - var(--dk-rw) - 420px));min-height:calc(46px * var(--dk) + 40px);}
+.setup.k-dk-band > :is(.k-joins,.k-seats,.k-startdock){position:absolute;right:var(--dk-pad);bottom:auto;width:var(--dk-rw);}
+.setup.k-dk-band > .k-joins{top:var(--dk-gap);}
+.setup.k-dk-band > .k-seats{top:calc(var(--dk-gap) + var(--dk-st,0px));}
+.setup.k-dk-band > .k-startdock{top:calc(var(--dk-gap) + var(--dk-dt,0px));}
+.setup.k-dk-band > :not(.setup-hero):not(.k-joins):not(.k-seats):not(.k-startdock):not(.k-desk){align-self:flex-end;width:100%;max-width:var(--dk-mw,100%);}
+.setup.k-dk-band > :is(.k-opts,.modes){display:grid;grid-template-columns:repeat(var(--dk-oc,1),minmax(0,var(--dk-cw,1fr)));justify-content:end;align-items:start;gap:14px 14px;}
+.setup.k-dk-band.k-folded > .k-opts{gap:8px 14px;}
+.setup.k-dk-band > .k-opts > .k-opt{min-width:0;}
+.setup.k-dk-band > .k-desk{margin-left:calc(-1 * (var(--dk-hw,0px) + var(--dk-gap) * 2.2));margin-right:calc(-1 * (var(--dk-rw) + var(--dk-gap) * 1.6));}
+/* the rail: the room at the left under the name; who is playing, the options and the start buttons in a column at the right */
+:root .setup.k-dk.k-dk-rail{width:calc(var(--dk-rw) + var(--dk-pad));margin-left:auto;padding-left:0;}
+.setup.k-dk-rail > .setup-hero{position:absolute;right:calc(100% + var(--dk-gap) * 1.6);top:var(--dk-gap);width:var(--dk-lw);}
+.setup.k-dk-rail > .k-desk{position:absolute;right:calc(100% + var(--dk-gap) * 1.6);top:calc(var(--dk-gap) + var(--dk-at,0px));width:var(--dk-lw);}
+.setup.k-dk-rail > .k-startdock{margin-top:auto;position:sticky;bottom:var(--dk-pad);padding-top:var(--dk-gap);}
+/* the column: the setup as on a tablet, the room under it across the window */
+:root .setup.k-dk.k-dk-col{align-items:center;}
+.setup.k-dk-col > :not(.k-desk){width:100%;max-width:calc(620px * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk-col > .setup-hero.k-row{justify-content:center;}
+.setup.k-dk-col > .k-desk{width:100%;}
+.setup.k-dk-bare > .k-desk{display:none;}
+/* the setup's own controls a step up in the largest windows (--dkc, 1 to 1.35: a button stays a button, and at 1512
+   by 982 nothing is larger than on a tablet). A game's own parts of its setup can size by --dkc too. The dial keeps its
+   size. */
+:root:not(.ng-x) .setup.k-dk .k-opt > .label{font-size:calc(.84rem * var(--dkc,1));}
+.setup.k-dk .seg > button{min-height:calc(44px * var(--dkc,1));font-size:calc(.95rem * var(--dkc,1));}
+.setup.k-dk .seg > button.k-two small{font-size:calc(.72rem * var(--dkc,1));}
+.setup.k-dk .k-help,.setup.k-dk-help .k-opt > .k-help{font-size:calc(.84rem * var(--dkc,1));}
+.setup.k-dk .mode{gap:calc(14px * var(--dkc,1));padding:calc(12px * var(--dkc,1)) calc(14px * var(--dkc,1));}
+.setup.k-dk .mode .e{width:calc(42px * var(--dkc,1));height:calc(42px * var(--dkc,1));}
+.setup.k-dk .mode .e .ico{width:calc(22px * var(--dkc,1));height:calc(22px * var(--dkc,1));}
+.setup.k-dk .mode .t{font-size:calc(1.02rem * var(--dkc,1));}
+.setup.k-dk .mode .d{font-size:calc(.85rem * var(--dkc,1));}
+.setup.k-dk .mode .ok{width:calc(26px * var(--dkc,1));height:calc(26px * var(--dkc,1));}
+.setup.k-dk .k-scrow{min-height:calc(46px * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-scl{font-size:calc(.84rem * var(--dkc,1));}
+.setup.k-dk .k-scv{font-size:calc(.95rem * var(--dkc,1));}
+.setup.k-dk .k-iseg button{min-width:calc(44px * var(--dkc,1));height:calc(38px * var(--dkc,1));font-size:calc(.92rem * var(--dkc,1));}
+.setup.k-dk .k-startdock .k-start{min-height:calc(60px * var(--dkc,1));font-size:calc(1.2rem * var(--dkc,1));}
+.setup.k-dk .k-startdock .k-start-alt{min-height:calc(60px * var(--dkc,1));padding:0 calc(14px * var(--dkc,1));font-size:calc(.92rem * var(--dkc,1));}
+.setup.k-dk .k-startdock .k-start-alt .ico{width:calc(18px * var(--dkc,1));height:calc(18px * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-who .k-who-t{font-size:calc(.95rem * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks:not(.teams) > .k-tok{flex-basis:calc(66px * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks .k-tok .avatar{width:calc(40px * var(--dkc,1));height:calc(40px * var(--dkc,1));font-size:calc(1rem * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks .k-tok b{font-size:calc(.82rem * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks .k-tok b.l1{font-size:calc(.74rem * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks .k-tok b.l2{font-size:calc(.66rem * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks .k-tok small{font-size:calc(.7rem * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks .k-tok .seat-av .seat-tag{width:calc(18px * var(--dkc,1));height:calc(18px * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks .k-vs{font-size:calc(.82rem * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks .k-side .k-tok{width:calc(60px * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks .k-bank b{font-size:calc(.76rem * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks .k-bank i{font-size:calc(.62rem * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks.crowd > .k-tok{flex-basis:calc(52px * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks.crowd .k-tok .avatar{width:calc(32px * var(--dkc,1));height:calc(32px * var(--dkc,1));font-size:calc(.84rem * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks.crowd .k-tok b{font-size:calc(.7rem * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks.crowd2 > .k-tok{flex-basis:calc(44px * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks.crowd2 .k-tok .avatar{width:calc(28px * var(--dkc,1));height:calc(28px * var(--dkc,1));font-size:calc(.74rem * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks.crowd2 .k-tok b{font-size:calc(.62rem * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks:is(.crowd,.crowd2) .k-tok .seat-av .seat-tag{width:calc(14px * var(--dkc,1));height:calc(14px * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks.few:not(.teams) > .k-tok,:root:not(.ng-x) .setup.k-dk .k-toks.few .k-side .k-tok{flex-basis:calc(80px * var(--dkc,1));width:calc(80px * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks.few .k-tok .avatar{width:calc(60px * var(--dkc,1));height:calc(60px * var(--dkc,1));font-size:calc(1.45rem * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks.few .k-tok b{font-size:calc(1.02rem * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks.few .k-tok b.l1{font-size:calc(.92rem * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks.few .k-tok b.l2{font-size:calc(.82rem * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks.few .k-tok .seat-av .seat-tag{width:calc(24px * var(--dkc,1));height:calc(24px * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks.few .k-vs{font-size:calc(1.05rem * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks:not(.teams) > .k-tok:only-child{flex:0 1 auto;width:auto;}
+:root:not(.ng-x) .setup.k-dk .k-toks:not(.teams) > .k-tok:only-child .avatar{width:calc(44px * var(--dkc,1));height:calc(44px * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks:not(.teams) > .k-tok:only-child b{font-size:calc(1.08rem * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks.few:not(.teams) > .k-tok:only-child .avatar{width:calc(64px * var(--dkc,1));height:calc(64px * var(--dkc,1));font-size:calc(1.55rem * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks.few:not(.teams) > .k-tok:only-child b{font-size:calc(1.3rem * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks:not(.teams) > .k-tok:only-child .k-bank b{font-size:calc(.98rem * var(--dkc,1));}
+:root:not(.ng-x) .setup.k-dk .k-toks:not(.teams) > .k-tok:only-child .k-bank i{font-size:calc(.7rem * var(--dkc,1));}
+/* the room: glass panels in columns, each as tall as what it holds and no taller than the room */
+.k-desk{display:grid;gap:var(--dk-gap);align-items:stretch;min-width:0;box-sizing:border-box;font-size:calc(16px * var(--dk,1));text-align:left;}
+.k-desk-col{display:flex;flex-direction:column;gap:var(--dk-gap);min-width:0;min-height:0;overflow:hidden;}
+.k-dkp{display:flex;flex-direction:column;flex:0 0 auto;min-height:0;min-width:0;padding:.95em 1.05em 1.05em;border-radius:1.3em;color:var(--text);
+  background:linear-gradient(165deg,color-mix(in srgb,var(--h,#8b7cff) 9%,transparent),transparent 48%),var(--gl);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px var(--gl-line);}
+.k-dkp-game,.k-dkp-rules{flex:0 1 auto;min-height:11em;}
+.k-dkp-b.more,.k-win-gb.more{-webkit-mask-image:linear-gradient(#000 calc(100% - 2.6em),transparent);mask-image:linear-gradient(#000 calc(100% - 2.6em),transparent);}
+.k-dkp-h{flex:none;display:flex;align-items:center;gap:.6em;min-height:1.9em;margin:0 0 .7em;}
+.k-dkp-t{font-size:.95em;font-weight:700;color:color-mix(in srgb,var(--h,#8b7cff) 38%,var(--text-2,#c6c4da));}
+.k-dkp-when{font-size:.86em;font-weight:600;color:var(--text-3);}
+.k-dkp-more{margin-left:auto;display:inline-flex;align-items:center;gap:.35em;min-height:1.9em;padding:0 .5em 0 .8em;border:0;border-radius:99px;background:var(--gl-3,rgba(255,255,255,.08));color:var(--text-2);font:600 .84em/1 var(--font);cursor:pointer;}
+.k-dkp-more:not(:has(span)){padding:0;width:1.9em;justify-content:center;}
+.k-dkp-more .ico{width:1.15em;height:1.15em;}
+.k-dkp-more:hover{color:var(--text);background:rgba(255,255,255,.14);}
+.k-dkp-more:active{transform:scale(.96);}
+.k-dkp-b{display:flex;flex-direction:column;gap:.42em;min-height:0;}
+.k-dkp-game > .k-dkp-b,.k-dkp-rules > .k-dkp-b{display:block;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent;}
+.k-dk-rec .k-hd{padding:0;max-width:calc(35rem * var(--dkc,1));gap:.75em;font-size:calc(16px * var(--dkc,1));}
+/* (the kit's own parts of a game's record follow the panel's size; what the game's view draws keeps its own) */
+.k-dk-rec .k-hd-meta{gap:.4em 1.2em;}
+.k-dk-rec .k-hd-meta small{font-size:.74em;}
+.k-dk-rec .k-hd-meta b{font-size:.9em;}
+.k-dk-rec .k-hd-players{gap:.35em;}
+.k-dk-rec .k-hd-p{gap:.65em;padding:.42em .7em;border-radius:.8em;font-weight:700;}
+.k-dk-rec .k-hd-p .place{width:1.1em;}
+.k-dk-rec .k-hd-p .avatar.sm{width:calc(27px * var(--dkc,1));height:calc(27px * var(--dkc,1));font-size:calc(.78rem * var(--dkc,1));}
+.k-dk-rec .k-hd-p .crown .ico{width:1.05em;height:1.05em;}
+.k-dk-rec .k-hd-sum{font-size:1em;}
+.k-dk-rec .k-hd-hl{gap:.4em;}
+.k-dk-rec .k-hd-hl li{gap:.5em;font-size:.94em;}
+.k-dk-rec .k-hd-hl .ico{width:1.05em;height:1.05em;margin-top:.15em;}
+.k-dk-rec .k-hd-rounds{font-size:.88em;}
+.k-dk-rec .k-hd-rounds th,.k-dk-rec .k-hd-rounds td{padding:.32em .4em;}
+.k-dkp-rows{display:flex;flex-direction:column;gap:.42em;}
+.k-dkr{display:flex;align-items:center;gap:.65em;width:100%;min-height:2.75em;box-sizing:border-box;padding:.3em .8em .3em .7em;border:0;border-radius:.85em;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);
+  color:var(--text);font:inherit;text-align:left;}
+.k-dkr[hidden]{display:none;}
+button.k-dkr{cursor:pointer;transition:background .15s;}
+button.k-dkr:hover{background:rgba(255,255,255,.11);}
+button.k-dkr:active{transform:scale(.99);}
+.k-dkr.on,.k-dkr.on:hover{background:rgba(255,211,77,.11);box-shadow:inset 0 0 0 1px rgba(255,211,77,.45);}
+.k-dkr > b{flex:0 1 auto;min-width:3.2em;font-weight:700;}
+.k-dkr-d{flex:none;width:5.7em;font-size:.86em;font-weight:600;color:var(--text-3);}
+.k-dkr-m{flex:none;font-size:.86em;font-weight:600;color:var(--text-2);white-space:nowrap;}
+.k-dkp{container-type:inline-size;}
+@container (max-width:23em){ .k-dkp-past .k-dkr-m{display:none;} }
+@container (max-width:17em){ .k-dkh .k-dkr-m{display:none;} }
+@container (max-width:18.5em){ .k-dkp-past .k-dkr{gap:.4em;padding:.3em .65em .3em .55em;} .k-dkp-past .k-dkr-d{width:5.1em;} }
+.k-dkr-s{flex:none;margin-left:auto;padding-left:.5em;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.k-dkr.on .k-dkr-s{color:var(--lit-ink);}
+.k-desk .k-dkr > .avatar.sm{flex:none;width:calc(27px * var(--dk,1));height:calc(27px * var(--dk,1));font-size:calc(.78rem * var(--dk,1));}
+.k-dkr-tie{--c:var(--surface-3);color:var(--text-2);}
+.k-dkr-tie .ico{width:60%;height:60%;}
+.k-dkw > b{flex:0 0 5.2em;}
+.k-dkw-bar{flex:1 1 3em;height:.42em;border-radius:99px;background:var(--well,rgba(0,0,0,.3));overflow:hidden;}
+.k-dkw-bar i{display:block;height:100%;min-width:.42em;border-radius:inherit;background:color-mix(in srgb,var(--h,#8b7cff) 70%,#fff 12%);}
+.k-dkw.top .k-dkw-bar i{background:linear-gradient(90deg,var(--gold-lo),var(--gold-hi));}
+.k-dkw-n{flex:none;display:flex;align-items:baseline;justify-content:flex-end;gap:.35em;min-width:4.4em;font-variant-numeric:tabular-nums;}
+.k-dkw-n strong{font-size:1.15em;font-weight:800;}
+.k-dkw.top .k-dkw-n strong{color:var(--lit-ink);}
+.k-dkw-n small{font-size:.8em;font-weight:600;color:var(--text-3);}
+.k-dkh-n{flex:none;display:grid;place-items:center;width:1.75em;height:1.75em;border-radius:50%;font-size:.82em;font-weight:800;color:var(--text-3);font-variant-numeric:tabular-nums;}
+.k-dkh.m1 .k-dkh-n{background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--gold-ink);}
+.k-dkh.m2 .k-dkh-n{background:linear-gradient(180deg,#e9edf5,#aab3c4);color:#1d2230;}
+.k-dkh.m3 .k-dkh-n{background:linear-gradient(180deg,#eba470,#b96a35);color:#2b1404;}
+.k-dkh > b{font-weight:800;letter-spacing:.06em;}
+.k-dkh.mine > b,.k-dkh.mine .k-dkr-s{color:var(--lit-ink);}
+.k-dkp-tabs{display:flex;flex-wrap:wrap;gap:.3em;margin:0 0 .25em;}
+.k-dkp-tabs button{min-height:2em;padding:0 .8em;border:0;border-radius:99px;background:var(--gl-3,rgba(255,255,255,.08));color:var(--text-2);font:600 .84em/1 var(--font);cursor:pointer;}
+.k-dkp-tabs button.on{background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--gold-ink);}
+.k-dkp-rules .rules{columns:21em auto;column-gap:2.2em;}
+.k-dkp-rules .rules > :first-child{margin-top:0;}
+.k-dkp-rules .rules p,.k-dkp-rules .rules li{font-size:.94em;line-height:1.5;}
+.k-dkp-rules .rules :is(p,li,table,.goal){break-inside:avoid;}
+:root:not(.ng-x) .k-dkp-rules .rules h3{font-size:1em;margin:1.1em 0 .35em;break-after:avoid;}
+.k-dkp-rules .rules .goal{font-size:1em;margin:0 0 .2em;padding:.75em .9em;border-radius:.9em;}
+.k-dkp-rules .rules table{font-size:.9em;}
+
+/* the results card at a desk: set a size up, and beside the standings the game just played as its history draws it */
+.k-win.k-dk{padding:max(16px,3dvh) 24px;}
+.k-win.k-dk .card{font-size:calc(16px * var(--dk));max-width:calc(26em + 12px);max-height:calc(100dvh - 2 * max(16px,3dvh));box-sizing:border-box;padding:1.75em 1.4em 1.4em;}
+:root:not(.ng-x) .k-win.k-dk h2{font-size:2em;}
+.k-win.k-dk .trophy{width:5.2em;height:5.2em;}
+.k-win.k-dk .trophy .ico{width:2.6em;height:2.6em;}
+.k-win.k-dk .sub{font-size:1em;}
+.k-win.k-dk .k-win-notes{font-size:.86em;}
+.k-win.k-dk .k-win-notes b{font-size:.84em;}
+.k-win.k-dk .rank{gap:.4em;margin-bottom:1.15em;}
+.k-win.k-dk .rank > div{gap:.65em;padding:.5em .8em;font-size:1em;}
+.k-win.k-dk .rank .avatar.sm{width:calc(28px * var(--dk));height:calc(28px * var(--dk));font-size:calc(.8rem * var(--dk));}
+.k-win.k-dk .rank .place{width:1.2em;}
+.k-win.k-dk .k-acts{gap:calc(10px * var(--dkc,1));}
+.k-win.k-dk .k-acts .btn{min-height:calc(52px * var(--dkc,1));font-size:calc(1.05rem * var(--dkc,1));}
+.k-win.k-dk .k-acts .btn-lg{min-height:calc(60px * var(--dkc,1));font-size:calc(1.2rem * var(--dkc,1));}
+.k-win.k-dk .k-acts .btn .ico{width:calc(20px * var(--dkc,1));height:calc(20px * var(--dkc,1));}
+.k-win-game{display:flex;flex-direction:column;min-height:0;min-width:0;text-align:left;font-size:calc(16px * var(--dk,1));}
+.k-win-game > .k-dkp-h{margin-bottom:.6em;}
+.k-win-gb{min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent;}
+/* side by side: the standings and the buttons at the left of the card, the game at its right (out of the flow, so the
+   card is as tall as the taller of the two: kit.js sets its least height) */
+.k-win.k-dk-side.has-game .card{--wl:calc(23em + 12px);--pw:min(calc(100vw - 48px - var(--wl) - 5.6em),calc(35rem * var(--dkc,1) + 2.4em));position:relative;display:flex;flex-direction:column;justify-content:center;
+  width:calc(var(--wl) + var(--pw) + 5.6em);max-width:none;padding-right:calc(var(--pw) + 4.2em);overflow:hidden;}
+.k-win.k-dk-side.has-game .card > :not(.k-win-game){flex:none;}
+.k-win.k-dk-side.has-game .k-win-game{position:absolute;top:1.4em;bottom:1.4em;right:1.4em;width:var(--pw);box-sizing:border-box;padding:1.1em 1.2em;border-radius:1.2em;background:var(--well,rgba(0,0,0,.28));box-shadow:inset 0 0 0 1px var(--gl-line);}
+/* a short wide window, or standings too long for side by side: the standings at the left, the game in the middle (out
+   of the flow, as above) and the buttons in a column of their own at the right */
+.k-win.k-dk-strip.has-game .card{--wl:calc(21em + 12px);--aw:calc(15rem * var(--dkc,1));--pw:min(calc(100vw - 48px - var(--wl) - var(--aw) - 5.6em),calc(35rem * var(--dkc,1) + 2.4em));position:relative;
+  display:grid;grid-template-columns:var(--wl) var(--pw) var(--aw);column-gap:1.4em;align-content:center;align-items:center;width:max-content;max-width:none;padding:1.4em;overflow:hidden;}
+.k-win.k-dk-strip.has-game .card > *{grid-column:1;}
+.k-win.k-dk-strip.has-game .card > .k-acts{grid-column:3;grid-row:1 / span 12;align-self:center;}
+.k-win.k-dk-strip.has-game .rank{margin-bottom:0;}
+.k-win.k-dk-strip.has-game .k-win-game{position:absolute;top:1.4em;bottom:1.4em;left:calc(2.8em + var(--wl));width:var(--pw);box-sizing:border-box;padding:1.1em 1.2em;border-radius:1.2em;background:var(--well,rgba(0,0,0,.28));box-shadow:inset 0 0 0 1px var(--gl-line);}
+/* stacked (a tall narrow window): the game under the standings, the buttons under it, always in view */
+.k-win.k-dk-stack.has-game .card{max-width:min(calc(100vw - 32px),680px);}
+.k-win.k-dk-stack.has-game .card{display:flex;flex-direction:column;overflow:hidden;}
+.k-win.k-dk-stack.has-game .card > :not(.k-win-game){flex:none;}
+.k-win.k-dk-stack.has-game .k-win-game{flex:0 1 auto;margin:0 0 1.15em;padding:1em 1.1em;border-radius:1.2em;background:var(--well,rgba(0,0,0,.28));box-shadow:inset 0 0 0 1px var(--gl-line);}
+.k-dk-rec .k-hd > [hidden]{display:none !important;}
