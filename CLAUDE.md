@@ -131,9 +131,49 @@ Underlying principles for everything:
   wide saying their power, the last events beside the hand, the face-off's `.big` with whole cards from 330px). The
   scratchpad's `fill/audit.js <shapes> <games> --shots [--root=<worktree>] [--out=<folder>]` opens a game's table through
   its demo at eight desktop windows (A 2100x1860, B 3024x1964, C 1512x982, D 1600x560, E 720x1700, F 1000x1000, G 1280x720,
-  H 560x620) and measures the share of the window it covers; each pilot's own proof scripts are in `big/<game>/`. **Not
-  done yet**: `Kit.setup` and `Kit.win` in a large window (a small column and a small card in an empty window, in every
-  game), the demo's captions, and every game outside the pilot.
+  H 560x620) and measures the share of the window it covers; each pilot's own proof scripts are in `big/<game>/`.
+  **The setup and the results card at a desk, for every game** (kit.js "The desk" and the last section of kit.css; every
+  rule hangs off `.k-dk`, which kit.js sets only in a window wider than 1024 or more than 768 the shorter way, taller
+  than 520 and 480 wide at least: `deskShape`, `winShape`, `Kit.desk()`. The devices are drawn by the rules they always
+  were). `Kit.setup` is composed for the window, its parts still direct children of `.setup`, so whatever a game adds
+  to its setup keeps working: the **band** (1100 or more wide, 900 or more tall: the game's name at the left, the
+  options and the cards for the kinds of play in columns in the middle with anything the game adds, the Players card
+  over the start buttons at the right; under the band, across the window, the room), the **rail** (900 or more wide,
+  under 900 tall: the room at the left under the name, the setup as a column at the right with the start buttons at
+  its foot; a setup too long for the rail takes the band), the **col** (480 to 1099 wide, 900 or more tall: the setup
+  as a column, the room under it). **The room** (`deskAside`) holds what this game has for someone about to play, on
+  glass panels sized by `--dk` (1 to 1.75, from the window): Last game, the newest record as its history view draws it
+  (`historyDetail`); Past games, a row each, a click showing that game in the first panel; Wins, who has won how
+  often; High scores, where the game has a board (`deskBoards` finds a game's boards by their keys); How to play, the
+  game's own `rules`, with Watch a demo. A game never played shows How to play alone. `A.lay` shares the columns out
+  the way that fills the room best; a list gives up its last rows and a record its last parts whole, never cut through.
+  The options stand open with what the chosen one means under each (`k-dk-help`), close to the ? next and fold to rows
+  last (`deskPlan`, `deskTier`); a setup no composition holds goes back to the tablet's (`noDesk`). **The plan only
+  ever goes on to a closer way** (`deskStates`, `deskRe`): a part of the game's own that comes back and grows a moment
+  after the options are drawn again (Marble Solitaire's board, Arrow Jam's levels) sent a plan that started over round
+  for ever, so only a press, a key or a new window size starts it from the most open way again. The setup's own
+  controls step up gently in the largest windows (`--dkc`, 1 to 1.35, still 1 at 1512 by 982: a button stays a
+  button), and a game's own parts of its setup can size by `--dkc` too. `Kit.setup`'s `desk: false`, or
+  `<html class="k-own-desk">` (Arvela, which lays out its own setup at a desk), keeps the kit out. A page with a layout
+  of its own for the setup on an iPad held sideways (Canasta, Go Fish, Pinochle, Spanish One) lets go of it at a desk:
+  the rules for `.setup.k-dk.k-dk` are written to outweigh it. **`Kit.win` at a desk** (`deskWin`): the card a size up
+  and, beside the standings (under them in a tall narrow window), This game: the record `Kit.record` has just made,
+  drawn by its history view, so a finished game's score sheet, board or hands are on the card. In a short wide window
+  (1160 or more wide, under 600 tall), and wherever the standings with the buttons under them are too tall for the
+  window, the buttons stand in a column of their own at the right of the record (`k-dk-strip`); standings too long for
+  that too get the plain card, which scrolls, so nothing is cut. A record with nothing to
+  draw leaves the card alone, and so does a card with a class of its own (Arvela's `.aw` plaque). **A resize** from
+  large to small takes every class, style and panel away again and keeps what was chosen (`deskOff`). **The demo** in a
+  large window sets its captions, curtain, end card and finger a size up (`--kdu`, 1 to 1.6, `deskSize` in demo.js); the
+  strip keeps the game bar's size. The scratchpad's `big/kit/` has the scripts: `proof.js` with `cmp2.js` (the setup and
+  the results card of eleven pages at Tim's devices, before and after), `sheet.js` (the home screen's game sheet),
+  `scan.js` (every page in `SETUP_PAGES` at six large windows: errors, sideways scroll, anything cut off, off the window
+  or over another part, the start button in view), `start.js` (a game started from the desk), `resize.js`,
+  `demolook.js`. **Not done yet**: the tables of every game outside the pilot; Arvela's own setup and plaque in the
+  largest windows (they keep the sizes its pilot gave them: a block 1,240 wide and a plaque 1,040 wide at 3024 by
+  1964); a game's own parts of its setup (Trivia's categories, Mazes' daily maze, Axis & Allies' countries) do not
+  step up with the kit's controls yet; a history view is drawn at its own size inside the larger panels; the setup has
+  no card for a game in progress.
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,

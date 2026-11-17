@@ -13,9 +13,13 @@
 //                                              (sync: fn adds "Sync now": your saves, then fn() refreshes the game's live data)
 //                                              (undo: fn adds "Undo" to the menu)
 //   Kit.init({exitFirst: true})  All games first in the menu, beside menu items marked exit: true (consoles)
-//   Kit.setup(root, {...})                     standard "who's playing" screen
+//   Kit.setup(root, {...})                     standard "who's playing" screen (in a large window it is composed for the
+//                                              window, with this game's past games, high scores and rules: "The desk";
+//                                              desk: false keeps the tablet's setup)
+//   Kit.desk()                                 'band' | 'rail' | 'col' in a window larger than a phone's or a tablet's, else null
 //   Kit.handoff({name, color, what}) -> Promise  pass-and-play cover; hold 3s to reveal
-//   Kit.win({...})                             celebration + results card
+//   Kit.win({...})                             celebration + results card (in a large window, beside the standings, the
+//                                              game just recorded as its history view draws it: deskWin)
 //   Kit.sheet({title, html|node, actions})     bottom sheet; returns {close}. An action can have a short second line: {label, sub}
 //   Kit.confirm(msg, {ok, danger})             -> Promise<bool>
 //   Kit.toast(msg)   Kit.callout(text)         quick feedback
@@ -2631,13 +2635,16 @@
       a.onfinish = a.oncancel = (function (x) { return function () { if (x.parentNode) x.parentNode.removeChild(x); }; })(g);
     }
   }
+  // (at a desk the setup's tokens are a step larger: --dkc, 1 anywhere else)
+  // (read from the setup's own style, so a phone or a tablet works nothing out for it)
+  function tokStep(box) { var s = box.closest('.setup.k-dk'); return (s && parseFloat(s.style.getPropertyValue('--dkc'))) || 1; }
   function evenToks(box) {
     if (!box || !box.isConnected) return;
     // one or two players beside the dial stand larger, to fill the card the dial makes tall (Tim, 2026-11-16)
     // (where they fit side by side: two large tokens and the vs between take about 200px)
     if (box.closest('.has-n')) {
       if (!box.clientWidth) { requestAnimationFrame(function () { evenToks(box); }); return; }   // (a card just drawn has no width yet: on the next frame)
-      var nt = box.querySelectorAll('.k-tok:not(.k-ghost), .qs-tok:not(.k-ghost)').length; box.classList.toggle('few', nt === 1 || (nt === 2 && box.clientWidth >= 200));
+      var nt = box.querySelectorAll('.k-tok:not(.k-ghost), .qs-tok:not(.k-ghost)').length; box.classList.toggle('few', nt === 1 || (nt === 2 && box.clientWidth >= 200 * tokStep(box)));
     }
     if (box.classList.contains('teams')) {
       box.classList.remove('stack');
@@ -2651,7 +2658,7 @@
     // dial always upright at the left): one size smaller past two rows, two sizes past three (from the full token's
     // width, 66, so the choice never flips back and forth)
     if (box.closest('.has-n')) {
-      var W0 = box.clientWidth + (box.classList.contains('crowd') || box.classList.contains('crowd2') ? 0 : 0), per66 = Math.max(1, Math.floor((W0 + 4) / 70)), per52 = Math.max(1, Math.floor((W0 + 4) / 56));
+      var W0 = box.clientWidth + (box.classList.contains('crowd') || box.classList.contains('crowd2') ? 0 : 0), ts = tokStep(box), per66 = Math.max(1, Math.floor((W0 + 4) / (66 * ts + 4))), per52 = Math.max(1, Math.floor((W0 + 4) / (52 * ts + 4)));
       var c1 = Math.ceil(n / per66) > 2, c2 = c1 && Math.ceil(n / per52) > 3;
       box.classList.toggle('crowd', c1 && !c2); box.classList.toggle('crowd2', c2);
     }
@@ -3147,6 +3154,258 @@
       });
     }).then(function (out) { if (out && out.length) cb(out); }, function (e) { try { console.warn('[kit] open tables', (e && e.message) || e); } catch (er) {} });
   }
+  // ── The desk: Kit.setup and Kit.win in a large window (a laptop or a desktop, the window dragged to any shape) ──────
+  // Tim, 2026-11-17: "gameplay needs to take up as much screen as the device will give it, but also adapt to every
+  // possible resizing option in there", and "simply scaling things up is not thoughtful design". A phone and a tablet
+  // (402x874, 874x402, 768x1024, 1024x768, 320x568) never get here: deskShape() says null for them, and nothing below
+  // runs or leaves a class behind.
+  //   The setup is composed for the window, its controls at their own size (a button stays a button):
+  //     band   (1100 or more wide, 900 or more tall): one band across the top, the game's name at the left, its options
+  //            in columns in the middle and, at the right where you act, who is playing over the start buttons; under
+  //            the band, the whole width, the room for this game (the desk's panels, below)
+  //     rail   (900 or more wide, under 900 tall): the panels at the left under the game's name; at the right a column
+  //            of who is playing, the options and, at its foot, the start buttons
+  //     col    (480 to 1099 wide, 900 or more tall): the setup as a column, the panels under it across the window
+  //   The room holds what this game has to show someone about to play it, each on a glass panel sized by --dk (1 to
+  //   1.5, from the window): the last game as its history view draws it (hist/*.js), the games before it (a row each;
+  //   a tap shows that game), who has won how often, the high scores of a game with a board, and how to play (the
+  //   game's own rules, with Watch a demo). A game never played shows how to play alone.
+  //   The options stand open with what the chosen one means under each (k-dk-help); they close to the ? and then fold
+  //   to rows, as on a phone, only when the room runs out.
+  // A page that lays out its own setup at a desk says <html class="k-own-desk"> (Arvela).
+  // (asked of the window through a media query first: on a phone and a tablet it answers no without the page being
+  // measured, so nothing here changes when or how their setup is laid out)
+  var DESK_MQ = null;
+  function deskWindow() {
+    try { DESK_MQ = DESK_MQ || window.matchMedia('(min-width:1025px) and (min-height:521px), (min-height:1025px) and (min-width:480px), (min-width:769px) and (min-height:769px)'); return DESK_MQ.matches; } catch (e) { return false; }
+  }
+  function deskShape() {
+    if (IN_SHEET || EDIT_DEFAULTS || DEMO || root.classList.contains('k-own-desk') || !deskWindow()) return null;
+    var W = window.innerWidth, H = window.innerHeight;
+    if (W < 480 || H <= 520 || !(Math.max(W, H) > 1024 || Math.min(W, H) > 768)) return null;
+    if (H >= 900) return W >= 1100 ? 'band' : 'col';
+    return W >= 900 ? 'rail' : null;
+  }
+  function deskUnit() { return Math.max(1, Math.min(1.75, window.innerWidth / 1700, window.innerHeight / 1100)); }
+  // (the controls' own step, gentler: 1 to 1.35)
+  function deskCtl() { return Math.min(1.35, 1 + (deskUnit() - 1) * .7); }
+  function dayWord(ts) {
+    if (!ts) return '';
+    var a = new Date(ts), b = new Date();
+    var days = Math.round((new Date(b.getFullYear(), b.getMonth(), b.getDate()) - new Date(a.getFullYear(), a.getMonth(), a.getDate())) / 86400000);
+    if (days <= 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return a.toLocaleDateString([], { weekday: 'short' });
+    return a.toLocaleDateString([], a.getFullYear() === b.getFullYear() ? { month: 'short', day: 'numeric' } : { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  // this game's finished games on this device, newest first: [{e: the record, key: its history key}]
+  function deskGames(g) {
+    var out = [], seen = {};
+    if (!g || !LS) return out;
+    try {
+      for (var i = 0; i < LS.length; i++) {
+        var k = LS.key(i); if (!k || k.indexOf('gh_') !== 0) continue;
+        var key = k.slice(3), list = []; if (GH_SKIP[key]) continue;
+        try { list = JSON.parse(LS.getItem(k)) || []; } catch (e) {}
+        if (!Array.isArray(list)) continue;
+        list.forEach(function (e) {
+          if (!e || typeof e !== 'object' || !(e.game === g.id || histGameId(key) === g.id)) return;
+          var id = e._id || key + ':' + (e._date || ''); if (seen[id]) return; seen[id] = 1;
+          out.push({ e: e, key: key });
+        });
+      }
+    } catch (err) {}
+    out.sort(function (a, b) { return (b.e._date || 0) - (a.e._date || 0); });
+    return out.slice(0, 40);
+  }
+  // this game's high-score boards that have scores on them: [{key, tab, rows}]
+  function deskBoards(g) {
+    if (typeof ArcadeHi === 'undefined' || !g) return [];
+    var keys = [];
+    try { if (typeof HI_BOARDS !== 'undefined') Object.keys(HI_BOARDS).forEach(function (k) { if (HI_BOARDS[k] && HI_BOARDS[k].game === g.id) keys.push(k); }); } catch (e) {}
+    [g.id, g.play, pageKey()].forEach(function (k) { if (k && keys.indexOf(k) < 0) keys.push(k); });
+    // (a board's key is the game's own short word for itself, sometimes with the kind of game after it: 'pac', 'ast',
+    // 'pinball_nebula', 'flappy_classic'. A board with scores on this device is this game's when its first word begins
+    // the game's id, and is not another game's id)
+    try {
+      for (var i = 0; i < LS.length; i++) {
+        var lk = LS.key(i); if (!lk || lk.indexOf('hi_') !== 0) continue;
+        var key = lk.slice(3), base = key.split('_')[0];
+        if (keys.indexOf(key) >= 0 || base.length < 3 || g.id.indexOf(base) !== 0) continue;
+        if (base !== g.id && findGameSafe(base) && findGameSafe(base).id === base) continue;
+        if (typeof hiBoard === 'function' && hiBoard(key) && hiBoard(key).game !== g.id) continue;
+        keys.push(key);
+      }
+    } catch (e) {}
+    return keys.map(function (k) {
+      var rows = [], c = {};
+      try { rows = ArcadeHi.board(k) || []; c = ArcadeHi.config(k) || {}; } catch (e) {}
+      var word = k.indexOf('_') > 0 ? k.split('_').slice(1).join(' ') : '';
+      return { key: k, rows: rows, tab: c.tab || c.label || (word ? word.charAt(0).toUpperCase() + word.slice(1) : '') };
+    }).filter(function (b) { return b.rows.length; }).slice(0, 5);
+  }
+  // a glass panel of the desk: its name, a quiet way to the whole of it at the right of the name, and its body
+  function deskPanel(cls, title, more) {
+    var hd = el('div', { class: 'k-dkp-h' }, [el('span', { class: 'k-dkp-t', text: title })]);
+    if (more) hd.appendChild(el('button', { type: 'button', class: 'k-dkp-more', 'aria-label': more.label, onclick: function () { sfx('tap'); haptic('light'); more.onClick(); }, html: (more.text ? '<span>' + esc(more.text) + '</span>' : '') + icon(more.icon || 'right') }));
+    var body = el('div', { class: 'k-dkp-b' });
+    return { el: el('section', { class: 'k-dkp ' + cls }, [hd, body]), body: body, head: hd, title: hd.firstChild };
+  }
+  // The room's panels for this game: {el, has, lay()}. lay() arranges them for the room the aside has now.
+  function deskAside(g) {
+    var A = { el: el('aside', { class: 'k-desk', 'aria-label': g ? 'About ' + g.name : 'About this game' }), has: false, lay: function () {} };
+    var games = deskGames(g), boards = deskBoards(g), P = {};
+    var rulesHtml = ''; try { rulesHtml = typeof opts.guide === 'function' ? '' : typeof opts.rules === 'function' ? opts.rules() : opts.rules || ''; } catch (e) {}
+    function allGames() {
+      var keys = []; games.forEach(function (x) { if (keys.indexOf(x.key) < 0) keys.push(x.key); });
+      var first = keys.indexOf(g.id) >= 0 ? g.id : keys[0];
+      history(first, { keys: keys.filter(function (k) { return k !== first; }), title: g.name + ': past games' });
+    }
+    // the last game (or the one chosen in the list), as the history sheet draws it
+    var sel = 0, rowEls = [];
+    function showGame(i) {
+      sel = i; if (!P.D) return;
+      rowEls.forEach(function (r, k) { r.classList.toggle('on', k === i); r.setAttribute('aria-pressed', String(k === i)); });
+      var x = games[i];
+      P.D.title.textContent = i === 0 ? 'Last game' : dayWord(x.e._date);
+      P.D.when.textContent = i === 0 ? dayWord(x.e._date) : '';
+      loadHistView().then(function () {
+        if (window.HistView) HistView.ready = true;
+        if (sel !== i) return;
+        P.D.body.innerHTML = '';
+        try { P.D.body.appendChild(historyDetail(x.e, { inList: true, game: histGameId(x.key) })); } catch (e) {}
+        P.D.body.scrollTop = 0;
+        A.lay();
+      });
+    }
+    if (games.length) {
+      P.D = deskPanel('k-dkp-game k-dk-rec', 'Last game', { label: 'All past games', text: games.length > 1 ? 'All ' + games.length : '', onClick: allGames });
+      P.D.when = el('span', { class: 'k-dkp-when' }); P.D.head.insertBefore(P.D.when, P.D.head.children[1]);
+    }
+    if (games.length > 1) {
+      P.L = deskPanel('k-dkp-past', 'Past games');
+      games.forEach(function (x, i) {
+        var n = normalize(x.e), ps = n.players, solo = ps.length === 1, auto = /^(.+ won\b|Finished\b|Tie game\b)/.test(n.summary || '');
+        var wi = -1; ps.forEach(function (p, k) { if (wi < 0 && n.winner && p.name === n.winner) wi = k; }); if (solo) wi = 0;
+        var who = wi >= 0 ? ps[wi] : null, f0 = factParts(n.summary)[0] || '';
+        var main = solo ? (ps[0].name || 'Player') : n.winner ? n.winner + ' won' : /^tie/i.test(f0) ? 'A tie' : f0 || 'Finished';
+        var mid = solo && !auto && !/^[\d,.\s$]+$/.test(f0) ? f0 : '';
+        var num = function (v) { return typeof v === 'number' ? v.toLocaleString() : String(v); };
+        var right = solo ? (ps[0].score != null ? num(ps[0].score) : '') : ps.length === 2 && ps.every(function (p) { return p.score != null; }) ? ps.map(function (p) { return num(p.score); }).join(' – ') : who && who.score != null ? num(who.score) : '';
+        var av = who ? (who.cpu ? el('span', { class: 'avatar sm', style: { '--c': playerColor(wi) }, html: icon('bot') }) : avEl(who.name || '?', 'sm', playerColor(wi))) : el('span', { class: 'avatar sm k-dkr-tie', html: icon('users') });
+        var r = el('button', { type: 'button', class: 'k-dkr', 'aria-pressed': 'false', onclick: function () { sfx('tap'); haptic('light'); if (P.D && P.D.el.isConnected) showGame(i); else allGames(); } }, [
+          el('span', { class: 'k-dkr-d', text: dayWord(x.e._date) }), av, el('b', { text: main }), mid ? el('span', { class: 'k-dkr-m', text: mid }) : null, el('span', { class: 'k-dkr-s', text: right })]);
+        rowEls.push(r); P.L.body.appendChild(r);
+      });
+    }
+    // who has won how often (games of two or more; the computer's players count as one)
+    (function () {
+      var t = {}, order = [], n = 0;
+      games.forEach(function (x) {
+        var nn = normalize(x.e); if (nn.players.length < 2) return; n++;
+        nn.players.forEach(function (p, i) {
+          var k = p.cpu ? '\u0000cpu' : avKey(p.name); if (!k) return;
+          if (!t[k]) { t[k] = { name: p.cpu ? 'Computer' : p.name, cpu: !!p.cpu, w: 0, n: 0, seen: -1 }; order.push(k); }
+          if (t[k].seen !== n) { t[k].seen = n; t[k].n++; }
+          if (nn.winner && p.name === nn.winner) t[k].w++;
+        });
+      });
+      if (n < 2 || order.length < 2) return;
+      var rows = order.map(function (k) { return t[k]; }).sort(function (a, b) { return b.w - a.w || a.n - b.n; }).slice(0, 6), top = Math.max(1, rows[0].w);
+      P.W = deskPanel('k-dkp-wins', 'Wins');
+      rows.forEach(function (r, i) {
+        P.W.body.appendChild(el('div', { class: 'k-dkr k-dkw' + (i === 0 && r.w ? ' top' : '') }, [
+          r.cpu ? el('span', { class: 'avatar sm', style: { '--c': 'var(--surface-3)' }, html: icon('bot') }) : avEl(r.name, 'sm', playerColor(i)),
+          el('b', { text: r.name }),
+          el('span', { class: 'k-dkw-bar' }, [el('i', { style: { width: Math.round(100 * r.w / top) + '%' } })]),
+          el('span', { class: 'k-dkw-n' }, [el('strong', { text: String(r.w) }), el('small', { text: 'of ' + r.n })])]));
+      });
+    })();
+    if (boards.length) {
+      var cur = 0;
+      P.H = deskPanel('k-dkp-hi', 'High scores', { label: 'The whole board', onClick: function () { try { ArcadeHi.show(boards[cur].key); } catch (e) {} } });
+      var tabs = boards.length > 1 ? el('div', { class: 'k-dkp-tabs', role: 'tablist' }) : null, listEl = el('div', { class: 'k-dkp-rows' });
+      var paintBoard = function (i) {
+        cur = i; listEl.innerHTML = '';
+        if (tabs) [].forEach.call(tabs.children, function (b, k) { b.classList.toggle('on', k === i); b.setAttribute('aria-selected', String(k === i)); });
+        boards[i].rows.slice(0, 12).forEach(function (r, k) {
+          var sc = String(r.score); try { sc = ArcadeHi.fmt(boards[i].key, r.score, true); } catch (e) {}
+          listEl.appendChild(el('div', { class: 'k-dkr k-dkh' + (r.mine ? ' mine' : '') + (k < 3 ? ' m' + (k + 1) : '') }, [
+            el('span', { class: 'k-dkh-n', text: String(k + 1) }), el('b', { text: r.name }), r.by || r.who ? el('span', { class: 'k-dkr-m', text: r.by || r.who }) : null, el('span', { class: 'k-dkr-s', text: sc })]));
+        });
+        A.lay();
+      };
+      if (tabs) { boards.forEach(function (b, i) { tabs.appendChild(el('button', { type: 'button', role: 'tab', text: b.tab || String(i + 1), onclick: function () { sfx('tap'); paintBoard(i); } })); }); P.H.body.appendChild(tabs); }
+      P.H.body.appendChild(listEl);
+      paintBoard(0);
+    }
+    if (rulesHtml) {
+      P.R = deskPanel('k-dkp-rules', 'How to play', hasDemo(g) ? { label: 'Watch a demo', text: 'Watch a demo', icon: 'demo', onClick: demo } : null);
+      P.R.body.appendChild(el('div', { class: 'rules', html: rulesHtml }));
+    }
+    A.has = !!(P.D || P.H || P.R);
+    if (P.D) showGame(0);
+    // Arrange the panels for the room: columns of 20em at least (the panel's own type, so --dk). The last game stands
+    // first, the lists share the next column, and how to play has the rest, its words in columns of their own. A list
+    // that would run past the room gives up its last rows; nothing is cut through.
+    A.lay = function () {
+      var box = A.el; if (!box.isConnected) return;
+      var w = box.clientWidth, h = box.clientHeight; if (!w || !h) return;
+      var em = parseFloat(getComputedStyle(box).fontSize) || 16, n = Math.max(1, Math.min(4, Math.floor((w + em) / (21 * em))));
+      var side = [P.L, P.H, P.W].filter(Boolean), plans = [];
+      [P.D, P.L, P.H, P.W].forEach(function (p) { if (p) [].forEach.call(p.el.querySelectorAll('.k-dkr[hidden], [data-dk-cut]'), function (r) { r.hidden = false; r.removeAttribute('data-dk-cut'); }); });
+      // the ways to share the columns out; the one that fills the room best without running past it is the one drawn
+      if (n === 1) plans.push([{ f: 1, ps: side.length ? side.concat(P.R ? [P.R] : []) : [P.D || P.R] }]);
+      else if (!P.D) plans.push([{ f: 1, ps: [P.R] }]);
+      else {
+        if (n >= 3) {
+          plans.push([{ f: 1.15, ps: [P.D] }, { f: 1, ps: side }, { f: Math.max(1, n - 1 - (side.length ? 1 : 0)), ps: [P.R] }]);
+          if (P.R) plans.push([{ f: 1.15, ps: [P.D] }, { f: 1, ps: side }, { f: 1.2, ps: [P.R] }]);
+          if (n >= 4 && side.length > 1 && P.R) plans.push([{ f: 1.15, ps: [P.D] }, { f: 1, ps: side.slice(0, 1) }, { f: 1, ps: side.slice(1) }, { f: 1.2, ps: [P.R] }]);
+        }
+        plans.push([{ f: 1.1, ps: [P.D] }, { f: 1, ps: side.concat(P.R ? [P.R] : []) }]);
+      }
+      function draw(plan) {
+        plan = plan.map(function (c) { return { f: c.f, ps: c.ps.filter(Boolean) }; }).filter(function (c) { return c.ps.length; });
+        [].slice.call(box.children).forEach(function (c) { box.removeChild(c); });
+        box.style.gridTemplateColumns = plan.map(function (c) { return 'minmax(0,' + c.f + 'fr)'; }).join(' ');
+        return plan.map(function (c) { var col = el('div', { class: 'k-desk-col' }); c.ps.forEach(function (p) { col.appendChild(p.el); }); box.appendChild(col); return col; });
+      }
+      var best = 0, bestScore = -1e9;
+      if (plans.length > 1) plans.forEach(function (plan, i) {
+        var cols = draw(plan), fill = 0, over = 0;
+        cols.forEach(function (col) {
+          var g = parseFloat(getComputedStyle(col).rowGap) || 0, t = 0;
+          [].forEach.call(col.children, function (pe, k) { var b = pe.querySelector('.k-dkp-b'); t += pe.offsetHeight - b.clientHeight + b.scrollHeight + (k ? g : 0); });
+          fill += Math.min(t, h) / h / cols.length; over += Math.max(0, t - h) / h;
+        });
+        var score = fill - 2 * over;
+        if (score > bestScore + .02) { bestScore = score; best = i; }
+      });
+      draw(plans[best]).forEach(function (col) {
+        var guard = 0;
+        while (col.scrollHeight > col.clientHeight + 1 && guard++ < 120) {
+          var ps = [].slice.call(col.children);
+          var lists = ps.map(function (pe) { return [].filter.call(pe.querySelectorAll('.k-dkr'), function (r) { return !r.hidden; }); }).filter(function (rs) { return rs.length > 3; });
+          if (lists.length) { lists.sort(function (a, b) { return b.length - a.length; }); lists[0][lists[0].length - 1].hidden = true; }
+          else if (ps.length > 1) col.removeChild(ps[ps.length - 1]);
+          else break;
+        }
+      });
+      // the game's record in a short room: its last parts (the chart, the round by round) are left out whole, never cut
+      // through; All past games has the whole of it
+      if (P.D && P.D.el.isConnected) {
+        var hd = P.D.body.firstElementChild, kids = hd ? [].slice.call(hd.children) : [];
+        for (var q = kids.length - 1; q > 1 && P.D.body.scrollHeight > P.D.body.clientHeight + 1; q--) if (!kids[q].hidden) { kids[q].hidden = true; kids[q].setAttribute('data-dk-cut', '1'); }
+      }
+      // how to play, longer than its panel: it scrolls, and fades at the foot while there is more below
+      if (P.R && P.R.el.isConnected) fadeFoot(P.R.body);
+    };
+    function fadeFoot(b) { b.classList.toggle('more', b.scrollHeight - b.scrollTop > b.clientHeight + 2); }
+    if (P.R) P.R.body.addEventListener('scroll', function () { fadeFoot(P.R.body); }, { passive: true });
+    return A;
+  }
+
   // A choice's label can have a second line ('10\nStandard'): the button shows it small under the first (no " · "
   // strung between them); a one-line place (a folded row, the review, a summary) says the first line alone.
   function chText(c) { return String(c[1]).split('\n')[0]; }
@@ -3342,6 +3601,7 @@
     // fold into one row that names the chosen one (a tap opens the cards again).
     var fold = false, snug = false, foldModes = false, modesOpen = false;
     function fitFold() {
+      if (dk) return;   // (at a desk the desk's own plan decides: deskPlan)
       if (IN_SHEET || !wrap.isConnected || Object.keys(scOpen).length || modesOpen) return;
       var se = document.scrollingElement || document.documentElement;
       for (var i = 0; i < 3 && se.scrollHeight > se.clientHeight + 1; i++) {
@@ -3839,6 +4099,7 @@
     // whatever padding the game's page has (the dock reaches out to the page's edges for its fade)
     function dockInset() {
       var d = wrap.querySelector('.k-startdock'); if (!d || !wrap.isConnected) return;
+      if (dk) { wrap.classList.remove('k-pad'); d.style.paddingLeft = d.style.paddingRight = d.style.marginLeft = d.style.marginRight = ''; return; }   // (at a desk the start buttons stand in the composition, far from any corner)
       // (a game page whose own frame has no padding, Press Your Luck's: the setup keeps 16px off the screen's edges)
       var hl = parseFloat(getComputedStyle(host).paddingLeft) || 0, wl = wrap.getBoundingClientRect().left;
       wrap.classList.toggle('k-pad', hl < 8 && wl < 8);
@@ -3853,8 +4114,173 @@
       if (l < 17) d.style.paddingLeft = (parseFloat(cs.paddingLeft) + 17 - l) + 'px';
       if (rt < 17) d.style.paddingRight = (parseFloat(cs.paddingRight) + 17 - rt) + 'px';
     }
+    // ── The desk: this setup in a large window (deskShape, above). The setup's own parts stay where they are in the
+    // page, direct children of .setup, so a game that adds its own keeps working; the desk only places them: in the
+    // band the name, the friend's table, the Players card and the start buttons are set at the two ends (their places
+    // worked out here, in deskPlace), and everything else, the game's own parts too, flows in the middle.
+    var dk = null, noDesk = '';
+    function deskParts() {
+      var hero = wrap.querySelector(':scope > .setup-hero'), dock = wrap.querySelector(':scope > .k-startdock');
+      return { hero: hero, dock: dock, flow: [].filter.call(wrap.children, function (c) { return c !== hero && c !== dock && c !== joinBox && c !== seatsBox && c !== dk.A.el && c.offsetParent !== null; }) };
+    }
+    // set the places for the room there is; true when everything fits the window
+    function deskPlace() {
+      if (!dk || !wrap.isConnected) return true;
+      var W = doc.documentElement.clientWidth, H = window.innerHeight, u = deskUnit(), sh = dk.shape, A = dk.A.el, bare = wrap.classList.contains('k-dk-bare');
+      var pad = Math.round(Math.max(16, Math.min(44, W * .0145))), gap = Math.round(14 + 6 * u), minA = Math.round(250 * u);
+      var st = wrap.style;
+      var c = deskCtl();
+      st.setProperty('--dk', u.toFixed(3)); st.setProperty('--dkc', c.toFixed(3)); st.setProperty('--dk-pad', pad + 'px'); st.setProperty('--dk-gap', gap + 'px');
+      var P = deskParts(), top = wrap.getBoundingClientRect().top + window.scrollY, pt = parseFloat(getComputedStyle(wrap).paddingTop) || 0, avail = Math.floor(H - top - pt - pad);
+      var heroH = P.hero ? P.hero.offsetHeight : 0, fits = true;
+      A.style.marginTop = '0px';
+      if (sh === 'band') {
+        var rw = Math.round(Math.max(400 * c, Math.min(560 * c, W * .27)));
+        st.setProperty('--dk-rw', rw + 'px');
+        st.setProperty('--dk-hw', (P.hero ? Math.ceil(P.hero.getBoundingClientRect().width) : 0) + 'px');
+        var jh = joinBox.offsetHeight, sT = jh ? jh + Math.round(gap * .6) : 0, sH = seatsBox.offsetHeight, dT = sT + sH + (sH ? Math.round(gap * .8) : 0), rightH = dT + (P.dock ? P.dock.offsetHeight : 0);
+        st.setProperty('--dk-st', sT + 'px'); st.setProperty('--dk-dt', dT + 'px');
+        // the middle: the cards for the kinds of play and the options in as many columns as the room has (each 280 wide
+        // at least), the fewest rows first and the columns evened out; whatever the game adds is as wide as they are
+        var cs = getComputedStyle(wrap), midW = wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), cg = 14;
+        var maxC = Math.max(1, Math.floor((midW + cg) / (280 * c + cg))), cols = 1, grids = [modesBox, optsBox].filter(function (b) { return b && b.children.length; });
+        grids.forEach(function (b) { var m = b.children.length, oc = Math.ceil(m / Math.ceil(m / maxC)); b.style.setProperty('--dk-oc', oc); cols = Math.max(cols, oc); });
+        if (!grids.length) cols = Math.min(2, maxC);
+        var cw = Math.floor(Math.min(392 * c, (midW - (cols - 1) * cg) / cols));
+        st.setProperty('--dk-cw', cw + 'px'); st.setProperty('--dk-mw', (cols * cw + (cols - 1) * cg) + 'px');
+        var wr = wrap.getBoundingClientRect(), midH = 0;
+        P.flow.forEach(function (c) { midH = Math.max(midH, c.getBoundingClientRect().bottom - wr.top - pt); });
+        var bandH = Math.ceil(Math.max(midH, rightH, heroH));
+        if (bare) { st.setProperty('--dk-min', bandH + 'px'); fits = bandH <= avail; }
+        else {
+          var aH = avail - bandH - gap; fits = aH >= minA;
+          st.setProperty('--dk-min', '0px');
+          A.style.marginTop = Math.round(bandH + gap - (A.getBoundingClientRect().top - wr.top - pt)) + 'px';
+          A.style.height = Math.max(minA, aH) + 'px';
+        }
+      } else if (sh === 'rail') {
+        var rw2 = Math.round(Math.max(380 * c, Math.min(520 * c, W * .3)));
+        st.setProperty('--dk-rw', rw2 + 'px'); st.setProperty('--dk-lw', Math.max(0, W - 2 * pad - rw2 - Math.round(gap * 1.6)) + 'px');
+        st.setProperty('--dk-min', '0px');
+        var nat = wrap.offsetHeight - pt - pad;
+        fits = nat <= avail + 1;
+        st.setProperty('--dk-min', avail + 'px');
+        st.setProperty('--dk-at', (heroH + gap) + 'px');
+        A.style.height = Math.max(120, avail - heroH - gap) + 'px';
+      } else {
+        st.setProperty('--dk-min', '0px');
+        if (bare) fits = wrap.offsetHeight - pt - pad <= avail + 1;
+        else {
+          A.style.height = '0px';
+          var colH = A.getBoundingClientRect().top - wrap.getBoundingClientRect().top - pt, aH2 = Math.floor(avail - colH); fits = aH2 >= minA;
+          A.style.height = Math.max(minA, aH2) + 'px';
+        }
+      }
+      return fits;
+    }
+    // how open the options stand: 0 with what each choice means under it, 1 as on a tablet (the ? opens it), 2 folded to rows
+    function deskTier(t) {
+      wrap.classList.toggle('k-dk-help', t === 0);
+      if (fold !== (t === 2)) { fold = t === 2; wrap.classList.toggle('k-folded', fold); renderOptions(); }
+    }
+    // the ways the setup can stand here, the most open first: each shape with the room's panels and then without,
+    // its options open, closed to the ? and folded
+    function deskStates() {
+      var shapes = [dk.want], out = [];
+      // (a rail too short for a long setup: the band, its options in columns)
+      if (dk.want === 'rail' && window.innerWidth >= 1100) shapes.push('band');
+      shapes.forEach(function (s) { for (var b = dk.A.has ? 0 : 1; b < 2; b++) for (var t = 0; t < 3; t++) out.push([s, b, t]); });
+      return out;
+    }
+    // the first way that fits, from the most open one, or (from) from the one after the way that stopped fitting
+    function deskPlan(from) {
+      if (!dk || !wrap.isConnected) return;
+      dk.busy = true;
+      var S = deskStates(), ok = false, i = from > 0 ? from : 0;
+      if (from > 0) dk.late = true;
+      for (; i < S.length; i++) {
+        if (dk.shape !== S[i][0]) { wrap.classList.remove('k-dk-band', 'k-dk-rail', 'k-dk-col'); wrap.classList.add('k-dk', 'k-dk-' + S[i][0]); dk.shape = S[i][0]; }
+        wrap.classList.toggle('k-dk-bare', !!S[i][1]);
+        deskTier(S[i][2]);
+        if (deskPlace()) { ok = true; break; }
+      }
+      // (a setup too long for this window however it is composed: the tablet's setup, which folds further and scrolls)
+      if (!ok) { noDesk = window.innerWidth + 'x' + window.innerHeight; dk.busy = false; deskOff(); setTimeout(fitFold, 0); setTimeout(dockInset, 0); return; }
+      dk.at = i; dk.size = window.innerWidth + 'x' + window.innerHeight; dk.fresh = false;
+      dk.A.lay();
+      // (the Players card is another width here, and its tokens another size where the controls step up: they are
+      // arranged again, and the names fitted again only when their size has changed)
+      var cNow = deskCtl(), refit = Math.abs(cNow - (dk.c || 1)) > .001; dk.c = cNow;
+      [].forEach.call(seatsBox.querySelectorAll('.k-toks'), function (b) { evenToks(b); if (refit) fitTokNames(b); });
+      dk.busy = false;
+      // (a part of the game's own that comes back a moment after the options are drawn again, Marble Solitaire's board
+      // or Arrow Jam's levels, is measured once it is there)
+      clearTimeout(dk.chk); dk.chk = setTimeout(deskRe, 120);
+    }
+    // something in the setup changed size (a choice, the players, a part the game added): the places follow. When
+    // what is there no longer fits, the plan goes on from where it stands to a closer way, never back to an opener
+    // one, which a part that grows again after every redraw would send round for ever; only a press, a key or a new
+    // window size starts the plan from the most open way again.
+    function deskRe() {
+      if (!dk || dk.busy || dk.raf) return;
+      dk.raf = requestAnimationFrame(function () {
+        if (!dk) return; dk.raf = 0;
+        if (!wrap.isConnected) { deskOff(); return; }
+        if (dk.fresh || dk.size !== window.innerWidth + 'x' + window.innerHeight) deskPlan(0);
+        else if (!deskPlace()) deskPlan(dk.at + 1);
+        else dk.A.lay();
+      });
+    }
+    ['click', 'pointerup', 'keyup'].forEach(function (ev) { wrap.addEventListener(ev, function () { if (dk) dk.fresh = true; }, true); });
+    function deskOff() {
+      if (!dk) return;
+      if (dk.raf) cancelAnimationFrame(dk.raf);
+      clearTimeout(dk.chk);
+      try { dk.ro && dk.ro.disconnect(); dk.mo && dk.mo.disconnect(); } catch (e) {}
+      if (dk.A.el.parentNode) dk.A.el.parentNode.removeChild(dk.A.el);
+      var was = dk.was || {}; was.c = dk.c;
+      wrap.classList.remove('k-dk', 'k-dk-band', 'k-dk-rail', 'k-dk-col', 'k-dk-help', 'k-dk-bare');
+      ['--dk', '--dkc', '--dk-pad', '--dk-gap', '--dk-rw', '--dk-lw', '--dk-hw', '--dk-st', '--dk-dt', '--dk-min', '--dk-at', '--dk-cw', '--dk-mw'].forEach(function (p) { wrap.style.removeProperty(p); });
+      [wrap, modesBox, optsBox].forEach(function (b) { if (!b) return; b.style.removeProperty('--dk-oc'); if (!b.getAttribute('style')) b.removeAttribute('style'); });
+      dk = null;
+      // (the window is a phone's or a tablet's again: the setup is as folded as it was before the desk, and is fitted
+      // from there as it is on one)
+      fold = !!was.fold; snug = !!was.snug; foldModes = !!was.fm;
+      wrap.classList.toggle('k-folded', fold); wrap.classList.toggle('k-snug', snug);
+      if (wrap.isConnected) {
+        renderOptions(); renderModes();
+        [].forEach.call(seatsBox.querySelectorAll('.k-toks'), function (b) { evenToks(b); if (Math.abs((was.c || 1) - 1) > .001) fitTokNames(b); });
+        // (a name that was fitted before the desk is the size it was fitted to)
+        if (was.fs) was.fs.forEach(function (x) { if (x[0].isConnected) { x[0].style.fontSize = x[1]; if (!x[0].getAttribute('style')) x[0].removeAttribute('style'); } });
+      }
+    }
+    function deskSync() {
+      var shape = wrap.isConnected && o.desk !== false ? deskShape() : null;
+      if (shape && noDesk === window.innerWidth + 'x' + window.innerHeight) shape = null;
+      if (!shape) { deskOff(); return; }
+      noDesk = '';
+      if (!dk) {
+        dk = { A: deskAside(game), shape: '', was: { fold: fold, snug: snug, fm: foldModes, fs: [].map.call(seatsBox.querySelectorAll('.k-tok b'), function (b) { return [b, b.style.fontSize]; }) } };
+        if (snug) { snug = false; wrap.classList.remove('k-snug'); }
+        if (foldModes) { foldModes = false; renderModes(); }
+        try {
+          dk.ro = new ResizeObserver(deskRe);
+          var watch = function () { [].forEach.call(wrap.children, function (c) { if (dk && c !== dk.A.el) dk.ro.observe(c); }); };
+          watch();
+          dk.mo = new MutationObserver(function () { if (dk) { watch(); deskRe(); } });
+          dk.mo.observe(wrap, { childList: true });
+        } catch (e) {}
+      }
+      if (!dk.A.has) shape = 'col';   // (nothing to show beside it: the setup as a column, its options open)
+      dk.want = shape;
+      if (!dk.shape) { wrap.classList.add('k-dk', 'k-dk-' + shape); dk.shape = shape; }
+      if (dk.A.el.parentNode !== wrap) wrap.appendChild(dk.A.el);
+      deskPlan();
+    }
+    deskSync();
     setTimeout(fitFold, 0); setTimeout(fitFold, 400); setTimeout(dockInset, 0); setTimeout(dockInset, 400);
-    window.addEventListener('resize', function () { setTimeout(fitFold, 60); setTimeout(dockInset, 60); });
+    if (dk) { setTimeout(deskRe, 0); setTimeout(function () { if (dk && dk.at > 0 && !dk.late) deskPlan(0); else deskRe(); }, 400); }   // (once the game has added its own parts, and the fonts are in)
+    window.addEventListener('resize', function () { deskSync(); setTimeout(fitFold, 60); setTimeout(dockInset, 60); });
     // started from the home screen's sheet: press start (or Play online) once the game has added its own parts
     if (GO && Date.now() - GO.at < 15000) {
       var how = GO.how, own = /^el:/.test(how); if (how !== 'start' && !own && GO.id) HOME_BACK = GO.id; GO = null;
@@ -3886,6 +4312,73 @@
   //   close              Back to games (closeLabel/onClose: 'Leave the table' for an online game)
   var peek = null;
   function winPeekClear() { if (peek) { peek.remove(); peek = null; } }
+  // The results card at a desk (a large window: deskShape's test, whatever the setup did). The card is set a size up
+  // (--dk; its buttons keep a button's size) and, beside the standings, shows the record of the game just played as
+  // its history view draws it (hist/*.js through historyDetail: the score sheet, the final board, the hands, the
+  // highlights), which is when a player wants it. 'side' (1000 or more wide): the record at the right of the card;
+  // 'strip' (a short wide window, or a card whose standings and buttons are too tall for 'side'): the standings at the
+  // left, the record in the middle and the buttons in a column of their own at the right; 'stack' (narrower, 1000 or
+  // more tall): under the standings, over the buttons. Nothing is ever cut: a card that no arrangement holds whole is
+  // the plain card, which scrolls as a tablet's does. A game that lays out its own card (a class of its own on .card:
+  // Arvela's plaque) is left to it. A phone and a tablet never get here.
+  function winShape() {
+    if (IN_SHEET || EDIT_DEFAULTS || !deskWindow()) return null;
+    var W = window.innerWidth, H = window.innerHeight;
+    if (W < 480 || H <= 520 || !(Math.max(W, H) > 1024 || Math.min(W, H) > 768)) return null;
+    return W >= 1000 && H >= 600 ? 'side' : W >= 1160 ? 'strip' : H >= 1000 ? 'stack' : null;
+  }
+  function deskWin(ov, card, o) {
+    var rec = o.__rec || (lastRec && Date.now() - lastRec.t < 30000 ? lastRec : null), pane = null, body = null, empty = false;
+    function own() { return card.classList.length > 1; }
+    function fill() {
+      if (!rec || pane || empty) return;
+      o.__rec = rec;
+      body = el('div', { class: 'k-win-gb' });
+      body.addEventListener('scroll', more, { passive: true });
+      pane = el('div', { class: 'k-win-game k-dk-rec' }, [el('div', { class: 'k-dkp-h' }, [el('span', { class: 'k-dkp-t', text: 'This game' })]), body]);
+      loadHistView().then(function () {
+        if (window.HistView) HistView.ready = true;
+        var d = null; try { d = historyDetail(rec.e, { inList: true, noPlayers: true, game: histGameId(rec.key) }); } catch (e) {}
+        // (a record with nothing to draw but how long it took and a highlight or two: the card stays as it is)
+        if (!d || ![].some.call(d.children, function (c) { return !c.classList.contains('k-hd-meta') && !c.classList.contains('k-hd-hl'); })) { empty = true; if (pane.parentNode) pane.parentNode.removeChild(pane); pane = null; sync(); return; }
+        body.appendChild(d); sync();
+      });
+    }
+    // (a record longer than its pane scrolls there, and fades out at the foot while there is more below)
+    function more() { if (body) body.classList.toggle('more', body.scrollHeight - body.scrollTop > body.clientHeight + 2); }
+    function sync() {
+      if (!ov.isConnected) { window.removeEventListener('resize', sync); recWait = null; return; }
+      var shape = own() ? null : winShape();
+      if (!shape && !ov.classList.contains('k-dk')) return;   // (a phone, a tablet, a game's own card: nothing to do or undo)
+      ov.classList.toggle('k-dk', !!shape); ov.classList.remove('k-dk-side', 'k-dk-strip', 'k-dk-stack', 'has-game');
+      card.style.minHeight = '';
+      if (!shape) { ov.style.removeProperty('--dk'); ov.style.removeProperty('--dkc'); if (!ov.getAttribute('style')) ov.removeAttribute('style'); if (pane && pane.parentNode) pane.parentNode.removeChild(pane); return; }
+      ov.style.setProperty('--dk', deskUnit().toFixed(3)); ov.style.setProperty('--dkc', deskCtl().toFixed(3));
+      fill();
+      if (!pane || empty) return;
+      if (pane.parentNode !== card) card.insertBefore(pane, card.querySelector(':scope > .k-acts'));
+      // the arrangements to try, the first that holds the whole card: side by side, then (wide enough) the buttons in
+      // a column of their own, which a long table of standings needs
+      var ways = shape === 'side' ? (window.innerWidth >= 1160 ? ['side', 'strip'] : ['side']) : [shape], ok = false;
+      ov.classList.add('has-game');
+      for (var i = 0; i < ways.length && !ok; i++) {
+        ov.classList.remove('k-dk-side', 'k-dk-strip', 'k-dk-stack'); ov.classList.add('k-dk-' + ways[i]);
+        card.style.minHeight = '';
+        // (beside the standings the record is out of the flow: the card is as tall as the taller of the two, within
+        // the window)
+        if (ways[i] !== 'stack') card.style.minHeight = Math.ceil(Math.min(window.innerHeight - 2 * Math.max(16, window.innerHeight * .03), pane.offsetHeight - body.clientHeight + body.scrollHeight + 2 * (parseFloat(getComputedStyle(pane).top) || 0))) + 'px';
+        ok = card.scrollHeight <= card.clientHeight + 1 && pane.offsetHeight >= 150;
+      }
+      // (standings too long for this window however they are set: the plain card, which scrolls)
+      if (!ok) { ov.classList.remove('k-dk-side', 'k-dk-strip', 'k-dk-stack', 'has-game'); card.style.minHeight = ''; pane.parentNode.removeChild(pane); }
+      more();
+    }
+    sync();
+    window.addEventListener('resize', sync);
+    // (a game that records just after it shows the card)
+    if (!rec) { recWait = function (r) { recWait = null; if (!ov.isConnected) return; rec = r; sync(); }; setTimeout(function () { if (!rec) recWait = null; }, 2500); }
+    setTimeout(sync, 0); setTimeout(sync, 350);
+  }
   function win(o) {
     o = o || {};
     winPeekClear();
@@ -3935,6 +4428,7 @@
     acts.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: o.closeLabel || 'Back to games', onclick: o.onClose ? function () { winPeekClear(); close(); o.onClose(); } : goHome }));
     card.appendChild(acts);
     doc.body.appendChild(ov); pinFixed(ov, true);
+    deskWin(ov, card, o);
     requestAnimationFrame(function () { requestAnimationFrame(function () { ov.classList.add('show'); }); });
     if (!(window.TurnNet && TurnNet.on())) resume.clear();   // (an online game ending leaves this device's own saved game in Keep playing)
     if (o.quiet) {}   // shown again (after looking at the board): no fanfare
@@ -3951,7 +4445,7 @@
   //   detail:{..} what the history detail view shows (hist-view.js): keep it small, no arrays inside arrays})
   // Saves to gh_<key> through GameHistory (synced). Kit.gameStart() marks the
   // start time so the record knows how long the game took.
-  var startedAt = Date.now();
+  var startedAt = Date.now(), lastRec = null, recWait = null;
   function gameStart() { startedAt = Date.now(); winPeekClear(); }
   function record(key, r) {
     r = r || {};
@@ -3976,6 +4470,8 @@
       try { var dj = JSON.stringify(r.detail); if (dj.length <= 6000) entry.dt = JSON.parse(dj); else console.warn('[record] detail too big, skipped', key, dj.length); } catch (e) {}
     }
     if (!DEMO) try { GameHistory.save(key, entry); } catch (e) {}
+    lastRec = { e: entry, key: key, t: Date.now() };   // (the results card at a desk shows it: deskWin)
+    if (recWait) { try { recWait(lastRec); } catch (e) {} }
     return entry;
   }
 
@@ -4040,7 +4536,8 @@
     // when, how long and how it was played: a caps label over each value (in a list the date is on the row already)
     var meta = o.inList ? [] : [['Played', fmtDate(n.date)]]; if (n.duration) meta.push(['Took', fmtDur(n.duration)]); if (n.mode) meta.push(['Played as', factParts(n.mode).join(', ')]);
     if (meta.length) box.appendChild(el('div', { class: 'k-hd-meta' }, meta.map(function (m) { return el('span', null, [el('small', { text: m[0] }), el('b', { text: m[1] })]); })));
-    if (n.players.length) {
+    if (o.noPlayers) {}
+    else if (n.players.length) {
       var ps = n.players.map(function (p, i) { return { p: p, i: i }; });
       if (ps.some(function (x) { return typeof x.p.score === 'number'; })) ps.sort(function (a, b) { return n.lowWins ? a.p.score - b.p.score : b.p.score - a.p.score; });
       var st = el('div', { class: 'k-hd-players' });
@@ -6137,7 +6634,7 @@
     theme: { list: THEME_LIST, get: themeGet, set: themeSet, name: function () { return themeRec(themeGet()).name; }, pick: themePick },
     spotifyOwns: spotifyOwns, music: spotifySheet, musicMini: spotifyMini, offline: offlineSheet, offlineTag: offlineTag,
     whoChips: whoChips, whoSaid: whoSaid, countStepper: countStepper, bubbleSwap: bubbleSwap,
-    facts: facts, factParts: factParts, titleSwitch: titleSwitch, resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, loadHistView: loadHistView, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, playersSheet: playersSheet, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
+    desk: deskShape, facts: facts, factParts: factParts, titleSwitch: titleSwitch, resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, loadHistView: loadHistView, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, playersSheet: playersSheet, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
   };
   window.GN = window.GN || { _loaded: true, haptic: haptic, toast: toast, sheet: sheet, confirm: confirmSheet };
 })();
