@@ -1232,6 +1232,7 @@
     dom.root.querySelectorAll(':scope > .an-rch').forEach(n => n.remove());
     const s = ui.sel; if (!s || s.kind !== 'hand' || s.picks.length || !G || G.demo || G.ph !== 'play' || !idle() || !CARDS[s.key] || CARDS[s.key].t !== 'relic') return;
     const T = targets(), o = S.turn, P = S.P[o]; if (!Object.keys(T.relics || {}).length) return;
+    if (ui.lay && ui.lay.dk && ui.lay.pil) return;   // (a large window's pillar shows your Relics large, each one the new Relic can cover lit and marked Replace: nothing more is needed)
     const at = dom.me.querySelector('.st-relics'), bar = dom.me.getBoundingClientRect(); if (!at || !bar.width) return;
     const W = window.innerWidth, H = window.innerHeight, sw = Math.max(96, Math.min(150, Math.floor((W - 16 - 22 - 10) / 2)));
     const slots = [0, 1].map(i => ({ i: i, key: P.relics[i] || null, acts: T.relics[i] || [], cost: E.costOf(S, o, s.key) }));
@@ -2696,7 +2697,7 @@
       const r = p.relics[i];
       // (a Relic picked up from your hand that would go over this one: the slot is lit, and a tap plays it there)
       const rp = me && T.relics && T.relics[i] && ui.sel && ui.sel.kind === 'hand' ? T.relics[i] : null;
-      if (r) { const b = el('button', { type: 'button', class: 'relic' + (relicUsed(r, p, on) ? ' used' : '') + (rp ? ' tgt rep' : ''), 'aria-label': rp ? 'Play ' + theName(ui.sel.key) + ' over ' + theName(r) + ', which goes to your discard pile' : info(r).n, 'data-relic': r, 'data-slot': i, onclick: () => { if (rp) pick('r', i); else if (G.demo) openView(r); else scan({ side: o, key: r }); } }); const im = artImg(r, true); if (im) b.appendChild(im); else b.appendChild(el('span', { class: 'relic-nm', 'aria-hidden': 'true', text: info(r).n.replace(/^The /, '').charAt(0) })); relics.appendChild(b); }   // (a Relic with no picture yet shows its initial)
+      if (r) { const b = el('button', { type: 'button', class: 'relic' + (relicUsed(r, p, on) ? ' used' : '') + (rp ? ' tgt rep' : ''), 'aria-label': rp ? 'Play ' + theName(ui.sel.key) + ' over ' + theName(r) + ', which goes to your discard pile' : info(r).n, 'data-relic': r, 'data-nm': info(r).n, 'data-slot': i, onclick: () => { if (rp) pick('r', i); else if (G.demo) openView(r); else scan({ side: o, key: r }); } }); const im = artImg(r, true); if (im) b.appendChild(im); else b.appendChild(el('span', { class: 'relic-nm', 'aria-hidden': 'true', text: info(r).n.replace(/^The /, '').charAt(0) })); relics.appendChild(b); }   // (a Relic with no picture yet shows its initial)
       else {
         const tg = me && T.done.length && ui.sel && ui.sel.kind === 'hand' && CARDS[ui.sel.key].t === 'relic' && i === p.relics.length;
         relics.appendChild(el(tg ? 'button' : 'span', { class: 'relic empty' + (tg ? ' tgt' : ''), 'data-slot': i, type: tg ? 'button' : null, 'aria-label': tg ? 'Play the Relic here' : null, onclick: tg ? () => finishPick(T.done) : null }));

@@ -106,6 +106,34 @@ Underlying principles for everything:
   a `.k-scrim` is up the page is locked (`html:has(body > .k-scrim)` in kit.css: overflow hidden, so iOS can't hand a drag
   that reached the end of the sheet on to the page), and `trapScroll` in kit.js stops a drag that would carry on past an
   end from its very first pixels, since iOS decides on the first move whether a drag scrolls.
+- **Large windows (a computer): designed for the room, never scaled up** (Tim, 2026-11-17, of his MacBook at 3024 by 1964
+  with the window dragged to any shape: "gameplay needs to take up as much screen as the device will give it, but also
+  adapt to every possible resizing option in there", and of a first try that laid a game out at a tablet's size and scaled
+  the page to the window: "simply scaling things up is not thoughtful design"; Axis & Allies, whose map takes the room at
+  any size, is his example of doing it right). Measured first: 80 of 114 games covered under a fifth of a 2100 by 1860
+  window. The principles (the brief is the scratchpad's `fill/BRIEF.md`): the play surface is sized from the window with no
+  cap left over from the tablet, and what is printed on the table grows with it to a comfortable largest size; the bar,
+  menus, sheets and buttons stay their size; room the surface can't use holds real information from the game's own state
+  that is otherwise a tap away or not shown (a score sheet, a racing form, a high-score board), information at the left
+  and actions at the right; every window from 320 by 568 to 3024 by 1964 works at any shape with no scroll, band or cut;
+  a resize mid-game keeps the state; and **the phone and the tablet do not change by a pixel** (proved with before and
+  after screenshots at 402x874, 874x402, 768x1024, 1024x768 and 320x568). **The pilot, four games for Tim to judge before
+  the rest**: Hearts (`Cards.desk(stage)` in cards.js, opt-in for any card table built on `.ctable`: four compositions by
+  window shape, `Cards.pad` the ruled score sheet at the left, `Cards.lastTrick` and the hand in play at the right, the
+  largest card 210px; at a desk a scored hand goes onto the sheet, not a sheet over the table); Pac-Man (`html.pm-big`,
+  `bigPlan`/`bigFit` in pacman.html: the maze at the window's height or width, drawn at its own pixels, and cabinet panels
+  sized by `--u` from the tile: scores, fruit and dots, the ghosts as they are now with the 200 to 1,600 ladder and blue
+  time, the high-score board with this game's row climbing, past games, drawn key caps); Horse Race (`html.hr-big`,
+  `bigPlan`/`layoutBig` in horserace.html: the track as the hero, the program as a racing form, a tote board of $2
+  payouts, races so far, the session, and the rail stood up at the right as the betting station; `deviceShape` keeps a
+  window shaped like a phone or tablet on the device layout); Arvela (`deskPlan` in ui.js, two players: Figures and the
+  hand sized together, the bars stood on end as pillars with the Guide, its power and the Relics by name, cards from 150px
+  wide saying their power, the last events beside the hand, the face-off's `.big` with whole cards from 330px). The
+  scratchpad's `fill/audit.js <shapes> <games> --shots [--root=<worktree>] [--out=<folder>]` opens a game's table through
+  its demo at eight desktop windows (A 2100x1860, B 3024x1964, C 1512x982, D 1600x560, E 720x1700, F 1000x1000, G 1280x720,
+  H 560x620) and measures the share of the window it covers; each pilot's own proof scripts are in `big/<game>/`. **Not
+  done yet**: `Kit.setup` and `Kit.win` in a large window (a small column and a small card in an empty window, in every
+  game), the demo's captions, and every game outside the pilot.
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
