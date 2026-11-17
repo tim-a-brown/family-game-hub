@@ -242,7 +242,8 @@ const P3 = {
   oakley: F('Annie Oakley', 'W', 2, 2, 'AMER', 6, 1885, { slayer: 1 }),
   houdini: F('Harry Houdini', 'W', 3, 2, 'AMER', 7, 1912, { swift: 1, untouchable: 1 }),
   // Relics (any deck). Each has a power, the card's own or the one its fx names: a player has two Relics in play at most,
-  // and no two with the same power.
+  // and no two with the same power. A Relic can be played over one of the player's own, which goes to their discard pile
+  // (2026-11-17; engine.js, over hasFx).
   // (the Compass's power)
   astrolabe: { n: 'Astrolabe', t: 'relic', f: 'N', c: 1, fx: 'compass', y: 400 },
   locomotive: { n: 'Steam Locomotive', t: 'relic', f: 'N', c: 1, y: 1829 },

@@ -725,10 +725,12 @@
       if (parts && parts.length > 1) notes.appendChild(el('div', { class: 'mt' }, parts.map(p => el('span', { html: esc(p[0]) + ' <b>' + (p === parts[0] ? '' : '+') + p[1] + '</b>' }))));
       lyingNotes(notes, f.p, f);
     }
-    // A Relic in your hand that can't be played, and why: you have its power in play already, or you have two Relics.
+    // A Relic in your hand whose power you have in play already: why only one of your Relic slots is lit for it (Tim,
+    // 2026-11-17: a Relic can always be played over one of your own; with its power in play, only over the Relic that has it)
     if (S && G && !G.over && !G.demo && CARDS[key] && CARDS[key].t === 'relic' && S.P[ui.view] && S.P[ui.view].hand.indexOf(key) >= 0) {
-      const P = S.P[ui.view], same = E.relicOf(S, P, E.fxOf(key, S)), cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
-      const why = same ? 'You have ' + theName(same) + ' in play. ' + cap1(theName(key)) + ' has the same power, and your two Relics have to be Relics with different powers.' : P.relics.length >= 2 ? 'You have two Relics in play, and two is the most you can have.' : '';
+      const P = S.P[ui.view], same = E.relicOf(S, P, E.fxOf(key, S));
+      const why = !same ? '' : same === key ? 'You have ' + theName(key) + ' in play already. Two Relics with the same power can\'t both be in play, so the one in your hand can go only over the one in play.'
+        : 'You have ' + theName(same) + ' in play, and ' + theName(key) + ' has the same power. Two Relics with the same power can\'t both be in play, so ' + theName(key) + ' can go only over ' + theName(same) + '.';
       if (why) notes.appendChild(el('div', { class: 'why', text: why }));
     }
     // (a Relic's power: what it leans on, in whole sentences)
@@ -1066,7 +1068,7 @@
       else if (a.t === 'relay') label = 'Change places with ' + nm(a.u === it.u ? a.v : a.u);   // (the Qhapaq Ñan: a Figure there and one of yours elsewhere change places)
       else if (sel.kind === 'fig') label = a.t === 'clash' ? 'Clash with ' + nm(a.v) + (a.ph && quickOf(a) ? ', with ' + CARDS[quickOf(a)].n : '') : (a.t === 'walk' ? 'Move to ' : a.t === 'antik' ? 'Jump to ' : 'Step to ') + at(a.p);
       else if (a.t === 'fig') label = 'Play at ' + at(a.p);
-      else if (a.t === 'relic') label = 'Play';
+      else if (a.t === 'relic') label = a.over != null ? 'Play over ' + theName(P.relics[a.over]) : 'Play';
       else if (a.t === 'deed' && a.w != null) label = 'Trade Gates and Outposts with ' + pname(a.w);   // (the Columbian Exchange, with more players: whose)
       else if (a.t === 'deed') { const n = (a.h2 != null) + (a.u != null) + (a.v != null) + (a.p != null); if (!n) label = 'Play'; else if (n === 1 && a.p != null) label = 'Play at ' + at(a.p); else if (n === 1 && a.u != null) label = 'Play on ' + nm(a.u); else if (n === 1 && a.v != null) label = 'Play on ' + nm(a.v); else table = true; }
       else table = true;
@@ -1095,6 +1097,9 @@
   // A Figure's clashes, a Deed's chosen Figure or player, a Domain's own power and a Relic are chips and buttons on the
   // line under the road. A card that can't be played dims the road, and a plate on the card says why (its cost against
   // your Spark, or the reason). roadOf(it) works out what the road shows; paintRoad draws it.
+  // A Relic in your hand goes to no Domain, so its road is your two Relic slots (R.slots; Tim, 2026-11-17: "i should be
+  // able to play a relic over an existing relic in play for me"): a free slot it can go to says Play, a slot whose Relic
+  // it would go over shows that Relic and says Replace, and a slot it can't go to stays dim. A tap on a lit slot plays it.
   // (a Domain's name the way people say it, for a small tile: "Padua", "Greenwich")
   const domShort = n => n.replace(/^The /, '').replace(/^.*, /, '').replace(/^(University|Silver Mines|Library|Market|Rock) of /, '').replace(/^Great Pyramid of Giza$/, 'Great Pyramid').replace(/^Kilwa Kisiwani$/, 'Kilwa').replace(/^Citadelle /, '');
   const roadOrd = () => (many() ? mapOrder() : rowsOrder());
@@ -1141,6 +1146,7 @@
       if (cv.length) R.btns.push({ label: 'Take a card from your discard pile', cost: 1, main: true, run: () => caveChoose() }); else R.off = true; return R; }
     else return R;
     const key = it.h != null ? it.key : null, cost = a => (key ? E.costOf(S, o, key, a.t === 'fig' ? a.p : undefined) : null);
+    if (key && CARDS[key].t === 'relic') R.slots = [0, 1].map(i => ({ i: i, key: P.relics[i] || null, acts: [], cost: E.costOf(S, o, key) }));   // (a Relic's road: your two Relic slots)
     const chip = {}, order = []; let table = false;
     const addChip = (k, c, a) => { if (!chip[k]) { chip[k] = Object.assign({ acts: [] }, c); order.push(k); } chip[k].acts.push(a); };
     acts.forEach(a => {
@@ -1151,7 +1157,7 @@
       if (t === 'loan') { R.btns.push({ label: 'Borrow 2 Spark, paid back next turn', acts: [a] }); return; }
       if (t === 'buy') { R.btns.push({ label: 'Buy a card', cost: 1, acts: [a] }); return; }
       if (t === 'hire') { R.btns.push({ label: 'Hire 2 Might here this round', cost: 1, acts: [a] }); return; }
-      if (t === 'relic') { R.btns.push({ label: 'Play ' + theName(key), cost: cost(a), main: true, acts: [a] }); return; }
+      if (t === 'relic') { const sl = R.slots && R.slots[a.over != null ? a.over : P.relics.length]; if (sl) sl.acts.push(a); else R.btns.push({ label: 'Play ' + theName(key), cost: cost(a), main: true, acts: [a] }); return; }
       if (t === 'deed') {
         const n = (a.h2 != null) + (a.u != null) + (a.v != null) + (a.p != null) + (a.q != null) + (a.w != null);
         if (!n) R.btns.push({ label: 'Play ' + theName(key), cost: cost(a), main: true, acts: [a] });
@@ -1174,7 +1180,7 @@
       R.after[i] = { m: sd, word: take ? 'Take it' : verb, take: take, cost: cost(a) }; if (cost(a) != null) cs[cost(a)] = 1; });
     R.costly = Object.keys(cs).length > 1;   // (a Domain where the card costs less, Timbuktu: each lit tile says its cost)
     if (table) R.btns.push({ label: R.btns.length || R.chips.length || Object.keys(R.lit).length ? 'More: choose on the table' : 'Choose on the table', soft: true, run: () => { if (idle()) { closeView(); select(sel); } } });
-    if (!R.btns.length && !R.chips.length && !Object.keys(R.lit).length) {
+    if (!R.btns.length && !R.chips.length && !Object.keys(R.lit).length && !(R.slots && R.slots.some(x => x.acts.length))) {
       R.off = true;
       if (it.h != null) { const c = E.costOf(S, o, it.key); if (c > P.spark) R.plate = { cost: c, have: P.spark }; else { const n = scanActs(it).filter(x => x.note)[0]; if (n) R.plate = { note: n.note }; } }
       else if (it.u != null) { const f = E.byU(S, it.u), n = CARDS[f.c].n;
@@ -1183,7 +1189,7 @@
     }
     return R;
   }
-  const canDo = it => { const R = roadOf(it); return !!(Object.keys(R.lit).length || R.chips.length || R.btns.some(b => !b.soft || b.run)); };
+  const canDo = it => { const R = roadOf(it); return !!(Object.keys(R.lit).length || R.chips.length || R.btns.some(b => !b.soft || b.run) || (R.slots && R.slots.some(x => x.acts.length))); };
   // How big the road's tiles are at this screen size: as wide as the room for one row of them allows
   // (an iPad held sideways: the strip at the left and the road and notes in a column at the right, as on a phone on its side)
   const scanWide = () => window.innerWidth > window.innerHeight * 1.15 && window.innerWidth >= 960 && window.innerHeight > 560;
@@ -1193,10 +1199,62 @@
     const rw = Math.max(40, Math.min(side ? 84 : 124, Math.floor((w - (per - 1) * gap) / per))), rh = Math.round(rw * .62), rows = Math.ceil(n / per), chips = 52;   // (chips: the line under the tiles, as tall as its buttons, 50px since the bigger buttons; at 40 a Play button hung over the notes)
     return { rw: rw, rh: rh, gap: gap, per: per, h: rows * (rh + 22) + (rows - 1) * 4 + 8 + chips, chips: chips };
   }
+  // Your two Relic slots as a row of tiles, for a Relic from your hand (key): the Relic in each slot with its name, a free
+  // slot as the bar's empty diamond. A slot the Relic can go to (sl.acts) is lit, with its pill, Play or Replace, and its
+  // cost; go(sl) plays it there. The road under the card and the chooser over your bar on the table both draw this.
+  function slotsRow(slots, key, sw, label, go) {
+    const nk = theName(key);
+    const row = el('div', { class: 'rd-row rel', style: { '--sw': sw + 'px' } }, [label ? el('span', { class: 'rd-rl', 'aria-hidden': 'true' }, [el('i', { html: MARK.relic }), el('span', { text: 'Your Relics' })]) : null]);
+    slots.forEach(sl => {
+      const lit = sl.acts.length > 0, nm = sl.key ? info(sl.key).n.replace(/^The /, '') : '';
+      const b = el(lit ? 'button' : 'span', { class: 'rd-t rd-s' + (lit ? ' lit' : '') + (sl.key ? '' : ' free'), 'data-slot': sl.i, type: lit ? 'button' : null,
+        'aria-label': sl.key ? (lit ? 'Play ' + nk + ' over ' + theName(sl.key) + ' for ' + sl.cost + ' Spark. ' + cap1(theName(sl.key)) + ' goes to your discard pile.' : cap1(theName(sl.key)) + ', one of your Relics in play') : lit ? 'Play ' + nk + ' in this free Relic slot for ' + sl.cost + ' Spark' : 'A free Relic slot' });
+      const t = el('span', { class: 'rd-tile rd-rel' });
+      if (sl.key) { const art = el('span', { class: 'rd-ra' }), im = artImg(sl.key, true, true) || mono(sl.key); if (im) art.appendChild(im); t.appendChild(art); t.appendChild(el('span', { class: 'rd-rn', text: nm })); }
+      else t.appendChild(el('i', { class: 'rd-dia' }));
+      b.appendChild(t);
+      if (lit) { b.appendChild(el('span', { class: 'rd-g' }, [el('span', { text: sl.key ? 'Replace' : 'Play' }), el('span', { class: 'sc-cost' }, [el('b', { text: String(sl.cost) })])]));
+        b.addEventListener('click', e => { e.stopPropagation(); go(sl); }); }
+      row.appendChild(b);
+    });
+    return row;
+  }
+  // On the table, a Relic picked up from your hand that has to go over one of your own (Tim, 2026-11-17): the Relics it can
+  // cover light on your bar, and over them rises the same row of slots the road shows, large enough to read and to tap,
+  // its notch on your bar's Relics. A tap on a lit slot, or the Relic let go there, plays it; the Relic underneath goes to
+  // your discard pile. (A Relic bound for a free slot needs none of this: the free slot lights, and Play is in the caption.)
+  function relicChooser() {
+    dom.root.querySelectorAll(':scope > .an-rch').forEach(n => n.remove());
+    const s = ui.sel; if (!s || s.kind !== 'hand' || s.picks.length || !G || G.demo || G.ph !== 'play' || !idle() || !CARDS[s.key] || CARDS[s.key].t !== 'relic') return;
+    const T = targets(), o = S.turn, P = S.P[o]; if (!Object.keys(T.relics || {}).length) return;
+    const at = dom.me.querySelector('.st-relics'), bar = dom.me.getBoundingClientRect(); if (!at || !bar.width) return;
+    const W = window.innerWidth, H = window.innerHeight, sw = Math.max(96, Math.min(150, Math.floor((W - 16 - 22 - 10) / 2)));
+    const slots = [0, 1].map(i => ({ i: i, key: P.relics[i] || null, acts: T.relics[i] || [], cost: E.costOf(S, o, s.key) }));
+    const n = el('div', { class: 'an-rch', role: 'group', 'aria-label': 'Your Relics: where ' + theName(s.key) + ' can go' }, [slotsRow(slots, s.key, sw, false, sl => pick('r', sl.i))]);
+    dom.root.appendChild(n);
+    // Where it goes: over your bar (under it where there is no room over it), or beside a bar that stands on end; and where
+    // that would lie on your hand (four players on a phone held sideways), beside the bar instead. Its notch is on the Relics.
+    const r = at.getBoundingClientRect(), b = n.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, side = bar.height > bar.width * 1.2;
+    const hc = Array.prototype.map.call(dom.hand ? dom.hand.querySelectorAll('.hc') : [], x => x.getBoundingClientRect()).filter(x => x.width);
+    const onHand = (x, y) => hc.some(h => !(x + b.width <= h.left || x >= h.right || y + b.height <= h.top || y >= h.bottom));
+    const fitX = v => Math.max(8, Math.min(W - b.width - 8, v)), fitY = v => Math.max(8, Math.min(H - b.height - 18, v)), opts = [];
+    const tb = k => { const y = k === 't' ? bar.top - b.height - 9 : bar.bottom + 9; if (y >= 50 && y + b.height <= H - 8) opts.push({ k: k, x: fitX(cx - b.width / 2), y: y }); };
+    const lr = k => { const x = k === 'r' ? bar.right + 10 : bar.left - b.width - 10; if (x >= 8 && x + b.width <= W - 8) opts.push({ k: k, x: x, y: fitY(cy - b.height / 2) }); };
+    const near = bar.left + bar.width / 2 < W / 2 ? ['r', 'l'] : ['l', 'r'];
+    if (side) { near.forEach(lr); tb('t'); tb('b'); } else { tb('t'); tb('b'); near.forEach(lr); }
+    const pl = opts.find(o => !onHand(o.x, o.y)) || opts[0] || { k: 't', x: fitX(cx - b.width / 2), y: fitY(bar.top - b.height - 9) };
+    n.classList.add('at-' + pl.k);
+    if (pl.k === 't' || pl.k === 'b') n.style.setProperty('--nx', Math.round(Math.max(16, Math.min(b.width - 16, cx - pl.x))) + 'px'); else n.style.setProperty('--ny', Math.round(Math.max(16, Math.min(b.height - 16, cy - pl.y))) + 'px');
+    n.style.left = Math.round(pl.x) + 'px'; n.style.top = Math.round(pl.y) + 'px';
+  }
   function paintRoad(box, R, it) {
     box.innerHTML = ''; const D = roadDims(box), o = S.turn, me = ui.view;
     box.className = 'sc-road' + (R.off ? ' off' : ''); box.style.setProperty('--rw', D.rw + 'px'); box.style.setProperty('--rh', D.rh + 'px'); box.style.setProperty('--rg', D.gap + 'px'); box.style.setProperty('--rc', D.chips + 'px'); box.style.height = D.h + 'px';
-    const ord = roadOrd(), rows = el('div', { class: 'rd-rows' }); let row = null;
+    const ord = R.slots ? [] : roadOrd(), rows = el('div', { class: 'rd-rows' }); let row = null;
+    if (R.slots) {   // (a Relic from your hand: your two Relic slots, in the room the Domains have under any other card)
+      const bw = box.clientWidth || D.per * (D.rw + D.gap), sw = Math.max(96, Math.min(170, Math.floor((bw - 62 - 2 * (D.gap + 2)) / 2)));   // (each slot as wide as the room allows, so every Relic's name fits beside its picture)
+      rows.appendChild(slotsRow(R.slots, it.key, sw, true, sl => runActs(sl.acts, info(it.key).n)));
+    }
     ord.forEach((p, k) => {
       if (k % D.per === 0) { row = el('div', { class: 'rd-row' }); rows.appendChild(row); }
       const lit = R.lit[p], here = R.here === p, af = R.after[p], m = af ? af.m : sidesOf(V.tot[p], me), hold = V.hold[p];
@@ -1619,6 +1677,13 @@
     if (fp && T.figs[+fp.dataset.u]) return { k: 'f', v: +fp.dataset.u, n: fp, acts: T.figs[+fp.dataset.u] };
     if (stk) { const u = stk.dataset.us.split(' ').map(Number).filter(x => T.figs[x])[0]; if (u != null) return { k: 'f', v: u, n: stk, acts: T.figs[u] }; }
     if (row && T.places[+row.dataset.p]) return { k: 'p', v: +row.dataset.p, n: row, acts: T.places[+row.dataset.p] };
+    // (a Relic that goes over one of your own: let go over your bar, on the lit Relic nearest the finger; with one Relic it
+    // can cover, anywhere on the table does, as a Relic bound for a free slot is played by letting go over the table)
+    const rs = Object.keys(T.relics || {}), ch = n.closest('.an-rch .rd-s[data-slot]');
+    if (ch && T.relics && T.relics[+ch.dataset.slot]) return { k: 'r', v: +ch.dataset.slot, n: ch, acts: T.relics[+ch.dataset.slot] };
+    if (rs.length && !n.closest('.an-hand') && (rs.length === 1 || n.closest('.an-strip.me'))) { let best = null, bd = 1e9;
+      rs.forEach(i => { const sn = q('.an-strip.me .relic[data-slot="' + i + '"]'), b = rc(sn); if (!b) return; const d = Math.hypot(x - (b.left + b.width / 2), y - (b.top + b.height / 2)); if (d < bd) { bd = d; best = { k: 'r', v: +i, n: sn, acts: T.relics[i] }; } });
+      if (best) return best; }
     if (T.done.length && !Object.keys(T.places).length && !Object.keys(T.figs).length && !Object.keys(T.hand).length && !n.closest('.an-hand')) return { k: 'done', n: n.closest('.an-map, .an-strip.me') || dom.map, acts: T.done };
     return null;
   }
@@ -1627,6 +1692,7 @@
     const o = S.turn, me = o;
     if (t.k === 'f') { const pv = clashPreview(t.acts); return pv ? { m: pv[0] + ' vs ' + pv[1], tx: pv[0] > pv[1] ? 'You are stronger' : pv[0] < pv[1] ? 'They are stronger' : 'Even' } : { tx: 'Clash' }; }
     if (t.k === 'done') return { tx: 'Play ' + theName(drag.key) };
+    if (t.k === 'r') return { tx: 'Replace ' + theName(S.P[o].relics[t.v]) };   // (it goes over that Relic, which goes to your discard pile)
     const a = t.acts[0], moves = a.t === 'fig' || a.t === 'walk' || a.t === 'antik' || a.t === 'tub' || a.t === 'rail';
     if (!moves) return { tx: 'Play here' };
     const T2 = simulate(a), sd = sidesOf(E.mights(T2, t.v), me), h = E.holder(T2, t.v), was = V.hold[t.v], mine = q => q >= 0 && (q === me || E.ally(S, q, me));
@@ -2526,7 +2592,9 @@
     const T = me ? targets() : null;
     for (let i = 0; i < 2; i++) {
       const r = p.relics[i];
-      if (r) { const b = el('button', { type: 'button', class: 'relic' + (relicUsed(r, p, on) ? ' used' : ''), 'aria-label': info(r).n, 'data-relic': r, onclick: () => { if (G.demo) openView(r); else scan({ side: o, key: r }); } }); const im = artImg(r, true); if (im) b.appendChild(im); else b.appendChild(el('span', { class: 'relic-nm', 'aria-hidden': 'true', text: info(r).n.replace(/^The /, '').charAt(0) })); relics.appendChild(b); }   // (a Relic with no picture yet shows its initial)
+      // (a Relic picked up from your hand that would go over this one: the slot is lit, and a tap plays it there)
+      const rp = me && T.relics && T.relics[i] && ui.sel && ui.sel.kind === 'hand' ? T.relics[i] : null;
+      if (r) { const b = el('button', { type: 'button', class: 'relic' + (relicUsed(r, p, on) ? ' used' : '') + (rp ? ' tgt rep' : ''), 'aria-label': rp ? 'Play ' + theName(ui.sel.key) + ' over ' + theName(r) + ', which goes to your discard pile' : info(r).n, 'data-relic': r, 'data-slot': i, onclick: () => { if (rp) pick('r', i); else if (G.demo) openView(r); else scan({ side: o, key: r }); } }); const im = artImg(r, true); if (im) b.appendChild(im); else b.appendChild(el('span', { class: 'relic-nm', 'aria-hidden': 'true', text: info(r).n.replace(/^The /, '').charAt(0) })); relics.appendChild(b); }   // (a Relic with no picture yet shows its initial)
       else {
         const tg = me && T.done.length && ui.sel && ui.sel.kind === 'hand' && CARDS[ui.sel.key].t === 'relic' && i === p.relics.length;
         relics.appendChild(el(tg ? 'button' : 'span', { class: 'relic empty' + (tg ? ' tgt' : ''), 'data-slot': i, type: tg ? 'button' : null, 'aria-label': tg ? 'Play the Relic here' : null, onclick: tg ? () => finishPick(T.done) : null }));
@@ -2805,6 +2873,7 @@
     } finally { pass = null; }
     fitStrips(); if (!M) layout(); fitPlates(); fitNames(); if (!M) piles(); coverNames(); lines(); fitSides();
     dom.root.querySelectorAll('.st-name').forEach(n => Kit.fitText(n, .6));
+    relicChooser();   // (a Relic picked up that has to go over one of yours: the slots it can go to, over your bar)
   }
   // A player's bar keeps everything on it inside its own edge (a 320-wide phone held upright: the other player's name,
   // Seals, Relics, hand and Spark did not fit, and the Spark ran off the screen). It steps down, n1 to n3 (t1 and t2 are the
@@ -3436,17 +3505,18 @@
     if (a.t === 'fig') q.push(['p', a.p]);
     else if (a.t === 'clash') { q.push(['f', a.u]); q.push(['f', a.v]); }
     else if (a.t === 'deed') { if (a.w != null) q.push(['p', 2 * a.w]); if (a.h2 != null) q.push(['h', a.h2]); if (a.u != null) q.push(['f', a.u]); if (a.v != null) q.push(['f', a.v]); if (a.p != null) q.push(['p', a.p]); if (a.q != null) q.push(['p', a.q]); }
+    else if (a.t === 'relic' && a.over != null) q.push(['r', a.over]);   // (a Relic played over one of your own: which of your Relic slots)
     return q;
   }
-  const NOT = { places: {}, figs: {}, hand: {}, done: [] };
+  const NOT = { places: {}, figs: {}, hand: {}, relics: {}, done: [] };
   function targets() {
     if (ui.pend) return pendTargets();
     const s = ui.sel; if (!s || !idle()) return NOT;
-    const out = { places: {}, figs: {}, hand: {}, done: [] }, n = s.picks.length;
+    const out = { places: {}, figs: {}, hand: {}, relics: {}, done: [] }, n = s.picks.length;
     s.acts.forEach(a => {
       const q = seqOf(a); for (let i = 0; i < n; i++) if (!q[i] || q[i][0] !== s.picks[i].k || q[i][1] !== s.picks[i].v) return;
       if (q.length === n) { out.done.push(a); return; }
-      const b = q[n][0] === 'p' ? out.places : q[n][0] === 'h' ? out.hand : out.figs; (b[q[n][1]] = b[q[n][1]] || []).push(a);
+      const b = q[n][0] === 'p' ? out.places : q[n][0] === 'h' ? out.hand : q[n][0] === 'r' ? out.relics : out.figs; (b[q[n][1]] = b[q[n][1]] || []).push(a);
     });
     return out;
   }
@@ -3990,7 +4060,28 @@
     },
     async relic(ev, ctx) {
       const o = ev.o, from = handRect(o, ctx.a.h); if (o !== ui.view) await showCard(ev.c, 900);
-      dropHand(o, ctx.a.h); V.P[o].spark = Math.max(0, V.P[o].spark - (ctx.cost || 0)); V.P[o].relics.push(ev.c); render();
+      dropHand(o, ctx.a.h); V.P[o].spark = Math.max(0, V.P[o].spark - (ctx.cost || 0));
+      // (played over one of the player's own Relics: that Relic comes up out of its slot as a card, large enough to know,
+      // and falls away to its player's discard pile; then the new one lands in the slot it left)
+      if (ev.was) { render(); const old = relicN(o, ev.was), r0 = rc(old);
+        if (r0) { const w = Math.max(68, Math.min(88, r0.width * 2.8)), cx = r0.left + r0.width / 2, cy = r0.top + r0.height / 2, dn = cy > window.innerHeight / 2 ? 1 : -1;
+          // (held up clear of the bar: over a bar at the foot of the table, under one at its head, and beside a bar that
+          // stands on end, a phone on its side; then away past the bar's own edge)
+          const bar = rc(q('.an-strip.p' + o)) || r0, on = bar.height > bar.width * 1.2, dx = bar.left + bar.width / 2 < window.innerWidth / 2 ? 1 : -1;
+          const up = on ? { left: dx > 0 ? bar.right + 8 : bar.left - w - 8, top: Math.max(4, Math.min(window.innerHeight - w * 1.4 - 4, cy - w * .7)), width: w }
+            : { left: Math.max(4, Math.min(window.innerWidth - w - 4, cx - w / 2)), top: cy - w * .7 - dn * (w * .9 + 8), width: w };
+          const off = on ? { left: up.left - dx * w * 1.3, top: up.top + 6 } : { left: up.left + w * .1 + dn * 10, top: up.top + dn * w * 1.5 };
+          // (one card in one motion, so nothing blinks: up out of the slot, held a moment, then away)
+          // (drawn at the size it comes up to and made small in its slot, so its name is sharp when it is held up)
+          const c = cardEl(ev.was, { mini: true, now: true }), s0 = r0.width / w, at = (x, y, k) => 'translate(' + x + 'px,' + y + 'px) scale(' + k + ')';
+          c.style.fontSize = (w / 30) + 'px'; c.classList.add('fly'); dom.fx.appendChild(c);
+          old.classList.add('leaving'); Kit.sfx('slide'); setTimeout(() => Kit.sfx('flip'), 560 / speed);
+          await anim(c, [{ transform: at(r0.left, r0.top, s0), opacity: 1, offset: 0, easing: 'cubic-bezier(.22,1,.36,1)' }, { transform: at(up.left, up.top, 1), opacity: 1, offset: .34 }, { transform: at(up.left, up.top, 1), opacity: 1, offset: .62, easing: 'ease-in' },
+            { transform: at(off.left, off.top, .8), opacity: 0, offset: 1 }], { duration: 900, fill: 'forwards' });
+          c.remove(); }
+        V.P[o].relics[ev.over] = ev.c; }
+      else V.P[o].relics.push(ev.c);
+      render();
       const n = q('.an-strip.p' + o + ' .relic[data-relic="' + ev.c + '"]');
       if (n && from) { n.style.visibility = 'hidden'; Kit.sfx('whoosh'); await flyCard(ev.c, from, rc(n), { ms: 480, arc: 24 }); n.style.visibility = ''; }
       Kit.sfx('chip'); Kit.haptic('medium'); await wait(260);
@@ -4158,7 +4249,7 @@
       const t = ev.t;
       if (t === 'turn') L.push({ h: 't', r: ev.round, o: ev.o });
       else if (t === 'arrive') add(ev.o, [nm(ev.o) + ' played ', K(ev.c), ' at ', Pl(ev.p), '.']);
-      else if (t === 'relic') add(ev.o, [nm(ev.o) + ' played ', K(ev.c), '.']);
+      else if (t === 'relic') add(ev.o, ev.was ? [nm(ev.o) + ' played ', K(ev.c), ' over ', K(ev.was), ', and ', K(ev.was), ' went to ' + pos(ev.o) + ' discard pile.'] : [nm(ev.o) + ' played ', K(ev.c), '.']);
       else if (t === 'deed') { const fx = E.fxOf(ev.c), oth = 1 - ev.o;
         if (fx === 'westphalia') add(ev.o, [nm(ev.o) + ' played ', K(ev.c), ' at ', Pl(ev.p), '. Nobody can start a clash there until this round ends.']);
         else if (fx === 'milan') add(ev.o, [nm(ev.o) + ' played ', K(ev.c), ' at ', Pl(ev.p), '. Until this round ends, ' + (S.N > 2 ? Kit.poss(nm(ev.o)) + ' opponents' : nm(oth) === 'You' ? 'you' : nm(oth)) + ' can\'t start a clash with ' + pos(ev.o) + ' Figures there.']);
@@ -4399,7 +4490,8 @@
     const o = S.turn, P = S.P[o], who = pname(o), at = p => theName('@' + S.places[p]), fig = u => E.byU(S, u);
     const mine = f => f && f.o === ui.view ? 'your ' : f ? Kit.poss(pname(f.o)) + ' ' : '';
     if (a.t === 'fig') { const k = P.hand[a.h]; return { key: k, tx: who + ' played ' + CARDS[k].n + ' at ' + at(a.p) + '.' }; }
-    if (a.t === 'relic') { const k = P.hand[a.h]; return { key: k, tx: who + ' played ' + theName(k) + '.' }; }
+    if (a.t === 'relic') { const k = P.hand[a.h], was = a.over != null ? P.relics[a.over] : null;   // (over one of their own Relics: both are named)
+      return { key: k, tx: who + ' played ' + theName(k) + (was ? ' over ' + theName(was) + ', and ' + theName(was) + ' went to ' + (o === ui.view && who === 'You' ? 'your' : Kit.poss(who)) + ' discard pile.' : '.') }; }
     if (a.t === 'deed') { const k = P.hand[a.h], fx = E.fxOf(k), n = CARDS[k].n.replace(/^The /, 'the '), has = who === 'You' ? ' have ' : ' has ';
       // (the four Deeds that double a count, and the Theodosian Walls, say what they did: a Tribune's Veto may still cancel them, robotTurn)
       if (fx === 'triumph') return { key: k, tx: who + ' played ' + n + ' at ' + at(a.p) + '. If ' + who + ' holds ' + at(a.p) + ' at this round\'s count, it scores double.' };
@@ -4711,7 +4803,7 @@
     '<li>Then, in any order, play cards and act. When you pick up a card from your hand or one of your Figures, every Place it can go to lights up. Tap one of them, or drag the card there and let go. While you drag, the Place under your finger shows what your Might there would be.</li>' +
     '<li>You play a <b>Figure</b> at your Gate, or at any Place where you already have one. Up to 3 of your Figures can stand at one Place.</li>' +
     '<li>Each Figure does one thing a turn: <b>walk</b> one step to the next Place, or <b>clash</b> with an enemy Figure where it stands. A Figure you have just played can clash but not walk.</li>' +
-    '<li><b>Relics</b> stay in play. You can have 2 Relics in play at a time, and they have to be Relics with different powers. <b>Deeds</b> happen once and are gone.</li>' +
+    '<li><b>Relics</b> stay in play. You can have 2 Relics in play at a time, and they have to be Relics with different powers. With 2 Relics in play, you can play a new Relic over either of them, and the Relic underneath goes to your discard pile. A Relic with the same power as one of your Relics in play can go only over that Relic. <b>Deeds</b> happen once and are gone.</li>' +
     '<li>You keep up to 2 Spark you don\'t spend through the other players\' turns. That Spark pays for a Deed with <b>Quick</b>, such as Phalanx, which plays itself when it saves your Figure.</li>' +
     '<li>Three Quick Deeds only ever play themselves, each at the moment its card names. <b>Testudo</b> pulls back a Figure of yours that loses a clash it started on an opponent\'s side, so it goes back to your Gate instead of being knocked out. The <b>Defense of Syracuse</b> drives back to its own Gate an enemy Figure that would win a clash it started at your Gate or your Outpost. The <b>Tribune\'s Veto</b> cancels a Deed an opponent plays that would score Renown or move, stun or knock out one of your Figures. Testudo is paid for with the Spark of your own turn, and the other two with Spark you kept.</li>' +
     '<li>You can hold 8 cards when your turn ends, or 10 with the Timbuktu Manuscripts or the Quipu in play.</li></ul>' +

@@ -594,6 +594,17 @@ const room = (S, i, o) => cnt(S, i, o) < capAt(S, i);
 const hasRelic = (p, r) => p.relics.indexOf(r) >= 0;   // (this very Relic: a Legacy Line names the card)
 // A Relic's power, whichever Relic it is. A player has two Relics in play at most, and no two with the same power
 // (actions()), so a power never counts twice: nothing here adds up.
+// A Relic played over another (Tim, 2026-11-17: "i should be able to play a relic over an existing relic in play for
+// me"; scripts/anoria/relic-over-2026-11-17.txt): {t: 'relic', h, over: i} pays the Relic's cost, puts it in slot i of
+// P.relics, and the Relic that was there goes to its player's discard pile ({t: 'relic', o, c, over, was} says so).
+// A Relic whose power is in play can go only over the Relic that has it, so there are still never two with one power;
+// with two Relics of other powers the player chooses which one it covers; with a free slot and no such Relic it is
+// played as always (no `over`). Nothing a Relic does is kept with the Relic or its slot: what a power has used (P.uA,
+// uRw, uRk, uLc this turn, P.uCy this round, P.rb this game) is its player's, so the Relic that left stops at once
+// (every test asks hasFx as it happens), and a power that works once is not made new by playing its Relic again. The
+// one thing a Relic leaves on a Figure, the Stirrup's Charge (f.gar), goes with it (relicLeft). A Legacy Line is read
+// as the Relic is played, before the one under it leaves, so a Relic that grows from the Relic it covers makes its
+// line. cfg.relicOver 0, for test games: the rule before (a Relic needs a free slot and a power not in play).
 const hasFx = (S, p, fx) => p.relics.some(r => fxOf(r, S) === fx);
 const relicOf = (S, p, fx) => p.relics.find(r => fxOf(r, S) === fx) || null;
 // (how many times a player has a power. It is 0 or 1 in the game. cfg.relicStack, for test games only, lets two
@@ -821,7 +832,12 @@ function actions(S) {
         if (S.dm && c.arr && ((c.arr[0] === 'found' && canTurn(S, o)) || (c.arr[0] === 'conquer' && enemySide(S, o, i) && !prot(S, i, o) && canTurn(S, i >> 1)))) out.push({ t: 'fig', h, p: i, x: 1 }); }
       return; }
     const x = costOf(S, o, ci); if (x > P.spark) return;
-    if (c.t === 'relic') { if (P.relics.length < 2 && (S.cfg.relicStack ? !hasRelic(P, ci) : !hasFx(S, P, fxOf(ci, S)))) out.push({ t: 'relic', h }); return; }   // (two Relics, and no two with the same power)
+    if (c.t === 'relic') {   // (two Relics, and no two with the same power: a free slot, or over one of your own, which goes to your discard pile)
+      const fx = fxOf(ci, S), same = S.cfg.relicStack ? P.relics.indexOf(ci) : P.relics.findIndex(r => fxOf(r, S) === fx), ov = S.cfg.relicOver !== 0;
+      if (same >= 0) { if (ov) out.push({ t: 'relic', h, over: same }); }   // (its power is in play: only over the Relic that has it)
+      else if (P.relics.length < 2) out.push({ t: 'relic', h });
+      else if (ov) for (let i = 0; i < P.relics.length; i++) out.push({ t: 'relic', h, over: i });   // (two Relics of other powers: over either)
+      return; }
     const open = g => pw(S, g.p) !== 'sanctuary' && !wardAt(S, g), fx = fxOf(ci);   // (the Forbidden City, and Pope Leo I's Ward, keep the other player's Deeds off a Figure)
     if (c.quick) return;   // (a Quick Deed is played with a clash (Phalanx, below), or plays itself (Testudo, the Defence of Syracuse, the Tribune's Veto))
     if (fx === 'eureka' || fx === 'caravan' || fx === 'medici' || fx === 'holyyear') out.push({ t: 'deed', h });
@@ -897,6 +913,10 @@ function walked(S, o, f, to, far, x) {
   if (w === 'toll' && holder(S, to) !== o) { P.spark -= 1; if (S.ev) S.ev.push({ t: 'toll', o: o, p: to, n: 1 }); }
   moveFig(S, f, to, far, 0, x); if ((w === 'garrison' && S.ban[to] === o) || hasFx(S, P, 'stirrup')) f.gar = 1;   // (Dunhuang, for the player whose banner is on it)
 }
+// A Relic has left play (another was played over it): what its power left on the table goes with it. Only the Stirrup's
+// Charge leaves anything (f.gar on a Figure that walked this turn, so that it can still clash); Dunhuang gives the same
+// to its banner's player's Figures there, and that stays. Everything else is asked of hasFx as it happens.
+function relicLeft(S, o, was) { const P = S.P[o]; if (fxOf(was, S) === 'stirrup' && !hasFx(S, P, 'stirrup')) for (const f of S.figs) if (f.o === o && f.gar && !(S.dm && pw(S, f.p) === 'garrison' && S.ban[f.p] === o)) f.gar = 0; }
 // Gutenberg's Workshop: its holder draws a card the first time each turn they play a Relic or a Deed (h: they held it as they played)
 function printed(S, o, h) { const P = S.P[o]; if (!h || P.uP) return; P.uP = 1; if (S.ev) S.ev.push({ t: 'dpow', w: 'print', o: o, p: posOf(S, 'print') }); draw(S, o, 1); }
 function apply(S, a, da, dd, raw) {
@@ -908,7 +928,10 @@ function apply(S, a, da, dd, raw) {
   if (a.t === 'relay') { const f = byU(S, a.u), g = byU(S, a.v), t = f.p; P.uRl = 1; if (S.ev) S.ev.push({ t: 'relay', o: o, u: f.u, v: g.u, p: f.p, q: g.p }); moveFig(S, f, g.p, true, 1); moveFig(S, g, t, true, 1); if (S.st) S.st.use.relay = (S.st.use.relay || 0) + 1; return; }
   const prt = S.dm && (a.t === 'relic' || a.t === 'deed' || (a.t === 'clash' && a.ph)) && !P.uP && onTable(S, 'print') ? nHeld(S, o, 'print') : 0;
   if (a.t === 'fig') { const ci = P.hand[a.h]; P.spark -= costOf(S, o, ci, a.p); if (S.dm && pw(S, a.p) === 'cheap') P.uCh = (P.uCh || 0) | (1 << a.p); P.uN++; P.hand.splice(a.h, 1); putFig(S, o, ci, a.p, a.x); }
-  else if (a.t === 'relic') { const ci = P.hand[a.h], src = threadSrc(S, o, ci), pt = S.dm && onTable(S, 'punt') ? posOf(S, 'punt') : -1, punt = pt >= 0 && holder(S, pt) === o; P.spark -= costOf(S, o, ci); P.uN++; P.hand.splice(a.h, 1); P.relics.push(ci); if (S.ev) S.ev.push({ t: 'relic', o: o, c: ci }); threadPlay(S, o, ci, src); if (S.st) S.st.played[o][ci] = 1; if (S.figs.some(f => f.o === o && kOf(S, f).eureka)) draw(S, o, 1);
+  else if (a.t === 'relic') { const ci = P.hand[a.h], src = threadSrc(S, o, ci), pt = S.dm && onTable(S, 'punt') ? posOf(S, 'punt') : -1, punt = pt >= 0 && holder(S, pt) === o; P.spark -= costOf(S, o, ci); P.uN++; P.hand.splice(a.h, 1);
+    const was = a.over != null && P.relics[a.over] != null ? P.relics[a.over] : null;   // (played over one of the player's own Relics, which goes to their discard pile)
+    if (was) { P.relics[a.over] = ci; (P.gone || (P.gone = [])).push(was); relicLeft(S, o, was); if (S.st) { S.st.use = S.st.use || {}; S.st.use.over = (S.st.use.over || 0) + 1; } } else P.relics.push(ci);
+    if (S.ev) S.ev.push(was ? { t: 'relic', o: o, c: ci, over: a.over, was: was } : { t: 'relic', o: o, c: ci }); threadPlay(S, o, ci, src); if (S.st) S.st.played[o][ci] = 1; if (S.figs.some(f => f.o === o && kOf(S, f).eureka)) draw(S, o, 1);
     if (punt) { P.renown += dv(S, 'punt'); if (S.ev) S.ev.push({ t: 'renown', o: o, n: dv(S, 'punt'), why: 'punt', p: pt }); }   // (Deir el-Bahari: its holder scores for each Relic they play)
     printed(S, o, prt); }
   else if (a.t === 'walk') { const f = byU(S, a.u), g = a.w2 ? byU(S, a.w2) : null, far = S.adj[f.p].indexOf(a.p) < 0; walked(S, o, f, a.p, far); f.rdy = 0;
@@ -1036,12 +1059,17 @@ function evalM(S, me, prof) {
 // The Inca Rope Bridge counts as Kumasi does, ROPE_W more while a Seal of its player's is broken and it has not mended one.
 const RW = { press: 0.5, balloon: 0.4, manuscripts: 0.2, compass: 0.2, dsteel: 0.2, abacus: 0.2, kudurru: 0.2, codex: 0.25, longship: 0.2, wheel: 0.2, locomotive: 0.2, stirrup: 0.2, ropebridge: 0.15,
   cyruscylinder: 0.3, greekfire: 0.2, rockets: 0.25, rosetta: 0.2, telescope: 0.1, braille: 0.25, tablet: 0.4, starchart: 0.2, paiza: 0.15 }, RW0 = 0.2, ROPE_W = 2.5;
+const rwOf = (S, fx) => { const T = S.cfg.rw; return T && T[fx] != null ? T[fx] : RW[fx] != null ? RW[fx] : RW0; };
+const ropeW = (S, me, fx) => { if (fx !== 'ropebridge') return 0; const P = S.P[me], T = S.cfg.rw; return !P.rb && P.seals > 0 && P.seals < S.cfg.seals ? (T && T.rope != null ? T.rope : ROPE_W) : 0; };
 function relicWorth(S, me, left) {
-  const T = S.cfg.rw; let v = 0;
-  for (const r of S.P[me].relics) { const fx = fxOf(r, S); v += (T && T[fx] != null ? T[fx] : RW[fx] != null ? RW[fx] : RW0) * (left - 1);
-    if (fx === 'ropebridge') { const P = S.P[me]; if (!P.rb && P.seals > 0 && P.seals < S.cfg.seals) v += T && T.rope != null ? T.rope : ROPE_W; } }
+  let v = 0;
+  for (const r of S.P[me].relics) { const fx = fxOf(r, S); v += rwOf(S, fx) * (left - 1) + ropeW(S, me, fx); }
   return v;
 }
+// A robot plays a Relic over one of its own only when the new one's power is worth more to it than the power it covers
+// (a round's worth of each, and the Inca Rope Bridge's Seal while it is still to come); whether that is worth the Spark
+// and the card is then weighed as any move is (valueOf). cfg.overAll, for test games: it weighs every such move.
+const overWorth = (S, me, a) => { const P = S.P[me], n = fxOf(P.hand[a.h], S), w = fxOf(P.relics[a.over], S); return rwOf(S, n) + ropeW(S, me, n) > rwOf(S, w) + ropeW(S, me, w); };
 // What the robots count for a Domain that a Deed doubles this round: the Renown it adds at the count, all of it on the
 // last turn before the count, and 0.3 of it while the other player still has a turn to take it back. KEEP_W: a Spark
 // kept for a Quick Deed that plays itself on the other player's turn (0: keeping Spark for one cost the robots more
@@ -1154,7 +1182,7 @@ function aiPick(S, prof, R) {
   if (S.pend) return pendPick(S, prof, R);   // (a Domain to choose)
   let best = null, bv = evalS(S, me, prof) + 0.02;
   if (prof.quit && R() < prof.quit) return null;   // (calls it a turn early)
-  for (const a of actions(S)) { if (a.q != null && a.q < a.p) continue; let v = valueOf(S, a, me, prof); if (prof.noise) v += (R() - 0.5) * prof.noise; if (v > bv) { bv = v; best = a; } }
+  for (const a of actions(S)) { if (a.q != null && a.q < a.p) continue; if (a.t === 'relic' && a.over != null && !S.cfg.overAll && !overWorth(S, me, a)) continue; let v = valueOf(S, a, me, prof); if (prof.noise) v += (R() - 0.5) * prof.noise; if (v > bv) { bv = v; best = a; } }
   return best;
 }
 // Who goes first this round: the leader (so whoever is behind has the last word); level, take turns. With Domains,

@@ -108,6 +108,7 @@ function sGame(at) { const S = game(); const a = fig(S, 'charlemagne', 0, at), d
 // ── The five held cards and the Walk to Canossa (2026-11-12, held-2026-11-12.txt) ──
 const clashes = S => E.actions(S).filter(a => a.t === 'clash' && !a.ph);
 const relic = (S, k) => E.actions(S).find(a => a.t === 'relic' && S.P[S.turn].hand[a.h] === k);
+const relics = (S, k) => E.actions(S).filter(a => a.t === 'relic' && S.P[S.turn].hand[a.h] === k);
 // ── Damascus Steel: your Figures have +1 Might when attacking ──
 { const S = game(); const a = fig(S, 'boudica', 0, 4), d = fig(S, 'yoshitsune', 1, 4); S.P[0].hand = ['dsteel'];
   const m1 = E.might(S, a, 1, d), m0 = E.might(S, a, 0), m2 = E.might(S, a, 2, d);
@@ -118,7 +119,7 @@ const relic = (S, k) => E.actions(S).find(a => a.t === 'relic' && S.P[S.turn].ha
   S.turn = 0; const e0 = S.ev.length; E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); const ce = S.ev.slice(e0).find(e => e.t === 'clash');
   ok('dsteel: counted in the clash', ce && ce.am === m1 + 1, ce); }
 { const S = game(); S.P[0].relics = ['compass']; S.P[0].hand = ['dsteel']; ok('dsteel: beside a Relic with another power', !!relic(S, 'dsteel'));
-  S.P[0].relics = ['compass', 'press']; ok('dsteel: not a third Relic', !relic(S, 'dsteel')); }
+  S.P[0].relics = ['compass', 'press']; ok('dsteel: never a third Relic (it goes over one of the two)', relics(S, 'dsteel').every(a => a.over != null)); }
 // ── The Abacus: your Deeds cost 1 less ──
 { const S = game(); S.P[0].guide = 'cleopatra'; S.P[0].hand = ['abacus']; ok('abacus: 2 Spark', E.costOf(S, 0, 'abacus') === 2); E.apply(S, relic(S, 'abacus'));
   ok('abacus: a Deed 1 less', E.costOf(S, 0, 'holyyear') === 4 && E.costOf(S, 0, 'walls') === 3 && E.costOf(S, 0, 'triumph') === 1);
@@ -219,7 +220,7 @@ const eleven = ['leonidas', 'hammurabi', 'spartacus', 'charlemagne', 'socrates',
   S.turn = 1; S.P[1].hand = eleven.slice(); E.endTurn(S); ok('the other player keeps 8', S.P[1].hand.length === 8, S.P[1].hand.length); }
 { const S = game(); S.P[0].relics = ['quipu']; S.P[0].hand = eleven.slice(0, 10); E.endTurn(S); ok('quipu: 10 cards are kept', S.P[0].hand.length === 10 && !S.P[0].gone.length); }
 { const S = game(); S.P[0].hand = eleven.slice(0, 9); E.endTurn(S); ok('without it, 9 cards keep 8', S.P[0].hand.length === 8); }
-{ const S = game(); S.P[0].relics = ['manuscripts']; S.P[0].hand = ['quipu']; ok('quipu: not beside the Manuscripts, the same power', !relic(S, 'quipu'));
+{ const S = game(); S.P[0].relics = ['manuscripts']; S.P[0].hand = ['quipu']; ok('quipu: not beside the Manuscripts, the same power (only over them)', relics(S, 'quipu').length === 1 && relics(S, 'quipu')[0].over === 0);
   S.P[0].relics = ['press']; S.P[0].hand = ['manuscripts']; ok('manuscripts: beside the Printing Press, another power', !!relic(S, 'manuscripts')); }
 { const S = game(); S.cfg = Object.assign({}, S.cfg, { hold: 9 }); S.P[0].relics = ['manuscripts']; ok('cfg.hold: a test game tries 9', E.handMax(S, 0) === 9); }
 { const S = game(); S.P[0].relics = ['manuscripts']; const T = E.clone(S); ok('manuscripts: a copy of the table keeps it', E.handMax(T, 0) === 10); }
@@ -246,7 +247,7 @@ const turnGame = (lay) => { const S = game(lay); S.P.forEach(p => { p.deck = ['s
     E.apply(S, os.find(a => a.ord.join() === 'galileo,eureka,charlemagne') || { t: 'dom', ord: ['galileo', 'spartacus', 'charlemagne'] });
     ok('foresight: put back in the order chosen, then drawn', !S.pend && S.P[0].hand.join() === 'galileo,spartacus' && S.P[0].deck[S.P[0].deck.length - 1] === 'charlemagne', [S.P[0].hand, S.P[0].deck]); }
   { const S = turnGame(); S.P[0].relics = ['codex']; S.P[0].deck = ['galileo']; S.P[0].hand = []; E.startTurn(S, { ask: true }); ok('foresight: nothing to order in a pile of 1', !S.pend && S.P[0].hand.length === 1); }
-  { const S = turnGame(); S.P[0].relics = ['codex']; S.P[0].hand = ['antikythera']; ok('foresight: the Antikythera not beside the Codex, the same power', !relic(S, 'antikythera')); } }
+  { const S = turnGame(); S.P[0].relics = ['codex']; S.P[0].hand = ['antikythera']; ok('foresight: the Antikythera not beside the Codex, the same power (only over it)', relics(S, 'antikythera').length === 1 && relics(S, 'antikythera')[0].over === 0); } }
 // Landing: the Viking Longship and the Voyaging Canoe (3 Spark to 2)
 { says('longship', 'You can play your Figures at the Crossroads.'); says('voyagingcanoe', 'You can play your Figures at the Crossroads.'); power('longship', 'longship', 2); power('voyagingcanoe', 'longship', 2);
   const S = game(); S.P[0].hand = ['spartacus']; const at = () => acts(S, 'fig').map(a => a.p).sort().join();
@@ -361,7 +362,82 @@ const turnGame = (lay) => { const S = game(lay); S.P.forEach(p => { p.deck = ['s
   { const S = old(turnGame()); S.P[0].relics = ['telescope']; S.P[0].hand = []; E.startTurn(S); ok('an old game: the Telescope still draws one more card', S.P[0].hand.length === 3 && !S.pend); }
   { const S = old(game()); S.P[0].relics = ['rockets']; const a = fig(S, 'boudica', 0, 4), d = fig(S, 'spartacus', 1, 4); const m = E.might(S, a, 1, d); S.P[0].relics = []; ok('an old game: Mysore Rockets still give +1 Might when attacking', m === E.might(S, a, 1, d) + 1); }
   { const S = old(game()); S.P[0].relics = ['wheel']; fig(S, 'leonidas', 0, 0); fig(S, 'boudica', 0, 0); ok('an old game: The Wheel still walks two steps, and no Convoy', acts(S, 'walk').some(x => x.p === 4) && !acts(S, 'walk').some(x => x.w2)); }
-  { const S = old(game()); S.P[0].relics = ['codex']; S.P[0].hand = ['telescope']; ok('an old game: two Relics with one old power still can\'t both be in play', !relic(S, 'telescope')); } }
+  { const S = old(game()); S.P[0].relics = ['codex']; S.P[0].hand = ['telescope']; ok('an old game: two Relics with one old power still can\'t both be in play', relics(S, 'telescope').length === 1 && relics(S, 'telescope')[0].over === 0); } }
+// ── A Relic played over one of your own (Tim, 2026-11-17: "i should be able to play a relic over an existing relic in
+// play for me"): the Relic underneath goes to its player's discard pile and the new one has its slot ──
+{ const over = (S, k) => relics(S, k).map(a => a.over == null ? 'free' : a.over).join();
+  // (which moves there are)
+  { const S = game(); S.P[0].hand = ['press']; ok('over: no Relics in play, a free slot and nothing else', over(S, 'press') === 'free');
+    S.P[0].relics = ['compass']; ok('over: one Relic of another power, a free slot and nothing else', over(S, 'press') === 'free');
+    S.P[0].relics = ['compass', 'dsteel']; ok('over: two Relics of other powers, over either', over(S, 'press') === '0,1');
+    S.P[0].relics = ['manuscripts', 'press']; S.P[0].hand = ['quipu']; ok('over: its power is in play, only over the Relic that has it', over(S, 'quipu') === '0');
+    S.P[0].relics = ['dsteel', 'manuscripts']; ok('over: the same, in the second slot', over(S, 'quipu') === '1');
+    S.P[0].relics = ['manuscripts']; ok('over: its power is in play beside a free slot, still only over that Relic', over(S, 'quipu') === '0');
+    S.P[0].hand = ['manuscripts']; ok('over: a second copy goes over the first', over(S, 'manuscripts') === '0');
+    S.P[0].relics = ['compass', 'dsteel']; S.P[0].hand = ['press']; S.P[0].spark = 0; ok('over: it still costs its Spark', over(S, 'press') === '');
+    S.P[0].spark = 5; S.cfg = Object.assign({}, S.cfg, { relicOver: 0 }); ok('cfg.relicOver 0: the rule before, for test games', over(S, 'press') === '');
+    S.P[0].relics = ['compass']; ok('cfg.relicOver 0: a free slot as always', over(S, 'press') === 'free'); }
+  // (what it does)
+  { const S = game(); S.P[0].guide = 'cleopatra'; S.P[0].relics = ['compass', 'dsteel']; S.P[0].hand = ['press', 'spartacus']; S.P[1].relics = ['abacus'];
+    E.apply(S, relics(S, 'press').find(a => a.over === 0));
+    ok('over: the new Relic has the slot', S.P[0].relics.join() === 'press,dsteel', S.P[0].relics); ok('over: the one underneath is in the discard pile', S.P[0].gone.join() === 'compass', S.P[0].gone);
+    ok('over: the full cost is paid', S.P[0].spark === 5 - E.costOf(S, 0, 'press') && E.costOf(S, 0, 'press') === 2, S.P[0].spark); ok('over: the card left the hand', S.P[0].hand.join() === 'spartacus');
+    const ev = S.ev.find(e => e.t === 'relic'); ok('over: the event names both and the slot', ev && ev.c === 'press' && ev.was === 'compass' && ev.over === 0 && ev.o === 0, ev);
+    ok('over: its power stops at once, the new one works', !E.hasFx(S, S.P[0], 'compass') && E.hasFx(S, S.P[0], 'press') && E.hasFx(S, S.P[0], 'dsteel'));
+    ok('over: the other player\'s Relics are untouched', S.P[1].relics.join() === 'abacus' && !S.P[1].gone.length);
+    const T = E.clone(S); ok('over: a copy of the table keeps it', T.P[0].relics.join() === 'press,dsteel' && T.P[0].gone.join() === 'compass'); }
+  { const S = game(); S.P[0].relics = ['compass', 'dsteel']; S.P[0].hand = ['press']; E.apply(S, relics(S, 'press').find(a => a.over === 1)); ok('over: the second slot', S.P[0].relics.join() === 'compass,press' && S.P[0].gone.join() === 'dsteel'); }
+  { const S = game(); S.P[0].relics = ['compass']; S.P[0].hand = ['press']; E.apply(S, relic(S, 'press')); const ev = S.ev.find(e => e.t === 'relic');
+    ok('a free slot: as always, nothing discarded', S.P[0].relics.join() === 'compass,press' && !S.P[0].gone.length && ev.over == null && ev.was == null); }
+  // (the hand limit follows the Relics in play)
+  { const S = game(); S.P[0].relics = ['manuscripts', 'compass']; S.P[0].hand = ['press']; ok('over: 10 cards with the Manuscripts', E.handMax(S, 0) === 10); E.apply(S, relics(S, 'press').find(a => a.over === 0)); ok('over: 8 once they are covered', E.handMax(S, 0) === 8); }
+  // (a power that works once is its player's, not the Relic's: playing the Relic again does not make it new)
+  { const S = game(); S.P[0].relics = ['ropebridge', 'compass']; S.P[0].seals = 2; E.endRound(S); ok('rebuilding once', S.P[0].seals === 3 && S.P[0].rb === 1);
+    S.turn = 0; S.P[0].spark = 5; S.P[0].hand = ['ropebridge']; ok('rebuilding: a second Rope Bridge goes over the first', relics(S, 'ropebridge').length === 1 && relics(S, 'ropebridge')[0].over === 0);
+    E.apply(S, relics(S, 'ropebridge')[0]); S.P[0].seals = 2; E.endRound(S); ok('rebuilding: still once a game', S.P[0].seals <= 2 && S.P[0].relics[0] === 'ropebridge', S.P[0].seals); }
+  { const S = game(); S.P[0].relics = ['locomotive']; fig(S, 'leonidas', 0, 0); fig(S, 'boudica', 0, 0); fig(S, 'spartacus', 0, 3);
+    E.apply(S, acts(S, 'rail')[0]); S.P[0].hand = ['locomotive']; E.apply(S, relics(S, 'locomotive')[0]); ok('railway: still once a turn after a second Locomotive', S.P[0].relics.join() === 'locomotive' && !acts(S, 'rail').length); }
+  { const S = game(); S.P[0].relics = ['locomotive', 'compass']; fig(S, 'leonidas', 0, 0); fig(S, 'spartacus', 0, 3); S.P[0].hand = ['press'];
+    ok('railway: before', acts(S, 'rail').length > 0); E.apply(S, relics(S, 'press').find(a => a.over === 0)); ok('railway: gone with the Locomotive', !acts(S, 'rail').length); }
+  { const S = game(); S.P[0].relics = ['wrightflyer']; fig(S, 'leonidas', 0, 1); E.apply(S, acts(S, 'antik')[0]); S.P[0].hand = ['balloon']; fig(S, 'boudica', 0, 0);
+    E.apply(S, relics(S, 'balloon')[0]); ok('the jump: still one a turn after another Relic that jumps', !acts(S, 'antik').length && S.P[0].relics.join() === 'balloon'); }
+  { const S = game(); S.P[0].relics = ['starchart']; S.P[0].gone = ['spartacus', 'charlemagne']; E.apply(S, acts(S, 'cave')[0]); S.P[0].hand = ['starchart'];
+    E.apply(S, relics(S, 'starchart')[0]); ok('library cave: still once a turn after a second Star Chart', !acts(S, 'cave').length && S.P[0].gone.indexOf('starchart') >= 0); }
+  // (the Stirrup's Charge goes with it)
+  { const S = game(); S.P[0].relics = ['stirrup', 'compass']; const a = fig(S, 'boudica', 0, 1); fig(S, 'spartacus', 1, 4); S.P[0].hand = ['press'];
+    E.apply(S, acts(S, 'walk').find(x => x.u === a.u && x.p === 4)); ok('charge: a Figure that walked can still clash', acts(S, 'clash').some(x => x.u === a.u));
+    E.apply(S, relics(S, 'press').find(x => x.over === 0)); ok('charge: not once the Stirrup is covered', !acts(S, 'clash').some(x => x.u === a.u) && !a.gar); }
+  { const S = game(); S.P[0].relics = ['stirrup', 'compass']; const a = fig(S, 'boudica', 0, 1); fig(S, 'spartacus', 1, 4); S.P[0].hand = ['press'];
+    E.apply(S, acts(S, 'walk').find(x => x.u === a.u && x.p === 4)); E.apply(S, relics(S, 'press').find(x => x.over === 1)); ok('charge: kept when the other Relic is covered', acts(S, 'clash').some(x => x.u === a.u)); }
+  { const S = game([null, null, null, null, 'dunhuang']); S.ban[4] = 0; S.P[0].relics = ['stirrup', 'compass']; const a = fig(S, 'boudica', 0, 1); fig(S, 'spartacus', 1, 4); S.P[0].hand = ['press'];
+    ok('Dunhuang lies at the Crossroads with your banner', E.pw(S, 4) === 'garrison'); E.apply(S, acts(S, 'walk').find(x => x.u === a.u && x.p === 4)); E.apply(S, relics(S, 'press').find(x => x.over === 0));
+    ok('charge: Dunhuang still lets its banner\'s player\'s Figure clash', acts(S, 'clash').some(x => x.u === a.u)); }
+  // (Legacy Lines: read as the Relic is played)
+  { const S = game(); S.P[0].relics = ['astrolabe', 'dsteel']; S.P[0].hand = ['sextant']; const r0 = S.P[0].renown; E.apply(S, relics(S, 'sextant').find(a => a.over === 0));
+    const th = S.ev.find(e => e.t === 'thread'); ok('over: a Relic that grows from the Relic it covers makes its line', S.P[0].renown - r0 === 1 && th && th.src.k === 'relic' && th.src.c === 'astrolabe' && S.P[0].relics.join() === 'sextant,dsteel', [S.P[0].renown - r0, th]); }
+  { const S = game(); S.P[0].relics = ['astrolabe', 'dsteel']; S.P[0].hand = ['sextant']; const r0 = S.P[0].renown; E.apply(S, relics(S, 'sextant').find(a => a.over === 1));
+    ok('over: its line from the Relic beside it, as for any Relic played', S.P[0].renown - r0 === 1 && S.P[0].relics.join() === 'astrolabe,sextant'); }
+  { const S = game(); fig(S, 'hypatia', 0, 0); S.P[0].relics = ['compass']; S.P[0].hand = ['astrolabe']; const r0 = S.P[0].renown; E.apply(S, relics(S, 'astrolabe')[0]);
+    ok('over: a line from a Figure scores as it does for any Relic played', S.P[0].renown - r0 === 1 && S.P[0].relics.join() === 'astrolabe' && S.P[0].gone.join() === 'compass', S.P[0].renown - r0); }
+  { const S = game(); fig(S, 'hypatia', 0, 0); S.P[0].relics = ['rosetta', 'dsteel']; S.P[0].hand = ['astrolabe']; const r0 = S.P[0].renown; E.apply(S, relics(S, 'astrolabe').find(a => a.over === 0));
+    ok('decipher: a covered Rosetta Stone adds nothing to the line of the Relic over it', S.P[0].renown - r0 === 1, S.P[0].renown - r0);
+    const T = game(); fig(T, 'hypatia', 0, 0); T.P[0].relics = ['rosetta', 'dsteel']; T.P[0].hand = ['astrolabe']; E.apply(T, relics(T, 'astrolabe').find(a => a.over === 1)); ok('decipher: 1 more while it stays', T.P[0].renown === 2, T.P[0].renown); }
+  // (what goes with any Relic played)
+  { const S = game([null, null, null, null, 'deirelbahari']); fig(S, 'leonidas', 0, 4); S.P[0].relics = ['compass', 'dsteel']; S.P[0].hand = ['press']; const r0 = S.P[0].renown;
+    ok('Deir el-Bahari is held', E.pw(S, 4) === 'punt' && E.holder(S, 4) === 0); E.apply(S, relics(S, 'press')[0]); ok('Deir el-Bahari: 1 Renown for a Relic played over another', S.P[0].renown - r0 === 1); }
+  // (the robots: only when the new Relic is worth more to them than the one it covers)
+  { const pickOf = (rel, hand, cfg) => { const S = game(); if (cfg) S.cfg = Object.assign({}, S.cfg, cfg); S.P[0].relics = rel; S.P[0].hand = hand; S.P[0].spark = 5; const a = E.aiPick(S, E.PROF.hard, E.rng(3)); return a && a.t === 'relic' ? S.P[0].hand[a.h] + '>' + S.P[0].relics[a.over] : a ? a.t : 'none'; };
+    ok('robots: the Printing Press over the lesser of two', pickOf(['compass', 'tablet'], ['press']) === 'press>compass', pickOf(['compass', 'tablet'], ['press']));
+    ok('robots: never a Relic worth no more than the one it covers', pickOf(['press', 'tablet'], ['compass']) === 'none', pickOf(['press', 'tablet'], ['compass']));
+    ok('robots: never a Relic with the same power', pickOf(['compass'], ['astrolabe']) === 'none', pickOf(['compass'], ['astrolabe']));
+    let dumb = 0; for (let s = 1; s <= 60; s++) { const S = game(); S.P[0].relics = ['press', 'tablet']; S.P[0].hand = ['compass', 'astrolabe', 'dsteel']; const a = E.aiPick(S, E.PROF.novice, E.rng(s)); if (a && a.t === 'relic') dumb++; }
+    ok('robots: not Easy either, however unclearly it judges', dumb === 0, dumb); }
+  // (robots in whole games: the rule is used, and every Relic in play stays within the limits)
+  { let err = null, used = 0, bad = 0; const RS = ['press', 'compass', 'tablet', 'dsteel', 'codex', 'braille', 'manuscripts', 'telescope'];
+    for (let s = 1; s <= 30 && !err; s++) { const d = C.ARCH.Legion.cards.slice(0, 12).concat(RS), e = C.ARCH.Court.cards.slice(0, 12).concat(RS);
+      try { const S = E.play([d.concat(d), e.concat(e)], ['leonardo', 'suntzu'], [E.PROF.normal, E.PROF.hard], Object.assign({}, E.STD), 900 + s); used += (S.st.use && S.st.use.over) || 0;
+        S.P.forEach(P => { if (P.relics.length > 2 || new Set(P.relics.map(r => E.fxOf(r, S))).size !== P.relics.length) bad++; }); } catch (x) { err = x; } }
+    ok('robots play whole games with Relics over Relics', !err, err && err.stack); ok('robots do play a Relic over another', used > 0, used); ok('never three Relics, never two with one power', bad === 0, bad); } }
 // Every Relic: robots in whole games with the new powers, no throw, each played
 { const NEWR = ['codex', 'antikythera', 'longship', 'wheel', 'locomotive', 'stirrup', 'ropebridge', 'cyruscylinder', 'greekfire', 'rockets', 'rosetta', 'telescope', 'braille', 'tablet', 'starchart', 'paiza'];
   let err = null; const used = {};

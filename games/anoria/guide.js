@@ -510,6 +510,7 @@
         await L.pause(400); await L.turn(0);
         await L.relic('compass', { lit: 'A <b>Relic</b> goes beside your Guide and stays in play.', at: '.an-strip.me .st-relics' });
         await L.say('You can have 2 Relics in play at a time, and they have to be Relics with different powers.', { at: '.an-strip.me .st-relics' });
+        await L.say('With 2 Relics in play, you can play a new Relic over either of them. The Relic underneath goes to your discard pile.', { at: '.an-strip.me .st-relics' });
         await L.walk('copernicus', CROSS, { lit: 'The Compass lets your Figures walk two steps.', at: [L.row(MY_OUT), L.row(CROSS)] });
         await L.deed('eureka', { lit: 'A <b>Deed</b> happens once and is gone. Eureka! draws 2 cards.', at: L.card('eureka') });
         await L.endTurn();

@@ -373,6 +373,22 @@ b.kq{white-space:normal;} .kq-n{white-space:nowrap;} .kq-i{display:inline-block;
 .pl-dip svg{display:block;width:100%;height:100%;}
 .relic.tgt{box-shadow:0 0 0 2px var(--an-gilt),0 0 12px var(--an-gilt);animation:an-pulse 1s infinite;}
 .relic.used{filter:grayscale(.8) brightness(.7);}
+/* (a Relic played over one of a player's own, 2026-11-17: the slot the old Relic has just left, as a free slot until the
+   new one lands; and the lit Relic under a Relic that is being dragged onto it) */
+.relic.leaving{background:rgba(0,0,0,.25);box-shadow:inset 0 0 0 1px rgba(239,235,228,.14);animation:none;} .relic.leaving > *{visibility:hidden;}
+.relic.an-dhov{box-shadow:0 0 0 3px #e6b47c,0 0 18px 6px rgba(224,174,118,.85);animation:none;transform:scale(1.14);}
+/* The chooser over your bar (relicChooser in ui.js): the road's row of Relic slots, on a stone panel with its notch on your
+   bar's Relics. above the bar where there is room (at-t), under it (at-b), or beside a bar that stands on end (at-r, at-l). */
+.an-rch{position:fixed;z-index:36;box-sizing:border-box;padding:10px 10px 4px;border-radius:14px;background:#1f1e1d;box-shadow:inset 0 0 0 1px var(--g-line),0 0 0 1px rgba(0,0,0,.55),0 14px 28px rgba(0,0,0,.65);--rw:80px;--rh:44px;--rg:6px;animation:an-rch-in .16s ease-out;}
+.an-rch::after{content:"";position:absolute;width:12px;height:12px;background:#1f1e1d;transform:rotate(45deg);}
+.an-rch.at-t::after{left:calc(var(--nx) - 6px);bottom:-6px;box-shadow:1px 1px 0 rgba(0,0,0,.55);}
+.an-rch.at-b::after{left:calc(var(--nx) - 6px);top:-6px;box-shadow:-1px -1px 0 rgba(0,0,0,.55);}
+.an-rch.at-r::after{left:-6px;top:calc(var(--ny) - 6px);box-shadow:-1px 1px 0 rgba(0,0,0,.55);}
+.an-rch.at-l::after{right:-6px;top:calc(var(--ny) - 6px);box-shadow:1px -1px 0 rgba(0,0,0,.55);}
+.an-rch .rd-row.rel{gap:10px;}
+.rd-t.rd-s.an-dhov > .rd-rel{box-shadow:0 0 0 3px #e6b47c,0 0 22px 7px rgba(224,174,118,.85);transform:scale(1.04);}
+@keyframes an-rch-in{from{opacity:0;transform:translateY(4px);}}
+@media (prefers-reduced-motion:reduce){ .an-rch{animation:none;} }
 .st-hand{position:relative;flex:none;width:19px;height:26px;border-radius:3px;background:#171615 url(ui/card-back.webp) center/cover;box-shadow:0 0 0 1px #000,2px 1px 0 -0.5px #171615,2.5px 1.5px 0 0 rgba(221,170,115,.5),0 2px 4px rgba(0,0,0,.5);margin-right:3px;}
 .st-hand b{position:absolute;right:-7px;bottom:-5px;min-width:15px;height:15px;padding:0 3px;box-sizing:border-box;border-radius:8px;background:#f3e9d2;color:var(--an-ink);font:400 .62rem/15px var(--slab);text-align:center;box-shadow:0 1px 2px rgba(0,0,0,.5);}
 .st-spark{position:relative;flex:none;width:27px;height:32px;background:url(ui/mark-spark.webp) center/contain no-repeat;filter:drop-shadow(1px 1px 0 rgba(0,0,0,.45));}
@@ -662,6 +678,24 @@ b.kq{white-space:normal;} .kq-n{white-space:nowrap;} .kq-i{display:inline-block;
 .rd-pic > :is(img,canvas,.mono-i){position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 20%;}
 .rd-c.who .rd-dot{width:12px;height:12px;border-radius:50%;background:var(--pc);margin-left:4px;}
 .sc-road .rd-b{min-height:40px;padding:0 14px;gap:8px;font-size:1.02rem;}
+/* A Relic's road (Tim, 2026-11-17: "i should be able to play a relic over an existing relic in play for me"): a Relic
+   in your hand goes to no Domain, so under it lie your two Relic slots, as they lie on your bar: the Relic in each
+   with its name, a free slot as the bar's empty diamond. The slot it can go to is lit with its pill (Play, or Replace
+   over a Relic, which then goes to your discard pile); a slot it can't go to stays dim. */
+.rd-row.rel{align-items:flex-start;gap:calc(var(--rg) + 2px);}
+.rd-rl{flex:none;align-self:flex-start;height:var(--rh);display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:5px;margin-right:2px;font:600 .8rem/1.1 var(--fell);color:var(--g-dust);text-align:right;}
+.rd-rl > i{display:block;width:11px;height:11px;opacity:.85;} .rd-rl svg{display:block;width:100%;height:100%;}
+.rd-rl > span{max-width:3.6em;}
+.rd-t.rd-s{width:var(--sw);}
+.rd-t.rd-s > .rd-rel{width:var(--sw);height:var(--rh);box-sizing:border-box;display:grid;grid-template-columns:var(--rh) minmax(0,1fr);align-items:center;border-radius:8px;overflow:hidden;background:var(--g-slab-2);box-shadow:0 0 0 1px rgba(0,0,0,.6),0 0 0 2px var(--g-joint);}
+.rd-t.rd-s.lit > .rd-rel{box-shadow:0 0 0 2px #e3b079,0 0 14px 2px rgba(223,173,117,.55);}
+.rd-ra{position:relative;width:var(--rh);height:var(--rh);background:#21201e;}
+.rd-ra > :is(img,canvas,.mono-i){position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.rd-rn{min-width:0;padding:0 7px;font:600 clamp(10px,calc(var(--sw) * .088),13px)/1.12 var(--fell);letter-spacing:-.005em;color:var(--g-bone);text-align:left;overflow-wrap:break-word;}
+.rd-t.rd-s.free > .rd-rel{display:grid;grid-template-columns:1fr;place-items:center;background:rgba(0,0,0,.25);box-shadow:inset 0 0 0 1.5px rgba(239,235,228,.16);}
+.rd-t.rd-s.free.lit > .rd-rel{box-shadow:inset 0 0 0 1.5px rgba(227,176,121,.5),0 0 0 2px #e3b079,0 0 14px 2px rgba(223,173,117,.55);}
+.rd-dia{display:block;width:calc(var(--rh) * .3);height:calc(var(--rh) * .3);transform:rotate(45deg);border:1.5px solid rgba(239,235,228,.3);border-radius:2px;}
+.rd-t.rd-s.free.lit .rd-dia{border-color:#e3b079;}
 /* the plate on a card that can't be played: its cost against your Spark, or the reason */
 .sc-lock{position:absolute;left:50%;bottom:2.5%;z-index:30;transform:translateX(-50%);display:flex;align-items:center;gap:10px;width:max-content;max-width:86%;box-sizing:border-box;padding:8px 18px 8px 10px;border-radius:999px;
   font:500 max(13px,calc(var(--cu) * .036))/1.2 var(--fell);color:var(--g-bone);background:rgba(24,23,22,.94);box-shadow:0 0 0 2px #c4475a,0 8px 18px rgba(0,0,0,.6);pointer-events:none;}
