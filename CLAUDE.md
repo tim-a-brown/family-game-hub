@@ -161,8 +161,9 @@ Underlying principles for everything:
   games drag into an order of their own (`gn_game_order` {section: [ids]}, follows the PIN; the home screen reads it
   through `Kit.sortCat`), Favorites opens the same way to drag its games or take one out (its row folds away), and its
   heading on the home screen has the pencil too (`Kit.homeSheet('fav')`). While a section, or Favorites, is open and in
-  an order of its own, an A to Z mark stands in its heading (`.k-ord-az`; under the list in the Favorites sheet) and
-  puts it back. Every redraw glides (`paintOrd` keys each row `s:`/`g:`/`f:` and slides it from where it was), so a game
+  an order of its own, an A to Z mark stands in its heading (`.k-ord-az`; in a sheet for one section or Favorites it
+  stands in the sheet's top right corner across from the title, `.k-ord-azslot`, so a long list never pushes it out of
+  view) and puts it back. Every redraw glides (`paintOrd` keys each row `s:`/`g:`/`f:` and slides it from where it was), so a game
   just starred flies from its section into Favorites. The pencil took the list and
   tiles button's place (Tim, 2026-11-17: "relegate the list view option to the app menu and put the added pencil in its
   place. Period. Tile view is default for everyone"): Show games as a list is in the profile menu under Home screen
