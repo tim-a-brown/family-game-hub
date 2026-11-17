@@ -3294,7 +3294,10 @@
     }
 
     // per-robot skill: on mixed tables with a skill option
-    function lvTiles() { return !!(lvOp && P && cpuFor() === 'mix'); }
+    // (wherever the computer has a seat, its skill is chosen on that seat in the players sheet and shown on its tile,
+    // never as a row among the game's options: Tim, 2026-11-17, of Pong's Tunnel, whose one computer seat is fixed, "cpu
+    // skill should be tied to the player picker not in game options")
+    function lvTiles() { return !!(lvOp && P && cpuFor()); }
     function lvChoices() { return lvOp ? (typeof lvOp.choices === 'function' ? lvOp.choices(state.count, state.mode, state.options) : lvOp.choices) : []; }
     function levelOf(i) {
       var cs = lvChoices(), v = levels[i];

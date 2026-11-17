@@ -335,7 +335,10 @@ Underlying principles for everything:
   had), each name turning over in turn (Tim, 2026-11-15: "having a toggle here is kind of a weird UI decision ... just
   have easy medium and hard computer players selectable with a randomizer for the names on the right"; a game with no
   skill choice shows one face, Computer; a seat where the game seats no robots has no row); then everyone you play
-  with as chips. A tap on a robot or a chip seats them and moves to the next open seat (at a full table it adds a
+  with as chips. **The computer's skill is never a row among the game's options** (Tim, 2026-11-17, of Pong's Tunnel: "cpu
+  skill should be tied to the player picker not in game options"): the option a game marks `robot: true` is chosen on
+  the computer's seat and shown on its tile wherever the computer has a seat, a fixed one too (`lvTiles` in kit.js); a
+  one-player game's own Difficulty (Centipede, Mastermind, Hangman) is the game's, and stays an option. A tap on a robot or a chip seats them and moves to the next open seat (at a full table it adds a
   seat); a tap on another face where a robot already sits changes only its skill; a person's chip or Remove seat takes
   a robot away. A game never draws its own seat list; one that shows something per seat reads
   `setup.seats()` (Axis & Allies' countries). Who's playing is shown as a **Players card** above the game's options
