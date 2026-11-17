@@ -219,6 +219,143 @@ html.ls .p10-play .mat .mc{--cw:clamp(30px,calc((100dvh - var(--bar)) * .06),44p
 }
 /* Turning the device: the table, the hand and the buttons glide to their new places (a View Transition in the script) */
 .p10-play > .ctable{view-transition-name:p10-table;} .p10-play > .chand{view-transition-name:p10-hand;} .p10-play > .cbar{view-transition-name:p10-bar;} .p10-play > .phstrip{view-transition-name:p10-phase;}
+/* ── A large window (Cards.desk in cards.js lays the page out; html.rdesk while a layout of this kind shows) ──────
+   The felt takes the room, and it is laid as a table is: the other players round it (the first on your left, then
+   across the top, the last on your right), each with the phase they have laid down in front of them and whatever has
+   been hit onto it; the deck and the discard pile in the middle; your own phase along the foot, where you build it.
+   At the left stands the score sheet: a row a hand, each player's phase that hand (filled in when they made it) and
+   the points they were caught with, the totals, and under them the climb through the phases. At the right is the
+   ladder of the phases in words with every player standing on theirs, who has laid down and who loses a turn, and
+   what a card left in the hand costs. Both panels are in the page at every size and drawn only at a desk. (The grid
+   for each shape of window is set in the script, from Cards.DESK.) A window smaller than a desk that no phone or
+   tablet has (a small square, a small wide one) gets the same table without the panels, fitted to the window so
+   nothing scrolls. */
+html.rdesk.rdk #app.stage:has(> .ctable){align-items:stretch;--cdk-rw:clamp(300px,20.5vw,450px);}
+html.rdesk #app.stage > .ctable{view-transition-name:none;}
+html.rdesk #app.stage > .chand,html.rdesk #app.stage > .cbar,html.rdesk #app.stage > .phstrip{view-transition-name:none;}
+html.rdesk #app.stage > .ctable .felt-in.p10f{max-height:none;min-height:0;}
+html.rdesk #app.stage > .phstrip{grid-area:goal;min-width:0;margin:0 0 8px 16px;}
+html.rdesk #app.stage > .chand{min-height:calc(var(--cw) * 1.62 + 4px);}
+html.rdesk #app .chand .pd-nohand{align-self:center;color:var(--text-3);font-weight:600;font-size:1rem;}
+html.rdesk #app .chand .pcard.play:hover:not(.sel){transform:translateY(calc(var(--cw) * -.07));}
+html.rdesk #app.stage > .cbar .hint{white-space:normal;text-wrap:balance;}
+html.rdesk #app .felt-in.pd{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(24%,auto) minmax(0,1fr) auto;grid-template-areas:"n" "c" "m";justify-content:normal;gap:clamp(8px,1.3vmin,20px);padding:clamp(12px,1.5vmin,28px);}
+html.rdesk #app .felt-in.pd.ring{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) minmax(0,1fr);grid-template-areas:"n n n" "w c e" "m m m";}
+.pd-n{grid-area:n;display:flex;gap:clamp(8px,1.3vmin,20px);min-width:0;min-height:0;}
+.pd-w,.pd-e{display:flex;flex-direction:column;justify-content:center;gap:clamp(8px,1.3vmin,20px);min-width:0;min-height:0;}
+html.rdesk #app .felt-in.pd.pd-over{grid-template-rows:max-content max-content max-content;align-content:start;overflow-y:auto;overscroll-behavior:contain;}
+/* (and its places stand one under another, each the felt's whole width: the top, the piles, the two sides, your own) */
+html.rdesk #app .felt-in.pd.pd-over.ring{grid-template-columns:minmax(0,1fr);grid-template-rows:repeat(5,max-content);grid-template-areas:"n" "c" "w" "e" "m";}
+html.rdesk #app .pd.pd-over .pd-w,html.rdesk #app .pd.pd-over .pd-e{flex-direction:row;flex-wrap:wrap;justify-content:space-around;}
+html.rdesk #app .pd.pd-over .pd-w .pd-place,html.rdesk #app .pd.pd-over .pd-e .pd-place{align-items:center;}
+html.rdesk #app .pd.pd-over .pd-w .grps,html.rdesk #app .pd.pd-over .pd-e .grps{justify-content:center;}
+html.rdesk #app .pd.pd-over .mid{min-height:calc(var(--cw,58px) * 1.4 + 30px);container-type:normal;}
+html.rdesk #app .pd.pd-over .pile{--cw:58px;font-size:.76rem;}
+.pd-w{grid-area:w;}.pd-e{grid-area:e;}
+.pd-place{flex:1 1 0;min-width:0;min-height:0;display:flex;flex-direction:column;align-items:center;gap:clamp(6px,1.2cqmin,14px);}
+.pd-w .pd-place{flex:0 1 auto;align-items:flex-start;}
+.pd-e .pd-place{flex:0 1 auto;align-items:flex-end;}
+.pd-me{grid-area:m;min-width:0;min-height:calc(var(--lcw,40px) * 1.4 + 12px);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;}
+html.rdesk #app .pd .cseat{flex:none;}
+html.rdesk #app .pd .cseat .tag .nm{max-width:9em;}
+html.rdesk #app .pd .cseat .chip-s .ico{width:.95em;height:.95em;vertical-align:-.12em;}
+html.rdesk #app .pd .cseat .chip-s.cnt .ico{width:1em;height:1em;margin-right:.15em;vertical-align:-.16em;}
+/* (a phase laid down: its groups side by side, the cards as large as the room at every seat allows; the script sets --lcw) */
+html.rdesk #app .pd .mrow{flex:none;display:flex;max-width:100%;padding:0;background:none;box-shadow:none;border-radius:0;gap:0;}
+html.rdesk #app .pd .grps{justify-content:center;gap:calc(var(--lcw,40px) * .22) calc(var(--lcw,40px) * .34);}
+html.rdesk #app .pd .pd-w .grps{justify-content:flex-start;}
+html.rdesk #app .pd .pd-e .grps{justify-content:flex-end;}
+/* (a group longer than its place is wide, a run of ten beside the piles, takes a second line) */
+html.rdesk #app .pd .grp{--cw:var(--lcw,40px);flex-wrap:wrap;row-gap:calc(var(--cw) * .1);max-width:100%;padding:calc(var(--cw) * .07) calc(var(--cw) * .07) calc(var(--cw) * .07) calc(var(--cw) * .59);border-radius:calc(var(--cw) * .2);background:rgba(0,0,0,.2);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);}
+html.rdesk #app .pd .grp .pcard,html.rdesk #app .pd .grp .pcard+.pcard{margin-left:calc(var(--cw) * -.52);}
+html.rdesk #app .pd .grp.tgt{box-shadow:0 0 0 2px var(--lit),0 0 16px var(--litg);background:rgba(255,211,77,.15);}
+html.rdesk #app .pd .grp.left{background:rgba(255,138,61,.14);box-shadow:inset 0 0 0 1.5px rgba(255,138,61,.7);}
+html.rdesk #app .pd .pcard.p10.mini .ix{font-size:calc(var(--cw) * .44);left:8%;top:5%;}
+html.rdesk #app .pd .pcard.p10.mini .ov b{font-size:calc(var(--cw) * .5);}
+html.rdesk #app .pd .pcard.p10.mini.wild .ov b{font-size:calc(var(--cw) * .2);}
+.pd-pts{flex:none;padding:.14em .7em;border-radius:.6em;font-size:clamp(.8rem,1.6cqmin,1.3rem);font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums;background:rgba(255,138,61,.22);color:var(--orange);}
+.pd-pts.ok{background:var(--green);color:#03290f;}
+html.rdesk #app .pd .melds-none{color:rgba(255,255,255,.5);font-weight:600;font-size:clamp(.84rem,1.7cqmin,1.3rem);text-align:center;}
+/* (the deck and the discard pile are sized from the middle of the felt, which gets smaller as phases are laid round it) */
+html.rdesk #app .pd .mid{grid-area:c;min-width:0;min-height:0;align-items:center;padding:0;gap:clamp(12px,8cqw,60px);container:pdc / size;}
+html.rdesk #app .pd .pile{--cw:clamp(40px,min(30cqw,62cqh),190px);gap:.3em;font-size:clamp(.74rem,min(5cqw,8cqh),1.4rem);}
+html.rdesk #app .pd .pile .cap{font-size:1em;}
+@container pdc (max-height:92px){
+  html.rdesk #app .pd .pile .cap{display:none;}
+  html.rdesk #app .pd .pile{--cw:clamp(40px,min(30cqw,68cqh),190px);}
+}
+html.rdesk #app .pd .tablemsg{font-size:clamp(.88rem,min(5cqw,9cqh),1.6rem);padding:.4em 1em;}
+html.rdesk #app .pd .builder{align-self:stretch;width:min(100%,820px);margin:0 auto;}
+html.rdesk #app .pd .builder .mat .mc{--cw:clamp(36px,7.5cqmin,72px);min-height:calc(var(--cw) * 1.4 + 6px);}
+html.rdesk #app .pd .builder .mat .mc .pcard+.pcard{margin-left:calc(var(--cw) * -.44);}
+html.rdesk #app .pd .builder .pcard.p10.mini .ix{font-size:calc(var(--cw) * .44);}
+html.rdesk #app .pd .builder .pcard.p10.mini .ov b{font-size:calc(var(--cw) * .5);}
+html.rdesk #app .pd .builder .pcard.p10.mini.wild .ov b{font-size:calc(var(--cw) * .2);}
+/* The score sheet: a row a hand. A cell is the phase the player was on (filled in when they made it) and the points
+   they were caught with. */
+.pd-sheet{flex:1 1 0;min-height:0;display:flex;flex-direction:column;}
+.pd-pad{--lc:2.4em;--rh:2.3em;flex:1 1 0;}
+.pd-pad.fix{flex:0 0 auto;}
+.pd-pad .pb{display:flex;flex-direction:column;background:none;min-height:calc(var(--rh) * 2);}
+.pd-pad.fix .pb{flex:0 0 auto;overflow:visible;}
+.pd-pad .pb .pr{flex:0 0 var(--rh);height:auto;border-bottom:1px solid var(--gl-line);}
+.pd-pad .ph .rl{align-self:end;font-size:.7em;}
+.pd-pad .pr.todo .rl{opacity:.55;}
+.pd-c{display:grid;grid-template-columns:1.5em minmax(0,1fr);align-items:center;column-gap:.15em;min-width:0;padding:0 .35em 0 .3em;font-variant-numeric:tabular-nums;}
+.pd-c .b{display:grid;place-items:center;width:1.5em;height:1.5em;border-radius:.45em;font-size:.78em;font-weight:750;line-height:1;color:var(--text-2);box-shadow:inset 0 0 0 1.5px var(--gl-line);}
+.pd-c .b.made{background:var(--green);color:#03290f;box-shadow:none;}
+.pd-c .p{text-align:right;font-family:var(--hand);font-size:1.3em;line-height:1;color:var(--text);white-space:nowrap;}
+.pd-c .p.z{color:var(--text-3);}
+.pd-pad .pr.just .pd-c .p{animation:write .5s ease-out;}
+.pd-pad .pf{padding-bottom:.3em;}
+.pd-pad .pf .cv{font-size:1.8em;}
+.pd-pad[data-n="5"] .pf .cv,.pd-pad[data-n="6"] .pf .cv{font-size:1.45em;}
+.pd-pad[data-n="5"] .ph .pc,.pd-pad[data-n="6"] .ph .pc{font-size:.72em;overflow-wrap:normal;}
+.pd-nogoal .cdk-goal{display:none;}
+.pd-nogoal .pd-pad .pf{padding-bottom:.55em;}
+/* The climb: the phases each player has finished after every hand, a line a player in the seat's color */
+.pd-race{flex:1 1 0;min-height:0;display:flex;flex-direction:column;border-top:1px solid var(--gl-line);}
+.pd-race .box{position:relative;flex:1 1 0;min-height:0;margin:0 1em .2em;}
+.pd-race svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
+.pd-race .ax{stroke:var(--gl-line);stroke-width:1;}
+.pd-race .ax.zero{stroke:color-mix(in srgb,var(--text) 34%,transparent);}
+.pd-race text{fill:var(--text-3);font-size:.72em;font-weight:650;font-variant-numeric:tabular-nums;}
+.pd-race path{fill:none;stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round;}
+.pd-race path.me{stroke-width:4;}
+/* The ladder of the phases (the right panel): every player stands on the phase they are on */
+.pd-g1,.pd-g2,.pd-g3{flex:none;display:flex;flex-direction:column;}
+.pd-lad{display:flex;flex-direction:column;padding:0 1.25em;}
+.pd-rung{display:flex;align-items:center;gap:.6em;min-height:2.2em;border-bottom:1px solid var(--gl-line);font-size:.9em;font-weight:650;line-height:1.15;color:var(--text-2);}
+.pd-rung .n{flex:none;display:grid;place-items:center;width:1.7em;height:1.7em;border-radius:50%;font-style:normal;font-size:.8em;font-weight:800;color:var(--text-3);box-shadow:inset 0 0 0 1.5px var(--gl-line);}
+.pd-rung.done .n{background:color-mix(in srgb,var(--green) 70%,#0b3);color:#03290f;box-shadow:none;}
+.pd-rung.cur .n{background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--gold-ink);box-shadow:0 0 10px var(--litg);}
+.pd-rung.cur .d{color:var(--lit-ink);}
+.pd-rung.done .d{color:var(--text-3);}
+.pd-rung .d{flex:1 1 auto;min-width:0;}
+.pd-rung .tk{flex:none;display:flex;align-items:center;gap:.5em;}
+.pd-tok{position:relative;display:block;}
+.pd-tok .avatar{display:grid;width:1.75em;height:1.75em;font-size:.85em;}
+.pd-tok .bd{position:absolute;right:-.3em;bottom:-.25em;display:grid;place-items:center;width:1.05em;height:1.05em;border-radius:50%;background:var(--green);color:#03290f;box-shadow:0 0 0 1.5px rgba(14,15,30,.8);}
+.pd-tok .bd .ico{width:.72em;height:.72em;stroke-width:3.4;}
+.pd-tok .bd.sk{right:auto;left:-.3em;background:var(--red);}
+.pd-tok .bd.sk::before{content:"";width:.62em;height:2px;border-radius:2px;background:#fff;transform:rotate(-45deg);}
+.pd-notes{display:flex;flex-direction:column;gap:.35em;padding:.7em 1.25em 0;}
+.pd-notes p{margin:0;font-size:.82em;font-weight:650;line-height:1.3;color:var(--text-2);text-wrap:balance;}
+.pd-notes p.sk{color:var(--bad-ink);}
+.pd-cost{display:flex;flex-direction:column;padding:0 1.25em .9em;}
+.pd-cost div{display:flex;align-items:center;justify-content:space-between;gap:1em;min-height:1.95em;border-bottom:1px solid var(--gl-line);font-size:.84em;font-weight:650;color:var(--text-2);}
+.pd-cost div b{font-family:var(--hand);font-size:1.3em;font-weight:400;line-height:1;color:var(--text);white-space:nowrap;}
+/* a panel too short for everything keeps what matters most (the script adds f1, then f2 and so on until it all fits):
+   what a card costs goes first, then the sentences, the rungs draw in, the ladder stands in two columns where the
+   panel is wide enough, and last only the rungs somebody stands on are left */
+.pd-side.f1 .pd-g3{display:none;}
+.pd-side.f2 .pd-g2{display:none;}
+.pd-side.f3 .pd-rung{min-height:1.75em;}
+.pd-side.f3 .pd-g1 > .cdk-lbl{display:none;}
+.pd-side.f4.two .pd-lad{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-auto-flow:column;grid-template-rows:repeat(var(--half,5),auto);column-gap:1.4em;}
+.pd-side.f5 .pd-rung.free{display:none;}
+.pd-side.f4.f5 .pd-lad{display:flex;}
+.pd-side.f6 .pd-g1{display:none;}
 </style>
 </head>
 <body>
@@ -226,15 +363,25 @@ html.ls .p10-play .mat .mc{--cw:clamp(30px,calc((100dvh - var(--bar)) * .06),44p
 <script>
 (function () {
   'use strict';
+  // Smaller windows that no phone or tablet has get the desk's table (see "A large window" below) without its panels:
+  // upright or nearly square, 480 or more wide and 560 to 760 tall (LITE_P: the table over the hand), and wider than
+  // tall, over 520 tall and under 1200 wide (LITE_L: the table at the left, the hand at the right). 1000 to 1040 wide
+  // is left to the tablet's own layout.
+  var LITE_P = '(max-aspect-ratio:5/4) and (min-width:480px) and (min-height:560.02px) and (max-height:759.98px)';
+  var LITE_L = '(min-aspect-ratio:5001/4000) and (min-height:520.02px) and (max-width:999.98px), (min-aspect-ratio:5001/4000) and (min-height:520.02px) and (min-width:1040px) and (max-width:1199.98px)';
+  var liteP = window.matchMedia ? matchMedia(LITE_P) : null, liteL = window.matchMedia ? matchMedia(LITE_L) : null;
+  window.__rdeskq = window.Cards && Cards.DESK && window.matchMedia ? [Cards.DESK.wide, Cards.DESK.strip, Cards.DESK.square, Cards.DESK.tall, LITE_P, LITE_L].join(', ') : '';
   // Turning the device. A phone on its side or an iPad held sideways has its own layout (html.ls), and every turn (phone or iPad) changes the
   // layout inside a View Transition, so the table, the hand and the buttons glide to their new places instead of jumping.
   (function () {
     var R = document.documentElement, q = matchMedia('(orientation:landscape) and (max-height:820px)'), o = matchMedia('(orientation:landscape)');
-    var wait = false;
+    var wait = false, dq = window.__rdeskq ? matchMedia(window.__rdeskq) : null;
     function set() { wait = false; R.classList.toggle('ls', q.matches); R.classList.toggle('land', o.matches); window.dispatchEvent(new Event('resize')); }
     R.classList.toggle('ls', q.matches); R.classList.toggle('land', o.matches);
     function turn() {
       if (wait || (R.classList.contains('ls') === q.matches && R.classList.contains('land') === o.matches)) return;
+      // (a large window is laid out again as it is dragged and its pieces glide by themselves: the script at the foot of the page)
+      if (dq && (dq.matches || R.classList.contains('rdesk'))) { set(); return; }
       if (document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
         try { wait = true; var t = document.startViewTransition(set); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) { wait = false; }
       }
@@ -860,6 +1007,8 @@ html.ls .p10-play .mat .mc{--cw:clamp(30px,calc((100dvh - var(--bar)) * .06),44p
   }
   // o (online): {hand} — the hand just played; the next one is already dealt, so the sheet just closes
   function showScores(between, o) {
+    // (a desk: the hand is counted on the table and written on the score sheet beside it; the bar deals the next one)
+    if (between && !o && !NET && sheetOn()) { paint(); return null; }
     var t = el('table', { class: 'sum' }), last = S.rounds.length ? S.rounds[S.rounds.length - 1] : null, lph = S.phRounds.length ? S.phRounds[S.phRounds.length - 1] : null;
     t.appendChild(el('tr', null, [el('th', { text: '' }), el('th', { text: between ? 'Phase' : '' }), el('th', { text: between ? 'Hand' : '' }), el('th', { text: 'Total' }), el('th', { text: 'Next' })]));
     var order = S.players.map(function (p, i) { return i; }).sort(function (a, b) { return S.players[b].ph - S.players[a].ph || S.players[a].total - S.players[b].total; });
@@ -876,10 +1025,12 @@ html.ls .p10-play .mat .mc{--cw:clamp(30px,calc((100dvh - var(--bar)) * .06),44p
     var my = NET ? S.me : 0, alone = !NET && humans() < 2;
     var sub = between ? (S.lastOut >= 0 && isYou(S.lastOut) ? 'You went out! ' : S.lastOut >= 0 ? S.players[S.lastOut].name + ' went out. ' : '') + (!NET && !alone ? '' : lph[my] ? 'You made your phase.' : 'You try phase ' + S.players[my].ph + ' again.') : 'First to finish phase ' + S.last + ' wins. Fewest points breaks a tie.';
     var node = el('div', null, [el('p', { class: 'muted', text: sub }), t]);
-    return Kit.sheet({
+    var sh = Kit.sheet({
       title: between ? 'Hand ' + (o ? o.hand : S.hand) + ' done' : 'Scores', node: node, dismissible: !between || !!o,
-      actions: o ? [{ label: 'Play hand ' + (o.hand + 1), primary: true }] : between ? [{ label: 'Deal hand ' + (S.hand + 1), primary: true, onClick: function () { newHand(); } }] : [{ label: 'Close', cls: 'btn-soft' }]
+      actions: o ? [{ label: 'Play hand ' + (o.hand + 1), primary: true }] : between ? [{ label: 'Deal hand ' + (S.hand + 1), primary: true, onClick: function () { handSheet = null; newHand(); } }] : [{ label: 'Close', cls: 'btn-soft' }]
     });
+    if (between && !o) handSheet = sh;   // (a window dragged out to a desk puts this sheet away: the hand is on the score sheet there)
+    return sh;
   }
   // a computer player (online: also a seat the computer took over when its player left)
   function isCpu(p) { return NET ? !!(NET.seats[p] && NET.seats[p].bot) : !!S.players[p].cpu; }
@@ -992,7 +1143,61 @@ html.ls .p10-play .mat .mc{--cw:clamp(30px,calc((100dvh - var(--bar)) * .06),44p
 
   // ── Render ────────────────────────────────────────────────────────────────
   var feltEl, seatEls = [], handEl, barEl, goalEl, builderEl, msgT = null, msgText = '';
+  // A large window (cards.js, Cards.desk): the table takes the window, with the score sheet at its left and the ladder
+  // of the phases at its right. (Cards.desk also fills the windows between a tablet and a desk for a table laid out as
+  // Hearts is. This game keeps its own layouts there, so the desk's rules are on only while a desk layout shows.)
+  var DESK = Cards.desk(app), deskKey = '', deskHands = -1, laidFit = {}, handSheet = null;
+  function sheetOn() { return !!(DESK && DESK.on()); }   // (the panels show: a hand is counted on the score sheet)
+  function deskOn() { return !!(DESK && (DESK.on() || (liteP && liteP.matches) || (liteL && liteL.matches))); }
+  if (DESK && window.matchMedia) (function () {
+    var R = document.documentElement, D = Cards.DESK, m = matchMedia([D.wide, D.strip, D.square, D.tall].join(', ')), was = deskOn();
+    function sync() { R.classList.toggle('cdesk', m.matches); R.classList.toggle('rdesk', deskOn()); R.classList.toggle('rdk', deskOn()); }
+    // (the table is laid differently at a desk, so it is drawn again when a window becomes one or stops being one; a
+    // hand that was counted on the desk's score sheet has its scores brought up on a window without the sheet)
+    function turn() {
+      var now = deskOn(); sync();
+      if (m.matches && handSheet) { try { handSheet.close(); } catch (e) {} handSheet = null; }
+      if (S && S.hands && feltEl && feltEl.isConnected) { if (now !== was) build(); else paint(); if (!m.matches && !NET && S.stage === 'handover' && !document.querySelector('.k-scrim')) showScores(true); }
+      was = now;
+      window.dispatchEvent(new Event('resize'));
+    }
+    sync(); [m, liteP, liteL].forEach(function (q) { if (q.addEventListener) q.addEventListener('change', turn); else if (q.addListener) q.addListener(turn); });
+    // the grid for each shape of large window: your phase stands with the buttons
+    var G = 'html.rdesk.rdk #app.stage:has(> .ctable)', C = 'html.rdesk.rdk #app.stage > ', st = document.createElement('style');
+    var LITE = G + '{max-width:none;height:calc(100dvh - var(--bar));display:grid;column-gap:0;row-gap:0;padding:4px 16px max(calc(var(--safe-b) + 8px),18px);}' +
+      C + '.ctable{grid-area:table;display:flex;flex-direction:column;align-self:stretch;min-width:0;min-height:0;margin:0 0 6px;padding:7px;}' + C + '.ctable .felt-in{flex:1 1 0;height:auto;min-height:0;container:cfelt / size;}' +
+      C + '.phstrip{grid-area:goal;margin:0;padding:6px 12px;}' + C + '.csort-row{grid-area:sort;align-self:center;justify-content:flex-end;margin:0;}' +
+      C + '.chand{grid-area:hand;justify-self:center;align-self:center;width:100%;min-width:0;min-height:0;padding:calc(var(--cw) * .22) 0 4px;}' + C + '.chand .pcard.sel{transform:translateY(calc(var(--cw) * -.19));}' +
+      C + '.cbar{grid-area:bar;align-self:auto;min-height:52px;margin:0;}';
+    st.textContent = [
+      '@media ' + D.wide + '{' + G + '{grid-template-rows:minmax(0,1fr) auto auto auto auto;grid-template-areas:"left table right" "left table goal" "left table bar" "left table sort" "hand hand hand";}' +
+        C + '.phstrip{width:var(--cdk-rw);}}',
+      '@media ' + D.strip + '{' + G + '{grid-template-rows:minmax(0,1fr) auto auto auto auto;grid-template-areas:"left table right" "left table goal" "left table bar" "left table sort" "left table hand";}' +
+        C + '.phstrip{margin:0 0 6px 18px;padding:6px 12px;}}',
+      '@media ' + D.square + '{' + G + '{grid-template-rows:minmax(0,3fr) minmax(0,2fr) auto auto auto;grid-template-areas:"left table" "right table" "goal sort" "hand hand" "bar bar";}' +
+        C + '.phstrip{margin:4px 14px 0 0;padding:6px 12px;}' + C + '.csort-row{justify-content:flex-end;align-self:center;margin:4px 0 0;}' + C + '.cbar{min-height:52px;}}',
+      '@media ' + D.tall + '{' + G + '{grid-template-rows:minmax(0,1fr) auto auto auto clamp(250px,27dvh,540px);grid-template-areas:"table table" "goal sort" "hand hand" "bar bar" "left right";}' +
+        C + '.phstrip{margin:4px 7px 0 0;padding:6px 12px;}' + C + '.csort-row{justify-content:flex-end;align-self:center;margin:4px 0 0;}' + C + '.cbar{min-height:52px;}}',
+      // (a tall window too narrow for your phase and the sort side by side: each has a line of its own)
+      '@media ' + D.tall + ' and (max-width:599.98px){' + G + '{grid-template-rows:minmax(0,1fr) auto auto auto auto clamp(250px,27dvh,540px);grid-template-areas:"table table" "goal goal" "sort sort" "hand hand" "bar bar" "left right";}' +
+        C + '.phstrip{margin-right:0;}}',
+      '@media ' + D.tall + ' and (max-width:519.98px){' + G + '{grid-template-areas:"table table" "goal goal" "sort sort" "hand hand" "bar bar" "left left";}}',
+      // the smaller windows: the table over the hand, or the table at the left and the hand at the right
+      '@media ' + LITE_P + '{' + LITE + G + '{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) auto auto auto;grid-template-areas:"table table" "goal sort" "hand hand" "bar bar";column-gap:10px;}' +
+        C + '.chand{--cw:clamp(44px,min(13.5vw,10dvh),88px);}}',
+      '@media ' + LITE_L + '{' + LITE + G + '{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto;grid-template-areas:"table goal" "table sort" "table hand" "table bar";column-gap:16px;}' +
+        C + '.ctable{margin:0;}' + C + '.csort-row{margin:6px 0 0;}' + C + '.chand{--cw:clamp(52px,min(9.6vw,17dvh),104px);}}'
+    ].join('\n');
+    document.head.appendChild(st);
+  })();
+  // the other players round a desk's table, clockwise from your left: how many at your left beside the piles, across the
+  // top, at your right
+  var RING = { 1: [0, 1, 0], 2: [0, 2, 0], 3: [1, 1, 1], 4: [1, 2, 1], 5: [1, 3, 1] }, RING_N = { 5: [2, 1, 2] };   // (RING_N: a felt too narrow for three across the top)
   function render() {
+    build();
+    if (S.stage === 'handover') setTimeout(function () { showScores(true); }, 200);
+  }
+  function build() {
     app.innerHTML = '';
     app.classList.add('p10-play');
     var table = el('div', { class: 'ctable wood' });
@@ -1004,8 +1209,9 @@ html.ls .p10-play .mat .mc{--cw:clamp(30px,calc((100dvh - var(--bar)) * .06),44p
     app.appendChild(el('div', { class: 'csort-row' }, [sortT.el]));
     handEl = el('div', { class: 'chand' }); app.appendChild(handEl);
     barEl = el('div', { class: 'cbar' }); app.appendChild(barEl);
+    if (feltRO) { feltRO.disconnect(); feltRO.observe(feltEl); }
+    if (DESK) { var n = N(); app.style.setProperty('--cdk-lmin', n === 6 ? '420px' : n === 5 ? '380px' : n === 4 ? '330px' : '0px'); app.appendChild(DESK.l); app.appendChild(DESK.r); }
     paint();
-    if (S.stage === 'handover') setTimeout(function () { showScores(true); }, 200);
   }
   function seat(p) {
     var pl = S.players[p], s = el('div', { class: 'cseat' + (isMe(p) ? ' me' : '') + (S.stage === 'play' && S.turn === p ? ' turn' : '') });
@@ -1028,6 +1234,9 @@ html.ls .p10-play .mat .mc{--cw:clamp(30px,calc((100dvh - var(--bar)) * .06),44p
     var n = N(), mine = me(), sel = S.sel && find(S.sel);
     feltEl.innerHTML = '';
     seatEls = [];
+    feltEl.classList.toggle('pd', deskOn());
+    if (deskOn()) { paintFeltDesk(n, mine, sel); seatEls[S.me] = null; paintGoal(); paintBuilder(); paintHand(); paintBar(); fitLaid(); paintDesk(); return; }
+    feltEl.classList.remove('ring');
     var opps = el('div', { class: 'opps' + (n >= 4 ? ' many' : '') });
     // the other seats, in turn order from the viewer's left
     for (var d = 1; d < n; d++) { var i = (S.me + d) % n; seatEls[i] = seat(i); opps.appendChild(seatEls[i]); }
@@ -1065,6 +1274,104 @@ html.ls .p10-play .mat .mc{--cw:clamp(30px,calc((100dvh - var(--bar)) * .06),44p
     feltEl.appendChild(melds);
     seatEls[S.me] = null;
     paintGoal(); paintBuilder(); paintHand(); paintBar();
+  }
+  // The two piles (the deck and the discard), as a phone draws them too
+  function midEl(mine) {
+    var mid = el('div', { class: 'mid' });
+    var canDraw = mine && S.step === 'draw';
+    var top = S.discard[S.discard.length - 1];
+    var sw = el('div', { class: 'stackwrap' });
+    if (S.stock.length > 1) sw.appendChild(Kit.card('', '', { back: true, cls: 'under' }));
+    if (S.stock.length) { var st = Kit.card('', '', { back: true }); st.id = 'stockTop'; sw.appendChild(st); } else sw.appendChild(el('div', { class: 'empty', id: 'stockTop' }));
+    mid.appendChild(el('button', { type: 'button', class: 'pile' + (canDraw ? ' live' : ''), 'aria-label': 'Draw from the deck', onclick: function () { youDraw(false); } }, [sw, el('span', { class: 'cap', text: S.stock.length + ' in the deck' })]));
+    var dw = el('div', { class: 'stackwrap' });
+    if (S.discard.length > 1) { var u = cardEl(S.discard[S.discard.length - 2], { cls: 'under2' }); u.removeAttribute('data-id'); dw.appendChild(u); }
+    if (top) { var tn = cardEl(top); tn.id = 'discardTop'; dw.appendChild(tn); } else dw.appendChild(el('div', { class: 'empty', id: 'discardTop' }));
+    mid.appendChild(el('button', { type: 'button', class: 'pile' + (canDraw && top && !isS(top) ? ' live' : ''), 'aria-label': 'Take the top discard', onclick: function () { youDraw(true); } }, [dw, el('span', { class: 'cap', text: 'Discard' })]));
+    if (msgText) mid.appendChild(el('div', { class: 'tablemsg', text: msgText }));
+    return mid;
+  }
+  // A desk's felt: every other player has a place (their seat and, in front of it, the phase they have laid down with
+  // whatever has been hit onto it), the piles are in the middle, and your own phase lies along the foot, where it is
+  // built. When a hand is counted, the cards each player was caught with lie face up at their place, as they would
+  // be turned over to be counted at a table.
+  function ringFor(n) { return RING_N[n - 1] && feltEl.clientWidth && (feltEl.clientWidth - 40) / RING[n - 1][1] < 132 ? RING_N[n - 1] : RING[n - 1]; }
+  // (the felt changes size with the window, the fonts and the hand under it: its phases are fitted again, and the
+  // places are set round it again when it has become too narrow or wide enough for three across the top)
+  var feltRO = window.ResizeObserver ? new ResizeObserver(function () { if (!S || !S.hands || !feltEl || !feltEl.isConnected || !deskOn()) return; if (feltEl.dataset.ring !== ringFor(N()).join('')) paint(); else fitLaid(); }) : null;
+  // (once a dragged window has come to rest, the fit is worked out afresh: one made while things were still moving is not kept)
+  var fitT = 0;
+  window.addEventListener('resize', function () { clearTimeout(fitT); fitT = setTimeout(function () { laidFit = {}; if (S && S.hands && feltEl && feltEl.isConnected && deskOn()) fitLaid(); }, 380); });
+  function paintFeltDesk(n, mine, sel) {
+    var ring = ringFor(n), west = el('div', { class: 'pd-w' }), north = el('div', { class: 'pd-n' }), east = el('div', { class: 'pd-e' }), over = S.stage === 'handover' || S.stage === 'over';
+    function groups(p) {
+      var row = el('div', { class: 'mrow', 'data-p': p }), grps = el('div', { class: 'grps' });
+      (S.laid[p] || []).forEach(function (g, gi) {
+        var target = mine && S.step === 'play' && S.laid[S.me] && sel && canHit(sel, g);
+        var gEl = el(target ? 'button' : 'div', { class: 'grp' + (target ? ' tgt' : ''), 'aria-label': target ? 'Add to this group' : null });
+        g.cards.forEach(function (c) { var cn = cardEl(c, { mini: true }); if (c.id === S.lastHit) cn.classList.add('newc'); gEl.appendChild(cn); });
+        if (target) (function (o, k) { gEl.addEventListener('click', function () { youHit(o, k); }); })(p, gi);
+        grps.appendChild(gEl);
+      });
+      // (the hand is counted: what was left in it, face up)
+      if (over && p !== S.me && S.hands[p].length) {
+        var lf = sorted(S.hands[p]);
+        for (var i = 0; i < lf.length; i += 6) { var gl = el('div', { class: 'grp left' }); lf.slice(i, i + 6).forEach(function (c) { var cn = cardEl(c, { mini: true }); cn.removeAttribute('data-id'); gl.appendChild(cn); }); grps.appendChild(gl); }
+      }
+      row.appendChild(grps);
+      return grps.children.length ? row : null;
+    }
+    for (var d = 1; d < n; d++) {
+      var p = (S.me + d) % n, place = el('div', { class: 'pd-place', 'data-id': 'place' + p }), g = groups(p);
+      seatEls[p] = seat(p); place.appendChild(seatEls[p]);
+      if (over && S.rounds.length) { var got = S.rounds[S.rounds.length - 1][p]; place.appendChild(el('span', { class: 'pd-pts' + (got ? '' : ' ok'), text: S.lastOut === p ? 'Went out' : got ? got + ' points' : 'No points' })); }
+      if (g) place.appendChild(g);
+      if (d <= ring[0]) west.insertBefore(place, west.firstChild); else if (d <= ring[0] + ring[1]) north.appendChild(place); else east.appendChild(place);
+    }
+    feltEl.classList.toggle('ring', !!ring[0]); feltEl.dataset.ring = ring.join('');
+    feltEl.appendChild(north);
+    if (ring[0]) { feltEl.appendChild(west); feltEl.appendChild(east); }
+    feltEl.appendChild(midEl(mine));
+    // your own place: the phase you laid down, or where it is built
+    var mine0 = el('div', { class: 'pd-me melds', 'data-id': 'placeme' }), mg = S.laid[S.me] ? groups(S.me) : null;
+    if (mg) mine0.appendChild(mg);
+    else if (!(S.building && S.build && me())) mine0.appendChild(el('div', { class: 'melds-none', text: S.cover ? '' : isYou(S.me) ? 'Your phase goes here when you lay it down.' : S.players[S.me].name + '’s phase goes here.' }));
+    mine0.appendChild(builderEl);
+    feltEl.appendChild(mine0);
+  }
+  // The phases laid on a desk's table: one size of card at every seat, the largest at which every place holds its
+  // groups (the places along the top may take up to half the felt's height between them and the piles).
+  function fitLaid() {
+    if (!deskOn() || !feltEl) return;
+    var rows = [].slice.call(feltEl.querySelectorAll('.pd-place .mrow, .pd-me .mrow'));
+    feltEl.classList.remove('pd-over');
+    if (!rows.length) { feltEl.style.setProperty('--lcw', '44px'); return; }
+    var k = feltEl.clientWidth + 'x' + feltEl.clientHeight + '|' + rows.map(function (r) { return r.dataset.p + ':' + [].map.call(r.querySelectorAll('.grp'), function (g) { return g.children.length; }).join('.'); }).join('|') + (S.building ? 'b' : ''), fit = laidFit[k];
+    if (!fit) {
+      var cs = getComputedStyle(feltEl), inner = feltEl.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom), mid = feltEl.querySelector('.mid');
+      var tall = function (pl) {   // (what a place holds, top to bottom)
+        var h = 0, kids = 0, gap = parseFloat(getComputedStyle(pl).rowGap) || 0;
+        [].forEach.call(pl.children, function (c) { if (!c.offsetHeight) return; h += c.offsetHeight; kids++; });
+        return h + gap * Math.max(0, kids - 1);
+      };
+      var ok = function () {
+        if (mid && mid.clientHeight < Math.min(150, Math.max(64, inner * .26))) return false;   // (the piles keep room to be drawn at a size worth tapping)
+        if (rows.some(function (r) { var pl = r.parentNode; return [].some.call(r.querySelectorAll('.grp'), function (g) { return g.offsetWidth > pl.clientWidth + 1; }) || (pl.classList.contains('pd-me') && r.offsetHeight > inner * .34); })) return false;
+        if ([].some.call(feltEl.querySelectorAll('.pd-n .pd-place'), function (pl) { return tall(pl) > inner * .5 + 1; })) return false;
+        return [].every.call(feltEl.querySelectorAll('.pd-w, .pd-e'), function (col) {
+          var h = 0, gap = parseFloat(getComputedStyle(col).rowGap) || 0;
+          [].forEach.call(col.children, function (pl, i) { h += tall(pl) + (i ? gap : 0); });
+          return h <= col.clientHeight + 1;
+        });
+      };
+      fit = null;
+      for (var cw = 96; cw >= 26 && !fit; cw -= 2) { feltEl.style.setProperty('--lcw', cw + 'px'); if (ok()) fit = { cw: cw }; }
+      if (!fit) fit = { cw: 26, over: 1 };   // (a felt with no room even so: it scrolls, so no phase lies on another)
+      laidFit[k] = fit;
+    }
+    feltEl.style.setProperty('--lcw', fit.cw + 'px');
+    feltEl.classList.toggle('pd-over', !!fit.over);
+    if (fit.over && S.building && me()) feltEl.scrollTop = feltEl.scrollHeight;   // (the phase being built stays in view)
   }
   function paintGoal() {
     var m = S.me, pl = S.players[m], ph = pl.ph - 1;
@@ -1141,10 +1448,18 @@ html.ls .p10-play .mat .mc{--cw:clamp(30px,calc((100dvh - var(--bar)) * .06),44p
       n.addEventListener('click', function () { tapCard(c); });
       handEl.appendChild(n);
     });
+    // (a desk keeps the hand's place when the last card has gone, so the table stays where it is: it says so)
+    if (deskOn() && !S.hands[S.me].length) handEl.appendChild(el('div', { class: 'pd-nohand', text: isYou(S.me) ? 'You have no cards left.' : S.players[S.me].name + ' has no cards left.' }));
     requestAnimationFrame(function () { Cards.fan(handEl); });
   }
   function paintBar() {
     barEl.innerHTML = '';
+    if (S.stage === 'handover' && !NET && sheetOn() && S.phRounds.length) {
+      var lp = S.phRounds[S.phRounds.length - 1], alone = humans() < 2;
+      barEl.appendChild(el('span', { class: 'hint', text: (S.lastOut >= 0 && isYou(S.lastOut) ? 'You went out! ' : S.lastOut >= 0 ? S.players[S.lastOut].name + ' went out. ' : '') + (!alone ? '' : lp[0] ? 'You made your phase.' : 'You try phase ' + S.players[0].ph + ' again.') }));
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Deal hand ' + (S.hand + 1), onclick: function () { if (S && S.stage === 'handover') newHand(); } }));
+      return;
+    }
     if (S.stage !== 'play') { barEl.appendChild(el('span', { class: 'hint', text: S.stage === 'ending' ? 'Hand over!' : '' })); return; }
     var p = S.turn, m = S.me;
     if (S.cover) return;
@@ -1181,6 +1496,138 @@ html.ls .p10-play .mat .mc{--cw:clamp(30px,calc((100dvh - var(--bar)) * .06),44p
     var db = el('button', { type: 'button', class: 'btn ' + (S.laid[m] ? 'btn-primary' : 'btn-soft'), text: sel ? 'Discard ' + (isN(sel) ? sel.n : cname(sel)) : 'Discard', onclick: youDiscard });
     db.disabled = !sel;
     barEl.appendChild(db);
+  }
+  // ── A large window (Cards.desk) ───────────────────────────────────────────
+  // Beside the table at a desk: the score sheet at the left (a row a hand: the phase each player was on, filled in
+  // when they made it, and the points they were caught with; the totals; where there is room, the climb through the
+  // phases) and the ladder of the phases at the right (each phase in words, every player standing on theirs, who has
+  // laid down this hand and who loses a turn, what a card left in the hand costs). Both are drawn from the game as it
+  // stands, and only when a desk layout shows: a phone and a tablet never draw them.
+  function seatDisc(p) { return el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: isCpu(p) ? Kit.icon('bot') : Kit.esc(S.players[p].name.charAt(0).toUpperCase()) }); }
+  function firstWord(n) { var w = String(n || '').trim().split(/\s+/)[0]; return w || String(n || ''); }
+  function listOf(a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+  function paintDesk() {
+    if (!DESK) return;
+    if (!DESK.on() || !S || !S.players || !S.hands || !DESK.l.isConnected) { deskKey = ''; return; }
+    var my = S.cover || (NET && NET.seat < 0) ? -1 : S.me;
+    var key = JSON.stringify([S.hand, S.stage, S.turn, S.dealer, S.last, my, S.players, S.rounds.length, S.laid.map(function (g) { return g ? 1 : 0; }), S.skipNext, S.lastOut,
+      DESK.l.clientWidth, DESK.l.clientHeight, DESK.r.clientWidth, DESK.r.clientHeight]);
+    if (key === deskKey) return;
+    deskKey = key;
+    paintSheet(my); paintSide(my);
+  }
+  if (DESK && window.ResizeObserver) { var deskRO = new ResizeObserver(function () { if (S && S.players && S.hands) { fitLaid(); paintDesk(); } }); deskRO.observe(DESK.l); deskRO.observe(DESK.r); }
+  // (what fits a panel is measured in the page's own type: once the fonts are in, the panels are drawn again)
+  if (DESK && document.fonts && document.fonts.ready) document.fonts.ready.then(function () { deskKey = ''; if (S && S.players && S.hands) paintDesk(); });
+  function paintSheet(my) {
+    var n = N(), R = S.rounds || [], PR = S.phRounds || [], live = S.stage === 'play' || S.stage === 'ending', PW = DESK.l.clientWidth;
+    // the phase each player was on in every hand so far (they move on after each hand they made it)
+    var at = [], cur = S.players.map(function () { return 1; });
+    PR.forEach(function (row) { at.push(cur.slice()); row.forEach(function (v, i) { if (v && cur[i] < S.last) cur[i]++; }); });
+    var order = S.players.map(function (pl, i) { return i; }).sort(function (a, b) { return (S.players[b].done ? S.last + 1 : S.players[b].ph) - (S.players[a].done ? S.last + 1 : S.players[a].ph) || S.players[a].total - S.players[b].total; });
+    var inner = el('div', { class: 'cdk-in' }, [el('div', { class: 'cdk-h' }, [el('h2', { text: 'Score sheet' }), PW >= 330 ? el('small', { text: 'Phase, points left in hand' }) : null])]);
+    DESK.l.innerHTML = ''; DESK.l.appendChild(inner);
+    var fs = parseFloat(getComputedStyle(inner).fontSize) || 16, padFs = Math.max(11.5, Math.min(fs, PW / (n * 3.9 + 3.4)));
+    var rows = Math.max(R.length + (live ? 1 : 0) + 1, 8);
+    var race = DESK.l.clientHeight - 11.5 * fs - (2 + rows * 2.3) * padFs >= 10 * fs;
+    var sheet = el('div', { class: 'pd-sheet' }), pad = el('div', { class: 'cdk-pad pd-pad' + (race ? ' fix' : ''), 'data-n': String(n), style: { '--n': String(n), '--mi': String(my), 'font-size': padFs.toFixed(2) + 'px' } });
+    if (my >= 0) pad.appendChild(el('div', { class: 'meb' }));
+    function row(cls, label, cells) { return el('div', { class: 'pr ' + cls }, [el('span', { class: 'rl', text: label })].concat(cells)); }
+    function cell(ph, made, v) {
+      return el('span', { class: 'pd-c' }, [el('span', { class: 'b' + (made ? ' made' : ''), text: String(ph) }), el('span', { class: 'p' + (v ? '' : ' z'), text: v == null ? '' : String(v) })]);
+    }
+    pad.appendChild(row('ph', 'Hand', S.players.map(function (pl, p) {
+      return el('span', { class: 'pc' + (p === my ? ' me' : '') }, [seatDisc(p), el('span', { text: n >= 5 ? firstWord(pl.name) : pl.name })]);
+    })));
+    var body = el('div', { class: 'pb' }), liveRow = null, k;
+    for (k = 0; k < R.length; k++) body.appendChild(row(k === R.length - 1 && deskHands >= 0 && R.length === deskHands + 1 ? 'just' : '', String(k + 1), R[k].map(function (v, i) { return cell(at[k] ? at[k][i] : '', PR[k] && PR[k][i], v); })));
+    if (live) { liveRow = row('live', String(S.hand), S.players.map(function (pl, i) { return cell(pl.ph, !!S.laid[i], null); })); body.appendChild(liveRow); }
+    else liveRow = body.lastElementChild;
+    deskHands = R.length;
+    pad.appendChild(body);
+    pad.appendChild(row('pf', 'Total', S.players.map(function (pl, i) { return el('span', { class: 'cv' + (R.length && i === order[0] ? ' lead' : ''), text: String(pl.total) }); })));
+    sheet.appendChild(pad); inner.appendChild(sheet);
+    var box = null;
+    if (race) {
+      box = el('div', { class: 'box' });
+      sheet.appendChild(el('div', { class: 'pd-race' }, [el('div', { class: 'cdk-lbl' }, [el('span', { text: 'The climb' }), el('span', { text: R.length ? 'Phases finished after hand ' + R.length : '' })]), box]));
+    }
+    inner.appendChild(el('div', { class: 'cdk-goal', text: 'The first to finish phase ' + S.last + ' wins. The fewest points break a tie.' }));
+    // (the hands to come are ruled and empty, as many as the sheet has room for; more hands than fit: the sentence at
+    // the foot goes first, then the sheet shows whole rows only, the hand in play among them)
+    var rh = 2.3 * padFs, have = body.children.length, nextNo = (live ? S.hand : R.length) + 1 - have;   // (the hands to come are numbered on from the last one on the sheet)
+    if (!race) {
+      if (have * rh > body.clientHeight + 1) inner.classList.add('pd-nogoal');
+      var vis = Math.max(2, Math.floor(body.clientHeight / (1.95 * padFs)));
+      if (have > vis) { rh = body.clientHeight / vis; }
+      else { vis = Math.max(have, Math.floor(body.clientHeight / rh)); rh = body.clientHeight / vis; }
+      for (k = have; k < vis; k++) body.appendChild(row('todo', String(k + nextNo), S.players.map(function () { return el('span', { class: 'pd-c' }); })));
+      [].forEach.call(body.children, function (x) { x.style.flex = '0 0 ' + rh + 'px'; });
+      if (have > vis) body.scrollTop = Math.round((have - vis) * rh);
+    } else for (k = have; k < rows; k++) body.appendChild(row('todo', String(k + nextNo), S.players.map(function () { return el('span', { class: 'pd-c' }); })));
+    if (box) {
+      var run = S.players.map(function () { return [0]; }), c2 = S.players.map(function () { return 0; });
+      PR.forEach(function (rr) { rr.forEach(function (v, i) { if (v) c2[i]++; run[i].push(c2[i]); }); });
+      drawClimb(box, run.map(function (v, i) { return { v: v, c: Kit.color(i), me: i === my }; }), Math.max(R.length + 2, 10), S.last);
+    }
+  }
+  // The climb: each line the phases a player has finished after every hand so far
+  function drawClimb(box, lines, xMax, top) {
+    var w = box.clientWidth, h = box.clientHeight; if (w < 60 || h < 60) return;
+    var L = 26, Rt = 10, Tp = 8, B = 20, X = function (i) { return L + (w - L - Rt) * i / xMax; }, Y = function (v) { return Tp + (h - Tp - B) * (top - v) / top; }, s = '', i;
+    var step = top > 5 && h < 150 ? 5 : top > 5 ? 2 : 1;
+    for (var g = 0; g <= top; g += step) s += '<line class="ax' + (g === 0 ? ' zero' : '') + '" x1="' + L + '" x2="' + (w - Rt) + '" y1="' + Y(g) + '" y2="' + Y(g) + '"/><text x="' + (L - 7) + '" y="' + Y(g) + '" text-anchor="end" dominant-baseline="middle">' + g + '</text>';
+    var every = xMax <= 12 ? 1 : xMax <= 24 ? 2 : 5;
+    for (i = every; i <= xMax; i += every) s += '<text x="' + X(i) + '" y="' + (h - 4) + '" text-anchor="middle">' + i + '</text>';
+    // (lines that lie on each other are drawn a little apart; the viewer's own line is drawn last, over the others)
+    lines.slice().sort(function (a, b) { return (a.me ? 1 : 0) - (b.me ? 1 : 0); }).forEach(function (l, li) {
+      var off = l.me ? 0 : (li - (lines.length - 1) / 2) * 1.6;
+      var d = l.v.map(function (v, k) { return (k ? 'L' : 'M') + X(k).toFixed(1) + ' ' + (Y(v) + off).toFixed(1); }).join(' '), k = l.v.length - 1;
+      s += '<path' + (l.me ? ' class="me"' : '') + ' stroke="' + l.c + '" d="' + d + '"/><circle cx="' + X(k).toFixed(1) + '" cy="' + (Y(l.v[k]) + off).toFixed(1) + '" r="' + (l.me ? 5.5 : 4) + '" fill="' + l.c + '" stroke="rgba(14,15,30,.75)" stroke-width="1.5"/>';
+    });
+    box.innerHTML = '<svg viewBox="0 0 ' + w + ' ' + h + '" aria-hidden="true">' + s + '</svg>';
+  }
+  function paintSide(my) {
+    var n = N(), live = S.stage === 'play' || S.stage === 'ending', PW = DESK.r.clientWidth;
+    var inner = el('div', { class: 'cdk-in pd-side' + (PW >= 430 ? ' two' : '') }, [el('div', { class: 'cdk-h' }, [el('h2', { text: 'Hand ' + S.hand }), el('small', { text: (isYou(S.dealer) ? 'You' : S.players[S.dealer].name) + ' dealt' })])]);
+    // the ladder: a rung a phase, every player on the rung they are trying for
+    var g1 = el('div', { class: 'pd-g1' }), lad = el('div', { class: 'pd-lad', style: { '--half': String(Math.ceil(S.last / 2)) } });
+    g1.appendChild(el('div', { class: 'cdk-lbl' }, [el('span', { text: S.last < 10 ? 'The ' + S.last + ' phases' : 'The ten phases' })]));
+    var mine = my >= 0 ? S.players[my] : null;
+    for (var k = 1; k <= S.last; k++) (function (k) {
+      var here = [], tk = el('span', { class: 'tk' });
+      S.players.forEach(function (pl, i) { if ((pl.done ? S.last : pl.ph) === k) here.push(i); });
+      here.forEach(function (i) {
+        var t = el('span', { class: 'pd-tok', title: S.players[i].name }, [seatDisc(i)]);
+        if (S.laid[i] || S.players[i].done) t.appendChild(el('i', { class: 'bd', html: Kit.icon('check') }));
+        if (live && S.skipNext[i]) t.appendChild(el('i', { class: 'bd sk' }));
+        tk.appendChild(t);
+      });
+      lad.appendChild(el('div', { class: 'pd-rung' + (mine && (k < mine.ph || mine.done) ? ' done' : mine && k === mine.ph ? ' cur' : '') + (here.length ? '' : ' free') }, [
+        el('i', { class: 'n', text: String(k) }), el('span', { class: 'd', text: PH[k - 1].d }), tk
+      ]));
+    })(k);
+    g1.appendChild(lad); inner.appendChild(g1);
+    // who has laid down, who loses a turn
+    var g2 = el('div', { class: 'pd-g2' }), notes = el('div', { class: 'pd-notes' }), down = [], youDown = false;
+    S.players.forEach(function (pl, i) { if (S.laid[i]) { if (isYou(i)) youDown = true; else down.push(pl.name); } });
+    if (S.stage === 'handover' || S.stage === 'over') notes.appendChild(el('p', { text: (S.lastOut >= 0 ? (isYou(S.lastOut) ? 'You went out. ' : S.players[S.lastOut].name + ' went out. ') : '') + 'Everyone who laid down a phase moves on to the next one.' }));
+    else {
+      var who = (youDown ? ['You'] : []).concat(down);
+      notes.appendChild(el('p', { text: who.length ? listOf(who) + (who.length > 1 || youDown ? ' have' : ' has') + ' laid down a phase this hand. A green check marks a player who has.' : 'Nobody has laid down a phase this hand yet.' }));
+      S.players.forEach(function (pl, i) { if (S.skipNext[i]) notes.appendChild(el('p', { class: 'sk', text: isYou(i) ? 'You lose your next turn.' : pl.name + ' loses the next turn.' })); });
+    }
+    g2.appendChild(notes); inner.appendChild(g2);
+    // what a card left in the hand costs
+    var g3 = el('div', { class: 'pd-g3' }), cost = el('div', { class: 'pd-cost' });
+    g3.appendChild(el('div', { class: 'cdk-lbl' }, [el('span', { text: 'A card left in your hand costs' })]));
+    [['1 to 9', '5'], ['10 to 12', '10'], ['A Skip', '15'], ['A Wild', '25']].forEach(function (x) { cost.appendChild(el('div', null, [el('span', { text: x[0] }), el('b', { text: x[1] })])); });
+    g3.appendChild(cost); inner.appendChild(g3);
+    DESK.r.innerHTML = ''; DESK.r.appendChild(inner);
+    // (what doesn't fit goes, the least needed first)
+    var steps = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6'];
+    for (var f = 0; f < steps.length && inner.scrollHeight > inner.clientHeight + 1; f++) inner.classList.add(steps[f]);
+    DESK.r.style.visibility = inner.classList.contains('f6') && inner.scrollHeight > inner.clientHeight + 1 ? 'hidden' : '';   // (no room even for its heading)
   }
   function flash(t) {
     msgText = t; paint();
@@ -1460,6 +1907,49 @@ html.ls .p10-play .mat .mc{--cw:clamp(30px,calc((100dvh - var(--bar)) * .06),44p
     show: netShow, leave: netLeave
   });
 })();
+</script>
+<script>
+// A large window dragged to a new shape at any moment: the cards, the places, the piles and the panels glide from where they
+// showed in the last frame to their new places (where everything is, is noted every frame, since a resize has
+// already moved things by the time it is heard). A card that was redrawn is found again by its id. Only where a
+// window can be dragged (a mouse) and a desk layout shows before or after: a phone or tablet being turned keeps
+// its own View Transition.
+(function (SEL) {
+  var root = document.getElementById('app') || document.body, R = document.documentElement, last = new Map(), lastId = {}, wh = innerWidth + 'x' + innerHeight;
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches, D = window.Cards && Cards.DESK;
+  var dq = D && window.matchMedia ? matchMedia(window.__rdeskq || [D.wide, D.strip, D.square, D.tall].join(', ')) : null, mouse = window.matchMedia && matchMedia('(pointer:fine)').matches;
+  if (!dq || reduce) return;
+  function note() {
+    var m = new Map(), ids = {};
+    root.querySelectorAll(SEL).forEach(function (n) { var r = n.getBoundingClientRect(); if (!r.width) return; m.set(n, r); if (n.dataset && n.dataset.id && !n.closest('.cdk-panel')) ids[n.dataset.id] = r; });
+    last = m; lastId = ids;
+  }
+  (function loop() { if (!document.hidden && (mouse || dq.matches)) note(); requestAnimationFrame(loop); })();
+  window.addEventListener('resize', function () {
+    var now = innerWidth + 'x' + innerHeight; if (now === wh) return; wh = now;
+    if (!dq.matches && !R.classList.contains('rdesk')) return;
+    var before = last, beforeId = lastId;
+    requestAnimationFrame(function () {   // (after the game's own resize work has redrawn whatever it redraws)
+      var nodes = [].slice.call(root.querySelectorAll(SEL)), set = new Set(nodes);
+      nodes.forEach(function (n) {
+        for (var p = n.parentElement; p && p !== root; p = p.parentElement) if (set.has(p)) return;   // (moves with its seat or its panel)
+        var a = before.get(n) || (n.dataset && n.dataset.id && beforeId[n.dataset.id]), b = n.getBoundingClientRect();
+        if (!b.width || !n.animate) return;
+        // (a panel that wasn't showing, or that changes shape and so lays its contents out anew, comes up in its new
+        // place; stretched from the old shape its words would be pulled out of true)
+        var panel = n.classList.contains('cdk-panel');
+        if (panel && (!a || Math.abs((a.width / b.width) / (a.height / b.height) - 1) > .12)) {
+          try { n.animate([{ opacity: 0, scale: '.97' }, { opacity: 1, scale: '1' }], { duration: 360, easing: 'cubic-bezier(.25,.8,.25,1)' }); } catch (e) {}
+          return;
+        }
+        if (!a) return;
+        var dx = a.left + a.width / 2 - b.left - b.width / 2, dy = a.top + a.height / 2 - b.top - b.height / 2, sx = a.width / b.width, sy = a.height / b.height;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < .02 && Math.abs(sy - 1) < .02) return;
+        try { n.animate([{ translate: dx + 'px ' + dy + 'px', scale: sx + ' ' + sy }, { translate: '0px 0px', scale: '1 1' }], { duration: 440, easing: 'cubic-bezier(.25,.8,.25,1)' }); } catch (e) {}
+      });
+    });
+  });
+})('.pcard, .pd-place, .pd-me, .mid, .phstrip, .csort-row, .cbar, .cdk-panel');
 </script>
 </body>
 </html>

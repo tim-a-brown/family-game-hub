@@ -49,10 +49,12 @@
       await D.you('.cbar .btn-green', 'Every card you keep is in a group, so you can go out. Tap Go out!', { until: function () { return S().outBy === 0; } });
       await D.wait(900);
       await D.say('You went out! Bender and EVE each get one more turn, then they lay down what they can.', { at: '.ctable', ring: false, wait: 3600 });
-      await D.wait(function () { return document.querySelector('.k-sheet .fc-sum'); }, 15000);
+      // (the round is counted on a sheet over the table; in a large window everyone's cards lie on the table instead,
+      // the round is written on the score sheet beside it, and the button that deals the next round is in the bar)
+      await D.wait(function () { return document.querySelector('.k-sheet .fc-sum') || (S().phase === 'roundover' && document.querySelector('.fc-seat .fcd-laid')); }, 15000);
       await D.wait(700);
-      await D.say('Going out scores 0. Cards left out of a group count their number against you, a wild card 20, and a Joker 50.', { at: function () { return document.querySelectorAll('.k-sheet .fc-sr')[1]; } });
-      await D.say('The next round deals one more card, and Sevens are wild.', { at: '.k-sheet .k-acts .btn-primary' });
+      await D.say('Going out scores 0. Cards left out of a group count their number against you, a wild card 20, and a Joker 50.', { at: function () { return document.querySelectorAll('.k-sheet .fc-sr')[1] || document.querySelector('.fc-seat .fcd-laid'); } });
+      await D.say('The next round deals one more card, and Sevens are wild.', { at: function () { return document.querySelector('.k-sheet .k-acts .btn-primary') || document.querySelector('.cbar .btn-primary'); } });
     }
   });
 })();
