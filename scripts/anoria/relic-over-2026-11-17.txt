@@ -1,0 +1,93 @@
+A Relic played over one of your own (2026-11-17)
+===============================================
+
+Tim: "in arvela, i should be able to play a relic over an existing relic in play for me".
+
+The rule
+--------
+  You can have 2 Relics in play at a time, and they have to be Relics with different powers (as before).
+  With 2 Relics in play, a new Relic can be played over either of them for its full cost. The Relic underneath goes
+  to its player's discard pile, and the new one has its slot.
+  A Relic whose power the player has in play can go only over the Relic that has that power (a second copy over the
+  first, the Astrolabe over the Compass), so there are still never two Relics with one power.
+  With a free slot and no Relic of the same power in play, a Relic is played as always: nothing is covered.
+
+  The move is {t: 'relic', h, over: slot}; a Relic bound for a free slot has no `over`, as before. Its event is
+  {t: 'relic', o, c, over, was}. A game saved before this carries on and gets the new moves (the rule only adds moves).
+  cfg.relicOver 0 plays the rule before, for test games; cfg.overAll 1 lets the robots weigh every such move.
+
+What the Relic underneath leaves behind
+---------------------------------------
+Nothing a Relic does is kept with the Relic or with its slot. Every test of a power asks hasFx as it happens, so the
+Relic that left stops at once: the hand limit goes back to 8 with the Manuscripts covered, the Rosetta Stone adds
+nothing to the line of the Relic played over it, the Locomotive's walk is gone.
+What a power has used is its player's, not the Relic's: P.uA (the jump), P.uRw (Railway), P.uRk (Volley) and P.uLc
+(Library Cave) for the turn, P.uCy (Homecoming) for the round, P.rb (the Inca Rope Bridge's Seal) for the game. So a
+power that works once is not made new by playing its Relic again: a second Rope Bridge over the first mends nothing
+more, and a second Locomotive in the turn its player went by rail gives no second walk. This is what the cards say
+("once a game", "once a turn") read as the player's, and it leaves nothing to be gained by covering a Relic with its
+own twin but a Legacy Line, Deir el-Bahari's Renown or Gutenberg's card, which any Relic played gives.
+The one thing a Relic leaves on a Figure is the Stirrup's Charge (f.gar: a Figure that walked this turn can still
+clash). It goes with the Stirrup (relicLeft in engine.js); Dunhuang gives its banner's player's Figures the same, and
+that stays.
+A Legacy Line is read as the Relic is played, before the Relic underneath leaves. So the Sextant played over the
+Astrolabe makes its line from the Astrolabe (the card under a Relic in your hand shows the Astrolabe lit as in play,
+and the line it draws is the one that scores).
+
+The robots
+----------
+A robot plays a Relic over one of its own only when the new Relic's power is worth more to it than the power it would
+cover (RW in engine.js, a round's worth of each; the Inca Rope Bridge counts ROPE_W more while its Seal is still to
+come, so an armed Rope Bridge is not covered and a spent one is the first to go). Whether that is worth the Spark and
+the card is then weighed as any move is. So it never covers a Relic with one of the same power, and Easy's unclear
+judgment never makes it throw a better Relic away for a lesser one.
+
+The numbers
+-----------
+The five ready decks (variant.js, 80 games a pair and seat, 1,600 games; the ready decks hold few Relics):
+
+  node scripts/anoria/variant.js "<label>" '<json>' 80
+  before this change (the commit before):    Explo 45.8  Legio 49.7  Legac 53.9  Court 56.6  Pathf 54.1  | spread 10.8  rounds 7.7  knock-outs 8.2  seal wins 31%  seat 1 wins 50%  Legacy lines 2.4  threads 2.1
+  the rule switched off ({"relicOver":0}):   Explo 45.8  Legio 49.7  Legac 53.9  Court 56.6  Pathf 54.1  | spread 10.8  rounds 7.7  knock-outs 8.2  seal wins 31%  seat 1 wins 50%  Legacy lines 2.4  threads 2.1
+  today ({}):                                Explo 46.1  Legio 49.7  Legac 52.3  Court 56.3  Pathf 53.8  | spread 10.2  rounds 7.7  knock-outs 8.2  seal wins 32%  seat 1 wins 50%  Legacy lines 2.4  threads 2.0
+  robots weigh every cover ({"overAll":1}):  Explo 46.4  Legio 49.7  Legac 52.3  Court 56.3  Pathf 53.4  | spread 9.8   rounds 7.7  knock-outs 8.2  seal wins 32%  seat 1 wins 50%  Legacy lines 2.4  threads 2.1
+
+  (the switch gives the old code's games exactly, so before and after below are run on today's code with it)
+
+The twelve Guides' decks (sets.js, 66 pairs, 100 games each, seed 78000, 1,100 games a deck):
+
+  node scripts/anoria/sets.js 50 78000 style '' '{"relicOver":0}'      node scripts/anoria/sets.js 50 78000 style '' '{}'
+  each deck's own robot      before   after        Normal robots       before   after
+  sorjuana                   53.9     52.8         joan                53.0     54.0
+  cleopatra                  52.5     52.6         curie               53.5     53.9
+  joan                       51.0     51.0         leonardo            50.9     53.0
+  saladin                    50.6     50.6         cleopatra           51.5     52.5
+  leonardo                   50.5     51.9         wuzetian            53.7     51.9
+  curie                      50.4     50.5         tubman              49.3     49.5
+  wuzetian                   50.2     50.7         shakespeare         48.0     49.0
+  tubman                     50.1     50.0         sorjuana            49.5     48.9
+  shakespeare                49.3     49.0         mansamusa           47.5     47.4
+  suntzu                     48.4     48.3         suntzu              48.2     47.4
+  mansamusa                  48.1     47.1         saladin             48.0     46.6
+  akbar                      45.0     45.6         akbar               46.8     46.0
+  spread                     8.9      7.2          spread              6.9      8.1
+  (for every deck the rounds a game moved by 0.04 at most, and the share of games ended on Seals by 1 point at most)
+
+  Leonardo, whose Relics cost 1 less, gains the most (1.4 points with his own robot, 2.1 with Normal); nobody else
+  moves more than about 1 point with their own robot, which is inside what 1,100 games can tell apart (about 1.5).
+  The spread is narrower with each deck's own robot and wider with Normal, so the rule does not push the decks
+  apart or together in a way these runs can see.
+
+How often it is played (robots, both players together):
+  the five ready decks, 400 games                 0.10 times a game, in 10% of games (0.9 different Relics played a game)
+  the twelve Guides' decks, 528 games             0.15 times a game, in 13% of games (2.5 different Relics played a game)
+  the twelve Guides' decks, Normal robots         0.27 times a game, in 21% of games (2.9 different Relics played a game)
+
+Tests
+-----
+  node scripts/anoria/deeds-test.js      313 passed (49 of them this rule: which moves there are, what the move does, each
+                                         power that works once, the Stirrup, Legacy Lines, Deir el-Bahari, the robots, and
+                                         robots in whole games: never three Relics, never two with one power)
+  node scripts/anoria/powers-test.js     96 passed, 0 failed
+  node scripts/anoria/players-test.js    59 passed
+  node scripts/anoria/check-set.js       Nothing wrong.

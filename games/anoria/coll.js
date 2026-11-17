@@ -275,7 +275,7 @@ function track(m, ev, me) {
   else if (t === 'clash') { if (m.own[ev.a] === me && ev.am > ev.dm) m.clashWon++; }
   if ((t === 'arrive' && !ev.why) || t === 'relic' || t === 'deed') { if (ev.o === me && m.cur === me) { m.plays++; if (m.plays === 3) m.play3++; } }
   if (t === 'arrive') { if (ev.u) m.own[ev.u] = ev.o; if (ev.o === me && CARDS[ev.c]) { const c = CARDS[ev.c]; if (c.f && c.f !== 'N') m.facs[c.f] = 1; if (c.k && c.k.scholar) m.scholars++; } }
-  if (t === 'relic' && ev.o === me) { m.relics++; if (m.relics >= 2) m.relics2 = true; }   // (a Relic stays in play: the second played is two in play at once)
+  if (t === 'relic' && ev.o === me && !ev.was) { m.relics++; if (m.relics >= 2) m.relics2 = true; }   // (a Relic stays in play: the second played is two in play at once; one played over another, ev.was, adds none)
   return m;
 }
 // the game's measures for the callings

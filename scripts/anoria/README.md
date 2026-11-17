@@ -78,7 +78,9 @@ mixed decks 50.2% on average (43.2 to 57.1), one pack twice 49.7% (44.3 to 52.5)
   briefs (both top corners, the head a fifth of the way down), and the game's files against `set-150.json`.
 - A Relic's or a Deed's effect is data: `fx` names the card whose effect it has (`engine.js` `fxOf`). A player has two
   Relics in play and no two with the same power. `node scripts/anoria/relics2.js [games]` plays that rule against
-  letting the power count twice (`set-150-balance.txt`).
+  letting the power count twice (`set-150-balance.txt`). Since 2026-11-17 a Relic can be played over one of the player's
+  own, which goes to their discard pile (`{t: 'relic', h, over}`); `'{"relicOver":0}'` plays the rule before, and
+  `'{"overAll":1}'` lets the robots weigh every such move (`relic-over-2026-11-17.txt`).
 - `node scripts/anoria/relicfx.js [games] [seed] ['<json>'] [relic,relic,...]`: every Relic power on the same games (two
   copies in one player's deck of random cards with no other Relics, against a deck with none), so the lines differ only
   by the Relic. It is how the Timbuktu Manuscripts' power (hold 10 cards) was measured (`relics-2026-11-13.txt`), and

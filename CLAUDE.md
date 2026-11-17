@@ -1695,8 +1695,24 @@ Underlying principles for everything:
   with one power could never be made (check-set.js refuses it: the Sextant jumps so that its line from the Astrolabe
   works). Letting a power count twice was tried (`scripts/anoria/relics2.js`, `set-150-balance.txt`): it made no
   difference the robots could measure, so the rule is the one that is a single sentence and has nothing to add up,
-  and it is what the game already did with a second copy of one Relic. A Relic in your hand that can't be played
-  says why under the card when you read it (`notesFor`).
+  and it is what the game already did with a second copy of one Relic.
+  **A Relic can be played over one of your own** (Tim, 2026-11-17: "i should be able to play a relic over an existing
+  relic in play for me"): with 2 Relics in play a new Relic goes over either of them for its full cost, and the Relic
+  underneath goes to your discard pile; a Relic whose power you have in play can go only over the Relic that has it
+  (so there are still never two with one power, and a second copy goes over the first); with a free slot and no such
+  Relic it is played as always. The move is `{t: 'relic', h, over: slot}` and its event `{t: 'relic', o, c, over, was}`
+  (`actions` and `apply` in engine.js; net.js passes both through as they are). What a power has used is its player's,
+  never the Relic's (`P.uA`, `uRw`, `uRk`, `uLc` this turn, `P.uCy` this round, `P.rb` this game), so the Relic that
+  left stops at once and a power that works once is not made new by playing its Relic again; the Stirrup's Charge on a
+  Figure that walked goes with the Stirrup (`relicLeft`). A Legacy Line is read as the Relic is played, so a Relic that
+  grows from the Relic it covers (the Sextant over the Astrolabe) makes its line. The robots cover a Relic only with one
+  whose power is worth more to them (`overWorth`, from `RW`). On the screen: a Relic from your hand has your two Relic
+  slots as its road (`R.slots`, `slotsRow` in ui.js: Play on a free slot, Replace on a Relic it would cover, each with
+  the cost); on the table the Relics it can cover light on your bar and the same row rises over them (`relicChooser`),
+  and the Relic can be dragged onto either. The playback lifts the old Relic out of its slot as a card and drops it
+  away before the new one lands (`EV.relic`); the turn log and the computer's move name both. A Relic whose power you
+  have in play says under the card why it can go only over that Relic (`notesFor`). `cfg.relicOver: 0` plays the rule
+  before, for test games; the numbers are `scripts/anoria/relic-over-2026-11-17.txt`.
 - **The Relic powers of 2026-11-13** (Tim: "I'd like to see a lot more variation on what relics can do to minimize overlap
   and create new possibilities"; the proposal is `scripts/anoria/relics-proposal.md`, and of it Tim said "far sight seems
   like a lot -- maybe they just reveal the first of the two cards they draw each turn while in play? and stores - maybe
