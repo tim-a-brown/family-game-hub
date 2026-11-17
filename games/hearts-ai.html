@@ -146,6 +146,75 @@
 }
 /* five or six at a short table: the side seats sit lower, clear of the seats along the top */
 @media (max-height:640px){#app .many .cseat.w,#app .many .cseat.e{top:40%;} #app .many .ctrick{top:62%;}}
+/* ── A large window (Cards.desk in cards.js lays the page out; html.cdesk-on while it does) ───────────────────────
+   On the felt, the Queen of Spades lies face up beside whoever took her this hand. At the left stands the score
+   sheet, hand by hand; at the right the hand in play: the pass, the last trick, who took each trick. Both panels
+   are in the page at every size and drawn only at a desk. */
+.cseat .qs{display:none;}
+html.cdesk-on #app .cseat .qs{display:block;position:absolute;left:100%;top:0;margin-left:.55em;--cw:3em;rotate:7deg;box-shadow:0 0 0 2px var(--lit),0 0 14px var(--litg),0 4px 10px rgba(0,0,0,.4);}
+html.cdesk-on #app .cseat.e .qs,html.cdesk-on #app .cseat.ne .qs{left:auto;right:100%;margin:0 .55em 0 0;rotate:-7deg;}
+html.cdesk-on #app .cseat .qs.new{animation:pop .4s var(--spring);}
+html.cdesk-on #app .cseat.nw,html.cdesk-on #app .cseat.ne{top:clamp(8px,1.6cqmin,24px);}
+html.cdesk-on #app.stage .many .ctrick .pcard{--cw:clamp(40px,min(14.5cqw,13cqh),180px);}
+html.cdesk-on #app .cseat .tag > span:last-child{max-width:7.6em;}
+html.cdesk-on #app .many .cseat .tag > span:last-child{max-width:5.6em;}
+html.cdesk-on #app .cseat.s .tag > span:last-child{max-width:none;}
+.h-pass{flex:none;display:flex;align-items:center;gap:.5em;padding:0 1.25em .15em;font-size:.86em;font-weight:650;line-height:1.25;color:var(--text-2);}
+.h-pass .ico{width:1.25em;height:1.25em;flex:none;color:var(--text-3);}
+.h-g1{flex:1 1 0;min-height:0;display:flex;flex-direction:column;}
+.h-g2{flex:none;display:flex;flex-direction:column;min-height:0;padding-bottom:.9em;}
+.h-took{flex:none;display:flex;align-items:center;gap:.5em;min-height:2.3em;padding:.45em 1.25em 0;font-size:.86em;font-weight:650;line-height:1.2;color:var(--text-2);}
+.h-took .avatar{width:1.8em;height:1.8em;font-size:.85em;}
+.h-took b{margin-left:auto;padding:.1em .55em;border-radius:.6em;font-weight:750;color:var(--lit-ink);box-shadow:inset 0 0 0 1px rgba(255,211,77,.6);font-variant-numeric:tabular-nums;white-space:nowrap;}
+/* who took each trick: a disc in the taker's color with the points under it; the tricks to come are rings */
+.h-tl{flex:none;display:grid;grid-template-columns:repeat(var(--tc,7),minmax(0,1fr));gap:.4em 0;padding:0 .9em;}
+.h-tk{display:flex;flex-direction:column;align-items:center;gap:.1em;min-width:0;}
+.h-tk .avatar{width:2em;height:2em;font-size:.8em;}
+.h-tk .o{display:grid;place-items:center;width:2.35em;height:2.35em;border-radius:50%;font-size:.68em;font-weight:700;color:var(--text-3);box-shadow:inset 0 0 0 1.5px var(--gl-line);font-variant-numeric:tabular-nums;}
+.h-tk .n,.h-tk .nm{display:none;}
+.h-tk .pt{min-height:1.15em;font-size:.7em;font-weight:750;line-height:1.15;color:var(--lit-ink);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.h-tk.done .o{background:var(--gl-2);}
+.h-tk.now .o{color:var(--lit-ink);box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.7),0 0 10px var(--litg);}
+/* the cards you gave and the cards you got, as small faces */
+.h-swap{flex:none;display:flex;flex-direction:column;gap:.45em;padding:.75em 1.25em 0;}
+.h-sw{display:flex;align-items:center;justify-content:space-between;gap:.6em;font-size:.82em;font-weight:650;line-height:1.2;color:var(--text-2);}
+.h-sw .cs{display:flex;flex:none;gap:.25em;}
+.h-c{display:inline-grid;place-items:center;min-width:2.3em;height:1.7em;padding:0 .28em;border-radius:.4em;background:linear-gradient(160deg,#fff,#f1ead9);color:#1d1b2e;font-family:var(--font);font-weight:900;font-size:.95em;letter-spacing:-.04em;line-height:1;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.35);}
+.h-c.red{color:#d81e3a;}
+:root.k-4c .h-c[data-s="c"]{color:#14803e;}
+:root.k-4c .h-c[data-s="d"]{color:#1c5fd0;}
+/* a panel too short for everything keeps what matters most: the last trick, then who took the tricks */
+@container cdkp (max-height:500px){.h-swap{display:none;}}
+@container cdkp (max-height:400px){.h-pass{display:none;}}
+@container cdkp (max-height:330px){.h-g2{display:none;}}
+/* a tall panel: the tricks are a ruled list down the panel, a line a trick */
+@container cdkp (min-height:860px) and (max-width:520px){
+  .h-g1{flex:1 1 min(100cqw,34cqh);max-height:min(125cqw,46cqh);}
+  .h-g2{flex:1 1 auto;}
+  .h-tl{flex:1 1 calc(var(--tn,13) * 3.2em);min-height:calc(var(--tn,13) * 1.9em);max-height:calc(var(--tn,13) * 4.8em);grid-template-columns:minmax(0,1fr);grid-auto-rows:minmax(0,1fr);gap:0;}
+  .h-tk{flex-direction:row;gap:.6em;padding:0 .2em;border-bottom:1px solid var(--gl-line);}
+  .h-tk .n{display:block;width:1.6em;font-size:.74em;font-weight:700;color:var(--text-3);text-align:center;font-variant-numeric:tabular-nums;}
+  .h-tk .o{color:transparent;}
+  .h-tk .nm{display:block;flex:1;min-width:0;font-size:.86em;font-weight:650;color:var(--text-2);overflow-wrap:anywhere;}
+  .h-tk .pt{min-height:0;font-size:.86em;}
+}
+/* a panel wider than tall (a strip of a window): the last trick at the left, the rest at the right */
+@container cdkp (min-aspect-ratio:5/4){
+  .h-side{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);grid-auto-rows:auto;align-content:start;}
+  .h-side > *,.h-side > .h-g1 > *{grid-column:2;}
+  .h-side > .h-g1{display:contents;}
+  .h-side > .h-g1 > .cdk-lt{grid-column:1;grid-row:1 / span 6;margin:1em 0 1em 1em;}
+  .h-side > .h-g2{display:flex;padding-bottom:0;}
+  .h-side .h-tl{grid-template-columns:repeat(var(--tcw,7),minmax(0,1fr));}
+}
+/* a short felt at a desk: the side seats sit low and the trick a little higher, as on a phone held sideways */
+@container cfelt (max-height:500px){
+  html.cdesk-on #app .n4 .cseat.w,html.cdesk-on #app .n4 .cseat.e{top:66%;}
+  html.cdesk-on #app .n4 .ctrick{top:43%;}
+  html.cdesk-on #app .n4 .cmsg{bottom:auto;top:45%;transform:translate(-50%,-50%);}
+  html.cdesk-on #app .many .cseat.w,html.cdesk-on #app .many .cseat.e{top:40%;}
+  html.cdesk-on #app .many .ctrick{top:62%;}
+}
 </style>
 </head>
 <body>
@@ -303,11 +372,12 @@
 
   // ── Dealing & passing ─────────────────────────────────────────────────────
   function newHand() {
-    S.round++;
+    S.round++; handBar = false;
     var n = NN();
     S.hands = dealHands(S);
     S.taken = zeros(n); S.tookQS = -1; S.trick = []; S.trickNo = 0; S.broken = false; S.received = []; S.vd = zeros(n, '');
     S.tw = zeros(n); S.hb = 0; S.dtDeal = cs(S.hands[0].map(cc));   // for the history: tricks won, when hearts broke, your dealt hand
+    S.last = null; S.tl = []; S.sentAll = null;   // for the desk's panels: the last trick, who took each trick (seat, points, ...), what each seat passed
     S.passDir = passDirOf(S);
     S.passSel = []; S.passes = zeros(n, null);
     if (S.passDir === 'hold') startPlay();
@@ -351,6 +421,7 @@
     S.hands.forEach(sortHand);
     var from = function (p) { return passSource(p); };
     S.recvAll = S.players.map(function (pl, p) { return moving[from(p)].map(function (c) { return c.id; }); });
+    S.sentAll = sel.map(function (ids) { return ids.slice(); });
     S.received = S.recvAll[ME];
     S.dtPass = { out: moving[0].map(cc), got: moving[from(0)].map(cc) };
     S.passSel = []; S.passes = null;
@@ -527,6 +598,7 @@
       setTimeout(function () {
         if (t !== token) return;
         trickEl.innerHTML = '';
+        S.last = { t: S.trick, w: win.p, got: got }; if (S.tl) S.tl.push(win.p, got);
         S.trick = []; S.trickNo++; S.leader = win.p; S.turn = win.p;
         if (S.trickNo === tricksIn(S)) endHand(); else { save(); next(); }
       }, 380);
@@ -555,6 +627,9 @@
   }
   // o (online): {round} — the next hand is already dealt, so the sheet just closes
   function showScores(between, hand, moon, o) {
+    // (a desk: the hand is already written on the score sheet beside the table, so nothing covers it; the bar has
+    // the button for the next hand)
+    if (between && !o && DESK && DESK.on() && S.phase === 'handover') { handBar = true; paintSeats(); paintBar(); return null; }
     var t = el('table', { class: 'sum' });
     t.appendChild(el('tr', null, [el('th', { text: '' }), el('th', { text: between ? 'This hand' : '' }), el('th', { text: 'Total' })]));
     var low = Math.min.apply(null, S.players.map(function (p) { return p.total; }));
@@ -571,6 +646,7 @@
   }
   function finish() {
     S.phase = 'over';
+    if (DESK && DESK.on()) { paintSeats(); paintBar(); }   // (a desk: the last hand goes on the score sheet behind the results)
     var rank = S.players.map(function (p, i) { return { name: p.name, score: p.total, cpu: isCpu(i), color: Kit.color(i), i: i }; }).sort(function (a, b) { return a.score - b.score; });
     var tie = rank[1].score === rank[0].score, solo = S.players.filter(function (p) { return !p.cpu; }).length === 1;
     var hl = S.highlights.slice();
@@ -617,7 +693,8 @@
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
-  var seatEls = [], trickEl, handEl, barEl, msgEl, feltEl;
+  var seatEls = [], trickEl, handEl, barEl, msgEl, feltEl, qsKey = '';
+  var DESK = Cards.desk(app), deskKey = '', deskLt = '', deskRounds = -1, handBar = false;   // (a large window: cards.js)
   function render() {
     app.innerHTML = '';
     var n = NN(), table = el('div', { class: 'ctable wood n' + n + (n >= 5 ? ' many' : '') }), felt = el('div', { class: 'felt-in' });
@@ -637,6 +714,7 @@
     app.appendChild(handEl);
     barEl = el('div', { class: 'cbar' });
     app.appendChild(barEl);
+    if (DESK) { app.style.setProperty('--cdk-lmin', n === 6 ? '356px' : n === 5 ? '312px' : '0px'); app.appendChild(DESK.l); app.appendChild(DESK.r); }
     S.trick.forEach(function (t) { trickEl.appendChild(Cards.el(t.c, { cls: 'p-' + posOf(t.p) })); });
     paintSeats(); paintHand(); paintMsg();
     if (S.phase === 'handover') setTimeout(function () { showScores(true, S.rounds[S.rounds.length - 1], -1); }, 200);
@@ -650,7 +728,7 @@
   // a computer player (online: also a seat the computer took over when its player left)
   function isCpu(p) { return NET ? !!(NET.seats[p] && NET.seats[p].bot) : !!S.players[p].cpu; }
   function paintSeats() {
-    var up = upSeats();
+    var up = upSeats(), qsNow = S.round + ':' + S.tookQS;
     S.players.forEach(function (pl, p) {
       var s = seatEls[p]; s.innerHTML = '';
       s.classList.toggle('turn', up.indexOf(p) >= 0);
@@ -671,8 +749,12 @@
           s.appendChild(backs);
         }
       }
+      // (a desk: the Queen of Spades lies face up beside whoever took her this hand)
+      if (S.tookQS === p && S.phase !== 'pass') s.appendChild(Kit.card('Q', 's', { cls: 'qs' + (qsKey !== qsNow ? ' new' : '') }));
     });
+    qsKey = qsNow;
     paintStacks();
+    paintDesk();
   }
   // Online passing: each player's 3 cards wait face down in front of the player they're going to
   function paintStacks() {
@@ -732,7 +814,10 @@
   }
   function paintBar() {
     barEl.innerHTML = '';
-    if (S.phase === 'pass' && passedYet() && !NET) {
+    if (S.phase === 'handover' && handBar && !NET) {
+      barEl.appendChild(el('span', { class: 'hint', text: 'Hand ' + S.round + ' is on the score sheet.' }));
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Deal next hand', onclick: function () { if (S && S.phase === 'handover') newHand(); } }));
+    } else if (S.phase === 'pass' && passedYet() && !NET) {
       var nx = nextPasser();
       barEl.appendChild(el('span', { class: 'hint', text: nx >= 0 ? 'Pass the device to ' + S.players[nx].name : '' }));
     } else if (S.phase === 'pass' && passedYet()) {
@@ -759,7 +844,89 @@
     var b = el('div', { class: 'say', text: t }); seatEls[p].appendChild(b);
     setTimeout(function () { b.remove(); }, 1300);
   }
-  window.addEventListener('resize', function () { if (handEl) Cards.fan(handEl); });
+  window.addEventListener('resize', function () { if (handEl) Cards.fan(handEl); if (S && S.players && S.hands && handEl) paintDesk(); });
+
+  // ── A large window (Cards.desk) ───────────────────────────────────────────
+  // Beside the table at a desk: the score sheet at the left (every hand, the hand in play lit, the totals and how
+  // near each is to the score the game is played to) and the hand in play at the right (the pass, the last trick,
+  // who took each trick, the cards you gave and got). Both are drawn from the game as it stands, and only when a
+  // desk layout shows: a phone and a tablet never draw them.
+  function cardOfId(id) { var k = +String(id).slice(1); return { r: Cards.RANKS[k % 13], s: Cards.SUITS[Math.floor(k / 13)], id: id }; }
+  function faceChip(c) { return el('span', { class: 'h-c' + (c.s === 'h' || c.s === 'd' ? ' red' : ''), 'data-s': c.s, text: c.r + Cards.GLYPH[c.s] + '\uFE0E' }); }
+  function seatDisc(p) { return el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: isCpu(p) ? Kit.icon('bot') : Kit.esc(S.players[p].name.charAt(0).toUpperCase()) }); }
+  function paintDesk() {
+    if (!DESK) return;
+    if (!DESK.on() || !S || !S.players || !S.taken) { deskKey = ''; return; }
+    var me = mySeat(), sees = me >= 0 && !BLIND && !isCpu(me);
+    var key = JSON.stringify([S.round, S.phase, S.trickNo, S.taken, S.tookQS, S.players, S.rounds.length, S.target, S.passDir, me, sees, S.tl, S.last && S.last.w, S.sentAll || S.pass || S.passes, S.recvAll || S.recv, NET ? NET.seats : 0]);
+    if (key === deskKey) return;
+    deskKey = key;
+    paintSheet(sees ? me : -1); paintSide(sees ? me : -1);
+  }
+  function paintSheet(me) {
+    var n = NN(), hx = S.hx || [], playing = S.phase === 'pass' || S.phase === 'play';
+    var low = Math.min.apply(null, S.players.map(function (p) { return p.total; }));
+    var inner = el('div', { class: 'cdk-in' }, [el('div', { class: 'cdk-h' }, [el('h2', { text: 'Score sheet' })])]);
+    DESK.l.innerHTML = ''; DESK.l.appendChild(inner);
+    var qm = '<b class="h-c">Q♠\uFE0E</b>';
+    Cards.pad(inner, {
+      cols: S.players.map(function (pl, p) { return { name: n >= 5 ? firstWord(pl.name) : pl.name, color: Kit.color(p), cpu: isCpu(p), me: p === me }; }),
+      rows: S.rounds.map(function (r, i) {
+        var h = hx[i] || {};
+        return { label: i + 1, cells: r.map(function (v, p) { return { v: v, zero: !v, mark: h.m === p ? Kit.icon('moon') : !(h.m >= 0) && h.q === p ? qm : '' }; }) };
+      }),
+      live: playing ? { label: S.round, cells: S.taken.map(function (v, p) { return { v: S.phase === 'pass' ? '' : v, zero: !v, hot: v > 0, mark: S.tookQS === p ? qm : '' }; }) } : null,
+      total: S.players.map(function (pl) { return { v: pl.total, lead: S.rounds.length > 0 && pl.total === low, pct: pl.total / S.target, warn: pl.total >= S.target * .8 }; }),
+      meter: 'to ' + S.target,
+      just: deskRounds >= 0 && S.rounds.length === deskRounds + 1
+    });
+    deskRounds = S.rounds.length;
+    inner.appendChild(el('div', { class: 'cdk-goal', text: 'The lowest score wins when someone reaches ' + S.target + '.' }));
+  }
+  function paintSide(me) {
+    var n = NN(), T = tricksIn(S), dir = S.passDir, play = S.phase === 'play', done = S.phase === 'pass' ? 0 : Math.min(S.trickNo, T);
+    var inner = el('div', { class: 'cdk-in h-side' }, [el('div', { class: 'cdk-h' }, [el('h2', { text: 'Hand ' + S.round }), el('small', { text: play ? 'Trick ' + Math.min(S.trickNo + 1, T) + ' of ' + T : '' })])]);
+    var went = S.phase === 'pass' ? 'passes' : 'passed';
+    inner.appendChild(el('div', { class: 'h-pass', html: Kit.icon(dir === 'left' ? 'back' : dir === 'right' ? 'right' : dir === 'across' ? 'swap' : 'hand') + '<span>' +
+      (dir === 'hold' ? 'Nobody passes cards this hand.' : 'Everyone ' + went + ' three cards ' + (dir === 'across' ? 'across the table.' : 'to the ' + dir + '.')) + '</span>' }));
+    // the last trick, lying as it lay on the table
+    var lt = S.phase === 'pass' ? null : S.last, ltKey = S.round + ':' + S.trickNo, g1 = el('div', { class: 'h-g1' });
+    g1.appendChild(el('div', { class: 'cdk-lbl' }, [el('span', { text: 'Last trick' })]));
+    Cards.lastTrick(g1, { cls: 'n' + n + (n >= 5 ? ' many' : ''), fresh: !!lt && deskLt !== ltKey, plays: lt ? lt.t.map(function (x) { return { c: x.c, pos: posOf(x.p), win: x.p === lt.w }; }) : [] });
+    if (lt) deskLt = ltKey;
+    var took = el('div', { class: 'h-took' });
+    if (lt) {
+      took.appendChild(seatDisc(lt.w));
+      took.appendChild(el('span', { text: (lt.w === me ? 'You' : S.players[lt.w].name) + ' took this trick' }));
+      if (lt.got) took.appendChild(el('b', { text: '+' + lt.got }));
+    }
+    g1.appendChild(took); inner.appendChild(g1);
+    // who took each trick of the hand
+    // (the tricks whose taker is known: all of them, unless the hand was picked up part way through, as a demo does)
+    var tl = S.tl && S.tl.length <= done * 2 && (!NET || S.tl.length === done * 2) ? S.tl : null, off = tl ? done - tl.length / 2 : 0, g2 = el('div', { class: 'h-g2' }), list = el('div', { class: 'h-tl', style: { '--tn': String(T), '--tc': String(T <= 8 ? T : Math.ceil(T / (T <= 14 ? 2 : 3))), '--tcw': String(T <= 10 ? T : Math.ceil(T / 2)) } });
+    g2.appendChild(el('div', { class: 'cdk-lbl' }, [el('span', { text: 'Tricks this hand' }), el('span', { text: done + ' of ' + T })]));
+    for (var k = 0; k < T; k++) {
+      var w = tl && k >= off && k < done ? tl[(k - off) * 2] : -1, g = w >= 0 ? tl[(k - off) * 2 + 1] : 0;
+      list.appendChild(el('div', { class: 'h-tk' + (k < done ? ' done' : '') + (k === done && play ? ' now' : '') }, [
+        el('span', { class: 'n', text: String(k + 1) }),
+        w >= 0 ? seatDisc(w) : el('span', { class: 'o', text: k < done ? '' : String(k + 1) }),
+        el('span', { class: 'nm', text: w >= 0 ? (w === me ? 'You' : n >= 5 ? firstWord(S.players[w].name) : S.players[w].name) : '' }),
+        el('span', { class: 'pt', text: g ? '+' + g : '' })
+      ]));
+    }
+    g2.appendChild(list);
+    // the cards you gave and the cards you got (your own, so only while your hand is face up)
+    if (me >= 0 && dir !== 'hold') {
+      var out = NET ? S.pass && S.pass[me] : S.sentAll && S.sentAll[me] ? S.sentAll[me].map(cardOfId) : S.passes && S.passes[me] ? S.passes[me].map(cardOfId) : null;
+      var got = S.phase !== 'play' ? null : NET ? S.recv && S.recv[me] && S.recv[me].map(cardOfId) : S.recvAll && S.recvAll[me] && S.recvAll[me].map(cardOfId);
+      var sw = el('div', { class: 'h-swap' });
+      if (out && out.length) sw.appendChild(el('div', { class: 'h-sw' }, [el('span', { text: 'You gave ' + S.players[passTarget(me, dir)].name }), el('span', { class: 'cs' }, view(out).map(faceChip))]));
+      if (got && got.length) sw.appendChild(el('div', { class: 'h-sw' }, [el('span', { text: S.players[passSource(me, dir)].name + ' gave you' }), el('span', { class: 'cs' }, view(got).map(faceChip))]));
+      if (sw.childNodes.length) g2.appendChild(sw);
+    }
+    inner.appendChild(g2);
+    DESK.r.innerHTML = ''; DESK.r.appendChild(inner);
+  }
 
   // ── Online (turnnet.js) ───────────────────────────────────────────────────
   // The table holds the whole game for all 4 seats (S without the local-only bits). Each device draws its own seat
@@ -790,7 +957,7 @@
     st.round++;
     var n = NN(st);
     st.hands = dealHands(st);
-    st.taken = zeros(n); st.tookQS = -1; st.trick = []; st.trickNo = 0; st.broken = false; st.last = null; st.tw = zeros(n); st.hb = 0; st.vd = zeros(n, '');
+    st.taken = zeros(n); st.tookQS = -1; st.trick = []; st.trickNo = 0; st.broken = false; st.last = null; st.tl = []; st.tw = zeros(n); st.hb = 0; st.vd = zeros(n, '');
     st.passDir = passDirOf(st);
     st.pass = zeros(n, null); st.recv = empties(n);
     if (st.passDir === 'hold') netPlayStart(st); else { st.phase = 'pass'; st.turn = -1; }
@@ -828,7 +995,7 @@
     var got = st.trick.reduce(function (a, x) { return a + pts(x.c); }, 0);
     st.taken[win.p] += got; if (st.tw) st.tw[win.p]++;
     if (st.trick.some(function (x) { return isQS(x.c); })) { st.tookQS = win.p; st.dtQ = { w: win.p, l: st.trick[0].p, c: st.trick.map(function (x) { return cc(x.c); }), n: st.trickNo + 1 }; }
-    st.last = { t: st.trick, w: win.p, got: got };
+    st.last = { t: st.trick, w: win.p, got: got }; if (st.tl) st.tl.push(win.p, got);
     st.trick = []; st.trickNo++; st.leader = win.p; st.turn = win.p;
     mv.done = 1; mv.w = win.p; mv.got = got;
     if (st.trickNo === tricksIn(st)) { netEndHand(st); mv.hand = 1; }
@@ -1133,14 +1300,22 @@
       nodes.forEach(function (n) {
         for (var p = n.parentElement; p && p !== root; p = p.parentElement) if (set.has(p)) return;   // (moves with its seat)
         var a = before.get(n) || (n.dataset && n.dataset.id && beforeId[n.dataset.id]), b = n.getBoundingClientRect();
-        if (!a || !b.width || !n.animate) return;
+        if (!b.width || !n.animate) return;
+        // (a desk panel that wasn't showing, or that changes shape and so lays its contents out anew, comes up in its
+        // new place; stretched from the old shape its words would be pulled out of true)
+        var panel = n.classList.contains('cdk-panel');
+        if (panel && (!a || Math.abs((a.width / b.width) / (a.height / b.height) - 1) > .12)) {
+          try { n.animate([{ opacity: 0, scale: '.97' }, { opacity: 1, scale: '1' }], { duration: 360, easing: 'cubic-bezier(.25,.8,.25,1)' }); } catch (e) {}
+          return;
+        }
+        if (!a) return;
         var dx = a.left + a.width / 2 - b.left - b.width / 2, dy = a.top + a.height / 2 - b.top - b.height / 2, sx = a.width / b.width, sy = a.height / b.height;
         if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < .02 && Math.abs(sy - 1) < .02) return;
         try { n.animate([{ translate: dx + 'px ' + dy + 'px', scale: sx + ' ' + sy }, { translate: '0px 0px', scale: '1 1' }], { duration: 440, easing: 'cubic-bezier(.25,.8,.25,1)' }); } catch (e) {}
       });
     });
   });
-})('.pcard, .cseat, .plq, .pstack, .cmsg');
+})('.pcard, .cseat, .plq, .pstack, .cmsg, .cdk-panel');
 </script>
 </body>
 </html>
