@@ -17,7 +17,14 @@
   function seat(p) { return function () { return document.querySelectorAll('.ctable .cseat')[p]; }; }
   function bid(n) { return function () { return [].slice.call(document.querySelectorAll('.cbar .bids button')).filter(function (b) { return b.textContent === String(n); })[0]; }; }
   function myChip() { return document.querySelector('.ctable .cseat.s .info .chip-s:not(.tot)'); }
-  function row(i) { return function () { return document.querySelectorAll('.k-sheet table.sum tr')[i]; }; }
+  // (a round's scores: the sheet that comes up over the table, or, in a large window, the row just written on the score sheet beside it)
+  function desk() { return document.documentElement.classList.contains('cdesk-on'); }
+  function scored() { return document.querySelector('.k-sheet table.sum') || (desk() && S().phase === 'roundover' && document.querySelector('.cbar .btn-primary')); }
+  function row(i) { return function () {
+    var t = document.querySelectorAll('.k-sheet table.sum tr')[i]; if (t || !desk()) return t;
+    var rows = document.querySelectorAll('.wz-pad .pb .pr:not(.todo):not(.live)'), r = rows[rows.length - 1];
+    return r ? r.querySelectorAll('.wz-c')[i - 1] : null;
+  }; }
   function trick() { return document.querySelectorAll('.ctrick > *'); }
   function myTurn() { var s = S(); return s && s.phase === 'play' && s.turn === 0 && s.trick.length < 4; }
 
@@ -64,7 +71,7 @@
       await D.say('One more trick would spoil your bid. Lead the Jester, because a Jester always loses.', { at: mine('J0') });
       await D.tap(mine('J0'));
       await D.say('When a Jester is led, the next ordinary card played sets the suit to follow.', { at: trick, wait: 3200 });
-      await D.wait(function () { return document.querySelector('.k-sheet table.sum'); }, 12000);
+      await D.wait(scored, 12000);
       await D.wait(600);
       await D.say('You took exactly the 2 tricks you bid, so you score 20 points plus 10 for each trick, 40 in all.', { at: row(1) });
       await D.say('Bender bid 0 but took a trick, so Bender loses 10 points. A missed bid costs 10 for every trick you were off, over or under.', { at: row(2) });

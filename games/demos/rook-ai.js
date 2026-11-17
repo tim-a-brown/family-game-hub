@@ -12,6 +12,15 @@
   function mine(id) { return function () { return document.querySelector('.chand [data-id="' + id + '"]'); }; }
   function seat(p) { return function () { return document.querySelectorAll('.ctable .cseat')[p]; }; }
   function trick() { return document.querySelectorAll('.ctrick > *'); }
+  // (in a large window the score strip is put away and the panel at the right says the bid and each side's points; a
+  // hand's scores are the sheet that comes up over the table, or there the row just written on the score sheet)
+  function desk() { return document.documentElement.classList.contains('cdesk-on'); }
+  function scored() { return document.querySelector('.k-sheet table.sum') || (desk() && S().phase === 'handover' && document.querySelector('.cbar .btn-primary')); }
+  function ours() {
+    var t = document.querySelectorAll('.k-sheet table.sum tr')[1]; if (t || !desk()) return t;
+    var rows = document.querySelectorAll('.rk-pad .pb .pr'), r = rows[rows.length - 1];
+    return r ? r.querySelector('.cv') : null;
+  }
   var HAND = ['rook', 'r14', 'r13', 'r12', 'r10', 'r9', 'b1', 'g6', 'y7', 'b8'], NEST = ['y1', 'g1', 'r11', 'y9', 'g5'];
   var BURY = ['g6', 'y7', 'b8', 'y9', 'g5'];
 
@@ -40,7 +49,7 @@
       for (var i = 0; i < 4; i++) await D.tap('.cbar .bidbar .amt button[aria-label="Raise bid"]', { after: 200 });
       await D.you('.cbar .bidbar .btn-primary', 'Tap Bid to bid 120.', { until: function () { return S().bids[0] === 120; } });
       await D.wait(function () { return S().phase !== 'bid'; }, 12000);
-      await D.say('Everyone else passed, so you win the bid at 120. Your team needs 120 points to make it.', { at: '.rk-top .rk-mid', wait: 3000 });
+      await D.say('Everyone else passed, so you win the bid at 120. Your team needs 120 points to make it.', { at: function () { return desk() ? document.querySelector('.cdk-r .rk-ln') || document.querySelector('.cdk-r .rk-b.rk-me') : document.querySelector('.rk-top .rk-mid'); }, wait: 3000 });
       await D.wait(function () { return S().fromNest && S().fromNest.length === 5; }, 6000);
       await D.wait(600);
       await D.say('You pick up the five cards of the nest, outlined in green, then bury any five face down. You keep your red cards and the 1s.', { at: function () { return S().fromNest.map(function (id) { return mine(id)(); }); } });
@@ -64,15 +73,15 @@
           s.trick = []; s.trickNo = 8; s.turn = 0; s.leader = 0; s.tricks = [3, 2, 2, 1]; s.vd = [{}, {}, {}, {}];
         });
       });
-      await D.say('Now we skip ahead to the last two tricks. Your team has 60 points so far.', { at: '.rk-top .rk-team.us', wait: 3200 });
+      await D.say('Now we skip ahead to the last two tricks. Your team has 60 points so far.', { at: function () { return desk() ? document.querySelector('.cdk-r .rk-tug .ends span') : document.querySelector('.rk-top .rk-team.us'); }, wait: 3200 });
       await D.you(mine('rook'), 'You lead. Play the Rook, and everyone has to follow with red if they can.', { until: function () { return S().trick.length > 0; } });
       await D.wait(function () { return S().trick.length === 4; }, 9000);
       await D.say('Bender had to give up the Red 1, and the Rook beats it. That trick is worth 45 points.', { at: trick });
       await D.wait(function () { return S().trickNo >= 9 && S().turn === 0; }, 9000);
       await D.tap(mine('y1'), { say: 'Whoever takes the last trick also gets the buried cards. Lead your Yellow 1.' });
-      await D.wait(function () { return document.querySelector('.k-sheet table.sum'); }, 15000);
+      await D.wait(scored, 15000);
       await D.wait(600);
-      await D.say('Your team took 135 points, at least the 120 you bid, so you score all 135. A team that takes less than its bid loses the whole bid.', { at: function () { return document.querySelectorAll('.k-sheet table.sum tr')[1]; } });
+      await D.say('Your team took 135 points, at least the 120 you bid, so you score all 135. A team that takes less than its bid loses the whole bid.', { at: ours });
     }
   });
 })();
