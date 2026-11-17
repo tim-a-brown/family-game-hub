@@ -1547,7 +1547,7 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
   </div>
 
   <section class="sec" id="cont-sec" hidden>
-    <div class="sec-h"><span class="kp-ic" id="kp-ic"></span><h2>Keep playing</h2><span class="n" id="cont-n"></span><button type="button" class="cont-edit" id="cont-edit" hidden>Edit</button></div>
+    <div class="sec-h"><span class="kp-ic" id="kp-ic"></span><h2>Keep playing</h2><span class="n" id="cont-n"></span><button type="button" class="sec-ed" id="cont-edit" aria-label="Edit Keep playing" hidden></button></div>
     <div class="rail" id="rail"></div>
     <div class="cont-foot" id="cont-foot"></div>
   </section>
@@ -2633,7 +2633,10 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     railSig = sig;
     var rail = $('rail'), was = rail.querySelector('.shelf'), sx = was ? was.scrollLeft : 0;
     rail.innerHTML = ''; rail.classList.toggle('editing', editing);
-    var eb = $('cont-edit'); eb.hidden = !items.length; eb.textContent = editing ? 'Done' : 'Edit'; eb.classList.toggle('on', editing);
+    // (the same quiet pencil as every section's heading; while editing it is the gold Done that ends it)
+    var eb = $('cont-edit'); eb.hidden = !items.length;
+    if (editing) { eb.className = 'cont-edit on'; eb.textContent = 'Done'; eb.removeAttribute('aria-label'); }
+    else { eb.className = 'sec-ed'; eb.innerHTML = Kit.icon('pencil'); eb.setAttribute('aria-label', 'Edit Keep playing'); }
     // online games: the latest move on top
     var nets = netTurns.map(function (x) { return { g: findGame(x.id), n: x }; }).filter(function (x) { return x.g; }).sort(function (a, b) { return (b.n.at || 0) - (a.n.at || 0); });
     if (items.length) {
