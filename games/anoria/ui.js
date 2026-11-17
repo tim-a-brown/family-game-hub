@@ -1854,6 +1854,376 @@
     if (window.AnoriaDecks) row.appendChild(tile('dk', Kit.icon('cards'), 'Decks', mine ? mine + ' you built' : 'Build your own', false, () => window.AnoriaDecks.open(null, showSetup)));
     return row;
   }
+  // ═══ The setup at a desk ═════════════════════════════════════════════════════════════════════════════════
+  // A window larger than a phone's or a tablet's (a computer; Tim, 2026-11-17: "gameplay needs to take up as much screen
+  // as the device will give it, but also adapt to every possible resizing option", and of a layout scaled up, "simply
+  // scaling things up is not thoughtful design"). The setup is composed for the window, in three parts beside the kit's
+  // own controls, which keep a control's size (a gentle step up in the largest windows, --sdc 1 to 1.35):
+  //   the rail   the kit's setup itself: who is playing, each deck's choice, the options and the start buttons, at the
+  //              right, where the taps go. In a low wide window it is two columns: the decks, then who plays and the start.
+  //   the wall   what was chosen, as you would lay it out to look at: each deck's Guide as the card itself and its 40
+  //              cards as real small cards, Figures by cost, then Relics, then Deeds (they were behind the Cards button);
+  //              a tap reads the deck on the strip at that card. The computer's deck the same way once a Guide is chosen
+  //              for it; until then the twelve Guides it may come with. Cards are as large as the wall allows, to 210px:
+  //              from 140px they say what they do, from 75px they are the small card with its name, under that the picture.
+  //   the room   what is otherwise a tap or two away: the sphere with its signs, what the next pack and the next Guide
+  //              need and the packs waiting; the last game (its race for Renown and how it ended) and the games before
+  //              it; the callings nearest their end; for someone who has not finished a game, the lessons.
+  // Three compositions by the window's shape (sdShape): 'band' (1100 wide and 880 tall, or more): the wall at the left
+  // and the rail at the right share a band across the top, and the room runs the whole width under it; 'side' (as wide,
+  // lower): the wall and a low room at the left, the rail the window's height at the right; 'stack' (narrower, tall):
+  // the name, the rail, the wall and the room one under another. Nothing is scaled: every size is worked out from the
+  // window (sdLay), and a resize lays the same parts out again, so every choice made stays made. A phone and a tablet
+  // (402x874, 874x402, 768x1024, 1024x768, 320x568) never get here: sdShape says null and nothing is built.
+  const SDK = { co: [], els: {}, shape: null, wrap: null };
+  const sdShape = () => { const W = window.innerWidth, H = window.innerHeight;
+    if (document.documentElement.classList.contains('k-insheet') || W < 480 || H <= 520 || !(Math.max(W, H) > 1024 || Math.min(W, H) > 768)) return null;
+    return W >= 1100 ? (H >= 880 ? 'band' : 'side') : 'stack'; };
+  const sdTap = () => { Kit.sfx('tap'); Kit.haptic('light'); };
+  const sdPlural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+  // (the largest whole number of columns and the card's width for n cards in a box w by h, a card 30 by 42)
+  function sdFit(n, w, h, max) {
+    let best = { cw: 0, cc: 1, g: 4 };
+    for (let cc = 1; cc <= n; cc++) {
+      const rows = Math.ceil(n / cc);
+      for (const g of [12, 9, 6, 4]) {
+        const cw = Math.floor(Math.min((w - g * (cc - 1)) / cc, (h - g * (rows - 1)) / rows * 30 / 42, max || 210));
+        if (cw > 0 && g <= Math.max(4, cw * .09) + .5 && (cw > best.cw || (cw === best.cw && cc > best.cc))) { best = { cw: cw, cc: cc, g: g, rows: rows }; break; }
+      }
+    }
+    return best;
+  }
+  // One side's deck on the wall. co = {key, label, d: the deck}
+  function sdCompany(co) {
+    const d = co.d, box = el('section', { class: 'sd-co', 'aria-label': co.label }), head = el('div', { class: 'sd-co-h' }, [el('span', { class: 'sd-k', text: co.label })]);
+    box.appendChild(head); box._co = co;
+    const g = TXG[d.guide], n = {}; d.cards.forEach(k => { n[k] = (n[k] || 0) + 1; });
+    const kind = k => (CARDS[k].t === 'fig' ? 0 : CARDS[k].t === 'relic' ? 1 : 2);
+    const keys = Object.keys(n).sort((a, b) => kind(a) - kind(b) || CARDS[a].c - CARDS[b].c || (CARDS[a].n < CARDS[b].n ? -1 : 1));
+    const all = [d.guide].concat(keys), read = i => { sdTap(); browse(all, { at: i, counts: n, title: d.n, sub: d.cards.length + ' cards' }); };
+    const cnt = t => d.cards.filter(k => CARDS[k].t === t).length, stat = (v, w) => el('span', {}, [el('b', { text: String(v) }), el('small', { text: v === 1 ? w : w + 's' })]);
+    if (d.built && window.AnoriaDecks && co.key !== 'cpu') head.appendChild(el('button', { type: 'button', class: 'btn btn-soft sd-chg', text: 'Change', onclick: () => { Kit.sfx('tap'); window.AnoriaDecks.open(d.id, showSetup); } }));
+    // the Guide: the card itself where the wall has the room for one that reads (--gw), a medallion beside the words where not
+    const med = el('span', { class: 'sd-gm', style: { '--f': FAC[g.f].c } }); { const im = artImg(d.guide, true, true); if (im) med.appendChild(im); }
+    const gd = el('button', { type: 'button', class: 'sd-gd', 'aria-label': g.n + ', this deck\u2019s Guide', onclick: () => read(0) }, [el('span', { class: 'sd-gc' }), med]);
+    const words = el('div', { class: 'sd-gw' }, [
+      el('div', { class: 'plan', text: d.built ? d.n : 'The base set and ' + Kit.poss(g.n) + ' set, one of each card' }),
+      el('div', { class: 'gd', html: '<b>' + esc(g.n) + '</b> is this deck\u2019s Guide. ' + esc(g.tx) }),
+      el('div', { class: 'sd-st', role: 'img', 'aria-label': sdPlural(cnt('fig'), 'Figure') + ', ' + sdPlural(cnt('relic'), 'Relic') + ' and ' + sdPlural(cnt('deed'), 'Deed') }, [stat(cnt('fig'), 'Figure'), stat(cnt('relic'), 'Relic'), stat(cnt('deed'), 'Deed')])]);
+    const grid = el('div', { class: 'sd-grid' });
+    keys.forEach((k, i) => grid.appendChild(el('button', { type: 'button', class: 'sd-c', 'data-k': k, 'aria-label': CARDS[k].n + (n[k] > 1 ? ', ' + n[k] + ' in the deck' : ''), onclick: () => read(i + 1) }, n[k] > 1 ? [el('span', { class: 'sd-n', text: '\u00d7' + n[k] })] : [])));
+    box.appendChild(el('div', { class: 'sd-co-b' }, [el('div', { class: 'sd-gcol' }, [gd, words]), grid]));
+    box._n = keys.length; box._grid = grid; box._gd = gd; box._g = d.guide;
+    return box;
+  }
+  // (a wall card's face, made for the size it is drawn at: 'mid' says what it does, 'mini' its name, 'th' its picture)
+  function sdFaces(box, mode, cw) {
+    const grid = box._grid; if (!grid) return;
+    grid.classList.toggle('th', mode === 'th'); grid.style.setProperty('--cw', cw + 'px');
+    const want = mode === 'mid' ? 'mid' : 'mini';
+    grid.querySelectorAll('.sd-c').forEach(b => { if (b.dataset.m === want) return; b.dataset.m = want; const old = b.querySelector('.ac'); if (old) old.remove(); b.insertBefore(cardEl(b.dataset.k, { mini: true, mid: want === 'mid', now: true }), b.firstChild); });
+    if (want === 'mid') fitMid(grid);
+  }
+  // The wall's plan for a box w by h: the decks side by side or one over another, each with its Guide as a card at the
+  // left of its cards or as a medallion over them, whichever leaves the cards largest (a Guide's card counts for a
+  // little). Returns the width of the cards; with dry, nothing is drawn (the band tries a height before it takes it).
+  function sdWallLay(w, h, c, gap, dry) {
+    const K = SDK, wall = K.els.wall, full = Array.prototype.slice.call(wall.children);
+    const ip = Math.round(12 + 6 * c), headH = Math.round(30 * c);
+    const inner = (pw, ph, n) => {
+      const iw = pw - 2 * ip, ih = ph - 2 * ip - headH, under = Math.round(104 * c), topRow = Math.round(74 * c);
+      let side = null, top = null;
+      const gw = Math.floor(Math.min((ih - under) * 30 / 42, iw * .3, 560));
+      if (gw >= 170 && iw - gw - 2 * ip >= 200) { const f = sdFit(n, iw - gw - Math.round(1.4 * ip), ih); side = Object.assign({ gw: gw, how: 'side', score: f.cw * 1.18 }, f); }
+      if (ih - topRow >= 50) { const f = sdFit(n, iw, ih - topRow - 8); top = Object.assign({ gw: 0, how: 'top', score: f.cw }, f); }
+      return side && (!top || side.score >= top.score) ? side : top || side || { gw: 0, how: 'top', cw: 0, cc: 1, g: 4, score: 0 };
+    };
+    if (!full.length) return 0;
+    const nmax = Math.max.apply(null, full.map(b => b._n)); let plan = null;
+    for (let cols = 1; cols <= full.length; cols++) {
+      const rows = Math.ceil(full.length / cols), pw = Math.floor((w - gap * (cols - 1)) / cols), ph = Math.floor((h - gap * (rows - 1)) / rows), p = inner(pw, ph, nmax);
+      // (a slab under 300px wide has no room for its head: what the deck is made of beside its numbers)
+      if (cols > 1 && pw < Math.round(300 * c)) break;
+      if (!plan || p.score > plan.p.score) plan = { cols: cols, rows: rows, pw: pw, ph: ph, p: p };
+    }
+    if (dry) return plan.p.cw;
+    wall.style.setProperty('--ip', ip + 'px');
+    // (no room for any deck's cards: each deck is its Guide, what it is made of and its numbers, one under another)
+    const none = plan.p.cw < 36; if (none) plan = { cols: 1, rows: full.length, pw: w, ph: 0, p: plan.p };
+    wall.style.gridTemplateColumns = 'repeat(' + plan.cols + ',minmax(0,1fr))';
+    full.forEach(b => {
+      const f = b._n === nmax ? plan.p : inner(plan.pw, plan.ph, b._n), bare = none || f.cw < 36;
+      b.style.height = none ? '' : plan.ph + 'px';
+      b.className = 'sd-co ' + f.how + (bare ? ' bare' : '');
+      b.style.setProperty('--gw', f.gw + 'px'); b.style.setProperty('--cc', f.cc); b.style.setProperty('--cg', f.g + 'px');
+      // (the Guide's own card, made once, the first time the wall has the room for it)
+      const gc = b._gd.querySelector('.sd-gc'); if (f.gw && !gc.firstChild) gc.appendChild(cardEl(b._g, { now: true }));
+      if (!bare) sdFaces(b, f.cw >= 140 ? 'mid' : f.cw >= 75 ? 'mini' : 'th', f.cw);
+      // (the rows share out a little spare height, so the wall is even from its head to its foot)
+      const gr = b._grid, rows = Math.ceil(b._n / f.cc), ch = f.cw * 1.4; gr.style.rowGap = '';
+      if (!bare && rows > 1) { const spare = gr.clientHeight - rows * ch - (rows - 1) * f.g; if (spare > 1) gr.style.rowGap = (f.g + Math.min(spare / (rows - 1), ch * .3)).toFixed(1) + 'px'; }
+    });
+    return plan.p.cw;
+  }
+  // ── The room's panels ──
+  const sdPanel = (cls, title, more) => {
+    const hd = el('div', { class: 'sd-p-h' }, [el('span', { class: 'sd-k', text: title })]), body = el('div', { class: 'sd-p-b' });
+    const p = el(more ? 'button' : 'section', Object.assign({ class: 'sd-p ' + cls }, more ? { type: 'button', 'aria-label': more.label, onclick: () => { sdTap(); more.fn(); } } : {}), [hd, body]);
+    if (more) hd.appendChild(el('span', { class: 'sd-go', 'aria-hidden': 'true', html: Kit.icon('right') }));
+    return { el: p, head: hd, body: body };
+  };
+  const sdDay = (ts, brief) => { if (!ts) return ''; const a = new Date(ts), b = new Date(), days = Math.round((new Date(b.getFullYear(), b.getMonth(), b.getDate()) - new Date(a.getFullYear(), a.getMonth(), a.getDate())) / 86400000);
+    return days <= 0 ? 'Today' : days === 1 ? 'Yesterday' : days < 7 ? a.toLocaleDateString('en-US', { weekday: brief ? 'short' : 'long' }) : a.toLocaleDateString('en-US', a.getFullYear() === b.getFullYear() ? { month: 'short', day: 'numeric' } : { month: 'short', day: 'numeric', year: 'numeric' }); };
+  // (this device's finished games, newest first, as the history keeps them)
+  const sdGames = () => { let l = []; try { l = JSON.parse(lsGet('gh_' + KEY)) || []; } catch (e) {} return (Array.isArray(l) ? l : []).filter(e => e && Array.isArray(e.players) && e.players.length > 1).sort((a, b) => (b._date || 0) - (a._date || 0)); };
+  const sdPast = () => Kit.history(KEY, { title: 'Arvela: past games' });
+  // a game from the history as the room draws it: {n, name(i), col(i), score(i), w: the winner's seats, guide(i), rows, how}
+  function sdGame(e) {
+    const d = e.dt || {}, P = e.players, N = P.length, pl = Array.isArray(d.pl) && d.pl.length === N ? d.pl : null;
+    const teams = Array.isArray(d.tm) && d.tm.length ? d.tm : null, w = typeof d.w === 'number' ? d.w : P.findIndex(p => p.name === e.winner);
+    const side = i => (teams ? teams.filter(t => t.indexOf(i) >= 0)[0] || [i] : [i]), wins = w >= 0 ? side(w) : [];
+    const name = i => P[i].name || 'Player ' + (i + 1), names = a => listOf(a.map(name));
+    const rows = pl && Array.isArray(d.rt) && d.rt.length ? [P.map(() => 0)].concat(d.rt.map(t => String(t).split('-').map(Number))) : null, now = P.map(p => +p.score || 0);
+    if (rows && rows[rows.length - 1].join() !== now.join()) rows.push(now);
+    let how = '';
+    if (w < 0) how = 'The game ended level' + (d.rounds ? ' after ' + d.rounds + ' rounds.' : '.');
+    else if (d.how === 'seals' && N === 2) how = name(w) + ' broke all of ' + Kit.poss(name(1 - w)) + ' Seals in round ' + d.rounds + '.';
+    else if (d.how === 'seals') how = names(wins) + (wins.length > 1 ? ' were' : ' was') + ' ahead on Renown when the Seals ran out in round ' + d.rounds + '.';
+    else if (d.rounds) how = names(wins) + ' reached ' + (teams ? wins.reduce((a, i) => a + now[i], 0) : now[w]) + ' Renown' + (wins.length > 1 ? ' together' : '') + ' at the end of round ' + d.rounds + '.';
+    else how = names(wins) + ' won.';
+    return { n: N, name: name, col: i => (pl && pl[i].c) || PCOL[i] || '#f2b84b', score: i => now[i], wins: wins, w: w, guide: i => (pl ? pl[i].g : null), cpu: i => !!P[i].cpu, rows: rows, now: now, goal: +d.tg || E.STD.target, how: how.replace(/'/g, '’'), pl: pl };
+  }
+  function sdRoomBuild() {
+    const P = {}, sp = Coll.sphere(), packs = Coll.packs(), games = sdGames(), R = window.AnoriaRewards;
+    // the sphere: its signs, what the next pack needs, when the next Guide comes
+    if (R) {
+      const left = sp.of - sp.lit, p = sdPanel('sd-sph', 'The sphere', R.path ? { label: 'The sphere: ' + sp.lit + ' of ' + sp.of + ' signs are lit', fn: () => R.path(showSetup) } : null);
+      const lights = [[sp.light.game, 'A game'], [sp.light.game + sp.light.win, 'A win'], [sp.light.game + sp.light.win + sp.light.daily, 'First win today']];
+      p.body.appendChild(el('div', { class: 'sd-sp-a' }, [R.sphere({ lit: sp.lit }),
+        el('div', { class: 'sd-sp-t' }, [el('div', { class: 'sd-big' }, [el('b', { text: String(sp.lit) }), el('span', { text: 'of ' + sp.of + ' lit' })]),
+          el('p', { class: 'sd-line', text: left + ' more ' + (left === 1 ? 'sign' : 'signs') + ' to light for a pack.' }),
+          sp.guideSay ? el('p', { class: 'sd-line dim', 'data-give': '1', text: sp.guideSay }) : null])]));
+      p.body.appendChild(el('ul', { class: 'sd-lights', 'data-give': '2', 'aria-label': 'A finished game lights ' + lights[0][0] + ', a win ' + lights[1][0] + ', your first win of the day ' + lights[2][0] },
+        lights.map(x => el('li', {}, [el('span', { class: 'sd-dm' }, Array.from({ length: x[0] }, () => el('i'))), el('span', { text: x[1] })]))));
+      P.S = p;
+    }
+    // the packs waiting to be opened, as the packs themselves (or a Guide the sphere brought who is not chosen yet)
+    if (window.AnoriaPacks && (packs.length || Coll.pending().n)) {
+      const pick = Coll.pending().n > 0, p = sdPanel('sd-pk lit', pick ? 'A new Guide' : 'Packs', { label: pick ? 'Choose your new Guide' : 'Open your packs', fn: () => (pick && window.AnoriaPacks.pending ? window.AnoriaPacks.pending(showSetup) : window.AnoriaPacks.open(showSetup)) });
+      p.n = pick ? 1 : Math.min(5, packs.length);
+      p.body.appendChild(el('div', { class: 'sd-pks' }, pick ? [el('span', { class: 'sd-pk-g', html: MARK.guide })] : packs.slice(0, 5).map(() => packMini())));
+      p.body.appendChild(el('p', { class: 'sd-line', text: pick ? 'The sphere brings a new Guide. Choose who joins your company.' : packs.length === 1 ? 'One pack is waiting to be opened.' : NUM(packs.length).replace(/^./, m => m.toUpperCase()) + ' packs are waiting to be opened.' }));
+      P.P = p;
+    }
+    if (games.length) {
+      // the last game: who led each side, the race for Renown, how it ended, and the numbers side by side
+      const e = games[0], g = sdGame(e), p = sdPanel('sd-last', 'Last game', { label: 'Past games', fn: sdPast });
+      p.head.insertBefore(el('span', { class: 'sd-when', text: sdDay(e._date) }), p.head.lastChild);
+      const who = el('div', { class: 'sd-who' + (g.n > 2 ? ' many' : '') });
+      for (let i = 0; i < g.n; i++) { const med = el('span', { class: 'sd-med', style: { '--pc': g.col(i) } }); const im = g.guide(i) && TXG[g.guide(i)] ? artImg(g.guide(i), true, true) : null; if (im) med.appendChild(im); else med.innerHTML = Kit.icon(g.cpu(i) ? 'bot' : 'user');
+        who.appendChild(el('div', { class: 'sd-side' + (g.wins.indexOf(i) >= 0 ? ' won' : '') }, [med, el('span', { class: 'sd-nm', text: g.name(i) }), el('b', { text: String(g.score(i)) })])); }
+      p.body.appendChild(who);
+      if (g.rows && g.rows.length > 1) p.body.appendChild(el('div', { class: 'sd-race', 'data-give': '2', html: raceSvg(g.rows, g.now, g.col, g.w, g.goal, esc(e.players.map((x, i) => g.name(i) + ' ' + g.score(i)).join(', ') + ' Renown'), g.wins) }));
+      p.body.appendChild(el('p', { class: 'sd-line', text: g.how }));
+      if (g.pl && g.n === 2) { const num = (lab, k) => el('span', {}, [el('small', { text: lab }), el('span', {}, [0, 1].map(i => el('b', { style: { '--pc': g.col(i) }, text: String(+g.pl[i][k] || 0) })))]);
+        p.body.appendChild(el('div', { class: 'sd-nums', 'data-give': '3', role: 'img', 'aria-label': g.name(0) + ' and ' + g.name(1) + ' side by side' }, [num('Clashes won', 'ko'), num(DW('Places scored'), 'h'), num('Seals broken', 'sb'), num('Legacy Lines', 'ln')])); }
+      P.G = p;
+    }
+    if (games.length > 1) {
+      // the games before it, a row each, under how many of them the first seat's player won
+      const p = sdPanel('sd-past', 'Past games', { label: 'Past games', fn: sdPast }), me = games[0].players[0].name, mine = games.filter(e => e.players[0].name === me), won = mine.filter(e => sdGame(e).wins.indexOf(0) >= 0).length;
+      if (mine.length > 1) p.body.appendChild(el('div', { class: 'sd-big' }, [el('b', { text: String(won) }), el('span', { text: 'of ' + mine.length + ' won by ' + me })]));
+      p.body.appendChild(el('div', { class: 'sd-rows' }, games.slice(1, 13).map(e => { const g = sdGame(e), w = g.w;
+        return el('div', { class: 'sd-row' }, [el('span', { class: 'sd-d', text: sdDay(e._date, true) }), el('i', { class: 'sd-dot', style: { '--pc': w >= 0 ? g.col(w) : 'transparent' } }),
+          el('span', { class: 'sd-w', text: w < 0 ? 'A draw' : listOf(g.wins.map(g.name)) + ' won' }), el('span', { class: 'sd-s', text: g.n === 2 ? g.score(0) + ' to ' + g.score(1) : w >= 0 ? String(g.wins.reduce((a, i) => a + g.score(i), 0)) : '' })]); })));
+      P.L = p;
+    }
+    // the callings, nearest their end first: each brings its Guide sooner
+    const calls = Coll.callings().sort((a, b) => b.have / b.need - a.have / a.need);
+    if (calls.length && R) {
+      const p = sdPanel('sd-calls', 'Callings', R.path ? { label: 'The callings', fn: () => R.path(showSetup) } : null);
+      p.body.appendChild(el('div', { class: 'sd-rows two' }, calls.map(x => { const f = el('span', { class: 'sd-med' }); const im = artImg(x.g, true, true); if (im) f.appendChild(im);
+        return el('div', { class: 'sd-row call' + (x.have / x.need >= .8 ? ' near' : '') }, [f, el('div', { class: 'sd-cw' }, [el('div', { class: 'sd-ch' }, [el('b', { text: R.short ? R.short(x.g) : TXG[x.g].n }), el('span', { text: x.have + ' of ' + x.need })]),
+          el('span', { class: 'sd-bar' }, [el('i', { style: { width: (100 * x.have / x.need).toFixed(1) + '%' } })]), el('small', { text: x.say })])]); })));
+      P.K = p;
+    }
+    // someone who has not finished a game: the lessons, a row each
+    if (!games.length && window.AnoriaGuide && window.AnoriaGuide.list) {
+      const G0 = window.AnoriaGuide, p = sdPanel('sd-how', 'How to play');
+      const row = (n, name, art, fn, seen) => { const a = el('span', { class: 'sd-med sq' }); const im = art ? artImg(art, true, true) : null; if (im) a.appendChild(im);
+        return el('button', { type: 'button', class: 'sd-row les' + (seen ? ' seen' : ''), onclick: () => { sdTap(); fn(); } }, [a, el('span', { class: 'sd-ln', text: n }), el('span', { class: 'sd-w', text: name }), el('span', { class: 'sd-go', html: Kit.icon(seen ? 'check' : 'play') })]); };
+      p.body.appendChild(el('div', { class: 'sd-rows two' }, [row('', 'Quick start', 'hatshepsut', () => G0.quickStart(), false)].concat(G0.list().map((x, i) => row(String(i + 1), x.n, x.art, () => G0.play(x.id), x.seen)))));
+      P.H = p;
+    }
+    return P;
+  }
+  // The room for a box w by h: the panels that fit side by side (the sphere first, then the last game, the packs, the
+  // callings, the games before); a list gives up its last rows, and a panel its least parts, rather than have one cut through
+  function sdRoomLay(w, h, c, gap) {
+    const K = SDK, room = K.els.room, P = K.P, low = h < 205 * c, tall = h >= 330 * c;
+    // (which stand, in the order of what matters most; where they stand, as you read them: the collection, then the games)
+    const want = [['S', low ? 270 : 230, 1, 0], ['P', low ? 200 : 130, low ? .7 : .55, 1], ['G', low ? 300 : 280, 1.25, 3], ['H', 300, 1.7, 3], ['K', 300, 1.5, 2], ['L', 290, 1, 4]].filter(x => P[x[0]] && !(low && /[KLH]/.test(x[0])));
+    let used = 0; const show = [];
+    want.forEach(x => { const mw = x[1] * c + (show.length ? gap : 0); if (used + mw <= w) { show.push(x); used += mw; } });
+    show.sort((a, b) => a[3] - b[3]);
+    Object.keys(P).forEach(k => { P[k].el.hidden = !show.some(x => x[0] === k); });
+    room.className = 'sd-room' + (low ? ' low' : tall ? ' tall' : ' mid');
+    room.style.gridTemplateColumns = show.map(x => 'minmax(' + Math.round(x[1] * c) + 'px,' + x[2] + 'fr)').join(' ');
+    show.forEach((x, i) => { P[x[0]].el.style.order = i; });
+    const box = k => (P[k] && !P[k].el.hidden ? { w: P[k].body.clientWidth, h: P[k].body.clientHeight } : null);
+    // (the sphere as large as its panel leaves it beside, or over, its words)
+    let b = box('S'); if (b) { const st = P.S.el.style, a = P.S.body.firstChild, li = P.S.body.lastChild; li.hidden = false; st.setProperty('--sz', '52px');
+      const lh = low ? 0 : li.offsetHeight + 12 * c; st.setProperty('--sz', Math.round(Math.max(52, low ? Math.min(b.h, b.w * .28) : tall ? Math.min(b.w * .66, 52 + b.h - lh - a.offsetHeight - 2, 340) : Math.min(b.w * .34, b.h - (b.h >= 250 * c ? lh : 0) - 2, 200))) + 'px'); }
+    b = box('P'); if (b) P.P.el.style.setProperty('--pkw', Math.round(Math.max(18, Math.min(120, low ? b.h * .5 : (b.h - 70 * c) * .5, (b.w * (low ? .45 : .9)) / (P.P.n * 1.22)))) + 'px');
+    room.querySelectorAll('.sd-rows').forEach(list => { const rows = Array.prototype.slice.call(list.children); rows.forEach(r => { r.hidden = false; });
+      if (list.classList.contains('two')) list.dataset.two = '1'; list.classList.toggle('two', list.dataset.two === '1' && list.clientWidth >= 540 * c); });
+    // (a panel whose parts are taller than it gives up the parts it can best do without, the highest data-give first, then its lists' last rows)
+    room.querySelectorAll('.sd-p:not([hidden]) > .sd-p-b').forEach(bd => {
+      const give = Array.prototype.slice.call(bd.querySelectorAll('[data-give]')).sort((x, y) => y.dataset.give - x.dataset.give); give.forEach(k => { k.hidden = false; });
+      const over = () => bd.scrollHeight > bd.clientHeight + 3 || Array.prototype.some.call(bd.querySelectorAll('.sd-rows'), l => l.scrollHeight > l.clientHeight + 1);
+      const lists = Array.prototype.slice.call(bd.querySelectorAll('.sd-rows'));
+      for (let i = 0; i < give.length && over() && !lists.length; i++) give[i].hidden = true;
+      lists.forEach(list => { const rows = Array.prototype.slice.call(list.children); for (let i = rows.length - 1; i > 0 && over(); i--) rows[i].hidden = true; });
+    });
+  }
+  // Build what the desk adds (once for each setup), or take it away again (a window dragged down to a tablet's size)
+  function sdBuild() {
+    const K = SDK, wrap = K.wrap; if (K.els.wall && K.els.wall.isConnected) return;
+    K.els = { mast: el('header', { class: 'sd-mast' }, [logo('sd-logo', true)]), wall: el('div', { class: 'sd-wall', role: 'group', 'aria-label': 'The decks in this game' }), room: el('aside', { class: 'sd-room', 'aria-label': 'Your collection and your games' }) };
+    app.insertBefore(K.els.mast, wrap); app.appendChild(K.els.wall); app.appendChild(K.els.room);
+    K.P = sdRoomBuild(); Object.keys(K.P).forEach(k => K.els.room.appendChild(K.P[k].el));
+    K.sig = '';
+    // (the kit sizes the Players card after it draws it, and a choice can change the rail's height: laid out again then)
+    if (window.ResizeObserver) { if (K.ro) K.ro.disconnect(); K.ro = new ResizeObserver(() => sdSoon()); wrap.querySelectorAll(':scope > .k-seats, :scope > .k-opts, :scope > .k-joins').forEach(n => K.ro.observe(n)); K.ro.observe(K.els.mast); }
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(sdSoon);   // (the name's own face may arrive after the first layout)
+  }
+  // (the three doors: at the head of the wall, or under who is playing where the rail is two columns beside a narrow wall)
+  function sdHub(inRail) {
+    const K = SDK, hub = app.querySelector('.an-hub'), seats = K.wrap.querySelector(':scope > .k-seats'); if (!hub) return;
+    if (inRail || !K.els.mast) { if (seats && hub.previousElementSibling !== seats) seats.parentNode.insertBefore(hub, seats.nextSibling); }
+    else if (hub.parentNode !== K.els.mast) K.els.mast.appendChild(hub);
+  }
+  function sdOff() {
+    const K = SDK, wrap = K.wrap; if (!K.els.wall) return;
+    if (K.ro) { K.ro.disconnect(); K.ro = null; }
+    sdHub(true);
+    ['mast', 'wall', 'room'].forEach(k => { if (K.els[k]) K.els[k].remove(); }); K.els = {}; K.P = null;
+    app.className = 'stage'; app.removeAttribute('style');
+    if (wrap) { ['an-dk', 'an-dk-band', 'an-dk-side', 'an-dk-stack', 'an-dk-2c', 'an-dk-roomy', 'an-dk-roomy2', 'an-dk-tight', 'an-dk-bare', 'an-dk-low', 'an-dk-long'].forEach(k => wrap.classList.remove(k)); wrap.style.width = ''; wrap.style.minHeight = ''; }
+  }
+  // The decks on the wall, kept in step with what is chosen (a panel is made again only when its deck changes)
+  function sdDecks() {
+    const K = SDK, wall = K.els.wall; if (!wall) return;
+    const co = K.co.filter(x => x.d), key = x => x.key + ':' + x.label + ':' + x.d.id + ':' + x.d.guide + ':' + x.d.cards.join(','), sig = co.map(key).join('|');
+    if (sig === K.sig) return; K.sig = sig;
+    const old = {}; Array.prototype.slice.call(wall.children).forEach(b => { old[b._sig] = b; });
+    wall.innerHTML = '';
+    co.forEach(x => { const s = key(x), b = old[s] || sdCompany(x); b._sig = s; b._co = x; wall.appendChild(b); });
+  }
+  // Lay the setup out for the window as it is now
+  function sdLay() {
+    const K = SDK, wrap = K.wrap; if (!wrap || !wrap.isConnected) return;
+    let sh = sdShape(); if (!sh) { sdOff(); K.shape = null; return; }
+    sdBuild(); sdDecks();
+    const E0 = K.els, W = document.documentElement.clientWidth, H = window.innerHeight;
+    const u = Math.max(1, Math.min(1.75, W / 1700, H / 1100)), c = Math.min(1.35, 1 + (u - 1) * .7);
+    const pad = Math.round(Math.max(16, Math.min(44, W * .0145))), gap = Math.round(14 + 6 * u);
+    app.classList.add('an-desk');
+    const as = app.style; as.setProperty('--sdu', u.toFixed(3)); as.setProperty('--sdc', c.toFixed(3)); as.setProperty('--sd-pad', pad + 'px'); as.setProperty('--sd-gap', gap + 'px');
+    const top = Math.round(app.getBoundingClientRect().top + window.scrollY), avail = Math.floor(H - top - pad);
+    const cls = (k, on) => wrap.classList.toggle(k, !!on), ws = wrap.style;
+    const shapes = s => { ['band', 'side', 'stack'].forEach(x => { cls('an-dk-' + x, x === s); app.classList.toggle('an-desk-' + x, x === s); }); };
+    cls('an-dk', true); cls('an-dk-2c', false); cls('an-dk-roomy', false); cls('an-dk-roomy2', false); cls('an-dk-tight', false); cls('an-dk-bare', false); cls('an-dk-long', false); cls('an-dk-low', avail < 620);
+    ws.minHeight = ''; ws.width = ''; as.minHeight = ''; sdHub(false);
+    [E0.mast, E0.wall, E0.room].forEach(n => { n.removeAttribute('style'); n.hidden = false; });
+    const place = (n, x, y, w, h) => { const st = n.style; st.position = 'absolute'; st.left = x + 'px'; st.top = y + 'px'; st.width = w + 'px'; if (h != null) st.height = h + 'px'; };
+    const railH = () => wrap.offsetHeight; let long = false;
+    // (the rail with height to spare: the computer's deck is chosen from faces with their names)
+    // (and with more to spare, your own decks stand larger too)
+    const roomy = lim => { cls('an-dk-roomy', true); cls('an-dk-roomy2', true); if (railH() > lim) cls('an-dk-roomy2', false); if (railH() > lim) cls('an-dk-roomy', false); };
+    // (a rail too tall for the window draws in before anything scrolls: the decks' faces smaller, a surprise's sentence left out)
+    const tight = lim => { if (railH() > lim) cls('an-dk-tight', true); };
+    for (let again = sh === 'band' || sh === 'side'; again;) {
+      again = false; shapes(sh);
+      let rw = Math.round(Math.max(500, Math.min(600, W * .36)) * c); ws.width = rw + 'px';
+      tight(avail); let R = railH();
+      // (a low wide window: the rail in two columns, the decks beside who plays, where one column would run past the foot)
+      if (sh === 'side' && R > avail && W >= 1240) { const rw2 = Math.round(Math.min(1060 * c, W - 3 * pad - (W >= 1400 ? 440 : 400))); cls('an-dk-2c', true); sdHub(true); ws.width = rw2 + 'px'; cls('an-dk-tight', false); const R2 = railH(); K.dbg = { R1: R, R2: R2, avail: avail }; if (R2 <= avail || R2 < R * .8) { rw = rw2; tight(avail); R = railH(); K.dbg.R = R; } else { cls('an-dk-2c', false); cls('an-dk-tight', true); sdHub(false); ws.width = rw + 'px'; } }
+      const lw = W - rw - 3 * pad;
+      place(E0.mast, pad, 0, lw); const mh = E0.mast.offsetHeight;
+      if (sh === 'band') {
+        const roomMax = Math.round(400 * c), roomMin = Math.round(190 * c), least = Math.max(R, mh + gap + Math.round(300 * c));
+        let roomH = Math.max(roomMin, Math.min(roomMax, Math.round(avail * .26))), bandH = avail - gap - roomH;
+        if (bandH < least) { bandH = least; roomH = avail - gap - bandH; }
+        // (a rail too tall to leave a band its room: beside the wall instead, and in two columns where one would run past the foot)
+        if (roomH < roomMin) { sh = 'side'; if (R > avail && W >= 1240) { cls('an-dk-tight', false); again = true; continue; } }
+        else {
+          // (a little less room where that gives the wall's cards their names, 75px, or their words, 140px)
+          const cwAt = rh => sdWallLay(lw, avail - gap - rh - mh - gap, c, gap, true), cw0 = cwAt(roomH);
+          [75, 140].forEach(t => { if (cw0 < t && cwAt(roomMin) >= t) { while (roomH > roomMin && cwAt(roomH) < t) roomH = Math.max(roomMin, roomH - 8); bandH = avail - gap - roomH; } });
+          roomy(bandH);
+          ws.minHeight = bandH + 'px';
+          place(E0.wall, pad, mh + gap, lw, bandH - mh - gap); sdWallLay(lw, bandH - mh - gap, c, gap);
+          place(E0.room, pad, bandH + gap, W - 2 * pad, roomH); sdRoomLay(W - 2 * pad, roomH, c, gap);
+        }
+      }
+      if (sh === 'side') {
+        shapes('side');
+        let roomH = avail >= 600 && lw >= 440 ? Math.round(Math.max(132 * c, Math.min(156 * c, avail * .21))) : 0;
+        // (the wall first: where the room under it would leave the decks no cards to show, the room gives way)
+        if (roomH && sdWallLay(lw, avail - mh - 2 * gap - roomH, c, gap, true) < 36 && sdWallLay(lw, avail - mh - gap, c, gap, true) >= 36) roomH = 0;
+        const wallH = avail - mh - gap - (roomH ? roomH + gap : 0);
+        if (R <= avail) roomy(avail);
+        // (a rail that no column of this window holds, six players' decks in a low window: the controls alone, in two columns)
+        if (railH() > avail) sh = 'stack';
+        else {
+          ws.minHeight = avail + 'px';
+          // (decks with no room for their cards are short slabs: the room has the height they leave)
+          if (sdWallLay(lw, wallH, c, gap, true) < 36) {
+            place(E0.wall, pad, mh + gap, lw, null); sdWallLay(lw, wallH, c, gap);
+            const wh = E0.wall.offsetHeight, rh = avail - mh - gap - wh - gap;
+            if (rh >= Math.round(132 * c)) { E0.room.hidden = false; place(E0.room, pad, mh + gap + wh + gap, lw, rh); sdRoomLay(lw, rh, c, gap); } else E0.room.hidden = true;
+          } else {
+            place(E0.wall, pad, mh + gap, lw, wallH); sdWallLay(lw, wallH, c, gap);
+            if (roomH) { place(E0.room, pad, mh + gap + wallH + gap, lw, roomH); sdRoomLay(lw, roomH, c, gap); } else E0.room.hidden = true;
+          }
+        }
+      }
+      as.minHeight = (H - top) + 'px';
+    }
+    if (sh === 'stack') {
+      ['an-dk-2c', 'an-dk-roomy', 'an-dk-roomy2', 'an-dk-tight'].forEach(k => cls(k, false)); ws.minHeight = ''; ws.width = ''; as.minHeight = ''; sdHub(false);
+      [E0.mast, E0.wall, E0.room].forEach(n => { n.removeAttribute('style'); n.hidden = false; });
+      shapes('stack');
+      cls('an-dk-2c', W >= 860);
+      const mh = E0.mast.offsetHeight; tight(avail - mh - gap); const R = railH(), rest = avail - mh - R - 2 * gap, fw = W - 2 * pad;
+      // (the name and the controls first; what is left under them is the wall's, and the room's where there is enough)
+      // (no room under the controls for a wall: the setup as a tablet has it, the name and the three doors with who is playing)
+      if (rest < 190 || sdWallLay(fw, rest, c, gap, true) < 36) { E0.wall.hidden = true; E0.room.hidden = true; E0.mast.hidden = true; sdHub(true); cls('an-dk-bare', true); long = true; }
+      else {
+        let roomH = rest >= 440 ? Math.round(Math.max(170 * c, Math.min(320 * c, rest * .3))) : 0;
+        const cwAt = rh => sdWallLay(fw, rest - (rh ? rh + gap : 0), c, gap, true);
+        if (roomH) [75, 140].forEach(t => { const lo = Math.round(170 * c); if (cwAt(roomH) < t && cwAt(lo) >= t) while (roomH > lo && cwAt(roomH) < t) roomH = Math.max(lo, roomH - 8); });
+        const wallH = rest - (roomH ? roomH + gap : 0);
+        E0.wall.style.height = wallH + 'px'; sdWallLay(fw, wallH, c, gap);
+        if (roomH) { E0.room.style.height = roomH + 'px'; sdRoomLay(fw, roomH, c, gap); } else E0.room.hidden = true;
+      }
+    }
+    // (while everything fits, the page has the window's height and no more, so a part still finding its size never makes it scroll)
+    as.height = long ? '' : (H - top) + 'px'; app.classList.toggle('an-desk-fit', !long);
+    K.shape = sh;
+  }
+  // (the setup has left the page, a game dealt or a screen opened in its place: what the desk set on the page goes with it)
+  function sdGone() {
+    const K = SDK; if (!K.wrap || K.wrap.isConnected) return;
+    if (K.ro) { K.ro.disconnect(); K.ro = null; } K.wrap = null; K.els = {}; K.P = null;
+    ['height', 'min-height', '--sdu', '--sdc', '--sd-pad', '--sd-gap'].forEach(k => app.style.removeProperty(k)); if (!app.getAttribute('style')) app.removeAttribute('style');
+    ['an-desk', 'an-desk-band', 'an-desk-side', 'an-desk-stack', 'an-desk-fit'].forEach(k => app.classList.remove(k));
+  }
+  let sdT = 0; const sdSoon = () => { if (sdT) return; sdT = 1; Promise.resolve().then(() => { sdT = 0; sdLay(); }); };   // (in the same task as the kit's own redraw, so the wall never shows the deck before)
+  // (before the kit's own resize listener, which folds a setup that scrolls: the desk is laid out for the new window first)
+  window.addEventListener('resize', () => { if (SDK.wrap && SDK.wrap.isConnected) sdLay(); }, true);
+
   // Who's playing goes through the kit's players sheet like every game: 2 to 6 seats, people and the computer in any
   // seat after the first (vs Computer is everyone else a robot; Pass & play is two or more people, with robots in any
   // other seats). Each person chooses their deck as the two-player setup always had it; the computer players share one
@@ -1861,6 +2231,7 @@
   // seats a Teams choice joins them: 2 against 2, 3 against 3, or three teams of 2 (teamsFor).
   function showSetup() {
     stop(); G = null; S = null; V = null; clearSave(); setCols(null);
+    SDK.wrap = null; app.removeAttribute('style');
     app.className = 'stage'; app.innerHTML = ''; document.documentElement.classList.remove('an-low'); window.scrollTo(0, 0);
     // the first time: choose your Guide (their deck is your starter) and open your welcome packs
     if (!Coll.load().starter && window.AnoriaPacks) { window.AnoriaPacks.chooseStarter(app, showSetup); return; }
@@ -1871,8 +2242,11 @@
     const people = ctx => (ctx && ctx.seats ? ctx.seats.filter(s => !s.cpu).length : 1), bots = ctx => (ctx && ctx.seats ? ctx.seats.filter(s => s.cpu).length : 1);
     // (a person's deck: "Your deck" while one person plays, else the deck of that person by name)
     const label = (i, ctx) => { if (people(ctx) <= 1) return 'Your deck'; const s = seat(i, ctx), n = s && s.name ? s.name : ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth'][i] + ' player'; return Kit.poss(n) + ' deck'; };
+    // (each time the options are drawn, the decks chosen are noted for the wall of the setup at a desk: sdDecks)
+    let pass = [];
     const deckOpt = i => ({ id: 'deck' + i, value: starterId(), when: (m, v, n) => (n || 2) > i,
-      render: (v, set, ctx) => (seat(i, ctx) ? !seat(i, ctx).cpu : !i) ? deckPicker(label(i, ctx), v, set, 'me') : none(),
+      render: (v, set, ctx) => { if (!i) pass = []; if (!(seat(i, ctx) ? !seat(i, ctx).cpu : !i)) return none();
+        pass.push({ key: 'deck' + i, label: label(i, ctx), d: Coll.deck(deckChoice(v, 'me')) }); return deckPicker(label(i, ctx), v, set, 'me'); },
       summary: v => { const d = Coll.deck(deckChoice(v, 'me')); return d ? d.n : ''; } });
     // (the computer starts on Easy until you've won a game: a first game is for learning)
     // (the setup's head says the name in the same spaced letters, whenever the kit draws it)
@@ -1884,11 +2258,14 @@
       if (open) return; s.classList.remove('an-tight');
       if (window.innerWidth <= 520 && window.innerHeight > window.innerWidth && s.classList.contains('k-snug') && se.scrollHeight > se.clientHeight + 1) s.classList.add('an-tight'); };
     let tightT = 0; const tightSoon = () => { cancelAnimationFrame(tightT); tightT = requestAnimationFrame(tight); };
-    if (!app._nameObs && window.MutationObserver) { app._nameObs = new MutationObserver(() => { nameHead(); tightSoon(); }); app._nameObs.observe(app, { childList: true, subtree: true }); window.addEventListener('resize', tightSoon); }
+    if (!app._nameObs && window.MutationObserver) { app._nameObs = new MutationObserver(() => { sdGone(); nameHead(); tightSoon(); }); app._nameObs.observe(app, { childList: true, subtree: true }); window.addEventListener('resize', tightSoon); }
     const st = Kit.setup(app, {
       modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: 'local' }]),
       options: [0, 1, 2, 3, 4, 5].map(deckOpt).concat([
-        { id: 'decks', value: 'any', render: (v, set, ctx) => bots(ctx) ? deckPicker(bots(ctx) > 1 ? 'The computer players\' decks' : 'The computer\'s deck', v, set, 'cpu', bots(ctx) > 1) : none() },
+        { id: 'decks', value: 'any', render: (v, set, ctx) => { const nb = bots(ctx), lab = nb > 1 ? 'The computer players\' decks' : 'The computer\'s deck', id = deckChoice(v, 'cpu');
+          if (nb) pass.push({ key: 'cpu', label: lab, d: id === 'any' ? null : readyDeck(id.slice(6)), many: nb > 1 });
+          SDK.co = pass.slice(); if (SDK.wrap) sdSoon();
+          return nb ? deckPicker(lab, v, set, 'cpu', nb > 1) : none(); } },
         { id: 'teams', label: 'Teams', value: 'off', when: (m, v, n) => n === 4 || n === 6,
           help: 'Teammates sit with an opponent between them. They add their Renown together and their Might together, and they can\'t clash with each other.',
           // (the Renown that wins is never typed into a sentence: it is the engine's, for one player and for a team of each size)
@@ -1913,6 +2290,7 @@
       }
     });
     const seats = st && st.el && st.el.querySelector('.k-seats'); if (seats) seats.parentNode.insertBefore(hubRow(), seats.nextSibling);
+    SDK.wrap = st && st.el ? st.el : null; SDK.els = {}; SDK.P = null; sdLay();   // (a window larger than a tablet's: the setup at a desk)
     matWarm();
   }
 
@@ -4904,6 +5282,7 @@
     if (E.sren(S, w) >= S.cfg.target) return W + ' reached ' + E.sren(S, w) + ' Renown' + (tm ? ' together' : '') + ' at the end of round ' + S.round + '.';
     return W + ' had the most Renown when the last round ended.';
   }
+  let awRec = null;   // (the record of the game just finished, as the history keeps it: the results plaque at a desk draws from it)
   function modeName() { return G.mode === 'net' ? 'Online' : G.mode === 'cpu' ? 'vs Computer (' + LEVEL_NAME[G.level] + ')' : 'Pass & play'; }
   function record() {
     if (S.N > 2) return recordN();
@@ -4916,7 +5295,7 @@
     }
     const top = m => Object.keys(m).sort((a, b) => m[b] - m[a])[0] || '';
     try {
-      Kit.record(KEY, { started: G.started, mode: modeName(), players: G.players.map((p, i) => ({ name: p.name, score: S.P[i].renown, cpu: p.cpu })), winner: w >= 0 ? pname(w) : null,
+      awRec = { G: G, e: null }; awRec.e = Kit.record(KEY, { started: G.started, mode: modeName(), players: G.players.map((p, i) => ({ name: p.name, score: S.P[i].renown, cpu: p.cpu })), winner: w >= 0 ? pname(w) : null,
         rounds: T ? null : { labels: G.hist.map((x, i) => String(i + 1)), scores: G.hist }, highlights: hl,
         detail: !T ? { how: S.how, rounds: S.round, decks: G.players.map(p => p.deck).join(', '), seals: S.P.map(p => p.seals).join(' and ') } : {
           v: 2, how: S.how, rounds: G.hist.length, tg: S.cfg.target, w: w,
@@ -4938,7 +5317,7 @@
   function recordN() {
     const w = S.winner, T = G.tale || { tot: [], hold: [], links: [], seals: [], ko: G.players.map(() => ({})) }, top = m => Object.keys(m || {}).sort((a, b) => m[b] - m[a])[0] || '';
     try {
-      Kit.record(KEY, { started: G.started, mode: modeName(), players: G.players.map((p, i) => ({ name: p.name, score: S.P[i].renown, cpu: p.cpu })), winner: w >= 0 ? winName(w) : null, highlights: [],
+      awRec = { G: G, e: null }; awRec.e = Kit.record(KEY, { started: G.started, mode: modeName(), players: G.players.map((p, i) => ({ name: p.name, score: S.P[i].renown, cpu: p.cpu })), winner: w >= 0 ? winName(w) : null, highlights: [],
         detail: { v: 3, n: S.N, how: S.how, rounds: G.hist.length, tg: S.cfg.target, w: w, tm: G.teams || null, out: S.P.map(p => (p.out ? 1 : 0)),
           pl: G.players.map((p, i) => { const st = G.stats[i], c = top(T.ko[i]); return { g: S.P[i].guide, d: p.deck, b: p.built ? 1 : 0, s: S.P[i].seals, sm: S.P[i].sm || 3, ko: st.ko, ln: st.lines, sb: st.seals, h: st.held, ch: c, cn: c ? T.ko[i][c] : 0, c: p.color, o: S.P[i].out ? 1 : 0 }; }),
           rt: T.tot.slice(), hold: T.hold.slice(), links: T.links.slice(), sl: T.seals.slice(), outs: (T.outs || []).slice() } });
@@ -5029,7 +5408,52 @@
       // the game scrolls under the dock only when the screen is short: a shade at the foot says there is more
       const fit = () => { if (!body.isConnected) return removeEventListener('resize', fit); body.classList.toggle('more', body.scrollHeight > body.clientHeight + 2 && body.scrollTop + body.clientHeight < body.scrollHeight - 2); };
       body.addEventListener('scroll', fit, { passive: true }); addEventListener('resize', fit); setTimeout(fit, 60); setTimeout(fit, 700);
+      awDesk(card, game);
     });
+  }
+  // The plaque at a desk (a window larger than a tablet's; Tim, 2026-11-17, of large windows: "simply scaling things up is
+  // not thoughtful design"). It is composed for the room: in a wide window three columns, the game at the left with the
+  // race for Renown drawn large, the record of this game in the middle as its history view draws it (hist/anoria.js: the
+  // map at the end, the numbers side by side, the Legacy Lines with their true sentences; two columns of it where the
+  // window has the width), and at the right what the game earned over the buttons, in Kit.win's order. In a narrow tall
+  // window the same parts stand one under another; in a low wide one the game, what it earned and the buttons stand side
+  // by side, so nothing is cut. The words and buttons take the desk's gentle step (--awc, 1 to 1.35).
+  // A phone and a tablet never get here (sdShape says null), and their plaque is as it was.
+  function awDesk(card, game) {
+    const mine = awRec && awRec.G === G && awRec.e && awRec.e.dt ? awRec.e : null; let rec = null, asked = false;
+    const more = () => { if (rec) rec.classList.toggle('more', rec.scrollHeight > rec.clientHeight + 2 && rec.scrollTop + rec.clientHeight < rec.scrollHeight - 2); };
+    const fill = () => {
+      if (asked || !mine) return; asked = true;
+      Kit.loadHistView().then(() => {
+        if (!window.HistView || !card.isConnected) return; window.HistView.ready = true;
+        const v = window.HistView.render(mine, KEY); if (!v) return;
+        // (the plaque's own head and race say who led and how it went: the record adds the map, the numbers and the lines)
+        Array.prototype.slice.call(v.children).forEach(c => { if (!c.querySelector('.ah-map, .ah-tape, .ah-links') && !c.matches('.ah-links')) c.remove(); });
+        if (!v.children.length) return;
+        rec = el('div', { class: 'aw-rec', 'aria-label': 'This game' }, [v]); rec.addEventListener('scroll', more, { passive: true });
+        lay();
+      });
+    };
+    const lay = () => {
+      if (!card.isConnected) { removeEventListener('resize', lay); return; }
+      const W = window.innerWidth, H = window.innerHeight, sh = !sdShape() ? null : W >= 1400 && H >= 800 ? 'wide' : H >= 1100 && W >= 600 ? 'tall' : W >= 1100 && H < 800 ? 'low' : null;
+      card.classList.toggle('dk', !!sh); card.classList.toggle('dk-wide', sh === 'wide'); card.classList.toggle('dk-tall', sh === 'tall'); card.classList.toggle('dk-low', sh === 'low');
+      // (the race for Renown drawn taller at a desk, where it has the width to be read round by round)
+      // (taller still in a tall window, where the plaque's left column has the height)
+      const rc = game.querySelector('.an-race'), th = !sh || sh === 'low' ? 0 : sh === 'wide' && H >= 1500 ? 160 : sh === 'wide' && H >= 1150 ? 124 : 96, want = th ? String(th) : ''; if (rc && (rc.dataset.tall || '') !== want) { const np = racePic(th); if (np) { np.dataset.tall = want; rc.replaceWith(np); } }
+      if (!sh) { if (rec && rec.parentNode) rec.remove(); card.classList.remove('has-rec', 'rec2'); ['--awc', '--awu', '--awm'].forEach(k => card.style.removeProperty(k)); return; }
+      const u = Math.max(1, Math.min(1.75, W / 1700, H / 1100)), c = Math.min(1.35, 1 + (u - 1) * .7);
+      card.style.setProperty('--awc', c.toFixed(3)); card.style.setProperty('--awu', u.toFixed(3)); card.style.setProperty('--awm', Math.round(Math.max(20, Math.min(56, H * .03))) + 'px');
+      // (a low wide window: the game, what it earned and the buttons side by side, each whole; the record stays in the history)
+      if (sh === 'low') { if (rec && rec.parentNode) rec.remove(); card.classList.remove('has-rec', 'rec2'); return; }
+      fill();
+      if (rec && rec.parentNode !== game.parentNode) game.parentNode.insertBefore(rec, game.nextSibling);
+      card.classList.toggle('has-rec', !!rec);
+      // (the record in two columns where the plaque is wide enough for both to read)
+      card.classList.toggle('rec2', !!rec && sh === 'wide' && W >= 1900 * Math.min(c, 1.2) && rec.querySelectorAll('.ah > *').length > 1);
+      more();
+    };
+    lay(); addEventListener('resize', lay);
   }
   // a sealed pack the size of an icon: the crimped gilt ends, the foil and the sphere of the logo (packs.css .pk-art)
   function packMini() { return el('span', { class: 'aw-pk' }, [el('span', { class: 'pk-art' }, [el('i', { class: 'pk-bronze' }), logo('pk-logo')])]); }
@@ -5037,19 +5461,24 @@
     return g && p ? 'See what you earned' : pick ? 'Choose your new Guide' : g ? (g > 1 ? 'Meet your new Guides' : 'Meet your new Guide') : p > 1 ? 'Open your packs' : 'Open your pack'; }
   // The race for Renown on the results card (Kit.win's pic slot, under the title): a line for each player, round by
   // round from 0, with the Renown that wins ruled across in gilt.
-  function racePic() {
+  // (raceSvg: the picture alone, for any game's rows of Renown: the results card's own game, and the last game from the
+  // history on the setup at a desk. wins: the seats whose line is the winner's, drawn last, on top.)
+  function raceSvg(rows, now, col, w, goal, label, wins, tall) {
+    const top = Math.max(goal, ...now), W = 330, H = tall || 54, n = rows.length - 1, x = i => (i / n) * W, y = v => H - (v / top) * H;
+    const won = o => (wins ? wins.indexOf(o) >= 0 : o === w), ord = now.map((p, o) => o).sort((a, b) => won(a) - won(b));   // (the winner's line drawn last, on top)
+    const lines = ord.map(o => '<path d="' + rows.map((r, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(r[o] || 0).toFixed(1)).join('') + '" style="stroke:' + col(o) + '"' + (won(o) ? ' class="w"' : '') + '/>' +
+      '<circle class="end' + (won(o) ? ' w' : '') + '" cx="' + x(n).toFixed(1) + '" cy="' + y(now[o]).toFixed(1) + '" r="' + (won(o) ? 4.6 : 3.6) + '" style="fill:' + col(o) + '"/>').join('');
+    const ticks = rows.map((r, i) => (i && (n <= 10 || i % 2 === 0 || i === n) ? '<text x="' + x(i).toFixed(1) + '" y="' + (H + 15) + '">' + i + '</text>' : '')).join('');
+    return '<svg viewBox="-4 -7 ' + (W + 32) + ' ' + (H + 24) + '" role="img" aria-label="' + label + ' after ' + n + (n === 1 ? ' round' : ' rounds') + '">' +
+      '<line class="b" x1="0" x2="' + W + '" y1="' + H + '" y2="' + H + '"/><line class="g" x1="0" x2="' + W + '" y1="' + y(goal).toFixed(1) + '" y2="' + y(goal).toFixed(1) + '"/><text class="gl" x="' + (W + 7) + '" y="' + (y(goal) + 4).toFixed(1) + '">' + goal + '</text>' +
+      lines + ticks + '</svg>';
+  }
+  function racePic(tall) {
     if (!G || !S || !G.tale || G.demo) return null;
     const rows = [S.P.map(() => 0)].concat((G.tale.tot || []).map(t => String(t).split('-').map(Number)));
     const now = S.P.map(p => p.renown); if (rows[rows.length - 1].join() !== now.join()) rows.push(now);   // (an end by Seals comes before the count)
     if (rows.length < 2) return null;
-    const goal = S.cfg.target || E.STD.target, top = Math.max(goal, ...now), W = 330, H = 54, n = rows.length - 1, x = i => (i / n) * W, y = v => H - (v / top) * H;
-    const w = S.winner, col = o => G.players[o].color || 'var(--pc' + o + ')', ord = S.P.map((p, o) => o).sort((a, b) => (a === w) - (b === w));   // (the winner's line drawn last, on top)
-    const lines = ord.map(o => '<path d="' + rows.map((r, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(r[o] || 0).toFixed(1)).join('') + '" style="stroke:' + col(o) + '"' + (o === w ? ' class="w"' : '') + '/>' +
-      '<circle class="end' + (o === w ? ' w' : '') + '" cx="' + x(n).toFixed(1) + '" cy="' + y(now[o]).toFixed(1) + '" r="' + (o === w ? 4.6 : 3.6) + '" style="fill:' + col(o) + '"/>').join('');
-    const ticks = rows.map((r, i) => (i && (n <= 10 || i % 2 === 0 || i === n) ? '<text x="' + x(i).toFixed(1) + '" y="' + (H + 15) + '">' + i + '</text>' : '')).join('');
-    const svg = '<svg viewBox="-4 -7 ' + (W + 32) + ' ' + (H + 24) + '" role="img" aria-label="' + esc(S.P.map((p, o) => pname(o) + ' ' + p.renown).join(', ') + ' Renown after ' + n + (n === 1 ? ' round' : ' rounds')) + '">' +
-      '<line class="b" x1="0" x2="' + W + '" y1="' + H + '" y2="' + H + '"/><line class="g" x1="0" x2="' + W + '" y1="' + y(goal).toFixed(1) + '" y2="' + y(goal).toFixed(1) + '"/><text class="gl" x="' + (W + 7) + '" y="' + (y(goal) + 4).toFixed(1) + '">' + goal + '</text>' +
-      lines + ticks + '</svg>';
+    const svg = raceSvg(rows, now, o => G.players[o].color || 'var(--pc' + o + ')', S.winner, S.cfg.target || E.STD.target, esc(S.P.map((p, o) => pname(o) + ' ' + p.renown).join(', ') + ' Renown'), null, tall);
     return el('div', { class: 'an-race' }, [el('div', { class: 'rc-k', text: 'The race for Renown' }), el('div', { class: 'rc-svg', html: svg })]);
   }
   function showWin(quiet) {
@@ -5367,7 +5796,7 @@
     roundEnd: roundEnd, banner: banner, suRoll: suRoll, tally: tally, logEvs: logEvs, logEnd: logEnd, posOrder: () => posOrder(), quickOf: a => quickOf(a), cfgOf: cfgOf, cfgStd: cfgStd, capOf: capOf,
     deckOf: deckOf, stackOf: stackOf, readyDeck: readyDeck, deckChoice: deckChoice, starterId: starterId, deckPicker: deckPicker, seatColors: seatColors, teamsFor: teamsFor, setCols: setCols,
     profOf: profOf, askPend: () => askPend(), moveSaid: a => moveSaid(a), showWin: showWin, endShow: () => endShow(), record: record, showSetup: showSetup, resume: resume, logScreen: logScreen, LEVEL: LEVEL, matKey: MATK };
-  window.__anoria = { seatColors: seatColors, teamsFor: teamsFor, scan: scan, relegal: () => { legal(); V = snap(); render(); }, E: E, ui: ui, mats: MATS, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
+  window.__anoria = { sd: SDK, seatColors: seatColors, teamsFor: teamsFor, scan: scan, relegal: () => { legal(); V = snap(); render(); }, E: E, ui: ui, mats: MATS, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
 
   // The art proof (anoria.html?art=1): every card as it is drawn at each size, side by side, so a new or changed
   // picture can be checked in one look: the full card, the small card, the smallest hand card and the piece on the

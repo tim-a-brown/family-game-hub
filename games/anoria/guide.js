@@ -649,6 +649,6 @@
 
   window.AnoriaGuide = {
     open: open, halt: halt, quickStart: o => { memSet(m => { m.qs = 1; }); return play(QUICK, Object.assign({ first: !UI().Coll.load().starter }, o)); },
-    firstTime: () => !mem().qs, justRan: () => Date.now() - ranAt < 1500, chapters: () => CHAPTERS.map(c => c.id), play: id => play(id === 'quick' ? QUICK : CHAPTERS.find(c => c.id === id), {}), running: () => !!run
+    firstTime: () => !mem().qs, justRan: () => Date.now() - ranAt < 1500, chapters: () => CHAPTERS.map(c => c.id), list: () => { const seen = mem().seen || {}; return CHAPTERS.map(c => ({ id: c.id, n: DW(c.n), art: c.art, seen: !!seen[c.id] })); }, play: id => play(id === 'quick' ? QUICK : CHAPTERS.find(c => c.id === id), {}), running: () => !!run
   };
 })();

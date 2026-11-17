@@ -2398,50 +2398,75 @@ html.an-low .gbar .ttl{font-size:1rem;} html.an-low .gbar .ttl .gi .gicon{width:
   .an-felt.desk .an-map .fp.card:hover > .ac{filter:brightness(1.07);}
   .an-felt.desk .an-strip :is(.st-guide,.relic[data-relic]):hover{filter:brightness(1.15);}
 }
-/* the setup on the desk: two columns, so it is composed across the window instead of standing as a narrow strip down its
-   middle. At the left the name over who is playing and the way into the Library, the packs and the decks; at the right,
-   where the taps go, the decks to choose and the button that deals. Every piece keeps its own size. */
-@media (min-width:1280px) and (min-height:700px){
-  #app.stage:has(> .setup){max-width:1240px;padding-left:28px;padding-right:28px;}
-  #app.stage > .setup{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);grid-template-rows:auto auto auto auto;column-gap:56px;row-gap:20px;align-content:center;align-items:center;min-height:calc(100dvh - var(--bar) - 44px);box-sizing:border-box;padding-top:0;}
-  #app.stage > .setup > *{grid-column:1;min-width:0;}
-  #app.stage > .setup > .setup-hero{grid-row:1;flex-direction:column;gap:18px;padding:0 0 10px;}
-  :root:not(.ng-x) #app.stage > .setup > .setup-hero .k-hero-ic{width:150px;height:126px;}
-  :root:not(.ng-x) #app.stage > .setup > .setup-hero.k-row h1{font-size:3.1rem;}
-  #app.stage > .setup > .k-seats{grid-row:3;}
-  #app.stage > .setup > .an-hub{grid-row:4;}
-  /* (the decks stand level with the name and the Players card, and the button that deals is on the line of the three doors) */
-  #app.stage > .setup > .k-opts{grid-column:2;grid-row:1 / 4;align-self:end;}
-  #app.stage > .setup > .k-startdock{grid-column:2;grid-row:4;position:static;margin:0;padding:0;background:none;box-shadow:none;}
-  #app.stage > .setup .dk-row{gap:10px;}
-}
-/* the results card on the desk: the plaque is wider, so the race for Renown is drawn larger and the winner, the sentence
-   and the standings are set a size up; its buttons keep a button's size */
-@media (min-width:1400px) and (min-height:860px){
-  .k-win .card.aw{max-width:min(1180px,calc(100vw - 64px));--pad:36px;}
-  .k-win .card.aw:not(.earn){grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);max-width:min(1040px,calc(100vw - 64px));}
-  .aw-game{padding:36px 14px 32px var(--pad);}
-  .k-win .card.aw h2{font-size:2.35rem;} .k-win .card.aw .sub{font-size:1.15rem;margin-top:9px;}
-  .aw-med{width:92px;height:92px;} .aw-hd{gap:20px;}
-  .k-win .card.aw .k-win-notes{font-size:1.16rem;margin-top:12px;}
-  .k-win .card.aw .rank{margin-top:18px;}
-  .k-win .card.aw .rank > div:not(.aw-cols){min-height:54px;font-size:1.3rem;}
-  .k-win .card.aw .rank .p{font-size:1.7rem;} .k-win .card.aw .rank .avatar{width:36px;height:36px;} .k-win .card.aw .rank .rk-sl .seal{width:21px;height:21px;}
-  .k-win .card.aw .rank > div{grid-template-columns:24px 36px minmax(0,1fr) 58px;} .k-win .card.aw .rank.sl > div{grid-template-columns:24px 36px minmax(0,1fr) 78px 58px;}
-  .an-race .rc-k,.aw-cols span,.k-win .card.aw .rw-k{font-size:.92rem;}
-  .k-win .card.aw > .k-acts{padding:16px var(--pad) 28px 20px;}
-}
-/* (a wide window that is low: the same two columns with a smaller name, so nothing scrolls) */
-@media (min-width:1100px) and (min-height:540px) and (max-height:699.98px){
-  #app.stage:has(> .setup){max-width:1180px;padding-left:24px;padding-right:24px;}
-  #app.stage > .setup{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);grid-template-rows:auto auto auto auto;column-gap:44px;row-gap:12px;align-content:center;align-items:center;min-height:calc(100dvh - var(--bar) - 30px);box-sizing:border-box;padding-top:0;}
-  #app.stage > .setup > *{grid-column:1;min-width:0;}
-  #app.stage > .setup > .setup-hero{grid-row:1;padding:0;}
-  #app.stage > .setup > .k-seats{grid-row:3;}
-  #app.stage > .setup > .an-hub{grid-row:4;}
-  #app.stage > .setup > .k-opts{grid-column:2;grid-row:1 / 4;align-self:end;}
-  #app.stage > .setup > .k-startdock{grid-column:2;grid-row:4;position:static;margin:0;padding:0;background:none;box-shadow:none;}
-}
+/* The results plaque at a desk (ui.js awDesk): composed for the window, its words and buttons a gentle step up (--awc).
+   Wide: the game at the left with the race for Renown drawn large, the record of this game in the middle (hist/anoria.js:
+   the map at the end, the numbers side by side, the Legacy Lines), what it earned over the buttons at the right. Tall and
+   narrow: the same parts one under another, the record scrolling between the game and the buttons. */
+.k-win:has(> .card.aw.dk){padding:var(--awm,24px);}
+.k-win .card.aw.dk{--pad:calc(26px * var(--awc));max-height:calc(100dvh - 2 * var(--awm,24px));border-radius:calc(22px * var(--awc));}
+.k-win .card.aw.dk-wide{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(calc(320px * var(--awc)),.86fr);grid-template-rows:minmax(0,1fr) minmax(0,auto) auto minmax(0,1fr);width:auto;max-width:min(calc(1040px * var(--awc)),calc(100vw - 2 * var(--awm,24px)));}
+.k-win .card.aw.dk-wide.has-rec{grid-template-columns:minmax(0,1fr) minmax(0,1.22fr) minmax(calc(320px * var(--awc)),.78fr);max-width:min(calc(1500px * var(--awc)),calc(100vw - 2 * var(--awm,24px)));}
+.k-win .card.aw.dk-wide.has-rec.rec2{grid-template-columns:minmax(0,1fr) minmax(0,1.7fr) minmax(calc(320px * var(--awc)),.72fr);max-width:min(calc(1940px * var(--awc)),calc(100vw - 2 * var(--awm,24px)));}
+.k-win .card.aw.dk-wide .aw-body{display:contents;}
+.k-win .card.aw.dk-wide .aw-game{grid-column:1;grid-row:1 / 5;align-self:center;min-height:0;max-height:100%;overflow-y:auto;scrollbar-width:none;padding:calc(30px * var(--awc)) calc(10px * var(--awc)) calc(28px * var(--awc)) var(--pad);}
+.k-win .card.aw.dk-wide .aw-rec{grid-column:2;grid-row:1 / 5;align-self:stretch;}
+.k-win .card.aw.dk-wide .k-win-show{grid-column:-2;grid-row:2;align-self:end;min-height:0;max-height:100%;overflow-y:auto;scrollbar-width:none;margin:var(--pad) var(--pad) 0 calc(14px * var(--awc));}
+.k-win .card.aw.dk-wide > .k-acts{grid-column:-2;grid-row:3;align-self:start;padding:calc(14px * var(--awc)) var(--pad) var(--pad) calc(14px * var(--awc));}
+.k-win .card.aw.dk-wide:not(.earn) > .k-acts{grid-row:1 / 5;align-self:center;}
+.k-win .card.aw.dk-tall{display:flex;flex-direction:column;width:auto;max-width:min(calc(760px * var(--awc)),calc(100vw - 2 * var(--awm,24px)));}
+.k-win .card.aw.dk-tall .aw-body{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden;padding:calc(26px * var(--awc)) var(--pad) calc(8px * var(--awc));-webkit-mask:none;mask:none;}
+.k-win .card.aw.dk-tall .aw-game,.k-win .card.aw.dk-tall .k-win-show{flex:none;}
+.k-win .card.aw.dk-tall .aw-rec{flex:1 1 auto;min-height:calc(140px * var(--awc));margin:calc(16px * var(--awc)) calc(-1 * var(--pad)) 0;border-top:1px solid var(--g-line);border-bottom:1px solid var(--g-line);}
+.k-win .card.aw.dk-tall > .k-acts{padding:calc(12px * var(--awc)) var(--pad) calc(20px * var(--awc));}
+/* (a low wide window, 1100 by under 800: three columns, the game, what it earned and the buttons, each whole; in two
+   columns a Guide joining with three packs ran off the top of the card at 1280 by 720) */
+.k-win .card.aw.dk-low{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1.1fr) minmax(0,.8fr);grid-template-rows:minmax(0,1fr);width:auto;max-width:min(1280px,calc(100vw - 2 * var(--awm,24px)));--pad:20px;}
+.k-win .card.aw.dk-low:not(.earn){grid-template-columns:minmax(0,1.2fr) minmax(0,.86fr);max-width:min(900px,calc(100vw - 2 * var(--awm,24px)));}
+.k-win .card.aw.dk-low .aw-body{display:contents;}
+.k-win .card.aw.dk-low .aw-game{grid-column:1;grid-row:1;align-self:center;min-height:0;max-height:100%;overflow-y:auto;scrollbar-width:none;padding:16px 6px 14px var(--pad);}
+.k-win .card.aw.dk-low .k-win-show{grid-column:2;grid-row:1;align-self:center;min-height:0;max-height:calc(100% - 28px);overflow-y:auto;scrollbar-width:none;margin:14px 6px;}
+.k-win .card.aw.dk-low > .k-acts{grid-column:3;grid-row:1;align-self:center;padding:14px var(--pad) 14px 10px;}
+.k-win .card.aw.dk-low:not(.earn) > .k-acts{grid-column:2;}
+.k-win .card.aw.dk-low .aw-grp > .btn{white-space:normal;line-height:1.15;padding-block:6px;} .k-win .card.aw.dk-low .aw-grp > .btn > span:not([class]){overflow:visible;text-overflow:clip;}   /* (a button's words wrap to a second line rather than end in dots) */
+/* the record: the history view's own parts on the plaque's stone, each under its name in dust */
+.aw-rec{min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;padding:var(--pad) calc(18px * var(--awc));box-sizing:border-box;--ahu:calc(1rem * var(--awc));--ahp:calc(1px * var(--awc));}
+.aw-rec::-webkit-scrollbar{display:none;}
+.aw-rec.more{-webkit-mask:linear-gradient(#000 calc(100% - 34px),transparent);mask:linear-gradient(#000 calc(100% - 34px),transparent);}
+.k-win .card.aw.dk-wide .aw-rec{border-left:1px solid var(--g-line);border-right:1px solid var(--g-line);background:rgba(0,0,0,.14);}
+.aw-rec .ah{gap:calc(18px * var(--awc));}
+.aw-rec .hv-sec{margin:0;min-width:0;}
+:root:not(.ng-x) .k-win .card.aw .aw-rec .hv-h{margin:0 0 calc(2px * var(--awc));font:500 calc(.86rem * var(--awc))/1.2 var(--sans);letter-spacing:0;text-transform:none;color:var(--g-dust);}
+/* (the map's two sides have the room for their Figures' names: the Domain between them takes less) */
+.aw-rec .ah-mh,.aw-rec .ah-mr{grid-template-columns:minmax(0,1fr) calc(112px * var(--awc)) minmax(0,1fr);}
+.aw-rec .ah-fig{font-size:calc(.8rem * var(--awc));} .aw-rec .ah-fig span{overflow-wrap:normal;}
+.aw-rec .ah-mp-pic{width:calc(54px * var(--awc));height:calc(54px * var(--awc));}
+.aw-rec .ah-plate{background:none;border-radius:calc(14px * var(--awc));box-shadow:inset 0 0 0 1px var(--g-line);}
+.k-win .card.aw.rec2 .aw-rec .ah{display:grid;grid-template-columns:minmax(0,1.22fr) minmax(0,1fr);align-items:start;column-gap:calc(22px * var(--awc));}
+.k-win .card.aw.rec2 .aw-rec .ah > :first-child{grid-row:1 / span 3;}
+/* the plaque's own words, a step up with the window */
+.k-win .card.aw.dk h2{font-size:calc(1.9rem * var(--awc));} .k-win .card.aw.dk .sub{font-size:calc(1.05rem * var(--awc));margin-top:calc(7px * var(--awc));}
+.k-win .card.aw.dk .aw-med{width:calc(76px * var(--awc));height:calc(76px * var(--awc));} .k-win .card.aw.dk .aw-hd{gap:calc(16px * var(--awc));}
+.k-win .card.aw.dk .aw-orn{height:calc(30px * var(--awc));margin:calc(8px * var(--awc)) 0 calc(4px * var(--awc));} .k-win .card.aw.dk .aw-orn img{width:calc(36px * var(--awc));height:calc(30px * var(--awc));}
+.k-win .card.aw.dk .k-win-notes{font-size:calc(1.06rem * var(--awc));margin-top:calc(10px * var(--awc));}
+.k-win .card.aw.dk .rank{margin-top:calc(16px * var(--awc));}
+.k-win .card.aw.dk .rank > div:not(.aw-cols){min-height:calc(48px * var(--awc));font-size:calc(1.18rem * var(--awc));}
+.k-win .card.aw.dk .rank .p{font-size:calc(1.5rem * var(--awc));} .k-win .card.aw.dk .rank .place{font-size:calc(1.15rem * var(--awc));}
+.k-win .card.aw.dk .rank .avatar{width:calc(32px * var(--awc));height:calc(32px * var(--awc));} .k-win .card.aw.dk .rank .rk-sl .seal{width:calc(18px * var(--awc));height:calc(18px * var(--awc));}
+.k-win .card.aw.dk .rank > div{grid-template-columns:calc(22px * var(--awc)) calc(32px * var(--awc)) minmax(0,1fr) calc(52px * var(--awc));} .k-win .card.aw.dk .rank.sl > div{grid-template-columns:calc(22px * var(--awc)) calc(32px * var(--awc)) minmax(0,1fr) calc(70px * var(--awc)) calc(52px * var(--awc));}
+.k-win .card.aw.dk .an-race .rc-k,.k-win .card.aw.dk .aw-cols span,.k-win .card.aw.dk .rw-k{font-size:calc(.84rem * var(--awc));}
+.k-win .card.aw.dk .k-acts > .btn-primary{min-height:calc(54px * var(--awc));font-size:calc(1.12rem * var(--awc));}
+.k-win .card.aw.dk .aw-grp{margin-top:calc(10px * var(--awc));border-radius:calc(14px * var(--awc));}
+.k-win .card.aw.dk .aw-grp > .btn{min-height:calc(46px * var(--awc));font-size:calc(1.06rem * var(--awc));}
+.k-win .card.aw.dk .k-acts > .btn-ghost{min-height:calc(40px * var(--awc));font-size:calc(.95rem * var(--awc));}
+/* (what the game earned: its words follow the plaque's step) */
+.k-win .card.aw.dk .rw-end .rw-sph{--sz:calc(70px * var(--awc)) !important;}
+.k-win .card.aw.dk .rw-e-lit b,.k-win .card.aw.dk .rw-e-lit span{font-size:calc(1rem * var(--awc));}
+.k-win .card.aw.dk .rw-e-p{font-size:calc(.94rem * var(--awc));}
+.k-win .card.aw.dk .rw-end .rw-e-w > b,.k-win .card.aw.dk .rw-end .rw-e-h b{font-size:calc(.92rem * var(--awc));}
+.k-win .card.aw.dk .rw-end .rw-e-w > span:not(.rw-bar),.k-win .card.aw.dk .rw-end .rw-e-w small{font-size:calc(.98rem * var(--awc));}
+.k-win .card.aw.dk .rw-end .rw-of{font-size:calc(.95rem * var(--awc));}
+.k-win .card.aw.dk .rw-end .rw-face{width:calc(40px * var(--awc));height:calc(40px * var(--awc));}
+.k-win .card.aw.dk .rw-e-top{gap:calc(14px * var(--awc));padding:calc(12px * var(--awc)) calc(14px * var(--awc));} .k-win .card.aw.dk .rw-e-row{gap:calc(14px * var(--awc));padding:calc(10px * var(--awc)) calc(14px * var(--awc));}
 /* a clash on the desk: the two cards, the dice and the shields at a size that fills the stage the clash is given */
 @media (min-width:1280px) and (min-height:800px){
   .clash:not(.su-n) .cl-in{width:min(100%,1080px);--cw:clamp(78px,min(30vw,30vh),340px);--sh:clamp(32px,min(10vw,11vh),80px);gap:clamp(10px,3vh,36px) clamp(4px,3vw,64px);}
@@ -2451,3 +2476,271 @@ html.an-low .gbar .ttl{font-size:1rem;} html.an-low .gbar .ttl .gi .gicon{width:
 /* (while the computer's turn is fast-forwarded every transition on the table runs short, sizes included; the desk lays
    itself out from the dock's measured sizes, so the dock's own boxes change size at once there) */
 .an-fast .an .an-felt.desk > *{transition-property:none !important;}
+/* ══ The setup at a desk (ui.js sdLay): a window larger than a phone's or a tablet's ═══════════════════════════════════
+   The kit's setup is the rail, where the taps go; beside it the wall (each deck's Guide and its cards) and the room (the
+   sphere, the packs, the last game, the callings), on the night stone as raised slabs with one hairline. Bronze is only
+   for what is chosen, what is yours and what is waiting for you. Sizes are the window's: --sdu 1 to 1.75 for what is
+   printed (the name, the sphere), --sdc 1 to 1.35 for controls and words, --sd-pad and --sd-gap for the joints. */
+#app.stage.an-desk{max-width:none;margin:0;padding:0;position:relative;box-sizing:border-box;}
+#app.stage.an-desk-fit{overflow:clip;}
+#app.stage.an-desk > .setup{box-sizing:border-box;display:flex;flex-direction:column;align-content:normal;align-items:stretch;gap:calc(12px * var(--sdc));width:auto;min-height:0;margin:0;padding:0;}
+#app.stage.an-desk > .setup > .setup-hero{display:none;}
+#app.stage.an-desk > .setup > *{min-width:0;margin:0;}
+#app.stage.an-desk > .setup > .k-joins:empty{display:none;}
+#app.stage.an-desk > .setup > .k-opts{gap:calc(13px * var(--sdc));}
+#app.stage.an-desk > .setup > .k-startdock{position:sticky;bottom:var(--sd-pad);z-index:6;margin:auto 0 0;padding:calc(6px * var(--sdc)) 0 0;background:none;box-shadow:none;}
+#app.stage.an-desk-band > .setup,#app.stage.an-desk-side > .setup{margin:0 var(--sd-pad) 0 auto;}
+/* the rail in two columns (a low wide window, and across the top of a narrower one): the decks and the options at
+   the left, who plays over the start buttons at the right */
+#app.stage.an-desk > .setup.an-dk-2c{display:grid;grid-template-columns:minmax(0,1.14fr) minmax(0,1fr);grid-template-rows:auto auto auto auto 1fr;column-gap:var(--sd-gap);row-gap:0;align-items:start;}
+#app.stage.an-desk > .setup.an-dk-2c > *{grid-column:2;}
+#app.stage.an-desk > .setup.an-dk-2c > .k-opts{grid-column:1;grid-row:1 / 6;}
+#app.stage.an-desk > .setup.an-dk-2c > .setup-hero{grid-row:1;}
+#app.stage.an-desk > .setup.an-dk-2c > .k-joins{grid-row:2;margin-bottom:calc(12px * var(--sdc));}
+#app.stage.an-desk > .setup.an-dk-2c > .k-seats{grid-row:3;}
+#app.stage.an-desk > .setup.an-dk-2c > .an-hub{grid-row:4;margin-top:calc(12px * var(--sdc));}
+#app.stage.an-desk > .setup.an-dk-2c > .k-startdock{grid-row:5;align-self:end;margin-top:calc(12px * var(--sdc));}
+/* (a rail taller than the window, six people's decks: it scrolls under the start buttons, which stay in view) */
+#app.stage.an-desk > .setup.an-dk-long > .k-startdock{padding-top:calc(16px * var(--sdc));background:linear-gradient(rgba(18,18,17,0),#121211 45%);}
+/* one under another (a narrow tall window): the name, the rail, the wall, the room */
+#app.stage.an-desk-stack{padding:0 var(--sd-pad) var(--sd-pad);}
+#app.stage.an-desk-stack > .setup{width:100%;max-width:calc(640px * var(--sdc));margin:0 auto;}
+#app.stage.an-desk-stack > .setup.an-dk-2c{max-width:calc(1180px * var(--sdc));}
+#app.stage.an-desk-stack > .setup > .k-startdock{position:static;margin-top:0;}
+#app.stage.an-desk-stack > .setup.an-dk-bare > .k-startdock{position:sticky;bottom:var(--sd-pad);}
+/* (no room for a wall or a room: the name stands with the controls, as on a tablet) */
+#app.stage.an-desk-stack > .setup.an-dk-bare > .setup-hero{display:flex;padding:calc(4px * var(--sdc)) 0 calc(8px * var(--sdc));}
+#app.stage.an-desk-stack > .setup.an-dk-bare{padding-top:calc(6px * var(--sdc));}
+#app.stage.an-desk-stack > .sd-mast{margin-bottom:var(--sd-gap);}
+#app.stage.an-desk-stack > :is(.sd-wall,.sd-room){margin-top:var(--sd-gap);}
+/* the wall shows each deck's Guide, its power and its cards, so the rail's own box of the same is put away */
+#app.stage.an-desk > .setup:not(.an-dk-bare) .dk-info{display:none;}
+/* (a surprise has no deck to put on the wall, so its one sentence stays under the faces it is chosen from) */
+#app.stage.an-desk > .setup:not(.an-dk-bare) .dk-pick.cpu .dk-info:not(:has(.gd)){display:block;padding:0 2px;box-shadow:none;}
+#app.stage.an-desk > .setup .dk-pick.cpu .dk-info:not(:has(.gd)) .plan{font:400 calc(.84rem * var(--sdc))/1.3 var(--sans);color:var(--g-dust);letter-spacing:0;}
+/* ── the rail's controls, a gentle step up in the largest windows (the kit's own desk does the same for its games) ── */
+.setup.an-dk .dk-pick{gap:calc(7px * var(--sdc));}
+.setup.an-dk .dk-pick > .label,:root:not(.ng-x) .setup.an-dk .k-opt > .label{font-size:calc(.85rem * var(--sdc));}
+.setup.an-dk .dk-row{gap:calc(7px * var(--sdc));}
+.setup.an-dk .dk-pick.cpu .dk-row{gap:calc(5px * var(--sdc));}
+.setup.an-dk .dk{border-radius:calc(12px * var(--sdc));}
+.setup.an-dk .dk-pick:not(.cpu) .dk{padding:calc(5px * var(--sdc)) calc(5px * var(--sdc)) calc(7px * var(--sdc));row-gap:calc(3px * var(--sdc));}
+.setup.an-dk .dk-pick .dk-n{font-size:max(8.2px,min(calc(.95rem * var(--sdc)),11cqw));}
+.setup.an-dk .dk-c{height:calc(5px * var(--sdc));}
+.setup.an-dk .seg > button{min-height:calc(44px * var(--sdc));font-size:calc(.95rem * var(--sdc));}
+.setup.an-dk .k-help{font-size:calc(.84rem * var(--sdc));}
+.setup.an-dk .k-scrow{min-height:calc(46px * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-scl{font-size:calc(.84rem * var(--sdc));}
+.setup.an-dk .k-scv{font-size:calc(.95rem * var(--sdc));}
+.setup.an-dk .k-iseg button{min-width:calc(44px * var(--sdc));height:calc(38px * var(--sdc));font-size:calc(.92rem * var(--sdc));}
+.setup.an-dk .k-startdock .k-start{min-height:calc(60px * var(--sdc));font-size:calc(1.2rem * var(--sdc));}
+.setup.an-dk .k-startdock .k-start-alt{min-height:calc(60px * var(--sdc));padding:0 calc(14px * var(--sdc));font-size:calc(.92rem * var(--sdc));}
+.setup.an-dk .k-startdock .k-start-alt .ico{width:calc(18px * var(--sdc));height:calc(18px * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-who .k-who-t{font-size:calc(.95rem * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks:not(.teams) > .k-tok{flex-basis:calc(66px * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks .k-tok .avatar{width:calc(40px * var(--sdc));height:calc(40px * var(--sdc));font-size:calc(1rem * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks .k-tok b{font-size:calc(.82rem * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks .k-tok b.l1{font-size:calc(.74rem * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks .k-tok b.l2{font-size:calc(.66rem * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks .k-tok small{font-size:calc(.7rem * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks .k-tok .seat-av .seat-tag{width:calc(18px * var(--sdc));height:calc(18px * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks .k-vs{font-size:calc(.82rem * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks .k-side .k-tok{width:calc(60px * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks.crowd > .k-tok{flex-basis:calc(52px * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks.crowd .k-tok .avatar{width:calc(32px * var(--sdc));height:calc(32px * var(--sdc));font-size:calc(.84rem * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks.crowd .k-tok b{font-size:calc(.7rem * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks.crowd2 > .k-tok{flex-basis:calc(44px * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks.crowd2 .k-tok .avatar{width:calc(28px * var(--sdc));height:calc(28px * var(--sdc));font-size:calc(.74rem * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks.crowd2 .k-tok b{font-size:calc(.62rem * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks:is(.crowd,.crowd2) .k-tok .seat-av .seat-tag{width:calc(14px * var(--sdc));height:calc(14px * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks.few:not(.teams) > .k-tok,:root:not(.ng-x) .setup.an-dk .k-toks.few .k-side .k-tok{flex-basis:calc(80px * var(--sdc));width:calc(80px * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks.few .k-tok .avatar{width:calc(60px * var(--sdc));height:calc(60px * var(--sdc));font-size:calc(1.45rem * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks.few .k-tok b{font-size:calc(1.02rem * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks.few .k-tok b.l1{font-size:calc(.92rem * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks.few .k-tok b.l2{font-size:calc(.82rem * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks.few .k-tok .seat-av .seat-tag{width:calc(24px * var(--sdc));height:calc(24px * var(--sdc));}
+:root:not(.ng-x) .setup.an-dk .k-toks.few .k-vs{font-size:calc(1.05rem * var(--sdc));}
+/* (the rail with height to spare: the computer's deck is chosen from faces large enough to know, each with its name) */
+.setup.an-dk-roomy .dk-pick.cpu .dk-row{grid-template-columns:repeat(7,minmax(0,1fr));}
+.setup.an-dk-roomy2 .dk-pick:not(.cpu) .dk-row{grid-template-columns:repeat(4,minmax(0,1fr));}
+/* (and what the chosen option means stands open under it, as on the kit's own desk) */
+.setup.an-dk-roomy .k-opt > .k-help{display:block;margin:calc(7px * var(--sdc)) 2px 0;padding:0 2px;background:none;border-radius:0;font-size:calc(.84rem * var(--sdc));line-height:1.35;color:var(--g-dust);animation:none;}
+.setup.an-dk-roomy .k-opt > .label > .k-q{display:none;}
+.setup.an-dk-roomy .dk-pick.cpu .dk{grid-template-rows:auto auto;padding:calc(4px * var(--sdc)) calc(4px * var(--sdc)) calc(6px * var(--sdc));row-gap:calc(3px * var(--sdc));}
+.setup.an-dk-roomy .dk-pick.cpu .dk-g{aspect-ratio:5/6;}
+.setup.an-dk-roomy .dk-pick.cpu .dk-n{display:block;align-self:center;text-align:center;font-size:max(8.2px,min(calc(.8rem * var(--sdc)),13cqw));line-height:1.08;text-wrap:balance;}
+/* (a rail too tall for its window: your decks' faces smaller, a surprise's sentence left out, the joints closer) */
+#app.stage.an-desk > .setup.an-dk-tight{gap:calc(6px * var(--sdc));}
+#app.stage.an-desk > .setup.an-dk-tight > .k-opts{gap:calc(6px * var(--sdc));}
+.setup.an-dk-tight .dk-pick{gap:calc(3px * var(--sdc));}
+.setup.an-dk-tight .dk-pick:not(.cpu) .dk-row{grid-template-columns:repeat(9,minmax(0,1fr));}
+#app.stage.an-desk > .setup.an-dk-tight .dk-pick.cpu .dk-info{display:none;}
+/* (and where there is no wall beside it either: each deck's Cards button stands at the end of its label, its words a tap away) */
+.setup.an-dk-tight.an-dk-bare .dk-pick:not(.cpu){position:relative;}
+.setup.an-dk-tight.an-dk-bare .dk-pick:not(.cpu) .dk-info{position:absolute;right:0;top:calc(-6px * var(--sdc));display:block;padding:0;box-shadow:none;}
+.setup.an-dk-tight.an-dk-bare .dk-pick:not(.cpu) .dk-info :is(.plan,.gd){display:none;}
+.setup.an-dk-tight.an-dk-bare .dk-pick:not(.cpu) .dk-info .btn-sm{min-height:calc(30px * var(--sdc));padding:0 12px;font-size:calc(.84rem * var(--sdc));}
+/* ── the name and the three doors, at the head of the wall ── */
+.sd-mast{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:calc(10px * var(--sdc)) var(--sd-gap);box-sizing:border-box;padding-top:calc(2px * var(--sdu));}
+.sd-logo{font-size:calc(1.72rem * var(--sdu));filter:drop-shadow(0 4px 10px rgba(0,0,0,.5));}
+.sd-logo.an-logo.row{gap:.55em;} .sd-logo.an-logo.row img{height:2.15em;}
+.an-desk:has(> .setup.an-dk-low) .sd-logo{font-size:calc(1.3rem * var(--sdu));}
+.sd-mast .an-hub{flex:0 1 calc(470px * var(--sdc));gap:calc(8px * var(--sdc));}
+.sd-mast .an-hub-t{min-height:calc(54px * var(--sdc));padding:calc(7px * var(--sdc)) calc(11px * var(--sdc));column-gap:calc(9px * var(--sdc));border-radius:calc(14px * var(--sdc));}
+.sd-mast .an-hub-t .ic{width:calc(34px * var(--sdc));height:calc(34px * var(--sdc));border-radius:calc(10px * var(--sdc));}
+.sd-mast .an-hub-t .ic .ico{width:calc(19px * var(--sdc));height:calc(19px * var(--sdc));}
+.sd-mast .an-hub-t b{font-size:calc(.95rem * var(--sdc));} .sd-mast .an-hub-t small{font-size:calc(.72rem * var(--sdc));}
+.an-desk-stack > .sd-mast{justify-content:center;}
+@media (hover:hover) and (pointer:fine){ .an-hub-t:hover{background:rgba(239,235,228,.045);} .an-hub-t.on:hover{background:rgba(211,155,98,.13);} }
+/* ── the wall: a slab for each deck ── */
+.sd-wall{display:grid;gap:var(--sd-gap);align-content:start;box-sizing:border-box;font-size:calc(16px * var(--sdc));min-width:0;}
+.sd-co{container:sdco / inline-size;position:relative;display:flex;flex-direction:column;gap:calc(.55em);box-sizing:border-box;min-width:0;min-height:0;padding:var(--ip);border-radius:calc(18px * var(--sdc));background:var(--g-slab);box-shadow:inset 0 0 0 1px var(--g-line);overflow:hidden;}
+.sd-co-h{flex:none;display:flex;align-items:center;gap:.9em;min-height:calc(30px * var(--sdc) - .55em);}
+.sd-k{flex:none;font:600 .86em/1.2 var(--sans);color:var(--g-dust);}
+.sd-say{min-width:0;font:400 .86em/1.25 var(--sans);color:var(--g-dust);text-wrap:pretty;}
+.sd-chg.btn{position:absolute;right:var(--ip);top:calc(var(--ip) - .35em);width:auto;min-height:0;height:2.2em;margin:0;padding:0 .9em;border-radius:.7em;font:500 .86em/1 var(--sans);}
+.sd-co-b{flex:1;min-height:0;display:flex;gap:calc(var(--ip) * 1.4);}
+.sd-co.top .sd-co-b{flex-direction:column;gap:8px;}
+.sd-gcol{flex:none;display:flex;flex-direction:column;gap:.7em;min-width:0;}
+.sd-co.side .sd-gcol{width:var(--gw);}
+.sd-co.top .sd-gcol{flex-direction:row;align-items:center;gap:.8em;height:calc(74px * var(--sdc));}
+.sd-gd{flex:none;display:block;padding:0;border:0;background:none;color:inherit;font:inherit;cursor:pointer;border-radius:calc(var(--gw) * .043);}
+.sd-gc{display:none;}
+.sd-co.side .sd-gc{display:block;width:var(--gw);height:calc(var(--gw) * 1.4);}
+.sd-co.side .sd-gc > .ac{font-size:calc(var(--gw) / 30);pointer-events:none;}
+.sd-co.side .sd-gm{display:none;}
+.sd-gm{display:block;position:relative;width:calc(58px * var(--sdc));height:calc(58px * var(--sdc));border-radius:50%;overflow:hidden;background:var(--f,#272624);box-shadow:0 0 0 2px var(--g-night),0 0 0 3.5px var(--g-br);}
+.sd-gm :is(img,canvas){position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 18%;}
+.sd-co.side .sd-gw{flex:none;}
+.sd-gw{flex:1;min-width:0;display:grid;grid-template-columns:minmax(0,1fr);gap:.2em .9em;align-content:center;}
+.sd-gw .plan{font:600 .98em/1.2 var(--sans);letter-spacing:-.012em;color:var(--g-bone);text-wrap:balance;}
+.sd-gw .gd{font:400 .86em/1.28 var(--sans);color:var(--text-2);text-wrap:pretty;}
+.sd-gw .gd b{font-weight:600;color:var(--g-bone);}
+.sd-co.side .sd-gw .gd{display:none;}   /* (the Guide's own card says it) */
+.sd-co.top .sd-gw{grid-template-columns:minmax(0,1fr) auto;}
+.sd-co.top .sd-gw .plan{grid-column:1;} .sd-co.top .sd-gw .gd{grid-column:1;}
+.sd-co.top .sd-st{grid-column:2;grid-row:1 / 3;align-self:center;}
+.sd-st{display:flex;gap:1.1em;margin-top:.25em;}
+.sd-st span{display:flex;flex-direction:column;gap:.1em;}
+.sd-st b{font:500 1.5em/1 var(--sans);color:var(--g-bone);font-variant-numeric:tabular-nums;}
+.sd-st small{font:400 .76em/1.1 var(--sans);color:var(--g-dust);}
+.sd-grid{flex:1;min-width:0;min-height:0;display:grid;grid-template-columns:repeat(var(--cc,8),var(--cw));gap:var(--cg,6px);align-content:start;justify-content:space-between;}
+.sd-c{position:relative;display:block;width:var(--cw);height:calc(var(--cw) * 1.4);padding:0;border:0;background:none;color:inherit;font:inherit;cursor:pointer;border-radius:calc(var(--cw) * .043);}
+.sd-c > .ac{font-size:calc(var(--cw) / 30);pointer-events:none;box-shadow:0 .4em 1em rgba(0,0,0,.45);}
+.sd-n{position:absolute;right:-3px;top:-3px;z-index:2;display:grid;place-items:center;min-width:1.5em;height:1.5em;padding:0 .3em;border-radius:999px;background:var(--g-br);color:#1c130a;font:600 .78em/1 var(--sans);box-shadow:0 0 0 2px var(--g-slab);}
+/* (a card too small to print its name: the picture, in the card's own border) */
+.sd-grid.th .ac.mini .ac-paper,.sd-grid.th .ac.mini .ac-mh,.sd-grid.th .ac.mini .ac-kind,.sd-grid.th .ac.mini .ac-rar{display:none;}
+.sd-grid.th .ac.mini .ac-art,.sd-grid.th .ac.mini.hasst .ac-art{height:100%;}
+.sd-co.bare .sd-grid{display:none;}
+/* (a narrow slab with the Guide as a medallion: the Guide's power is read on the Guide's card, a tap away) */
+@container sdco (max-width:36em){ .sd-co.top .sd-gw .gd{display:none;} .sd-co.top .sd-gw .plan{font-size:.9em;} .sd-co.top .sd-st{gap:.8em;} .sd-co.top .sd-st b{font-size:1.3em;} }
+@container sdco (max-width:24em){ .sd-co.top .sd-gw{column-gap:.5em;} .sd-co.top .sd-gw .plan{font-size:.8em;} .sd-co.top .sd-st{gap:.55em;} .sd-co.top .sd-st b{font-size:1.12em;} .sd-co.top .sd-st small{font-size:.68em;} }   /* (two decks side by side in a narrow window) */
+.sd-co.bare{align-self:start;} .sd-co.bare.top .sd-co-b{flex:none;} .sd-co.bare.top .sd-gcol{height:auto;min-height:calc(58px * var(--sdc));}
+:is(.sd-c,.sd-gd):focus-visible{outline:2px solid var(--g-br-hi);outline-offset:2px;}
+@media (hover:hover) and (pointer:fine){ .sd-c:hover > .ac,.sd-gd:hover .ac{filter:brightness(1.1);} .sd-gd:hover .sd-gm{filter:brightness(1.1);} }
+/* ── the room: stone panels, a label in dust over each ── */
+.sd-room{display:grid;gap:var(--sd-gap);box-sizing:border-box;font-size:calc(16px * var(--sdc));min-width:0;}
+.sd-p{position:relative;display:flex;flex-direction:column;gap:.6em;box-sizing:border-box;min-width:0;min-height:0;height:100%;margin:0;padding:calc(13px * var(--sdc)) calc(16px * var(--sdc)) calc(14px * var(--sdc));border:0;border-radius:calc(18px * var(--sdc));background:var(--g-slab);box-shadow:inset 0 0 0 1px var(--g-line);color:var(--g-bone);font:inherit;text-align:left;overflow:hidden;}
+.sd-p[hidden],.sd-row[hidden],.sd-p-b > [hidden]{display:none !important;}
+button.sd-p{cursor:pointer;transition:background .15s;}
+.sd-p.lit{background:rgba(211,155,98,.07);box-shadow:inset 0 0 0 1.5px var(--g-br);}
+.sd-p.lit .sd-k{color:var(--g-br-hi);}
+.sd-p-h{flex:none;display:flex;align-items:center;gap:.8em;}
+.sd-when{font:400 .82em/1.2 var(--sans);color:var(--g-dust);}
+.sd-go{flex:none;display:grid;place-items:center;margin-left:auto;color:var(--g-dust);}
+.sd-go .ico{width:1em;height:1em;}
+.sd-p-b{flex:1;min-height:0;display:flex;flex-direction:column;gap:.7em;overflow:hidden;}
+.sd-p-b > *{flex:none;}
+.sd-line{margin:0;font:400 .95em/1.3 var(--sans);color:var(--g-bone);text-wrap:pretty;}
+.sd-line.dim{color:var(--g-dust);font-size:.88em;}
+.sd-big{display:flex;align-items:baseline;gap:.5em;}
+.sd-big b{font:500 2.5em/.95 var(--sans);letter-spacing:-.02em;color:var(--g-br-hi);font-variant-numeric:tabular-nums;}
+.sd-big span{font:400 .95em/1.2 var(--sans);color:var(--g-dust);}
+.sd-med{flex:none;position:relative;display:grid;place-items:center;width:2.6em;height:2.6em;border-radius:50%;overflow:hidden;background:#272624;color:var(--g-dust);box-shadow:0 0 0 1.5px var(--g-slab),0 0 0 3px var(--pc,var(--g-joint));}
+.sd-med.sq{border-radius:.5em;box-shadow:0 0 0 1px rgba(0,0,0,.6);}
+.sd-med :is(img,canvas){position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 18%;}
+.sd-med .ico{width:55%;height:55%;}
+/* the sphere */
+.sd-sph .sd-sp-a{display:flex;align-items:center;gap:1.1em;min-height:0;}
+.sd-sph .rw-sph{--sz:inherit;width:var(--sz,120px);height:var(--sz,120px);}
+.sd-sp-t{min-width:0;display:flex;flex-direction:column;gap:.45em;}
+.sd-room.tall .sd-sph .sd-sp-a{flex-direction:column;align-items:flex-start;gap:.9em;}
+.sd-room.tall .sd-sph .rw-sph{align-self:center;}
+.sd-lights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5em;margin:auto 0 0;padding:0;list-style:none;}
+.sd-lights li{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.55em;min-height:3.7em;padding:.6em .3em .55em;border-radius:.8em;box-shadow:inset 0 0 0 1px var(--g-line);font:400 .82em/1.15 var(--sans);color:var(--g-bone);text-align:center;}
+.sd-dm{display:flex;gap:.3em;} .sd-dm i{width:.55em;height:.55em;transform:rotate(45deg);background:var(--g-br);}
+.sd-room.low .sd-lights,.sd-room.low .sd-line.dim{display:none;}
+/* the packs waiting */
+.sd-pk .sd-p-b{justify-content:center;gap:.9em;}
+.sd-pks{display:flex;align-items:center;justify-content:center;gap:calc(.55em);min-height:0;}
+.sd-pks .aw-pk{flex:none;width:var(--pkw,34px);height:calc(var(--pkw,34px) * 1.44);font-size:calc(var(--pkw,34px) / 6.4);filter:drop-shadow(0 .5em .7em rgba(0,0,0,.6));}
+.sd-pks .aw-pk .pk-art{border-radius:.42em;}
+.sd-pk-g{display:grid;place-items:center;width:3.4em;height:3.4em;border-radius:50%;box-shadow:0 0 0 1.5px var(--g-br);color:var(--g-br-hi);} .sd-pk-g svg{width:50%;height:50%;}
+.sd-pk .sd-line{text-align:center;text-wrap:balance;}
+.sd-room.low .sd-pk .sd-p-b{flex-direction:row;align-items:center;justify-content:flex-start;} .sd-room.low .sd-pk .sd-line{flex:1 1 0;min-width:0;text-align:left;font-size:.9em;}
+.sd-room.low .sd-big b{font-size:1.9em;} .sd-room.low .sd-sp-t{gap:.3em;} .sd-room.low .sd-line{font-size:.9em;line-height:1.25;}
+/* the last game */
+.sd-who{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5em 1em;}
+.sd-side{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;align-items:center;column-gap:.7em;row-gap:.1em;min-width:0;}
+.sd-side .sd-med{grid-row:1 / 3;}
+.sd-side .sd-nm{min-width:0;align-self:end;font:400 .86em/1.15 var(--sans);color:var(--g-dust);overflow-wrap:break-word;}
+.sd-side b{align-self:start;font:500 1.6em/1 var(--sans);color:var(--g-dust);font-variant-numeric:tabular-nums;}
+.sd-side.won .sd-nm{color:var(--g-bone);} .sd-side.won b{color:var(--g-bone);}
+.sd-who.many{grid-template-columns:repeat(auto-fill,minmax(9.5em,1fr));} .sd-who.many .sd-med{width:2em;height:2em;} .sd-who.many .sd-side b{font-size:1.25em;}
+.sd-race{flex:none;}
+.sd-race svg{display:block;width:100%;height:auto;max-height:100%;overflow:visible;}
+.sd-race path{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round;opacity:.85;} .sd-race path.w{stroke-width:2.6;opacity:1;}
+.sd-race circle.end{stroke:var(--g-slab);stroke-width:1.5;}
+.sd-race line.b{stroke:rgba(239,235,228,.22);stroke-width:1;} .sd-race line.g{stroke:var(--g-br);stroke-width:1;stroke-dasharray:3 3;opacity:.8;}
+.sd-race text{font:400 9px var(--sans);fill:var(--g-dust);text-anchor:middle;} .sd-race text.gl{fill:var(--g-br-hi);text-anchor:start;font-weight:600;}
+.sd-room.low .sd-last .sd-race,.sd-room.low .sd-nums{display:none;}
+.sd-room.low .sd-last .sd-p-b{gap:.4em;}
+/* (the numbers side by side: a label over the two figures, each with its seat's color) */
+.sd-nums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:end;gap:.7em;margin-top:auto;padding-top:.7em;border-top:1px solid var(--g-line);overflow:hidden;}
+.sd-nums > span{display:flex;flex-direction:column;gap:.3em;min-width:0;}
+.sd-nums small{font:400 .76em/1.15 var(--sans);color:var(--g-dust);}
+.sd-nums > span > span{display:flex;gap:.9em;}
+.sd-nums b{display:inline-flex;align-items:center;gap:.35em;font:500 1.15em/1 var(--sans);font-variant-numeric:tabular-nums;}
+.sd-nums b::before{content:"";width:.42em;height:.42em;border-radius:50%;background:var(--pc);}
+/* rows: the games before, the callings, the lessons */
+.sd-rows{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr);gap:0 1.6em;align-content:start;overflow:hidden;}
+.sd-rows.two{grid-template-columns:repeat(2,minmax(0,1fr));}
+.sd-row{display:flex;align-items:center;gap:.75em;min-width:0;min-height:2.5em;padding:.3em 0;border:0;border-top:1px solid var(--g-line);background:none;color:inherit;font:inherit;text-align:left;}
+.sd-rows:not(.two) > .sd-row:first-child,.sd-rows.two > .sd-row:nth-child(-n+2){border-top:0;}
+.sd-row .sd-d{flex:none;width:4.3em;font:400 .84em/1.2 var(--sans);color:var(--g-dust);}
+.sd-dot{flex:none;width:.6em;height:.6em;border-radius:50%;background:var(--pc);}
+.sd-row .sd-w{flex:1;min-width:0;font:500 .95em/1.2 var(--sans);overflow-wrap:break-word;}
+.sd-past .sd-row .sd-w{white-space:nowrap;}
+.sd-row .sd-s{flex:none;font:400 .92em/1.2 var(--sans);color:var(--g-dust);font-variant-numeric:tabular-nums;}
+.sd-row.call{align-items:center;min-height:4.6em;padding:.7em 0;}
+.sd-cw{flex:1;min-width:0;display:flex;flex-direction:column;gap:.3em;}
+.sd-ch{display:flex;align-items:baseline;justify-content:space-between;gap:.8em;}
+.sd-ch b{min-width:0;font:500 .95em/1.15 var(--sans);} .sd-ch span{flex:none;font:400 .86em/1 var(--sans);color:var(--g-dust);font-variant-numeric:tabular-nums;}
+.sd-bar{display:block;height:.3em;border-radius:.2em;background:rgba(255,255,255,.07);overflow:hidden;} .sd-bar i{display:block;height:100%;border-radius:.2em;background:var(--g-br);}
+.sd-cw small{font:400 .82em/1.25 var(--sans);color:var(--g-dust);text-wrap:pretty;}
+.sd-row.call.near .sd-ch b{color:var(--g-br-hi);}
+.sd-row.les{cursor:pointer;min-height:3em;} .sd-row.les .sd-med{width:2.2em;height:2.2em;}
+.sd-ln{flex:none;width:1.3em;font:400 .86em/1 var(--sans);color:var(--g-dust);text-align:right;font-variant-numeric:tabular-nums;}
+.sd-row.les .sd-go{margin-left:0;} .sd-row.les.seen .sd-go{color:var(--g-br);}
+@media (hover:hover) and (pointer:fine){ button.sd-p:hover{background:#201f1d;} button.sd-p.lit:hover{background:rgba(211,155,98,.12);} .sd-row.les:hover .sd-w{color:var(--g-br-hi);} }
+/* ══ The setup on an iPad held sideways (1024 by 768, and Safari's shorter window): two columns, so nothing scrolls and the
+   button that deals covers nothing. The decks and the options at the left; the name, who is playing, the three doors
+   and the start buttons at the right, where the taps go (the kit's own arrangement for a phone on its side). ══ */
+@media (min-width:900px) and (max-width:1024px) and (min-height:521px) and (max-height:768px){
+  html:not(.k-insheet) #app.stage:has(> .setup){max-width:none;padding-left:24px;padding-right:24px;}
+  html:not(.k-insheet) #app.stage > .setup{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr);grid-template-rows:auto auto auto auto 1fr;column-gap:26px;row-gap:14px;align-items:start;box-sizing:border-box;min-height:calc(100dvh - var(--bar) - 28px);padding-top:0;}
+  html:not(.k-insheet) #app.stage > .setup > *{grid-column:2;min-width:0;}
+  html:not(.k-insheet) #app.stage > .setup > .k-opts{grid-column:1;grid-row:1 / 6;align-self:center;}
+  html:not(.k-insheet) #app.stage > .setup > .setup-hero{grid-row:1;padding:6px 0 4px;}
+  html:not(.k-insheet) #app.stage > .setup > .k-joins{grid-row:2;} html:not(.k-insheet) #app.stage > .setup > .k-joins:empty{display:none;}
+  html:not(.k-insheet) #app.stage > .setup > .k-seats{grid-row:3;}
+  html:not(.k-insheet) #app.stage > .setup > .an-hub{grid-row:4;}
+  html:not(.k-insheet) #app.stage > .setup > .k-startdock{grid-row:5;align-self:end;position:sticky;bottom:18px;margin:0;padding:0;background:none;box-shadow:none;}
+  /* (more to choose than your deck and the computer's, and the kit has drawn the setup in: each deck's box says what the
+     deck is and keeps its Cards button, as on a phone held sideways; the Guide's power is on the Guide's card) */
+  html:not(.k-insheet) #app.stage > .setup.k-snug > .k-opts:has(> .dk-pick:not(.cpu) ~ .dk-pick:not(.cpu)) .dk-pick:not(.cpu) .dk-info .gd{display:none;}
+  html:not(.k-insheet) #app.stage > .setup.k-snug > .k-opts:has(> .dk-pick:not(.cpu) ~ .dk-pick:not(.cpu)) .dk-pick:not(.cpu) .dk-info{padding-block:5px;}
+  html:not(.k-insheet) #app.stage > .setup.k-snug > .k-opts:has(> .dk-pick:not(.cpu) ~ .dk-pick:not(.cpu)) .dk-pick.cpu .dk-info .plan{font-size:.8rem;font-weight:500;color:var(--text-2);}
+  html:not(.k-insheet) #app.stage > .setup.k-snug > .k-opts:has(> .dk-pick:not(.cpu) ~ .dk-pick:not(.cpu)) .dk-pick:not(.cpu) .dk-row{grid-template-columns:repeat(8,minmax(0,1fr));}
+  html:not(.k-insheet) .setup .dk-pick .dk-n{font-size:max(8.2px,min(.95rem,11cqw));}
+}
