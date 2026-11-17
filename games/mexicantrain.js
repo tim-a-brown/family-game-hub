@@ -246,9 +246,10 @@
     }
     later(function () { roundSheet(r, function () { showPrev = false; nx(); }); }, delay);
   }
-  var sheetH = null;
-  function closeSheets() { if (sheetH) { try { sheetH.close(); } catch (e) {} sheetH = null; } if (NETWIN) { try { NETWIN.close(); } catch (e) {} NETWIN = null; } }
+  var sheetH = null, sheetGo = null, sheetKeep = { v: false };
+  function closeSheets() { mCount = null; if (sheetH) { try { sheetH.close(); } catch (e) {} sheetH = null; } if (NETWIN) { try { NETWIN.close(); } catch (e) {} NETWIN = null; } }
   function roundSheet(r, go) {
+    if (mdkSet()) { deskRound(r, go); return; }   // (a large window: the count is written beside the table, nothing covers it)
     var P = S.prev, last = S.phase === 'over' && S.prev && S.prev.round === S.R - 1;
     var box = el('div', { class: 'mt-res' });
     var head = r.k === 'out' ? '<b>' + Kit.esc(who(r.w)) + '</b> ' + verb(r.w, 'went', 'went') + ' out.' : r.w >= 0 ? 'Nobody could play. <b>' + Kit.esc(who(r.w)) + '</b> had the fewest dots.' : 'Nobody could play.';
@@ -267,9 +268,11 @@
     box.appendChild(tb);
     box.appendChild(el('p', { class: 'muted foot', text: last ? 'That was the last round. The lowest total wins.' : 'Lowest total after ' + S.R + ' rounds wins. Next round, the engine is the ' + dname(12 - r.round - 1) + '.' }));
     var t = tok, gone = false;
-    function proceed() { sheetH = null; if (gone || t !== tok) return; gone = true; go(); }
+    function proceed() { sheetH = null; sheetGo = null; if (gone || t !== tok) return; gone = true; go(); }
     var label = last ? 'See the results' : 'Next round';
-    sheetH = Kit.sheet({ title: 'Round ' + (r.round + 1) + ' of ' + S.R, node: box, actions: [{ label: label, primary: true, onClick: proceed }], onClose: function () { setTimeout(proceed, 0); } });
+    var keep = sheetKeep = { v: false };   // (v: the window grew to a desk, and the count moved beside the table)
+    sheetGo = { r: r, go: go };
+    sheetH = Kit.sheet({ title: 'Round ' + (r.round + 1) + ' of ' + S.R, node: box, actions: [{ label: label, primary: true, onClick: proceed }], onClose: function () { if (keep.v) return; setTimeout(proceed, 0); } });
     if (!humans() || (NET && NET.seat < 0)) later(function () { if (sheetH) sheetH.close(); }, 2200);
   }
   // a new round: the engine goes into the hub and the tiles are dealt
@@ -425,6 +428,11 @@
     statusEl.appendChild(msgEl);
     rackEl = el('div', { class: 'mt-rack', style: { 'view-transition-name': 'mt-rack' } });
     W_.appendChild(whoEl); W_.appendChild(tblEl); W_.appendChild(statusEl); W_.appendChild(rackEl); W_.appendChild(actsEl);
+    // (a large window: the rounds and the round in play, drawn only while a desk layout shows)
+    ladEl = el('aside', { class: 'mdk-panel mdk-lad', 'aria-label': 'Rounds', style: { 'view-transition-name': 'mt-lad' } });
+    sideEl = el('aside', { class: 'mdk-panel mdk-side', 'aria-label': 'This round', style: { 'view-transition-name': 'mt-side' } });
+    W_.appendChild(ladEl); W_.appendChild(sideEl);
+    MDK = null; mKey = '';
     app.appendChild(W_);
     setBarH();
     // (names are fitted by measuring, so measure again once the fonts are in)
@@ -435,7 +443,8 @@
     o = o || {};
     if (!S || !W_ || !W_.isConnected) return;
     W_.setAttribute('data-n', S.n);
-    paintWho(); paintStatus(); paintRack(o); paintTable(o);
+    mdkSet();
+    paintWho(); paintStatus(); paintRack(o); paintTable(o); paintDesk();
   }
   function V() {
     if (showPrev && S.prev) return { trains: S.prev.trains, hands: S.prev.hands, eng: S.prev.eng, round: S.prev.round, cur: -1, dbl: null, scores: S.prev.scores, prev: true };
@@ -446,8 +455,8 @@
   function paintWho() {
     var v = V(), me = viewer(), lo = Math.min.apply(null, v.scores);
     whoEl.innerHTML = ''; plates = {};
-    var cols = S.n <= 4 ? S.n : Math.ceil(S.n / 2);
-    whoEl.style.setProperty('--cols', cols); whoEl.classList.toggle('c4', cols >= 4);
+    var cols = MDK ? MDK.cols : S.n <= 4 ? S.n : Math.ceil(S.n / 2);
+    whoEl.style.setProperty('--cols', cols); whoEl.classList.toggle('c4', cols >= 4 && !MDK);
     S.players.forEach(function (p, i) {
       var on = v.cur === i, h = v.hands[i].length;
       var av = isBot(i) ? el('span', { class: 'avatar sm', style: { '--c': p.color }, html: Kit.icon('bot') }) : Kit.avatar.el(p.name, 'sm', p.color);
@@ -490,6 +499,11 @@
       line = r && r.k === 'out' ? who(r.w) + ' went out' : 'Blocked';
       sub = S.phase === 'over' ? 'The game is over' : 'Counting the dots';
       if (r && r.w >= 0) col = S.players[r.w].color;
+      // (a desk: the round is counted beside the table, and the way on is a button here)
+      if (MDK && mCount) {
+        sub = 'Lowest total after ' + S.R + ' rounds wins.';
+        actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary mdk-go', html: '<span>' + mCount.label + '</span>', onclick: mCount.go }));
+      }
     } else if (isBot(S.cur) || (NET && S.cur !== NET.seat)) {
       line = isBot(S.cur) ? cur.name + ' is thinking' : Kit.poss(cur.name) + ' turn';
       sub = S.lastSay || '';
@@ -531,8 +545,10 @@
     var w = rackEl.clientWidth - 20, side = sideways();
     var big = Math.min(innerWidth, innerHeight) >= 700, maxW = big ? 54 : side ? 46 : 40, gap = big ? 8 : 6;
     var hMax = side ? Math.max(80, rackEl.clientHeight - 26) : Math.min(big ? 250 : 170, innerHeight * 0.22);
+    // (a desk: your tiles the size of the table's where the window allows, in as few rows as keeps them large)
+    if (MDK) { w = rackEl.clientWidth - 28; maxW = MDK.rt; gap = 8; hMax = MDK.fill ? Math.max(120, rackEl.clientHeight - 34) : MDK.rackH - 34; }
     var best = { tw: 14, rows: 1, per: n };
-    for (var rows = 1; rows <= 4; rows++) {
+    for (var rows = 1; rows <= (MDK ? 5 : 4); rows++) {
       var per = Math.ceil(n / rows), tw = Math.min(maxW, (w - (per - 1) * gap) / per);
       if (rows * tw * 2 + (rows - 1) * gap > hMax) tw = Math.min(tw, (hMax - (rows - 1) * gap) / (rows * 2));
       if (tw > best.tw + 0.5) best = { tw: tw, rows: rows, per: per };
@@ -550,7 +566,7 @@
     var nKeep = Math.max(hand.length, 7);
     var fit = rackFit(nKeep);
     rackEl.style.setProperty('--tw', fit.tw + 'px');
-    rackEl.style.minHeight = sideways() ? '' : (fit.tw * 2 * fit.rows + (fit.rows - 1) * 8 + 26) + 'px';
+    rackEl.style.minHeight = MDK ? (MDK.fill ? '' : (fit.tw * 2 * fit.rows + (fit.rows - 1) * 8 + 34) + 'px') : sideways() ? '' : (fit.tw * 2 * fit.rows + (fit.rows - 1) * 8 + 26) + 'px';
     var who0 = S.players[seat];
     rackEl.appendChild(el('div', { class: 'lbl', html: hidden ? 'Hidden tiles' : who0.name === 'You' ? 'Your tiles' : '<b>' + Kit.esc(who0.name) + '</b>’s tiles' }));   // (the rack names whose tiles they are)
     var ms = turn ? C.legal(S) : [], ok = {};
@@ -575,6 +591,248 @@
   }
 
   // ═════════════════════════════════════════════════════════════════════════
+  // A large window (a computer). The table takes the window: the hub, the lanes and the tiles are sized from it (to a
+  // largest tile of MT_U across), the plaques on the felt step up with it (--k), and the room beside the table holds
+  // what was a tap away or not shown: under the players at the left the rounds as a ladder from the double 12 down,
+  // every round's dots and the totals; at the right, between whose turn it is and your tiles, the round in play (the
+  // double that must be covered, every train's length, open end and marker, the round play by play). A counted round
+  // is written on the ladder and where your tiles were; no sheet covers the table.
+  //   wide   1200 or more across, 430 or more tall   players over the rounds | table | whose turn, the round, your tiles, the buttons
+  //          (the round in play is left out where the column is too short for it: your tiles take the room)
+  //   tall   1200 or more tall, a quarter taller than wide   players; the rounds and the round in play; table; your tiles
+  //   stack  900 or more each way, short of the others   players in a row, the table the full width, your tiles
+  // MDK is set only while one of them shows; every other window keeps the phone's and the tablet's layouts.
+  // ═════════════════════════════════════════════════════════════════════════
+  var MDK = null, MT_U = 88, mCount = null, mKey = '', mRounds = -1, mLog = -1, mFor = 0, ladEl = null, sideEl = null;
+  function clampN(a, x, b) { return Math.max(a, Math.min(b, x)); }
+  function mdkPlan(W, H) {
+    if (H >= 1200 && H >= W * 1.25 && W >= 560) return 'tall';
+    if (W >= 1200 && H >= 430) return 'wide';
+    if (W >= 900 && H >= 900) return 'stack';
+    return null;
+  }
+  function mdkSet() {
+    if (!W_ || !S) return null;
+    var W = innerWidth, H = innerHeight, pl = mdkPlan(W, H), st = W_.style, n = S.n;
+    if (!pl) {
+      if (MDK) { W_.className = 'mtw'; app.classList.remove('mdkapp'); ['--k', '--lw', '--rw', '--ph', '--pk'].forEach(function (k) { st.removeProperty(k); }); }
+      MDK = null; return null;
+    }
+    var lw = 0, rw = 0, ph = 0, colH = H - 82, side = false, rackH, fill = false, cols, rt, deal = C.perHand(n);
+    var count = !!mCount || (S.phase === 'over' && !!S.prev);
+    function need(w, t) { var per = Math.max(1, Math.floor((w - 20) / (t + 8))), rows = Math.ceil(deal / per); return rows * 2 * t + (rows - 1) * 8 + 34; }
+    if (pl === 'wide') {
+      lw = clampN(280, W * .2, 500); rw = clampN(300, W * .21, 520);
+      rt = clampN(48, rw / 5.6, MT_U);
+      rackH = Math.min(need(rw, rt), H * .46, colH - 130);
+      // (the round in play needs its head and a row a train; a column too short for that gives the room to your tiles)
+      side = colH - 150 - rackH >= 70 + (n + 1) * 30;
+      if (!side) { rackH = colH - 140; fill = true; }
+      cols = n <= 4 ? 1 : 2;
+    } else if (pl === 'tall') {
+      rt = clampN(48, W / 12, MT_U);
+      ph = n <= 4 ? clampN(260, H * .22, 400) : clampN(200, H * .14, 260); rackH = Math.min(need(W - 40, rt), H * .18); side = true;
+      cols = n <= 4 ? n : Math.ceil(n / 2);
+    } else { rt = clampN(48, W / 12, MT_U); rackH = Math.min(need(W - 40, rt), H * .22); cols = (W - 40) / n >= 112 ? n : Math.ceil(n / 2); }
+    MDK = { pl: pl, max: MT_U, rt: rt, k: clampN(1, Math.min(W / 1500, H / 950), 1.6), side: side, rackH: rackH, fill: fill, cols: cols, count: count };
+    var cls = 'mtw mdk mdk-' + pl + (H < 640 ? ' short' : '') + (side ? '' : ' noside') + (count ? ' count' : '') + (W_.classList.contains('acts-on') ? ' acts-on' : '');
+    if (W_.className !== cls) W_.className = cls;
+    app.classList.add('mdkapp');
+    st.setProperty('--k', MDK.k.toFixed(3)); st.setProperty('--lw', Math.round(lw) + 'px'); st.setProperty('--rw', Math.round(rw) + 'px'); st.setProperty('--ph', Math.round(ph) + 'px');
+    return MDK;
+  }
+  // The count of a round at a desk: written where your tiles were, the way on a button where the turn's buttons are.
+  function deskRound(r, go) {
+    var t = tok, gone = false, last = S.phase === 'over' && S.prev && S.prev.round === S.R - 1;
+    mCount = { r: r, label: last ? 'See the results' : 'Next round', go: function () { if (gone || t !== tok) return; gone = true; mCount = null; go(); } };
+    paint();
+    if (!humans() || (NET && NET.seat < 0)) later(function () { if (mCount && mCount.go) mCount.go(); }, 2200);
+  }
+  // the window changed between a desk and a device's size while a round is counted: the count moves with it
+  function mdkSync() {
+    if (!S || !W_) return;
+    var on = !!mdkPlan(innerWidth, innerHeight);
+    if (on && sheetH && sheetGo) { var g = sheetGo; sheetKeep.v = true; try { sheetH.close(); } catch (e) {} sheetH = null; sheetGo = null; deskRound(g.r, g.go); }
+    else if (!on && mCount) { var c = mCount; mCount = null; mdkSet(); roundSheet(c.r, c.go); }
+  }
+  function avOf(i, cls) { var p = S.players[i]; return isBot(i) ? el('span', { class: 'avatar' + (cls ? ' ' + cls : ''), style: { '--c': p.color }, html: Kit.icon('bot') }) : Kit.avatar.el(p.name, 'sm', p.color); }
+  function pipChip(v) { return el('b', { class: 'mdk-pip' + (v ? '' : ' z'), style: { '--pc': v ? PIP[v] : '#8c8778' }, text: String(v) }); }
+  // this round, play by play, from the record the history keeps (S.pl): a tile played on a train, a tile drawn, a pass
+  function roundLog(pl) {
+    var out = [];
+    String(pl || '').split(' ').forEach(function (w) {
+      var m = /^(\d)([0-9a-c])([0-9a-c])([a-hm])$/.exec(w);
+      if (m) { out.push({ p: +m[1], t: [parseInt(m[2], 13), parseInt(m[3], 13)], tr: m[4] === 'm' ? S.n : m[4].charCodeAt(0) - 97 }); return; }
+      m = /^(\d)([dx])$/.exec(w); if (!m) return;
+      out.push(m[2] === 'x' ? { p: +m[1], pass: 1 } : { p: +m[1], drew: 1 });
+    });
+    return out.filter(function (e) { return !!S.players[e.p] && (e.tr == null || e.tr <= S.n); });
+  }
+  function paintDesk() {
+    if (!MDK || !ladEl) { mKey = ''; return; }
+    var v = V();
+    var key = JSON.stringify([MDK.pl, MDK.side, MDK.count, innerWidth, innerHeight, S.started, S.round, S.phase, S.cur, S.scores, S.rr.length, S.pl || '', v.prev ? 1 : 0, S.hands.map(function (h) { return h.length; }), S.trains.map(function (T) { return T.t.length + (T.m ? 'm' : ''); }),
+      S.dbl ? S.dbl.tr : -1, viewer(), mCount ? 1 : 0, ladEl.clientWidth, ladEl.clientHeight, sideEl.clientWidth, sideEl.clientHeight]);
+    if (key === mKey) return;
+    mKey = key;
+    if (mFor !== S.started) { mFor = S.started; mRounds = -1; mLog = -1; }
+    if (MDK.pl !== 'stack') paintLadder(v);
+    if (MDK.count) paintCount(); else if (MDK.side) paintSide(v);
+  }
+  // the rounds: a row a round from the double 12 down, a column a player, the round in play lit, the rounds to come
+  // ruled and empty, the totals at the foot (the lowest is ahead)
+  function paintLadder(v) {
+    var n = S.n, me = NET ? NET.seat : humans() === 1 ? firstHuman() : -1, lo = Math.min.apply(null, S.scores);
+    var inn = el('div', { class: 'mdk-in' });
+    inn.appendChild(el('div', { class: 'mdk-h' }, [el('h2', { text: 'Rounds' }), el('small', { text: 'Dots left in hand' })]));
+    var pad = el('div', { class: 'mdk-pad', style: { '--n': String(n), '--mi': String(me) } });
+    if (me >= 0) pad.appendChild(el('div', { class: 'meb' }));
+    function row(cls, label, cells) { return el('div', { class: 'pr ' + cls }, [el('span', { class: 'rl' }, label ? [label] : [])].concat(cells)); }
+    function cell(x, cls) { return el('span', { class: 'cv' + (cls ? ' ' + cls : ''), text: x == null ? '' : String(x) }); }
+    pad.appendChild(row('ph', null, S.players.map(function (p, i) { return el('span', { class: 'pc' + (i === me ? ' me' : ''), title: p.name }, [avOf(i), el('span', { class: 'pn', text: p.name })]); })));
+    var body = el('div', { class: 'pb' }), just = mRounds >= 0 && S.rr.length === mRounds + 1, live = null;
+    for (var r = 0; r < S.R; r++) {
+      var done = r < S.rr.length, cur = !done && r === S.round && S.phase === 'play' && !v.prev;
+      var cells = S.players.map(function (p, i) {
+        if (!done) return cell('');
+        var x = S.rr[r][i], w = S.ro[r] && S.ro[r].w === i;
+        return cell(x, x === 0 || w ? 'hot' : '');
+      });
+      var rw = row((cur ? 'live' : '') + (done ? '' : ' todo') + (just && r === S.rr.length - 1 ? ' just' : ''), pipChip(12 - r), cells);
+      if (cur || (done && r === S.rr.length - 1 && !live)) live = rw;
+      body.appendChild(rw);
+    }
+    mRounds = S.rr.length;
+    pad.appendChild(body);
+    pad.appendChild(row('pf', el('span', { text: 'Total' }), S.scores.map(function (x) { return cell(x, S.rr.length && x === lo ? 'lead' : ''); })));
+    inn.appendChild(pad);
+    var goal = el('div', { class: 'mdk-goal', text: 'After ' + S.R + ' rounds the lowest total wins.' });
+    inn.appendChild(goal);
+    ladEl.innerHTML = ''; ladEl.appendChild(inn);
+    ladEl.classList.toggle('gone', ladEl.clientHeight < 150);
+    // the numbers as large as a column allows; names under the pictures only where they can be read
+    var fs = parseFloat(getComputedStyle(pad).fontSize), colW = (pad.clientWidth - fs * 1.1 - fs * 2.6) / n;
+    pad.style.setProperty('--cf', clampN(11, colW / 2.25, fs * 1.42).toFixed(1) + 'px');
+    if (colW < fs * 3.4) pad.classList.add('nonames');
+    // every round on the sheet where there is room; where there isn't, whole rows with the round in play in view
+    var rh0 = Math.max(22, fs * 1.75), bh = body.clientHeight;
+    if (bh < rh0 * Math.min(S.R, 5)) { goal.remove(); bh = body.clientHeight; }
+    var rows = Math.max(1, Math.min(S.R, Math.floor(bh / rh0))), rh = Math.min(Math.floor(bh / rows), Math.round(fs * 2.7));
+    pad.style.setProperty('--rh', rh + 'px'); body.style.flex = '0 0 ' + (rh * rows) + 'px';
+    if (live && rows < S.R) { var at = [].indexOf.call(body.children, live); body.scrollTop = clampN(0, at - rows + 2, S.R - rows) * rh; }
+    // room left under the sheet: the totals round by round, the lowest line ahead
+    if (rows === S.R && bh - rh * rows > Math.max(170, fs * 10) && S.rr.length >= 2) {
+      pad.style.flex = 'none';
+      var lb = el('div', { class: 'mdk-lbl' }, [el('span', { text: 'Totals, round by round' }), el('span', { text: 'The lowest is ahead' })]), ch = el('div', { class: 'mdk-race' });
+      inn.insertBefore(lb, goal.parentNode ? goal : null); inn.insertBefore(ch, goal.parentNode ? goal : null);
+      drawRace(ch, me);
+    }
+  }
+  function drawRace(ch, me) {
+    var W = ch.clientWidth, H = ch.clientHeight; if (W < 80 || H < 80) return;
+    var run = S.players.map(function () { return [0]; });
+    S.rr.forEach(function (r) { r.forEach(function (x, i) { run[i].push(run[i][run[i].length - 1] + x); }); });
+    var max = Math.max.apply(null, S.scores.concat([1])), l = 34, rgt = 16, t = 12, b = 22;
+    var span = Math.max(3, S.rr.length);   // (the rounds played so far fill the width)
+    function X(k) { return l + (W - l - rgt) * k / span; }
+    function Y(x) { return t + (H - t - b) * x / max; }
+    var h = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" aria-hidden="true">';
+    [0, max].forEach(function (x) { h += '<line class="ax" x1="' + l + '" x2="' + (W - rgt) + '" y1="' + Y(x).toFixed(1) + '" y2="' + Y(x).toFixed(1) + '"/><text class="tk" x="' + (l - 6) + '" y="' + (Y(x) + 4).toFixed(1) + '" text-anchor="end">' + x + '</text>'; });
+    for (var r = 1; r <= S.rr.length; r++) h += '<line class="tick" x1="' + X(r).toFixed(1) + '" x2="' + X(r).toFixed(1) + '" y1="' + (H - b) + '" y2="' + (H - b + 4) + '"/>';
+    h += '<text class="tk" x="' + X(1).toFixed(1) + '" y="' + (H - 5) + '" text-anchor="middle">12</text><text class="tk" x="' + X(S.rr.length).toFixed(1) + '" y="' + (H - 5) + '" text-anchor="middle">' + (13 - S.rr.length) + '</text>';
+    var order = S.players.map(function (p, i) { return i; }).sort(function (a, c) { return (a === me) - (c === me) || S.scores[c] - S.scores[a]; });
+    order.forEach(function (i) {
+      var d = run[i].map(function (x, k) { return (k ? 'L' : 'M') + X(k).toFixed(1) + ' ' + Y(x).toFixed(1); }).join(''), e = run[i].length - 1;
+      h += '<path d="' + d + '" stroke="' + S.players[i].color + '" class="ln' + (i === me ? ' me' : '') + '"/><circle cx="' + X(e).toFixed(1) + '" cy="' + Y(run[i][e]).toFixed(1) + '" r="' + (i === me ? 5 : 4) + '" fill="' + S.players[i].color + '"/>';
+    });
+    ch.innerHTML = h + '</svg>';
+  }
+  // the round in play: the double that must be covered, every train (its length, its open end, its marker), the round play by play
+  function paintSide(v) {
+    var inn = el('div', { class: 'mdk-in' }), me = rackSeat(), i;
+    sideEl.innerHTML = ''; sideEl.appendChild(inn);
+    inn.appendChild(el('div', { class: 'mdk-h' }, [el('h2', { text: 'Round ' + (v.round + 1) }), el('small', { text: 'The engine is the ' + dname(v.eng) })]));
+    var owed = !v.prev && v.dbl && S.o.dbl === 'cover' ? v.dbl.tr : -1, ow = null;
+    if (owed >= 0) {
+      var T0 = v.trains[owed].t;
+      ow = el('p', { class: 'mdk-owed', text: 'The ' + dname(T0[T0.length - 1][0]) + ' on ' + trainName(owed) + ' must be covered before anything else is played.' });
+      inn.appendChild(ow);
+    }
+    var lbl1 = el('div', { class: 'mdk-lbl' }, [el('span', { text: 'Trains' }), el('span', { class: 'cols' }, [el('span', { text: 'Tiles' }), el('span', { text: 'Open end' })])]), tb = el('div', { class: 'mdk-tr' });
+    laneOrder().forEach(function (tr) {
+      var T = v.trains[tr], m = tr === mex(), p = m ? null : S.players[tr], end = T.t.length ? T.t[T.t.length - 1][1] : v.eng;
+      var hd = m ? el('span', { class: 'eng', html: engineSvg('#e9c46a', true) }) : avOf(tr);
+      var tx = el('div', { class: 'tx' }, [el('div', { class: 'nm', text: m ? 'Mexican Train' : p.name })]);
+      if (owed === tr) tx.appendChild(el('div', { class: 'mk hot', text: 'Double to cover' }));
+      else if (m) tx.appendChild(el('div', { class: 'mk', text: T.t.length ? 'Open to everyone' : 'Not started yet' }));
+      else if (T.m) tx.appendChild(el('div', { class: 'mk', text: 'Open to everyone' }));
+      else if (!T.t.length) tx.appendChild(el('div', { class: 'mk', text: 'Not started yet' }));
+      var kids = [hd, tx];
+      if (T.m && !m) kids.push(el('span', { class: 'mkr', html: engineSvg(p.color) }));
+      kids.push(el('span', { class: 'ct', text: String(T.t.length) })); kids.push(pipChip(end));
+      tb.appendChild(el('div', { class: 'row' + (tr === me && viewer() >= 0 ? ' me' : '') + (owed === tr ? ' owed' : '') + (T.m || m ? ' open' : ''), style: { '--c': m ? '#e9c46a' : p.color } }, kids));
+    });
+    inn.appendChild(lbl1); inn.appendChild(tb);
+    var log = S.pl != null && !v.prev ? roundLog(S.pl) : null, lbl3 = null, lg = null;
+    if (log && log.length) {
+      lbl3 = el('div', { class: 'mdk-lbl' }, [el('span', { text: 'This round, play by play' })]);
+      lg = el('div', { class: 'mdk-log' });
+      log.forEach(function (e, x) {
+        var P = S.players[e.p], kids = [el('i'), el('span', { class: 'n', text: P.name })], say = P.name;
+        if (e.t) {
+          kids.push(tileEl(e.t[0], e.t[1]));
+          if (e.tr !== e.p) kids.push(e.tr === mex() ? el('span', { class: 'to eng', html: engineSvg('#e9c46a', true) }) : el('span', { class: 'to', style: { '--c': S.players[e.tr].color } }));
+          say += ' played the ' + C.tname(e.t) + ' on ' + (e.tr === mex() ? 'the Mexican Train' : e.tr === e.p ? 'their own train' : Kit.poss(nm(e.tr)) + ' train');
+        } else if (e.drew) { kids.push(el('span', { class: 'w', text: 'Drew' })); say += ' drew a tile'; }
+        else { kids.push(el('span', { class: 'w', text: 'Passed' })); say += ' passed'; }
+        var rw = el('div', { class: 'lr' + (mLog >= 0 && x >= mLog ? ' new' : ''), style: { '--c': P.color } }, kids);
+        rw.setAttribute('aria-label', say + '.');
+        lg.appendChild(rw);
+      });
+      inn.appendChild(lbl3); inn.appendChild(lg);
+    }
+    mLog = log ? log.length : -1;
+    // a short panel gives up its least needed part first: the play by play, then the words under the names
+    function over() { return inn.scrollHeight > inn.clientHeight + 1; }
+    if (lg) {
+      var lh0 = parseFloat(getComputedStyle(lg).fontSize) * 2.1, hc = lg.clientHeight, rows = Math.floor(hc / lh0);
+      if (rows < 2 || over()) { lbl3.remove(); lg.remove(); }
+      else { var lh = Math.floor(hc / rows); lg.style.setProperty('--lh', lh + 'px'); lg.style.flex = '0 0 ' + (lh * Math.min(rows, log.length)) + 'px'; lg.scrollTop = lg.scrollHeight; }
+    }
+    if (over()) tb.classList.add('tight');
+    if (over()) [].forEach.call(tb.querySelectorAll('.mk:not(.hot)'), function (x) { x.remove(); });
+    if (over() && ow) ow.remove();
+    if (over()) lbl1.remove();
+  }
+  // a round that has been counted: what everyone was left holding, their dots and their new totals
+  function paintCount() {
+    var P = S.prev, r = mCount ? mCount.r : P && P.res; if (!P || !r) return;
+    var last = S.phase === 'over' && P.round === S.R - 1;
+    var inn = el('div', { class: 'mdk-in' });
+    sideEl.innerHTML = ''; sideEl.appendChild(inn);
+    inn.appendChild(el('div', { class: 'mdk-h' }, [el('h2', { text: 'Round ' + (r.round + 1) }), el('small', { text: 'of ' + S.R })]));
+    var box = el('div', { class: 'mdk-res' });
+    box.appendChild(el('p', { class: 'head', html: r.k === 'out' ? '<b>' + Kit.esc(who(r.w)) + '</b> went out.' : r.w >= 0 ? 'Nobody could play. <b>' + Kit.esc(who(r.w)) + '</b> had the fewest dots.' : 'Nobody could play.' }));
+    var order = S.players.map(function (p, i) { return i; }).sort(function (a, b) { return r.pips[a] - r.pips[b] || a - b; }), tb = el('div', { class: 'rows' });
+    order.forEach(function (i) {
+      var p = S.players[i], h = P.hands[i], tl = el('div', { class: 'tl' });
+      if (!h.length) tl.appendChild(el('em', { text: 'Out' }));
+      h.forEach(function (t) { tl.appendChild(tileEl(t[0], t[1])); });
+      tb.appendChild(el('div', { class: 'row' + (i === r.w ? ' won' : ''), style: { '--c': p.color } }, [avOf(i), el('div', { class: 'who', text: p.name }), tl,
+        el('div', { class: 'pp' }, [el('b', { text: '+' + r.pips[i] }), el('small', { text: 'Total ' + P.scores[i] })])]));
+    });
+    box.appendChild(tb);
+    var foot = el('p', { class: 'foot', text: last ? 'That was the last round. The lowest total wins.' : 'Next round, the engine is the ' + dname(12 - r.round - 1) + '.' });
+    box.appendChild(foot);
+    inn.appendChild(box);
+    // (the tiles as large as the panel has room for; a panel too short for them keeps the dots alone)
+    function over() { return inn.scrollHeight > inn.clientHeight + 1 || sideEl.scrollHeight > sideEl.clientHeight + 1; }
+    ['tight', 'small', 'tiny', 'bare'].forEach(function (c) { if (over()) box.classList.add(c); });
+    if (over()) foot.remove();
+    mLog = -1;
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
   // The table's layout
   // ═════════════════════════════════════════════════════════════════════════
   // the lanes in order: your own train first, then the others in turn from you, the Mexican Train last
@@ -584,8 +842,12 @@
     out.push(mex());
     return out;
   }
+  function tileMax() { return MDK ? MDK.max : Math.min(innerWidth, innerHeight) >= 700 ? 54 : 40; }
+  function deskCap(g) { return Math.max(g.len / 11, Math.min(54, g.len / 9)); }
   function geometry(W, H, tr) {
-    var L = S.n + 1, big = Math.min(innerWidth, innerHeight) >= 700, maxU = big ? 54 : 40, pad = 8;
+    var L = S.n + 1, big = !!MDK || Math.min(innerWidth, innerHeight) >= 700, maxU = tileMax(), pad = 8;
+    // (a desk: the hub, the heads and the band the plaques lie in step up with the window)
+    var kk = MDK ? MDK.k : 1, capD = MDK ? 150 * kk : big ? 150 : 112, capD2 = MDK ? 140 * kk : big ? 140 : 100, capH = 36 * kk, pb = 30 * kk, colMin = MDK ? 130 * kk : big ? 130 : 108;
     var cands = [];
     function laneU(wc) { return Math.max(9, Math.min(maxU, (wc - 6) * 0.82)); }
     var need = 8;   // (a fixed need, so the table keeps its shape through a round)
@@ -593,23 +855,26 @@
     // lanes down the table (hub at the top), or both ways out of a hub in the middle
     var tall = H >= W * 0.85;
     if (tall) {
-      var D = Math.max(64, Math.min(W * 0.3, H * 0.19, big ? 150 : 112)), wc = (W - 2 * pad) / L, u = laneU(wc), hd = Math.max(26, Math.min(36, wc * 0.62)) + 8;
+      var D = Math.max(64, Math.min(W * 0.3, H * 0.19, capD)), wc = (W - 2 * pad) / L, u = laneU(wc), hd = Math.max(26, Math.min(capH, wc * 0.62)) + 8;
       cands.push({ o: 'col', banks: 1, D: D, hub: [W / 2, pad + D / 2], u: u, wc: wc, hd: hd, len: H - pad - (pad + D + 8 + hd), cross: 2 * u <= wc - 6 });
       if (L >= 5) {
-        var Lb = Math.ceil(L / 2), wc2 = (W - 2 * pad) / Lb, u2 = laneU(wc2), D2 = Math.max(64, Math.min(W * 0.26, H * 0.15, big ? 140 : 100)), hd2 = Math.max(26, Math.min(36, wc2 * 0.62)) + 8;
-        var cy = 30 + (H - 30) / 2;
-        var g2 = { o: 'col', banks: 2, D: D2, hub: [W / 2, cy], u: u2, wc: wc2, hd: hd2, len: (H - 30 - pad - D2) / 2 - 8 - hd2, cross: 2 * u2 <= wc2 - 6 };
+        var Lb = Math.ceil(L / 2), wc2 = (W - 2 * pad) / Lb, u2 = laneU(wc2), D2 = Math.max(64, Math.min(W * 0.26, H * 0.15, capD2)), hd2 = Math.max(26, Math.min(capH, wc2 * 0.62)) + 8;
+        var cy = pb + (H - pb) / 2;
+        var g2 = { o: 'col', banks: 2, D: D2, hub: [W / 2, cy], u: u2, wc: wc2, hd: hd2, len: (H - pb - pad - D2) / 2 - 8 - hd2, cross: 2 * u2 <= wc2 - 6 };
         cands.push(g2);
       }
     } else {
       // (a narrow table with many trains keeps the hub's column to the hub itself, its plaques stacked small, so the
       // trains have the length)
       var nar = !big && W < 420 && L >= 5;
-      var Dr = nar ? Math.max(52, Math.min(H * 0.3, W * 0.2, 80)) : Math.max(60, Math.min(H * 0.34, W * 0.2, big ? 150 : 104)), col = (nar ? Math.max(Dr, 66) : Math.max(Dr, big ? 130 : 108)) + pad, hc = (H - 2 * pad) / L, ur = laneU(hc), hw = Math.max(26, Math.min(36, hc * 0.62)) + 8;
+      var Dr = nar ? Math.max(52, Math.min(H * 0.3, W * 0.2, 80)) : Math.max(60, Math.min(H * 0.34, W * 0.2, MDK ? capD : big ? 150 : 104)), col = (nar ? Math.max(Dr, 66) : Math.max(Dr, colMin)) + pad, hc = (H - 2 * pad) / L, ur = laneU(hc), hw = Math.max(26, Math.min(capH, hc * 0.62)) + 8;
       cands.push({ o: 'row', banks: 1, nar: nar, D: Dr, col: col, hub: [pad + col / 2, H / 2], u: ur, wc: hc, hd: hw, len: W - pad - (col + 8 + hw), cross: 2 * ur <= hc - 6 });
     }
+    // (a desk: a tile no larger than lets a train run five or six tiles out before it has to bend or push together,
+    // and never smaller for that than a tablet's)
+    if (MDK) cands.forEach(function (g) { g.u = Math.max(9, Math.min(g.u, deskCap(g))); g.cross = 2 * g.u <= g.wc - 6; });
     var best = cands[0]; cands.forEach(function (g) { if (score(g) > score(best) * 1.04) best = g; });
-    best.W = W; best.H = H; best.pad = pad;
+    best.W = W; best.H = H; best.pad = pad; best.pb = pb;
     return best;
   }
   // A train you can't play on now folds when the table is crowded: with many players on a small screen the trains
@@ -618,7 +883,7 @@
   // there, the open end at the far end as always. Each lane's width across, in lane order: [{w, c}] (c its middle).
   function laneOpen(tr, v) { var me = rackSeat(); return tr === me || tr === mex() || !!v.trains[tr].m || (!v.prev && v.dbl && S.o.dbl === 'cover' && v.dbl.tr === tr); }
   function laneWidths(list, avail, g, v) {
-    var n = list.length, t0 = avail / n, big = Math.min(innerWidth, innerHeight) >= 700, maxU = big ? 54 : 40;
+    var n = list.length, t0 = avail / n, big = !!MDK || Math.min(innerWidth, innerHeight) >= 700, maxU = tileMax();
     var open = list.map(function (tr) { return laneOpen(tr, v); }), nO = open.filter(Boolean).length, nF = n - nO, fw = 1;
     // (fold only where an even share would leave the tiles small, and only as far as the open lanes can use the room)
     if (nO && nF && (t0 - 6) * 0.82 < (big ? 30 : 22)) {
@@ -633,7 +898,7 @@
     var v = V(), g = geometry(W, H, v.trains), ord = laneOrder(), L = ord.length, pad = g.pad, lanes = [];
     var Lb = Math.ceil(L / 2), LW = g.banks === 2 ? laneWidths(ord.slice(0, Lb), W - 2 * pad, g, v).concat(laneWidths(ord.slice(Lb), W - 2 * pad, g, v)) : laneWidths(ord, (g.o === 'col' ? W : H) - 2 * pad, g, v);
     var tOpen = Math.max.apply(null, LW.map(function (x) { return x.w; }));
-    if (LW.some(function (x) { return x.fold; })) { g.u = Math.max(g.u, Math.min(Math.min(innerWidth, innerHeight) >= 700 ? 54 : 40, (tOpen - 6) * 0.82)); g.wc = tOpen; }
+    if (LW.some(function (x) { return x.fold; })) { g.u = Math.max(g.u, Math.min(tileMax(), (tOpen - 6) * 0.82, MDK ? deskCap(g) : 1e9)); g.wc = tOpen; }
     ord.forEach(function (tr, k) {
       var ln = { tr: tr, k: k }, lw = LW[k], wk = lw.w;
       ln.fold = lw.fold;
@@ -645,7 +910,7 @@
         var lower = k < Lb;
         var xc = lw.c, hy = g.hub[1];
         if (lower) { var yb = hy + g.D / 2 + 8; ln.dir = 'down'; ln.head = [xc, yb + g.hd / 2]; ln.a0 = yb + g.hd; ln.a1 = g.H - pad; ln.box = { x: xc - wk / 2 + 2, y: yb, w: wk - 4, h: g.H - pad - yb }; }
-        else { var yt = hy - g.D / 2 - 8; ln.dir = 'up'; ln.head = [xc, yt - g.hd / 2]; ln.a0 = yt - g.hd; ln.a1 = 30 + pad; ln.box = { x: xc - wk / 2 + 2, y: 30 + pad, w: wk - 4, h: yt - 30 - pad }; }
+        else { var yt = hy - g.D / 2 - 8; ln.dir = 'up'; ln.head = [xc, yt - g.hd / 2]; ln.a0 = yt - g.hd; ln.a1 = g.pb + pad; ln.box = { x: xc - wk / 2 + 2, y: g.pb + pad, w: wk - 4, h: yt - g.pb - pad }; }
       } else {
         var y = lw.c, x0 = pad + g.col + 8;
         ln.dir = 'right'; ln.c = y; ln.head = [x0 + g.hd / 2, y]; ln.a0 = x0 + g.hd; ln.a1 = g.W - pad;
@@ -784,11 +1049,13 @@
       delete oldL[tr];
       lane.className = 'mt-lane ' + ln.dir + (m ? ' mx' : '') + (tr === me ? ' mine' : '') + (T.m && !m ? ' open' : '') + (can ? ' can' : '') + (selT && !can ? ' dim' : '') + (owed === tr ? ' owed' : '') + (owed >= 0 && owed !== tr ? ' wait' : '') + (ln.fold ? ' fold' : '');
       lane.style.left = b.x + 'px'; lane.style.top = b.y + 'px'; lane.style.width = b.w + 'px'; lane.style.height = b.h + 'px'; lane.style.setProperty('--c', m ? '#e9c46a' : p.color);
+      if (MDK && m) lane.style.setProperty('--tk', Math.round((ln.u || g.u) * 1.36) + 'px');
       lane.onclick = can ? function (e) { e.stopPropagation(); playOn(targets[tr]); } : null;
       lane.innerHTML = '';
       lane.setAttribute('data-tr', tr);
       // the head
-      var hs = Math.max(16, Math.min(g.hd - 8, 34, ln.wc - 3)), head = el('div', { class: 'mt-head', style: { left: (ln.head[0] - b.x - hs / 2) + 'px', top: (ln.head[1] - b.y - hs / 2) + 'px', width: hs + 'px', height: hs + 'px' } });
+      var hs = Math.max(16, Math.min(g.hd - 8, 34 * (MDK ? MDK.k : 1), ln.wc - 3)), head = el('div', { class: 'mt-head', style: { left: (ln.head[0] - b.x - hs / 2) + 'px', top: (ln.head[1] - b.y - hs / 2) + 'px', width: hs + 'px', height: hs + 'px' } });
+      if (MDK) head.style.fontSize = (hs * 0.42) + 'px';
       if (m) head.appendChild(el('span', { class: 'mxeng', html: engineSvg('#e9c46a', true) }));
       else {
         var av = isBot(tr) ? el('span', { class: 'avatar sm', style: { '--c': p.color }, html: Kit.icon('bot') }) : Kit.avatar.el(p.name, 'sm', p.color);
@@ -837,7 +1104,8 @@
     rndEl.appendChild(el('b', { text: 'Round ' + (v.round + 1) })); rndEl.appendChild(el('small', { text: 'of ' + S.R }));
     boneEl.innerHTML = '';
     var pile = el('div', { class: 'pile' }), nb = Math.min(S.bone.length, 4);
-    for (var i = 0; i < nb; i++) { var bk = backEl('mini'); bk.style.left = (i * 5) + 'px'; bk.style.top = (i % 2 ? 3 : 0) + 'px'; bk.style.transform = 'rotate(' + (i % 2 ? 90 : 82) + 'deg)'; pile.appendChild(bk); }
+    var pk = MDK ? MDK.k : 1;
+    for (var i = 0; i < nb; i++) { var bk = backEl('mini'); bk.style.left = (i * 5 * pk) + 'px'; bk.style.top = ((i % 2 ? 3 : 0) * pk) + 'px'; bk.style.transform = 'rotate(' + (i % 2 ? 90 : 82) + 'deg)'; pile.appendChild(bk); }
     boneEl.appendChild(pile);
     boneEl.appendChild(el('span', null, [el('b', { text: String(v.prev ? '' : S.bone.length) }), el('small', { text: v.prev ? 'Round over' : S.bone.length === 1 ? 'tile left' : 'tiles left' })]));
     var canD = myTurn() && C.canDraw(S);
@@ -888,7 +1156,7 @@
     if (n) { var r = n.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width }; }
     var rr = rackEl.getBoundingClientRect(); return { x: rr.left + rr.width / 2, y: rr.top + rr.height / 2, w: 30 };
   }
-  function boneRect() { var r = boneEl.getBoundingClientRect(); return { x: r.left + 20, y: r.top + r.height / 2, w: 10 }; }
+  function boneRect() { var r = boneEl.getBoundingClientRect(), k = MDK ? MDK.k : 1; return { x: r.left + 20 * k, y: r.top + r.height / 2, w: 10 * k }; }
   function flyBack(from, to, done) {
     if (!from || !to) { done(); return; }
     var b = backEl('fly'), w0 = from.w || 10;
@@ -993,7 +1261,7 @@
     rT = setTimeout(function () {
       if (!active() || !W_ || !W_.isConnected) return;
       if (drag) { paint(); return; }
-      Kit.glide(function () { setBarH(); paint(); });
+      Kit.glide(function () { setBarH(); mdkSync(); paint(); });
     }, 80);
   });
 
