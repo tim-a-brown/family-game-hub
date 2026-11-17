@@ -132,6 +132,15 @@ Underlying principles for everything:
   scratchpad's `fill/audit.js <shapes> <games> --shots [--root=<worktree>] [--out=<folder>]` opens a game's table through
   its demo at eight desktop windows (A 2100x1860, B 3024x1964, C 1512x982, D 1600x560, E 720x1700, F 1000x1000, G 1280x720,
   H 560x620) and measures the share of the window it covers; each pilot's own proof scripts are in `big/<game>/`.
+  **Wizard at a desk** (`Cards.desk` with its own panels, `paintSheet`/`paintSide`/`drawRace` in wizard-ai.html): the
+  game's pad at the left, a row a round with each bid in a ring, the tricks taken and the score, the rounds to come ruled
+  and empty, the race under it where there is room; at the right the trump turned up, every bid against the tricks taken
+  as pips, the bids against the tricks there are as one bar, the last trick and who took each trick; a scored round goes
+  onto the pad. **Rook at a desk** (the same functions in rook-ai.html): the partnership sheet hand by hand (who won the
+  bid, for how much, the trump color, a bid that went set struck out), the race to the target; at the right the hand's
+  180 points as one bar with the bid marked, the counters each side has captured as small cards, the nest, the last trick.
+  Both fit the right panel by measuring it (`f1` to `f7`: the least needed part goes first), and keep `html.cdesk` on only
+  while a desk layout shows, since Cards.desk's in-between layouts assume Hearts' stage.
   **The setup and the results card at a desk, for every game** (kit.js "The desk" and the last section of kit.css; every
   rule hangs off `.k-dk`, which kit.js sets only in a window wider than 1024 or more than 768 the shorter way, taller
   than 520 and 480 wide at least: `deskShape`, `winShape`, `Kit.desk()`. The devices are drawn by the rules they always
