@@ -5075,6 +5075,9 @@
     // section is in an order of its own
     var AZ_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 4v15.5M3.5 16.5l3 3 3-3"/><path d="M12.5 10.5 15 4l2.5 6.5M13.3 8.5h3.4"/><path d="M12.8 13.5h4.6l-4.6 6h4.6"/></svg>';
     var popStar = null, sheetOpen = false;
+    // a sheet for one section (or Favorites) keeps its A to Z in the sheet's top right corner, across from its title,
+    // so it is in view however long the list is (under the list it was pushed off the foot of the sheet)
+    var azSlot = focus ? el('div', { class: 'k-ord-azslot' }) : null;
     function ids(gs) { return gs.map(function (g) { return g.id; }).join(); }
     // what changed glides there: every row keeps its key (s: a section, g: a game in a section, f: a favorite), so after
     // a redraw each slides from where it was; a game just starred flies from its row in the section into Favorites
@@ -5104,6 +5107,13 @@
     function azBtn(on, label) { return el('button', { type: 'button', class: 'k-ord-b k-ord-az', 'aria-label': label, html: AZ_SVG, onclick: function () { sfx('tap'); haptic('light'); on(); } }); }
     function draw() {
       ord.innerHTML = '';
+      if (azSlot) {
+        azSlot.innerHTML = '';
+        var fgz = focus === 'fav' ? favGames().filter(function (g) { return !g.cart; }) : null;
+        var gz = focus !== 'fav' ? sortCat(focus, (typeof GAMES !== 'undefined' ? GAMES : []).filter(function (g) { return g.cat === focus && !g.hidden && !g.cart; })) : null;
+        if (fgz && fgz.length > 1 && ids(fgz) !== ids(fgz.slice().sort(byName))) azSlot.appendChild(azBtn(function () { setFavOrder(fgz.slice().sort(byName)); catsChanged(); paintOrd(); }, 'Put your favorites in A to Z order'));
+        if (gz && gz.length > 1 && ids(gz) !== ids(gz.slice().sort(byName))) azSlot.appendChild(azBtn(function () { setCatOrder(focus, null); catsChanged(); paintOrd(); }, 'Put ' + catName(focus) + ' in A to Z order'));
+      }
       var allGames = typeof GAMES !== 'undefined' ? GAMES : [];
       // ── Favorites: always first; open it to arrange them, or take one out with its star ──
       if (!focus || focus === 'fav') {
@@ -5112,7 +5122,7 @@
         var fSec = el('div', { class: 'k-ord-sec fav' }, [fRow]);
         var fDisc = fg.length && focus !== 'fav' ? el('button', { type: 'button', class: 'k-ord-b k-ord-open' + (fOpen ? ' up' : ''), 'aria-expanded': String(fOpen), 'aria-label': (fOpen ? 'Hide' : 'Show') + ' your favorites', html: icon('down'), onclick: function () { openCat.fav = !openCat.fav; sfx('tap'); paintOrd(); } }) : null;
         var fCustom = fg.length > 1 && ids(fg) !== ids(fg.slice().sort(byName));
-        var fAz = fOpen && fCustom && focus !== 'fav' ? azBtn(function () { setFavOrder(fg.slice().sort(byName)); catsChanged(); paintOrd(); }, 'Put your favorites in A to Z order') : null;
+        var fAz = fOpen && fCustom && !focus ? azBtn(function () { setFavOrder(fg.slice().sort(byName)); catsChanged(); paintOrd(); }, 'Put your favorites in A to Z order') : null;
         [el('span', { class: 'ic star', html: icon('star') }), el('span', { class: 'grow' }, [el('b', { text: 'Favorites' }), el('small', { text: 'Always first' })]), fAz, fg.length && !fAz ? el('span', { class: 'k-ord-n', text: String(fg.length) }) : null, fDisc].forEach(function (x) { if (x) fRow.appendChild(x); });
         // (the Favorites sheet is titled Favorites already, so it has no heading row: its A to Z sits under the list)
         if (focus === 'fav') fSec.removeChild(fRow);
@@ -5135,7 +5145,6 @@
             [fGrip(), el('span', { class: 'ic gic', html: window.GameIcon && GameIcon.solo ? GameIcon.solo(g.id) : icon('star') }), el('span', { class: 'grow' }, [el('b', { text: g.name })]), st].forEach(function (x) { r.appendChild(x); });
             fl.appendChild(r);
           });
-          if (focus === 'fav' && fCustom) fl.appendChild(el('div', { class: 'k-ord-all' }, [azBtn(function () { setFavOrder(fg.slice().sort(byName)); catsChanged(); paintOrd(); }, 'Put your favorites in A to Z order')]));
           fSec.appendChild(fl);
         }
         if (focus === 'fav' && !fg.length) ord.appendChild(el('p', { class: 'muted', style: { margin: '6px 4px' }, text: 'A star on any game puts it here.' }));
@@ -5163,7 +5172,7 @@
         } }) : null;
         ord.appendChild(sec);
         var custom = games.length > 1 && ids(games) !== ids(games.slice().sort(byName));
-        var az = open && custom ? azBtn(function () { setCatOrder(c.id, null); catsChanged(); paintOrd(); }, 'Put ' + c.name + ' in A to Z order') : null;
+        var az = open && custom && !focus ? azBtn(function () { setCatOrder(c.id, null); catsChanged(); paintOrd(); }, 'Put ' + c.name + ' in A to Z order') : null;
         [focus ? null : ordGrip(), el('span', { class: 'ic', html: icon(c.id) }), el('span', { class: 'grow' }, [el('b', { text: focus ? 'Show this section' : c.name })].concat(small ? [el('small', { text: small })] : [])), az, disc, sw].forEach(function (x) { if (x) row.appendChild(x); });
         if (!open) return;
         var list = el('div', { class: 'k-ord-games' });
@@ -5219,7 +5228,7 @@
     }
     q.addEventListener('input', paint);
     paint();
-    if (part === 'home' && focus) return sheet({ title: focus === 'fav' ? 'Favorites' : catName(focus) || 'Home screen', node: el('div', { class: 'k-ord-one' }, [ord]),
+    if (part === 'home' && focus) return sheet({ title: focus === 'fav' ? 'Favorites' : catName(focus) || 'Home screen', node: el('div', { class: 'k-ord-one' }, [azSlot, ord]),
       actions: [{ label: 'All sections', cls: 'btn-ghost', onClick: function () { setTimeout(function () { defaultsSheet('home'); }, 260); } }, { label: 'Done', cls: 'btn-soft' }] });
     if (part === 'home') return sheet({ title: 'Home screen', node: el('div', null, [
         el('p', { class: 'muted', style: { margin: '0 0 4px' }, text: 'Drag sections into the order you like. Switch a section off to hide all its games from home, search, Surprise and High Scores, or open a section to switch off single games.' }), ord]),
