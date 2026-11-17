@@ -52,6 +52,8 @@
           var t0 = nil(2) ? us : Math.min(us, bid[0]), t1 = nil(3) ? them : nil(1) ? 0 : Math.ceil(them / 2);
           s.taken = [t0, t1, us - t0, them - t1];
           s.trick = []; s.trickNo = 10; s.turn = 1; s.leader = 1; s.broken = false; s.voids = [{}, {}, {}, {}];
+          // (the ten tricks skipped: who took each, for the desk's panel, from the counts above; you took the first)
+          s.tl = []; s.taken.forEach(function (n, p) { for (var i = 0; i < n; i++) s.tl.push(p); }); s.lt = null;
         });
       });
       await D.say('Your bid and EVE’s add up to your team’s contract. Now we skip ahead to the last three tricks, and your team needs one more trick to make it.', { at: '.plq.l' });
@@ -65,10 +67,12 @@
       await D.tap(mine('9s'), { say: 'Now that spades are broken, you can lead one.' });
       await D.wait(function () { return S().trickNo >= 12 && myTurn(); }, 9000);
       await D.tap(mine('Qc'));
-      await D.wait(function () { return document.querySelector('.k-sheet .sum'); }, 12000);
+      // (the hand's score: a sheet over the table on a phone or a tablet; at a desk, the score sheet beside the table)
+      await D.wait(function () { return document.querySelector('.k-sheet .sum') || (S().phase === 'handover' && document.querySelector('.cdk-l .sp-pad .pb .pr')); }, 12000);
       await D.wait(600);
-      await D.say('A team that makes its contract scores 10 points for each trick it bid, and 1 point for each trick over.', { at: '.k-sheet .sum', pos: 'above' });
-      await D.say('Tricks over your bid are bags. Every 10 bags costs your team 100 points, so bid as close as you can. The first team to 500 wins.', { at: function () { return document.querySelector('.k-sheet ul.notes') || document.querySelector('.k-sheet p.muted'); } });
+      var over = !!document.querySelector('.k-sheet .sum');
+      await D.say('A team that makes its contract scores 10 points for each trick it bid, and 1 point for each trick over.', over ? { at: '.k-sheet .sum', pos: 'above' } : { at: function () { return [].slice.call(document.querySelectorAll('.cdk-l .sp-pad .sp-hd, .cdk-l .sp-pad .pb .pr')).slice(0, 2); } });
+      await D.say('Tricks over your bid are bags. Every 10 bags costs your team 100 points, so bid as close as you can. The first team to 500 wins.', { at: function () { return document.querySelector('.k-sheet ul.notes') || document.querySelector('.k-sheet p.muted') || document.querySelector('.cdk-l .sp-pad .sp-bg') || document.querySelector('.cdk-l .sp-pad .pf'); } });
     }
   });
 })();

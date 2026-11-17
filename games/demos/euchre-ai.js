@@ -52,11 +52,12 @@
       if (S().phase === 'play') await D.tap(playable);
       await D.wait(function () { return myTurn() || S().phase !== 'play'; }, 9000);
       if (S().phase === 'play') await D.tap(playable);
-      await D.wait(function () { return document.querySelector('.k-sheet .hsum'); }, 12000);
+      // (the hand's result: a sheet over the table on a phone or a tablet; at a desk, the panels beside the table)
+      await D.wait(function () { return document.querySelector('.k-sheet .hsum') || (S().phase === 'handover' && document.querySelector('.cdk-r .eu-res')); }, 12000);
       await D.wait(600);
       var n = won(), w = ['no', 'one', 'two', 'three', 'four', 'all five'][n];
-      await D.say(n === 5 ? 'Your team called trump, so you needed three of the five tricks. You took all five, a march, worth 2 points.' : 'Your team called trump, so you needed three of the five tricks. You took ' + w + ', worth 1 point, and all five would score 2.', { at: '.k-sheet .hsum' });
-      await D.say('If the team that called trump takes fewer than three, it’s euchred, and the other team scores 2. The first team to 10 wins.', { at: '.k-sheet .sum' });
+      await D.say(n === 5 ? 'Your team called trump, so you needed three of the five tricks. You took all five, a march, worth 2 points.' : 'Your team called trump, so you needed three of the five tricks. You took ' + w + ', worth 1 point, and all five would score 2.', { at: function () { return document.querySelector('.k-sheet .hsum') || document.querySelector('.cdk-r .eu-res'); } });
+      await D.say('If the team that called trump takes fewer than three, it’s euchred, and the other team scores 2. The first team to 10 wins.', { at: function () { return document.querySelector('.k-sheet .sum') || [].slice.call(document.querySelectorAll('.cdk-l .eu-pad .pf, .cdk-l .eu-pad .eu-pp')); } });
     }
   });
 })();

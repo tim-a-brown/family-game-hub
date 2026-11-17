@@ -128,7 +128,16 @@ Underlying principles for everything:
   payouts, races so far, the session, and the rail stood up at the right as the betting station; `deviceShape` keeps a
   window shaped like a phone or tablet on the device layout); Arvela (`deskPlan` in ui.js, two players: Figures and the
   hand sized together, the bars stood on end as pillars with the Guide, its power and the Relics by name, cards from 150px
-  wide saying their power, the last events beside the hand, the face-off's `.big` with whole cards from 330px). The
+  wide saying their power, the last events beside the hand, the face-off's `.big` with whole cards from 330px).
+  **Spades** (on `Cards.desk`; `paintDesk`, `paintSheet`, `handRows`, `paintSide` in spades-ai.html): the partnership
+  sheet `.sp-pad` hand by hand (each side's bid, tricks, bags, score and total, a Nil marked beside the bid, the bags
+  toward 10 under the totals), and at the right whether spades are broken, the last trick (`S.lt`), every player's bid
+  against the tricks taken, who took each trick (`S.tl`), and while bidding what each has bid and taken so far; a
+  scored hand goes onto the sheet with its sentences at the right (`handNotes`), online too (`netWait`).
+  **Euchre** (the same functions in euchre-ai.html): the sheet `.eu-pad` (who made trump, the suit, Alone, each side's
+  tricks and points, Euchred marked, a pip a point to the target), and at the right the trump and what happened to the
+  turned-up card (`trumpSay`), each player's call, each side's tricks, who took each, the seven trumps highest first
+  with the played ones faded (`trumpStrip`), the last trick; a scored hand is told at the right (`handSay`). The
   scratchpad's `fill/audit.js <shapes> <games> --shots [--root=<worktree>] [--out=<folder>]` opens a game's table through
   its demo at eight desktop windows (A 2100x1860, B 3024x1964, C 1512x982, D 1600x560, E 720x1700, F 1000x1000, G 1280x720,
   H 560x620) and measures the share of the window it covers; each pilot's own proof scripts are in `big/<game>/`.
