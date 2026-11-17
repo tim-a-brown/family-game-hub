@@ -160,6 +160,114 @@
   .msg .slot{--cw:86px;}
   .msg{font-size:1.5rem;}
 }
+
+/* ── A large window (a laptop, any shape of window; CLAUDE.md "Large windows"). The script sets .dk and the shape
+   (dk-wide, dk-strip, dk-square, dk-tall: the windows of Cards.DESK) on the stage only while such a layout shows, so a
+   phone, a tablet and the windows in between keep the rules above. The table takes the window: every player's row
+   is laid out for the felt there is (deskFit: how many columns, the deck in a row or a column of its own, your row
+   larger or one of the grid), each row with seven places for its seven different numbers. Beside it the score sheet
+   (left: a row a round, the round in play lit, the totals and how far each is to the target) and the round as it
+   stands (right: the race with this round's points on it, safe ones solid and ones still at risk hatched, and what
+   has happened this round), over Flip and Stay. ── */
+.gh{display:none;}
+.f7.dk:has(> .ctable){max-width:none;height:calc(100dvh - var(--bar));display:grid;column-gap:16px;row-gap:10px;align-items:stretch;padding:4px 20px max(calc(var(--safe-b) + 8px),18px);}
+.f7.dk-wide:has(> .ctable),.f7.dk-strip:has(> .ctable){grid-template-columns:var(--lw) minmax(0,1fr) var(--rw);grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"sheet tbl side" "sheet tbl bar";}
+.f7.dk-square:has(> .ctable){grid-template-columns:var(--lw) minmax(0,1fr);grid-template-rows:minmax(0,3fr) minmax(0,2fr) auto;grid-template-areas:"sheet tbl" "side tbl" "side bar";}
+.f7.dk-tall:has(> .ctable){grid-template-columns:minmax(0,5fr) minmax(0,4fr);grid-template-rows:minmax(0,1fr) auto clamp(250px,27dvh,540px);grid-template-areas:"tbl tbl" "bar bar" "sheet side";}
+.f7.dk > .tinfo{display:none;}
+.f7.dk > .ctable{grid-area:tbl;display:flex;flex-direction:column;min-width:0;min-height:0;margin:0;padding:clamp(9px,.75vmin,14px);border-radius:clamp(28px,2.2vmin,40px);}
+.f7.dk > .ctable .felt-in{flex:1 1 0;height:auto;min-height:0;display:grid;justify-content:stretch;transition:none;border-radius:clamp(21px,1.7vmin,30px);}
+.f7.dk > .cdk-panel{display:flex;min-width:0;min-height:0;}
+.f7.dk > .cdk-l{grid-area:sheet;}
+.f7.dk > .cdk-r{grid-area:side;}
+.f7.dk > .cbar{grid-area:bar;margin:0;min-height:62px;align-content:center;}
+.f7.dk-wide > .cbar .btn-lg,.f7.dk-strip > .cbar .btn-lg,.f7.dk-square > .cbar .btn-lg{max-width:none;}
+.f7.dk-square > .cbar{justify-content:flex-end;}
+.f7.dk-stack > .cbar .btn-lg{flex:1 1 100%;}
+.f7.dk-tall > .cbar .btn-lg{max-width:300px;}
+.f7.dk .cbar .pickl{text-align:center;}
+.f7.dk .cbar .chip{cursor:pointer;}
+/* the felt: the rows are grid cells of the felt itself */
+.f7.dk .opps{display:contents;}
+.f7.dk .spot{--scw:var(--ocw,60px);display:flex;flex-direction:column;justify-content:center;min-width:0;min-height:0;padding:calc(var(--scw) * .18) calc(var(--scw) * .26) calc(var(--scw) * .2);border-radius:clamp(15px,calc(var(--scw) * .26),26px);}
+.f7.dk .spot.me{--scw:var(--mcw,80px);}
+.f7.dk .spot.wide{grid-column:auto;}
+.f7.dk .spot .sh{font-size:clamp(.86rem,calc(var(--scw) * .23),1.7rem);gap:.45em;}
+.f7.dk .spot .sh .avatar{width:1.75em;height:1.75em;font-size:.78em;}
+.f7.dk .spot .tot{font-size:.86em;padding:.12em .6em;border-radius:.5em;}
+.f7.dk .spot.me .risk{font-size:.8em;}
+.f7.dk .spot .line{margin-top:calc(var(--scw) * .12);gap:calc(var(--scw) * .2);}
+.f7.dk .spot .cards{--cw:var(--scw);min-height:calc(var(--scw) * 1.4);}
+.f7.dk .spot .cards .pcard{flex:none;}
+.f7.dk .cards > * + *{margin-left:var(--overlap,2px);}
+.f7.dk .spot .rp{font-size:max(1.25rem,calc(var(--scw) * .6));min-width:calc(var(--scw) * 1.25);}
+.f7.dk .stamp,.f7.dk .spot.me .stamp{font-size:clamp(.66rem,calc(var(--scw) * .2),1.35rem);padding:.2em .42em .1em;border-radius:.3em;}
+.f7.dk .spot .say{font-size:clamp(.8rem,calc(var(--scw) * .22),1.4rem);padding:.3em .8em;border-radius:.8em;top:calc(var(--scw) * -.1);}
+/* a place for each of the seven different numbers: the ones still to come are empty */
+.f7.dk .gh{display:block;flex:0 1 var(--cw);min-width:calc(var(--cw) * .2);box-sizing:border-box;height:calc(var(--cw) * 1.4);border-radius:calc(var(--cw) * .1);border:max(1.5px,calc(var(--cw) * .022)) dashed rgba(255,255,255,.3);background:rgba(0,0,0,.1);}
+.f7.dk .spot.done .gh{border-color:rgba(255,255,255,.13);background:none;}
+/* (cards large enough to read whole: the corner number on everyone's, and each special card's name) */
+.f7.dk .spot.lg:not(.me) .pcard.custom .ix{display:flex;}
+.f7.dk .spot.lg .cards .pcard.custom .lbl{display:block;}
+.f7.dk .spot.lg .cards .pcard.custom.act .big{padding:0 0 12%;}
+.f7.dk .spot.lg .cards .pcard.custom.mod .big{padding:0 0 8%;}
+/* (many players on a short felt: the name stands at the left of the cards, so the cards have the row's height) */
+.f7.dk .felt-in.ln .spot{flex-direction:row;align-items:center;gap:calc(var(--scw) * .2);padding:max(6px,calc(var(--scw) * .15)) calc(var(--scw) * .22);}
+.f7.dk .felt-in.ln .spot .sh{flex:none;width:var(--hw,110px);flex-wrap:wrap;row-gap:.32em;align-content:center;}
+.f7.dk .felt-in.ln .spot.me .sh{width:var(--mhw,var(--hw,110px));}
+.f7.dk .felt-in.ln .spot .sh .nm{flex:1 1 calc(100% - 2.4em);}
+.f7.dk .felt-in.ln .spot .sh .tot{order:4;}
+.f7.dk .felt-in.ln .spot .sh .risk{order:5;flex:1 1 100%;}
+.f7.dk .felt-in.ln .spot .line{flex:1 1 0;min-width:0;margin-top:0;}
+/* the deck, what's happening and the discards: a row between the others and you, or a column of its own at the right */
+.f7.dk .mid{min-height:0;min-width:0;padding:0 calc(var(--pcw) * .12);gap:calc(var(--pcw) * .3);}
+.f7.dk .pile{--cw:var(--pcw,80px);gap:calc(var(--pcw) * .07);}
+.f7.dk .pile small{font-size:clamp(.76rem,calc(var(--pcw) * .17),1.15rem);}
+.f7.dk .msg{font-size:clamp(1.05rem,calc(var(--pcw) * .3),3.2rem);gap:.6em;}
+.f7.dk .msg .slot{--cw:var(--pcw,80px);}
+.f7.dk .felt-in.mcol .mid{flex-flow:row wrap;align-content:center;justify-content:center;padding:0;gap:calc(var(--pcw) * .35) calc(var(--pcw) * .22);}
+.f7.dk .felt-in.mcol .mid .msg{order:3;flex:1 1 100%;flex-direction:column;font-size:clamp(1rem,calc(var(--pcw) * .26),1.9rem);text-wrap:balance;}
+.f7.dk .felt-in.mcol .mid .pile.disc{order:2;}
+/* the score sheet (Cards.pad): the columns narrow for many players, and nothing on it is under 9px */
+.f7padw{flex:1 1 0;min-height:0;display:flex;flex-direction:column;}
+.f7padw .cdk-pad{--lc:2.4em;}
+.f7padw .cdk-pad .ph .pc{font-size:max(9px,.8em);overflow-wrap:break-word;}
+.f7padw .cdk-pad .ph .pc .avatar{font-size:max(9px,.95em);}
+.f7padw .cdk-pad .rl{font-size:max(9px,.74em);}
+.f7padw .cdk-pad .pm .rl{font-size:max(9px,.68em);}
+.f7padw .cdk-pad .cv.bust{font-size:1.12em;color:var(--bad-ink,#ff8f9c);}
+.f7padw .cdk-pad .cv.c7{color:var(--lit-ink);}
+.f7padw .cdk-pad .cv.cfz{color:#8fdcff;}
+.f7padw .cdk-pad .cv .mk b{display:inline-grid;place-items:center;min-width:1.5em;height:1.5em;border-radius:.4em;background:var(--lit);color:var(--gold-ink,#2b1a00);font-weight:800;}
+.f7padw .cdk-pad .cv .mk svg{width:1.6em;height:1.6em;color:#7fd8ff;}
+/* the round as it stands */
+.f7side{overflow:hidden;}
+.f7race{flex:none;display:flex;flex-direction:column;}
+.f7r{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;column-gap:.55em;row-gap:calc(.32em + var(--rg,0px) * .2);padding:calc(.4em + var(--rg,0px) * .4) 1.2em;}
+.f7r .avatar{width:1.7em;height:1.7em;font-size:.8em;}
+.f7r .avatar .ico{width:62%;height:62%;}
+.f7r .nm{min-width:0;font-weight:700;line-height:1.1;overflow-wrap:break-word;}
+.f7r.me .nm{color:var(--lit-ink);}
+.f7r .pts{white-space:nowrap;font-weight:800;font-variant-numeric:tabular-nums;}
+.f7r .pts i{margin-left:.4em;font-style:normal;font-weight:650;font-size:.86em;color:var(--text-3);}
+.f7r.safe .pts i{color:var(--text);}
+.f7r.out .pts i{color:var(--bad-ink,#ff8f9c);}
+.f7r .bar{grid-column:1 / -1;position:relative;height:calc(.5em + var(--rg,0px) * .2);border-radius:1em;background:var(--gl-2);overflow:hidden;}
+.f7r .bar b{position:absolute;left:0;top:0;bottom:0;min-width:0;background:var(--c);}
+.f7r .bar i{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(115deg,color-mix(in srgb,var(--c) 75%,transparent) 0 3px,transparent 3px 6px);}
+.f7r.safe .bar i{background:color-mix(in srgb,var(--c) 55%,#fff 12%);}
+.f7r.now::before{content:"";position:absolute;left:.35em;top:.45em;bottom:.45em;width:3px;border-radius:3px;background:var(--lit);box-shadow:0 0 8px var(--litg);}
+.f7side.tight .f7r{padding-top:.26em;padding-bottom:.26em;}
+.f7side.tight .f7r .bar{display:none;}
+.f7side.two .f7race{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+.f7side.two .f7r{padding-left:1em;padding-right:.8em;}
+.f7key{flex:none;display:flex;flex-wrap:wrap;gap:.2em 1.1em;padding:.35em 1.25em .2em;font-size:.76em;font-weight:600;color:var(--text-3);}
+.f7key span{display:inline-flex;align-items:center;gap:.45em;white-space:nowrap;}
+.f7key i{display:block;width:1.5em;height:.5em;border-radius:1em;background:repeating-linear-gradient(115deg,var(--text-2) 0 3px,transparent 3px 6px);}
+.f7key i.s{background:var(--text-2);}
+.f7ev{flex:none;display:flex;flex-direction:column;}
+.f7ev p{margin:0;padding:.36em 1.25em;font-size:.88em;font-weight:600;line-height:1.3;color:var(--text-2);text-wrap:pretty;}
+.f7ev p:first-of-type{color:var(--text);}
 </style>
 </head>
 <body>
@@ -223,7 +331,7 @@
   function clearSave() { token++; clearTimeout(timer); try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
 
   function showSetup() {
-    S = null; token++; clearTimeout(timer);
+    S = null; token++; clearTimeout(timer); deskClass('');
     Kit.setup(app, {
       modes: Kit.modes(['cpu', { id: 'local' }]),
       players: { min: 3, max: 8, count: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; } },
@@ -577,7 +685,7 @@
     var top = Math.max.apply(null, S.players.map(function (p) { return p.total; }));
     var leaders = S.players.filter(function (p) { return p.total === top; }).length;
     if (top >= S.target && leaders === 1) setTimeout(finish, 900);
-    else setTimeout(function () { showScores(true); }, 700);
+    else setTimeout(function () { if (!DKS) showScores(true); }, 700);
   }
   // the count at the end of a round (the rules only: online tables count with it too); true when the game is won
   function endRoundCore() {
@@ -715,9 +823,14 @@
     return row.slice().sort(function (a, b) { return (a.dup ? 1 : 0) - (b.dup ? 1 : 0) || ORDER[a.k] - ORDER[b.k] || (a.v || 0) - (b.v || 0); });
   }
   function fit(box) {
-    var cards = box.querySelectorAll('.pcard'); if (cards.length < 2) return;
+    var cards = box.querySelectorAll('.pcard, .gh'); if (cards.length < 2) return;
     var cw = cards[0].offsetWidth, n = cards.length, w = box.clientWidth;
     var ov = Math.min(3, (w - cw) / (n - 1) - cw);
+    if (DKS) {   // (a large window: a row over full narrows its empty places first, and only then do its cards overlap)
+      cw = parseFloat(getComputedStyle(box).getPropertyValue('--cw')) || cw;
+      var g = Math.max(3, cw * .07), nG = box.querySelectorAll('.gh').length, least = (n - nG) * cw + nG * cw * .2 + (n - 1) * g;
+      ov = least <= w ? g : g - (least - w) / (n - 1);
+    }
     box.style.setProperty('--overlap', Math.max(ov, -cw * .62) + 'px');
   }
 
@@ -726,6 +839,7 @@
     if (!S) return;
     app.innerHTML = '';
     var n = S.players.length;
+    deskClass(deskShape());
     app.appendChild(el('div', { class: 'tinfo' }, [
       el('span', { html: 'Round <b>' + S.round + '</b>, dealt by ' + Kit.esc(S.players[S.dealer].name) }),
       el('span', { html: 'First to <b>' + S.target + '</b>' })
@@ -748,6 +862,7 @@
     barEl = el('div', { class: 'cbar' });
     app.appendChild(barEl);
     paintBar();
+    if (DKS) { app.appendChild(PL); app.appendChild(PR); deskFit(felt, n); paintDesk(); }
     requestAnimationFrame(function () {
       spotEls.forEach(function (s) { if (s) fit(s.querySelector('.cards')); });
       flyIds.forEach(function (f) {
@@ -782,9 +897,16 @@
     s.appendChild(head);
     var line = el('div', { class: 'line' }), cards = el('div', { class: 'cards' });
     var row = sorted(S.rows[p] || []);
-    row.forEach(function (c) { cards.appendChild(face(c)); });
+    // (a large window: the row has a place for each of the seven different numbers, the ones still to come empty)
+    var slots = DKS && st !== 'bust' ? Math.max(0, 7 - calc(p).uniq) : 0;
+    row.forEach(function (c) {
+      if (slots && c.k !== 'n') { for (; slots > 0; slots--) cards.appendChild(el('i', { class: 'gh' })); }
+      cards.appendChild(face(c));
+    });
+    for (; slots > 0; slots--) cards.appendChild(el('i', { class: 'gh' }));
     (S.deferred && S.deferred[p] || []).forEach(function (c) { cards.appendChild(face(c, { later: true })); });
-    if (!row.length) cards.appendChild(el('span', { class: 'empty', text: S.phase === 'deal' ? 'waiting for a card' : 'no cards' }));
+    if (!row.length && !DKS) cards.appendChild(el('span', { class: 'empty', text: S.phase === 'deal' ? 'waiting for a card' : 'no cards' }));
+    if (DKS && st !== 'in') s.classList.add('done');
     line.appendChild(cards);
     var stamp = { bust: 'Bust', stay: 'Stayed', frozen: 'Frozen', flip7: 'Flip 7' }[st];
     line.appendChild(el('span', { class: 'rpw' }, [stamp ? el('span', { class: 'stamp ' + st, text: stamp }) : null, el('span', { class: 'rp', text: String(shown(p)) })]));
@@ -841,6 +963,14 @@
       if (S.status.indexOf('flip7') >= 0) h = 'Flip 7! The round is over.';
     }
     if (S.phase === 'roundover' && !NET) {
+      // (a large window: the round is already written on the score sheet beside the table, so the next deal is here)
+      if (DKS) {
+        var tp = Math.max.apply(null, S.players.map(function (p) { return p.total; })), tied = S.players.filter(function (p) { return p.total === tp; }).length > 1;
+        if (tp >= S.target && !tied) return;
+        if (tp >= S.target) barEl.appendChild(el('div', { class: 'pickl', text: 'Tied at the top! One more round to settle it.' }));
+        barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: 'Deal round ' + (S.round + 1), onclick: function () { newRound(); } }));
+        return;
+      }
       barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: 'See scores', onclick: function () { showScores(true); } }));
       return;
     }
@@ -848,15 +978,21 @@
   }
   function say(p, text, cls) { if (QUIET) QUIET.push(['say', p, text, cls]); else says.push({ p: p, text: text, cls: cls }); }
   function fly(c, center) { if (QUIET) QUIET.push(['fly', c.id, center]); else flyIds.push({ id: c.id, center: center }); }
-  window.addEventListener('resize', function () { spotEls.forEach(function (s) { if (s) fit(s.querySelector('.cards')); }); });
+  window.addEventListener('resize', function () {
+    // (a large window is laid out from its size, so it is drawn again; so is a change to or from one)
+    if (S && app.querySelector('.ctable') && (DKS || deskShape())) { render(); return; }
+    spotEls.forEach(function (s) { if (s) fit(s.querySelector('.cards')); });
+  });
   // Turning an iPad: the table, the round line and the buttons glide from where they were to their new places
   (function () {
-    var SEL = '.f7 > .tinfo, .f7 > .ctable, .f7 > .cbar', last = new Map();
-    setInterval(function () { var m = new Map(); document.querySelectorAll(SEL).forEach(function (e) { if (!e.getAnimations || !e.getAnimations().length) m.set(e, e.getBoundingClientRect()); }); if (m.size) last = m; }, 400);
+    var SEL = '.f7 > .tinfo, .f7 > .ctable, .f7 > .cbar, .f7 > .cdk-panel', last = new Map(), lastK = {}, wasDk = false;
+    // (a large window draws the table again on a resize, so there a box is matched by what it is, not by its element)
+    function kind(e) { return e.classList.contains('ctable') ? 't' : e.classList.contains('cbar') ? 'b' : e.classList.contains('cdk-l') ? 'l' : e.classList.contains('cdk-r') ? 'r' : 'i'; }
+    setInterval(function () { var m = new Map(), k = {}; document.querySelectorAll(SEL).forEach(function (e) { if (!e.getAnimations || !e.getAnimations().length) { var r = e.getBoundingClientRect(); m.set(e, r); if (r.width) k[kind(e)] = r; } }); if (m.size) { last = m; lastK = k; wasDk = !!DKS; } }, 400);
     window.addEventListener('resize', function () {
       var now = new Map(); document.querySelectorAll(SEL).forEach(function (e) { now.set(e, e.getBoundingClientRect()); });
       if (!matchMedia('(prefers-reduced-motion: reduce)').matches) now.forEach(function (b, e) {
-        var a = last.get(e); if (!a || !b.width || !b.height || !e.animate) return;
+        var a = last.get(e) || ((wasDk || DKS) && lastK[kind(e)]); if (!a || !b.width || !b.height || !e.animate) return;
         var dx = a.left - b.left, dy = a.top - b.top, sx = a.width / b.width, sy = a.height / b.height;
         if (Math.abs(dx) < 2 && Math.abs(dy) < 2 && Math.abs(sx - 1) < .02 && Math.abs(sy - 1) < .02) return;
         e.animate([{ transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')' }, { transformOrigin: '0 0', transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.3,.7,.25,1)' });
@@ -864,6 +1000,196 @@
       last = now;
     });
   })();
+
+
+  // ── A large window (a laptop; CLAUDE.md "Large windows") ─────────────────────────────────────────
+  // The windows are the card tables' (Cards.DESK): wide, a short wide strip, nearly square, tall. DKS is the one
+  // showing now ('' on a phone, a tablet and the windows in between, which keep their own layout); render() sets it,
+  // and the stage has .dk and .dk-<shape> only while it is set. PL and PR are the two panels beside the table.
+  var DQ = (function () {
+    var D = window.Cards && Cards.DESK; if (!D || !window.matchMedia) return null;
+    var o = {}; ['wide', 'strip', 'square', 'tall'].forEach(function (k) { o[k] = matchMedia(D[k]); });
+    return o;
+  })();
+  var DKS = '', PL = el('aside', { class: 'cdk-panel cdk-l' }), PR = el('aside', { class: 'cdk-panel cdk-r' }), sheetDone = -1;
+  function deskShape() {
+    if (!DQ) return '';
+    return DQ.wide.matches ? 'wide' : DQ.strip.matches ? 'strip' : DQ.square.matches ? 'square' : DQ.tall.matches ? 'tall' : '';
+  }
+  function deskClass(shape) {
+    DKS = shape;
+    ['dk', 'dk-wide', 'dk-strip', 'dk-square', 'dk-tall', 'dk-stack'].forEach(function (c) { app.classList.remove(c); });
+    if (!shape) return;
+    // the panels' widths: the sheet has a column a player, so more players need a wider one; the table keeps at
+    // least 45% of the window
+    var n = S ? S.players.length : 3, W = innerWidth, lmin = n >= 7 ? 40 + n * 40 : 46 + n * 48;
+    var lw = Math.max(lmin, Math.min(shape === 'strip' ? 440 : 520, Math.max(250, W * (shape === 'strip' ? .09 + .016 * n : .11 + .017 * n))));
+    var rw = Math.min(380, Math.max(250, W * .15));
+    if (shape === 'wide' || shape === 'strip') {
+      var room = W - 40 - 32 - W * .5;
+      if (lw + rw > room) { rw = Math.max(250, room - lw); if (lw + rw > room) lw = Math.max(lmin, room - rw); }
+      if (shape === 'wide' && lw + rw > room + 1) shape = 'square';   // (the layout of a nearly square window: both panels at the left)
+    }
+    if (shape === 'square') lw = Math.max(lmin, Math.min(W >= 1200 ? 400 : 300, Math.max(250, W * .27)));
+    app.classList.add('dk'); app.classList.add('dk-' + shape);
+    app.style.setProperty('--lw', Math.round(lw) + 'px'); app.style.setProperty('--rw', Math.round(rw) + 'px');
+    // (two buttons side by side need 330px; in a narrower column they stand one over the other)
+    app.classList.toggle('dk-stack', (shape === 'wide' || shape === 'strip') && rw < 330);
+  }
+  // The felt at a desk: the largest cards at which every row fits. It tries the others' rows in 1 to 4 columns, the
+  // deck with what's happening and the discards as a row between them and you or as a column at the felt's right,
+  // and your own row larger across the bottom or (the deck in its column) as one of the grid. A row is wide enough
+  // for its seven numbers and one more card side by side; more than that overlap.
+  var SW = 9.6;
+  function deskFit(felt, n) {
+    var W0 = felt.clientWidth, H0 = felt.clientHeight, P = Math.round(Math.max(8, Math.min(18, Math.min(W0, H0) * .016)));
+    var W = W0 - 2 * P, H = H0 - 2 * P, m = n - 1, best = null;
+    // (a row: its name over its cards, or, ln, at their left)
+    function hw(cw) { return Math.max(100, cw * 2.5); }
+    function spotH(cw, ln) { return ln ? cw * 1.4 + 2 * Math.max(6, cw * .15) : cw * 1.9 + Math.max(25, cw * .42); }
+    function plan(c, midCol, meCell, ln, cw) {
+      var G = Math.max(7, Math.min(16, cw * .13)), pcw = Math.max(46, Math.min(150, cw * 1.05));
+      var wm = midCol ? Math.max(170, pcw * 2.45) : 0, w = W - (midCol ? wm + G : 0);
+      var R = Math.ceil((meCell ? n : m) / c), mcw = meCell ? cw : Math.max(cw, Math.min(210, cw * 1.3, (w - (ln ? hw(cw) * 1.3 : 0)) / (SW + 1.1)));
+      var needW = c * (cw * SW + (ln ? hw(cw) : 0)) + (c - 1) * G;
+      var needH = R * spotH(cw, ln) + (R - 1) * G + (meCell ? 0 : G + spotH(mcw, ln)) + (midCol ? 0 : G + pcw * 1.4 + 30);
+      if (midCol) needH = Math.max(needH, pcw * 1.4 + 120);
+      return needW <= w && needH <= H && mcw >= cw * .999 ? { c: c, midCol: midCol, meCell: meCell, ln: ln, cw: cw, mcw: mcw, pcw: pcw, G: G, wm: wm, R: R, slack: H - needH } : null;
+    }
+    [0, 1].forEach(function (midCol) {
+      [0, 1].forEach(function (meCell) {
+        if (meCell && !midCol) return;
+        [0, 1].forEach(function (ln) {
+          for (var c = 1; c <= Math.min(4, Math.max(1, meCell ? n : m)); c++) {
+            var lo = 16, hi = 160, ok = plan(c, midCol, meCell, ln, lo); if (!ok) continue;
+            for (var i = 0; i < 12; i++) { var mid = (lo + hi) / 2, t = plan(c, midCol, meCell, ln, mid); if (t) { ok = t; lo = mid; } else hi = mid; }
+            ok.score = ok.cw * (meCell ? 1 : 1.12) * (midCol ? 1 : 1.04) * (ln ? .9 : 1) + ok.mcw * .002 - c * .01;
+            if (!best || ok.score > best.score) best = ok;
+          }
+        });
+      });
+    });
+    if (!best) best = { c: 1, midCol: 0, meCell: 0, ln: 1, cw: 16, mcw: 16, pcw: 46, G: 7, wm: 0, R: m, slack: 0 };
+    var b = best, fs = felt.style;
+    // (the deck in its row: with height to spare the deck and the discards are larger, as far as a card in a hand)
+    if (!b.midCol && b.slack > 0) b.pcw = Math.max(b.pcw, Math.min(210, b.pcw + b.slack * .5 / 1.4, (W - 280) / 2.4));
+    felt.classList.toggle('mcol', !!b.midCol); felt.classList.toggle('mcell', !!b.meCell); felt.classList.toggle('ln', !!b.ln);
+    fs.setProperty('--hw', Math.round(hw(b.cw)) + 'px'); fs.setProperty('--mhw', Math.round(hw(b.cw) * (b.meCell ? 1 : 1.3)) + 'px');
+    fs.padding = P + 'px'; fs.gap = Math.round(b.G) + 'px';
+    fs.setProperty('--ocw', Math.floor(b.cw) + 'px'); fs.setProperty('--mcw', Math.floor(b.mcw) + 'px'); fs.setProperty('--pcw', Math.floor(b.pcw) + 'px');
+    fs.gridTemplateColumns = 'repeat(' + b.c + ',minmax(0,1fr))' + (b.midCol ? ' ' + Math.round(b.wm) + 'px' : '');
+    // (the deck in a row takes the height the rows leave; with the deck in a column the rows share the height)
+    fs.gridTemplateRows = b.midCol ? 'repeat(' + b.R + ',minmax(0,1fr))' + (b.meCell ? '' : ' minmax(0,' + (b.mcw / b.cw).toFixed(2) + 'fr)')
+      : 'repeat(' + b.R + ',auto) minmax(min-content,1fr) auto';
+    var midEl = felt.querySelector('.mid'), cells = [];
+    for (var d = 1; d < n; d++) cells.push(spotEls[(ME + d) % n]);
+    if (b.meCell) cells.push(spotEls[ME]);
+    // (the last row's last cell takes the columns that are left over)
+    var left = b.c - ((cells.length - 1) % b.c) - 1;
+    cells.forEach(function (sp, i) { sp.style.gridColumn = i === cells.length - 1 && left ? 'span ' + (left + 1) : ''; });
+    if (!b.meCell) { spotEls[ME].style.gridColumn = '1 / span ' + b.c; spotEls[ME].style.gridRow = String(b.R + (b.midCol ? 1 : 2)); }
+    midEl.style.gridColumn = b.midCol ? String(b.c + 1) : '1 / span ' + b.c;
+    midEl.style.gridRow = b.midCol ? '1 / -1' : String(b.R + 1);
+    spotEls.forEach(function (sp, p) { if (sp) sp.classList.toggle('lg', (p === ME && !b.meCell ? b.mcw : b.cw) >= 60); });
+    return b;
+  }
+
+  // The panels. Left, the score sheet: a column a player, a row a round with what each scored (a bust, a Flip 7 and
+  // a freeze marked), the round in play lit with the points showing now, the totals and how far each is to the
+  // target. Right, the round as it stands: the race to the target with this round's points on each line (solid once
+  // they are safe, hatched while another card could still lose them), and what has happened this round, the newest
+  // first. A panel too short for everything gives up whole parts: the oldest events, then all of them, the key,
+  // and last the bars.
+  function paintDesk() {
+    if (!DKS || !S || !PL.isConnected) return;
+    paintSheet(); paintSide();
+  }
+  function paintSheet() {
+    var n = S.players.length, ended = S.phase === 'roundover' || S.phase === 'over';
+    var done = Math.max(0, Math.min(S.rounds.length, ended ? S.round : S.round - 1));
+    var inner = el('div', { class: 'cdk-in' }, [el('div', { class: 'cdk-h' }, [el('h2', { text: 'Score sheet' }), el('small', { text: 'First to ' + S.target })])]);
+    PL.innerHTML = ''; PL.appendChild(inner);
+    var fs = parseFloat(getComputedStyle(inner).fontSize) || 16, padFs = Math.max(10, Math.min(fs, PL.clientWidth / (n * (n >= 7 ? 2.75 : 3.5) + 3.5)));
+    var host = el('div', { class: 'f7padw', style: { fontSize: padFs.toFixed(1) + 'px' } }); inner.appendChild(host);
+    var top = Math.max.apply(null, S.players.map(function (p) { return p.total; }));
+    var MARK = n >= 7 ? {} : { 'Flip 7': '<b>7</b>', Frozen: SNOW }, TINT = { 'Flip 7': 'c7', Frozen: 'cfz' };
+    var rows = S.rounds.slice(0, done).map(function (r, i) {
+      var det = S.details[i] || [];
+      return { label: i + 1, cells: r.map(function (v, p) { return det[p] === 'Bust' ? { v: 'Bust', bust: 1 } : { v: v, zero: !v, mark: MARK[det[p]] }; }) };
+    });
+    var live = ended ? null : { label: S.round, cells: S.players.map(function (pl, p) { return S.status[p] === 'bust' ? { v: 'Bust', bust: 1 } : { v: (S.rows[p] || []).length ? shown(p) : '', hot: p === ME && human(p) }; }) };
+    var pad = Cards.pad(host, {
+      cols: S.players.map(function (pl, p) { return { name: pl.name, color: Kit.color(p), cpu: isCpu(p), me: p === ME && human(p) }; }),
+      rows: rows, live: live, just: sheetDone >= 0 && done === sheetDone + 1,
+      total: S.players.map(function (pl) { return { v: pl.total, lead: pl.total === top && top > 0, pct: pl.total / S.target }; }),
+      meter: String(S.target)
+    });
+    sheetDone = done;
+    // (a bust is written as the word, in the sheet's red; with seven or eight columns a Flip 7 is gold and a freeze ice blue)
+    [].forEach.call(pad.querySelectorAll('.pb .cv'), function (c) { if (c.textContent === 'Bust') c.classList.add('bust'); });
+    if (n >= 7) [].forEach.call(pad.querySelectorAll('.pb .pr'), function (row, i) { var det = S.details[i]; if (det && i < done) [].forEach.call(row.querySelectorAll('.cv'), function (c, p) { if (TINT[det[p]]) c.classList.add(TINT[det[p]]); }); });
+    // (the names fit their columns)
+    var colW = (PL.clientWidth - padFs * 3.5) / n; [].forEach.call(pad.querySelectorAll('.ph .pc'), function (c) { c.style.fontSize = Math.max(9, Math.min(padFs * .8, colW / 4.9)).toFixed(1) + 'px'; });
+    inner.appendChild(el('div', { class: 'cdk-goal', text: 'The first player to ' + S.target + ' at the end of a round wins.' }));
+    // (the rounds show as whole rows: none half under the names)
+    var pb = pad.querySelector('.pb'), r0 = pb.querySelector('.pr');
+    if (r0) { var rh = r0.getBoundingClientRect().height, h = pb.clientHeight, whole = Math.floor(h / rh + .02) * rh; if (rh > 4 && whole >= rh && h - whole > 1) { pb.style.flex = '0 0 ' + whole.toFixed(2) + 'px'; pb.scrollTop = pb.scrollHeight; } }
+  }
+  function evLines(r) {
+    var out = [], six = {};
+    (S.ev || []).forEach(function (e) { if (e.r === r && e.k === 'six') six[e.p] = 1; });
+    (S.ev || []).forEach(function (e) {
+      if (e.r !== r) return;
+      var a = function (v) { return (v === 8 || v === 11 ? 'an ' : 'a ') + v; };
+      if (e.k === 'six') out.push(who(e.p) + ' had six different numbers and busted on ' + a(e.v) + '.');
+      else if (e.k === 'bust') { if (!six[e.p]) out.push(who(e.p) + ' busted on a second ' + e.v + (e.pts ? ' with ' + e.pts + ' points showing.' : '.')); }
+      else if (e.k === 'save') out.push('A Second Chance saved ' + youOr(e.p) + ' from a second ' + e.v + '.');
+      else if (e.k === 'freeze') out.push(e.by === e.p ? who(e.p) + ' froze ' + vb(e.p, 'yourself', 'themselves') + ' at ' + e.pts + ' points.' : who(e.by) + ' froze ' + youOr(e.p) + ' at ' + e.pts + ' points.');
+      else if (e.k === 'f3') out.push(e.by === e.p ? who(e.p) + ' took the Flip Three ' + vb(e.p, 'yourself', 'themselves') + '.' : who(e.by) + ' made ' + youOr(e.p) + ' flip three cards.');
+      else if (e.k === 'f7') out.push(who(e.p) + ' flipped seven different numbers for ' + BONUS + ' bonus points.');
+    });
+    return out.reverse();
+  }
+  function paintSide() {
+    var n = S.players.length, ended = S.phase === 'roundover' || S.phase === 'over';
+    var inner = el('div', { class: 'cdk-in f7side' }, [el('div', { class: 'cdk-h' }, [el('h2', { text: 'Round ' + S.round }), el('small', { text: 'Dealt by ' + S.players[S.dealer].name })])]);
+    inner.appendChild(el('div', { class: 'cdk-lbl' }, [el('span', { text: 'The race to ' + S.target }), el('span', { text: ended ? 'After this round' : 'With this round' })]));
+    var race = el('div', { class: 'f7race' }), any = false;
+    S.players.forEach(function (pl, p) {
+      var st = S.status[p] || 'in', pts = ended ? (S.rounds[S.round - 1] || [])[p] || 0 : shown(p), base = ended ? pl.total - pts : pl.total;
+      var safe = ended || st === 'stay' || st === 'frozen' || st === 'flip7', T = S.target;
+      if (!ended && st === 'in' && pts) any = true;
+      race.appendChild(el('div', { class: 'f7r' + (p === ME && human(p) ? ' me' : '') + (st === 'bust' ? ' out' : safe ? ' safe' : '') + (!ended && S.phase === 'play' && S.turn === p && st === 'in' && !S.choose ? ' now' : ''), style: { '--c': Kit.color(p) } }, [
+        el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: isCpu(p) ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
+        el('span', { class: 'nm', text: pl.name }),
+        el('span', { class: 'pts', html: String(base + (safe ? pts : 0)) + (st === 'bust' ? '<i>Bust</i>' : ended ? '' : pts ? '<i>+' + pts + '</i>' : '') }),
+        el('span', { class: 'bar' }, [el('b', { style: { width: Math.min(100, base / T * 100).toFixed(1) + '%' } }),
+          st === 'bust' || !pts ? null : el('i', { style: { left: Math.min(100, base / T * 100).toFixed(1) + '%', width: Math.max(0, Math.min(100 - base / T * 100, pts / T * 100)).toFixed(1) + '%' } })])
+      ]));
+    });
+    inner.appendChild(race);
+    var key = null;
+    if (!ended) { key = el('div', { class: 'f7key' }, [el('span', null, [el('i', { class: 's' }), el('span', { text: 'Points that are safe' })]), el('span', null, [el('i'), el('span', { text: 'Points a bust would lose' })])]); inner.appendChild(key); }
+    PR.innerHTML = ''; PR.appendChild(inner);
+    function over() { return inner.lastElementChild.getBoundingClientRect().bottom > inner.getBoundingClientRect().bottom - 7; }
+    if (over() && key) { key.remove(); key = null; }
+    if (over()) inner.classList.add('tight');
+    if (over()) inner.classList.add('two');   // (still too tall: the players stand in two columns)
+    // what has happened, this round first and then the rounds before it: as many whole lines as there is room for
+    for (var r = S.round, full = false; r >= 1 && !full; r--) {
+      var lines = evLines(r); if (!lines.length) continue;
+      var lbl = el('div', { class: 'cdk-lbl' }, [el('span', { text: r === S.round ? 'This round' : 'Round ' + r })]), box = el('div', { class: 'f7ev' });
+      inner.appendChild(lbl); inner.appendChild(box);
+      for (var i = 0; i < lines.length; i++) {
+        var ln = el('p', { text: lines[i] }); box.appendChild(ln);
+        if (over()) { ln.remove(); if (!box.firstChild) { lbl.remove(); box.remove(); } full = true; break; }
+      }
+    }
+    // (room to spare: the race's lines stand further apart, with thicker bars)
+    var used = 0; [].forEach.call(inner.children, function (c) { used += c.getBoundingClientRect().height; });
+    var free = inner.clientHeight - used - 8, fs = parseFloat(getComputedStyle(inner).fontSize) || 16;
+    if (free > 4 && !inner.classList.contains('tight')) race.style.setProperty('--rg', Math.min(fs * 1.5, free * .8 / n / 1.2).toFixed(1) + 'px');
+  }
 
   // ── Online (turnnet.js) ───────────────────────────────────────────────────
   // The table holds the whole game (every card in Flip 7 is face up, so every device draws the same table, each
@@ -902,7 +1228,7 @@
   // (inside withS) what the table looks like after one step, with what that step said and sounded like
   function snap(steps) {
     steps.push({ m: S.msg, rows: JSON.parse(JSON.stringify(S.rows)), st: S.status.slice(), df: JSON.parse(JSON.stringify(S.deferred)), ch: S.choose ? JSON.parse(JSON.stringify(S.choose)) : null,
-      ph: S.phase, rd: S.round, dl: S.dealer, tot: S.players.map(function (p) { return p.total; }), tu: S.turn, dc: S.discard[S.discard.length - 1] || null, dn: S.discard.length, fx: QUIET });
+      ph: S.phase, rd: S.round, dl: S.dealer, en: S.ev.length, tot: S.players.map(function (p) { return p.total; }), tu: S.turn, dc: S.discard[S.discard.length - 1] || null, dn: S.discard.length, fx: QUIET });
     QUIET = [];
   }
   // (inside withS) the rules run on until someone has a choice to make: step() without the waits
@@ -983,6 +1309,7 @@
     var v = JSON.parse(JSON.stringify(fin));
     v.msg = x.m; v.rows = x.rows; v.status = x.st; v.deferred = x.df; v.choose = x.ch; v.phase = x.ph === 'over' ? 'roundover' : x.ph; v.round = x.rd; v.dealer = x.dl; v.turn = x.tu; v.acted = true; v.queue = [];
     v.players.forEach(function (p, i) { p.total = x.tot[i]; });
+    if (x.en != null && v.ev) v.ev = v.ev.slice(0, x.en);
     v.discard = []; for (var i = 0; i < x.dn; i++) v.discard.push(x.dc);
     return v;
   }
@@ -1005,7 +1332,7 @@
       x.fx.forEach(function (f) {
         if (f[0] === 'say') say(f[1], f[2], f[3]);
         else if (f[0] === 'fly') fly({ id: f[1] }, f[2]);
-        else if (f[0] === 'end') { end = f[1]; ms = 900; }
+        else if (f[0] === 'end') { end = f[1]; ms = DKS ? 2400 : 900; }
       });
       render();
       x.fx.forEach(function (f) {
@@ -1028,6 +1355,7 @@
     var key = NET.code + ':' + S.started + ':' + rd;
     if (NETSEEN[key]) return; NETSEEN[key] = 1;
     if (NETSHEET) try { NETSHEET.close(); } catch (e) {}
+    if (DKS) { NETSHEET = null; return; }   // (a large window: the round was written on the score sheet as it ended)
     NETSHEET = showScores(true, { round: rd });
   }
   function netEnd() {
@@ -1042,7 +1370,7 @@
     NET = null; ME = 0; NETQ = []; NETBUSY = false; token++;
     netCloseOv();
     var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
-    if (sv && sv.players && sv.rows && sv.phase !== 'over') { S = sv; render(); if (S.phase === 'roundover') setTimeout(function () { showScores(true); }, 300); else pump(700); }
+    if (sv && sv.players && sv.rows && sv.phase !== 'over') { S = sv; render(); if (S.phase === 'roundover') setTimeout(function () { if (!DKS) showScores(true); }, 300); else pump(700); }
     else showSetup();
   }
 
@@ -1054,7 +1382,7 @@
     if (S.phase === 'roundover') {
       var top = Math.max.apply(null, S.players.map(function (p) { return p.total; }));
       if (top >= S.target && S.players.filter(function (p) { return p.total === top; }).length === 1) finish();
-      else setTimeout(function () { showScores(true); }, 300);
+      else setTimeout(function () { if (!DKS) showScores(true); }, 300);
     } else pump(700);
   } else showSetup();
 
