@@ -14,6 +14,9 @@
   function dw() { return document.querySelector('.cseat.s .dw'); }
   function btn(re) { return function () { return [].slice.call(document.querySelectorAll('.cbar .btn')).filter(function (b) { return re.test(b.textContent); })[0]; }; }
   function myTurn(ph) { var s = S(); return s && s.turn === 0 && s.phase === ph; }
+  // (in a large window the hands are laid down on the felt and the hand is written on the score sheet beside the
+  // table; a phone and a tablet get both on a sheet)
+  function laid() { return document.querySelector('.ctable .gd-lay'); }
 
   Kit.demoScript({
     intro: 'Here’s the end of a hand of Gin Rummy. You’ll draw, discard and knock yourself.',
@@ -52,11 +55,12 @@
       await D.say('You drew the Ace of Clubs. When your deadwood is 10 or less after you discard, you can knock to end the hand.', { at: dw });
       await D.you(mine('Qs'), 'Tap the Queen of Spades to choose it.', { until: function () { return S().sel === idOf('Qs'); } });
       await D.you(btn(/^Knock/), 'Without the Queen your deadwood is 6. Tap Knock with 6.', { until: function () { return S().phase === 'reveal'; } });
-      await D.wait(function () { return document.querySelector('.k-sheet .rv'); }, 8000);
+      await D.wait(function () { return document.querySelector('.k-sheet .rv') || laid(); }, 8000);
       await D.wait(1200);
+      var desk = !!laid();
       var r = S().res, lay = r && r.dLays && r.dLays.length ? r.dLays.map(function (l) { return name(l.c); }) : [];
-      await D.say('Both hands are laid down. ' + (lay.length ? 'Bender laid off the ' + lay.join(' and the ') + ' on your melds, so ' + (lay.length > 1 ? 'they don’t' : 'it doesn’t') + ' count against him.' : 'None of Bender’s cards fit your melds, so all his loose cards count as deadwood.'), { at: lay.length ? '.k-sheet .rv-p' : '.k-sheet .rv-p + .rv-p' });
-      await D.say('You score the difference between the two deadwood counts. Hands go on until someone reaches 100.', { at: '.k-sheet table.sum' });
+      await D.say('Both hands are laid down. ' + (lay.length ? 'Bender laid off the ' + lay.join(' and the ') + ' on your melds, so ' + (lay.length > 1 ? 'they don’t' : 'it doesn’t') + ' count against him.' : 'None of Bender’s cards fit your melds, so all his loose cards count as deadwood.'), { at: desk ? (lay.length ? '.gd-lay .rv-p.bot' : '.gd-lay .rv-p:not(.bot)') : lay.length ? '.k-sheet .rv-p' : '.k-sheet .rv-p + .rv-p' });
+      await D.say('You score the difference between the two deadwood counts. Hands go on until someone reaches 100.', { at: desk ? '.cdk-panel.cdk-l' : '.k-sheet table.sum' });
     }
   });
 })();

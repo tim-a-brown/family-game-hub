@@ -158,6 +158,152 @@
 @media (orientation:portrait) and (max-height:640px){#app.stage > .ctable .felt-in{min-height:300px;}}
 /* a short table: your seat's points sit beside your name, so the message has room above it */
 @media (max-height:640px),(orientation:landscape) and (max-height:520px){#app .cseat.s{flex-direction:row;gap:6px;} #app .cseat.s .chip-s{white-space:nowrap;}}
+/* ── A large window (Cards.desk in cards.js lays the page out; html.cdesk-on while it does) ───────────────────────
+   At the left stands the score sheet, hand by hand: each player's deadwood with who knocked, went gin or undercut,
+   the points the hand's winner scored and the running totals, then how near each is to the score the game is played
+   to and the hands each has won (25 apiece when the game ends), and the bonuses once it has. At the right is the hand
+   in play: how your own hand counts (its melds, its loose cards with what each costs, and the 10 a knock needs), the
+   stock running down to the 2 cards that end a hand in a draw, each player's last turn, and the game so far. Nothing
+   a real table hides is there: not the other hand, and no more of the discard pile than its top two cards. When a
+   hand ends, both hands are laid down on the felt itself and the hand is written on the sheet. Both panels are in the
+   page at every size and drawn only at a desk. */
+html.cdesk-on #app .felt-in{--pcw:clamp(50px,min(17cqw,19cqh),210px);}
+html.cdesk-on #app .gpiles{gap:calc(var(--pcw) * .42);}
+html.cdesk-on #app .gpile{gap:.5em;font-size:clamp(.8rem,1.7cqmin,1.4rem);}
+html.cdesk-on #app .gpile .lbl{font-size:1em;}
+html.cdesk-on #app .gpile .under{transform:rotate(-7deg) translate(calc(var(--cw) * -.05),calc(var(--cw) * .03));}
+html.cdesk-on #app .gpile .stk1{transform:translate(calc(var(--cw) * .04),calc(var(--cw) * .04));}
+html.cdesk-on #app .gpile .stk2{transform:translate(calc(var(--cw) * .02),calc(var(--cw) * .02));}
+html.cdesk-on #app .cmsg{top:calc(47% + var(--pcw) * .7 + 1.5em + 14px);max-width:80%;}
+html.cdesk-on #app .dealer{width:1.7em;height:1.7em;font-size:.62em;margin-left:.1em;}
+/* (the other player's cards are a hand held across the table, not a token) */
+html.cdesk.cdesk-on #app.stage .cseat .backs{--cw:calc(var(--pcw) * .4);}
+html.cdesk.cdesk-on #app.stage .cseat .backs .pcard + .pcard{margin-left:calc(var(--cw) * -.64);}
+html.cdesk-on #app .cseat.n{top:clamp(8px,1.6cqmin,24px);}
+html.cdesk-on #app .cseat.s{flex-direction:column;gap:.22em;}
+/* a short felt at a desk: your points beside your name, the piles a little higher */
+@container cfelt (max-height:560px){
+  html.cdesk-on #app .cseat.s{flex-direction:row;gap:.4em;}
+  html.cdesk-on #app .gpiles{top:44%;}
+  html.cdesk-on #app .cmsg{top:calc(44% + var(--pcw) * .7 + 1.5em + 8px);}
+}
+/* your hand: every card in view where the window is wide enough, the melds' brackets growing with the cards */
+html.cdesk.cdesk-on #app.stage > .chand{max-width:calc(var(--cw) * 11.5 + 60px);padding-bottom:calc(var(--cw) * .1 + 16px);min-height:0;}
+html.cdesk-on #app .brk{bottom:calc(var(--cw) * .02 + 4px);height:calc(var(--cw) * .07 + 6px);border-width:clamp(3px,calc(var(--cw) * .022),5px);border-radius:0 0 .7em .7em;font-size:clamp(.7rem,calc(var(--cw) * .085),1.05rem);}
+html.cdesk-on #app .brk b{bottom:-.72em;padding:0 .65em;font-size:1em;line-height:1.4;}
+html.cdesk-on #app .chand .pcard.new{box-shadow:0 0 0 clamp(3px,calc(var(--cw) * .03),6px) #7fd3ff,0 8px 18px rgba(0,0,0,.35);}
+html.cdesk-on #app.stage > .cbar .hint{font-size:1.02rem;}
+@media (hover:hover){html.cdesk-on #app .gpile.can:hover .top{filter:brightness(1.07);}}
+/* the hands laid down on the felt when a hand ends (at a desk; a phone and a tablet get them on a sheet) */
+#app .felt-in.laid > .cseat,#app .felt-in.laid > .gpiles,#app .felt-in.laid > .cmsg{display:none;}
+.gd-lay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:space-evenly;gap:1cqh;padding:2.4cqh 2.4cqw;border-radius:0;color:#fff;font-size:clamp(.95rem,2cqmin,1.7rem);--cw:clamp(34px,min(10cqw,12.5cqh),190px);}
+.gd-lay .rv-p{display:flex;flex-direction:column;align-items:center;gap:.55em;max-width:100%;margin:0;}
+.gd-lay .rv-p.bot{flex-direction:column-reverse;}
+.gd-lay .rv-h{gap:.55em;margin:0;font-size:1em;font-weight:800;}
+.gd-lay .rv-h .avatar{width:1.9em;height:1.9em;font-size:.82em;}
+.gd-lay .rv-h .grow{flex:none;overflow:visible;white-space:normal;}
+.gd-lay .rv-h .dwv{padding:.14em .7em;border-radius:.7em;font-size:.82em;}
+.gd-lay .rv-g{--cw:inherit;justify-content:center;gap:.5em calc(var(--cw) * .26);}
+.gd-lay .rv-m{gap:.3em;}
+.gd-lay .rv-m .cs .pcard + .pcard{margin-left:calc(var(--cw) * -.44);}
+.gd-lay .rv-m small{font-size:.74em;}
+.gd-lay .rv .pcard.lay,.gd-lay .pcard.lay{box-shadow:0 0 0 clamp(3px,calc(var(--cw) * .03),5px) var(--green),0 4px 10px rgba(0,0,0,.35);}
+.gd-lay .rv-res{margin:0;padding:.6em 1.3em;border-radius:1em;}
+.gd-lay .rv-res .big{font-size:1.85em;}
+.gd-lay .rv-res small{margin-top:.15em;font-size:.84em;}
+/* the score sheet: the kit's ruled pad (.cdk-pad), three columns a player */
+#app{--cdk-lmin:300px;}
+@media (min-width:1360px){#app{--cdk-lmin:372px;}}
+.gn-pad{--lc:3em;--px:.35em;--k:3;--half:calc((100% - var(--px) * 2 - var(--lc)) / 2);}
+.gn-pad .pr{grid-template-columns:var(--lc) repeat(2,minmax(0,2.6fr) minmax(0,1.1fr) minmax(0,1.25fr));}
+.gn-pad .gn-meb{position:absolute;top:0;bottom:0;left:calc(var(--px) + var(--lc) + var(--half) * var(--mt,0));width:var(--half);pointer-events:none;background:linear-gradient(180deg,color-mix(in srgb,var(--lit) 11%,transparent),color-mix(in srgb,var(--lit) 5%,transparent));box-shadow:inset 1px 0 0 color-mix(in srgb,var(--lit) 22%,transparent),inset -1px 0 0 color-mix(in srgb,var(--lit) 22%,transparent);}
+.gn-pad::after{content:"";position:absolute;top:0;bottom:0;left:calc(var(--px) + var(--lc) + var(--half));width:1px;background:color-mix(in srgb,var(--h,#6c7bff) 45%,var(--gl-line));pointer-events:none;}
+.gn-pad .tm{grid-column:span var(--k);display:flex;flex-direction:column;align-items:center;gap:.3em;min-width:0;padding:0 .3em;font-size:.82em;font-weight:700;line-height:1.1;text-align:center;overflow-wrap:anywhere;color:var(--text-2);}
+.gn-pad .tm.me{color:var(--lit-ink);}
+.gn-pad .tm .avatar{width:2em;height:2em;font-size:.95em;}
+.gn-pad .ph.gn-tms{border-bottom:0;padding-bottom:.3em;}
+.gn-pad .gn-hd{flex:none;align-items:end;padding-bottom:.35em;border-bottom:3px double color-mix(in srgb,var(--h,#6c7bff) 55%,var(--gl-line));}
+.gn-pad .gn-hd span{font-size:.64em;font-weight:700;color:var(--text-3);text-align:center;white-space:nowrap;}
+.gn-pad .rl{font-size:.68em;}
+.gn-pad .pb .cv{font-size:1.22em;}
+.gn-pad .pb .cv.pts{font-size:1.05em;color:var(--text-2);}
+.gn-pad .pb .cv.pts.win{color:var(--text);}
+.gn-pad .cv .mk{margin-left:.2em;font-size:.5em;}
+.gn-chip{display:inline-block;padding:.24em .42em;border-radius:.5em;background:#1d1b2e;color:#fff;font-family:var(--font);font-style:normal;font-weight:800;letter-spacing:-.01em;line-height:1;white-space:nowrap;box-shadow:inset 0 0 0 1px rgba(255,255,255,.28);}
+.gn-chip.gin{background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--gold-ink);box-shadow:none;}
+.gn-chip.ok{background:var(--green);color:#06301a;box-shadow:none;}
+.gn-chip.dl{background:#fff;color:#1d1b2e;box-shadow:none;}
+.gn-pad .gn-nw{grid-column:2 / -1;text-align:center;font-size:.78em;font-weight:650;color:var(--text-3);}
+.gn-pad .pr.bon .rl{color:var(--text-2);}
+.gn-pad .pr.bon .cv{grid-column:span var(--k);font-size:1.05em;color:var(--text-2);}
+.gn-pad .pf .tot{grid-column:span var(--k);}
+.gn-pad .pm .mt{grid-column:span var(--k);margin:.25em 12% 0;}
+.gn-pad .pm{padding-bottom:.35em;}
+.gn-pad .gn-won{flex:none;padding-bottom:.65em;background:var(--gl-3);}
+.gn-pad .gn-won .bx{grid-column:span var(--k);display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:.18em;min-height:1.2em;}
+.gn-pad .gn-won .bx i{width:.62em;height:.62em;border-radius:.16em;background:var(--c);box-shadow:inset 0 0 0 1px rgba(0,0,0,.22);}
+.gn-pad .gn-won .bx b{margin-left:.45em;font-size:.76em;font-weight:750;color:var(--text-2);font-variant-numeric:tabular-nums;white-space:nowrap;}
+/* a narrow sheet (a tall, narrow window) keeps the deadwood and the totals */
+@container cdkp (max-width:356px){
+  .gn-pad{--k:2;}
+  .gn-pad .pr{grid-template-columns:var(--lc) repeat(2,minmax(0,2.1fr) minmax(0,1.3fr));}
+  .gn-pad .c-pt{display:none;}
+}
+@container cdkp (max-height:430px){.gn-pad .gn-won{padding-bottom:.5em;} .gn-pad .tm .avatar{display:none;}}
+@container cdkp (max-height:330px){.gn-pad .gn-won{display:none;} .gn-pad .pm{padding-bottom:.7em;}}
+/* the hand in play, at the right */
+.gn-side{overflow:hidden;}
+.gn-side.gnw{flex-direction:row;}
+.gn-col{flex:1 1 0;min-width:0;min-height:0;display:flex;flex-direction:column;}
+.gn-side.gnw > .cdk-h{flex:none;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:.2em;width:6.4em;padding-right:0;}
+.gn-side.gnw .gn-col + .gn-col{box-shadow:-1px 0 0 var(--gl-line);}
+.gn-side.gnw .gn-lt{--cw:clamp(28px,5.6cqw,40px);gap:.4em .8em;}
+.gn-side.gnw .gn-grp{--mcw:clamp(28px,5cqw,40px);}
+.gn-part{flex:none;display:flex;flex-direction:column;min-width:0;padding-bottom:.75em;}
+.gn-part + .gn-part > .cdk-lbl:first-child{margin:0 1.05em;padding:.75em .2em .35em;border-top:1px solid var(--gl-line);}
+.gn-dw{display:flex;align-items:center;gap:.8em;padding:.1em 1.25em .2em;}
+.gn-dw b{flex:none;min-width:1.25em;font-family:var(--display);font-size:2.3em;line-height:1;letter-spacing:-.02em;text-align:center;color:var(--text);font-variant-numeric:tabular-nums;}
+.gn-dw.ok b{color:var(--green);} .gn-dw.gin b{color:var(--lit-ink);text-shadow:0 0 14px var(--litg);}
+.gn-mt{position:relative;flex:1 1 0;height:.5em;margin-bottom:1.1em;border-radius:1em;background:var(--gl-2);box-shadow:inset 0 0 0 1px var(--gl-line);}
+.gn-mt i{position:absolute;left:0;top:0;bottom:0;min-width:.5em;border-radius:1em;background:color-mix(in srgb,var(--text) 46%,transparent);transition:width .4s var(--ease,ease);}
+.gn-dw.ok .gn-mt i{background:var(--green);} .gn-dw.gin .gn-mt i{background:var(--lit);box-shadow:0 0 10px var(--litg);}
+.gn-mt u{position:absolute;top:-.3em;bottom:-.3em;left:var(--at);width:2px;margin-left:-1px;border-radius:1px;background:var(--text-2);text-decoration:none;}
+.gn-mt u::after{content:attr(data-n);position:absolute;top:calc(100% + .15em);left:50%;transform:translateX(-50%);font-size:.68em;font-weight:700;color:var(--text-3);font-variant-numeric:tabular-nums;}
+.gn-grp{display:flex;align-items:center;gap:.7em;min-height:calc(var(--mcw) * 1.4 + .5em);padding:.25em 1.25em;--mcw:clamp(30px,11.5cqw,62px);}
+.gn-grp .k{flex:none;display:flex;align-items:center;gap:.45em;width:3.6em;font-size:.8em;font-weight:700;color:var(--text-2);}
+.gn-grp .k i{flex:none;width:.7em;height:.7em;border-radius:50%;background:var(--bc);}
+.gn-grp .cs{display:flex;flex-wrap:wrap;gap:.3em;--cw:var(--mcw);}
+.gn-grp .cs.meld .pcard + .pcard{margin-left:calc(var(--cw) * -.34);}
+.gn-grp .cs.meld{gap:.3em 0;}
+.gn-grp .lc{display:flex;flex-direction:column;align-items:center;gap:.2em;}
+.gn-grp .lc small{font-size:.72em;font-weight:750;line-height:1;color:var(--text-2);font-variant-numeric:tabular-nums;}
+.gn-grp .none{font-size:.84em;font-weight:650;color:var(--text-2);}
+.gn-note{padding:.1em 1.25em 0;font-size:.8em;font-weight:600;line-height:1.3;color:var(--text-3);}
+.gn-stk{display:flex;align-items:center;gap:.8em;padding:.15em 1.25em 0;}
+.gn-stk .gn-mt{margin-bottom:1.1em;}
+.gn-stk .gn-mt i{background:color-mix(in srgb,var(--text) 62%,transparent);}
+.gn-stk.low .gn-mt i{background:var(--bad-ink);}
+.gn-lt{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:.5em 1em;padding:.1em 1.25em .1em;--cw:clamp(28px,10cqw,46px);}
+.gn-lt .hd{font-size:.72em;font-weight:700;color:var(--text-3);text-align:center;}
+.gn-lt .who{display:flex;align-items:center;gap:.5em;min-width:0;font-size:.86em;font-weight:650;line-height:1.2;color:var(--text-2);}
+.gn-lt .who .avatar{flex:none;width:1.8em;height:1.8em;font-size:.85em;}
+.gn-lt .who span:last-child{min-width:0;overflow-wrap:anywhere;}
+.gn-lt .who.now span:last-child{color:var(--lit-ink);}
+.gn-lt .c{display:grid;place-items:center;min-width:var(--cw);min-height:calc(var(--cw) * 1.4);}
+.gn-lt .c .o{width:var(--cw);height:calc(var(--cw) * 1.4);border-radius:calc(var(--cw) * .1);box-shadow:inset 0 0 0 1.5px var(--gl-line);}
+.gn-lt .c small{font-size:.74em;font-weight:650;color:var(--text-3);}
+.gn-sf{display:grid;grid-template-columns:minmax(0,1fr) minmax(2.6em,auto) minmax(2.6em,auto);align-items:center;gap:.1em 1em;padding:0 1.25em;}
+.gn-sf .hd{display:flex;justify-content:center;}
+.gn-sf .hd .avatar{width:1.8em;height:1.8em;font-size:.85em;}
+.gn-sf .l{min-height:1.9em;display:flex;align-items:center;font-size:.86em;font-weight:650;line-height:1.2;color:var(--text-2);}
+.gn-sf .n{font-family:var(--display);font-size:1em;text-align:center;color:var(--text);font-variant-numeric:tabular-nums;}
+.gn-sf .n.z{color:var(--text-3);}
+.gn-notes{flex:none;list-style:none;margin:0;padding:0 1.25em .3em;display:flex;flex-direction:column;gap:.45em;}
+.gn-notes li{display:flex;gap:.55em;align-items:flex-start;font-size:.86em;font-weight:650;line-height:1.3;color:var(--text-2);}
+.gn-notes li .ico{flex:none;width:1.15em;height:1.15em;margin-top:.08em;color:var(--green);}
+.gn-notes li:not(.sum) .ico{color:var(--text-3);}
+.gn-notes li.bad .ico{color:var(--red);}
+.gn-notes li.sum{color:var(--text);}
 </style>
 </head>
 <body>
@@ -385,7 +531,7 @@
     S.discard = [d.pop()];
     S.stock = d;
     S.turn = nd; S.phase = 'upcard'; S.upStep = 0; S.took = null; S.stockOnly = false; S.turnNo = 0;
-    S.pubTook = [[], []]; S.disBy = [[], []];
+    S.pubTook = [[], []]; S.disBy = [[], []]; S.lt = [null, null]; laid = false;
     S.order = orderFor(S.hands[S.me]); S.manual = false; S.sel = null; S.newId = null; S.res = null;
     S.msg = nm(S.dealer) + ' dealt. ' + (person(nd) ? 'Want the upcard?' : '');
     S.dealAnim = true;
@@ -406,7 +552,7 @@
   function takeUp(p) { draw(p, 'discard'); }
   function passUp(p) {
     if (NET) { if (isMe(p)) netAct(function (st, me) { return nUp(st, me, false); }); return; }
-    S.upStep++;
+    S.upStep++; ltNote(S, p, { d: 'x' });
     say(p, 'Pass');
     if (S.upStep >= 2) { S.phase = 'draw'; S.turn = 1 - S.dealer; S.stockOnly = true; S.msg = 'Both passed. ' + (person(S.turn) ? 'Draw from the stock.' : ''); }
     else { S.turn = S.dealer; S.msg = nm(p) + (isYou(p) ? ' pass' : ' passes') + ' on the upcard.' + (person(S.turn) ? ' Want it?' : ''); }
@@ -418,6 +564,7 @@
     var c = src === 'discard' ? S.discard.pop() : S.stock.pop();
     S.hands[p].push(c);
     if (src === 'discard') { S.took = c.id; S.pubTook[p].push(c.id); } else S.took = null;
+    ltNote(S, p, src === 'discard' ? { d: 'p', c: c.r + c.s } : { d: 's' });
     S.stockOnly = false; S.phase = 'discard';
     if (isMe(p)) {
       S.order.push(c.id); S.newId = c.id; S.sel = null;
@@ -440,7 +587,7 @@
     if (isMe(p)) { var n = handEl.querySelector('[data-id="' + id + '"]'); if (n) fromRect = n.getBoundingClientRect(); }
     else { var b = seatEls[1].querySelector('.backs') || seatEls[1]; fromRect = b.getBoundingClientRect(); }
     S.hands[p] = h.filter(function (x) { return x.id !== id; });
-    S.discard.push(c); S.disBy[p].push(c);
+    S.discard.push(c); S.disBy[p].push(c); ltNote(S, p, { t: c.r + c.s });
     S.pubTook[p] = S.pubTook[p].filter(function (x) { return x !== id; });
     S.took = null; S.turnNo++;
     if (isMe(p)) {
@@ -454,6 +601,12 @@
     S.msg = isMe(p) ? '' : S.players[p].name + ' threw the ' + lab(c) + '.';
     save(); paint(); landDiscard(fromRect);
     next(true);
+  }
+  // Each player's last turn, for the desk's panel (what anyone at the table saw): {d: 's' drew from the stock, 'p' took
+  // from the discard pile (c: that card), 'x' passed on the upcard; t: the card thrown}. A game saved before this has none.
+  function ltNote(st, p, o) {
+    if (!st.lt) st.lt = [null, null];
+    if (o.t) { st.lt[p] = st.lt[p] && st.lt[p].d !== 'x' ? st.lt[p] : {}; st.lt[p].t = o.t; } else st.lt[p] = o;
   }
   function landDiscard(fromRect) {
     var t = pileTop(discEl);
@@ -642,14 +795,18 @@
     return t;
   }
   function showReveal() {
+    // (a desk: both hands are laid down on the felt, the hand is on the score sheet beside the table and told at the
+    // right, so nothing covers the table; the bar has the button for the next hand)
+    if (DESK && DESK.on() && !NET && S.phase === 'reveal') { if (!laid) { laid = true; paint(); } return; }
     var r = S.res, over = !r.dead && gameOver();
     var node = el('div', null, [revealNode(), totalsTable(S.rounds[S.rounds.length - 1]), el('div', { class: 'goalline', text: 'First to ' + S.target + ' wins' })]);
     var title = r.dead ? 'No winner' : r.gin ? (isYou(r.kn) ? 'Gin!' : S.players[r.kn].name + ' went gin') : r.undercut ? 'Undercut!' : (isYou(r.kn) ? 'You knocked' : S.players[r.kn].name + ' knocked');
-    Kit.sheet({
+    revSheet = Kit.sheet({
       title: title + ' in hand ' + S.hand, node: node, dismissible: false,
-      actions: [{ label: over ? 'See the result' : 'Deal next hand', primary: true, onClick: function () { over ? finish() : newHand(); } }]
+      actions: [{ label: over ? 'See the result' : 'Deal next hand', primary: true, onClick: function () { revSheet = null; over ? finish() : newHand(); } }]
     });
   }
+  var revSheet = null;   // (the sheet with the hands laid down, while it is up: a window dragged out to a desk lays them on the felt instead)
   function showScores() {
     Kit.sheet({ title: 'Scores after hand ' + S.hand, node: el('div', null, [totalsTable(null), el('div', { class: 'goalline', text: 'The first to ' + S.target + ' wins. Each hand won adds 25, and winning the game adds 100.' })]), actions: [{ label: 'Close', cls: 'btn-soft' }] });
   }
@@ -665,7 +822,7 @@
       hx: S.log.map(function (x) { var o = x.dead ? { x: 1 } : { w: x.winner, k: x.kn, g: x.gin ? 1 : 0, u: x.undercut ? 1 : 0, kd: x.kDw, dd: x.dDw, p: x.pts }; if (x.cards) o.c = x.cards; return o; }) };
   }
   function finish() {
-    S.phase = 'over';
+    S.phase = 'over'; if (barEl && barEl.isConnected) paintBar();
     var P = S.players, w = P[0].total >= P[1].total ? 0 : 1, l = 1 - w;
     var bonus = P.map(function (p, i) { return p.wins * 25 + (i === w ? 100 : 0); });
     var fin = P.map(function (p, i) { return p.total + bonus[i]; });
@@ -689,11 +846,12 @@
       detail: ginDetail(bonus)
     });
     clearSave();
+    paintDesk();   // (a desk: the bonuses and the final totals are on the score sheet behind the results)
     var rank = [w, l].map(function (i) { return { name: P[i].name, score: fin[i], color: Kit.color(i), cpu: P[i].cpu }; });
     Kit.win({
       title: isYou(w) ? 'You win!' : P[w].name + ' wins', icon: P[w].cpu ? 'bot' : 'trophy', lose: !!P[w].cpu,
       sub: 'Hands ' + P[w].total + ' + game bonus 100 + ' + P[w].wins + ' × 25 line bonus', rank: rank,
-      again: function () { S = freshGame(S.players, S.target, S.mode); undoStack = []; Kit.gameStart(); newHand(); },
+      again: function () { S = freshGame(S.players, S.target, S.mode); undoStack = []; laid = false; Kit.gameStart(); newHand(); },
       look: 'Look at the table',
       setup: function () { token++; clearSave(); showSetup(); }
     });
@@ -704,7 +862,7 @@
   function clearUndo() { undoStack = []; }
   function undo() {
     if (!undoStack.length) return Kit.toast('Nothing to undo this hand');
-    token++; S = JSON.parse(undoStack.pop()); S.dealAnim = false; Kit.sfx('whoosh'); Kit.toast('Undone'); save(); render(); next(true);
+    token++; S = JSON.parse(undoStack.pop()); S.dealAnim = false; laid = false; Kit.sfx('whoosh'); Kit.toast('Undone'); save(); render(); next(true);
   }
 
   // ── Human actions ─────────────────────────────────────────────────────────
@@ -726,11 +884,24 @@
     if (!myTurn('discard')) { if (myTurn('draw')) Kit.toast('Draw a card first'); return; }
     if (id === S.took) { Kit.haptic('error'); Kit.toast("You just picked that up. Keep it this turn."); return; }
     if (S.sel === id) { snapshot(); discardCard(S.me, id, false); return; }
-    S.sel = id; Kit.sfx('tap'); Kit.haptic('light'); paintHand(); paintBar(); paintSeats();
+    S.sel = id; Kit.sfx('tap'); Kit.haptic('light'); paintHand(); paintBar(); paintSeats(); paintDesk();
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
-  var seatEls = [], handEl, barEl, msgEl, stockEl, discEl, feltEl;
+  var seatEls = [], handEl, barEl, msgEl, stockEl, discEl, feltEl, sortRow;
+  var DESK = Cards.desk(app), deskKey = '', deskRounds = -1, laid = false;   // (a large window: cards.js; laid: the hands lie on the felt)
+  // (eleven cards side by side where the window is wide enough for them: the hand's cards for those shapes of window)
+  if (DESK) (function () {
+    var D = Cards.DESK, H = 'html.cdesk.cdesk-on #app.stage > .chand', st = document.createElement('style');
+    st.textContent = '@media ' + D.wide + '{' + H + '{--cw:clamp(84px,min(8.35vw,12.5dvh),210px);}}\n@media ' + D.square + '{' + H + '{--cw:clamp(76px,min(8.3vw,10.5dvh),210px);}' +
+      // (a nearly square window: the two panels share the left column evenly, so the hand in play keeps its last turns)
+      'html.cdesk.cdesk-on #app.stage:has(> .ctable){grid-template-rows:minmax(0,1fr) minmax(0,1fr) auto auto auto;}}';
+    document.head.appendChild(st);
+    // (cards.js turns html.cdesk-on on and off a moment after the window's own resize is heard: the hand is fitted
+    // again once it has)
+    var m = window.matchMedia ? matchMedia([D.wide, D.strip, D.square, D.tall].join(', ')) : null, turn = function () { window.dispatchEvent(new Event('resize')); };
+    if (m) { if (m.addEventListener) m.addEventListener('change', turn); else if (m.addListener) m.addListener(turn); }
+  })();
   function render() {
     app.innerHTML = '';
     var table = el('div', { class: 'ctable wood' });
@@ -743,14 +914,16 @@
     msgEl = el('div', { class: 'cmsg' });
     feltEl.appendChild(seatEls[1]); feltEl.appendChild(piles); feltEl.appendChild(msgEl); feltEl.appendChild(seatEls[0]);
     table.appendChild(feltEl); app.appendChild(table);
-    app.appendChild(el('div', { class: 'csort-row' }, [sortT.el]));
+    sortRow = el('div', { class: 'csort-row' }, [sortT.el]); app.appendChild(sortRow);
     handEl = el('div', { class: 'chand' }); app.appendChild(handEl);
     barEl = el('div', { class: 'cbar' }); app.appendChild(barEl);
+    if (DESK) { app.appendChild(DESK.l); app.appendChild(DESK.r); }
+    if (laid && !(S.res && (S.phase === 'reveal' || S.phase === 'over'))) laid = false;
     bindDrag();
     paint();
     if (S.phase === 'reveal' && !NET) setTimeout(showReveal, 200);
   }
-  function paint() { paintSeats(); paintPiles(); paintHand(); paintBar(); msgEl.textContent = S.msg || ''; }
+  function paint() { paintSeats(); paintPiles(); paintLaid(); paintHand(); paintBar(); msgEl.textContent = S.msg || ''; paintDesk(); }
   function pileTop(p) { return p ? p.querySelector('.top') : null; }
   function paintPiles() {
     stockEl.innerHTML = ''; discEl.innerHTML = '';
@@ -805,6 +978,8 @@
   }
   function paintHand() {
     handEl.innerHTML = '';
+    if (handEl.hidden !== laid) { handEl.hidden = laid; sortRow.hidden = laid; }   // (laid down on the felt: nothing left to hold)
+    if (laid) return;
     var h = S.hands[S.me];
     if (S.cover) {   // between two people's turns: card backs only
       h.forEach(function (c, i) { var n = Kit.card('', '', { back: true }); n.style.setProperty('--i', String(i)); handEl.appendChild(n); });
@@ -845,7 +1020,10 @@
     var cards = handEl.querySelectorAll('.pcard'); if (!cards.length) return;
     var gaps = handEl.querySelectorAll('.pcard.gap').length, gw = 10;
     var w = handEl.clientWidth - 16, cw = cards[0].offsetWidth || 60, n = cards.length;
-    var ov = n > 1 ? Math.min(4, (w - cw - gaps * gw) / (n - 1) - cw) : 0;
+    var big = DESK && DESK.on(), lim = big ? Math.max(4, Math.round(cw * .04)) : 4;   // (a desk: the gaps grow with the cards)
+    if (big) gw = Math.max(10, Math.round(cw * .13));
+    var ov = n > 1 ? Math.min(lim, (w - cw - gaps * gw) / (n - 1) - cw) : 0;
+    if (big && ov < 0 && gw > 10) { gw = 10; ov = Math.min(lim, (w - cw - gaps * gw) / (n - 1) - cw); }
     if (ov < -cw * .72) { gw = 4; ov = Math.min(4, (w - cw - gaps * gw) / (n - 1) - cw); }
     ov = Math.max(ov, -cw * .78);
     handEl.style.setProperty('--overlap', ov + 'px');
@@ -868,6 +1046,12 @@
   }
   function paintBar() {
     barEl.innerHTML = '';
+    if (S.phase === 'reveal' && laid && !NET) {
+      var over = !S.res.dead && gameOver();
+      barEl.appendChild(el('span', { class: 'hint', text: S.res.dead ? 'Hand ' + S.hand + ' is a draw.' : 'Hand ' + S.hand + ' is on the score sheet.' }));
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: over ? 'See the result' : 'Deal next hand', onclick: function () { if (!S || S.phase !== 'reveal' || NET) return; over ? finish() : newHand(); } }));
+      return;
+    }
     if (S.phase === 'reveal' || S.phase === 'over' || S.cover) return;
     if (myTurn('upcard')) {
       var top = S.discard[S.discard.length - 1];
@@ -945,7 +1129,216 @@
     handEl.addEventListener('pointerup', end);
     handEl.addEventListener('pointercancel', function (e) { if (d && d.on) end(e); else d = null; });
   }
-  window.addEventListener('resize', function () { if (handEl && S && S.hands) { fanHand(); if (!S.cover) brackets(best(S.hands[S.me])); } });
+  window.addEventListener('resize', function () {
+    if (!handEl || !S || !S.hands) return;
+    // (hands laid on the felt, and the window is no longer a desk: they go onto the sheet a phone and a tablet get)
+    if (laid && DESK && !DESK.on()) { laid = false; paint(); if (S.phase === 'reveal' && !NET) showReveal(); }
+    else if (!laid && revSheet && DESK && DESK.on() && S.phase === 'reveal' && !NET) { var sh = revSheet; revSheet = null; try { sh.close(); } catch (e) {} showReveal(); }
+    if (!laid) { fanHand(); if (!S.cover) brackets(best(S.hands[S.me])); }
+    paintDesk();
+  });
+
+  // ── A large window (Cards.desk) ───────────────────────────────────────────
+  // When a hand ends at a desk, both hands are laid down on the felt itself: the other player's across the table,
+  // yours nearest you, each meld together, the cards laid off ringed in green, and what the hand scored between them.
+  function paintLaid() {
+    var on = laid && S.res && (S.phase === 'reveal' || S.phase === 'over');
+    if (laid && !on) laid = false;
+    var old = feltEl.querySelector('.gd-lay'), key = S.hand + ':' + S.me;
+    feltEl.classList.toggle('laid', !!on);
+    if (!on) { if (old) old.remove(); return; }
+    if (old && old.dataset.k === key) return;
+    if (old) old.remove();
+    var box = revealNode(), r = S.res;
+    box.className = 'gd-lay rv'; box.dataset.k = key;
+    if (!r.dead) {
+      var ps = box.querySelectorAll('.rv-p'), res = box.querySelector('.rv-res');   // (the knocker's, then the other player's)
+      var mineP = isMe(r.kn) ? ps[0] : ps[1], theirP = isMe(r.kn) ? ps[1] : ps[0];
+      mineP.classList.add('bot');
+      box.appendChild(theirP); box.appendChild(res); box.appendChild(mineP);
+    }
+    feltEl.appendChild(box);
+  }
+  // Beside the table at a desk: the score sheet at the left (every hand: each player's deadwood with who knocked, went
+  // gin or undercut, what the winner scored and the running totals; the hand in play lit; then the totals, how near
+  // each is to the score the game is played to, the hands each has won, and the bonuses once the game is over) and
+  // the hand in play at the right (how the hand you can see counts, the stock, each player's last turn, the game so
+  // far; once a hand is over, what happened in sentences). Both are drawn from the game as it stands, and only when
+  // a desk layout shows: a phone and a tablet never draw them. Nothing a real table hides is on them.
+  function seatDisc(p) { return el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: S.players[p].cpu ? Kit.icon('bot') : Kit.esc(S.players[p].name.charAt(0).toUpperCase()) }); }
+  function chip(text, cls) { return '<b class="gn-chip' + (cls ? ' ' + cls : '') + '">' + text + '</b>'; }
+  function oneViewer() { return !!NET || humans() < 2; }
+  function paintDesk() {
+    if (!DESK) return;
+    if (!DESK.on() || !S || !S.players || !S.hands || !S.rounds || !handEl || !DESK.l.isConnected) { deskKey = ''; return; }
+    var key = JSON.stringify([S.hand, S.phase, S.turn, S.turnNo, S.upStep, S.rounds.length, S.players, S.me, !!S.cover, S.sel, (S.hands[S.me] || []).map(function (c) { return c.id; }), S.stock.length, S.lt, laid, S.dealer, S.target, !!NET, S.winner,
+      DESK.l.clientWidth, DESK.l.clientHeight, DESK.r.clientWidth, DESK.r.clientHeight]);
+    if (key === deskKey) return;
+    deskKey = key;
+    paintSheet(); paintSide();
+  }
+  // (the panels are sized by the page's layout: drawn again when they change, so each keeps what fits it)
+  if (DESK && window.ResizeObserver) { var deskRO = new ResizeObserver(function () { if (S && S.players && handEl) paintDesk(); }); deskRO.observe(DESK.l); deskRO.observe(DESK.r); }
+  if (DESK && document.fonts && document.fonts.ready) document.fonts.ready.then(function () { deskKey = ''; if (S && S.players && S.hands && handEl) paintDesk(); });
+  function paintSheet() {
+    var P = S.players, over = S.phase === 'over', playing = /^(upcard|draw|discard)$/.test(S.phase), mine = oneViewer() ? S.me : -1;
+    var inner = el('div', { class: 'cdk-in' }, [el('div', { class: 'cdk-h' }, [el('h2', { text: 'Score sheet' })])]);
+    DESK.l.innerHTML = ''; DESK.l.appendChild(inner);
+    var root = el('div', { class: 'cdk-pad gn-pad', style: { '--mt': String(Math.max(0, mine)) } });
+    if (mine >= 0) root.appendChild(el('div', { class: 'gn-meb' }));
+    function cv(cls, v, mark) { return el('span', { class: 'cv ' + cls, html: (v == null ? '' : v) + (mark ? '<i class="mk">' + mark + '</i>' : '') }); }
+    function row(cls, label, cells) { return el('div', { class: 'pr ' + cls }, [el('span', { class: 'rl', text: label == null ? '' : String(label) })].concat(cells)); }
+    root.appendChild(row('ph gn-tms', '', [0, 1].map(function (p) { return el('span', { class: 'tm' + (p === mine ? ' me' : '') }, [seatDisc(p), el('span', { text: P[p].name })]); })));
+    root.appendChild(row('gn-hd', '', [0, 1].reduce(function (a) { return a.concat([el('span', { text: 'Deadwood' }), el('span', { class: 'c-pt', text: 'Score' }), el('span', { text: 'Total' })]); }, [])));
+    // (a hand's deadwood and who knocked come from its entry in the log; a hand from before the log was kept has its score alone)
+    var body = el('div', { class: 'pb' }), log = S.log || [], off = S.rounds.length - log.length, tot = [0, 0], just = deskRounds >= 0 && S.rounds.length === deskRounds + 1;
+    S.rounds.forEach(function (r, i) {
+      var x = log[i - off], cls = just && i === S.rounds.length - 1 ? 'just' : '';
+      tot[0] += r[0]; tot[1] += r[1];
+      if (x && x.dead) { body.appendChild(row(cls, i + 1, [el('span', { class: 'gn-nw', text: 'No winner' })])); return; }
+      body.appendChild(row(cls, i + 1, [0, 1].reduce(function (a, p) {
+        var dw = '', mk = '';
+        if (x) { dw = p === x.kn ? x.kDw : x.dDw; mk = p === x.kn ? (x.gin ? chip('Gin', 'gin') : chip('Knock')) : x.undercut ? chip('Undercut', 'ok') : ''; }
+        return a.concat([cv('', dw, mk), cv('c-pt pts' + (r[p] ? ' win' : ''), r[p] ? '+' + r[p] : ''), cv('tot', tot[p])]);
+      }, [])));
+    });
+    if (playing) body.appendChild(row('live', S.hand, [0, 1].reduce(function (a, p) { return a.concat([cv('', '', p === S.dealer ? chip('Dealer', 'dl') : ''), cv('c-pt', ''), cv('tot', '')]); }, [])));
+    // the game is over: the bonuses, as the rules count them (25 for each hand won, 100 for the game)
+    var w = over ? (S.winner != null ? S.winner : P[0].total >= P[1].total ? 0 : 1) : -1, bonus = [0, 0];
+    if (over) {
+      bonus = P.map(function (p, i) { return p.wins * 25 + (i === w ? 100 : 0); });
+      body.appendChild(row('bon', 'Hands', [0, 1].map(function (p) { return cv('', P[p].wins ? '+' + P[p].wins * 25 : '0'); })));
+      body.appendChild(row('bon', 'Game', [0, 1].map(function (p) { return cv('', p === w ? '+100' : ''); })));
+    }
+    root.appendChild(body);
+    var fin = P.map(function (p, i) { return p.total + bonus[i]; }), lead = !S.rounds.length || fin[0] === fin[1] ? -1 : fin[0] > fin[1] ? 0 : 1;
+    root.appendChild(row('pf', over ? 'Final' : 'Total', [0, 1].map(function (p) { return cv('tot' + (p === lead ? ' lead' : ''), fin[p]); })));
+    root.appendChild(row('pm', 'to ' + S.target, [0, 1].map(function (p) {
+      return el('i', { class: 'mt', style: { '--c': Kit.color(p) } }, [el('b', { style: { width: Math.round(Math.max(0, Math.min(1, P[p].total / S.target)) * 100) + '%' } })]);
+    })));
+    root.appendChild(row('gn-won', 'Won', [0, 1].map(function (p) {
+      var pips = ''; for (var i = 0; i < Math.min(P[p].wins, 12); i++) pips += '<i></i>';
+      return el('span', { class: 'bx', style: { '--c': Kit.color(p) }, html: pips + '<b>' + P[p].wins + '</b>' });
+    })));
+    inner.appendChild(root);
+    // (the newest hand stays in view when the sheet changes height, the bar beside it growing or a resize, and with
+    // more hands than fit, the sheet shows whole lines: what is left over of a line stays blank under the heading)
+    function snap() {
+      var first = body.firstElementChild; if (!first) return;
+      var rh = first.getBoundingClientRect().height, cur = parseFloat(body.style.marginTop) || 0, full = body.clientHeight + cur;
+      var want = rh > 4 && body.scrollHeight > full + 1 ? full % rh : 0; if (want < 1 || rh - want < 1) want = 0;
+      if (Math.abs(want - cur) > .5) body.style.marginTop = want ? want + 'px' : '';
+      body.scrollTop = body.scrollHeight;
+    }
+    snap();
+    if (window.ResizeObserver) new ResizeObserver(snap).observe(body);
+    deskRounds = S.rounds.length;
+    inner.appendChild(el('div', { class: 'cdk-goal', text: 'The first to reach ' + S.target + ' wins. The winner then adds 100, and every hand won adds 25.' }));
+  }
+  // what happened in the hand just ended, as sentences
+  function handNotes() {
+    var r = S.res, out = [], P = S.players;
+    if (!r) return out;
+    if (r.dead) return [{ text: 'The stock ran down to 2 cards and nobody knocked, so nobody scores. ' + (isYou(S.dealer) ? 'You deal' : P[S.dealer].name + ' deals') + ' again.' }];
+    var K = nm(r.kn), D = nm(r.df), kY = isYou(r.kn), dY = isYou(r.df), bad = oneViewer() && !isMe(r.winner), n = (r.dLays || []).length;
+    var sc = function (y) { return y ? ' score ' : ' scores '; }, pts = r.pts + (r.pts === 1 ? ' point.' : ' points.');
+    if (r.gin) {
+      out.push({ text: K + ' went gin, with no deadwood at all.' });
+      out.push({ text: D + (dY ? ' were' : ' was') + ' left with ' + r.dDw + ' deadwood, and nothing can be laid off on gin.' });
+      out.push({ sum: 1, bad: bad, text: K + sc(kY) + r.dDw + ' and 25 more for gin, ' + pts });
+      return out;
+    }
+    out.push({ text: K + ' knocked with ' + r.kDw + ' deadwood.' });
+    out.push({ text: n ? D + ' laid off ' + n + (n === 1 ? ' card on ' : ' cards on ') + (kY ? 'your' : Kit.poss(P[r.kn].name)) + ' melds and ' + (dY ? 'were' : 'was') + ' left with ' + r.dDw + '.' : D + ' had ' + r.dDw + ' deadwood.' });
+    if (r.undercut) out.push({ sum: 1, bad: bad, text: (r.kDw === r.dDw ? 'That is the same as the knock, so ' : 'That is less than the knock, so ') + D + ' undercut ' + (kY ? 'you' : P[r.kn].name) + ' and' + sc(dY) +
+      (r.kDw === r.dDw ? '25 points for it.' : 'the difference of ' + (r.kDw - r.dDw) + ' and 25 more, ' + pts) });
+    else out.push({ sum: 1, bad: bad, text: K + sc(kY) + 'the difference, ' + pts });
+    return out;
+  }
+  function paintSide() {
+    var P = S.players, PW = DESK.r.clientWidth, PH = DESK.r.clientHeight;
+    if (PW < 60 || PH < 60) { DESK.r.innerHTML = ''; return; }
+    var over = S.phase === 'over', ended = over || S.phase === 'reveal', r = S.res, rowMode = PW >= 460 && PW >= PH * 1.25;
+    function part(keep, kids) { var p = el('div', { class: 'gn-part' }, kids); p.dataset.keep = String(keep); return p; }
+    function lblRow(a, b) { return el('div', { class: 'cdk-lbl' }, [el('span', { text: a }), el('span', { text: b || '' })]); }
+    function face(code) { return Kit.card(code.slice(0, -1), code.slice(-1)); }
+    var sub = ended ? (r && r.dead ? 'No winner' : r && r.gin ? 'Gin' : r && r.undercut ? 'Undercut' : r ? 'Knock' : '') : S.phase === 'upcard' ? 'The upcard' : 'Turn ' + (S.turnNo + 1);
+    var head = el('div', { class: 'cdk-h' }, [el('h2', { text: 'Hand ' + S.hand }), el('small', { text: sub })]);
+    var groups = [[], [], []];
+    if (ended) {
+      var ul = el('ul', { class: 'gn-notes' });
+      handNotes().forEach(function (n) { ul.appendChild(el('li', { class: (n.bad ? 'bad' : '') + (n.sum ? ' sum' : ''), html: (n.sum ? Kit.icon(n.bad ? 'close' : 'check') : Kit.icon('right')) + '<span>' + Kit.esc(n.text) + '</span>' })); });
+      if (over) {
+        var w = S.winner != null ? S.winner : P[0].total >= P[1].total ? 0 : 1, fin = P.map(function (p, i) { return p.total + p.wins * 25 + (i === w ? 100 : 0); });
+        ul.appendChild(el('li', { class: 'sum' + (oneViewer() && !isMe(w) ? ' bad' : ''), html: Kit.icon('trophy') + '<span>' + Kit.esc(nm(w) + (isYou(w) ? ' win' : ' wins') + ' the game, ' + fin[w] + ' to ' + fin[1 - w] + ' with the bonuses.') + '</span>' }));
+      }
+      if (ul.childNodes.length) groups[0].push(part(9, [ul]));
+    } else {
+      // how the hand you can see counts: what its loose cards cost, and the 10 a knock needs
+      var h = S.hands[S.me], shown = !S.cover && h && h.length && h[0].r;
+      if (shown) {
+        var rest = h.length > 10 && S.sel ? h.filter(function (c) { return c.id !== S.sel; }) : h, b = best(rest), dwv = liveDeadwood();
+        var scale = Math.max(40, dwv), tick = el('u', { style: { '--at': Math.round(10 / scale * 100) + '%' } }); tick.dataset.n = '10';
+        groups[0].push(part(9, [lblRow(oneViewer() ? 'Your deadwood' : Kit.poss(P[S.me].name) + ' deadwood', rowMode || PW < 250 ? '' : 'Knock at 10 or less'),
+          el('div', { class: 'gn-dw' + (dwv === 0 ? ' gin' : dwv <= 10 ? ' ok' : '') }, [el('b', { text: String(dwv) }), el('div', { class: 'gn-mt' }, [el('i', { style: { width: Math.round(dwv / scale * 100) + '%' } }), tick])])]));
+        var lg = el('div', { class: 'gn-grp' }, [el('span', { class: 'k', text: 'Loose' })]);
+        if (b.dead.length) {
+          var cs = el('div', { class: 'cs' });
+          b.dead.slice().sort(function (x, y) { return val(y) - val(x) || suitRank(x, y); }).forEach(function (c) { cs.appendChild(el('span', { class: 'lc' }, [Kit.card(c.r, c.s), el('small', { text: String(val(c)) })])); });
+          lg.appendChild(cs);
+        } else lg.appendChild(el('span', { class: 'none', text: 'Every card is in a meld.' }));
+        var lk = [lg];
+        if (rest.length > 10 && b.dead.length) lk.push(el('div', { class: 'gn-note', text: 'One of these eleven cards is still to throw.' }));
+        groups[0].push(part(6, lk));
+        if (b.melds.length) groups[0].push(part(2, b.melds.map(function (m) {
+          var ms = el('div', { class: 'cs meld' });
+          m.slice().sort(function (x, y) { return RV[x.r] - RV[y.r] || suitRank(x, y); }).forEach(function (c) { ms.appendChild(Kit.card(c.r, c.s)); });
+          return el('div', { class: 'gn-grp' }, [el('span', { class: 'k', text: isSet(m) ? 'Set' : 'Run' }), ms]);
+        })));
+      }
+      // each player's last turn: what they drew (a card's back for the stock, the card itself from the discard pile) and threw
+      var lt = S.lt || [null, null], grid = el('div', { class: 'gn-lt' }, [el('span'), el('span', { class: 'hd', text: 'Drew' }), el('span', { class: 'hd', text: 'Threw' })]);
+      [1 - S.me, S.me].forEach(function (p) {
+        var x = lt[p];
+        grid.appendChild(el('span', { class: 'who' + (S.turn === p ? ' now' : '') }, [seatDisc(p), el('span', { text: P[p].name })]));
+        grid.appendChild(el('span', { class: 'c' }, [!x || !x.d ? el('span', { class: 'o' }) : x.d === 'x' ? el('small', { text: 'Passed' }) : x.d === 'p' && x.c ? face(x.c) : Kit.card('', '', { back: true })]));
+        grid.appendChild(el('span', { class: 'c' }, [x && x.t ? face(x.t) : el('span', { class: 'o' })]));
+      });
+      groups[1].push(part(7, [lblRow('Last turn'), grid]));
+      var left = S.stock.length;
+      groups[1].push(part(5, [lblRow('Stock', left + (left === 1 ? ' card' : ' cards')), el('div', { class: 'gn-stk' + (left <= 6 ? ' low' : '') }, [el('div', { class: 'gn-mt' }, [el('i', { style: { width: Math.round(Math.max(0, left - 2) / 29 * 100) + '%' } })])])]));
+      groups[1].push(part(1, [el('div', { class: 'gn-note', text: 'A hand is a draw if the stock runs down to 2 cards.' })]));
+    }
+    // the game so far
+    if (S.rounds.length && (!rowMode || PW >= 820 || ended)) {
+      var gins = [0, 0], cuts = [0, 0], bigs = [0, 0], sf = el('div', { class: 'gn-sf' }, [el('span'), el('span', { class: 'hd' }, [seatDisc(0)]), el('span', { class: 'hd' }, [seatDisc(1)])]);
+      (S.log || []).forEach(function (x) { if (x.dead) return; if (x.gin) gins[x.kn]++; if (x.undercut) cuts[x.winner]++; bigs[x.winner] = Math.max(bigs[x.winner], x.pts); });
+      [['Hands won', P.map(function (p) { return p.wins; })], ['Gin', gins], ['Undercuts', cuts], ['Best hand', bigs], ['Points to go', P.map(function (p) { return Math.max(0, S.target - p.total); })]].forEach(function (rw) {
+        sf.appendChild(el('span', { class: 'l', text: rw[0] }));
+        rw[1].forEach(function (v) { sf.appendChild(el('span', { class: 'n' + (v ? '' : ' z'), text: String(v) })); });
+      });
+      groups[ended ? 1 : 2].push(part(3, [lblRow('So far this game'), sf]));
+    }
+    var inner = el('div', { class: 'cdk-in gn-side' + (rowMode ? ' gnw' : '') }, [head]), boxes;
+    DESK.r.innerHTML = ''; DESK.r.appendChild(inner);
+    if (rowMode) {
+      boxes = groups.filter(function (g) { return g.length; }).map(function (g) { var c = el('div', { class: 'gn-col' }); g.forEach(function (p) { c.appendChild(p); }); inner.appendChild(c); return c; });
+    } else { groups.forEach(function (g) { g.forEach(function (p) { inner.appendChild(p); }); }); boxes = [inner]; }
+    // a panel too short for everything keeps what matters most: whole parts go, least needed first, and nothing is cut
+    boxes.forEach(function (bx) {
+      var kids = [].filter.call(bx.children, function (n) { return n.dataset && n.dataset.keep; });
+      if (bx.scrollHeight > bx.clientHeight + 1) {
+        kids.forEach(function (n) { n.style.display = 'none'; });
+        kids.slice().sort(function (x, y) { return y.dataset.keep - x.dataset.keep; }).forEach(function (n) {   // (the most needed first, each kept if it still fits)
+          n.style.display = '';
+          if (bx.scrollHeight > bx.clientHeight + 1 || (n.dataset.keep === '1' && !kids.some(function (x) { return x.dataset.keep === '5' && x.style.display !== 'none'; }))) n.style.display = 'none';
+        });
+        kids.forEach(function (n) { if (n.style.display === 'none') n.remove(); });
+      }
+      if (rowMode && !bx.children.length) bx.remove();
+    });
+  }
+
 
   // ── Online (turnnet.js) ───────────────────────────────────────────────────
   // The table holds the whole game; table seat 0 and 1 are the game's players 0 and 1. Each device draws its own seat
@@ -979,13 +1372,13 @@
     st.discard = [d.pop()];
     st.stock = d;
     st.turn = nd; st.phase = 'upcard'; st.upStep = 0; st.took = null; st.stockOnly = false; st.turnNo = 0;
-    st.pubTook = [[], []]; st.disBy = [[], []];
+    st.pubTook = [[], []]; st.disBy = [[], []]; st.lt = [null, null];
   }
   // The moves, on the table's state (S is st while they run): each returns the move, or null when it isn't allowed
   function nUp(st, p, take) {
     if (st.phase !== 'upcard' || st.turn !== p) return null;
     if (take) return nDraw(st, p, 'discard');
-    st.upStep++;
+    st.upStep++; ltNote(st, p, { d: 'x' });
     if (st.upStep >= 2) { st.phase = 'draw'; st.turn = 1 - st.dealer; st.stockOnly = true; }
     else st.turn = st.dealer;
     return { k: 'pass', p: p };
@@ -996,6 +1389,7 @@
     var c = src === 'discard' ? st.discard.pop() : st.stock.pop();
     st.hands[p].push(c);
     if (src === 'discard') { st.took = c.id; st.pubTook[p].push(c.id); } else st.took = null;
+    ltNote(st, p, src === 'discard' ? { d: 'p', c: c.r + c.s } : { d: 's' });
     st.stockOnly = false; st.phase = 'discard';
     return src === 'discard' ? { k: 'take', p: p, c: c } : { k: 'stock', p: p };
   }
@@ -1005,7 +1399,7 @@
     var rest = h.filter(function (x) { return x.id !== id; });
     if (knock && best(rest).dw > 10) return null;
     st.hands[p] = rest;
-    st.discard.push(c); st.disBy[p].push(c);
+    st.discard.push(c); st.disBy[p].push(c); ltNote(st, p, { t: c.r + c.s });
     st.pubTook[p] = st.pubTook[p].filter(function (x) { return x !== id; });
     st.took = null; st.turnNo++;
     var mv = { k: 'disc', p: p, c: c };
@@ -1294,14 +1688,22 @@
       nodes.forEach(function (n) {
         for (var p = n.parentElement; p && p !== root; p = p.parentElement) if (set.has(p)) return;   // (moves with its seat)
         var a = before.get(n) || (n.dataset && n.dataset.id && beforeId[n.dataset.id]), b = n.getBoundingClientRect();
-        if (!a || !b.width || !n.animate) return;
+        if (!b.width || !n.animate) return;
+        // (a desk panel that wasn't showing, or that changes shape and so lays its contents out anew, comes up in its
+        // new place; stretched from the old shape its words would be pulled out of true)
+        var panel = n.classList.contains('cdk-panel');
+        if (panel && (!a || Math.abs((a.width / b.width) / (a.height / b.height) - 1) > .12)) {
+          try { n.animate([{ opacity: 0, scale: '.97' }, { opacity: 1, scale: '1' }], { duration: 360, easing: 'cubic-bezier(.25,.8,.25,1)' }); } catch (e) {}
+          return;
+        }
+        if (!a) return;
         var dx = a.left + a.width / 2 - b.left - b.width / 2, dy = a.top + a.height / 2 - b.top - b.height / 2, sx = a.width / b.width, sy = a.height / b.height;
         if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < .02 && Math.abs(sy - 1) < .02) return;
         try { n.animate([{ translate: dx + 'px ' + dy + 'px', scale: sx + ' ' + sy }, { translate: '0px 0px', scale: '1 1' }], { duration: 440, easing: 'cubic-bezier(.25,.8,.25,1)' }); } catch (e) {}
       });
     });
   });
-})('.pcard, .cseat, .gpile, .cmsg, .brk');
+})('.pcard, .cseat, .gpile, .cmsg, .brk, .cdk-panel');
 </script>
 </body>
 </html>
