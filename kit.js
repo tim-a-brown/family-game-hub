@@ -109,6 +109,8 @@
     if (t.id === 'night') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', t.id);
     root.style.setProperty('--theme-accent', t.a);   // the theme's own accent (games set --accent to their colour)
     meta('theme-color', t.bar || t.bg);
+    // (in a computer's window the page is the game's frame: the window's own bar takes the color from the page at the top)
+    try { if (window.parent !== window && window.parent.__gnFit) { var pd = window.parent.document, pm = pd.querySelector('meta[name="theme-color"]'); if (!pm) { pm = pd.createElement('meta'); pm.name = 'theme-color'; pd.head.appendChild(pm); } pm.content = t.bar || t.bg; pd.body.style.background = t.light ? t.bg : '#0e0f1b'; } } catch (e) {}
     meta('apple-mobile-web-app-status-bar-style', t.light ? 'default' : 'black');
   }
   // Night glass in color: the page, the setup's Players card and the results card take the game's category color (--h).
@@ -544,6 +546,8 @@
   // Four-color suits (Tim, 2026-11-15: a setting, off by default): clubs green and diamonds blue on every standard card,
   // so the four suits differ at a glance (kit.css :root.k-4c). It follows the account like the other settings.
   function fourColor() { return lsGet('gn_4color', '0') === '1'; }
+  function fitOn() { return lsGet('gn_fit', '1') !== '0'; }
+  function deskPointer() { try { return !!window.matchMedia && matchMedia('(hover: hover) and (pointer: fine)').matches; } catch (e) { return false; } }
   function applyFourColor() { try { doc.documentElement.classList.toggle('k-4c', fourColor()); } catch (e) {} }
   applyFourColor();
   function sfx(name, vol) { if (!soundOn()) return; loadSounds(); try { if (!playSample(name, vol) && !(vol != null && vol < 0.5)) (SFX[name] || SFX.tap)(); } catch (e) {} }
@@ -1524,6 +1528,11 @@
     if (opts.sync) item(G, 'sync', 'Sync now', syncNowItem, '', syncSub());
     if (game && game.cat === 'casino' && window.Casino && Casino.showHistory) item(G, 'chart', 'Bankroll history', function () { Casino.showHistory(); });
     toggle('Settings', 'sound', 'Sound', '', soundOn, function () { lsSet('gn_sound', soundOn() ? '0' : '1'); sfx('good'); });
+    // (a computer only: games are laid out at a tablet's size and scaled to fill the window; see the top of sync.js)
+    if (deskPointer()) toggle('Settings', 'tiles', 'Fit games to the window', '', fitOn, function () {
+      lsSet('gn_fit', fitOn() ? '0' : '1'); sfx('good');
+      if (/\/games\//.test(location.pathname)) setTimeout(function () { try { (window.parent && window.parent.__gnFit ? window.parent : window).location.reload(); } catch (e) { location.reload(); } }, 260);
+    });
     if ((game && /^(cards|casino)$/.test(game.cat)) || doc.querySelector('.pcard')) toggle('Settings', 'cards', 'Four-color suits', 'Clubs green and diamonds blue', fourColor, function () { lsSet('gn_4color', fourColor() ? '0' : '1'); applyFourColor(); sfx('good'); });
     item('Settings', 'palette', 'Theme', function () { themePick(); }, '', themeRec(themeGet()).name);
     item('Settings', 'clock', 'Game timer', timerSheet, '', timerStatus());
