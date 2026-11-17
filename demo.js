@@ -37,50 +37,140 @@
 (function () {
   'use strict';
   if (window.KitDemo) return;
-  // ── Pausing (Tim, 2026-11-16: "allow demos to be paused for reading") ──────────────────────────────────────────
-  // The demo page runs on a clock that can stand still: while paused, Date.now() and performance.now() don't move, a
-  // timeout or a frame waits until play is pressed with the time it had left, intervals skip their ticks, and every
-  // running animation is held. So the game's robots, its animations and the demo's own captions all wait together.
+  // ── Pausing (Tim, 2026-11-16: "allow demos to be paused for reading") and stepping back (Tim, 2026-11-17) ──────
+  // The demo page runs on a clock of its own. Paused, it stands still: Date.now() and performance.now() don't move, a
+  // timeout, an interval or a frame waits until play is pressed with the time it had left, and every running
+  // animation is held, so the game's robots, its animations and the demo's own captions all wait together.
+  // Stepping back reloads the page with &at=<beat> and plays the demo again behind the curtain on a fast clock (the
+  // deal and the robots come out the same: the dice are seeded and the robots choose the same way): time moves in
+  // steps of one frame, as many as fit in about 10 ms of each real frame, every timer firing in its turn and every
+  // frame callback getting its frame, so a game with physics sees ordinary frames; the page's CSS and Web Animations run
+  // as much faster as the clock does. At that beat's caption the clock goes back to real time and the curtain lifts.
   // (A game that kept its own handle on setTimeout or requestAnimationFrame from before demo.js loaded keeps going.)
   var W = window, PERF = W.performance;
-  var N = { st: W.setTimeout.bind(W), ct: W.clearTimeout.bind(W), si: W.setInterval.bind(W), raf: W.requestAnimationFrame.bind(W),
-    caf: W.cancelAnimationFrame.bind(W), pnow: PERF.now.bind(PERF), dnow: Date.now };
-  var PZ = { on: false, at: 0, lost: 0, anims: [] }, PSEQ = 7e8, PT = {};
-  function lost() { return PZ.lost + (PZ.on ? N.pnow() - PZ.at : 0); }
-  function vnow() { return N.pnow() - lost(); }
-  PERF.now = function () { return N.pnow() - lost(); };
-  Date.now = function () { return N.dnow() - lost(); };
+  var N = { st: W.setTimeout.bind(W), ct: W.clearTimeout.bind(W), si: W.setInterval.bind(W), ci: W.clearInterval.bind(W),
+    raf: W.requestAnimationFrame.bind(W), caf: W.cancelAnimationFrame.bind(W), pnow: PERF.now.bind(PERF), dnow: Date.now };
+  var PZ = { on: false, anims: [] }, PSEQ = 7e8;
+  var CK = { v0: N.pnow(), r0: N.pnow(), rate: 1, ff: false, at: 0 }, D0 = N.dnow() - N.pnow();
+  function vnow() { return CK.ff ? CK.at : CK.v0 + (N.pnow() - CK.r0) * CK.rate; }
+  function vOf(ts) { return CK.ff ? CK.at : CK.v0 + (ts - CK.r0) * CK.rate; }
+  function setRate(r) { CK.v0 = vnow(); CK.r0 = N.pnow(); CK.rate = r; }
+  PERF.now = function () { return vnow(); };
+  Date.now = function () { return Math.round(D0 + vnow()); };
+  function rep(e) { try { (W.reportError || console.error)(e); } catch (x) {} }
+  // timers: {id, due, fn, a, iv, h (the native timer that wakes it)}
+  var TM = {};
+  function arm(t) {
+    if (t.h != null) { N.ct(t.h); t.h = null; }
+    if (CK.ff || PZ.on) return;                      // (the fast clock fires it, or play does)
+    t.h = N.st(function () { t.h = null; wake(t); }, Math.max(0, t.due - vnow()));
+  }
+  function wake(t) {
+    if (TM[t.id] !== t || CK.ff || PZ.on) return;
+    if (t.due - vnow() > 3) { arm(t); return; }
+    runT(t);
+  }
+  function runT(t) {
+    if (!t.iv) delete TM[t.id];
+    try { t.fn.apply(W, t.a); } catch (e) { rep(e); }
+    if (t.iv && TM[t.id] === t) { t.due = Math.max(t.due + t.iv, vnow()); arm(t); }
+  }
+  function addT(fn, ms, a, rep2) {
+    var id = ++PSEQ, d = Math.max(CK.ff ? 1 : 0, +ms || 0);
+    var t = TM[id] = { id: id, due: vnow() + d, fn: fn, a: a, iv: rep2 ? Math.max(1, d) : 0, h: null };
+    arm(t);
+    return id;
+  }
   W.setTimeout = function (fn, ms) {
     if (typeof fn !== 'function') return N.st.apply(W, arguments);
-    var a = [].slice.call(arguments, 2), id = ++PSEQ, due = vnow() + (+ms || 0);
-    function go() {
-      if (!(id in PT)) return;
-      var left = due - vnow();
-      if (PZ.on) { PT[id] = N.st(go, 100); return; }
-      if (left > 3) { PT[id] = N.st(go, left); return; }
-      delete PT[id]; fn.apply(W, a);
-    }
-    PT[id] = N.st(go, +ms || 0);
-    return id;
+    return addT(fn, ms, [].slice.call(arguments, 2), false);
   };
-  W.clearTimeout = function (id) { if (id in PT) { N.ct(PT[id]); delete PT[id]; } else N.ct(id); };
   W.setInterval = function (fn, ms) {
     if (typeof fn !== 'function') return N.si.apply(W, arguments);
-    var a = [].slice.call(arguments, 2);
-    return N.si(function () { if (!PZ.on) fn.apply(W, a); }, ms);
+    return addT(fn, ms, [].slice.call(arguments, 2), true);
   };
+  function clearT(id, nat) { var t = TM[id]; if (t) { if (t.h != null) N.ct(t.h); delete TM[id]; } else nat(id); }
+  W.clearTimeout = function (id) { clearT(id, N.ct); };
+  W.clearInterval = function (id) { clearT(id, N.ci); };
+  // frames: RAF id -> callback; RH its native frame; RQ the ones waiting for the fast clock's next frame
+  var RAF = {}, RH = {}, RQ = [];
+  function natFrame(id) {
+    RH[id] = N.raf(function go(ts) {
+      if (!(id in RAF)) { delete RH[id]; return; }
+      if (PZ.on) { RH[id] = N.raf(go); return; }
+      delete RH[id]; var f = RAF[id]; delete RAF[id];
+      f(vOf(ts));
+    });
+  }
   W.requestAnimationFrame = function (fn) {
-    var id = ++PSEQ;
-    function go(ts) { if (!(id in PT)) return; if (PZ.on) { PT[id] = N.raf(go); return; } delete PT[id]; fn(ts - lost()); }
-    PT[id] = N.raf(go);
+    var id = ++PSEQ; RAF[id] = fn;
+    if (CK.ff) RQ.push(id); else natFrame(id);
     return id;
   };
-  W.cancelAnimationFrame = function (id) { if (id in PT) { N.caf(PT[id]); delete PT[id]; } else N.caf(id); };
-  var setTimeout = W.setTimeout, clearTimeout = W.clearTimeout, setInterval = W.setInterval, requestAnimationFrame = W.requestAnimationFrame;
+  W.cancelAnimationFrame = function (id) {
+    if (id in RAF) { delete RAF[id]; if (id in RH) { N.caf(RH[id]); delete RH[id]; } } else N.caf(id);
+  };
+  var setTimeout = W.setTimeout, clearTimeout = W.clearTimeout, setInterval = W.setInterval, clearInterval = W.clearInterval, requestAnimationFrame = W.requestAnimationFrame;
+
+  // the fast clock
+  var FRAME = 1000 / 60, FFA = { rate: 1, snd: null, vib: false };
+  var mc = new MessageChannel(), mcFn = null;
+  mc.port1.onmessage = function () { var f = mcFn; mcFn = null; if (f) f(); };
+  function soon(f) { mcFn = f; mc.port2.postMessage(0); }
+  function animRate(r) {
+    try { doc.getAnimations().forEach(function (a) { if (Math.abs(a.playbackRate - r) > r * 0.2 + 0.01) a.playbackRate = r; }); } catch (e) {}
+  }
+  function nextDue(end) {
+    var best = null;
+    for (var k in TM) { var t = TM[k]; if (t.due <= end && (!best || t.due < best.due || (t.due === best.due && t.id < best.id))) best = t; }
+    return best;
+  }
+  function ffStart() {
+    if (CK.ff) return;
+    CK.at = vnow(); CK.ff = true;
+    for (var k in TM) arm(TM[k]);
+    Object.keys(RH).map(Number).sort(function (a, b) { return a - b; }).forEach(function (id) { N.caf(RH[id]); delete RH[id]; RQ.push(id); });
+    // quiet while it runs: no sounds, no buzzing
+    try { FFA.snd = localStorage.getItem('gn_sound'); localStorage.setItem('gn_sound', '0'); } catch (e) {}
+    try { navigator.vibrate = function () { return true; }; FFA.vib = true; } catch (e) {}
+    root.classList.add('k-demo-ff');
+    N.raf(ffFrame);
+  }
+  function ffFrame() {
+    if (!CK.ff) return;
+    var r0 = N.pnow(), v0 = CK.at, n = 0;
+    (function step() {
+      if (!CK.ff) return;
+      if (N.pnow() - r0 > 24 || n >= 60) {
+        var r = Math.max(1, Math.min(60, (CK.at - v0) / Math.max(FRAME, N.pnow() - (FFA.r || r0))));
+        FFA.r = N.pnow(); FFA.rate = r; animRate(r); T.ffFrames = (T.ffFrames || 0) + 1; T.ffSteps = (T.ffSteps || 0) + n;
+        N.raf(ffFrame); return;
+      }
+      var end = CK.at + FRAME, t = nextDue(end);
+      // (each timer in its own task, so the promises it settles run before the next one)
+      if (t) { CK.at = Math.max(CK.at, t.due); runT(t); return soon(step); }
+      CK.at = end; n++;
+      var q = RQ; RQ = [];
+      q.forEach(function (id) { var f = RAF[id]; if (!f) return; delete RAF[id]; try { f(CK.at); } catch (e) { rep(e); } });
+      soon(step);
+    })();
+  }
+  function ffStop() {
+    if (!CK.ff) return;
+    CK.v0 = CK.at; CK.r0 = N.pnow(); CK.rate = 1; CK.ff = false;
+    for (var k in TM) arm(TM[k]);
+    var q = RQ; RQ = []; q.forEach(function (id) { if (id in RAF) natFrame(id); });
+    animRate(1);
+    try { if (FFA.snd == null) localStorage.removeItem('gn_sound'); else localStorage.setItem('gn_sound', FFA.snd); } catch (e) {}
+    try { if (FFA.vib) delete navigator.vibrate; } catch (e) {}
+    root.classList.remove('k-demo-ff');
+  }
 
   var doc = document, root = doc.documentElement;
   var Q = location.search;
   var AUTO = /[?&]demoauto=1(&|$)/.test(Q), FROM_HOME = /[?&]from=home(&|$)/.test(Q);
+  // (a step back: the page again, played fast behind the curtain to this beat, paused there if it was paused)
+  var AT = +((/[?&]at=(\d+)/.exec(Q) || [])[1]) || 0, LAND_PAUSED = /[?&]pz=1(&|$)/.test(Q);
   var reduce = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
   var ABORT = { abort: true };
   var st = { aborted: false, ended: false, dots: 0, beat: 0, cap: null, ring: null, ringSpec: null, finger: null, fx: 0, fy: 0, allow: null, synth: 0, youDone: null };
@@ -126,11 +216,18 @@
     '.k-demo-strip .gi{flex:none;width:26px;height:26px;display:grid;place-items:center;}' +
     '.k-demo-strip .gi svg{width:26px;height:26px;}' +
     '@media (max-width:360px){.k-demo-strip .gi{display:none;}}' +
-    '.k-demo-dots{--d:min(7px,calc((100vw - 272px) / var(--n,10) / 2));display:flex;gap:var(--d);align-items:center;}' +
+    '.k-demo-dots{--d:min(7px,calc((100vw - 324px) / var(--n,10) / 2));display:flex;gap:var(--d);align-items:center;}' +
     '.k-demo-dots i{flex:none;width:var(--d);height:var(--d);border-radius:50%;background:rgba(255,255,255,.22);transition:background .3s,transform .3s;}' +
     '.k-demo-dots i.on{background:var(--lit,#ffd34d);box-shadow:0 0 8px rgba(255,190,60,.6);}' +
     '.k-demo-dots i.now{transform:scale(1.35);}' +
-    '.k-demo-strip .pz{margin-right:-2px;}' +
+    '.k-demo-strip .pp{flex:none;display:flex;height:42px;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);transition:opacity .25s;}' +
+    '.k-demo-strip .pp .x{width:42px;border-radius:0;background:none;box-shadow:none;transition:background .2s;}' +
+    '.k-demo-strip .pp .x + .x{box-shadow:inset 1px 0 0 rgba(255,255,255,.12);}' +
+    '.k-demo-strip .pp .x:active{transform:none;background:rgba(255,255,255,.12);}' +
+    '.k-demo-strip .bk svg{width:17px;height:17px;transition:transform .2s;}' +
+    '.k-demo-strip .bk:active svg{transform:translateX(-3px);}' +
+    'html.k-demo-ff .k-demo-strip .pp{opacity:.35;pointer-events:none;}' +
+    'html.k-demo-ff > :not(body):not(.k-demo-strip){visibility:hidden!important;}' +
     '.k-demo-strip .pz.on{background:linear-gradient(180deg,var(--gold-hi,#ffe486),var(--gold-lo,#f6b93b));color:var(--gold-ink,#2a1c00);box-shadow:0 0 16px rgba(255,190,60,.45);}' +
     '.k-demo-strip .pz svg{width:18px;height:18px;}' +
     '.k-demo-strip .sk{flex:none;height:42px;padding:0 16px;border:0;border-radius:14px;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);color:#f3f1fb;font:750 15px/1 var(--font,system-ui);cursor:pointer;}' +
@@ -184,7 +281,7 @@
     '.k-demo-end .kd-acts{display:flex;flex-direction:column;gap:10px;width:auto;max-width:none;margin:0;}' +
     '.k-demo-end .btn{width:100%;}' +
     '@media (orientation:landscape) and (max-height:520px){.k-demo-end .kd-pn{padding:22px 22px 18px;}.k-demo-end .kd-ic{width:54px;height:54px;margin-bottom:6px;}.k-demo-end p{margin-bottom:14px;}.k-demo-end .kd-acts{flex-direction:row;}.k-demo-cap{font-size:15.5px;padding:11px 16px 12px;}}' +
-    '@media (max-width:360px){.k-demo-dots{--d:min(7px,calc((100vw - 236px) / var(--n,10) / 2));}}' +
+    '@media (max-width:360px){.k-demo-strip{gap:7px;}.k-demo-strip .x{width:38px;}.k-demo-strip .pp .x{width:38px;}.k-demo-strip .sk{padding:0 12px;}}' +
     '@media (prefers-reduced-motion:reduce){.k-demo-ring::after{animation:none;}.k-demo-cap{transition:opacity .2s;transform:none;}.k-demo-rip{animation-duration:.01s;}}';
 
   var X_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
@@ -204,7 +301,12 @@
     ui.pz = el('button', 'x pz'); ui.pz.type = 'button';
     ui.pz.onclick = function () { tick(); if (PZ.on) resume(); else pause(); };
     paintPause();
-    ui.strip.appendChild(ui.x); ui.strip.appendChild(ui.mid); ui.strip.appendChild(ui.pz); ui.strip.appendChild(ui.skip);
+    // a step back, beside pause (Tim, 2026-11-17): the caption before this one, or this one from its start
+    ui.bk = el('button', 'x bk', window.Kit ? Kit.icon('stepback') : '&#9664;'); ui.bk.type = 'button';
+    ui.bk.setAttribute('aria-label', 'Go back a step');
+    ui.bk.onclick = function () { tick(); stepBack(); };
+    ui.pp = el('div', 'pp'); ui.pp.appendChild(ui.bk); ui.pp.appendChild(ui.pz);
+    ui.strip.appendChild(ui.x); ui.strip.appendChild(ui.mid); ui.strip.appendChild(ui.pp); ui.strip.appendChild(ui.skip);
     doc.addEventListener('keydown', function (e) {
       if (e.key !== ' ' || st.ended || e.target.closest && e.target.closest('input, textarea, [contenteditable]')) return;
       e.preventDefault(); e.stopPropagation(); tick(); if (PZ.on) resume(); else pause();
@@ -227,8 +329,9 @@
     root.classList.toggle('k-demo-paused', PZ.on);
   }
   function pause() {
-    if (PZ.on || st.ended) return;
-    PZ.on = true; PZ.at = N.pnow(); T.paused = true;
+    if (PZ.on || st.ended || CK.ff) return;
+    setRate(0); PZ.on = true; T.paused = true;
+    for (var k in TM) arm(TM[k]);
     PZ.anims = [];
     try {
       doc.getAnimations().forEach(function (a) {
@@ -240,7 +343,8 @@
   }
   function resume() {
     if (!PZ.on) return;
-    PZ.lost += N.pnow() - PZ.at; PZ.on = false; T.paused = false;
+    setRate(1); PZ.on = false; T.paused = false;
+    for (var k in TM) arm(TM[k]);
     PZ.anims.forEach(function (a) { try { if (a.playState === 'paused') a.play(); } catch (e) {} });
     PZ.anims = [];
     paintPause();
@@ -257,7 +361,9 @@
   function paintDots() {
     ui.dots.innerHTML = ''; ui.dots.style.setProperty('--n', Math.max(1, st.dots));
     // (whole pixels, so every dot comes out the same size)
-    var n = Math.max(1, st.dots), d = Math.max(2, Math.min(7, Math.floor((innerWidth - (innerWidth <= 360 ? 236 : 272)) / n / 2)));
+    var gi = ui.mid.querySelector('.gi'), room = ui.mid.clientWidth - (gi && gi.offsetWidth ? gi.offsetWidth + 10 : 0);
+    if (!(room > 0)) room = innerWidth - (innerWidth <= 360 ? 280 : 324);
+    var n = Math.max(1, st.dots), d = Math.max(2, Math.min(7, Math.floor(room / n / 2)));
     ui.dots.style.setProperty('--d', d + 'px');
     for (var i = 0; i < st.dots; i++) { var d = el('i'); if (i < st.beat) d.className = 'on'; if (i === st.beat - 1) d.className += ' now'; ui.dots.appendChild(d); }
   }
@@ -309,8 +415,18 @@
     var r = el('div', 'k-demo-ui k-demo-rip'); r.style.left = x + 'px'; r.style.top = y + 'px'; root.appendChild(r);
     setTimeout(function () { r.remove(); }, 600);
   }
+  // (while the fast clock runs, the table is hidden under the curtain: hit tests look through it for a moment, inside
+  // one task, so nothing is ever painted that way)
+  function see(fn) {
+    if (!CK.ff) return fn();
+    var boot = root.classList.contains('k-demo-boot'), c = ui.cur;
+    if (boot) root.classList.remove('k-demo-boot'); if (c) c.style.visibility = 'hidden';
+    try { return fn(); } finally { if (boot) root.classList.add('k-demo-boot'); if (c) c.style.visibility = ''; }
+  }
+  function efp(x, y) { return see(function () { return doc.elementFromPoint(x, y); }); }
   // a point inside the target that is really the target there (a fanned card shows only its edge)
-  function hitPoint(n) {
+  function hitPoint(n) { return see(function () { return hitPoint0(n); }); }
+  function hitPoint0(n) {
     var r = rectOf(n), best = null, bd = 1e9, cx = r.left + r.width / 2, cy = r.top + r.height / 2;
     var hide = [ui.ring, ui.finger, st.cap].filter(Boolean), old = hide.map(function (h) { return h.style.visibility; });
     hide.forEach(function (h) { h.style.visibility = 'hidden'; });
@@ -344,7 +460,7 @@
     fire('pointerdown', p.x, p.y, t);
     fire('mousedown', p.x, p.y, t);
     // (a game may redraw on pointerdown: the release goes to whatever is there now)
-    var up = doc.elementFromPoint(p.x, p.y) || t; if (inUi(up)) up = t;
+    var up = efp(p.x, p.y) || t; if (inUi(up)) up = t;
     fire('pointerup', p.x, p.y, up);
     fire('mouseup', p.x, p.y, up);
     if (up === t || t.contains(up) || up.contains(t)) fire('click', p.x, p.y, up.isConnected ? up : t);
@@ -474,14 +590,15 @@
     st.cap = c; st.capAt = o.at || null; st.capPos = o.pos; st.capPlace = o.place || null; st.avoid = o.avoid ? [].concat(o.avoid) : [];
     var g = group(o.at); placeCap(c, g.length ? g : null, o.pos);
     requestAnimationFrame(function () { c.classList.add('show'); });
-    T.says.push(text);
+    T.says.push(text); (T.caps = T.caps || []).push([st.beat, text]);
     return c;
   }
   function say(text, o) {
     check(); o = o || {};
-    if (o.dot !== false) { st.beat++; paintDots(); T.step = st.beat; }
-    var tn = resolve(o.at);
-    return (tn ? bringIn(tn) : Promise.resolve()).then(function () { check(); return sayNow(text, o); });
+    if (o.dot !== false) { st.beat++; st.beatAt = vnow(); paintDots(); T.step = st.beat; }
+    var arr = arrive();
+    return arr.then(function () { var tn = resolve(o.at); return tn ? bringIn(tn) : null; })
+      .then(function () { check(); var p = sayNow(text, o); landed(arr); return p; });
   }
   function sayNow(text, o) {
     if (o.at && o.ring !== false) ring(o.at, { spot: o.spot, pad: o.pad }); else ring(null);
@@ -509,7 +626,8 @@
   }
   function you(target, text, o) {
     check(); o = o || {};
-    st.beat++; paintDots(); T.step = st.beat;
+    st.beat++; st.beatAt = vnow(); paintDots(); T.step = st.beat;
+    var arr = arrive();
     var list = function () {
       var a = [].concat(o.allow || target).map(function (s) {
         if (typeof s === 'string') return [].slice.call(doc.querySelectorAll(s));
@@ -517,7 +635,8 @@
       });
       return [].concat.apply([], a).filter(Boolean);
     };
-    return bringIn(resolve(target) || doc.body).then(function () {
+    return arr.then(function () { return bringIn(resolve(target) || doc.body); }).then(function () {
+      landed(arr);
       st.youTarget = target;
       ring(target, { spot: o.spot !== false, pad: o.pad });
       caption(text, { at: target, you: true, pos: o.pos, avoid: o.avoid });
@@ -535,7 +654,7 @@
         var idle = 0;
         hintT = iv = setInterval(function () { if (over) return; idle++; if (idle === 5 || (idle > 5 && idle % 6 === 5)) hint(); if (o.until && o.until()) fin(); }, 1000);
         // (tests and recordings: the demo takes the player's turn for them after a moment)
-        if (AUTO) (function auto() {
+        if (AUTO || CK.ff) (function auto() {
           setTimeout(function () {
             if (over || !st.allow || st.aborted) return;
             var pick = o.autoTap ? resolve(o.autoTap) : resolve(target);
@@ -583,7 +702,7 @@
             var k = i / steps, e = way.length > 1 ? k : k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
             var x = x0 + (tx - x0) * e, y = y0 + (ty - y0) * e;
             moveFinger(x, y, true); fx = x; fy = y;
-            var over = doc.elementFromPoint(x, y) || doc.body; if (inUi(over)) over = p.hit;
+            var over = efp(x, y) || doc.body; if (inUi(over)) over = p.hit;
             fire('pointermove', x, y, over); fire('mousemove', x, y, over);
             if (i < steps) setTimeout(step, 22);
             else if (++leg < way.length) setTimeout(next, 60);
@@ -592,7 +711,7 @@
         })();
       });
     }).then(function (end) {
-      var over = doc.elementFromPoint(end.x, end.y) || doc.body; if (inUi(over)) over = b;
+      var over = efp(end.x, end.y) || doc.body; if (inUi(over)) over = b;
       fire('pointerup', end.x, end.y, over); fire('mouseup', end.x, end.y, over);
       ui.finger.classList.remove('down'); fingerIdle(); T.taps++;
       return sleep(o.after != null ? o.after : 400).then(function () { return true; });
@@ -606,7 +725,7 @@
     var inner = el('div', 'kd-in');
     if (g && window.GameIcon) inner.appendChild(el('div', 'kd-ic', GameIcon(g.id)));
     var h = el('h2'); h.textContent = g ? g.name : doc.title; inner.appendChild(h);
-    if (script.intro) { var p = el('p'); p.textContent = script.intro; inner.appendChild(p); }
+    if (script.intro && !AT) { var p = el('p'); p.textContent = script.intro; inner.appendChild(p); }
     ui.cur.appendChild(inner);
     doc.body.appendChild(ui.cur);
   }
@@ -615,13 +734,32 @@
     if (!ui.cur) return;
     var c = ui.cur; ui.cur = null; c.classList.add('out'); setTimeout(function () { c.remove(); }, 520);
   }
+  // the beat to step back to has come: real time again, and the curtain lifts
+  function arrive() {
+    if (!CK.ff || st.beat < AT) return Promise.resolve(false);
+    // (the last caption played behind the curtain goes at once, so the one for this beat is the first one seen)
+    var c = st.cap; clear(); if (c) c.remove(); showFinger(false);
+    ffStop(); lift(); T.phase = 'steps';
+    return sleep(reduce ? 80 : 560).then(function () { return true; });
+  }
+  function landed(arr) { arr.then(function (y) { if (y && LAND_PAUSED) setTimeout(pause, 420); }); }
+  function stepBack() {
+    if (st.ended || CK.ff) return;
+    var b = st.beat, to = b && vnow() - (st.beatAt || 0) > 3000 ? b : b - 1;
+    go(demoUrl(to, PZ.on));
+  }
+  function demoUrl(at, pz) {
+    var q = new URLSearchParams(location.search); q.delete('at'); q.delete('pz');
+    if (at >= 1) q.set('at', at); if (at >= 1 && pz) q.set('pz', '1');
+    return location.pathname + '?' + q.toString();
+  }
   function homeUrl() { var g = game(); return '../index.html' + (g ? '#sheet=' + encodeURIComponent(g.id) : ''); }
   function plainUrl() { return location.pathname; }
   function go(u) { resume(); st.ended = true; root.classList.add('k-going'); location.replace(u); }
   function leave() { st.aborted = true; go(FROM_HOME ? homeUrl() : plainUrl()); }
-  function skip() { if (st.ended) return; resume(); st.aborted = true; if (st.onAbort) st.onAbort(); end(); }
+  function skip() { if (st.ended) return; ffStop(); resume(); st.aborted = true; if (st.onAbort) st.onAbort(); end(); }
   function end() {
-    if (st.ended) return; resume(); st.ended = true; T.done = true; T.phase = 'end';
+    if (st.ended) return; ffStop(); resume(); st.ended = true; T.done = true; T.phase = 'end';
     clearInterval(hintT); clear(); showFinger(false); lift();
     st.beat = st.dots; paintDots();
     var g = game(), sc = st.script || {};
@@ -633,7 +771,7 @@
     var play = el('button', 'btn btn-primary btn-lg', (window.Kit ? Kit.icon('play') : '') + '<span>Play now</span>'); play.type = 'button';
     play.onclick = function () { tick(); go(plainUrl()); };
     var again = el('button', 'btn btn-soft btn-lg', (window.Kit ? Kit.icon('undo') : '') + '<span>Watch again</span>'); again.type = 'button';
-    again.onclick = function () { tick(); st.ended = true; root.classList.add('k-going'); location.reload(); };
+    again.onclick = function () { tick(); st.ended = true; root.classList.add('k-going'); location.replace(demoUrl(0)); };
     acts.appendChild(play); acts.appendChild(again); pn.appendChild(acts); box.appendChild(pn);
     doc.body.appendChild(box);
     requestAnimationFrame(function () { requestAnimationFrame(function () { box.classList.add('show'); }); });
@@ -657,10 +795,11 @@
     st.dots = Math.max(0, script.beats | 0);
     build(); paintDots(); curtain(script);
     T.phase = 'start';
+    if (AT) { T.ff = AT; ffStart(); }
     var t0 = Date.now();
     Promise.resolve().then(function () { return script.start ? script.start(D) : null; })
       .then(function () { return sleep(Math.max(0, (reduce ? 500 : 1500) - (Date.now() - t0))); })
-      .then(function () { lift(); T.phase = 'steps'; return sleep(reduce ? 80 : 560); })
+      .then(function () { if (CK.ff) return; lift(); T.phase = 'steps'; return sleep(reduce ? 80 : 560); })
       .then(function () { return script.steps ? script.steps(D) : null; })
       .catch(function (e) { if (e !== ABORT) console.error('[demo]', e); })
       .then(function () { end(); });

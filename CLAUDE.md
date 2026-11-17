@@ -579,7 +579,16 @@ Underlying principles for everything:
   button in the strip beside Skip (the space bar too) turns gold with a play mark while paused. demo.js runs the page on
   a clock that can stand still: `Date.now()` and `performance.now()` stop, a timeout or a frame waits with the time it had
   left, intervals skip their ticks, every running animation is held, so the robots, the game's motion and the caption's
-  reading time all wait together; a tap on the caption or the player's ringed move plays on. The end card's parts are
+  reading time all wait together; a tap on the caption or the player's ringed move plays on. **A step back** (Tim, 2026-11-17: "add a step backwards button to the demos next to the pause"): beside pause, in one
+  pill with it, a back mark goes to the caption before this one, or to the start of this one once it has been up for 3
+  seconds, as a music player's back button does. It reloads the page with `&at=<beat>` (and `&pz=1` when paused, so it
+  lands paused) and plays the demo again behind the curtain on a fast clock (`ffStart`/`ffFrame`/`ffStop` in demo.js):
+  time moves a frame at a time, as many frames as fit in each real frame, every timer firing in its turn and every frame
+  callback getting its frame, the page's animations sped up to match, sounds and buzzing off, the player's turns taken for
+  them, while the strip's dots fill; at that beat's caption the clock is real again and the curtain lifts. The seeded
+  dice and the robots make it come out the same (the scratchpad's `demo/back.js <page> <beat> <size> [--pause] [--late]`
+  checks the landing and every caption after it). A card game gets back in 1 to 2 seconds; a canvas game takes as long as
+  its frames take to draw. The end card's parts are
   `kd-pn`, `kd-ic`, `kd-acts` (a page's own `.acts` gave Flappy Bird's card narrow buttons). Stock Market and Sportsbook play on fixed sample
   data in a demo (`Kit.inDemo()`), and say so; Lorcana needs the network for its card list. The score keepers (hearts.html,
   spades.html and the rest) are tools of their games and share the game's demo.
