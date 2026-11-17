@@ -938,11 +938,6 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
 :root:not(.ng-x) .sec-h .bank .bank-amt{min-height:44px;}
 @media (max-width:440px){:root:not(.ng-x) .top :is(.vbtn,.me){width:38px;height:38px;}
   :root:not(.ng-x) .top h1{font-size:clamp(1.1rem,calc((100vw - 214px) / 5.45),2.15rem);}}
-/* (a fourth button beside the title, the bell with the pencil: the title eases down a step to keep its room, and on the
-   narrowest phones the pencil steps aside: each section's own pencil and Home screen in the profile menu do the same) */
-@media (max-width:440px){:root:not(.ng-x) .top:has(#bell:not([hidden])):has(#hedit:not([hidden])) h1{font-size:clamp(1.1rem,calc((100vw - 258px) / 5.45),2.15rem);}}
-@media (max-width:360px){.top:has(#bell:not([hidden])) #hedit{display:none;}
-  :root:not(.ng-x) .top:has(#bell:not([hidden])) h1{font-size:clamp(1.1rem,calc((100vw - 214px) / 5.45),2.15rem);}}
 :root:not(.ng-x) .chips .chip:is(.kinds,.who).set{background:rgba(255,211,77,.14);color:var(--lit-ink);box-shadow:inset 0 0 0 1px rgba(255,211,77,.6),0 0 16px rgba(255,190,60,.18);}
 :root:not(.ng-x) .chips .chip:is(.kinds,.who).set .ico{color:var(--lit-ink);}
 /* the Which games? sheet: a row for each kind, its icon in the kind's color, how many games, and a tick at the right */
@@ -1527,7 +1522,6 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
       <h1>Game Night</h1>
     </div>
     <button class="vbtn" id="hedit" type="button" aria-label="Show or hide sections and games"></button>
-    <button class="vbtn" id="view" type="button"></button>
     <button class="vbtn bell" id="bell" type="button" aria-label="Notifications" hidden><span class="bell-n" id="bell-n" hidden></span></button>
     <button class="me" id="me" type="button" aria-label="Account">G</button>
   </header>
@@ -1634,6 +1628,8 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     });
     refreshLive();   // (Night: each row's line at the right)
   }
+  // tiles for everyone, once (Tim, 2026-11-17: "Tile view is default for everyone"); a list chosen since stays chosen
+  if (!get('gn_tiles_once', '')) { set('gn_home_view', 'tiles'); set('gn_tiles_once', '1'); }
   var tiles = get('gn_home_view', 'tiles') !== 'list';
   // Console games: the tile is the cartridge itself, in its console's plastic, with the game's label (box art and
   // logo), and its name underneath like a game library. List view: the label as the icon.
@@ -2869,17 +2865,12 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(markWraps);
 
   // ── Controls ──────────────────────────────────────────────────────────────
-  function paintView() {
-    $('view').innerHTML = Kit.icon(tiles ? 'rows' : 'tiles');
-    $('view').setAttribute('aria-label', tiles ? 'Show as a list' : 'Show as tiles');
-  }
-  paintView();
-  // the top bar's pencil: every section and game, the same sheet as Home screen in the profile menu
+  // the top bar's pencil: every section and game, the same sheet as Home screen in the profile menu (Tim, 2026-11-17:
+  // "relegate the list view option to the app menu and put the added pencil in its place")
   $('hedit').innerHTML = Kit.icon('pencil');
   $('hedit').addEventListener('click', function () { Kit.sfx('tap'); Kit.haptic('light'); if (Kit.homeSheet) Kit.homeSheet(); });
-  $('view').addEventListener('click', function () {
-    tiles = !tiles; set('gn_home_view', tiles ? 'tiles' : 'list'); Kit.sfx('tap'); Kit.haptic('light'); paintView(); render();
-  });
+  // the list view lives in the profile menu now
+  function toggleView() { tiles = !tiles; set('gn_home_view', tiles ? 'tiles' : 'list'); Kit.sfx('tap'); Kit.haptic('light'); render(); }
   var q = $('q');
   q.addEventListener('input', function () { state.q = q.value.trim(); $('search').classList.toggle('has-q', !!state.q); render(); });
   q.addEventListener('keydown', function (e) {
@@ -3292,6 +3283,7 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     }
     group('Home & games');
     if (Kit.homeSheet) item('tiles', 'Home screen', function () { Kit.homeSheet(); }, '', tag(Kit.homeStatus()));
+    item(tiles ? 'rows' : 'tiles', tiles ? 'Show games as a list' : 'Show games as tiles', toggleView);
     item('sliders', 'Game defaults', function () { Kit.prefs(); });
     if (Kit.inbox) item('bell', 'Notifications', function () { Kit.inbox(); }, '', Kit.inboxNew() ? el('span', { class: 'k-st bell-st', text: Kit.inboxNew() + ' new' }) : null);
     group('Look & sound');
