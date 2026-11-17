@@ -150,6 +150,21 @@ Underlying principles for everything:
   180 points as one bar with the bid marked, the counters each side has captured as small cards, the nest, the last trick.
   Both fit the right panel by measuring it (`f1` to `f7`: the least needed part goes first), and keep `html.cdesk` on only
   while a desk layout shows, since Cards.desk's in-between layouts assume Hearts' stage.
+  **Gin Rummy at a desk** (on `Cards.desk`; `paintDesk`, `paintSheet`, `paintSide`, `paintLaid` in gin-rummy-ai.html): the
+  sheet `.gn-pad` hand by hand (each player's deadwood with Knock, Gin or Undercut beside it, the winner's points, the
+  running totals, the hands won, and the 25s and the 100 once the game is over); at the right how the hand you can see
+  counts (its loose cards with what each costs, its melds, the 10 a knock needs), each player's last turn (`S.lt`), the
+  stock, the game so far, the parts kept by priority as the panel gets shorter. Nothing a real table hides is shown: no
+  more of the discard pile than its top two cards. When a hand ends, both hands are laid down on the felt itself
+  (`laid`, `.gd-lay`) and the bar has the button for the next hand; online keeps its sheet. **Cribbage at a desk** (its
+  own layouts, since its stage has the board: `DK` in cribbage.html sets `html.cbd` with `cbd-wide`, `cbd-strip`,
+  `cbd-square` or `cbd-tall` from `Cards.DESK`): the board across the window with each side's score and what it still
+  needs for 121 at its ends (in a column over the table in the other shapes), the sheet `.cr-pad` at the left (what each
+  side pegged, counted in hand and in the crib, the total; the skunk line on the meters), and at the right the play
+  card by card with the count each made and what it pegged (`playLog`), in the show each hand and the crib as they are
+  counted with what made the points (`showKinds`), and the game so far. Both pages also close the windows between the
+  devices and a desk, which used to scroll (Gin Rummy through Cards.desk's in-between layouts, Cribbage with its own
+  queries); their proof scripts are in `big/ginrummy/`.
   **The setup and the results card at a desk, for every game** (kit.js "The desk" and the last section of kit.css; every
   rule hangs off `.k-dk`, which kit.js sets only in a window wider than 1024 or more than 768 the shorter way, taller
   than 520 and 480 wide at least: `deskShape`, `winShape`, `Kit.desk()`. The devices are drawn by the rules they always
