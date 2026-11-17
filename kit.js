@@ -816,7 +816,15 @@
     scrim.addEventListener('touchmove', function (e) {
       if (e.touches.length > 1 || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
       var dx = e.touches[0].clientX - x0, dy = e.touches[0].clientY - y0;
-      if (!axis) { if (Math.abs(dx) + Math.abs(dy) < 4) return; axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'; }
+      if (!axis) {
+        if (Math.abs(dx) + Math.abs(dy) < 4) {
+          // (the first few pixels decide on iOS: a drag not stopped here starts scrolling, and can't be stopped after)
+          var a0 = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y', s0 = scroller(e.target, a0);
+          if ((!s0 || atEnd(s0, a0 === 'x' ? dx : dy, a0)) && e.cancelable) e.preventDefault();
+          return;
+        }
+        axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+      }
       var s = scroller(e.target, axis);
       if (!s || atEnd(s, axis === 'x' ? dx : dy, axis)) { if (e.cancelable) e.preventDefault(); }
       else { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }   // (measured from here on, so its ends are caught as they come)

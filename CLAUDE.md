@@ -102,6 +102,10 @@ Underlying principles for everything:
   `window.__kRpLog` lists each repaint for a test). A new kind of button needs nothing; something that is not a `.btn`
   but has its own layer (`will-change`, a transform) and changes its words or size gets the class `btn` or the same
   treatment.
+- **The page behind a sheet never moves** (Tim, 2026-11-17: "background wasn't fully locked while the dialog is up"). While
+  a `.k-scrim` is up the page is locked (`html:has(body > .k-scrim)` in kit.css: overflow hidden, so iOS can't hand a drag
+  that reached the end of the sheet on to the page), and `trapScroll` in kit.js stops a drag that would carry on past an
+  end from its very first pixels, since iOS decides on the first move whether a drag scrolls.
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
