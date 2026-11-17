@@ -50,8 +50,12 @@
   var W = window, PERF = W.performance;
   var N = { st: W.setTimeout.bind(W), ct: W.clearTimeout.bind(W), si: W.setInterval.bind(W), ci: W.clearInterval.bind(W),
     raf: W.requestAnimationFrame.bind(W), caf: W.cancelAnimationFrame.bind(W), pnow: PERF.now.bind(PERF), dnow: Date.now };
+  // Demos play at 0.7 of the game's own speed (Tim, 2026-11-17: "make all the demos go at .7x whatever speed they're
+  // going now"): the clock runs at SPEED, and every animation on the page is slowed to match as it starts (the loop
+  // below); &speed=<x> tries another.
+  var SPEED = +((/[?&]speed=([\d.]+)/.exec(location.search) || [])[1]) || 0.7;
   var PZ = { on: false, anims: [] }, PSEQ = 7e8;
-  var CK = { v0: N.pnow(), r0: N.pnow(), rate: 1, ff: false, at: 0 }, D0 = N.dnow() - N.pnow();
+  var CK = { v0: N.pnow(), r0: N.pnow(), rate: SPEED, ff: false, at: 0 }, D0 = N.dnow() - N.pnow();
   function vnow() { return CK.ff ? CK.at : CK.v0 + (N.pnow() - CK.r0) * CK.rate; }
   function vOf(ts) { return CK.ff ? CK.at : CK.v0 + (ts - CK.r0) * CK.rate; }
   function setRate(r) { CK.v0 = vnow(); CK.r0 = N.pnow(); CK.rate = r; }
@@ -117,9 +121,15 @@
   var mc = new MessageChannel(), mcFn = null;
   mc.port1.onmessage = function () { var f = mcFn; mcFn = null; if (f) f(); };
   function soon(f) { mcFn = f; mc.port2.postMessage(0); }
+  var SEEN = new WeakSet();
   function animRate(r) {
-    try { doc.getAnimations().forEach(function (a) { if (Math.abs(a.playbackRate - r) > r * 0.2 + 0.01) a.playbackRate = r; }); } catch (e) {}
+    try { document.getAnimations().forEach(function (a) { SEEN.add(a); if (Math.abs(a.playbackRate - r) > r * 0.2 + 0.01) a.playbackRate = r; }); } catch (e) {}
   }
+  (function slow() {
+    N.raf(slow);
+    if (CK.ff || SPEED === 1) return;
+    try { document.getAnimations().forEach(function (a) { if (!SEEN.has(a)) { SEEN.add(a); a.playbackRate *= SPEED; } }); } catch (e) {}
+  })();
   function nextDue(end) {
     var best = null;
     for (var k in TM) { var t = TM[k]; if (t.due <= end && (!best || t.due < best.due || (t.due === best.due && t.id < best.id))) best = t; }
@@ -157,10 +167,10 @@
   }
   function ffStop() {
     if (!CK.ff) return;
-    CK.v0 = CK.at; CK.r0 = N.pnow(); CK.rate = 1; CK.ff = false;
+    CK.v0 = CK.at; CK.r0 = N.pnow(); CK.rate = SPEED; CK.ff = false;
     for (var k in TM) arm(TM[k]);
     var q = RQ; RQ = []; q.forEach(function (id) { if (id in RAF) natFrame(id); });
-    animRate(1);
+    animRate(SPEED);
     try { if (FFA.snd == null) localStorage.removeItem('gn_sound'); else localStorage.setItem('gn_sound', FFA.snd); } catch (e) {}
     try { if (FFA.vib) delete navigator.vibrate; } catch (e) {}
     root.classList.remove('k-demo-ff');
@@ -343,7 +353,7 @@
   }
   function resume() {
     if (!PZ.on) return;
-    setRate(1); PZ.on = false; T.paused = false;
+    setRate(SPEED); PZ.on = false; T.paused = false;
     for (var k in TM) arm(TM[k]);
     PZ.anims.forEach(function (a) { try { if (a.playState === 'paused') a.play(); } catch (e) {} });
     PZ.anims = [];

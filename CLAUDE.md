@@ -588,7 +588,10 @@ Underlying principles for everything:
   them, while the strip's dots fill; at that beat's caption the clock is real again and the curtain lifts. The seeded
   dice and the robots make it come out the same (the scratchpad's `demo/back.js <page> <beat> <size> [--pause] [--late]`
   checks the landing and every caption after it). A card game gets back in 1 to 2 seconds; a canvas game takes as long as
-  its frames take to draw. The end card's parts are
+  its frames take to draw. **Demos play at 0.7 of the game's own speed** (Tim, 2026-11-17: "make all the demos go at .7x whatever speed they're
+  going now"): the demo clock runs at `SPEED` (0.7) and every animation on the page is slowed to match as it starts, so
+  the moves, the robots, the animations and each caption's reading time all take 1/0.7 as long (`&speed=<x>` tries
+  another). The end card's parts are
   `kd-pn`, `kd-ic`, `kd-acts` (a page's own `.acts` gave Flappy Bird's card narrow buttons). Stock Market and Sportsbook play on fixed sample
   data in a demo (`Kit.inDemo()`), and say so; Lorcana needs the network for its card list. The score keepers (hearts.html,
   spades.html and the rest) are tools of their games and share the game's demo.
