@@ -169,9 +169,9 @@ Underlying principles for everything:
   the results card of eleven pages at Tim's devices, before and after), `sheet.js` (the home screen's game sheet),
   `scan.js` (every page in `SETUP_PAGES` at six large windows: errors, sideways scroll, anything cut off, off the window
   or over another part, the start button in view), `start.js` (a game started from the desk), `resize.js`,
-  `demolook.js`. **Not done yet**: the tables of every game outside the pilot; Arvela's own setup and plaque in the
-  largest windows (they keep the sizes its pilot gave them: a block 1,240 wide and a plaque 1,040 wide at 3024 by
-  1964); a game's own parts of its setup (Trivia's categories, Mazes' daily maze, Axis & Allies' countries) do not
+  `demolook.js`. **Arvela's own setup and plaque at a desk are done** (the Arvela section, "Arvela's setup and plaque
+  at a desk"). **Not done yet**: the tables of every game outside the pilot; a game's own parts of its setup (Trivia's
+  categories, Mazes' daily maze, Axis & Allies' countries) do not
   step up with the kit's controls yet; a history view is drawn at its own size inside the larger panels; the setup has
   no card for a game in progress.
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
@@ -1501,6 +1501,71 @@ Underlying principles for everything:
   buttons are a dock that never leaves the card (the compact layout covers upright screens up to 900 tall, so an
   iPhone's 874 needs no scroll, and at Safari's shorter heights the game above the dock scrolls); from 700 wide it is two columns; a
   phone on its side has three. Kit.win's buttons and their order are unchanged; kit.js is unchanged.
+- **Arvela's setup and plaque at a desk** (a window larger than a phone's or a tablet's; Tim, 2026-11-17, of large
+  windows: "simply scaling things up is not thoughtful design"; the page says `k-own-desk`, so the kit's own desk
+  leaves it alone). Before, the setup was a block in the middle of the window, about 4% of 3024 by 1964. Now it is
+  composed for the window by `sdLay` in ui.js (the block "The setup at a desk"; styles at the end of ui.css), in three
+  parts beside the kit's own controls. Nothing is scaled: every size is worked out from the window, and a phone and a
+  tablet never get here (`sdShape` says null at 402x874, 874x402, 768x1024, 1024x768, 320x568 and in the home sheet's
+  frame, and nothing is built).
+  - **The rail** is the kit's setup itself (who is playing, each deck's choice, the options, Deal the cards and Play
+    online), at the right, where the taps go. Its controls take the kit's gentle step (`--sdc`, 1 to 1.35, still 1 at
+    1512 by 982). With height to spare the computer's deck is chosen from faces with their names, what the chosen
+    option means stands open, and your own decks stand larger (`an-dk-roomy`, `an-dk-roomy2`); a rail too tall for its
+    window draws in before anything scrolls (`an-dk-tight`); in a window from 1240 wide whose one column would run
+    past the foot (four seats or more in 1280 by 720, six in 1512 by 982, anything in 1600 by 560) it is two columns,
+    the decks and options beside who plays (`an-dk-2c`), and the wall keeps 400px or more at the left.
+  - **The wall** (`sdCompany`, `sdWallLay`) is what was chosen, laid out to look at: each person's deck as its Guide's
+    own card with the deck's cards as real small cards, Figures by cost, then Relics, then Deeds (they were behind the
+    Cards button); two of a card is one card marked x2. A tap reads the deck on the strip at that card (`browse`). The
+    computer's deck stands there too once a Guide is chosen for it; a surprise has nothing to show, so its one
+    sentence stays under the faces in the rail. The plan takes the largest cards the box allows, to 210px: decks side
+    by side (never in slabs under 300px wide) or one over another, the Guide as a card at the left (170px wide at
+    least) or a medallion over the cards; from 140px a card says what it does (`cardEl`'s `mid`, `fitMid`), from 75px
+    it is the small card with its name, under that its picture in its border (`.sd-grid.th`), and under 36px the deck
+    is its Guide, what it is made of and its numbers alone, a short slab, and beside the rail the room takes the
+    height those slabs leave. A built deck has its Change button at the head of its slab.
+  - **The room** (`sdRoomBuild`, `sdRoomLay`) is what was a tap or two away: the sphere with its signs lit, what the
+    next pack needs and `sphere().guideSay`, and what lights how many signs; the packs waiting as the real small
+    sealed packs, lit bronze because they are waiting for you (or the Guide the sphere brought, still to be chosen);
+    the callings nearest their end; the last game from the history (who led each side, the race for Renown through
+    `raceSvg`, how it ended, the numbers side by side) and the games before it under how many were won; for someone
+    who has not finished a game, the lessons, a row each (`AnoriaGuide.list`). A panel opens the screen it is about.
+    The panels that fit stand side by side; a list gives up its last rows and a panel its least parts (`data-give`)
+    rather than have anything cut through.
+  - **Three compositions** by the window's shape: `band` (1100 wide and 880 tall, or more): the name and the three
+    doors over the wall at the left, the rail at the right, the room the whole width under both; `side` (as wide,
+    lower, or a rail too tall to leave the band its room): the wall over a low room at the left, the rail the window's
+    height at the right; `stack` (narrower): the name, the rail (two columns from 860 wide), the wall, the room, one
+    under another. Where no wall would have cards to show (1100 by 600 and 1026 by 770 with any players; six seats in
+    1000 by 1000 or 1180 by 820), the setup is the tablet's, the kit's own head back in place of the desk's
+    (`an-dk-bare`), and it may scroll as a tablet's does. A resize lays the same parts out again (a capture listener,
+    so the kit's own fold never sees a layout made for the window before), and every choice made stays made; when the
+    setup leaves the page, what the desk set on `#app` goes with it (`sdGone`). The kit folds a setup's options once
+    and they stay folded, so a window dragged down to a phone's size and back up keeps its options as rows.
+  - **An iPad held sideways** (1024 by 768, the one device size that changed): two columns by a media query at the end
+    of ui.css (900 to 1024 wide, 521 to 768 tall): the decks and the options at the left; the name, who is playing,
+    the three doors and the start buttons at the right. It scrolled by 141px with the start buttons over the
+    computer's decks; now nothing scrolls.
+  - **The plaque** (`awDesk`, called from `winLayout`; `.k-win .card.aw.dk` in ui.css): from 1400 by 800 it is three
+    columns: the game at the left with the race for Renown drawn taller (`racePic(96)`, 124 from 1150 tall, 160 from
+    1500), the record of this game in the middle as its history view draws it (the map at the end, the numbers side by
+    side, the Legacy Lines with their true sentences; two columns of it from about 1900 wide), and what the game
+    earned over the buttons at the right, in Kit.win's order. From 1100 tall and narrower the same parts stand one
+    under another, the record scrolling between the game and the buttons. In a low wide window (1100 wide or more,
+    under 800 tall) the game, what it earned and the buttons stand side by side, each whole, with no record (`dk-low`;
+    the card before it had its rewards cut off at 1600 by 560, and at 1280 by 720 when a Guide joined with three
+    packs). Any other window keeps the card as it was (1366 by 1024, 1280 by 800, 1000 by 1000). The record is the one
+    `record()` has just filed (`awRec`); a lesson has none. The history view's sizes go through two units of its own,
+    `--ahu` and `--ahp` (hist/anoria.js `units`: 1rem and 1px unless set), so the plaque sets the record a step up
+    with its own words (`--awc`).
+  - **Checking**: the scratchpad's `big/arvela-setup/`: `setup.js <tag> <sizes> [--n=4] [--pnp] [--teams] [--rich]
+    [--built] [--cpu=curie] [--hist]` (a screenshot and an audit: scroll, the start button in view, anything off the
+    window, cut, under 8px or over another part), `resize.js` (one page through 24 window shapes, the choices kept),
+    `taps.js` (what each part opens), `game.js` and `win.js` (a real game played to its end by the engine's own
+    choices, then the plaque at each window), `proof.js` with `cmp.sh` (the setup, the plaque, the table and the
+    history sheet at Tim's devices, before and after, pixel by pixel; the table's Might shields differ by a few pixels
+    from one run to the next in the untouched files too, `proof-noise.txt`). Test hook: `__anoria.sd`.
 - **The turn log** (Tim, 2026-11-11: "add a turn log with tappable card names like we have in lorcana"). `logEvs` in
   ui.js turns every event the engine reports into a sentence in `G.log` (kept with the saved game, the last 200): who
   played what where, each clash with its Might and who was knocked out, Legacy Lines, Seals, the count Place by

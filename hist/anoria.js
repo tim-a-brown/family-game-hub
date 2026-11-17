@@ -120,7 +120,14 @@
     return root;
   }
 
-  HistView.css('hv-anoria', [
+  // (every size in the view is in two units of its own, --ahu for type and --ahp for everything measured in px, which are
+  // 1rem and 1px unless whoever shows the view sets them: the results plaque in a large window sets both a step up, as
+  // it does its own words. A media query's own sizes are left as written.)
+  var units = function (css) {
+    return css.replace(/(\d*\.?\d+)rem\b/g, 'calc($1 * var(--ahu,1rem))').replace(/(\d*\.?\d+)px\b/g, 'calc($1 * var(--ahp,1px))')
+      .replace(/@media \(([^{]*)\)\{/g, function (m) { return m.replace(/calc\((\d*\.?\d+) \* var\(--ahp,1px\)\)/g, '$1px'); });
+  };
+  HistView.css('hv-anoria', units([
     // (Gallery stone, as on Arvela's page: Geist for every word, in sentence case; stone, bone and bronze)
     '@font-face{font-family:"Arvela Geist";src:url("' + FONTS + 'arvela-geist.woff2") format("woff2");font-weight:100 900;font-display:swap;}',
     '.ah{--gold:#d5a26c;--ink:#ebe7e0;--dim:rgba(235,231,224,.62);--sc:"Arvela Geist",system-ui,sans-serif;--bk:"Arvela Geist",system-ui,sans-serif;display:flex;flex-direction:column;gap:14px;min-width:0;}',
@@ -268,7 +275,7 @@
     '@media (min-width:600px){.ah-race{--lab:112px;--ph:150px;}.ah-pn{font-size:.72rem;}.ah-fig{font-size:.88rem;}.ah-th{width:48px;height:62px;}' +
       '.ah-mh,.ah-mr{grid-template-columns:minmax(0,1fr) 150px minmax(0,1fr);}.ah-mh>span:nth-child(2){display:block;}.ah-mr{align-items:center;}.ah-ms{align-items:center;}' +
       '.ah-mp{order:0;grid-column:auto;flex-direction:column;gap:5px;text-align:center;}.ah-mp-t{align-items:center;}.ah-mp-pic{width:62px;height:62px;}.ah-mp b{text-wrap:balance;}}'
-  ].join(''));
+  ].join('')));
 
   function pic(ui, src, alt) {
     // (a card whose picture has not been made yet, text.js NOPIC: not asked for, once the card texts are here)
