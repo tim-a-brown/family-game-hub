@@ -154,8 +154,11 @@ Underlying principles for everything:
   section to allow hiding games within the section or the section altogether"): a quiet pencil at the end of each
   section's heading (`.sec-ed`) opens that section alone (`Kit.homeSheet(catId)`: Show this section, then a switch for
   each of its games, Hide all, and All sections), and a pencil in the top bar (`#hedit`) opens every section, the same
-  sheet as Home screen in the profile menu (`gn_cat_off`, `gn_games_off`, `gn_cat_order`). Keep playing's Edit is the same pencil (`#cont-edit`), the gold Done while its cards are being edited. With the bell showing the
-  title eases down a step for the fourth button, and at 360 wide or less the top pencil steps aside. **The greeting stays on one line**
+  sheet as Home screen in the profile menu (`gn_cat_off`, `gn_games_off`, `gn_cat_order`). Keep playing's Edit is the same pencil (`#cont-edit`), the gold Done while its cards are being edited. The pencil took the list and
+  tiles button's place (Tim, 2026-11-17: "relegate the list view option to the app menu and put the added pencil in its
+  place. Period. Tile view is default for everyone"): Show games as a list is in the profile menu under Home screen
+  (`toggleView`, `gn_home_view`), and every device went to tiles once (`gn_tiles_once`, which syncs, so a list chosen
+  since stays chosen). The top bar holds three buttons: the pencil, the bell and you. **The greeting stays on one line**
   (Tim, the same day: "what happens for long user names?"; it wrapped to four lines and pushed the screen down):
   `fitHi` in index.html tries the whole name, the first name, "Hi" for the time of day, a household's name without
   "The" and "Family", then a step smaller, and only then cuts the name short with an ellipsis (user-typed text).
