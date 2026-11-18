@@ -358,8 +358,7 @@ Underlying principles for everything:
   the dealer's two hands in the one-line felt, where the dealer's zone has no box. Test hook `__pg.desk()`; the
   scripts are the scratchpad's `big/paigow/` (`gen.js` the saved games; the rest are Three Card Poker's, which take
   the game's name).
-  **Arvela's table at a desk with three to six players, and teams** (for CLAUDE.md's "Large windows" bullet, after the
-  Arvela pilot; Tim, 2026-11-18: "Don't just stop with Arvela two player, but also include multiplayer games too". The
+  **Arvela's table at a desk with three to six players, and teams** (Tim, 2026-11-18: "Don't just stop with Arvela two player, but also include multiplayer games too". The
   code is the block "The desk with three to six players, and teams" in `games/anoria/ui.js`, before "Picking things
   up", and the last block of `games/anoria/ui.css`.) Before, a table of more players in a large window was the iPad's
   battle line on empty stone: your cards 124 px wide whatever the window, everyone else's Figures as stacks (18% to
