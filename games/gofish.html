@@ -234,6 +234,7 @@
 .gf.dk.up{grid-template-columns:var(--lw,280px) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto auto;grid-template-areas:"pan tbl" "say say" "hand hand";column-gap:14px;}
 .gf.dk.dk-tall{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto auto var(--panh,300px);grid-template-areas:"tbl" "say" "hand" "pan";}
 .gf.dk.dk-tall > .gfp,.gf.dk.dk-two > .gfp{flex-direction:row;}
+.gf.dk:not(.dk-tall):not(.dk-two) > .gfp > .gfp-g{order:-1;}
 .gf.dk .tbl{border-radius:clamp(28px,2.2vmin,40px);padding:clamp(9px,.75vmin,14px);}
 .gf.dk .tbl > .felt-in,.gf.dk .lay{inset:clamp(9px,.75vmin,14px);}
 .gf.dk .tbl > .felt-in{border-radius:clamp(21px,1.7vmin,30px);}
@@ -320,6 +321,8 @@
 .gfa.col .gfa-k{font-size:clamp(1.6em,min(8cqh,17cqw),5em);}
 .gfa.col .gfa-k.th{font-size:clamp(1.6em,min(7cqh,14cqw),5em);}
 .gfa.col .gfa-t{align-items:center;}
+.gfp-g[style*="--gkf"] .gfa.col{font-size:clamp(1em,5.6cqw,1.5em);}
+.gfp-g[style*="--gkf"] .gfa.col .gfa-k{font-size:var(--gkf);}
 @media (prefers-reduced-motion:reduce){.pond.fish .ring{animation:none;}.seat.can .tg{animation:none;}}
 </style>
 </head>
@@ -782,17 +785,22 @@
     // (the last ask takes the height it needs and the books the rest; with no ask yet, or too little room, the books
     // have the whole column. Side by side along the bottom of a tall window, the books have the larger share)
     var ask = !!(S.log && S.log.length), row = DKS === 'tall' || app.classList.contains('dk-two');
-    PG.hidden = !ask; PT.style.flex = '1 1 0';
+    PG.hidden = !ask; PT.style.flex = '1 1 0'; PG.style.removeProperty('--gkf');
     sizeGrid(false);
     if (ask && row) { PT.style.flex = '3 1 0'; PG.style.flex = '2 1 0'; paintLog(true); }
     else if (ask) {
-      // (a tall column with room to spare: the books keep what they need and at least 44% of it, and the last ask the rest, its
-      // card standing large over its words)
+      // (in a column the last ask stands at the top and takes only the height it needs, its card over its words where the
+      // column has room for that; the books take the rest, their grid of the deck's books as large as it allows)
       var sum = function (e) { var h = 0; [].forEach.call(e.children, function (c) { h += c.getBoundingClientRect().height; }); return Math.ceil(h); };
       PG.style.flex = '0 0 400px'; paintLog(false);
       var need = sum(PG.firstChild) + 6, tneed = sum(PT.firstChild) + 8, room = PW.clientHeight - 12;
       if (room - need < 200) PG.hidden = true;
-      else if (room - need - tneed > 260) { PT.style.flex = '0 0 ' + Math.round(Math.max(tneed, room * 0.44)) + 'px'; PG.style.flex = '1 1 0'; paintLog(true); }
+      else if (room - tneed > 620) {
+        // (the card stands over its words at a size from the column's width, and the panel is as tall as the two together)
+        PG.style.setProperty('--gkf', Math.round(Math.min(64, PW.clientWidth * 0.15)) + 'px'); paintLog(true);
+        var gfa = PG.querySelector('.gfa'), cneed = Math.ceil(sum(PG.firstChild) - gfa.getBoundingClientRect().height + gfa.scrollHeight) + 10;
+        PG.style.flex = '0 0 ' + Math.min(room - tneed, Math.max(need, cneed)) + 'px';
+      }
       else PG.style.flex = '0 0 ' + need + 'px';
     }
     fitTally(); sizeGrid(true);
@@ -832,14 +840,14 @@
     if (!grow) { grid.style.setProperty('--gs', Math.max(18, cell(cell(13) >= 1.95 * fs ? 13 : 7)).toFixed(1) + 'px'); return; }
     var ib = inner.getBoundingClientRect().bottom - 6, lb = inner.lastElementChild.getBoundingClientRect().bottom;
     var avail = grid.getBoundingClientRect().height - 0.7 * fs + Math.max(0, ib - lb), best = 0;
-    [13, 7, 5].forEach(function (c) {
-      var R = Math.ceil(13 / c), s = Math.min(cell(c) - 0.5, (avail - (R - 1) * gy) / (R * ar), 4.2 * fs);
+    [13, 7, 5, 4, 3].forEach(function (c) {
+      var R = Math.ceil(13 / c), s = Math.min(cell(c) - 0.5, (avail - (R - 1) * gy) / (R * ar), 7 * fs);
       if (s > best * 1.02) best = s;
     });
     if (best > parseFloat(grid.style.getPropertyValue('--gs'))) grid.style.setProperty('--gs', best.toFixed(1) + 'px');
     // (height still to spare goes to the players' rows, which stand taller, up to twice their height)
     var rows = inner.querySelectorAll('.gft-r'), left = ib - inner.lastElementChild.getBoundingClientRect().bottom;
-    if (rows.length && left > 8) inner.style.setProperty('--rp', Math.min(0.55 * fs, left / rows.length / 2).toFixed(1) + 'px');
+    if (rows.length && left > 8) inner.style.setProperty('--rp', Math.min(1.1 * fs, left / rows.length / 2).toFixed(1) + 'px');
   }
   // a panel too short for everything gives up whole parts: the pond's line, the cards in each hand, the grid of books
   // (first made lower, then left out)

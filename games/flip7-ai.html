@@ -248,7 +248,7 @@
 .f7padw .cdk-pad .cv .mk svg{width:1.6em;height:1.6em;color:#7fd8ff;}
 /* the round as it stands */
 .f7side{overflow:hidden;}
-.f7race{flex:none;display:flex;flex-direction:column;}
+.f7race{flex:none;display:flex;flex-direction:column;font-size:calc(1em + var(--rg,0px) * .06);}
 .f7r{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;column-gap:.55em;row-gap:calc(.32em + var(--rg,0px) * .2);padding:calc(.4em + var(--rg,0px) * .4) 1.2em;}
 .f7r .avatar{width:1.7em;height:1.7em;font-size:.8em;}
 .f7r .avatar .ico{width:62%;height:62%;}
@@ -259,14 +259,26 @@
 .f7r.safe .pts i{color:var(--text);}
 .f7r.out .pts i{color:var(--bad-ink,#ff8f9c);}
 .f7r .bar{grid-column:1 / -1;position:relative;height:calc(.5em + var(--rg,0px) * .2);border-radius:1em;background:var(--gl-2);overflow:hidden;}
-.f7r .bar b{position:absolute;left:0;top:0;bottom:0;min-width:0;background:var(--c);}
-.f7r .bar i{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(115deg,color-mix(in srgb,var(--c) 75%,transparent) 0 3px,transparent 3px 6px);}
+.f7r .bar b{position:absolute;left:0;top:0;bottom:0;min-width:0;width:var(--v);background:var(--c);}
+.f7r .bar i{position:absolute;top:0;bottom:0;left:var(--o);width:var(--v);background:repeating-linear-gradient(115deg,color-mix(in srgb,var(--c) 75%,transparent) 0 3px,transparent 3px 6px);}
 .f7r.safe .bar i{background:color-mix(in srgb,var(--c) 55%,#fff 12%);}
 .f7r.now::before{content:"";position:absolute;left:.35em;top:.45em;bottom:.45em;width:3px;border-radius:3px;background:var(--lit);box-shadow:0 0 8px var(--litg);}
 .f7side.tight .f7r{padding-top:.26em;padding-bottom:.26em;}
 .f7side.tight .f7r .bar{display:none;}
 .f7side.two .f7race{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
 .f7side.two .f7r{padding-left:1em;padding-right:.8em;}
+/* (room to spare: the race as columns rising toward the target, which is the top of every column) */
+.f7race.col{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));column-gap:.5em;height:var(--rh);padding:.5em 1.1em .3em;}
+.f7race.col .f7r{display:flex;flex-direction:column;align-items:center;gap:.3em;min-width:0;min-height:0;padding:0 0 .45em;text-align:center;}
+.f7race.col .f7r .pts{order:1;display:flex;flex-direction:column;align-items:center;line-height:1.1;font-size:1.05em;}
+.f7race.col .f7r .pts i{margin:0;}
+.f7race.col .f7r .bar{order:2;flex:1 1 0;width:min(78%,3.2em);height:auto;min-height:2em;border-radius:.7em;}
+.f7race.col .f7r .bar b{top:auto;right:0;width:auto;height:var(--v);}
+.f7race.col .f7r .bar i{top:auto;left:0;right:0;width:auto;bottom:var(--o);height:var(--v);background:repeating-linear-gradient(25deg,color-mix(in srgb,var(--c) 75%,transparent) 0 3px,transparent 3px 6px);}
+.f7race.col .f7r.safe .bar i{background:color-mix(in srgb,var(--c) 55%,#fff 12%);}
+.f7race.col .f7r .avatar{order:3;flex:none;margin-top:.15em;}
+.f7race.col .f7r .nm{order:4;max-width:100%;font-size:.86em;}
+.f7race.col .f7r.now::before{left:12%;right:12%;top:auto;bottom:0;width:auto;height:3px;}
 .f7key{flex:none;display:flex;flex-wrap:wrap;gap:.2em 1.1em;padding:.35em 1.25em .2em;font-size:.76em;font-weight:600;color:var(--text-3);}
 .f7key span{display:inline-flex;align-items:center;gap:.45em;white-space:nowrap;}
 .f7key i{display:block;width:1.5em;height:.5em;border-radius:1em;background:repeating-linear-gradient(115deg,var(--text-2) 0 3px,transparent 3px 6px);}
@@ -1183,8 +1195,8 @@
         el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: isCpu(p) ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
         el('span', { class: 'nm', text: pl.name }),
         el('span', { class: 'pts', html: String(pl.total) + (st === 'bust' ? '<i>Bust</i>' : ended ? '' : pts ? '<i>+' + pts + '</i>' : '') }),
-        el('span', { class: 'bar' }, [el('b', { style: { width: Math.min(100, base / T * 100).toFixed(1) + '%' } }),
-          st === 'bust' || !pts ? null : el('i', { style: { left: Math.min(100, base / T * 100).toFixed(1) + '%', width: Math.max(0, Math.min(100 - base / T * 100, pts / T * 100)).toFixed(1) + '%' } })])
+        el('span', { class: 'bar' }, [el('b', { style: { '--v': Math.min(100, base / T * 100).toFixed(1) + '%' } }),
+          st === 'bust' || !pts ? null : el('i', { style: { '--o': Math.min(100, base / T * 100).toFixed(1) + '%', '--v': Math.max(0, Math.min(100 - base / T * 100, pts / T * 100)).toFixed(1) + '%' } })])
       ]));
     });
     inner.appendChild(race);
@@ -1205,10 +1217,19 @@
         if (over()) { ln.remove(); if (!box.firstChild) { lbl.remove(); box.remove(); } full = true; break; }
       }
     }
-    // (room to spare: the race's lines stand further apart, with thicker bars)
     var used = 0; [].forEach.call(inner.children, function (c) { used += c.getBoundingClientRect().height; });
-    var free = inner.clientHeight - used - 8, fs = parseFloat(getComputedStyle(inner).fontSize) || 16;
-    if (free > 4 && !inner.classList.contains('tight')) race.style.setProperty('--rg', Math.min(fs * 1.5, free * .8 / n / 1.2).toFixed(1) + 'px');
+    var free = inner.clientHeight - used - 8, fs = parseFloat(getComputedStyle(inner).fontSize) || 16, rh = race.getBoundingClientRect().height;
+    // (a lot of room to spare, as early in a game when little has happened yet: the race stands up as columns rising
+    // toward the target, one a player, taking the room the lines would have left empty. Each column needs room for its
+    // player's name, and the lines come back once what has happened needs the height)
+    var colW = (race.clientWidth - 2.2 * fs - (n - 1) * 0.5 * fs) / n;
+    if (!inner.classList.contains('tight') && colW >= 4 * fs && rh + free >= 16 * fs) {
+      race.classList.add('col'); race.style.setProperty('--n', n);
+      race.style.setProperty('--rh', Math.floor(Math.min(rh + free - 4, 60 * fs)) + 'px');
+      var left = 0; [].forEach.call(inner.children, function (c) { left += c.getBoundingClientRect().height; }); left = inner.clientHeight - left - 8;
+      if (left > 0) race.style.setProperty('--rh', Math.floor(Math.min(60 * fs, parseFloat(race.style.getPropertyValue('--rh')) + left)) + 'px');
+      for (var g = 0; g < 10 && inner.scrollHeight > inner.clientHeight + 1; g++) race.style.setProperty('--rh', Math.floor(parseFloat(race.style.getPropertyValue('--rh')) - fs) + 'px');
+    } else if (free > 4 && !inner.classList.contains('tight')) { race.style.setProperty('--rg', Math.min(fs * 3, free * .8 / n / 1.3).toFixed(1) + 'px'); for (var h = 0; h < 8 && inner.scrollHeight > inner.clientHeight + 1; h++) race.style.setProperty('--rg', (parseFloat(race.style.getPropertyValue('--rg')) * .8).toFixed(1) + 'px'); }   // (room to spare and too many players for columns: the race's lines stand further apart, in larger type with thicker bars)
   }
 
   // ── Online (turnnet.js) ───────────────────────────────────────────────────
