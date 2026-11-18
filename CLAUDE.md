@@ -167,7 +167,7 @@ Underlying principles for everything:
   hand goes onto the sheet and the bar deals the next (online keeps its sheet). **Smaller windows no phone or tablet has**
   (`LITE_P`, `LITE_L` in both pages: 480 or more wide and 560 to 760 tall and upright or nearly square; wider than tall,
   over 520 tall, under 1200 wide but not 1000 to 1040) get the same table without the panels, fitted to the window so
-  nothing scrolls; a Phase 10 felt with no room for every phase scrolls inside itself (`pd-over`). The scripts are the
+  nothing scrolls; a Phase 10 felt with no room for every phase scrolls inside itself (`pd-over`). With five or six players in a wide window under 860 tall your hand stands in the column at the right under the buttons, as in a strip, so the felt has the window's whole height (`rd-many`, set in `build`). The scripts are the
   scratchpad's `big/fivecrowns/` (`lib.js` positions for both games, `snap.js` the device proof, `shots.js` the scan of
   every phase at any size, `resize.js`, `online.js`, `demo.js`).
   **Gin Rummy at a desk** (on `Cards.desk`; `paintDesk`, `paintSheet`, `paintSide`, `paintLaid` in gin-rummy-ai.html): the
@@ -216,7 +216,7 @@ Underlying principles for everything:
   over the cards or at their left), each row with seven places for its seven different numbers, the cards to 210px; the
   score sheet at the left (`Cards.pad`: a row a round, a bust, a Flip 7 and a freeze marked, the round in play lit, a
   meter to the target), and at the right the race to the target with this round's points on each line (solid once they
-  are safe, hatched while a bust would lose them) and what has happened, round by round from `S.ev`, over Flip and Stay.
+  are safe, hatched while a bust would lose them; while the panel has the room, as early in a game when little has happened, the race stands up as columns rising toward the target, one a player with the name under it, `.f7race.col`, `--rh`, only where each column is 4em wide or more; with too many players for columns the lines stand further apart in larger type, `--rg`) and what has happened, round by round from `S.ev`, over Flip and Stay.
   A wide window whose table would have under half its width stands both panels at the left. A scored round goes onto the
   sheet and the bar deals the next one, online too. A computer's window smaller than those (a mouse, `FINE`), in which
   the game's own layout would scroll, gets the same felt fitted to the window with no panels (`dk-small`, remembered by
@@ -230,8 +230,7 @@ Underlying principles for everything:
   each holds and the deck's 13 books by who made them, the grid as large as the room left allows (`sizeGrid`); and the
   last ask alone (Tim, 2026-11-18: "only the last ask in go fish in the panel nothing beyond"; `paintLog`): the rank as a
   card or the deck's picture, lit gold when cards came over and dim at Go fish, who asked whom, and what happened (a
-  fished card named only when it was the rank asked for, as it is shown then). The last ask takes only the height it
-  needs and the books the rest; with no ask yet the books have the whole column. They stand at the left with the tray
+  fished card named only when it was the rank asked for, as it is shown then). In a column the last ask stands at the top, only as tall as it needs, its card over its words where the column has room (`--gkf` on `.gfp-g`, from the column's width), and the books take the rest, the grid of the deck's books in as few as three across as large as the room left allows (`sizeGrid`, to 7em a book); with no ask yet the books have the whole column. They stand at the left with the tray
   at the right (side by side in a strip wide enough for it), at the left with the tray below in a nearly square window,
   along the bottom of a tall one, the last ask's card over its words there. The
   scripts are the scratchpad's `big/flip7/` and `big/gofish/`.
