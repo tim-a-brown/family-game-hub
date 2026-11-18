@@ -465,8 +465,8 @@ html.sb-desk .myt{margin:0 0 10px;padding:2px 0 6px;flex-wrap:wrap;overflow:visi
 html.sb-desk .sb-games{display:grid;grid-template-columns:repeat(var(--gc,1),minmax(0,1fr));column-gap:12px;align-items:start;}
 html.sb-desk .sb-games > .sb-day,html.sb-desk .sb-games > p,html.sb-desk .sb-games > .sb-empty,html.sb-desk .sb-games > .sb-load,html.sb-desk .sb-games > :not(.gm){grid-column:1/-1;}
 html.sb-desk .sb-games > .gm{margin:0 0 12px;}
-html.sb-desk .gm{--pw:calc(84px * var(--sdf,1));padding:calc(8px * var(--sdf,1)) calc(12px * var(--sdf,1)) calc(12px * var(--sdf,1));}
-html.sb-desk .gm.ref{--pw:calc(76px * var(--sdf,1));}
+html.sb-desk .gm{--pw:var(--sdpw,84px);padding:calc(8px * var(--sdf,1)) calc(12px * var(--sdf,1)) calc(12px * var(--sdf,1));}
+html.sb-desk .gm.ref{--pw:calc(var(--sdpw,84px) * .9);}
 html.sb-desk .gm .nm b{font-size:calc(1.02rem * var(--sdf,1));}
 html.sb-desk .gm .nm small{font-size:calc(.72rem * var(--sdf,1));}
 html.sb-desk .gm .when,html.sb-desk .gm .mk{font-size:calc(.74rem * var(--sdf,1));}
@@ -1292,14 +1292,16 @@ html.sb-desk .sd-l{view-transition-name:sb-book;} html.sb-desk .sd-b{view-transi
     document.documentElement.classList.remove('sb-desk'); SD.on = false; SD.key = ''; SD.P = null;
     if (SD.box.parentNode) SD.box.parentNode.removeChild(SD.box);
     dom.side.appendChild(dom.sideSlip); root.appendChild(dom.side); root.appendChild(dom.main);
-    root.style.removeProperty('--sbh'); root.style.removeProperty('--sdf'); dom.body.style.removeProperty('--gc'); dom.tabs.classList.remove('cx');
+    root.style.removeProperty('--sbh'); root.style.removeProperty('--sdf'); dom.body.style.removeProperty('--gc'); dom.body.style.removeProperty('--sdpw'); dom.tabs.classList.remove('cx');
     dom.place(); paintAll();
   }
   // the board's games in as many columns as the room holds, each a card a comfortable width
   function sdGrid() {
     if (!SD.on) return;
     var bw = dom.body.clientWidth, f = SD.P.f;
-    dom.body.style.setProperty('--gc', String(sdClamp(1, Math.floor((bw + 12) / (420 * f + 12)), 4)));
+    var gc = sdClamp(1, Math.floor((bw + 12) / (400 * f + 12)), 4), cw = (bw - (gc - 1) * 12) / gc;
+    dom.body.style.setProperty('--gc', String(gc));
+    dom.body.style.setProperty('--sdpw', Math.round(sdClamp(62, cw * .17, 84 * f)) + 'px');   // (each price as wide as the card allows, as a phone's are by its width)
     dom.tabs.classList.toggle('cx', dom.main.clientWidth < 900 || SD.P.short);
     // (a row of leagues that scrolls: from its start, unless the chosen league would be out of view)
     var on = dom.tabs.querySelector('.on'), tr = dom.tabs.getBoundingClientRect();
