@@ -264,7 +264,7 @@ html.bj-dk .bjt{padding:var(--rim,10px);}
 .bjfelt.dk .spot .amt{bottom:calc(var(--t)*-8);padding:0 calc(var(--t)*6);font-size:max(9.5px,calc(var(--t)*10.5));}
 .bjfelt.dk .spot .empty{font-size:max(9px,calc(var(--t)*9));}
 .bjfelt.dk .tag{gap:calc(var(--t)*5);padding:calc(var(--t)*3) calc(var(--t)*10) calc(var(--t)*3) calc(var(--t)*3);}
-.bjfelt.dk .tag .avatar{width:calc(var(--t)*24);height:calc(var(--t)*24);font-size:calc(var(--t)*11);}
+.bjfelt.dk .tag .avatar{width:calc(var(--t)*24);height:calc(var(--t)*24);font-size:max(9px,calc(var(--t)*11));}
 .bjfelt.dk .tag .nm b{font-size:max(10px,calc(var(--t)*11.5));overflow:visible;text-overflow:clip;}
 .bjfelt.dk .tag .nm small{font-size:max(9.5px,calc(var(--t)*10));}
 .bjfelt.dk .tag .lk{right:calc(var(--t)*-4);bottom:calc(var(--t)*-3);width:calc(var(--t)*13);height:calc(var(--t)*13);}
@@ -1780,7 +1780,7 @@ html.bj-dk .bjinfo.row{flex-direction:row;align-items:stretch;}
       sess = el('table', { class: 'bi-st' });
       sess.appendChild(el('tr', null, [''].concat(['Won', 'Lost', 'Push'].slice(0, cols), ['Net', 'Money']).map(function (h) { return el('th', { text: h }); })));
       S.seats.forEach(function (s, i) {
-        var o = sums[i], me = NET ? i === NET.seat : !s.cpu;
+        var o = sums[i], me = NET ? i === NET.seat : humans().length < 2 ? !s.cpu : (curHand() ? curHand().seat === i : S.phase === 'bet' && S.sel === i);   // (yours; in pass and play, whoever is betting or playing now)
         sess.appendChild(el('tr', { class: me ? 'me' : '' }, [
           el('td', null, [el('span', null, [el('span', { class: 'avatar', style: { '--c': Kit.color(i) }, html: s.cpu ? Kit.icon('bot') : Kit.esc(s.name.charAt(0).toUpperCase()) }), el('span', { text: s.name })])]),
           cols > 0 ? el('td', { class: 'q', text: String(o.won) }) : null, cols > 1 ? el('td', { class: 'q', text: String(o.lost) }) : null, cols > 2 ? el('td', { class: 'q', text: String(o.push) }) : null,
@@ -1978,12 +1978,13 @@ html.bj-dk .bjinfo.row{flex-direction:row;align-items:stretch;}
   function redraw() { if (S) { var b = busyUntil; render(); busyUntil = b; } }
   window.addEventListener('shape', redraw);   // (inside the turn's View Transition)
   // a large window follows the drag frame by frame, and glides when the composition changes; a device waits for the turn to end
-  var rq = 0;
+  var rq = 0, shapeSeen = shapeNow();
+  function shapeNow() { var w = window.innerWidth, h = window.innerHeight; return w <= h ? 'tall' : h < 560 ? 'side' : w >= 900 ? 'wide' : 'tall'; }
   window.addEventListener('resize', function () {
-    clearTimeout(rt);
-    if (!S || PURE) return;
+    clearTimeout(rt); cancelAnimationFrame(rq);
+    var sh = shapeNow(), turned = sh !== shapeSeen; shapeSeen = sh;
+    if (!S || PURE || turned) return;   // (a change of shape is drawn by 'shape', inside the page's own View Transition)
     if (!DK && !deskOn()) { rt = setTimeout(redraw, 150); return; }
-    cancelAnimationFrame(rq);
     rq = requestAnimationFrame(function () { if (!S) return; var p = deskPlan(), k = p ? p.kind + (p.low ? 'l' : '') : ''; if (k !== (DK ? DK.kind + (DK.low ? 'l' : '') : '')) Kit.glide(redraw); else redraw(); });
   });
 
