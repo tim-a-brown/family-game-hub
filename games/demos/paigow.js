@@ -9,6 +9,14 @@
   var main = '.acts .btn-primary.main', hw = '.acts .btn-soft';
   var lo = function () { return document.querySelector('.pz.lo'); }, hi = function () { return document.querySelector('.pz.hi'); };
   var status = function () { return document.querySelector('.ctl .status'); };
+  // the dealer's cards (in a large window laid out in one line the dealer's zone has no box of its own: the dealer's hands then)
+  var dealer = function () {
+    var z = document.querySelector('.ctable .zone'); if (z && z.getClientRects().length) return z;
+    var l = z ? [].slice.call(z.querySelectorAll('.row7, .dset .grp')).filter(function (n) { return n.getClientRects().length; }) : [];
+    return l.length ? l : document.querySelector('.ctable .felt-in') || document.querySelector('.ctable');
+  };
+  // (a large window has the room to keep a caption about the dealer off your own two hands)
+  var mine = function () { return document.documentElement.classList.contains('pgd') ? [].slice.call(document.querySelectorAll('.pz')) : []; };
   function ph(p) { return function () { return S() && S().phase === p && !P.busy(); }; }
   // your cards: dm0 the Ace of Spades, dm1 the King of Diamonds
   var ACE = 'dm0', KING = 'dm1';
@@ -25,7 +33,7 @@
       P.next(['As', 'Kd', '9c', '9h', '6d', '4c', '2s'], ['Qs', 'Jh', '8d', '8c', '5h', '3s', '2d']);
     },
     steps: async function (D) {
-      await D.say('In Pai Gow, you and the dealer each get seven cards. You split yours into two hands, and both play against the dealer’s.', { at: function () { return document.querySelector('.ctable .zone') || document.querySelector('.ctable'); } });
+      await D.say('In Pai Gow, you and the dealer each get seven cards. You split yours into two hands, and both play against the dealer’s.', { at: dealer });
       await D.tap(chip(5), { say: 'First, a bet. Four $5 chips make a $20 bet in the Bet circle.', after: 250 });
       await D.tap(chip(5), { after: 250 });
       await D.tap(chip(5), { after: 250 });
@@ -44,7 +52,7 @@
       await D.you(main, 'Tap Play hands to turn over the dealer’s cards.', { until: function () { return S().phase !== 'set'; } });
       await D.wait(ph('result'), 9000);
       await D.wait(900);
-      await D.say('The dealer split a pair of 8s high and Queen-Jack low. Your 9s beat the 8s, and your Ace-King beats Queen-Jack.', { at: function () { return document.querySelector('.ctable .zone') || document.querySelector('.ctable'); } });
+      await D.say('The dealer split a pair of 8s high and Queen-Jack low. Your 9s beat the 8s, and your Ace-King beats Queen-Jack.', { at: dealer, avoid: mine });
       await D.say('Win both hands and you win the bet, less a 5% commission: $19 on $20. Win one and it’s a push, and your bet comes back.', { at: status });
     }
   });
