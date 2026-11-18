@@ -1382,7 +1382,7 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
   background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),var(--shadow-sm);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);font-size:calc(.8rem * var(--pu));font-weight:700;color:var(--text-2);}
 .pcirc .pn{background:linear-gradient(var(--glass),var(--glass)),var(--glass);-webkit-backdrop-filter:blur(18px) saturate(1.3);backdrop-filter:blur(18px) saturate(1.3);box-shadow:inset 0 0 0 1px var(--line-2),0 6px 18px rgba(0,0,0,.22);}
 .pn.tap{cursor:pointer;transition:filter .12s;}
-.proom.rr > .pn-sess{flex-grow:1.7;} .proom.rr > .pn-rank{flex-grow:.8;} .proom.rr > .pn-rank.two{flex-grow:1.35;} .proom.rr > .pn-log{flex-grow:1.05;} .proom.rr > .pn-table{flex-grow:1.05;}
+.proom.rr > .pn-sess{flex-grow:1.7;} .proom.rr > .pn-rank{flex-grow:.8;} .proom.rr > .pn-rank.two{flex-grow:1.6;} .proom.rr > .pn-log{flex-grow:1.05;} .proom.rr > .pn-table{flex-grow:1.05;}
 .pn-h{flex:none;display:flex;align-items:baseline;justify-content:space-between;gap:calc(8px * var(--pu));}
 .pn-h b{font-family:var(--display);font-weight:400;font-size:calc(1.05rem * var(--pu));line-height:1.15;color:var(--text);white-space:nowrap;} .pcirc .pn-tourn .pn-h b{color:var(--yellow);}
 .pn-h small{font-size:calc(.72rem * var(--pu));color:var(--text-3);white-space:nowrap;}
@@ -2339,7 +2339,22 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
     if (VD) {
       vpOn(VD);
       var mach = el('div', { class: 'vpm' }, [cab, btns]); deskBox(mach, VD.m); app.appendChild(mach);
-      vpRoom(VD).forEach(function (b) { app.appendChild(b); }); fitRoom();
+      var vrm = vpRoom(VD); vrm.forEach(function (b) { app.appendChild(b); });
+      // (a room under the machine with little in it yet, the first hands of a session: it is only as tall as what it
+      // holds and as wide as the machine, and the machine and the room stand together in the middle of the window, with no empty band between)
+      var rb = VD.rooms[0], rmEl = vrm[0];
+      if (rb && rmEl && rb.box[1] > 0 && rb.dir === 'row') {
+        var mh = cab.offsetHeight + btns.offsetHeight + parseFloat(getComputedStyle(mach).rowGap || 0);
+        rmEl.style.height = 'auto'; rmEl.style.alignItems = 'flex-start';
+        var cw2 = Math.min(rb.box[2], Math.max(cab.offsetWidth, btns.offsetWidth)), rx = Math.round(rb.box[0] + (rb.box[2] - cw2) / 2);
+        rmEl.style.left = rx + 'px'; rmEl.style.width = cw2 + 'px';
+        var need = Math.max(rmEl.offsetHeight, 96 * VD.pu);
+        rmEl.style.alignItems = '';
+        var all = VD.m[3] + (rb.box[1] - VD.m[3]) + rb.box[3], gp2 = rb.box[1] - VD.m[3], rh2 = Math.min(rb.box[3], Math.ceil(need)), y0 = Math.max(0, Math.round((all - mh - gp2 - rh2) / 2));
+        if (rh2 < rb.box[3] - 8) { deskBox(mach, [VD.m[0], y0, VD.m[2], Math.ceil(mh)]); deskBox(rmEl, [rx, y0 + Math.ceil(mh) + gp2, cw2, rh2]); }
+        else deskBox(rmEl, rb.box);
+      }
+      fitRoom();
     } else { app.appendChild(cab); app.appendChild(btns); }
   }
   function toggleHold(i) {
@@ -5176,7 +5191,7 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
     // the board's card for a table of this size: five of them with the seats at either end, or the pot over them and
     // your own cards under them, whichever is tighter (a table taller than wide has its side seats above and below, so
     // its board may take a little more of the width)
-    function cardW(tw, th) { var a = tw / th, k = clamp(0.082 + (1.6 - a) * 0.05, 0.082, 0.115); return Math.min(tw * k, th * 0.18, 210); }
+    function cardW(tw, th) { var a = tw / th, k = clamp(0.082 + (1.6 - a) * 0.05, 0.082, 0.115) + (a < 1 ? clamp((1 - a) * 0.12, 0, 0.03) : 0); return Math.min(tw * k, th * 0.18, 210); }
     function plan(form, t, s, rooms) { return { form: form, t: t.map(Math.round), s: s, rooms: rooms.filter(function (r) { return r.box[2] >= 220 && r.box[3] >= 140; }), b: cardW(t[2], t[3]) }; }
     function col(x, y, w, h) { return { box: [x, y, w, h].map(Math.round), form: 'col' }; }
     var best;
@@ -5196,7 +5211,7 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
       // stacked: the largest table the window allows with a dock under it; or, when it costs the cards nothing, a
       // lower table with the room and your station side by side under it
       var narrow = iw < 900, aMin = narrow ? 0.8 : 1.45, k1, k2 = null;
-      var slim = iw < 640, DH = slim ? Math.round(258 * ss) : DOCK, th1 = Math.min(ih - gp - DH, iw / aMin), bh = ih - th1 - gp;
+      var slim = iw < 760, DH = slim ? Math.round(258 * ss) : DOCK, th1 = Math.min(ih - gp - DH, iw / aMin), bh = ih - th1 - gp;
       var want = Math.round(clamp(ih * 0.2, 150, 420));
       // (the room as a band between the table and the dock, where the cards lose a tenth at most for it)
       if (bh - DH - gp < 150 && cardW(iw, th1 - want - gp) >= cardW(iw, th1) * 0.88 && (th1 - want - gp) >= iw / 2.6) { th1 -= want + gp; bh = ih - th1 - gp; }
@@ -5945,7 +5960,7 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
       var cols = [], w = rm.box[2], h = rm.box[3], gap = 8 * pu, usedW = 0, row = rm.dir === 'row';
       for (var k = 0; k < todo.length; k++) {
         var id = todo[k], m = min[id].slice(), last = cols[cols.length - 1];
-        if (id === 'rank' && row && h < m[1]) m = [440 * pu, 150 * pu];   // (a low band: the ten hands in two columns)
+        if (id === 'rank' && row && h < m[1]) m = [480 * pu, 150 * pu];   // (a low band: the ten hands in two columns)
         if (m[1] > h + 0.5 || m[0] > w + 0.5) continue;
         (has.min || (has.min = {}))[id] = m;
         if (row && usedW + (cols.length ? gap : 0) + m[0] <= w + 0.5) { usedW += (cols.length ? gap : 0) + m[0]; cols.push({ ids: [id], used: m[1], w: m[0], log: id === 'log' }); }
