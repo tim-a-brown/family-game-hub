@@ -344,8 +344,10 @@ Underlying principles for everything:
   (`S.ev`); online `paintSeats`, At the table (each other player's money and bet, cards face down while they decide,
   and the hand they played once the dealer has turned over on this device, a folded hand kept face down; two seats a
   line, `c2`, in a low row). `fitInfo` gives up whole parts by `data-drop`, never a cut one. Online the table's seat
-  plates flow across the station (`.dk-stn.net`) and the plan uses the station's measured height (`DK.stx`). K, L, N
-  and 1100 by 640 count as tablets and keep the tablet's layout. Test hook `__tcp.desk()`; the scripts are the
+  plates flow across the station (`.dk-stn.net`) and the plan uses the station's measured height (`DK.stx`). The iPads' band
+  (620 to 840 the short way, 900 to 1200 the long way) is a desk only with a mouse (`pointer: fine` in the head
+  script's `desk`; Pai Gow's too) and never at the iPad mini's own shape (to 790 by 1060), so 1100 by 640, K, L and N
+  in a computer's window are desks, and a touch iPad keeps the tablet's layout. Test hook `__tcp.desk()`; the scripts are the
   scratchpad's `big/threecardpoker/` (`lib.js`, `gen.js` the saved games, `shots.js` the scan and the pixel proof with
   `cmp.js`, `resize.js`, `online.js` three people, `online6.js` six people in six window shapes, `demo.js`).
   **Pai Gow at a desk** (the same functions in paigow.html, `html.pgd`): setting seven cards is the hero, a card to
@@ -409,8 +411,10 @@ Underlying principles for everything:
   at its right (any window wider than tall, and a squarer one large enough for a hand of 150 px cards beside them);
   `s`, the caption's row over a hand the window's width (tall and square windows; no last events there); `r`, all of
   them in a column at the right of a low wide window. The round track lies between the table and the dock. **Where the
-  desk has no better table than the tablet's** (`deskPlanN` gives null: 1280 by 720 with four or more, 1000 by 1000
-  and 820 by 1180 with five or six, 1180 by 820 and 1080 by 810 with six, 1600 by 560 with five or six, 560 by 620)
+  desk has no better table than the tablet's** (`deskPlanN` gives null: 1280 by 720 with six or with teams, 1000 by 1000
+  and 820 by 1180 with five or six, 1180 by 820 and 1080 by 810 with six, 1600 by 560 with five or six, 560 by 620; where the desk has no table with cards for the
+  others, one with stacks is taken last, `low`, when your cards are 72 px or more, the stacks 40 px and the others'
+  Domains 150 px wide: 1280 by 720 with four or five players and 1366 by 768 with five)
   the tablet's table is drawn, and the felt says `big` (`bsu` while the Domains are laid) so that the teams' bar has a
   place over your mat, your bar keeps off the others' rows at the set-up, and a card's name is 8 px. The set-up is the
   same cells with the set-up's own slots (`suCellD`); the dice, the scan, the face-off, the playback (`figN` finds a
