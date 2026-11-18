@@ -1467,7 +1467,10 @@ html.sb-desk .sd-l{view-transition-name:sb-book;} html.sb-desk .sd-b{view-transi
       holder.appendChild(el('div', { class: 'sb-day' }, [el('span', { text: gr.h }), el('span', { text: gr.list.length + ' ' + word[gr.list.length === 1 ? 0 : 1] })]));
       gr.list.forEach(function (g) { holder.appendChild(g.lg === 'golf' ? golfEl(g, mine) : gameEl(g, mine)); });
     });
-    fitNames(holder); sdFit();
+    fitNames(holder);
+    // (at a desk, a league with only a few games leaves most of the board empty: the other leagues' games fill it)
+    if (SD.on && !mine && !ff) { sdGrid(); if (holder.offsetHeight < dom.body.clientHeight * .6) sdElsewhere(holder, lgs); }
+    sdFit();
   }
   function gameEl(g, showLg) {
     var L = LG[g.lg], card = el('div', { class: 'gm' + (favGame(g) ? ' fav' : ''), 'data-gid': g.id });
