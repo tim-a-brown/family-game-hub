@@ -292,6 +292,7 @@ html.bj-dk .ctrl .cz-slot{height:calc(var(--cs) + 20px);}
 html.bj-dk .ctrl .cz-slot .cz-stk{bottom:5px;}
 html.bj-dk .acts .btn{min-height:calc(60px * var(--sc,1));font-size:calc(1.1rem * var(--sc,1));cursor:pointer;} html.bj-dk .acts .btn.sm{min-height:calc(50px * var(--sc,1));font-size:calc(.98rem * var(--sc,1));}
 html.bj-dk .acts .btn:disabled{cursor:default;}
+html.bj-dk .acts.nx{grid-template-columns:max-content minmax(0,1fr);} html.bj-dk .acts.nx .btn{white-space:nowrap;padding:0 14px;} html.bj-dk .acts.nx .btn.wide{grid-column:auto;}
 html.bj-dk.bj-cp .stage > .ctrl{gap:8px;} html.bj-dk.bj-cp .acts .btn{min-height:50px;font-size:1rem;} html.bj-dk.bj-cp .acts .btn.sm{min-height:44px;font-size:.9rem;padding:0 4px;}
 html.bj-dk .wait{min-height:96px;}
 html.bj-dk .ctrl.nar .acts{gap:6px;} html.bj-dk .ctrl.nar .acts .btn{font-size:.92rem;padding:0 4px;} html.bj-dk .ctrl.nar .acts .btn.sm{font-size:.84rem;padding:0 2px;} html.bj-dk .ctrl.nar .st{font-size:.92rem;gap:6px;}
@@ -307,6 +308,7 @@ html.bj-dk .bjinfo.row{flex-direction:row;align-items:stretch;}
 .bjinfo.row .bi{flex:1 1 0;} .bjinfo.row .bi-sess{flex:0 0 var(--sw1,300px);} .bjinfo.row .bi-hands{flex:1.5 1 0;} .bjinfo.row .bi-rules{flex:0 0 var(--sw1,300px);}
 .bjinfo .bi-col{display:flex;flex-direction:column;gap:var(--ig,12px);flex:0 0 var(--sw1,300px);min-width:0;min-height:0;}
 .bjinfo .bi-col .bi{flex:none;}
+.bjinfo.row.two .bi{flex:1 1 0;max-width:30em;align-self:flex-start;}
 /* one player: the session as figures */
 .bi-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5em;}
 .bi-tiles div{display:flex;flex-direction:column;gap:.1em;padding:.5em .65em;border-radius:12px;background:var(--well,rgba(0,0,0,.25));min-width:0;}
@@ -1470,8 +1472,8 @@ html.bj-dk .bjinfo.row{flex-direction:row;align-items:stretch;}
         hw = cw * 1.45; sp = P.low ? cw * .84 : Math.min(cw * .95, 50 * u); ck = sp * .7;
         widths = counts.map(function (c) { return c * (P.low ? hw + sp + 4 * u : hw); });
         pos = deskSeats(n, widths, W, gap, u, P.rv, P.t);
-        zone = deskZone(P, pos, cw, sp, u);
-        if (zone.zh >= 46 || shr < .45) break;
+        zone = deskZone(P, pos, cw, sp, u, widths);
+        if (zone || shr < .45) break;
       }
       deskPrint(P, felt, zone, u);
     }
@@ -1711,17 +1713,35 @@ html.bj-dk .bjinfo.row{flex-direction:row;align-items:stretch;}
     function rise(half) { var d = Math.min(.985, half / (W / 2)); return rv * (1 - Math.sqrt(1 - d * d)); }
     return xs.map(function (x, i) { var off = Math.abs(x - W / 2); return { x: x, b: Math.max(rise(off + 48 * t) + 12 * u, rise(off + widths[i] / 2 + 5 * u) + 6 * u - 30 * t - 6 * u) }; });
   }
-  // where the print goes: the band between the dealer's cards and the top of the lowest hand, in the felt's units
-  function deskZone(P, pos, cw, sp, u) {
-    var low = Math.min.apply(null, pos.map(function (p) { return p.b; }));
-    var stackH = low + 30 * P.t + 6 * u + (P.low ? Math.max(sp, cw * 1.4) : sp + 6 * u + cw * 1.4) + 16 * P.t;
-    var yA = 42 + 58 * 1.4 + 9, yB = (P.fh - stackH) / u;
-    return { zc: (yA + yB) / 2, zh: yB - yA };
+  // where the print goes, in the felt's units: three lines on arcs that sag toward the middle, between the dealer's cards
+  // and the hands. Each seat's hands stand at their own height along the curved edge (the outer ones higher), so the
+  // print is fitted against every seat under it: the lowest point of the print over a seat's width stays clear of the
+  // top of that seat's hands. The largest print that fits is chosen; null when none does at this card size.
+  function deskZone(P, pos, cw, sp, u, widths) {
+    var Wu = P.fw / u, cx = Wu / 2, hs = Math.min(Wu * .43, 260), yA = 42 + 58 * 1.4 + 9;
+    var seats = pos.map(function (p, i) {
+      var stackH = p.b + 30 * P.t + 6 * u + (P.low ? Math.max(sp, cw * 1.4) : sp + 6 * u + cw * 1.4) + 16 * P.t;
+      var xl = (p.x - widths[i] / 2) / u, xr = (p.x + widths[i] / 2) / u, m;
+      if (xr < cx - hs || xl > cx + hs) m = -1;   // (wholly outside the print's span)
+      else if (xl <= cx && xr >= cx) m = 1;
+      else { var t = Math.min(Math.abs(xl - cx), Math.abs(xr - cx)) / hs; m = 1 - t * t; }
+      return { top: (P.fh - stackH) / u, m: m };
+    });
+    for (var k = Math.min(1.2, hs / 135); k >= .62; k -= .03) {
+      for (var j = 0; j < 4; j++) {
+        var sag = Math.max(6, [36, 26, 16, 8][j] * k), lo = yA + 35 * k - sag, hi = Infinity;
+        seats.forEach(function (q) { if (q.m >= 0) hi = Math.min(hi, q.top - 4 - 38 * k - sag * q.m); });
+        hi = Math.min(hi, P.fh / u - 38 * k - sag - 4);
+        if (lo <= hi) return { k: k, sag: sag, hs: hs, a2: (lo + hi) / 2 };
+      }
+    }
+    return null;
   }
   // the felt's print: the same three lines as the phone's table, set on arcs between the dealer's cards and the hands
   function deskPrint(P, felt, zone, u) {
-    var Wu = P.fw / u, Hu = P.fh / u, zc = zone.zc, zh = zone.zh;
-    var hs = Math.min(Wu * .43, 260), k = clamp(Math.min(zh / 78, hs / 135), .62, 1.2), sag = clamp(zh * .32, 10, 36 * k), cx = Wu / 2, a2 = zc + k - sag;
+    var Wu = P.fw / u, Hu = P.fh / u, cx = Wu / 2;
+    if (!zone) { felt.style.setProperty('--my', ((42 + 58 * 1.4 + 30) * u).toFixed(1) + 'px'); return; }
+    var k = zone.k, sag = zone.sag, hs = zone.hs, a2 = zone.a2;
     function q(y0) { return 'M ' + (cx - hs).toFixed(1) + ' ' + y0.toFixed(1) + ' Q ' + cx.toFixed(1) + ' ' + (y0 + 2 * sag).toFixed(1) + ' ' + (cx + hs).toFixed(1) + ' ' + y0.toFixed(1); }
     var rule = S.opt.h17 ? 'DEALER MUST HIT SOFT 17' : 'DEALER MUST STAND ON SOFT 17';
     felt.insertAdjacentHTML('beforeend', '<svg class="arc" viewBox="0 0 ' + Wu.toFixed(1) + ' ' + Hu.toFixed(1) + '" preserveAspectRatio="none" aria-hidden="true">' +
@@ -1732,7 +1752,7 @@ html.bj-dk .bjinfo.row{flex-direction:row;align-items:stretch;}
       '<path d="' + q(a2 + 37 * k) + '" fill="none" stroke="rgba(243,210,122,.5)" stroke-width="' + (1.2 * k).toFixed(2) + '"/>' +
       '<text fill="rgba(243,210,122,.85)" font-size="' + (9 * k).toFixed(1) + '" text-anchor="middle" style="letter-spacing:.2em"><textPath href="#a3" startOffset="50%">INSURANCE PAYS 2 TO 1</textPath></text>' +
       '</svg>');
-    felt.style.setProperty('--my', (zc * u).toFixed(1) + 'px');
+    felt.style.setProperty('--my', ((a2 + sag) * u).toFixed(1) + 'px');
   }
   // the station and the room beside (or under) the table
   function deskSide(P) {
@@ -1802,7 +1822,8 @@ html.bj-dk .bjinfo.row{flex-direction:row;align-items:stretch;}
       hl.forEach(function (x) { list.appendChild(handRow(x, n)); });
       pHands = part('bi-hands', 'Hands so far', null, list);
     }
-    if (row) {
+    if (row && !pHands) { box.classList.add('two'); box.appendChild(pSess); box.appendChild(pRules); if (pChart && r.w >= 900) box.appendChild(pChart); }   // (nothing played yet: the session and the placard side by side)
+    else if (row) {
       var col = el('div', { class: 'bi-col' }, [pSess, pRules]);
       box.appendChild(col); if (pChart && r.w >= 900) box.appendChild(pChart); if (pHands) box.appendChild(pHands);
     } else [pSess, pChart, pHands, pRules].forEach(function (x) { if (x) box.appendChild(x); });
@@ -1949,7 +1970,7 @@ html.bj-dk .bjinfo.row{flex-direction:row;align-items:stretch;}
       }
       var lastBets = (NET ? [Math.max(0, NET.seat)] : humans()).map(function (j) { return Math.min(S.seats[j].last, bank(j), TABLE_MAX); }).reduce(function (a, b) { return a + b; }, 0);
       acts([btn('New bet', 'btn-soft', function () { nextRound(false); }),
-        lastBets > 0 ? btn('Rebet ' + money(lastBets) + ' & deal', 'btn-primary wide', function () { nextRound(true); }) : btn('Next hand', 'btn-primary wide', function () { nextRound(false); })], 3);
+        lastBets > 0 ? btn('Rebet ' + money(lastBets) + ' & deal', 'btn-primary wide', function () { nextRound(true); }) : btn('Next hand', 'btn-primary wide', function () { nextRound(false); })], 3).classList.add('nx');
       c.appendChild(el('div', { class: 'st' }, [el('span', { class: 'grow' }), Kit.cashOut(endSession)]));   // (the same place as while betting)
     } else {
       var txt = ph === 'dealer' ? 'Dealer plays…' : ph === 'peek' ? 'Dealer checks for blackjack…' : ph === 'deal' ? 'Dealing…' : h && S.seats[h.seat].cpu ? S.seats[h.seat].name + ' is thinking…' : h && NET ? S.seats[h.seat].name + ' is playing ' + (seatHands(h.seat).length > 1 ? 'a hand of ' + totWords(h.cards) : totWords(h.cards)) + ' against ' + upName(S.dealer[0]) : '';
