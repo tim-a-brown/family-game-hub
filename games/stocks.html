@@ -313,7 +313,8 @@ html.mk-desk .dk-cash{flex:none;}
 html.mk-desk .dk-cash .cashrow{flex-wrap:wrap;}
 html.mk-desk .dk-sum .val .chg{margin-left:auto;}
 html.mk-desk .dk-cash .cashrow .amt{font-size:calc(1.5rem * var(--dkf,1));}
-html.mk-desk .dk-acct{flex:none;display:grid;grid-template-columns:minmax(0,1fr);gap:8px;}                /* (a short window: value and cash as two slim tiles over the board) */
+html.mk-desk .dk-acct{flex:none;display:grid;grid-template-columns:minmax(0,1fr);gap:8px;}                /* (a short window: value and cash as two slim tiles over the chosen stock) */
+html.mk-desk .dk-f > .dk-acct{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;}
 html.mk-desk .dk-acct .pnl{padding:8px 12px;}
 html.mk-desk .dk-acct .pnl h3{margin-bottom:2px;}
 html.mk-desk .dk-acct .cashrow .amt{font-size:1.25rem;}
@@ -331,6 +332,10 @@ html.mk-desk .dk-hold.thin .row > span:nth-child(3){display:none;}              
 html.mk-desk .dk-hold.thin .row{grid-template-columns:auto minmax(0,1fr) auto;}
 html.mk-desk .empty{text-align:left;padding:6px 2px;}
 
+html.mk-desk .dk-lrn{flex:1 1 0;min-height:0;display:flex;flex-direction:column;}
+html.mk-desk .dk-lrn > .pnl{flex:0 1 auto;min-height:0;display:flex;flex-direction:column;}
+html.mk-desk .dk-lrn .lessons{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;}
+html.mk-desk .dk-lrn .lesson{padding:10px 12px;}
 /* the board: the tabs, the search, the three indexes, the groups, and the group's names as tiles */
 html.mk-desk .mk-main{display:flex;flex-direction:column;min-height:0;flex:44 1 0;}
 html.mk-desk .dk-col.one > .mk-main{flex:1 1 0;}
@@ -358,6 +363,7 @@ html.mk-desk .mk-main .chips.mk-sub{margin:0 0 8px;padding:0;}
 html.mk-desk .mk-main.short .bhead .idx,html.mk-desk .mk-main.short .mk-blurb{display:none!important;}
 html.mk-desk .mk-main.short.narrow .bhead{grid-template-columns:auto minmax(0,1fr);}
 html.mk-desk .mk-main.short.narrow .bhead .seg{min-width:0;}
+html.mk-desk .mk-main.slim .bhead{grid-template-columns:minmax(0,1fr)!important;gap:8px;}                   /* (a slim board: the search on a line of its own under the tabs) */
 html.mk-desk .mk-main.short.narrow .bhead .seg button{padding-left:10px;padding-right:10px;}
 html.mk-desk .mk-main .list{flex:1 1 0;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;}
 html.mk-desk .mk-main .list > *{flex:none;}
@@ -383,6 +389,10 @@ html.mk-desk .rows.tiles.r2 .row .pill{grid-column:4;grid-row:1;}
 html.mk-desk .rows.tiles.r2 .row .nm small:first-of-type{grid-column:1 / span 2;grid-row:2;font-size:.92rem;}
 html.mk-desk .rows.tiles.r2 .row .nm small + small{display:none;}
 html.mk-desk .rows.tiles.r2 .row .spk{grid-column:3 / span 2;grid-row:2;height:26px;}
+/* a short board: the rows without their charts, so more of the group is in view at once (fitTiles' rs) */
+html.mk-desk .rows.tiles.rs .row{grid-template-columns:auto minmax(0,1fr) auto;padding:6px 12px;}
+html.mk-desk .rows.tiles.rs .row .spk{display:none;}
+html.mk-desk .rows.tiles.rs .row .nm small + small{display:none;}
 /* a tile with the height for it: its symbol and today's change, its name and price, and its chart under them */
 html.mk-desk .rows.tiles.tl .row{grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto auto minmax(0,1fr);padding:10px 12px 8px;gap:6px 10px;align-items:start;}
 html.mk-desk .rows.tiles.tl .row .tk{grid-column:1;grid-row:1;}
@@ -914,7 +924,7 @@ html.mk-desk .dk-focus{view-transition-name:mk-focus;} html.mk-desk .dk-tkt{view
     // the desk's own parts (in the page only while a desk layout shows: arrange, below)
     dom.root = root; dom.dk = el('div', { class: 'dk' });
     dom.cash = el('div', { class: 'dk-cash' }); dom.hold = el('div', { class: 'dk-hold' }); dom.acts = el('div', { class: 'dk-acts' });
-    dom.tkt = el('div', { class: 'dk-tkt' }); dom.focus = el('div', { class: 'dk-focus' }); dom.acct = el('div', { class: 'dk-acct' });
+    dom.tkt = el('div', { class: 'dk-tkt' }); dom.lrn = el('div', { class: 'dk-lrn' }); dom.focus = el('div', { class: 'dk-focus' }); dom.acct = el('div', { class: 'dk-acct' });
     DK.on = false; DK.key = ''; DK.P = null;
     var mq = window.matchMedia('(min-width:900px),(orientation:landscape) and (min-width:640px)');
     function place() { dom.wide = mq.matches; if (arrange()) return; if (dom.wide) dom.side.appendChild(dom.sum); paint(); }
@@ -978,7 +988,7 @@ html.mk-desk .dk-focus{view-transition-name:mk-focus;} html.mk-desk .dk-tkt{view
       P.holdL = U - 250 - (P.cashL ? CASH + G : 0) >= 200;         // (what you own under the account; in a strip it stays a tab of the board)
       P.holdTab = !P.holdL;
     } else {
-      P.acctTop = P.side && U < SUMC + CASH + TKT + 2 * G;         // (value and cash as slim tiles over the board)
+      P.acctTop = P.side && U < SUMC + CASH + TKT + 2 * G;         // (value and cash as slim tiles over the chosen stock)
       P.tight = U < TK + (P.acctTop ? 0 : SUMC + CASH + 2 * G);
       P.holdR = used && !P.acctTop && U - SUMC - CASH - TK - 3 * G >= 230;
       P.holdTab = used && !P.holdR;                                // (what you own stays a tab of the board, as on a phone)
@@ -1004,7 +1014,7 @@ html.mk-desk .dk-focus{view-transition-name:mk-focus;} html.mk-desk .dk-tkt{view
     if (first) { releasePage(); window.scrollTo(0, 0); }
     document.documentElement.classList.add('mk-desk'); DK.on = true; DK.key = P.key;
     while (dom.dk.firstChild) dom.dk.removeChild(dom.dk.firstChild);
-    [dom.hold, dom.acts, dom.acct].forEach(function (n) { if (n.parentNode) n.parentNode.removeChild(n); });
+    [dom.hold, dom.acts, dom.acct, dom.lrn].forEach(function (n) { if (n.parentNode) n.parentNode.removeChild(n); });
     function col(cls, w, kids) { var c = el('div', { class: 'dk-col ' + cls + (w ? ' fx' : '') }); if (w) c.style.width = w + 'px'; kids.forEach(function (k) { if (k) c.appendChild(k); }); dom.dk.appendChild(c); return c; }
     dom.focus.appendChild(dom.pane); dom.pane.classList.add('on');
     dom.dk.classList.toggle('tall', !!P.tall); dom.tkt.style.width = P.tall ? P.Rw + 'px' : '';
@@ -1014,9 +1024,9 @@ html.mk-desk .dk-focus{view-transition-name:mk-focus;} html.mk-desk .dk-tkt{view
       [dom.acct, r2, dom.main, P.holdOwn ? dom.hold : null].forEach(function (k) { if (k) dom.dk.appendChild(k); });
     } else {
       if (P.L) col('dk-l', P.Lw, [dom.sum, P.cashL ? dom.cash : null, P.holdL ? dom.hold : null]);
-      if (P.side) { col('dk-b one', P.Bw, [P.acctTop ? dom.acct : null, dom.main]); col('dk-f one', 0, [dom.focus]); }
+      if (P.side) { col('dk-b one', P.Bw, [dom.main]); col('dk-f one', 0, [P.acctTop ? dom.acct : null, dom.focus]); }   // (value and cash as two slim tiles over the chosen stock, so the board has the column's height)
       else col('dk-c', 0, [dom.focus, dom.main]);
-      col('dk-r', P.Rw, P.L ? [dom.tkt, P.cashL ? null : dom.cash, P.actsR && P.holdL ? dom.acts : null] : [P.acctTop ? null : dom.sum, P.acctTop ? null : dom.cash, dom.tkt, P.holdR ? dom.hold : null]);
+      col('dk-r', P.Rw, P.L ? [dom.tkt, P.cashL ? null : dom.cash, P.actsR && P.holdL ? dom.acts : null] : [P.acctTop ? null : dom.sum, P.acctTop ? null : dom.cash, dom.tkt, P.holdR ? dom.hold : null, P.used ? null : dom.lrn]);
     }
     dom.sum.className = 'dk-sum' + (P.L ? '' : ' compact');
     dom.main.classList.toggle('narrow', !!P.side);
@@ -1027,7 +1037,7 @@ html.mk-desk .dk-focus{view-transition-name:mk-focus;} html.mk-desk .dk-tkt{view
     document.documentElement.classList.remove('mk-desk'); DK.on = false; DK.key = ''; DK.P = null;
     if (dom.dk.parentNode) dom.dk.parentNode.removeChild(dom.dk);
     root.appendChild(dom.side); root.appendChild(dom.main); dom.main.insertBefore(dom.seg, dom.body);
-    dom.sum.className = ''; dom.tkt.style.width = ''; dom.hold.style.maxHeight = ''; dom.main.classList.remove('narrow', 'cx', 'mid', 'short'); root.style.removeProperty('--mkh'); root.style.removeProperty('--dkf'); root.style.removeProperty('--dkc');
+    dom.sum.className = ''; dom.tkt.style.width = ''; dom.hold.style.maxHeight = ''; dom.main.classList.remove('narrow', 'cx', 'mid', 'short', 'slim'); root.style.removeProperty('--mkh'); root.style.removeProperty('--dkf'); root.style.removeProperty('--dkc');
     dom.pane.classList.remove('on', 'sym', 'doc', 'two'); document.body.appendChild(dom.pane); dom.paneIn.innerHTML = '';
     if (dom.wide) dom.side.appendChild(dom.sum);
     paint();
@@ -1054,18 +1064,29 @@ html.mk-desk .dk-focus{view-transition-name:mk-focus;} html.mk-desk .dk-tkt{view
       if (sym && (!DK.mode || DK.mode === 'sym' || !dom.paneIn.firstChild)) openSym(sym, DK.mode === 'sym' && dom.paneSym === sym);
       else if (DK.tref) DK.tref();
     } else if (!dom.paneIn.firstChild) dom.paneIn.appendChild(el('div', { class: 'pnl empty', text: qErr ? 'Can’t reach the market prices right now. Try again in a bit.' : 'Getting today’s prices…' }));
+    paintLrn();
     deskFit();
+  }
+  // an account not used yet: the lessons still to read stand under the ticket, where the account's orders and trades
+  // will be (a lesson opens in the chosen stock's place)
+  function paintLrn() {
+    var c = dom.lrn; c.innerHTML = ''; if (!c.parentNode) return;
+    var L = lessons(), done = L.filter(function (l) { return LEARN[l.id]; }).length; if (done === L.length) return;
+    var p = el('div', { class: 'pnl' }), r = el('div', { class: 'lessons' });
+    p.appendChild(el('h3', null, [el('span', { text: 'How investing works' }), el('span', { text: done + ' of ' + L.length + ' read' })]));
+    L.forEach(function (l, i) { if (LEARN[l.id]) return; r.appendChild(el('button', { type: 'button', class: 'lesson', onclick: function () { openLesson(l); } }, [el('span', { class: 'n', text: String(i + 1) }), el('span', null, [el('b', { text: l.t }), el('small', { text: l.s })]), el('span', { class: 'go', html: Kit.icon('right') })])); });
+    p.appendChild(r); c.appendChild(p);
   }
   function deskBoard() {
     var P = DK.P; if (!P) return;
     if (!P.holdTab && tab === 'port') tab = 'mkt';
-    var bw = dom.main.clientWidth; dom.main.classList.toggle('cx', bw < 1100); dom.main.classList.toggle('mid', !P.side && bw < 800);
+    var bw = dom.main.clientWidth; dom.main.classList.toggle('cx', bw < 1100); dom.main.classList.toggle('mid', !P.side && bw < 800); dom.main.classList.toggle('slim', bw < 320);
     paintSeg();
     dom.body.innerHTML = '';
     if (tab === 'port') { var pb = el('div', { class: 'port' }); dom.body.appendChild(pb); paintPort(pb); }
     else if (tab === 'mkt') paintMarket(); else paintLearn();
     // (the tabs stand at the head of the board, on the search's line when the board is the market)
-    if (!dom.seg.parentNode || dom.seg.parentNode === dom.main) dom.body.insertBefore(el('div', { class: 'bhead solo' }, [dom.seg]), dom.body.firstChild);
+    if (!dom.body.contains(dom.seg)) dom.body.insertBefore(el('div', { class: 'bhead solo' }, [dom.seg]), dom.body.firstChild);
   }
   // after a paint: when the account column is too short for what you own, the value chart gives height first, and then
   // the column gives up its last parts whole (taxes, then what it is in, then the chart); every list that scrolls is
@@ -1076,7 +1097,11 @@ html.mk-desk .dk-focus{view-transition-name:mk-focus;} html.mk-desk .dk-tkt{view
     dom.hold.classList.toggle('thin', dom.hold.clientWidth > 0 && dom.hold.clientWidth < 400);
     if (P.L && !P.holdL) {
       var colL = dom.sum.parentNode, tooTall = function () { return colL.scrollHeight > colL.clientHeight + 1; };
-      ['no-chart', 'no-tax', 'no-alloc'].some(function (c) { if (!tooTall()) return true; dom.sum.classList.add(c); return false; });
+      // (taxes go first, then what it is in; the value through time gives height before it goes, last)
+      ['no-tax', 'no-alloc'].some(function (c) { if (!tooTall()) return true; dom.sum.classList.add(c); return false; });
+      var ov2 = colL.scrollHeight - colL.clientHeight;
+      if (ov2 > 0 && DK.chh - ov2 >= 80) { DK.chh -= ov2; paintSum(); }
+      if (tooTall()) dom.sum.classList.add('no-chart');
     } else if (P.L) {
       var over = function () { return dom.hold.scrollHeight - dom.hold.clientHeight; }, ov = over();
       var chMin = Math.round(150 * (1 + (P.f - 1) * .6));
@@ -1086,6 +1111,9 @@ html.mk-desk .dk-focus{view-transition-name:mk-focus;} html.mk-desk .dk-tkt{view
       ['no-tax', 'no-alloc', 'no-chart'].some(function (c) { if (!starved()) return true; dom.sum.classList.add(c); return false; });
     }
     growRows(dom.acts);
+    var ml = dom.main.querySelector('.lessons'); if (ml) { ml.style.maxHeight = ''; trimRows(ml); }   // (the board's lessons: whole ones)
+    // (the lessons under the ticket: whole lessons only, and none at all when not even one fits)
+    var lr = dom.lrn.querySelector('.lessons'); if (lr) { dom.lrn.style.display = ''; lr.style.maxHeight = ''; trimRows(lr); dom.lrn.style.display = lr.clientHeight < 60 ? 'none' : ''; }
     [].forEach.call(dom.root.querySelectorAll('.pnl.grow > .rows'), trimRows);
     wholeRows(dom.hold);
   }
@@ -1155,12 +1183,27 @@ html.mk-desk .dk-focus{view-transition-name:mk-focus;} html.mk-desk .dk-tkt{view
       if (cand && (!best || cand.s > best.s)) { cand.c = c; cand.tw = tw; best = cand; }
     }
     if (!best) return;
+    // (a board so short that fewer than four of the group would show: plain rows without their charts, more at once)
+    var H_RS = Math.round(62 * F), seen = function (b) { return b.more ? Math.max(1, Math.floor((h + gap) / (b.th + gap))) * b.c : n; };
+    if (rows.length === 1 && seen(best) < Math.min(n, 4)) {
+      var rc = Math.max(1, Math.min(n, Math.floor((w + gap) / (300 + gap)))), rr = Math.ceil(n / rc), rth = (h - (rr - 1) * gap) / rr;
+      best = { kind: 'rs', c: rc, tw: (w - (rc - 1) * gap) / rc, th: rth >= H_RS ? Math.min(rth, H_RS * 1.2) : H_RS, more: rth < H_RS ? 1 : 0 };
+    }
     best.th = Math.floor(best.th);
     [].forEach.call(rows, function (x) {
-      x.classList.toggle('tl', best.kind === 'tl'); x.classList.toggle('r2', best.kind === 'r2');
+      x.classList.toggle('tl', best.kind === 'tl'); x.classList.toggle('r2', best.kind === 'r2'); x.classList.toggle('rs', best.kind === 'rs');
       x.style.setProperty('--tc', best.c); x.style.setProperty('--th', best.th + 'px'); x.style.setProperty('--sw', Math.round(clampN(70, best.tw * .3, 200)) + 'px');
-      x.style.maxHeight = best.more && rows.length === 1 ? (Math.max(1, Math.floor((h + gap) / (best.th + gap))) * (best.th + gap) - gap) + 'px' : '';
+      x.style.maxHeight = '';
     });
+    // (a group longer than the board scrolls inside itself by whole tiles, and the tiles stretch a little to end at the
+    // board's foot instead of leaving a band under the last whole row)
+    var r0 = rows[0];
+    if (rows.length === 1 && (list.scrollHeight > list.clientHeight + 1 || r0.scrollHeight > r0.clientHeight + 1)) {
+      var avail = list.getBoundingClientRect().bottom - (parseFloat(cs2.paddingBottom) || 0) - r0.getBoundingClientRect().top;
+      var k = Math.max(1, Math.floor((avail + gap) / (best.th + gap))), th2 = Math.floor(Math.min(best.th * 1.3, (avail - (k - 1) * gap) / k));
+      if (th2 > best.th) { best.th = th2; r0.style.setProperty('--th', th2 + 'px'); }
+      r0.style.maxHeight = (k * (best.th + gap) - gap) + 'px';
+    }
     // a name too long for its tile steps down a size, then a second; then the tile is its symbol and its price
     [].forEach.call(list.querySelectorAll('.rows.tiles .row'), function (t) {
       var b = t.querySelector('.nm b'); if (!b) return;
