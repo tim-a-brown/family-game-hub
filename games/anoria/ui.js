@@ -4193,21 +4193,30 @@
   // starts where the two-player desk does (deskWin), and a window in which your own cells would have no room for cards
   // keeps the iPad's table.
   const DN_MIN = 58, DN_MAX = 220, clampN = (a, v, b) => Math.max(a, Math.min(b, v));
-  // a Domain's cell, w by h: the largest cards at which a band of them above the Domain and one below it fit; where
-  // none of 58 px does, the cell's parties are stacks (stk)
-  function dnCell(w, h, cap) {
-    const tw = Math.floor(Math.min(w - 10, 640)), sh = Math.round(clampN(24, tw * .17, 64)), bg = Math.round(sh * .62 + 3);
+  // a Domain's cell, w by h: the largest cards at which a band of them above the Domain and one below it fit (yours, and
+  // a line's); one: the Domain at the cell's head with everyone's cards there in one band under it (a mat whose Gate
+  // lies over its Outpost, where two bands a cell would halve the cards). Where no card of 58 px fits, the cell's
+  // parties are stacks (stk)
+  function dnCell(w, h, cap, one) {
+    const tw = Math.floor(Math.min(w - 10, 640)), sh = Math.round(clampN(24, tw * .17, 64)), bg = Math.round(sh * .62 + 3), nb = one ? 1 : 2;
     const tag = c => (c >= 90 ? Math.round(clampN(17, c * .13, 27)) : 0), thOf = c => Math.round(Math.max(tw * .34, Math.min(tw * .62, c * 1.3)));
-    const need = c => 2 * (c * 1.4 + tag(c) + 10) + thOf(c) + 2 * bg;
-    let c = Math.floor(Math.min(cap || DN_MAX, (w - 8) / 2));
+    const need = c => nb * (c * 1.4 + tag(c) + 10 + bg) + thOf(c);
+    // (a cell with a band for each side holds a pile of two with the first card's name still showing; one band holds two piles)
+    let c = Math.floor(Math.min(cap || DN_MAX, (w - 8) / (one ? 2 : 1.6)));
     while (c >= DN_MIN && need(c) > h) c -= 2;
-    if (c >= DN_MIN) { const th = Math.round(Math.min(tw * .66, thOf(c) + (h - need(c)) * .5)); return { w: w, h: h, tw: tw, th: th, sh: sh, bg: bg, c: c, tag: tag(c), band: (h - th - 2 * bg) / 2 }; }
-    const th = Math.round(clampN(tw * .34, h * .34, tw * .62)), band = (h - th - 2 * bg) / 2, sw = Math.floor(Math.min(60, (w - 12) / 3 - 4, (band - 8) / 1.36));
-    return { w: w, h: h, tw: tw, th: th, sh: sh, bg: bg, c: 0, stk: true, sw: sw, tag: 0, band: band };
+    if (c >= DN_MIN) { const th = Math.round(Math.min(tw * .66, thOf(c) + (h - need(c)) * .5)); return { w: w, h: h, tw: tw, th: th, sh: sh, bg: bg, c: c, tag: tag(c), one: !!one, band: (h - th - nb * bg) / nb, use: Math.min(1, (need(c) - thOf(c) + th) / h) }; }
+    const th = Math.round(clampN(tw * .34, h * (one ? .42 : .34), tw * .62)), band = (h - th - nb * bg) / nb, sw = Math.floor(Math.min(60, (w - 12) / 3 - 4, (band - 8) / 1.36));
+    return { w: w, h: h, tw: tw, th: th, sh: sh, bg: bg, c: 0, stk: true, sw: sw, tag: 0, one: !!one, band: band, use: Math.min(1, (th + nb * (bg + sw * 1.36 + 8)) / h) };
   }
-  // a player's bar on a mat bw wide and bh tall: its form, its scale and the height it takes
+  // a player's bar on a mat bw wide and bh tall: its form, its scale and the height it takes. rich: the Guide's portrait,
+  // name and power in words, the Renown along its track and each Relic with its name, on a wide mat; rich2: the same
+  // without the track, the power and the Relics on lines of their own, on a mat that is not wide; one, two and three
+  // lines of marks as the mat narrows; rich3: a narrow mat with height to spare, the same on five short lines.
   function dnBar(bw, bh) {
-    if (bw >= 430) { const bs = clampN(1, bw / 560, 1.4), h = Math.round(118 * bs + 14); if (h <= bh * .135) return { f: 'rich', bs: bs, h: h }; }
+    // (a rich form at the scale its mat's width gives it, or as much smaller as keeps it to its share of the mat's height)
+    const rich = (f, h0, lo, bsW, cap) => { const bs = Math.min(bsW, (bh * cap - 14) / h0); return bs >= lo ? { f: f, bs: bs, h: Math.round(h0 * bs + 14) } : null; };
+    const r = bw >= 760 ? rich('rich', 118, 1, clampN(1, bw / 1100, 1.4), .135) : bw >= 400 ? rich('rich2', 140, .95, clampN(1, bw / 400, 1.5), .15) : bw >= 250 ? rich('rich3', 182, .85, clampN(.85, bw / 330, 1.15), .15) : null;
+    if (r) return r;
     if (bw >= 330) { const bs = Math.max(.74, Math.min(bw / 450, 1.45, (bh * .085 - 12) / 42)); return { f: 'one', bs: bs, h: Math.round(42 * bs + 12) }; }
     if (bw >= 200) { const bs = clampN(.74, bw / 270, .95); return { f: 'two', bs: bs, h: Math.round(62 * bs + 12) }; }
     return { f: 'three', bs: .74, h: 86 };
@@ -4236,20 +4245,25 @@
     mb.x = mine.x + pad; mb.w = mine.w - 2 * pad; mb.y = mine.y + mine.h - pad - mb.h;
     // the others: each mat its bar at its head, then its Gate and its Outpost
     const b0 = rim[0], rb = dnBar(b0.w - 2 * pad, b0.h), rh = b0.h - 2 * pad - rb.h - 8;
-    const rc = k === 2 ? dnCell((b0.w - 2 * pad - cg) / 2, rh, DN_MAX) : dnCell(Math.min(b0.w - 2 * pad, Math.max(260, rh * .5)), (rh - cg) / 2, DN_MAX);
+    const rc = k === 2 ? dnCell((b0.w - 2 * pad - cg) / 2, rh, DN_MAX) : dnCell(Math.min(b0.w - 2 * pad, Math.max(260, rh * .62)), (rh - cg) / 2, DN_MAX, true);
     if (rh < 150 || (rc.stk && rc.sw < 24)) return null;
     (o.seats || []).forEach((q, j) => { const b = rim[j], x0 = b.x + pad, y0 = b.y + pad + rb.h + 8;
       if (k === 2) { cells[2 * q + 1] = { x: x0, y: y0, g: rc }; cells[2 * q] = { x: x0 + rc.w + cg, y: y0, g: rc }; }
       else { const x1 = b.x + (b.w - rc.w) / 2; cells[2 * q] = { x: x1, y: y0, g: rc }; cells[2 * q + 1] = { x: x1, y: y0 + rc.h + cg, g: rc }; } });
-    const er = rc.stk ? rc.sw * .45 : rc.c;
-    const worth = (4.5 * mc.c + 2 * R * er) / (4.5 + 2 * R) + .1 * (3 * Math.min(mc.tw, 330) + 2 * R * Math.min(rc.tw, 330)) / (3 + 2 * R);
-    return { o: o, mine: mine, rim: rim, mb: mb, rb: rb, mc: mc, rc: rc, cells: cells, sdH: sdH, pad: pad, worth: worth };
+    // (what it is worth: its cards' size, a card past 150 px counting for less, yours for more than another player's;
+    // its Domains' width, which is what their names and powers read by; and how much of the room it fills)
+    const f = c => Math.min(c, 150) + .35 * Math.max(0, c - 150), er = rc.stk ? rc.sw * .6 : rc.c;
+    const fill = (3 * mc.w * mc.h * mc.use + 2 * R * rc.w * rc.h * rc.use) / (W * H);
+    const fm = c => Math.min(c, 170) + .5 * Math.max(0, c - 170);
+    const worth = (4.5 * fm(mc.c) + 2 * R * f(er)) / (4.5 + 2 * R) + .16 * (3 * Math.min(mc.tw, 300) + 2 * R * Math.min(rc.tw, 300)) / (3 + 2 * R);
+    return { o: o, mine: mine, rim: rim, mb: mb, rb: rb, mc: mc, rc: rc, cells: cells, sdH: sdH, pad: pad, worth: worth, fill: fill };
   }
   // the best table for a room: every composition tried
   function dnBest(W, H, N, tm) {
     if (W < 560 || H < 300) return null; let b = null;
-    const tryT = o => { const t = dnTable(W, H, Object.assign({ N: N, tm: tm }, o)); if (t && (!b || t.worth > b.worth + .01)) b = t; };
-    ['v', 'h'].forEach(c => { [1, .8, .64].forEach(rw => tryT({ arr: 'row', cells: c, rw: rw })); [.34, .4, .46, .52, .58].forEach(sp => tryT({ arr: 'stack', cells: c, split: sp })); });
+    // (of two compositions with cards as large, the one that fills the room)
+    const of = t => t.worth * (.7 + .3 * t.fill), tryT = o => { const t = dnTable(W, H, Object.assign({ N: N, tm: tm }, o)); if (t && (!b || of(t) > of(b) + .01)) b = t; };
+    ['v', 'h'].forEach(c => { [1.25, 1, .8, .64].forEach(rw => tryT({ arr: 'row', cells: c, rw: rw })); [.34, .4, .46, .52, .58].forEach(sp => tryT({ arr: 'stack', cells: c, split: sp })); });
     return b;
   }
   // The plan for the window: the dock and the hand's size with the table that the room they leave is best for. It has
@@ -4265,7 +4279,7 @@
     const aw = Math.round(clampN(270, W * .19, 400)), rw = Math.round(clampN(360, W * .28, 470)), sizes = [240, 220, 200, 184, 168, 152, 140, 128, 116, 104, 96, 88];
     let top = null;
     const offer = (dock, x, h, bw, bh) => { const tk = Math.round(clampN(14, h * .11, 24)), t = dnBest(bw, bh - (trk ? tk + RG : 0), N, tm); if (!t) return;
-      const worth = (t.worth + .45 * Math.min(h, t.mc.c * 1.35)) * (dock === 'r' ? .94 : 1);
+      const worth = (t.worth + .45 * Math.min(h, t.mc.c * 1.12)) * (dock === 'r' ? .94 : 1);
       if (!top || worth > top.worth + .5) top = Object.assign({ dock: dock, h: h, worth: worth, tk: tk, dn: t }, x); };
     if (a >= 1.2 && !side) sizes.forEach(u => { const h = Math.floor(Math.min(u, (W - aw - 18 - 7 * g) / 8)); if (h >= 88) offer('b', { aw: aw, per: 8, rows: 1 }, h, W, H - (Math.max(h * 1.4 + 12, 122) + RG)); });
     if (a >= 1.9 && !side) [[2, 4], [3, 3], [4, 2]].forEach(x => { const room = H - 48 - 62 - 3 * RG, h = Math.floor(Math.min((rw - (x[1] - 1) * g) / x[1], (room - (x[0] - 1) * g) / x[0] / 1.4, 240)); if (h >= 80) offer('r', { rw: rw, per: x[1], rows: x[0] }, h, W - rw - 14, H); });
@@ -4287,8 +4301,9 @@
   // (piles, foldPiles). null: no size of card holds them, and they are stacks.
   function dnBand(parties, w, h, c0, tag0) {
     const n = p => p.figs.length + (p.slot ? 1 : 0), gap = 10, sum = a => a.reduce((x, y) => x + y, 0);
-    for (let c = c0; c >= DN_MIN - 10; c -= Math.max(2, Math.round(c0 * .06))) {
-      const tag = c >= 90 ? Math.round(tag0 * Math.max(.8, c / c0)) : 0, rowH = c * 1.4 + tag + 8, rowsMax = Math.max(1, Math.floor((h + 4) / rowH));
+    // (one row with cards down to three quarters of their size is better than two rows; then as many rows as the band holds)
+    for (let pass = 0; pass < 2; pass++) for (let c = c0; c >= (pass ? DN_MIN - 10 : Math.max(DN_MIN - 10, c0 * .74)); c -= Math.max(2, Math.round(c0 * .06))) {
+      const tag = c >= 90 ? Math.round(tag0 * Math.max(.8, c / c0)) : 0, rowH = c * 1.4 + tag + 8, rowsMax = pass ? Math.max(1, Math.floor((h + 4) / rowH)) : 1;
       const minW = p => c * (1 + .42 * Math.min(n(p) - 1, 2)), natW = p => n(p) * c + (n(p) - 1) * 6;
       const rows = [[]]; let x = 0, ok = true;
       parties.forEach(p => { const m = minW(p), r = rows[rows.length - 1]; if (m > w) ok = false; if (r.length && x + gap + m > w) { rows.push([p]); x = m; } else { x += (r.length ? gap : 0) + m; r.push(p); } });
@@ -4313,7 +4328,7 @@
   // order from your left, your side's at the foot), the other sides' parties in the band above and your side's below.
   function cellD(i, T, g) {
     const v = ui.view, N = S.N, pk = S.places[i], pi = C.PLACES[pk], hold = V.hold[i], tg = T.places[i], sil = vSil(i);
-    const row = el('div', { class: 'pl wn-bl dn-c' + (g.stk ? ' dn-s' : '') + (hold >= 0 ? ' held' + hold : '') + (tg ? ' tgt' : '') + (ui.count === i ? ' count' : '') + (ui.pend && ui.pend.x === i ? ' pk' : ''), 'data-p': i });
+    const row = el('div', { class: 'pl wn-bl dn-c' + (g.one ? ' dn-1' : '') + (g.stk ? ' dn-s' : '') + (hold >= 0 ? ' held' + hold : '') + (tg ? ' tgt' : '') + (ui.count === i ? ' count' : '') + (ui.pend && ui.pend.x === i ? ' pk' : ''), 'data-p': i });
     if (S.dm) { row.dataset.ban = S.ban[i]; row.dataset.kind = pi.d; row.dataset.rule = E.pw(S, i); if (sil) row.dataset.silenced = sil.c; }
     dnVars(row, g);
     const own = E.ownerOfSpoke(S, i), kind = own < 0 ? 'posCross' : E.isGate(S, i) ? 'posGate' : 'posOut';
@@ -4321,16 +4336,22 @@
     const lim = E.capAt(S, i), pv = tg && figsOf(S.turn).length < lim ? landPreview(tg) : null;
     const ps = seatsFrom(v).map(q => ({ o: q, figs: figsOf(q), slot: pv && q === S.turn ? pv : null })).filter(p => p.figs.length || p.slot);
     const top = ps.filter(p => !ours(p.o)), bot = ps.filter(p => ours(p.o));
-    // the sides above: one shield for each other side with Figures here (with none, the side that holds it, or a gray 0)
-    const sides = []; top.forEach(p => { if (p.figs.length && !sides.some(s => s.o === p.o || E.ally(S, s.o, p.o))) sides.push({ o: p.o, n: sideTot(i, p.o) }); });
-    if (!sides.length) { const r = rivalAt(i); sides.push({ o: r, n: sideTot(i, r) }); }
-    const tile = tileEl(i, T, sides[0], { o: v, n: sideTot(i, v) }, sil);
-    const tots = tile.querySelector('.pl-tots'), R0 = tots.querySelector('.pl-tot.R'), won = o => hold >= 0 && (hold === o || E.ally(S, hold, o)), ns = sides.length;
-    tots.querySelectorAll('.pl-tot.L').forEach(n => n.remove());
-    const shk = Math.round(Math.max(20, Math.min(g.sh, (g.tw * .6) / ns))), step = shk * 1.12, off = ns > 2 ? -g.tw * .07 : 0;
-    sides.forEach((s, k) => tots.insertBefore(el('span', { class: 'pl-tot L' + (s.n ? '' : ' zero') + (won(s.o) ? ' win' : hold >= 0 ? ' lose' : ''), 'data-o': s.o,
-      style: { '--tc': 'var(--pc' + (S.tm ? teamOf(s.o)[0] : s.o) + ')', '--sh': shk + 'px', left: 'calc(50% + ' + (off + (k - (ns - 1) / 2) * step).toFixed(1) + 'px)' }, text: String(s.n) }), R0));
-    if (S.tm) R0.style.setProperty('--tc', 'var(--pc' + teamOf(v)[0] + ')');
+    if (g.one) { top.sort((a, b) => (a.o === own ? -1 : 0) - (b.o === own ? -1 : 0)); bot.reverse(); }   // (one band: the Domain's own player first, your own cards at the right)
+    // Each side's Might on a shield on the Domain's edge, in that side's color, the holder's lit: the other sides' along
+    // the top in seat order from your left and your side's at the foot. (With none of another side here, the top shield
+    // is the side that holds it, or a gray 0.) A cell with one band has every side's along the foot, over its cards.
+    const sideOf = list => { const out = []; list.forEach(p => { if (p.figs.length && !out.some(s => s.o === p.o || E.ally(S, s.o, p.o))) out.push({ o: p.o, n: sideTot(i, p.o) }); }); return out; };
+    const sides = sideOf(top), mineS = { o: v, n: sideTot(i, v) };
+    if (!sides.length && !g.one) { const r = rivalAt(i); sides.push({ o: r, n: sideTot(i, r) }); }
+    const tile = tileEl(i, T, sides[0] || mineS, mineS, sil);
+    const tots = tile.querySelector('.pl-tots'), won = o => hold >= 0 && (hold === o || E.ally(S, hold, o));
+    tots.innerHTML = '';
+    const shields = (list, cls) => { const ns = list.length; if (!ns) return; const shk = Math.round(Math.max(20, Math.min(g.sh, (g.tw * (cls === 'R' ? .42 : .46)) / ns))), step = shk * 1.12, off = ns > 2 ? g.tw * (cls === 'R' ? .05 : -.07) : 0;
+      list.forEach((s, k) => tots.appendChild(el('span', { class: 'pl-tot ' + cls + (s.n ? '' : ' zero') + (won(s.o) ? ' win' : hold >= 0 ? ' lose' : ''), 'data-o': s.o,
+        style: { '--tc': 'var(--pc' + (S.tm ? teamOf(s.o)[0] : s.o) + ')', '--sh': shk + 'px', left: 'calc(50% + ' + (off + (k - (ns - 1) / 2) * step).toFixed(1) + 'px)' }, text: String(s.n) })));
+      if (cls === 'R') tile.style.setProperty('--tsr', Math.round(off + ns * step / 2) + 'px'); };
+    if (g.one) shields(sides.concat(bot.some(p => p.figs.length) ? [mineS] : []), 'R');
+    else { shields(sides, 'L'); shields([mineS], 'R'); }
     const bandEl = (cls, parties) => {
       const band = el('div', { class: 'dn-band ' + cls, 'data-p': i }); if (!parties.length) return band;
       const L = g.stk ? null : dnBand(parties, g.w - 4, g.band - 4, g.c, g.tag);
@@ -4352,7 +4373,8 @@
           band.appendChild(sd); x += it.w + 10; }); });
       return band;
     };
-    row.appendChild(bandEl('T', top)); row.appendChild(tile); row.appendChild(bandEl('B', bot));
+    if (g.one) { row.appendChild(tile); row.appendChild(bandEl('B', top.concat(bot))); }
+    else { row.appendChild(bandEl('T', top)); row.appendChild(tile); row.appendChild(bandEl('B', bot)); }
     row.appendChild(el('i', { class: 'pl-pos L', style: own >= 0 ? { '--pc': 'var(--pc' + own + ')' } : null, html: SVG[kind] }));
     if (V.pb[i][v]) row.appendChild(el('span', { class: 'pl-decree R', text: '+' + V.pb[i][v], 'aria-label': V.pb[i][v] + ' more Might here until the end of the round' }));
     return row;
@@ -4416,7 +4438,7 @@
     dom.root.querySelectorAll('.an-strip.dn-bar').forEach(b => {
       const over = () => { const r = b.getBoundingClientRect(); return r.width > 0 && Array.prototype.some.call(b.querySelectorAll(':scope > *, .st-top > *, .st-bot > *, .st-relics > *'), c => { if (c.matches('.wn-tm, .wn-out, .st-fill')) return false; const q = c.getBoundingClientRect(); return q.width > 0 && (q.right > r.right - 2 || q.bottom > r.bottom - 1 || q.left < r.left + 1); }); };
       let bs = parseFloat(b.style.getPropertyValue('--bs')) || 1; b.classList.remove('q1');
-      if (over() && b.classList.contains('f-rich')) b.classList.add('q1');   // (the Guide's power in words goes first)
+      if (over() && /f-rich/.test(b.className)) b.classList.add('q1');   // (the Guide's power in words goes first)
       while (over() && bs > .62) { bs -= .04; b.style.setProperty('--bs', bs.toFixed(3)); }
     });
     dom.map.querySelectorAll('.dn-tag').forEach(tg => { const sd = tg.parentNode; if (tg.scrollWidth > sd.clientWidth + 1 || tg.offsetWidth > sd.clientWidth + 1) tg.remove(); });
