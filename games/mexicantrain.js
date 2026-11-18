@@ -641,7 +641,7 @@
       var d; try { d = look(layoutAll(mDev.w, mDev.h, vv)); } finally { MDK = keep; }
       // (whole at WHOLE_MIN or more is what a desk is for; short of that, the desk must not have smaller tiles than the
       // tablet's layout, nor push trains together where the tablet's layout would lay them whole)
-      var ok = a.whole ? a.u >= Math.min(WHOLE_MIN, d.u) - .3 : !d.whole && a.u >= d.u * .95;   // (both pushed together: as good as the same size)
+      var ok = a.whole ? a.u >= Math.min(WHOLE_MIN, d.u) - .3 : !d.whole && a.u >= d.u - .3;   // (both pushed together: the desk's tiles no smaller)
       if (!ok) lose = true;
     });
     if (!lose) return;
