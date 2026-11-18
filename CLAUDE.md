@@ -256,19 +256,21 @@ Underlying principles for everything:
   upright, a dock); `S` a small window (the layout on its side across it, a small wheel beside the board). Rows are 17
   to 124px, the chips half a row (`G.cs`), the lines between numbers wider targets for a mouse (`hit`'s bands), a
   mouse over the layout shows the bet a click would make and what it pays (`onLayHover`), and a chip on a dozen, an
-  even chance (upright) or a column (on its side) lies beside the box's lettering (`spot`). The room: the board of
-  last numbers (`boardPanel`: a tower with reds at the left and blacks at the right in a tall box, a run of markers in
-  a low one), the session (`sessPanel`: spins, the biggest win, the money bet, the best run, red against black, odd
-  against even, low against high, the numbers that came up most, the money spin by spin), online At the table, and
-  Your bets where the station is short. Online every player's chips lie on the one layout as small discs in their
-  seat's color with their initial (`paintOthers`). In both games an online table's strip of players stands at the head
-  of the station, or in a row of its own across a dock (`netH`). The scratchpad's `big/craps/` has the scripts for
-  both: `lib.js` (the scenes), `mkstate.js` (saved games made by the starting version), `shots.js` with `scan.js` (any
-  scene at any window: page scroll, anything off the window, cut or under 9px, boxes over one another), `flow.js` (a
-  round's phases), `resize.js`, `online.js` (up to six people, a laptop host and a phone guest), `demo.js`, `snap.js`
-  with `cmp.sh` (the device proof). **Not done**: Craps draws the other players' bets as a list, not as chips on the
-  felt; a window under 481 wide that is not a phone's keeps the phone layout, which scrolls in Craps as it does on a
-  phone.
+  even chance or a column never lies on the box's lettering, upright or on its side: each outside box keeps its
+  lettering to one side and the chip's place to the other (`.cell.fx.ev`, `.cell.fx.col` and `spot`), and a large
+  layout's column boxes are deeper for it (`geom`'s `big`: 1.45 rows, a device's 1.1; the scratchpad's
+  `big/craps/chips.js` measures every outside box). The room: the board of last numbers (`boardPanel`: a tower with
+  reds at the left and blacks at the right in a tall box, a run of markers in a low one), the session (`sessPanel`:
+  spins, the biggest win, the money bet, the best run, red against black, odd against even, low against high, the
+  numbers that came up most, the money spin by spin), online At the table, and Your bets where the station is short.
+  Online every player's chips lie on the one layout as small discs in their seat's color with their initial
+  (`paintOthers`). In both games an online table's strip of players stands at the head of the station, or in a row of
+  its own across a dock (`netH`). The scratchpad's `big/craps/` has the scripts for both: `lib.js` (the scenes),
+  `mkstate.js` (saved games made by the starting version), `shots.js` with `scan.js` (any scene at any window: page
+  scroll, anything off the window, cut or under 9px, boxes over one another), `flow.js` (a round's phases),
+  `resize.js`, `online.js` (up to six people, a laptop host and a phone guest), `demo.js`, `snap.js` with `cmp.sh`
+  (the device proof). **Not done**: Craps draws the other players' bets as a list, not as chips on the felt; a window
+  under 481 wide that is not a phone's keeps the phone layout, which scrolls in Craps as it does on a phone.
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
