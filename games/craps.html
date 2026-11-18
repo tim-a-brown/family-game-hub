@@ -1605,9 +1605,11 @@ html.cr-big .rm.col{flex-direction:column;}
   function die(v) { var d = el('span', { class: 'die', 'data-v': v }); for (var i = 0; i < 9; i++) d.appendChild(document.createElement('i')); return d; }
   var KIND = { N: 'Natural', C: 'Craps', P: 'Point', M: 'Made', S: 'Seven out' };
   function rollsPanel(M) {
-    var on = M.point > 0, c = M.cur, who = '';
-    if (NET && M.players && M.players[M.shooter]) who = M.shooter === M.me ? 'You are the shooter. ' : M.players[M.shooter].name + ' is the shooter. ';
-    var sub = who + (c.rolls ? c.rolls + (c.rolls === 1 ? ' roll' : ' rolls') + ' in this hand' + (c.points ? ', and ' + c.points + (c.points === 1 ? ' point' : ' points') + ' made' : '') : 'A new hand starts with this roll');
+    var on = M.point > 0, c = M.cur;
+    var other = NET && M.players && M.players[M.shooter] && M.shooter !== M.me ? M.players[M.shooter].name : '';
+    var times = c.rolls + (c.rolls === 1 ? ' time' : ' times'), pts = c.points ? ' and made ' + c.points + (c.points === 1 ? ' point' : ' points') : '';
+    var sub = c.rolls ? (other ? other + ' is the shooter, and has rolled ' : NET ? 'You are the shooter, and have rolled ' : 'You have rolled ') + times + ' in this hand' + pts + '.'
+      : other ? other + ' is the shooter, and the next roll starts a new hand.' : NET ? 'You are the shooter, and the next roll starts a new hand.' : 'The next roll starts a new hand.';
     var grid = el('div', { class: 'rolls fill' });
     var p = el('div', { class: 'pn w2 pn-rolls' }, [el('div', { class: 'sh-top' }, [el('div', { class: 'pk ' + (on ? 'on' : 'off'), text: on ? 'ON' : 'OFF' }),
       el('div', { class: 'tx' + (on ? ' on' : '') }, [el('b', { text: on ? 'The point is ' + M.point : 'Come-out roll' }), el('span', { text: sub })])]), grid]);
