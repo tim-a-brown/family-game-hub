@@ -4304,12 +4304,18 @@
     if (ui.dnC && ui.dnC.key === key) return ui.dnC.D;
     const g = 8, RG = 8, a = W / H, trk = !!dom.track;
     const aw = Math.round(clampN(270, W * .19, 400)), rw = Math.round(clampN(360, W * .28, 470)), sizes = [240, 220, 200, 184, 168, 152, 140, 128, 116, 104, 96, 88];
-    let top = null;
+    let top = null, low = null;
     const offer = (dock, x, h, bw, bh) => { const tk = Math.round(clampN(14, h * .11, 24)), t = dnBest(bw, bh - (trk ? tk + RG : 0), N, tm); if (!t) return;
       // (stacks for the others and small cards for you is what the iPad's table already gives, and it is made for that
-      // room; so are its lanes in a low wide window, where the others' Domains here would be under 120 px)
-      if (t.rc.stk && (dock !== 'r' ? t.mc.c < 100 : t.rc.sw < 40 || t.rc.tw < 120)) return;
+      // room; so are its lanes in a low wide window, where the others' Domains here would be under 120 px. Where the
+      // desk has no other table, one with stacks is taken (low) with your cards from 72 px when the stacks are 40 px or
+      // more and the others' Domains 150 px wide, which their powers read at: 1280 by 720 and 1366 by 768 with four or
+      // five players, where the iPad's table had the others' Figures as 30 px pictures and their Domains with no power)
+      const fall = t.rc.stk && dock !== 'r' && t.mc.c < 100;
+      if (fall && (t.mc.c < 72 || t.rc.sw < 40 || t.rc.tw < 150)) return;
+      if (t.rc.stk && dock === 'r' && (t.rc.sw < 40 || t.rc.tw < 120)) return;
       const worth = (t.worth + .45 * Math.min(h, t.mc.c * 1.12)) * (dock === 'r' ? .94 : 1) - (x.pen || 0);
+      if (fall) { if (!low || worth > low.worth + .5) low = Object.assign({ dock: dock, h: h, worth: worth, tk: tk, dn: t }, x); return; }
       if (!top || worth > top.worth + .5) top = Object.assign({ dock: dock, h: h, worth: worth, tk: tk, dn: t }, x); };
     // (the hand along the bottom with the last events, the caption and the button at its right: any window wider than
     // tall, and a squarer one that is large enough for a hand of 150 px cards beside them)
@@ -4319,6 +4325,7 @@
     // (a hand the window's width under the caption's row: tall and square windows, where a hand of 150 px beside the
     // last events does not fit)
     if (side || (a < 1.5 && hb < 150)) [1, 2].forEach(r => sizes.forEach(u => { const per = r === 1 ? 8 : 4, h = Math.floor(Math.min(u, (W - (per - 1) * g) / per)); if (h >= 80) offer('s', { per: per, rows: r, pen: r === 2 && 4 * h + 3 * g < W * .6 ? 9 : 0 }, h, W, H - (66 + r * h * 1.4 + (r - 1) * g + 12 + RG)); }));
+    if (!top) top = low;
     const D = top ? Object.assign(top, { c: top.dn.mc.c, bs: 1, cs: clampN(1, top.h / 190, 1.5), mid: false, hmid: top.h >= 150, pil: false, pw: 0, W: W, H: H }) : null;
     if (D) D.say = [D.dock, D.dn.o.arr, D.dn.o.cells, D.dn.o.arr === 'row' ? D.dn.o.rw : D.dn.o.split, 'c' + D.dn.mc.c, 'r' + (D.dn.rc.stk ? 's' + D.dn.rc.sw : D.dn.rc.c), 'h' + D.h].join(' ');
     ui.dnC = { key: key, D: D };
