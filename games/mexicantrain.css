@@ -226,3 +226,180 @@
   .mt-who.c4 .mt-pl{padding-left:9px;box-shadow:inset 3px 0 0 var(--c),inset 0 0 0 1px var(--gl-line);}
   .mt-who.c4 .mt-pl.on{box-shadow:inset 3px 0 0 var(--c),inset 0 0 0 1.5px color-mix(in srgb,var(--lit) 75%,transparent),0 0 16px color-mix(in srgb,var(--lit) 28%,transparent);}
 }
+
+/* ── A large window (a computer) ──────────────────────────────────────────
+   mdkPlan() in mexicantrain.js chooses a composition from the window and sets .mdk and .mdk-wide, .mdk-tall or
+   .mdk-stack on .mtw (and .mdkapp on the stage) only while one shows, so a phone, a tablet and every window between
+   them and a desk keep the layouts above. The table is sized from the window; the rounds stand under the players at
+   the left and the round in play between whose turn it is and your tiles at the right. */
+/* (a window wider than any device and too short for a desk: the table still runs the full width) */
+@media (orientation:landscape) and (min-width:1501px){ .mtw{max-width:none;} }
+.mdk-panel{display:none;position:relative;flex-direction:column;min-width:0;min-height:0;border-radius:22px;overflow:hidden;color:var(--text);
+  background:linear-gradient(165deg,color-mix(in srgb,var(--h,#6c7bff) 13%,transparent),transparent 46%),var(--gl);
+  box-shadow:inset 0 0 0 1px var(--gl-line),inset 0 1px 0 rgba(255,255,255,.1),var(--shadow-sm);container-type:size;}
+.mdk-panel::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:color-mix(in srgb,var(--h,#6c7bff) 70%,transparent);opacity:.8;}
+#app.stage.mtapp.mdkapp{padding:2px 20px 18px;}
+#app .mtw.mdk{max-width:none;min-height:0;height:calc(100dvh - var(--barh,60px) - 20px);gap:10px 16px;}
+#app .mtw.mdk .mt-who{grid-template-columns:repeat(var(--cols,1),minmax(0,1fr));align-self:start;align-content:start;gap:6px;overflow:visible;}
+#app .mtw.mdk .mt-pl{padding:7px 10px 7px 8px;gap:8px;border-radius:14px;}
+#app .mtw.mdk .mt-pl .avatar{width:34px;height:34px;font-size:.95rem;}
+#app .mtw.mdk .mt-pl .tx{display:block;}
+#app .mtw.mdk .mt-pl .nm{font-size:.94rem;} #app .mtw.mdk .mt-pl .sc{font-size:1.2rem;} #app .mtw.mdk .mt-pl .ct{font-size:.84rem;}
+#app .mtw.mdk .mt-pl .ln{margin-top:1px;gap:6px;}
+#app .mtw.mdk .mt-pl .say{top:calc(100% + 5px);left:50%;transform:translateX(-50%);animation-name:mtsay;}
+#app .mtw.mdk .mt-pl .say::before{display:block;}
+#app .mtw.mdk .mt-tbl{border-radius:clamp(24px,2.2vmin,40px);}
+#app .mtw.mdk .mt-tbl>.felt-in{inset:clamp(9px,.75vmin,14px);border-radius:clamp(17px,1.7vmin,30px);}
+#app .mtw.mdk .mt-msg{align-items:center;font-size:1.12rem;line-height:1.2;} #app .mtw.mdk .mt-msg small{font-size:.88rem;}
+#app .mtw.mdk .mt-msg .dot{margin-top:0;}
+#app .mtw.mdk .mt-rack{margin:0;padding:17px 14px 15px;gap:8px 8px;align-content:center;}
+#app .mtw.mdk .mt-acts .btn{min-height:50px;padding:0 20px;}
+#app .mtw.mdk .mt-acts .btn.ic span{display:inline;}
+#app .mtw.mdk .mdk-lad{grid-area:lad;}
+#app .mtw.mdk .mdk-side{grid-area:side;}
+#app .mtw.mdk .mdk-lad.gone,#app .mtw.mdk .mdk-side.gone{visibility:hidden;}
+#app .mtw.mdk-tall.noside .mdk-side{display:none;} #app .mtw.mdk-tall.noside .mdk-lad{grid-column:1 / -1;}
+/* wide: the players over the rounds | the table | whose turn, the round in play, your tiles, the buttons */
+#app .mtw.mdk-wide{grid-template-columns:var(--lw) minmax(0,1fr) var(--rw);grid-template-rows:64px auto minmax(0,1fr) auto auto;
+  grid-template-areas:"who tbl status" "who tbl side" "lad tbl side" "lad tbl rack" "lad tbl acts";}
+#app .mtw.mdk-wide .mt-status{align-items:center;min-height:0;padding:0 16px;border-radius:18px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),inset 0 1px 0 rgba(255,255,255,.1);}
+#app .mtw.mdk-wide .mdk-lad,#app .mtw.mdk-wide .mdk-side{display:flex;}
+#app .mtw.mdk-wide .mt-acts{display:flex;flex-direction:row;align-items:stretch;min-height:50px;}   /* (the buttons' row keeps its place, so your tiles don't move as a button comes and goes) */
+#app .mtw.mdk-wide .mt-acts .btn{flex:1 1 0;padding:0 12px;}
+#app .mtw.mdk-wide.short .mt-acts{min-height:44px;}
+#app .mtw.mdk-wide.noside .mdk-side{display:none;}
+#app .mtw.mdk-wide.noside .mt-rack{grid-row:2 / 5;align-self:stretch;}
+#app .mtw.mdk-wide.count .mt-rack{display:none;}
+#app .mtw.mdk-wide.count .mdk-side{display:flex;grid-row:2 / 5;}
+#app .mtw.mdk-wide.short{gap:6px 14px;grid-template-rows:52px auto minmax(0,1fr) auto auto;}
+#app .mtw.mdk-wide.short .mt-msg{font-size:.98rem;line-height:1.15;} #app .mtw.mdk-wide.short .mt-msg small{font-size:.8rem;}
+#app .mtw.mdk-wide.short .mt-pl{padding:4px 8px 4px 6px;} #app .mtw.mdk-wide.short .mt-pl .avatar{width:28px;height:28px;font-size:.8rem;}
+#app .mtw.mdk-wide.short .mt-pl .nm{font-size:.84rem;} #app .mtw.mdk-wide.short .mt-pl .sc{font-size:1.02rem;} #app .mtw.mdk-wide.short .mt-pl .ct{font-size:.76rem;}
+#app .mtw.mdk-wide.short .mt-acts .btn{min-height:44px;}
+#app .mtw.mdk-wide.short .mt-rack{padding:14px 10px 12px;}
+/* tall: the players; the rounds and the round in play side by side; the table; whose turn and the buttons; your tiles */
+#app .mtw.mdk-tall{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto var(--ph) minmax(0,1fr) auto auto;
+  grid-template-areas:"who who" "lad side" "tbl tbl" "status acts" "rack rack";gap:10px 12px;}
+#app .mtw.mdk-tall .mdk-lad,#app .mtw.mdk-tall .mdk-side{display:flex;}
+#app .mtw.mdk-tall .mt-status{grid-column:1 / 2;min-height:50px;}
+#app .mtw.mdk-tall:not(.acts-on) .mt-status{grid-column:1 / -1;}
+#app .mtw.mdk-tall .mt-acts{flex-direction:row;align-items:center;justify-content:flex-end;}
+#app .mtw.mdk-tall.count .mt-rack,#app .mtw.mdk-stack.count .mt-rack{display:none;}
+#app .mtw.mdk-tall.count .mdk-lad{grid-column:1 / -1;}
+#app .mtw.mdk-tall.count .mdk-side,#app .mtw.mdk-stack.count .mdk-side{display:flex;grid-area:rack;max-height:42dvh;container-type:inline-size;}
+#app .mtw.mdk-tall.count .mdk-side .mdk-in,#app .mtw.mdk-stack.count .mdk-side .mdk-in,#app .mtw.mdk-tall.count .mdk-side .mdk-res,#app .mtw.mdk-stack.count .mdk-side .mdk-res{flex:0 1 auto;}
+/* stack (nearly square): the players in a row, the table the full width, whose turn and the buttons, your tiles */
+#app .mtw.mdk-stack{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-areas:"who who" "tbl tbl" "status acts" "rack rack";gap:10px 12px;}
+#app .mtw.mdk-stack .mt-status{min-height:50px;}
+#app .mtw.mdk-stack .mt-acts{flex-direction:row;align-items:center;justify-content:flex-end;}
+/* on the felt: the plaques, the rails and the markers step up with the window */
+#app .mtw.mdk .mt-plq{font-size:calc(1rem * var(--k));gap:.5em;min-height:2.25em;padding:.25em .7em;border-radius:.9em;}
+#app .mtw.mdk .mt-plq b{font-size:1.06em;} #app .mtw.mdk .mt-plq small{font-size:.76em;}
+#app .mtw.mdk .mt-bone .pile{width:1.9em;height:1.4em;}
+#app .mtw.mdk .mt-bone .pile .mtt{--tw:calc(10px * var(--k));}
+#app .mtw.mdk .mt-rails .rp{stroke-width:calc(3px * var(--k));} #app .mtw.mdk .mt-rails .rx{stroke-width:calc(4px * var(--k));}
+#app .mtw.mdk .mt-head .avatar{font-size:1em;}
+#app .mtw.mdk .mt-lane{border-radius:calc(14px * var(--k));}
+@media (hover:hover){ #app .mtw.mdk .mt-rack .mtt.fit:not(.sel):hover{transform:translateY(-5px);} }
+/* (the Mexican Train's track: as wide as its tiles, whatever the lane's width) */
+#app .mtw.mdk .mt-lane.mx.down::before,#app .mtw.mdk .mt-lane.mx.up::before{left:calc(50% - var(--tk,60px) * .5);right:calc(50% - var(--tk,60px) * .5);
+  background:repeating-linear-gradient(180deg,rgba(110,72,36,.75) 0 calc(5px * var(--k)),transparent calc(5px * var(--k)) calc(15px * var(--k)));}
+#app .mtw.mdk .mt-lane.mx.down::after,#app .mtw.mdk .mt-lane.mx.up::after{left:calc(50% - var(--tk,60px) * .5);right:calc(50% - var(--tk,60px) * .5);
+  background:linear-gradient(90deg,transparent calc(16% - 1.5px),#c9a24a calc(16% - 1.5px) calc(16% + 1.5px),transparent calc(16% + 1.5px) calc(84% - 1.5px),#c9a24a calc(84% - 1.5px) calc(84% + 1.5px),transparent calc(84% + 1.5px));}
+#app .mtw.mdk .mt-lane.mx.right::before{top:calc(50% - var(--tk,60px) * .5);bottom:calc(50% - var(--tk,60px) * .5);
+  background:repeating-linear-gradient(90deg,rgba(110,72,36,.75) 0 calc(5px * var(--k)),transparent calc(5px * var(--k)) calc(15px * var(--k)));}
+#app .mtw.mdk .mt-lane.mx.right::after{top:calc(50% - var(--tk,60px) * .5);bottom:calc(50% - var(--tk,60px) * .5);
+  background:linear-gradient(180deg,transparent calc(16% - 1.5px),#c9a24a calc(16% - 1.5px) calc(16% + 1.5px),transparent calc(16% + 1.5px) calc(84% - 1.5px),#c9a24a calc(84% - 1.5px) calc(84% + 1.5px),transparent calc(84% + 1.5px));}
+/* what is written on a panel grows a little with the panel, as a sheet on a wall would */
+.mdk-in{flex:1 1 0;min-height:0;min-width:0;display:flex;flex-direction:column;font-size:clamp(.9rem,min(4.2cqw,3.4cqh),1.22rem);}
+.mdk-h{flex:none;display:flex;align-items:baseline;justify-content:space-between;gap:.6em;padding:1em 1em .5em;}
+.mdk-h h2{margin:0;font-family:var(--display);font-size:1.28em;letter-spacing:-.02em;line-height:1.1;color:var(--text);}
+.mdk-h small{font-size:.8em;font-weight:650;color:var(--text-3);text-align:right;font-variant-numeric:tabular-nums;}
+.mdk-lbl{flex:none;display:flex;align-items:baseline;justify-content:space-between;gap:.6em;padding:.7em 1.1em .35em;font-size:.8em;font-weight:650;color:var(--text-3);}
+.mdk-lbl .cols{display:flex;gap:1.1em;}
+.mdk-pip{flex:none;display:inline-grid;place-items:center;min-width:1.75em;height:1.75em;padding:0 .3em;border-radius:.6em;box-sizing:border-box;font:800 .86em/1 var(--display);font-variant-numeric:tabular-nums;color:#fff;
+  background:var(--pc);box-shadow:inset 0 0 0 1px rgba(255,255,255,.28),inset 0 -2px 0 rgba(0,0,0,.18);text-shadow:0 1px 1px rgba(0,0,0,.45);}
+.mdk-pip.z{color:#2a2620;background:linear-gradient(135deg,#fffef8,#e2d6bb);text-shadow:none;}
+/* the rounds: a ruled pad, a row a round from the double 12 down, a column a player, the totals at its foot */
+.mdk-pad{position:relative;flex:1 1 0;min-height:0;display:flex;flex-direction:column;--n:4;--mi:-1;--rh:1.9em;--lc:2.6em;--px:.55em;--cf:1.3em;}
+.mdk-pad .pr{position:relative;display:grid;grid-template-columns:var(--lc) repeat(var(--n),minmax(0,1fr));align-items:center;padding:0 var(--px);}
+.mdk-pad .meb{position:absolute;top:0;bottom:0;left:calc(var(--px) + var(--lc) + (100% - var(--px) * 2 - var(--lc)) * var(--mi) / var(--n));width:calc((100% - var(--px) * 2 - var(--lc)) / var(--n));pointer-events:none;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--lit) 11%,transparent),color-mix(in srgb,var(--lit) 5%,transparent));box-shadow:inset 1px 0 0 color-mix(in srgb,var(--lit) 22%,transparent),inset -1px 0 0 color-mix(in srgb,var(--lit) 22%,transparent);}
+.mdk-pad .ph{flex:none;align-items:end;padding-bottom:.45em;border-bottom:3px double color-mix(in srgb,var(--h,#6c7bff) 55%,var(--gl-line));}
+.mdk-pad .ph .pc{display:flex;flex-direction:column;align-items:center;gap:.25em;min-width:0;padding:0 1px;font-size:.78em;font-weight:700;line-height:1.05;text-align:center;overflow-wrap:anywhere;color:var(--text-2);}
+.mdk-pad .ph .pc .avatar{width:1.9em;height:1.9em;font-size:.92em;flex:none;}
+.mdk-pad .ph .pc.me{color:var(--lit-ink);}
+.mdk-pad.nonames .ph .pc .pn{display:none;}
+.mdk-pad .pb{flex:1 1 0;min-height:var(--rh);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;scroll-snap-type:y mandatory;
+  background:repeating-linear-gradient(180deg,transparent 0 calc(var(--rh) - 1px),var(--gl-line) calc(var(--rh) - 1px) var(--rh)) local;}
+.mdk-pad .pb::-webkit-scrollbar{display:none;}
+.mdk-pad .pb .pr{height:var(--rh);scroll-snap-align:start;}
+.mdk-pad .rl{display:grid;place-items:center;font-size:.74em;font-weight:700;color:var(--text-3);}
+.mdk-pad .rl .mdk-pip{font-size:min(1em,calc(var(--rh) * .42));}
+.mdk-pad .pr.todo .rl .mdk-pip{opacity:.45;}
+.mdk-pad .pr.live .rl .mdk-pip{opacity:1;box-shadow:0 0 0 2px var(--lit),0 0 10px var(--litg);}
+.mdk-pad .cv{position:relative;text-align:center;font-family:var(--hand);font-size:var(--cf);line-height:1;color:var(--text);white-space:nowrap;font-variant-numeric:tabular-nums;}
+.mdk-pad .cv.hot{color:var(--lit-ink);}
+.mdk-pad .pr.live{background:color-mix(in srgb,var(--lit) 9%,transparent);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--lit) 50%,transparent),inset 0 -1px 0 color-mix(in srgb,var(--lit) 50%,transparent);}
+.mdk-pad .pr.just .cv{animation:mdkwrite .5s ease-out;}
+@keyframes mdkwrite{from{clip-path:inset(0 100% 0 0);}to{clip-path:inset(0 0 0 0);}}
+.mdk-pad .pf{flex:none;overflow:hidden;padding:.35em var(--px) .45em;border-top:2px solid color-mix(in srgb,var(--h,#6c7bff) 55%,var(--gl-line));background:var(--gl-3);}
+.mdk-pad .pf .cv{font-size:calc(var(--cf) * 1.25);}
+.mdk-pad .pf .cv.lead{color:var(--lit-ink);}
+.mdk-goal{flex:none;padding:.6em 1.2em .85em;font-size:.78em;font-weight:600;line-height:1.3;color:var(--text-3);text-align:center;text-wrap:balance;}
+/* the round in play */
+.mdk-owed{flex:none;margin:.1em 1em .2em;padding:.6em .8em;border-radius:.8em;font-size:.86em;font-weight:650;line-height:1.3;color:var(--lit-ink);
+  background:color-mix(in srgb,var(--lit) 12%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--lit) 50%,transparent);text-wrap:balance;}
+.mdk-tr{flex:none;display:flex;flex-direction:column;padding:0 1em;}
+.mdk-tr .row{--c:#888;display:flex;align-items:center;gap:.6em;min-height:2.5em;padding:.28em 0;border-bottom:1px solid var(--gl-line);}
+.mdk-tr .row:last-child{border-bottom:0;}
+.mdk-tr .row .avatar{width:1.7em;height:1.7em;font-size:.82em;flex:none;box-shadow:0 0 0 2px var(--c);}
+.mdk-tr .row .eng{flex:none;width:1.9em;display:block;} .mdk-tr .row .eng svg,.mdk-tr .row .mkr svg{display:block;width:100%;height:auto;}
+.mdk-tr .row .mkr{flex:none;width:1.5em;}
+.mdk-tr .tx{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:.1em;}
+.mdk-tr .nm{font-weight:750;font-size:.92em;line-height:1.15;overflow-wrap:anywhere;}
+.mdk-tr .row.me .nm{color:var(--lit-ink);}
+.mdk-tr .mk{font-size:.74em;font-weight:600;line-height:1.2;color:var(--text-3);}
+.mdk-tr .mk.hot{color:var(--lit-ink);}
+.mdk-tr .ct{flex:none;min-width:1.6em;text-align:right;font:800 1.08em/1 var(--display);font-variant-numeric:tabular-nums;}
+.mdk-tr .row > .mdk-pip{margin-left:.9em;margin-right:.7em;}
+.mdk-tr.tight .row{min-height:1.65em;padding:.06em 0;} .mdk-tr.tight .row .avatar{width:1.35em;height:1.35em;font-size:.72em;} .mdk-tr.tight .row .eng{width:1.6em;}
+.mdk-tr.tight .row .mdk-pip{font-size:.74em;}
+.mdk-log{flex:1 1 0;min-height:0;margin:0 1em .9em;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;scroll-snap-type:y mandatory;--lh:2.2em;}
+.mdk-log::-webkit-scrollbar{display:none;}
+.mdk-log .lr{--c:#888;display:flex;align-items:center;gap:.55em;height:var(--lh);border-bottom:1px solid var(--gl-line);scroll-snap-align:start;box-sizing:border-box;}
+.mdk-log .lr > i{width:.6em;height:.6em;border-radius:50%;background:var(--c);flex:none;}
+.mdk-log .lr .n{flex:1 1 0;min-width:0;font-size:.86em;font-weight:650;white-space:nowrap;overflow:hidden;}
+.mdk-log .lr .w{flex:none;font-size:.78em;font-weight:650;color:var(--text-3);}
+.mdk-log .lr .mtt{--tw:1.2em;transform:rotate(-90deg);margin:calc(var(--tw) * -.5) calc(var(--tw) * .5);}
+.mdk-log .lr .to{flex:none;width:.9em;height:.9em;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 2px rgba(0,0,0,.25);}
+.mdk-log .lr .to.eng{width:1.5em;height:auto;border-radius:0;background:none;box-shadow:none;} .mdk-log .lr .to.eng svg{display:block;width:100%;height:auto;}
+.mdk-log .lr.new{animation:mdkwrite .4s ease-out;}
+/* a round that has been counted */
+.mdk-res{flex:1 1 0;min-height:0;display:flex;flex-direction:column;padding:0 1em .9em;}
+.mdk-res .head{flex:none;margin:0 0 .5em;text-align:left;font-size:.94em;font-weight:650;line-height:1.3;color:var(--text-2);}
+.mdk-res .head b{color:var(--lit-ink);}
+.mdk-res .rows{flex:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,17em),1fr));column-gap:1.6em;}
+.mdk-res .row{--c:#888;display:flex;align-items:center;gap:.6em;min-height:2.7em;padding:.4em 0;border-top:1px solid var(--gl-line);}
+.mdk-res .row .avatar{width:1.7em;height:1.7em;font-size:.82em;flex:none;box-shadow:0 0 0 2px var(--c);}
+.mdk-res .row .who{flex:none;width:5.2em;font-weight:750;font-size:.92em;line-height:1.15;overflow-wrap:anywhere;}
+.mdk-res .row.won .who{color:var(--lit-ink);}
+.mdk-res .row .tl{flex:1 1 0;min-width:0;display:flex;flex-wrap:wrap;gap:.3em;align-items:center;}
+.mdk-res .row .tl .mtt{--tw:2em;transform:rotate(-90deg);margin:calc(var(--tw) * -.5) calc(var(--tw) * .5);}
+.mdk-res .row .tl em{font-style:normal;color:var(--green);font-weight:800;font-size:.86em;}
+.mdk-res .row .pp{flex:none;text-align:right;font-variant-numeric:tabular-nums;}
+.mdk-res .row .pp b{display:block;font:800 1.12em/1 var(--display);}
+.mdk-res .row .pp small{display:block;margin-top:.2em;font-size:.68em;font-weight:650;color:var(--text-3);white-space:nowrap;}
+.mdk-res .foot{flex:none;margin:.7em 0 0;text-align:left;font-size:.8em;font-weight:600;line-height:1.3;color:var(--text-3);}
+.mdk-res.tight .row .tl .mtt{--tw:1.5em;} .mdk-res.small .row .tl .mtt{--tw:1.1em;} .mdk-res.tiny .row .tl .mtt{--tw:.8em;}
+.mdk-res.bare .row .tl{display:none;} .mdk-res.bare .row .who{flex:1 1 0;width:auto;}
+.mdk-res.slim .row{min-height:1.9em;padding:.12em 0;} .mdk-res.slim .row .pp{display:flex;align-items:baseline;gap:.6em;} .mdk-res.slim .row .pp small{order:-1;margin:0;}
+.mdk-res.slim .row .avatar{width:1.4em;height:1.4em;font-size:.74em;}
+.mdk-res.two .rows{grid-template-columns:minmax(0,1fr) minmax(0,1fr);} .mdk-res.two .row .pp small{display:none;}
+.mdk-race{flex:1 1 17em;max-height:30em;min-height:0;margin:0 .6em;overflow:hidden;}
+.mdk-race svg{display:block;}
+.mdk-race .ax{stroke:var(--gl-line);stroke-width:1;}
+.mdk-race .tick{stroke:var(--text-3);stroke-width:1;opacity:.6;}
+.mdk-race .tk{font:650 11px/1 var(--font);fill:var(--text-3);font-variant-numeric:tabular-nums;}
+.mdk-race .ln{fill:none;stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round;opacity:.9;}
+.mdk-race .ln.me{stroke-width:4.5;opacity:1;}

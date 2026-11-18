@@ -185,6 +185,22 @@ Underlying principles for everything:
   counted with what made the points (`showKinds`), and the game so far. Both pages also close the windows between the
   devices and a desk, which used to scroll (Gin Rummy through Cards.desk's in-between layouts, Cribbage with its own
   queries); their proof scripts are in `big/ginrummy/`.
+  **Dominoes at a desk** (its own, not Cards.desk: `deskPlan`, `deskSet`, `paintSheet`, `paintSide` in dominoes.html; `.dk`
+  and `.dk-wide`, `.dk-strip`, `.dk-tall` or `.dk-square` on `.dw` only while a desk layout shows). The line of play wants
+  width, so in a wide window (1200 or more across, 640 or more tall) the table lies across the whole window, as the
+  Landscape rule says, and a strip under it holds the score sheet and the hand in play at the left, your tiles, then
+  whose turn it is and the buttons at the right; a short strip of a window (under 640 tall) gives the table its whole
+  height with the panels in columns beside it; a tall window has the two panels side by side over the table; a nearly
+  square one has them one over the other at the left. The tiles go to 104px across (135 while the line is short), your
+  tiles the same size, and the plaques on the felt step up with them (`--k`). The sheet is a row a hand with the race to
+  the target; the hand in play is how many tiles each player holds and what each drew or passed, the open ends (in All
+  Fives the count of the ends piece by piece), and the hand play by play from `S.pl` (in a column of its own from 2400
+  across), each part given up whole as its panel gets shorter. A counted hand is written there with what everyone was
+  left holding, and its button stands where the turn's buttons are (`deskHand`; `deskSync` moves the count between the
+  sheet and the panel when the window changes size). Mexican Train at a desk is in its own section. The scratchpad's
+  `big/dominoes/` has the scripts: `gen.js` (fixed positions as saved states), `snap.js` with `cmp.sh` (the device proof,
+  `proof.txt`), `scan.js` (anything cut, small, half a row or overlapping, every phase at every window), `resize.js`,
+  `online.js`, `demo.js`, `misc.js`, `audit2.js`, and `all.sh`, which runs them one after another.
   **The setup and the results card at a desk, for every game** (kit.js "The desk" and the last section of kit.css; every
   rule hangs off `.k-dk`, which kit.js sets only in a window wider than 1024 or more than 768 the shorter way, taller
   than 520 and 480 wide at least: `deskShape`, `winShape`, `Kit.desk()`. The devices are drawn by the rules they always
@@ -658,6 +674,18 @@ Underlying principles for everything:
   room and the others lie in thinner lanes (`laneOpen`, `laneWidths`); a long train bends back (up to four lines) while
   that keeps its tiles larger than pushing together would; a narrow table with many trains keeps the hub's column to the
   hub (`nar`); on a 320-wide phone the four-to-a-row plates drop the avatar for the name.
+- **At a desk** (a large window; `mdkPlan`, `mdkSet` in mexicantrain.js, `.mdk` on `.mtw` only while a desk layout
+  shows): the hub, the lanes and the tiles are sized from the window (`MT_U`, 88px across at most; `deskCap` keeps a
+  tile small enough for a train to run five or six tiles out before it bends), the plaques and the heads step up
+  (`--k`). **wide**: the players over the rounds at the left, a ladder from the double 12 down with every round's dots,
+  the rounds to come ruled and empty, the totals, and the totals round by round drawn under it where there is room
+  (`paintLadder`, `drawRace`); at the right, between whose turn it is and your tiles, the round in play (`paintSide`:
+  the double that must be covered, every train's length, open end and marker, the round play by play from `S.pl`),
+  left out where the column is too short for a row a train. **tall**: the players, the rounds and the round in play
+  side by side (seven or eight players: the rounds alone), the table, your tiles. **stack** (nearly square): the
+  players in a row and the table the full width, no panels. A counted round is written where your tiles were, its
+  button where the turn's buttons are (`paintCount`, `deskRound`; `mdkSync` moves it between the sheet and the panel
+  when the window changes size).
 - **Easy** (Tim, 2026-11-15: "nudge mexican train easy up slightly"): any tile that fits, but a little more than half
   the time it looks first (its own train when its marker is out, a double it can follow, a heavier tile): `EZ` in the
   core. The sim (mulberry32 now) has Easy winning about 1 match in 5 against Normal head to head, 1 in 15 against Hard.
