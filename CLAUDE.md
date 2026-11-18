@@ -158,7 +158,9 @@ Underlying principles for everything:
   meter to the target), and at the right the race to the target with this round's points on each line (solid once they
   are safe, hatched while a bust would lose them) and what has happened, round by round from `S.ev`, over Flip and Stay.
   A wide window whose table would have under half its width stands both panels at the left. A scored round goes onto the
-  sheet and the bar deals the next one, online too. **Go Fish at a desk** (`paintDesk`, `paintTally`, `paintLog` and the
+  sheet and the bar deals the next one, online too. A computer's window smaller than those (a mouse, `FINE`), in which
+  the game's own layout would scroll, gets the same felt fitted to the window with no panels (`dk-small`, remembered by
+  window and player count in `SMALL`); a touch screen never does. **Go Fish at a desk** (`paintDesk`, `paintTally`, `paintLog` and the
   `DKS` parts of `fit` in gofish.html; `.gf.dk`): the seats, the pond and your hand step up with the felt (your cards to
   210px), the books and pairs as large as their places allow (`--obw`, `--mbw`, with a themed deck's full pictures). Two
   panels: the books by player with the cards each holds and the deck's 13 books by who made them; and the asks as they
