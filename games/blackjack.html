@@ -309,6 +309,20 @@ html.bj-dk .bjinfo.row{flex-direction:row;align-items:stretch;}
 .bjinfo .bi-col{display:flex;flex-direction:column;gap:var(--ig,12px);flex:0 0 var(--sw1,300px);min-width:0;min-height:0;}
 .bjinfo .bi-col .bi{flex:none;}
 .bjinfo.row.two .bi{flex:1 1 0;max-width:30em;align-self:flex-start;}
+/* your bankroll before a hand is played: its line session by session, then the casino sessions newest first */
+.bjinfo .bi-bank{flex:1 1 0;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+.bjinfo.row.two .bi-bank{align-self:stretch;}
+.bi-bank .bk-ln svg{display:block;width:100%;overflow:visible;}
+.bi-bank .bk-ln text{font-family:var(--font);font-weight:650;fill:var(--text-3);font-variant-numeric:tabular-nums;}
+.bi-bank .bk-h{margin:.7em 0 .2em;font-size:.86em;font-weight:650;color:var(--text-3);}
+.bi-bank .bk-rows{flex:1 1 0;min-height:0;overflow:hidden;}
+.bi-bank .bk{display:flex;align-items:center;justify-content:space-between;gap:.8em;padding:.48em 0;border-top:1px solid var(--gl-line);}
+.bi-bank .bk:first-child{border-top:0;}
+.bi-bank .bk-t,.bi-bank .bk-a{display:flex;flex-direction:column;gap:.1em;min-width:0;}
+.bi-bank .bk-a{align-items:flex-end;text-align:right;flex:none;}
+.bi-bank .bk b{font-weight:750;overflow-wrap:anywhere;} .bi-bank .bk-a b{font-variant-numeric:tabular-nums;white-space:nowrap;}
+.bi-bank .bk span{font-size:.82em;font-weight:600;color:var(--text-3);white-space:nowrap;}
+.bi-bank .up{color:var(--green);} .bi-bank .down{color:#ff8a8a;}
 /* one player: the session as figures */
 .bi-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5em;}
 .bi-tiles div{display:flex;flex-direction:column;gap:.1em;padding:.5em .65em;border-radius:12px;background:var(--well,rgba(0,0,0,.25));min-width:0;}
@@ -1822,12 +1836,40 @@ html.bj-dk .bjinfo.row{flex-direction:row;align-items:stretch;}
       hl.forEach(function (x) { list.appendChild(handRow(x, n)); });
       pHands = part('bi-hands', 'Hands so far', null, list);
     }
-    if (row && !pHands) { box.classList.add('two'); box.appendChild(pSess); box.appendChild(pRules); if (pChart && r.w >= 900) box.appendChild(pChart); }   // (nothing played yet: the session and the placard side by side)
+    // your bankroll, before any hand is played: the casino sessions behind it (what the menu's bankroll history
+    // shows), so the room has something to say before this session has; the hands so far take its place
+    var pBank = !pHands && !(row && (pChart || r.w < 900)) ? bankPanel(r, bf, row) : null;
+    if (row && !pHands) { box.classList.add('two'); box.appendChild(pSess); box.appendChild(pRules); if (pChart && r.w >= 900) box.appendChild(pChart); if (pBank) box.appendChild(pBank); }   // (nothing played yet: the session and the placard side by side)
     else if (row) {
       var col = el('div', { class: 'bi-col' }, [pSess, pRules]);
       box.appendChild(col); if (pChart && r.w >= 900) box.appendChild(pChart); if (pHands) box.appendChild(pHands);
-    } else [pSess, pChart, pHands, pRules].forEach(function (x) { if (x) box.appendChild(x); });
+    } else [pSess, pChart, pHands, pRules, pBank].forEach(function (x) { if (x) box.appendChild(x); });
     return box;
+  }
+  // (only where a seat plays from your own bankroll, at a table on this device; null with no session behind it)
+  function bankPanel(r, bf, row) {
+    if (NET || !S.seats.some(function (s, i) { return srcOf(i) === 'mine'; }) || typeof Casino === 'undefined' || !Casino.history) return null;
+    var list = Casino.history().filter(function (e) { return e && (e.kind === 'session' || e.kind === 'reset') && typeof e.end === 'number'; });
+    if (!list.length) return null;
+    var now = rawBank(), pts = list.slice(0, 60).reverse().map(function (e) { return e.end; }).concat([now]);
+    var w = Math.round((row ? Math.min(r.w * .34, 30 * bf) : r.w) - 2 * bf), h = Math.round(clamp(r.h * .14, 90, 170));
+    var lo = Math.min.apply(null, pts), hi = Math.max.apply(null, pts); if (hi - lo < 40) { hi += 20; lo -= 20; }
+    var X = function (k) { return 4 + (w - 8) * k / (pts.length - 1); }, Y = function (v) { return 16 + (h - 32) * (hi - v) / (hi - lo); };
+    var s = '<svg viewBox="0 0 ' + w + ' ' + h + '" height="' + h + '" role="img" aria-label="Your bankroll after each casino session">' +
+      '<text x="4" y="11" font-size="11">' + money(hi) + '</text><text x="4" y="' + (h - 3) + '" font-size="11">' + money(lo) + '</text>' +
+      '<polyline points="' + pts.map(function (v, k) { return X(k).toFixed(1) + ',' + Y(v).toFixed(1); }).join(' ') + '" fill="none" stroke="var(--lit)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>' +
+      '<circle cx="' + X(pts.length - 1).toFixed(1) + '" cy="' + Y(now).toFixed(1) + '" r="3.6" fill="var(--lit)"/></svg>';
+    var rows = el('div', { class: 'bk-rows' });
+    list.slice(0, 40).forEach(function (e) {
+      var d = new Date(e._date || 0), day = e._date ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' at ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
+      var reset = e.kind === 'reset', net = reset ? 0 : (e.net || 0);
+      var name = reset ? 'Bankroll reset' : !e.table ? (e.name || e.game || 'Casino') : 'At ' + (/table$/i.test(e.table) ? e.table : (Kit.poss ? Kit.poss(e.table) : e.table + '’s') + ' table');
+      rows.appendChild(el('div', { class: 'bk' }, [el('div', { class: 'bk-t' }, [el('b', { text: name }), el('span', { text: day })]),
+        el('div', { class: 'bk-a' }, [el('b', { class: reset ? '' : net > 0 ? 'up' : net < 0 ? 'down' : '', text: reset ? money(e.end) : signed(net) }),
+          el('span', { text: reset ? 'From ' + money(e.from || 0) : money(e.start || 0) + ' to ' + money(e.end) })])]));
+    });
+    return el('section', { class: 'bi bi-bank' }, [el('h4', null, [el('span', { text: 'Your bankroll' }), el('em', { text: money(now) })]),
+      el('div', { class: 'bk-ln', html: s }), el('div', { class: 'bk-h', text: 'Casino sessions, newest first' }), rows]);
   }
   function bjCount(R) { var c = 0; (S.hl || []).forEach(function (x) { if (x.i <= R) x.h.forEach(function (h) { if (h.s === 0 && (h.r === 'bj' || h.r === 'even')) c++; }); }); return Math.max(c, LIVE.indexOf(S.phase) < 0 ? S.seats[0].st.bj : 0); }
   function handRow(x, n) {
@@ -1879,6 +1921,15 @@ html.bj-dk .bjinfo.row{flex-direction:row;align-items:stretch;}
     while ((kept < want || over()) && k < order.length) { var e = box.querySelector(order[k++]); if (e) { e.remove(); kept = over() ? -1 : trim(); } }
     if (list && kept < 1) { var hp = box.querySelector('.bi-hands'); if (hp) hp.remove(); }
     if (over()) { var c = box.querySelector('.bi-col'); if (c && c.lastChild && c.children.length > 1) c.lastChild.remove(); }
+    // (your bankroll keeps the sessions that show whole, and goes whole when not even its line has room)
+    var bk = box.querySelector('.bi-bank');
+    if (bk) {
+      var rs = bk.querySelector('.bk-rows'), R0 = rs.getBoundingClientRect(), n = 0;
+      Array.prototype.slice.call(rs.children).forEach(function (x) { if (x.getBoundingClientRect().bottom > R0.bottom + .5) x.remove(); else n++; });
+      var ln = bk.querySelector('.bk-ln').getBoundingClientRect();
+      if (!n) { bk.querySelector('.bk-h').remove(); rs.remove(); }
+      if (over() || ln.bottom > bk.getBoundingClientRect().bottom + .5 || bk.getBoundingClientRect().height < 7 * parseFloat(getComputedStyle(box).fontSize)) bk.remove();
+    }
   }
 
   // ── Controls under the table ──────────────────────────────────────────────
