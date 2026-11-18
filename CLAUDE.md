@@ -137,7 +137,8 @@ Underlying principles for everything:
   **Euchre** (the same functions in euchre-ai.html): the sheet `.eu-pad` (who made trump, the suit, Alone, each side's
   tricks and points, Euchred marked, a pip a point to the target), and at the right the trump and what happened to the
   turned-up card (`trumpSay`), each player's call, each side's tricks, who took each, the seven trumps highest first
-  with the played ones faded (`trumpStrip`), the last trick; a scored hand is told at the right (`handSay`). The
+  with the played ones faded (`trumpStrip`; Tim, 2026-11-18: "keep the faded trumps in euchre", the one memory aid a
+  desk has that a real table doesn't), the last trick; a scored hand is told at the right (`handSay`). The
   scratchpad's `fill/audit.js <shapes> <games> --shots [--root=<worktree>] [--out=<folder>]` opens a game's table through
   its demo at eight desktop windows (A 2100x1860, B 3024x1964, C 1512x982, D 1600x560, E 720x1700, F 1000x1000, G 1280x720,
   H 560x620) and measures the share of the window it covers; each pilot's own proof scripts are in `big/<game>/`.
