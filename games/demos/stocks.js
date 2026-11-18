@@ -36,10 +36,11 @@
   // (at a desk, a large window, the ticket stands open beside the chosen stock instead of coming up as a sheet)
   function desk() { return !!(M.desk && M.desk()); }
   function seen(l) { return [].slice.call(l).filter(function (b) { return b.offsetWidth; }); }
-  function chipBtn(t) { return function () { return seen(document.querySelectorAll('.k-sheet .qchips button, .dk-tkt .qchips button')).filter(function (b) { return b.textContent === t; })[0]; }; }
+  function inSheet(q) { var sh = document.querySelector('.k-sheet'); return seen(document.querySelectorAll(sh ? '.k-sheet ' + q : '.dk-tkt ' + q)); }   // (a sheet that is up first; at a desk, else the ticket)
+  function chipBtn(t) { return function () { return inSheet('.qchips button').filter(function (b) { return b.textContent === t; })[0]; }; }
   function row(name) { return function () { return [].slice.call(document.querySelectorAll('.mk-main .row')).filter(function (b) { var n = b.querySelector('.nm b'); return n && n.textContent === name; })[0]; }; }
   function group(g) { return '.mk-main .chips .chip[data-g="' + g + '"]'; }
-  var addMoney = '.cashrow .btn-g', sheetGo = function () { return seen(document.querySelectorAll('.k-sheet .tt > .btn-primary, .dk-tkt .tt .btn-primary'))[0]; };
+  var addMoney = '.cashrow .btn-g', sheetGo = function () { return seen(document.querySelectorAll(document.querySelector('.k-sheet') ? '.k-sheet .tt > .btn-primary' : '.dk-tkt .tt .btn-primary'))[0]; };
   var paneBuy = function () { return [].slice.call(document.querySelectorAll('.pane.on .btn-g')).filter(function (b) { return b.textContent === 'Buy'; })[0]; };
   var cash = function () { return document.querySelector('.cashrow') || document.querySelector('.mk'); };
   var value = function () { return document.querySelector('.pnl .val') || document.querySelector('.mk'); };
