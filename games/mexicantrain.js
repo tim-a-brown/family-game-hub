@@ -723,7 +723,7 @@
     pad.style.setProperty('--rh', rh + 'px'); body.style.flex = '0 0 ' + (rh * rows) + 'px';
     if (live && rows < S.R) { var at = [].indexOf.call(body.children, live); body.scrollTop = clampN(0, at - rows + 2, S.R - rows) * rh; }
     // room left under the sheet: the totals round by round, the lowest line ahead
-    if (rows === S.R && bh - rh * rows > Math.max(170, fs * 10) && S.rr.length >= 2) {
+    if (rows === S.R && bh - rh * rows > Math.max(170, fs * 10) && S.rr.length >= 1) {
       pad.style.flex = 'none';
       var lb = el('div', { class: 'mdk-lbl' }, [el('span', { text: 'Totals, round by round' }), el('span', { text: 'The lowest is ahead' })]), ch = el('div', { class: 'mdk-race' });
       inn.insertBefore(lb, goal.parentNode ? goal : null); inn.insertBefore(ch, goal.parentNode ? goal : null);

@@ -151,16 +151,21 @@ Underlying principles for everything:
   Both fit the right panel by measuring it (`f1` to `f7`: the least needed part goes first), and keep `html.cdesk` on only
   while a desk layout shows, since Cards.desk's in-between layouts assume Hearts' stage.
   **Dominoes at a desk** (its own, not Cards.desk: `deskPlan`, `deskSet`, `paintSheet`, `paintSide` in dominoes.html; `.dk`
-  and `.dk-wide`, `.dk-strip`, `.dk-tall` or `.dk-square` on `.dw` only while a desk layout shows): the table takes the
-  window, its tiles to 104px across (135 while the line is short), your tiles the same size, the plaques on the felt
-  stepping up with it (`--k`); the score sheet hand by hand with the race to the target at the left; at the right the
-  hand in play: how many tiles each player holds and what each drew or passed, the open ends (in All Fives the count of
-  the ends piece by piece), and the hand play by play from `S.pl`, over whose turn it is and the buttons. A counted hand
-  is written there with what everyone was left holding and its button stands where the turn's buttons are (`deskHand`;
-  `deskSync` moves the count between the sheet and the panel when the window changes size). Mexican Train at a desk is in
-  its own section. The scratchpad's `big/dominoes/` has the scripts: `gen.js` (fixed positions as saved states),
-  `snap.js` with `cmp.sh` (the device proof), `scan.js` (anything cut, small, half a row or overlapping, every phase at
-  every window), `resize.js`, `online.js`, `demo.js`, `audit2.js`.
+  and `.dk-wide`, `.dk-strip`, `.dk-tall` or `.dk-square` on `.dw` only while a desk layout shows). The line of play wants
+  width, so in a wide window (1200 or more across, 640 or more tall) the table lies across the whole window, as the
+  Landscape rule says, and a strip under it holds the score sheet and the hand in play at the left, your tiles, then
+  whose turn it is and the buttons at the right; a short strip of a window (under 640 tall) gives the table its whole
+  height with the panels in columns beside it; a tall window has the two panels side by side over the table; a nearly
+  square one has them one over the other at the left. The tiles go to 104px across (135 while the line is short), your
+  tiles the same size, and the plaques on the felt step up with them (`--k`). The sheet is a row a hand with the race to
+  the target; the hand in play is how many tiles each player holds and what each drew or passed, the open ends (in All
+  Fives the count of the ends piece by piece), and the hand play by play from `S.pl` (in a column of its own from 2400
+  across), each part given up whole as its panel gets shorter. A counted hand is written there with what everyone was
+  left holding, and its button stands where the turn's buttons are (`deskHand`; `deskSync` moves the count between the
+  sheet and the panel when the window changes size). Mexican Train at a desk is in its own section. The scratchpad's
+  `big/dominoes/` has the scripts: `gen.js` (fixed positions as saved states), `snap.js` with `cmp.sh` (the device proof,
+  `proof.txt`), `scan.js` (anything cut, small, half a row or overlapping, every phase at every window), `resize.js`,
+  `online.js`, `demo.js`, `misc.js`, `audit2.js`, and `all.sh`, which runs them one after another.
   **The setup and the results card at a desk, for every game** (kit.js "The desk" and the last section of kit.css; every
   rule hangs off `.k-dk`, which kit.js sets only in a window wider than 1024 or more than 768 the shorter way, taller
   than 520 and 480 wide at least: `deskShape`, `winShape`, `Kit.desk()`. The devices are drawn by the rules they always
