@@ -3399,7 +3399,7 @@
     ui.lay = M ? layModeN() : layMode();
     // (the shape of the two-player table, for the style sheet: ln the battle line, up and short its upright and low
     // forms, rw the rows of a phone held upright; and the game bar folds down while a phone on its side plays)
-    if (dom.felt) { const L = ui.lay, want = 'an-felt felt-in' + (dom.track ? ' has-trk' : '') + (M ? ' many' + (G.teams ? ' teams' : '') + (L.nbl ? ' bl' : '') + (L.dk ? ' desk dn d-' + L.dock + (L.dk.hmid ? ' hmid' : '') : L.nbl && deskWin() ? ' big' : '') : L.ln ? ' bl' + (L.up ? ' up' : '') + (L.short ? ' short' : '') + (L.dk ? ' desk d-' + L.dock + (L.pil ? ' pil' : '') + (L.dk.mid ? ' fmid' : '') + (L.dk.hmid ? ' hmid' : '') : '') : ' rw'); if (dom.felt.className !== want) dom.felt.className = want;
+    if (dom.felt) { const L = ui.lay, want = 'an-felt felt-in' + (dom.track ? ' has-trk' : '') + (M ? ' many' + (G.teams ? ' teams' : '') + (L.nbl ? ' bl' : '') + (L.dk ? ' desk dn d-' + L.dock + (L.dk.hmid ? ' hmid' : '') : L.nbl && deskWin() ? ' big' + (G.ph === 'setup' ? ' bsu' : '') : '') : L.ln ? ' bl' + (L.up ? ' up' : '') + (L.short ? ' short' : '') + (L.dk ? ' desk d-' + L.dock + (L.pil ? ' pil' : '') + (L.dk.mid ? ' fmid' : '') + (L.dk.hmid ? ' hmid' : '') : '') : ' rw'); if (dom.felt.className !== want) dom.felt.className = want;
       // (the desk's own measures, for the style sheet: the bars' scale, the widths of the dock's column and of a pillar, the track's height)
       const D = L.dk, fs = dom.felt.style; [['--bs', D && D.bs.toFixed(3)], ['--aw', D && D.dock === 'b' ? D.aw + 'px' : null], ['--rw', D && D.dock === 'r' ? D.rw + 'px' : null], ['--pw', D && D.pil ? D.pw + 'px' : null], ['--dth', D && D.tk + 'px'], ['--cs', D && D.cs.toFixed(3)]].forEach(x => { if (x[1]) fs.setProperty(x[0], x[1]); else fs.removeProperty(x[0]); }); }
     document.documentElement.classList.toggle('an-low', !!((ui.lay.short || (M && window.innerWidth > window.innerHeight && window.innerHeight < 520)) && dom.root && dom.root.isConnected));   // (and with more players too)
@@ -3427,7 +3427,7 @@
       if (dom.track) window.AnoriaDomains.track(dom.track, { round: V.round, turn: G.over ? -1 : V.turn, due: V.P.map((p, o) => (p.guide === 'lincoln' ? { r: 5, o: o } : null)) });
     } finally { pass = null; }
     ui.T = T;
-    fitStrips(); if (!M) layout(); fitPlates(); fitNames(); if (!M || ui.lay.dk) { fitMid(); fitRecent(); } piles(); coverNames(); foldPiles(); lines(); fitSides(); if (M && ui.lay.dk) dnAfter();
+    fitStrips(); if (!M) layout(); fitPlates(); fitNames(); if (!M || ui.lay.dk) { fitMid(); fitRecent(); } piles(); coverNames(); foldPiles(); lines(); if (M) bigSides(); fitSides(); if (M && ui.lay.dk) dnAfter();
     dom.root.querySelectorAll('.st-name').forEach(n => Kit.fitText(n, .6));
     relicChooser();   // (a Relic picked up that has to go over one of yours: the slots it can go to, over your bar)
   }
@@ -4204,7 +4204,12 @@
     // (a pile of two side by side with the first card's name still showing: more piles than a row holds make a second row, dnBand)
     let c = Math.floor(Math.min(cap || DN_MAX, (w - 8) / 1.6));
     while (c >= DN_MIN && need(c) > h) c -= 2;
-    if (c >= DN_MIN) { const th = Math.round(Math.min(tw * .66, thOf(c) + (h - need(c)) * .5)); return { w: w, h: h, tw: tw, th: th, sh: sh, bg: bg, c: c, tag: tag(c), one: !!one, band: (h - th - nb * bg) / nb, use: Math.min(1, (need(c) - thOf(c) + th) / h) }; }
+    if (c >= DN_MIN) {
+      // (cx: in a cell with height to spare a card alone, or a pile of two, is drawn larger than the size at which three
+      // lie side by side; a fuller pile comes down to c or under it as it always did: dnBand. The plan is judged by c)
+      let cx = Math.floor(Math.min(cap || DN_MAX, (w - 8) / 1.22, c * 1.3)); while (cx > c && need(cx) > h) cx -= 2; cx = Math.max(c, cx);
+      const th = Math.round(Math.min(tw * .66, thOf(cx) + (h - need(cx)) * .5));
+      return { w: w, h: h, tw: tw, th: th, sh: sh, bg: bg, c: c, cx: cx, tag: tag(cx), one: !!one, band: (h - th - nb * bg) / nb, use: Math.min(1, (need(cx) - thOf(cx) + th) / h) }; }
     const th = Math.round(clampN(tw * .34, h * (one ? .42 : .34), tw * .62)), band = (h - th - nb * bg) / nb, sw = Math.floor(Math.min(60, (w - 12) / 3 - 4, (band - 8) / 1.36));
     return { w: w, h: h, tw: tw, th: th, sh: sh, bg: bg, c: 0, stk: true, sw: sw, tag: 0, one: !!one, band: band, use: Math.min(1, (th + nb * (bg + sw * 1.36 + 8)) / h) };
   }
@@ -4215,7 +4220,7 @@
   function dnBar(bw, bh) {
     // (a rich form at the scale its mat's width gives it, or as much smaller as keeps it to its share of the mat's height)
     const rich = (f, h0, lo, bsW, cap) => { const bs = Math.min(bsW, (bh * cap - 14) / h0); return bs >= lo ? { f: f, bs: bs, h: Math.round(h0 * bs + 14) } : null; };
-    const r = (bw >= 760 && rich('rich', 118, 1, clampN(1, bw / 1100, 1.4), .135)) || (bw >= 400 && rich('rich2', 140, .95, clampN(1, bw / 400, 1.5), .15)) || (bw >= 240 && bw < 400 && rich('rich3', 182, .85, clampN(.85, bw / 330, 1.15), .15)) || null;
+    const r = (bw >= 760 && rich('rich', 118, 1, clampN(1, bw / 1100, 1.4), .135)) || (bw >= 540 && rich('rich2', 140, .95, clampN(1, bw / 540, 1.5), .15)) || (bw >= 240 && bw < 540 && rich('rich3', 182, .85, clampN(.85, bw / 330, 1.4), .15)) || null;
     if (r) return r;
     if (bw >= 330) { const bs = Math.max(.74, Math.min(bw / 450, 1.45, (bh * .085 - 12) / 42)); return { f: 'one', bs: bs, h: Math.round(42 * bs + 12) }; }
     if (bw >= 200) { const bs = clampN(.74, bw / 270, .95); return { f: 'two', bs: bs, h: Math.round(62 * bs + 12) }; }
@@ -4258,7 +4263,9 @@
     const fill = (3 * mc.w * mc.h * mc.use + 2 * R * rc.w * rc.h * rc.use) / (W * H);
     const fm = c => Math.min(c, 170) + .5 * Math.max(0, c - 170);
     const tl = tw => .16 * Math.min(tw, 300) - .6 * Math.max(0, 150 - tw);   // (a Domain under 150 px wide has its power in words too small to read)
-    const worth = (4.5 * fm(mc.c) + 2 * R * f(er)) / (4.5 + 2 * R) + (3 * tl(mc.tw) + 2 * R * tl(rc.tw)) / (3 + 2 * R);
+    // (your three Domains weigh as much as half the table however many players there are: with ten of the others'
+    // Domains to three of yours, a plain sum had the others' cards larger than your own)
+    const wm = Math.max(4.5, 2 * R * .8), worth = (wm * fm(mc.c) + 2 * R * f(er)) / (wm + 2 * R) + (3 * tl(mc.tw) + 2 * R * tl(rc.tw)) / (3 + 2 * R);
     return { o: o, mine: mine, rim: rim, mb: mb, rb: rb, mc: mc, rc: rc, cells: cells, sdH: sdH, pad: pad, worth: worth, fill: fill };
   }
   // the best table for a room: every composition tried
@@ -4285,11 +4292,16 @@
       // (stacks for the others and small cards for you is what the iPad's table already gives, and it is made for that
       // room; so are its lanes in a low wide window, where the others' Domains here would be under 120 px)
       if (t.rc.stk && (dock !== 'r' ? t.mc.c < 100 : t.rc.sw < 40 || t.rc.tw < 120)) return;
-      const worth = (t.worth + .45 * Math.min(h, t.mc.c * 1.12)) * (dock === 'r' ? .94 : 1);
+      const worth = (t.worth + .45 * Math.min(h, t.mc.c * 1.12)) * (dock === 'r' ? .94 : 1) - (x.pen || 0);
       if (!top || worth > top.worth + .5) top = Object.assign({ dock: dock, h: h, worth: worth, tk: tk, dn: t }, x); };
-    if (a >= 1.2 && !side) sizes.forEach(u => { const h = Math.floor(Math.min(u, (W - aw - 18 - 7 * g) / 8)); if (h >= 80) offer('b', { aw: aw, per: 8, rows: 1 }, h, W, H - (Math.max(h * 1.4 + 12, 122) + RG)); });
+    // (the hand along the bottom with the last events, the caption and the button at its right: any window wider than
+    // tall, and a squarer one that is large enough for a hand of 150 px cards beside them)
+    const hb = Math.floor(Math.min(240, (W - aw - 18 - 7 * g) / 8));
+    if (!side) sizes.forEach(u => { const h = Math.min(u, hb); if (h >= (a >= 1.2 ? 80 : 150)) offer('b', { aw: aw, per: 8, rows: 1 }, h, W, H - (Math.max(h * 1.4 + 12, 122) + RG)); });
     if (a >= 1.9 && !side) [[2, 4], [3, 3], [4, 2]].forEach(x => { const room = H - 48 - 62 - 3 * RG, h = Math.floor(Math.min((rw - (x[1] - 1) * g) / x[1], (room - (x[0] - 1) * g) / x[0] / 1.4, 240)); if (h >= 80) offer('r', { rw: rw, per: x[1], rows: x[0] }, h, W - rw - 14, H); });
-    if (a < 1.5 || side) [1, 2].forEach(r => sizes.forEach(u => { const per = r === 1 ? 8 : 4, h = Math.floor(Math.min(u, (W - (per - 1) * g) / per)); if (h >= 80) offer('s', { per: per, rows: r }, h, W, H - (66 + r * h * 1.4 + (r - 1) * g + 12 + RG)); }));
+    // (a hand the window's width under the caption's row: tall and square windows, where a hand of 150 px beside the
+    // last events does not fit)
+    if (side || (a < 1.5 && hb < 150)) [1, 2].forEach(r => sizes.forEach(u => { const per = r === 1 ? 8 : 4, h = Math.floor(Math.min(u, (W - (per - 1) * g) / per)); if (h >= 80) offer('s', { per: per, rows: r, pen: r === 2 && 4 * h + 3 * g < W * .6 ? 9 : 0 }, h, W, H - (66 + r * h * 1.4 + (r - 1) * g + 12 + RG)); }));
     const D = top ? Object.assign(top, { c: top.dn.mc.c, bs: 1, cs: clampN(1, top.h / 190, 1.5), mid: false, hmid: top.h >= 150, pil: false, pw: 0, W: W, H: H }) : null;
     if (D) D.say = [D.dock, D.dn.o.arr, D.dn.o.cells, D.dn.o.arr === 'row' ? D.dn.o.rw : D.dn.o.split, 'c' + D.dn.mc.c, 'r' + (D.dn.rc.stk ? 's' + D.dn.rc.sw : D.dn.rc.c), 'h' + D.h].join(' ');
     ui.dnC = { key: key, D: D };
@@ -4302,13 +4314,21 @@
   }
   // (the desk's inline places for your bar and the teams' bar, taken away when the table is drawn another way)
   function dnOff() { [dom.me, dom.opp].forEach(n => { if (!n) return; ['margin-left', 'margin-top', 'width', 'height', '--bs'].forEach(p => n.style.removeProperty(p)); n._dn = 0; }); }
+  // (the teams' bar over your mat's head is no wider than your mat: at the desk, and on the iPad's battle line in a
+  // larger window; fitSides then folds its names to diamonds where they do not fit)
+  function bigSides() {
+    const n = dom.opp; if (!n || !n.classList.contains('wn-sides')) return;
+    const L = ui.lay || {}, big = L.nbl && deskWin(), m = big && !L.dk && dom.map.querySelector('.an-pm.wn-mine');
+    const w = !big ? 0 : L.dk ? ui.dnT && ui.dnT.mine.w - 2 * ui.dnT.pad : m ? m.getBoundingClientRect().width - 8 : 0;
+    if (w > 0) n.style.maxWidth = Math.round(w) + 'px'; else n.style.removeProperty('max-width');
+  }
   // the parties of one band laid in rows in a room w by h, their cards c0 wide or as much smaller as holds them all:
   // each party the width of its cards side by side where the row has it, else sharing the row, its cards overlapping
   // (piles, foldPiles). null: no size of card holds them, and they are stacks.
   function dnBand(parties, w, h, c0, tag0) {
     const n = p => p.figs.length + (p.slot ? 1 : 0), gap = 10, sum = a => a.reduce((x, y) => x + y, 0);
     // (one row with cards down to three quarters of their size is better than two rows; then as many rows as the band holds)
-    for (let pass = 0; pass < 2; pass++) for (let c = c0; c >= (pass ? DN_MIN - 10 : Math.max(DN_MIN - 10, c0 * .74)); c -= Math.max(2, Math.round(c0 * .06))) {
+    for (let pass = 0; pass < 2; pass++) for (let c = c0; c >= (pass ? DN_MIN - 6 : Math.max(DN_MIN - 6, c0 * .74)); c -= Math.max(2, Math.round(c0 * .06))) {
       const tag = c >= 90 ? Math.round(tag0 * Math.max(.8, c / c0)) : 0, rowH = c * 1.4 + tag + 8, rowsMax = pass ? Math.max(1, Math.floor((h + 4) / rowH)) : 1;
       const minW = p => c * (1 + .42 * Math.min(n(p) - 1, 2)), natW = p => n(p) * c + (n(p) - 1) * 6;
       const rows = [[]]; let x = 0, ok = true;
@@ -4328,7 +4348,7 @@
   // (the sizes of a cell's own furniture, from its Domain's width, as the two-player desk's are: layoutLine)
   function dnVars(row, g) {
     const tw = g.tw, pn = Math.max(Math.min(16.8, Math.max(10.5, tw * .075)), Math.min(30, tw * .062)), pr = Math.max(Math.min(14.4, Math.max(9.5, tw * .064)), Math.min(23, tw * .05)), fl = Math.round(Math.max(Math.min(32, Math.max(16, tw * .16)), Math.min(52, tw * .13)));
-    [['--tw', tw + 'px'], ['--th', g.th + 'px'], ['--sh', g.sh + 'px'], ['--bg', g.bg + 'px'], ['--band', g.band.toFixed(1) + 'px'], ['--fw', (g.c || g.sw) + 'px'], ['--sw', (g.sw || g.c) + 'px'], ['--pn', pn.toFixed(1) + 'px'], ['--pr', pr.toFixed(1) + 'px'], ['--fl', fl + 'px'], ['--ts', clampN(.72, tw / 230, 2.5).toFixed(3)]].forEach(x => row.style.setProperty(x[0], x[1]));
+    [['--tw', tw + 'px'], ['--th', g.th + 'px'], ['--sh', g.sh + 'px'], ['--bg', g.bg + 'px'], ['--band', g.band.toFixed(1) + 'px'], ['--fw', (g.cx || g.c || g.sw) + 'px'], ['--sw', (g.sw || g.cx || g.c) + 'px'], ['--pn', pn.toFixed(1) + 'px'], ['--pr', pr.toFixed(1) + 'px'], ['--fl', fl + 'px'], ['--ts', clampN(.72, tw / 230, 2.5).toFixed(3)]].forEach(x => row.style.setProperty(x[0], x[1]));
   }
   // One Domain's cell: the tile, each side's Might on a shield on its edge (the other sides' along the top in seat
   // order from your left, your side's at the foot), the other sides' parties in the band above and your side's below.
@@ -4360,9 +4380,10 @@
     else { shields(sides, 'L'); shields([mineS], 'R'); }
     const bandEl = (cls, parties) => {
       const band = el('div', { class: 'dn-band ' + cls, 'data-p': i }); if (!parties.length) return band;
-      const L = g.stk ? null : dnBand(parties, g.w - 4, g.band - 4, g.c, g.tag);
+      const L = g.stk ? null : dnBand(parties, g.w - 4, g.band - 4, g.cx || g.c, g.tag);
       if (!L) {   // (stacks: a cell too small for cards, or more parties than any size of card holds)
-        band.classList.add('S'); const sw = g.stk ? g.sw : Math.floor(Math.min(g.c, (g.w - 8) / parties.length - 6, (g.band - 8) / 1.36)); band.style.setProperty('--sw', sw + 'px'); band.style.setProperty('--fw', sw + 'px');
+        band.classList.add('S'); const ni = parties.reduce((a, p) => a + (p.figs.length ? 1 : 0) + (p.slot ? 1 : 0), 0);   // (the stacks and the place a card would land, in one row)
+        const sw = Math.floor(Math.min(g.stk ? g.sw : g.c, (g.w - 8) / ni - 8, (g.band - 8) / 1.36)); band.style.setProperty('--sw', sw + 'px'); band.style.setProperty('--fw', sw + 'px');
         parties.forEach(p => { if (p.figs.length) band.appendChild(stackEl(p.o, i, p.figs, T, sw, true)); if (p.slot) band.appendChild(landSlot(p.slot)); });
         return band;
       }
@@ -4442,7 +4463,7 @@
   // until it does), and a party's tag that is wider than its party goes whole.
   function dnAfter() {
     dom.root.querySelectorAll('.an-strip.dn-bar').forEach(b => {
-      const over = () => { const r = b.getBoundingClientRect(); return r.width > 0 && Array.prototype.some.call(b.querySelectorAll(':scope > *, .st-top > *, .st-bot > *, .st-relics > *'), c => { if (c.matches('.wn-tm, .wn-out, .st-fill')) return false; const q = c.getBoundingClientRect(); return q.width > 0 && (q.right > r.right - 2 || q.bottom > r.bottom - 1 || q.left < r.left + 1); }); };
+      const over = () => { const r = b.getBoundingClientRect(); const nm = b.querySelector('.st-name'); if (r.width > 0 && nm && nm.scrollWidth > nm.clientWidth + 1) return true; return r.width > 0 && Array.prototype.some.call(b.querySelectorAll(':scope > *, .st-top > *, .st-bot > *, .st-relics > *'), c => { if (c.matches('.wn-tm, .wn-out, .st-fill')) return false; const q = c.getBoundingClientRect(); return q.width > 0 && (q.right > r.right - 2 || q.bottom > r.bottom - 1 || q.left < r.left + 1); }); };
       let bs = parseFloat(b.style.getPropertyValue('--bs')) || 1; b.classList.remove('q1');
       if (over() && /f-rich/.test(b.className)) b.classList.add('q1');   // (the Guide's power in words goes first)
       while (over() && bs > .62) { bs -= .04; b.style.setProperty('--bs', bs.toFixed(3)); }
