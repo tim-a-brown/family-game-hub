@@ -1153,7 +1153,7 @@
   function paintSide() {
     var n = S.players.length, ended = S.phase === 'roundover' || S.phase === 'over';
     var inner = el('div', { class: 'cdk-in f7side' }, [el('div', { class: 'cdk-h' }, [el('h2', { text: 'Round ' + S.round }), el('small', { text: 'Dealt by ' + S.players[S.dealer].name })])]);
-    inner.appendChild(el('div', { class: 'cdk-lbl' }, [el('span', { text: 'The race to ' + S.target }), el('span', { text: ended ? 'After this round' : 'With this round' })]));
+    inner.appendChild(el('div', { class: 'cdk-lbl' }, [el('span', { text: 'The race to ' + S.target }), el('span', { text: ended ? 'After round ' + S.round : 'Each total, and this round' })]));
     var race = el('div', { class: 'f7race' }), any = false;
     S.players.forEach(function (pl, p) {
       var st = S.status[p] || 'in', pts = ended ? (S.rounds[S.round - 1] || [])[p] || 0 : shown(p), base = ended ? pl.total - pts : pl.total;
@@ -1162,7 +1162,7 @@
       race.appendChild(el('div', { class: 'f7r' + (p === ME && human(p) ? ' me' : '') + (st === 'bust' ? ' out' : safe ? ' safe' : '') + (!ended && S.phase === 'play' && S.turn === p && st === 'in' && !S.choose ? ' now' : ''), style: { '--c': Kit.color(p) } }, [
         el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: isCpu(p) ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
         el('span', { class: 'nm', text: pl.name }),
-        el('span', { class: 'pts', html: String(base + (safe ? pts : 0)) + (st === 'bust' ? '<i>Bust</i>' : ended ? '' : pts ? '<i>+' + pts + '</i>' : '') }),
+        el('span', { class: 'pts', html: String(pl.total) + (st === 'bust' ? '<i>Bust</i>' : ended ? '' : pts ? '<i>+' + pts + '</i>' : '') }),
         el('span', { class: 'bar' }, [el('b', { style: { width: Math.min(100, base / T * 100).toFixed(1) + '%' } }),
           st === 'bust' || !pts ? null : el('i', { style: { left: Math.min(100, base / T * 100).toFixed(1) + '%', width: Math.max(0, Math.min(100 - base / T * 100, pts / T * 100)).toFixed(1) + '%' } })])
       ]));
