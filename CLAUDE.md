@@ -515,6 +515,58 @@ Underlying principles for everything:
   demo (games/demos/sportsbook.js) points at Open bets at a desk. Scripts: the scratchpad's `big/sportsbook/`
   (`shots.js` scenes board, nba, my, team, bets, settled, new, off, down, slip with `--scan`; `espn.js` the stand-in
   feed) with `big/stocks/lib.js`, `prove.sh`, `resize.js`, `demo.js`.
+  **Blackjack at a desk** (`html.bj-dk`, `bj-cp` in a window under 600 tall; `deskPlan`, `deskSet`, `deskFelt`,
+  `deskSeats`, `deskZone`, `deskPrint`, `deskSide`, `infoPanel`, `infoFit` in blackjack.html; `deviceShape` keeps a
+  window shaped like a phone or a tablet on the device layout, and `render()` lays the table out again from the state,
+  so a window dragged to any shape mid-hand keeps the hand). The table is a half-moon as wide as its room, to 2.1
+  times its height (`feltFit`), with the seats along its curved edge facing the dealer, each as low as the curve under
+  its outer corner allows (`deskSeats`); a card is 58 of the felt's units `--u`, 210px at the most, and what is read
+  on the felt (totals, results, name plates, bets) goes by `--t`. In a low felt (a strip) each betting circle lies
+  beside its cards (`.bjfelt.low`). The felt's three printed lines (BLACKJACK PAYS 3 TO 2, the dealer's rule from the
+  setup, INSURANCE PAYS 2 TO 1) are set on arcs between the dealer's cards and the hands, fitted against every seat
+  under them so the print never lies under a card (`deskZone` takes the largest print that clears each seat's hands;
+  the cards come down a step at a time until one does). Compositions: `duo` the table at the left with the session
+  over the station at the right; `trio` a short wide window (the session, the table, the station side by side);
+  `stack` the table across the top, the session and the station under it; `tall` the table, the station, the session.
+  The station (`.ctrl`) is the game's own chips and buttons on a glass panel; the hand's two next buttons stay on one
+  line (`.acts.nx`). The room (`.bjinfo`): This session (one player: won, lost, pushed, net, best hand, blackjacks and
+  the bank; several: a row a player with won, lost, pushed, net and money, yours or the one acting lit), the winnings
+  hand by hand as a line a seat, Hands so far (newest first: the dealer's cards and total, each hand's cards, total,
+  Doubled, Split or Insured, and what it paid), and This table, the placard's rules as set; before a hand is played
+  the session and the placard stand side by side (`.row.two`). While a hand is in play the room counts only the hands
+  before it. `infoFit` drops the placard, then the chart, and keeps only whole hands. No strategy chart, count or hint
+  beyond the game's own hint button.
+  **Baccarat at a desk** (`html.bc-dk`; `deskPlan`, `feltFit`/`feltGeo`, `deskLay`, `printWide`, `boardFit`,
+  `boardBuild`, `paintRoadsDesk`, `sessView` in baccarat.html; `deskLay` lays the same nodes out for the window
+  without rebuilding them, so a window dragged mid-squeeze keeps the hand). The felt is a wide half-moon between 520
+  and 900 units across: the Player and Banker hands side by side under the dealer's tray, each with room for two cards
+  and a third dealt sideways, a card up to 80 units and 210px; the three bets as real bands between the two pair
+  circles (TIE PAYS 8 TO 1, BANKER PAYS 0.95 TO 1, PLAYER PAYS 1 TO 1), a click on a band placing the chip; the game's
+  name, PUNTO BANCO, the limits and the shoe printed at its foot. Compositions: `duo` (the felt at the left, the
+  scoreboard under it where the felt leaves the height; the session over the station at the right), `trio` (a short
+  wide window: the scoreboard and the session, the felt, the station), `stack` (the felt across the top, the
+  scoreboard and the session under it, the station at the right), `tall`. The scoreboard draws both roads together as
+  a casino board does, the bead plate (a bead a hand, six to a column) beside the big road (red and blue rings, a
+  tie's slash, a pair's dot), with the counts of Banker, Player and Tie wins and the shoe; cells 17 to 46px from the
+  room (`boardFit`), and where only one fits the phone's Big Road and Bead Plate switch. The room also holds This
+  session (net, bet in all, biggest win, naturals, longest run) and Hands so far (each hand's cards with the third
+  dealt sideways, who won by what, and what each bet paid). The station is the bankroll, the session and Cash out over
+  the game's chips and buttons.
+  **Slots at a desk** (`html.sl-dk`, `sl-cp` under 600 tall; `deskPlan`, `deskApply`, `deskOff`, `paintInfo`,
+  `infoModel`, `spinRow`, `chartEl`, `infoFit` in slots.html; `fitCab` hands `cab.resize` the plan's frame, `fitGlide`
+  glides the station and the room when the composition changes). The cabinet is the same three.js machine; the plan
+  only says where it stands and how near the camera is: whole where that leaves it 640px a meter or more, from its
+  deck up where it doesn't, and from its deck to the top of its reels in a short strip, never nearer than 1,150px a
+  meter (a symbol about 190px). Compositions: `wide` (the room at the left, the machine in the middle, the station at
+  the right), `duo` (the machine, with the room over the station at the right), `tall` (the machine across the top,
+  the room and the station under it). The station is the game's own controls stood up as a panel at the right with the
+  player, the session and Cash out at its head (the bank row moved into it), the steppers, Spin and Max bet, as a
+  machine's deck has them. The room (`.slinfo`): the machine's own pay table at the bet now (`paysHtml`; a three-reel
+  machine prints its pay table on its top box, so the room has it only when the top box is out of the picture), This
+  session (net, bet in all, spins that won, biggest win, longest dry spell, free games, Hold & Spin, jackpots), the
+  credit spin by spin, and Last spins, each as the grid the reels stopped on with what it made and paid. While the
+  reels turn or a feature plays the room keeps the session as it stood before (`IM`). `infoFit` drops the chart, the
+  spins, then the session, keeps only whole spins, and hides the room where nothing fits.
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
