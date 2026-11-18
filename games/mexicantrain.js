@@ -829,7 +829,7 @@
     inn.appendChild(box);
     // (the tiles as large as the panel has room for; a panel too short for them keeps the dots alone)
     function over() { return inn.scrollHeight > inn.clientHeight + 1 || sideEl.scrollHeight > sideEl.clientHeight + 1; }
-    ['tight', 'small', 'tiny', 'bare', 'slim'].forEach(function (c) { if (over()) box.classList.add(c); });
+    ['tight', 'small', 'tiny', 'bare', 'slim', 'two'].forEach(function (c) { if (over()) box.classList.add(c); });
     if (over()) foot.remove();
     mLog = -1;
   }

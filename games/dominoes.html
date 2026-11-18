@@ -225,14 +225,17 @@
 #app .dw.dk .acts{grid-area:auto;align-self:auto;display:flex;}
 #app .dw.dk .acts:empty{display:none;}
 #app .dw.dk .acts .btn{min-height:50px;min-width:0;padding:0 20px;white-space:nowrap;}
-/* wide: the sheet, the table over your tiles, the hand in play over whose turn it is and the buttons */
-#app .dw.dk-wide{grid-template-columns:var(--lw) minmax(0,1fr) var(--rw);grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"sheet tbl side" "sheet rack foot";}
+/* wide: the line of play wants width, so the table lies across the whole window; in a strip under it the sheet and the
+   hand in play at the left (to look at), your tiles, then whose turn it is and the buttons at the right (to act on) */
+#app .dw.dk-wide{grid-template-columns:var(--lw) var(--rw) minmax(0,1fr) var(--fw);grid-template-rows:minmax(0,1fr) var(--ph);grid-template-areas:"tbl tbl tbl tbl" "sheet side rack foot";}
+#app .dw.dk-wide .rack{align-self:stretch;}
 #app .dw.dk-wide .status{flex-direction:column;justify-content:center;align-items:stretch;align-self:stretch;gap:12px;padding:14px 18px;border-radius:22px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),inset 0 1px 0 rgba(255,255,255,.1);}
 #app .dw.dk-wide .msg{flex:0 0 auto;font-size:clamp(1.1rem,1.15vw,1.4rem);} #app .dw.dk-wide .msg small{font-size:.8em;margin-top:.15em;}
 #app .dw.dk-wide .acts{flex-direction:row;} #app .dw.dk-wide .acts .btn{flex:1 1 0;padding:0 12px;}
 #app .dw.dk-wide.low .status{gap:8px;padding:9px 14px;} #app .dw.dk-wide.low .acts .btn{min-height:44px;}
-/* a short wide strip: the table the whole height, your tiles and the buttons in the right column under the hand in play */
-#app .dw.dk-strip{grid-template-columns:var(--lw) minmax(0,1fr) var(--rw);grid-template-rows:minmax(0,1fr) auto auto;grid-template-areas:"sheet tbl side" "sheet tbl foot" "sheet tbl rack";gap:8px 14px;}
+/* a short wide strip: the table the whole height; in the right column the hand in play, your tiles, whose turn and the buttons */
+#app .dw.dk-strip{grid-template-columns:var(--lw) minmax(0,1fr) var(--rw);grid-template-rows:minmax(0,1fr) auto auto;grid-template-areas:"sheet tbl side" "sheet tbl rack" "sheet tbl foot";gap:8px 14px;}
+#app .dw.dk-strip.cnt .rack{display:none;} #app .dw.dk-strip.cnt .dk-side{grid-row:1 / 3;}   /* (a counted hand: its count has your tiles' room too) */
 #app .dw.dk-strip .status{align-items:center;min-height:46px;}
 #app .dw.dk-strip .msg{font-size:.96rem;line-height:1.15;} #app .dw.dk-strip .msg small{font-size:.78rem;}
 #app .dw.dk-strip .acts .btn{min-height:44px;padding:0 14px;}
@@ -267,7 +270,13 @@
 #app .dw.dk .ghost b{font-size:calc(1.1rem * var(--k));}
 @media (hover:hover){ #app .dw.dk .rack .dm:not(.no):not(.sel):not(.back):hover{transform:translateY(-5px);} }
 /* what is written on a panel grows a little with the panel, as a sheet on a wall would */
-.dk-in{flex:1 1 0;min-height:0;min-width:0;display:flex;flex-direction:column;font-size:clamp(.9rem,min(4.4cqw,3.4cqh),1.25rem);}
+.dk-in{flex:1 1 0;min-height:0;min-width:0;display:flex;flex-direction:column;font-size:clamp(.9rem,min(4.4cqw,4.6cqh),1.25rem);}
+/* (the hand in play in a very wide strip: who holds what at the left, the play by play in a column of its own) */
+.dk-in > .ca,.dk-in > .cb{display:contents;}
+.dk-side.two .dk-in{flex-direction:row;font-size:clamp(.9rem,min(2.2cqw,4.6cqh),1.25rem);}
+.dk-side.two .dk-in > .ca,.dk-side.two .dk-in > .cb{display:flex;flex-direction:column;flex:1 1 0;min-width:0;min-height:0;}
+.dk-side.two .dk-in > .cb{border-left:1px solid var(--gl-line);padding-top:.9em;}
+.dk-side.two .dk-in.one{flex-direction:column;} .dk-side.two .dk-in.one > .ca{display:contents;} .dk-side.two .dk-in.one > .cb{display:none;}
 .dk-h{flex:none;display:flex;align-items:baseline;justify-content:space-between;gap:.6em;padding:1em 1em .5em;}
 .dk-h h2{margin:0;font-family:var(--display);font-size:1.28em;letter-spacing:-.02em;line-height:1.1;color:var(--text);}
 .dk-h small{font-size:.8em;font-weight:650;color:var(--text-3);white-space:nowrap;font-variant-numeric:tabular-nums;}
@@ -283,7 +292,8 @@
 .dk-pad .ph .pc .avatar{width:2em;height:2em;font-size:.95em;flex:none;}
 .dk-pad .ph .pc .avatar + .avatar{margin-left:-.45em;}
 .dk-pad .ph .pc.me{color:var(--lit-ink);}
-.dk-pad .pb{flex:1 1 0;min-height:var(--rh);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;scroll-snap-type:y mandatory;
+.dk-pad.nonames .ph .pc > span:last-child{display:none;}
+.dk-pad .pb{flex:1 1 0;min-height:1.9em;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;scroll-snap-type:y mandatory;
   background:repeating-linear-gradient(180deg,transparent 0 calc(var(--rh) - 1px),var(--gl-line) calc(var(--rh) - 1px) var(--rh)) local;}
 .dk-pad .pb::-webkit-scrollbar{display:none;}
 .dk-pad .pb .pr{height:var(--rh);scroll-snap-align:start;}
@@ -296,7 +306,7 @@
 .dk-pad .pr.live .rl{color:var(--lit-ink);}
 .dk-pad .pr.just .cv{animation:dkwrite .5s ease-out;}
 @keyframes dkwrite{from{clip-path:inset(0 100% 0 0);}to{clip-path:inset(0 0 0 0);}}
-.dk-pad .pf{flex:none;padding-top:.3em;border-top:2px solid color-mix(in srgb,var(--h,#6c7bff) 55%,var(--gl-line));background:var(--gl-3);}
+.dk-pad .pf{flex:none;overflow:hidden;padding-top:.3em;border-top:2px solid color-mix(in srgb,var(--h,#6c7bff) 55%,var(--gl-line));background:var(--gl-3);}
 .dk-pad .pf .cv{font-size:1.95em;}
 .dk-pad .pf .cv.lead{color:var(--lit-ink);}
 .dk-pad .pm{flex:none;padding-bottom:.7em;background:var(--gl-3);}
@@ -339,6 +349,7 @@
 .dk-res{flex:1 1 0;min-height:0;display:flex;flex-direction:column;padding:0 1em .9em;}
 .dk-res .head{flex:none;margin:0 0 .5em;font-size:.94em;font-weight:650;line-height:1.3;color:var(--text-2);text-wrap:balance;}
 .dk-res .head b{color:var(--lit-ink);}
+.dk-res .rws{flex:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,19em),1fr));column-gap:1.6em;}
 .dk-res .row2{--c:#888;flex:none;display:flex;align-items:center;gap:.6em;min-height:2.6em;padding:.4em 0;border-top:1px solid var(--gl-line);}
 .dk-res .row2 .avatar{width:1.7em;height:1.7em;font-size:.82em;flex:none;box-shadow:0 0 0 2px var(--c);}
 .dk-res .row2 .who{flex:none;width:5.4em;font-weight:750;font-size:.92em;line-height:1.15;overflow-wrap:anywhere;}
@@ -349,6 +360,8 @@
 .dk-res .row2 .pp small{display:block;margin-top:.15em;font:650 .62em/1 var(--font);color:var(--text-3);}
 .dk-res.tight .row2 .tl .dm{--tw:1.15em;} .dk-res.tiny .row2 .tl .dm{--tw:.8em;}
 .dk-res.bare .row2 .tl{display:none;} .dk-res.bare .row2 .who{flex:1 1 0;width:auto;}
+.dk-res.slim .row2{min-height:1.9em;padding:.1em 0;} .dk-res.slim .row2 .avatar{width:1.4em;height:1.4em;font-size:.74em;}
+.dk-res.slim .row2 .pp{display:flex;align-items:baseline;gap:.35em;} .dk-res.slim .row2 .pp small{margin:0;}
 /* (a narrow panel: the tiles on a line of their own under the name, so they have the panel's width) */
 .dk-res.stk .row2{flex-wrap:wrap;row-gap:.35em;} .dk-res.stk .row2 .who{flex:1 1 0;width:auto;} .dk-res.stk .row2 .tl{order:3;flex:1 0 100%;box-sizing:border-box;padding-left:2.3em;}
 .dk-res.stk .row2 .tl:has(em){order:0;flex:0 0 auto;padding:0;}
@@ -1365,7 +1378,7 @@
     rackEl.classList.toggle('on', turn);
     rackEl.style.setProperty('--c', P.color);
     var sz = rackSize(Math.max(P.hand.length, S.players.length === 2 ? 7 : 5));
-    rackEl.style.minHeight = (sz.tw * 2 * sz.rows + (sz.rows - 1) * (DK && DK.pl !== 'strip' ? 10 : 8) + (DK && DK.pl !== 'strip' ? 32 : 26)) + 'px';
+    rackEl.style.minHeight = DK && DK.pl === 'wide' ? '' : (sz.tw * 2 * sz.rows + (sz.rows - 1) * (DK && DK.pl !== 'strip' ? 10 : 8) + (DK && DK.pl !== 'strip' ? 32 : 26)) + 'px';
     rackEl.appendChild(el('div', { class: 'lbl', html: hidden ? 'Hidden tiles' : P.name === 'You' ? 'Your tiles' : '<b>' + Kit.esc(P.name) + '</b>’s tiles' }));   // (the rack names whose tiles they are)
     var ms = turn && !lock ? legalFor(v) : [];
     var fit = {}; ms.forEach(function (m) { fit[tid(m.t)] = 1; });
@@ -1394,7 +1407,7 @@
   // away or not shown: the score sheet hand by hand at the left (to look at), the hand in play at the right (who
   // holds how many tiles and what they drew or passed, the open ends, the hand play by play), over whose turn it is
   // and the buttons (to act on). A counted hand is written on those two panels; no sheet covers the table.
-  //   wide    1200 or more across, 640 or more tall      sheet | table over your tiles | hand over the buttons
+  //   wide    1200 or more across, 640 or more tall      the table across the window; under it sheet | hand | your tiles | the buttons
   //   strip   1200 or more across, 430 to 639 tall       sheet | table | hand, the buttons, your tiles
   //   tall    1200 or more tall, a quarter taller than wide   sheet and hand side by side, the table, your tiles
   //   square  900 or more each way, short of the others  sheet over hand | table; whose turn, your tiles, the buttons
@@ -1414,26 +1427,35 @@
     if (!dw) return null;
     var W = innerWidth, H = innerHeight, pl = deskPlan(W, H), st = dw.style;
     if (!pl) {
-      if (DK) { dw.className = 'dw'; app.classList.remove('dkapp'); ['--k', '--lw', '--rw', '--ph'].forEach(function (k) { st.removeProperty(k); }); }
+      if (DK) { dw.className = 'dw'; app.classList.remove('dkapp'); ['--k', '--lw', '--rw', '--ph', '--fw'].forEach(function (k) { st.removeProperty(k); }); }
       DK = null; return null;
     }
-    var lw = 0, rw = 0, ph = 0, u;
-    if (pl === 'wide') { lw = clampN(250, W * .18, 480); rw = clampN(250, W * .17, 440); u = Math.min((W - 112 - lw - rw) / 9.6, (H - 250) / 11.6); }
+    var lw = 0, rw = 0, ph = 0, fw = 0, u, rackW = 0, two = false;
+    if (pl === 'wide') {
+      // (the strip's height: room for a sheet of a few hands and four players' rows; the table has the rest)
+      ph = clampN(240, H * .3, 460); lw = clampN(250, W * .17, 480); rw = clampN(240, W * .16, 440); fw = clampN(220, W * .15, 400);
+      two = W >= 2400; if (two) rw = Math.round(rw * 1.9);
+      rackW = W - 40 - 48 - lw - rw - fw;
+      var lh = H - 80 - ph - 12 - 18 - 138;   // (about the height the line has, under the plaques and over the boneyard)
+      u = Math.min((W - 76) / 9.6, Math.max(lh / 9.6, Math.min(lh / 6.5, (W - 76) / 16)));
+    }
     else if (pl === 'strip') { lw = clampN(250, W * .19, 330); rw = clampN(300, W * .25, 420); var cw = W - 108 - lw - rw; u = Math.min(cw / 9.6, Math.max((H - 196) / 9.6, Math.min((H - 196) / 6.5, cw / 16))); }
     else if (pl === 'tall') { ph = clampN(250, H * .24, 440); u = Math.min((W - 80) / 9.6, (H - ph - 330) / 11.6); }
     else { lw = clampN(250, W * .28, 320); u = Math.min((W - 94 - lw) / 9.6, (H - 250) / 11.6); }
     u = clampN(34, u, DESK_U);
-    DK = { pl: pl, u: u, k: clampN(pl === 'strip' ? .8 : 1, u / 52, 1.8), rt: pl === 'strip' ? clampN(34, Math.min(u * 1.1, (rw - 56) / 7), 52) : Math.max(40, u) };
-    var cls = 'dw dk dk-' + pl + (H < 800 ? ' low' : '');
+    DK = { pl: pl, u: u, k: clampN(pl === 'strip' ? .8 : 1, u / 52, 1.8), two: two,
+      rt: pl === 'strip' ? clampN(34, Math.min(u * 1.1, (rw - 56) / 7), 52) : pl === 'wide' ? clampN(36, Math.min(u, (ph - 36) / 2, (rackW - 76) / 7), DESK_U) : Math.max(40, u) };
+    var cls = 'dw dk dk-' + pl + (H < 800 ? ' low' : '') + (S && (S.phase === 'handend' || S.phase === 'over') && S.res ? ' cnt' : '');
     if (dw.className !== cls) dw.className = cls;
     app.classList.add('dkapp');
-    st.setProperty('--k', DK.k.toFixed(3)); st.setProperty('--lw', Math.round(lw) + 'px'); st.setProperty('--rw', Math.round(rw) + 'px'); st.setProperty('--ph', Math.round(ph) + 'px');
+    st.setProperty('--k', DK.k.toFixed(3)); st.setProperty('--lw', Math.round(lw) + 'px'); st.setProperty('--rw', Math.round(rw) + 'px'); st.setProperty('--ph', Math.round(ph) + 'px'); st.setProperty('--fw', Math.round(fw) + 'px');
+    if (sideEl) sideEl.classList.toggle('two', two);
     return DK;
   }
   // your tiles at a desk: the size of the tiles on the table, in one row while that keeps them large
   function deskRack(n) {
     var strip = DK.pl === 'strip', gap = strip ? 6 : 8, rg = strip ? 8 : 10, pad = strip ? 26 : 32, w = rackEl.clientWidth - (strip ? 20 : 28);
-    var hMax = strip ? Math.max(150, innerHeight * 0.42) : Math.max(2 * DK.rt + pad, innerHeight * 0.3), best = null;
+    var hMax = strip ? Math.max(150, innerHeight * 0.42) : DK.pl === 'wide' ? rackEl.clientHeight : Math.max(2 * DK.rt + pad, innerHeight * 0.3), best = null;
     for (var rows = 1; rows <= 3; rows++) {
       var per = Math.ceil(n / rows), tw = Math.min(DK.rt, (w - (per - 1) * gap) / per);
       tw = Math.min(tw, (hMax - pad - (rows - 1) * rg) / (rows * 2));
@@ -1532,31 +1554,37 @@
     var rh0 = parseFloat(getComputedStyle(pad).fontSize) * 2.3, want = Math.min(4, body.children.length + 1);
     if (body.clientHeight < rh0 * want) goal.remove();
     if (body.clientHeight < rh0 * want) race.remove();
-    var bh = body.clientHeight, rows = Math.max(1, Math.floor(bh / rh0)), rh = Math.max(12, Math.floor(bh / rows));
+    if (inn.scrollHeight > inn.clientHeight + 1) pad.classList.add('nonames');   // (the pictures alone over the columns)
+    if (inn.scrollHeight > inn.clientHeight + 1) { var hs = inn.querySelector('.dk-h small'); if (hs) hs.remove(); }
+    var bh = body.clientHeight, rows = Math.max(1, Math.floor(bh / rh0)), rh = Math.max(20, Math.floor(bh / rows));
     pad.style.setProperty('--rh', rh + 'px'); body.style.flex = '0 0 ' + (rh * rows) + 'px';
     body.scrollTop = body.scrollHeight;
   }
   // the hand in play (or, once it is counted, what everyone was left holding)
   function paintSide() {
-    var inn = el('div', { class: 'dk-in' }), v = viewerIdx(), n = S.players.length, i;
+    var top = el('div', { class: 'dk-in' }), inn = el('div', { class: 'ca' }), colB = el('div', { class: 'cb' }), v = viewerIdx(), n = S.players.length, i;
+    top.appendChild(inn); top.appendChild(colB);
     var X = deskRes && deskRes.X && S.phase !== 'over' ? deskRes.X : (S.phase === 'handend' || S.phase === 'over') && S.res ? { res: S.res, score: S.score, handPts: S.handPts, hand: S.hand } : null;
-    sideEl.innerHTML = ''; sideEl.appendChild(inn);
+    sideEl.innerHTML = ''; sideEl.appendChild(top);
     if (X) {
       var r = X.res, hd = r.kind === 'match' ? '<b>' + Kit.esc(sideName(r.side)) + '</b> reached ' + S.target : handHead(r);
       inn.appendChild(el('div', { class: 'dk-h' }, [el('h2', { text: 'Hand ' + X.hand }), el('small', { text: r.kind === 'domino' ? 'Domino' : r.kind === 'match' ? VNAME[S.variant] : 'Blocked' })]));
       var box = el('div', { class: 'dk-res hres' });
       box.appendChild(el('p', { class: 'head', html: hd + (/\.$/.test(hd) ? '' : '.') }));
+      var rws = el('div', { class: 'rws' });
       S.players.forEach(function (p, k) {
         var tl = el('div', { class: 'tl' });
         if (!r.hands[k].length) tl.appendChild(el('em', { text: 'Domino!' }));
         r.hands[k].forEach(function (t) { tl.appendChild(tile(t[0], t[1])); });
-        box.appendChild(el('div', { class: 'row2', style: { '--c': p.color } }, [avOf(k), el('div', { class: 'who', text: p.name }), tl,
+        rws.appendChild(el('div', { class: 'row2', style: { '--c': p.color } }, [avOf(k), el('div', { class: 'who', text: p.name }), tl,
           el('div', { class: 'pp', html: r.pips[k] + '<small>' + (r.pips[k] === 1 ? 'dot' : 'dots') + '</small>' })]));
       });
-      inn.appendChild(box);
+      box.appendChild(rws);
+      top.className = 'dk-in one'; inn.appendChild(box);
       if (sideEl.clientWidth < 340) box.classList.add('stk');
       // (the tiles as large as the panel has room for; a panel too short for them keeps the dots alone)
-      ['tight', 'tiny', 'bare'].forEach(function (c) { if (box.scrollHeight > box.clientHeight + 1) box.classList.add(c); });
+      ['tight', 'tiny', 'bare', 'slim'].forEach(function (c) { if (box.scrollHeight > box.clientHeight + 1) box.classList.add(c); });
+      if (box.scrollHeight > box.clientHeight + 1) box.querySelector('.head').remove();
       deskLog = -1;
       return;
     }
@@ -1604,11 +1632,11 @@
         rw.setAttribute('aria-label', say + '.');
         lg.appendChild(rw);
       });
-      inn.appendChild(lbl3); inn.appendChild(lg);
+      colB.appendChild(lbl3); colB.appendChild(lg);
     }
     deskLog = log ? log.length : -1;
     // a short panel gives up its least needed part first: the play by play, the ends, then what each player drew or passed
-    function over() { return inn.scrollHeight > inn.clientHeight + 1; }
+    function over() { return top.scrollHeight > top.clientHeight + 1 || (DK.two && (inn.scrollHeight > inn.clientHeight + 1 || colB.scrollHeight > colB.clientHeight + 1)); }
     if (lg) {
       var lh0 = parseFloat(getComputedStyle(lg).fontSize) * 2.1, hc = lg.clientHeight, rows = Math.floor(hc / lh0);
       if (rows < 2 || over()) { lbl3.remove(); lg.remove(); lg = null; }
