@@ -299,12 +299,18 @@ html.rl-big .rail .myb.gone{display:none;}
 .bl .br b{font-weight:800;font-size:.95em;color:#fff;} .bl .br .am{font-weight:900;font-variant-numeric:tabular-nums;color:var(--lit);}
 .bl .br small{font-size:.78em;font-weight:600;color:rgba(255,255,255,.62);line-height:1.25;} .bl .br small.w{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;}
 .myb .none{margin:auto 2px;font-size:.86em;font-weight:600;color:rgba(255,255,255,.5);}
+html.rl-big .rail.dock .rail-in > .netbox{grid-area:net;} html.rl-big .rail.dock .rail-in > .netbox .cz-net{margin:0;}
+html.rl-big .rail.dock .rail-in:has(> .netbox){grid-template-areas:"net net" "info rack" "info acts";}
 html.rl-big .rail.dock .rail-in{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,var(--dkr,330px));grid-template-areas:"info rack" "info acts";column-gap:14px;row-gap:8px;align-content:center;}
 html.rl-big .rail.dock .sinfo{grid-area:info;align-self:center;gap:6px;} html.rl-big .rail.dock .cz-rack{grid-area:rack;} html.rl-big .rail.dock .acts{grid-area:acts;}
 html.rl-big .rail.dock .myb{display:none;}
+html.rl-big .rail.snug .sinfo .msg{min-height:0;} html.rl-big .rail.snug .rail-in,html.rl-big .rail.snug .sinfo{gap:6px;} html.rl-big .rail.snug{padding:8px;}
+html.rl-big .rail.snug .sinfo .bank{grid-template-columns:repeat(3,minmax(0,1fr)) auto;} html.rl-big .rail.snug .cz-net .czs{font-size:.72rem;padding:2px 8px 2px 2px;} html.rl-big .rail.snug .cz-net .czs .avatar{width:20px;height:20px;}
 html.rl-big .rail.dock .sinfo .msg{min-height:2.6em;}
 html.rl-big .rail.dock.slim .sinfo .bank{grid-template-columns:repeat(2,minmax(0,1fr));}
 html.rl-big .rail.dock.slim .sinfo .msg{font-size:.84rem;}
+html.rl-big .rail.dock.slim .acts .icon-btn{width:46px;height:46px;} html.rl-big .rail.dock.slim .acts .btn{font-size:.95rem;}
+html.rl-big .rail.dock.slim .acts .rep .ico{display:none;}
 /* the room: glass panels of what the table knows */
 html.rl-big .rm{position:absolute;display:flex;gap:var(--gp,14px);min-width:0;min-height:0;font-size:calc(16px * var(--pu,1));}
 html.rl-big .rm.col{flex-direction:column;}
@@ -338,17 +344,21 @@ html.rl-big .rm.col{flex-direction:column;}
 .hotrow span{display:inline-flex;align-items:center;gap:.3em;white-space:nowrap;}
 .spark{flex:1 1 0;min-height:0;margin-top:.7em;display:flex;flex-direction:column;}
 .spark svg{flex:1 1 0;min-height:0;width:100%;display:block;overflow:visible;}
+.pn-tbl{flex-grow:1.35;}
 .pls{display:flex;flex-direction:column;overflow:hidden;}
+.pls .plr{flex:none;}
+.pls.scr{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;flex:none;}
 .plr{display:grid;grid-template-columns:auto minmax(0,1fr) auto;column-gap:.6em;align-items:center;padding:.4em .2em;border-top:1px solid rgba(255,255,255,.08);}
 .plr:first-child{border-top:0;}
 .plr .avatar{width:1.9em;height:1.9em;font-size:.8em;}
-.plr .nm{min-width:0;font-weight:800;color:var(--text);display:flex;align-items:center;gap:.35em;} .plr .nm .ico{width:1em;height:1em;color:var(--green);flex:none;}
+.plr .nm{min-width:0;font-weight:800;color:var(--text);display:flex;align-items:center;gap:.35em;} .plr .nm span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;} .plr .nm .ico{width:1em;height:1em;color:var(--green);flex:none;}
 .plr.me .nm{color:var(--lit);}
 .plr .bk{font-weight:900;font-variant-numeric:tabular-nums;color:var(--text);text-align:right;}
 .plr .bk small{display:block;font-size:.72em;font-weight:700;color:var(--text-2);} .plr .bk small.pos{color:var(--green);} .plr .bk small.neg{color:#ff8a8a;}
 .plr .bts{grid-column:2 / -1;font-size:.8em;font-weight:600;line-height:1.3;color:var(--text-2);}
 .plr.out{opacity:.5;}
 .pls.tight .plr .bts{display:none;}
+.pls.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:1.2em;align-content:start;} .pls.two .plr:nth-child(2){border-top:0;} .pls.two .plr .bk small{display:none;} .pls.two .plr{padding:.3em .1em;}
 </style>
 </head>
 <body>
@@ -1585,19 +1595,20 @@ html.rl-big .rm.col{flex-direction:column;}
   //   'Q' the same with the station as a dock under both (a smaller window nearly square)
   //   'W' a short wide strip: the wheel, then the layout on its side with the room under it, then the station (or a dock)
   //   'K' a narrow tall window: the wheel with the room beside it, the layout upright under them, a dock
-  var BIG = null;
+  var BIG = null, shapeAt = 0;   // (shapeAt: when the head script last turned the shape class, inside a View Transition of its own)
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
-  function deviceShape(w, h) { var lo = Math.min(w, h), hi = Math.max(w, h); return (lo <= 480 && hi <= 1000) || (lo >= 620 && lo <= 840 && hi >= 900 && hi <= 1200); }
-  function bigWanted() { var w = window.innerWidth, h = window.innerHeight; return !!S && !!R.lay && document.body.contains(R.lay) && w >= 520 && h >= 560 && !deviceShape(w, h); }
+  function deviceShape(w, h) { var lo = Math.min(w, h), hi = Math.max(w, h); return (lo <= 480 && hi <= 1000) || (lo >= 700 && lo <= 840 && hi >= 900 && hi <= 1200); }
+  function bigWanted() { var w = window.innerWidth, h = window.innerHeight; return !!S && !!R.lay && document.body.contains(R.lay) && w >= 481 && h >= 560 && !deviceShape(w, h); }
   function bigPlan() {
     var W = window.innerWidth, H = window.innerHeight, bar = document.querySelector('.gbar'), top = Math.round(bar ? Math.max(40, bar.getBoundingClientRect().bottom) : 58);
     var gp = Math.round(clamp(W / 110, 10, 22)), iw = W - 2 * gp, ih = H - top - 2 - gp, x0 = gp, y0 = 2;
     var k = clamp(Math.min(W / 1440, H / 900), 1, 2.1), pu = 1 + (k - 1) * 0.5;
     var wd = Math.round(8 * Math.min(k, 1.6)), fp = Math.round(10 * Math.min(k, 1.6)), pad = 2 * (wd + fp);
-    var SW = Math.round(clamp(W * 0.22, 340, 440)), CAP = 124, slim = iw < 640, DH = slim ? 196 : 168, roomMin = Math.round(clamp(ih * 0.25, 150, 320));
+    var SW = Math.round(clamp(W * 0.22, 340, 440)), CAP = 124, slim = iw < 640, netH = NET ? Math.ceil(NET.state.seats.length * 160 / (iw - 20)) * 33 + 8 + (NET.seat >= 0 && NET.state.seats[NET.seat] && NET.state.seats[NET.seat].bust ? 50 : 0) : 0, DH = (slim ? 196 : 168) + netH, roomMin = Math.round(clamp(ih * 0.25, 150, 320));
     var C = [];
     function cand(o) { if (o.RH >= 17) { o.RH = Math.floor(Math.min(o.RH, CAP)); o.score = o.RH * (o.dock ? 0.96 : 1) * (o.bias || 1); C.push(o); } }
     [0, 1].forEach(function (dock) {
+      if (dock && W >= 1200 && C.length) return;   // (a wide window keeps the station standing at the right)
       var hh = ih - (dock ? DH + gp : 0), ww = iw - (dock ? 0 : SW + gp);
       // the layout upright: its rows from the height, the wheel in the column left over
       var RH = Math.min(CAP, (hh - pad) / 14.4), f = 7.4, left = ww - RH * f - pad - gp;
@@ -1674,6 +1685,7 @@ html.rl-big .rm.col{flex-direction:column;}
     if (R.sinfo.parentNode !== R.railIn) R.railIn.insertBefore(R.sinfo, R.railIn.firstChild);
     R.bankEl.appendChild(R.cash);
     [R.netBox, R.bankEl, R.msg, R.guide].forEach(function (n) { if (n) R.sinfo.appendChild(n); });
+    if (R.netBox && P.dock) R.railIn.insertBefore(R.netBox, R.railIn.firstChild);
     if (!R.myb) R.myb = el('div', { class: 'myb' });
     if (R.myb.parentNode !== R.railIn) R.railIn.insertBefore(R.myb, R.tray);
     if (railEl) {
@@ -1685,6 +1697,7 @@ html.rl-big .rm.col{flex-direction:column;}
     }
     paintWres(false);
     bigPaint();
+    if (railEl) { railEl.classList.remove('snug'); if (R.railIn.scrollHeight > R.railIn.clientHeight + 1) { railEl.classList.add('snug'); bigPaint(); } }
     return true;
   }
   // back to the device's own layout (a window dragged down to a phone's size, the setup, the results card)
@@ -1694,7 +1707,7 @@ html.rl-big .rm.col{flex-direction:column;}
     ['--cbt', '--gp', '--pu', '--wd', '--fp', '--wz', '--dk', '--pk'].forEach(function (k) { app.style.removeProperty(k); });
     if (R.mini && R.head && R.mini.parentNode !== R.head) R.head.insertBefore(R.mini, R.head.firstChild);
     ['rm', 'rm2', 'myb', 'wbox'].forEach(function (k) { if (R[k]) { R[k].remove(); R[k] = null; } });
-    if (railEl) { unbox(railEl); railEl.classList.remove('dock', 'slim', 'roomy'); ['--ss', '--dkr', '--chip'].forEach(function (k) { railEl.style.removeProperty(k); }); }
+    if (railEl) { unbox(railEl); railEl.classList.remove('dock', 'slim', 'roomy', 'snug'); ['--ss', '--dkr', '--chip'].forEach(function (k) { railEl.style.removeProperty(k); }); }
     if (!live) { if (R.sinfo) { R.sinfo.remove(); R.sinfo = null; } return; }
     unbox(R.lay.parentElement.parentElement);
     if (R.netBox) app.insertBefore(R.netBox, app.firstChild);
@@ -1834,7 +1847,13 @@ html.rl-big .rm.col{flex-direction:column;}
         el('div', { class: 'bts', text: x.out ? (x.me ? 'You are sitting out.' : x.name + ' is sitting out.') : x.bets.length ? x.bets.join(', ') : 'No chips on the table' })]));
     });
     var p = el('div', { class: 'pn pn-tbl' }, [el('h4', null, [el('span', { text: 'At the table' }), el('b', { text: M.players.length + ' players' })]), list]);
-    p._fill = function () { if (list.scrollHeight > list.clientHeight + 1) list.classList.add('tight'); };
+    // everyone shows: with their bets where there is the height, without them where there isn't, and in a list that scrolls by whole rows at the last
+    p._fill = function () {
+      var room = list.clientHeight;
+      if (list.scrollHeight > room + 1) list.classList.add('tight');
+      if (list.scrollHeight > room + 1 && list.children.length > 2 && list.clientWidth >= 350 * BIG.pu) list.classList.add('two');
+      if (list.scrollHeight > room + 1) { var rh = list.firstChild.offsetHeight; list.classList.add('scr'); list.style.height = Math.max(rh, Math.floor(room / rh) * rh) + 'px'; }
+    };
     return p;
   }
   function paintRoom(M) {
@@ -1901,13 +1920,14 @@ html.rl-big .rm.col{flex-direction:column;}
       var big = bigWanted();
       if ((busy && !(big && BIG)) || (R.rack && R.rack.dragging())) { fitLater = true; return; }   // turned mid-spin: refit when it lands
       var go = function () { fitLater = false; arrange(); layout(); R.stacks = {}; paintStacks(); if (!busy) drawMini(); };
-      if (big && BIG && !busy && bigPlan().key !== BIG.key) Kit.glide(go); else go();
+      if (big && BIG && !busy && Date.now() - shapeAt > 700 && bigPlan().key !== BIG.key) Kit.glide(go); else go();
     }, BIG ? 30 : 120);
   }
   window.addEventListener('resize', refit);
   window.addEventListener('orientationchange', refit);
   // a turn of the device: the table and rail re-laid at once, inside the turn's View Transition, so they glide (mid-spin, after it lands)
   window.addEventListener('shape', function () {
+    shapeAt = Date.now();
     if (!S || !R.lay || !document.body.contains(R.lay)) return;
     if ((busy && !BIG) || (R.rack && R.rack.dragging())) { fitLater = true; return; }
     arrange(); layout(); R.stacks = {}; paintStacks(); if (!busy) drawMini();

@@ -325,12 +325,18 @@ html.cr-big .rail .myb.gone{display:none;}
 .bl .br.off b,.bl .br.off .am{opacity:.6;}
 .myb .none{margin:auto 2px;font-size:.86em;font-weight:600;color:rgba(255,255,255,.5);}
 /* the dock: the station laid flat under a narrow window, the money and what happened at the left, chips and buttons at the right */
+html.cr-big .rail.dock .rail-in > .netbox{grid-area:net;} html.cr-big .rail.dock .rail-in > .netbox .cz-net{margin:0;}
+html.cr-big .rail.dock .rail-in:has(> .netbox){grid-template-areas:"net net" "info rack" "info acts";}
 html.cr-big .rail.dock .rail-in{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,var(--dkr,330px));grid-template-areas:"info rack" "info acts";column-gap:14px;row-gap:8px;align-content:center;}
 html.cr-big .rail.dock .cinfo{grid-area:info;align-self:center;gap:6px;} html.cr-big .rail.dock .cz-rack{grid-area:rack;} html.cr-big .rail.dock .acts{grid-area:acts;}
 html.cr-big .rail.dock .myb{display:none;}
+html.cr-big .rail.snug .cinfo .msg{min-height:0;} html.cr-big .rail.snug .rail-in,html.cr-big .rail.snug .cinfo{gap:6px;} html.cr-big .rail.snug{padding:8px;}
+html.cr-big .rail.snug .cinfo .bank{grid-template-columns:repeat(3,minmax(0,1fr)) auto;} html.cr-big .rail.snug .cz-net .czs{font-size:.72rem;padding:2px 8px 2px 2px;} html.cr-big .rail.snug .cz-net .czs .avatar{width:20px;height:20px;}
 html.cr-big .rail.dock .cinfo .msg{min-height:2.6em;}
 html.cr-big .rail.dock.slim .cinfo .bank{grid-template-columns:repeat(2,minmax(0,1fr));}
 html.cr-big .rail.dock.slim .cinfo .msg{font-size:.84rem;}
+html.cr-big .rail.dock.slim .acts .icon-btn{width:46px;height:46px;flex:none;} html.cr-big .rail.dock.slim .acts .btn{font-size:.95rem;white-space:nowrap;}
+html.cr-big .rail.dock.slim .acts .down{min-width:0;padding:0 10px;} html.cr-big .rail.dock.slim .acts .down .ico{display:none;}
 /* the room: glass panels of what the table knows */
 html.cr-big .rm{position:absolute;display:flex;gap:var(--gp,14px);min-width:0;min-height:0;font-size:calc(16px * var(--pu,1));view-transition-name:cr-room;}
 html.cr-big .rm.col{flex-direction:column;}
@@ -369,17 +375,21 @@ html.cr-big .rm.col{flex-direction:column;}
 .tots .ax span{text-align:center;font:800 .74em/1.2 var(--font);color:var(--text);font-variant-numeric:tabular-nums;} .tots .ax span.now{color:var(--lit);}
 .spark{flex:1 1 0;min-height:0;margin-top:.7em;display:flex;flex-direction:column;}
 .spark svg{flex:1 1 0;min-height:0;width:100%;display:block;overflow:visible;}
+.pn-tbl{flex-grow:1.35;}
 .pls{display:flex;flex-direction:column;overflow:hidden;}
+.pls .plr{flex:none;}
+.pls.scr{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;flex:none;}
 .plr{display:grid;grid-template-columns:auto minmax(0,1fr) auto;column-gap:.6em;align-items:center;padding:.4em .2em;border-top:1px solid rgba(255,255,255,.08);}
 .plr:first-child{border-top:0;}
 .plr .avatar{width:1.9em;height:1.9em;font-size:.8em;}
-.plr .nm{min-width:0;font-weight:800;color:var(--text);display:flex;align-items:center;gap:.35em;} .plr .nm .ico{width:1em;height:1em;color:var(--lit);flex:none;}
+.plr .nm{min-width:0;font-weight:800;color:var(--text);display:flex;align-items:center;gap:.35em;} .plr .nm span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;} .plr .nm .ico{width:1em;height:1em;color:var(--lit);flex:none;}
 .plr.me .nm{color:var(--lit);}
 .plr .bk{font-weight:900;font-variant-numeric:tabular-nums;color:var(--text);text-align:right;}
 .plr .bk small{display:block;font-size:.72em;font-weight:700;color:var(--text-2);} .plr .bk small.pos{color:var(--green);} .plr .bk small.neg{color:#ff8a8a;}
 .plr .bts{grid-column:2 / -1;font-size:.8em;font-weight:600;line-height:1.3;color:var(--text-2);}
 .plr.out{opacity:.5;}
 .pls.tight .plr .bts{display:none;}
+.pls.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:1.2em;align-content:start;} .pls.two .plr:nth-child(2){border-top:0;} .pls.two .plr .bk small{display:none;} .pls.two .plr{padding:.3em .1em;}
 </style>
 </head>
 <body>
@@ -697,7 +707,7 @@ html.cr-big .rm.col{flex-direction:column;}
     else if (R.info.parentNode !== app) app.insertBefore(R.info, app.firstChild);
   }
   // a turn of the device: moved and redrawn inside the turn's View Transition, so the table and rail glide
-  window.addEventListener('shape', function () { if (S && R.info && R.railIn && document.body.contains(R.railIn)) { placeInfo(); if (!busy) { paintPuck(); placeDice(false); } } });
+  window.addEventListener('shape', function () { shapeAt = Date.now(); bigLay(); if (S && R.info && R.railIn && document.body.contains(R.railIn)) { placeInfo(); if (!busy) { paintPuck(); placeDice(false); } } });
   function working(id) {
     if (S.point) return true;
     return !/^(place|hard|comeOdds)/.test(id);
@@ -1413,31 +1423,34 @@ html.cr-big .rm.col{flex-direction:column;}
   //   'U' the table across the whole window, the room and the station under it (a window nearly square)
   //   'R' a short wide strip: the room, the table and the station side by side
   //   'K' a narrow or tall window: the table (one column of bets when there is the height, a1), the room, a dock
-  var BIG = null;
+  var BIG = null, shapeAt = 0;
+  // (the page's head script turns the shape class inside a View Transition of its own and then says 'shape': the layout is changed there, never in a second transition on top of it)
+  function shapePending() { var w = window.innerWidth, h = window.innerHeight, s = w <= h ? 'tall' : h < 560 ? 'side' : w >= 900 ? 'wide' : 'tall'; return !document.documentElement.classList.contains('sh-' + s); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function TU() { return BIG ? BIG.u : 1; }           // (the table's unit: 1 on a phone or tablet)
   function DS() { return BIG ? BIG.ds : 44; }         // (a die's side)
-  function deviceShape(w, h) { var lo = Math.min(w, h), hi = Math.max(w, h); return (lo <= 480 && hi <= 1000) || (lo >= 620 && lo <= 840 && hi >= 900 && hi <= 1200); }
-  function bigWanted() { var w = window.innerWidth, h = window.innerHeight; return !!S && !!R.felt && document.body.contains(R.felt) && w >= 520 && h >= 560 && !deviceShape(w, h); }
+  function deviceShape(w, h) { var lo = Math.min(w, h), hi = Math.max(w, h); return (lo <= 480 && hi <= 1000) || (lo >= 700 && lo <= 840 && hi >= 900 && hi <= 1200); }
+  function bigWanted() { var w = window.innerWidth, h = window.innerHeight; return !!S && !!R.felt && document.body.contains(R.felt) && w >= 481 && h >= 560 && !deviceShape(w, h); }
   function bigPlan() {
     var W = window.innerWidth, H = window.innerHeight, bar = document.querySelector('.gbar'), top = Math.round(bar ? Math.max(40, bar.getBoundingClientRect().bottom) : 58);
     var gp = Math.round(clamp(W / 110, 10, 22)), iw = W - 2 * gp, ih = H - top - 2 - gp, x0 = gp, y0 = 2;
     var pu = 1 + (clamp(Math.min(W / 1440, H / 900), 1, 2.1) - 1) * 0.5;
     var SW = Math.round(clamp(W * 0.22, 340, 440)), capH = Math.round(56 + 440 * 2.35);
     var P = { W: W, H: H, top: top, gp: gp, pu: pu, arr: 'a2' }, s;
+    var netC = NET ? Math.ceil(NET.state.seats.length * 160 / (Math.round(clamp(W * 0.22, 340, 440)) - 20)) * 33 + 8 : 0;   // (and down a station)
+    var netH = NET ? Math.ceil(NET.state.seats.length * 160 / (iw - 20)) * 33 + 8 + (NET.seat >= 0 && NET.state.seats[NET.seat] && NET.state.seats[NET.seat].bust ? 50 : 0) : 0;   // (online, in a dock: the strip of players across it)
     function sc(tw, th) { return Math.min(tw / 1000, (th - 56) / 440); }
     if (W < 780 || iw / ih < 0.82) {
       // stacked: the table, the room, the dock
-      var slim = iw < 640, DH = slim ? 196 : 168, av = ih - DH - gp, th, rh = 0;
-      if (av / iw > 1.15) {
-        P.arr = 'a1';
-        var want = Math.round(clamp(ih * 0.2, 170, 340));
-        th = Math.min(av - want - gp, Math.round(iw * 1.62)); rh = av - th - gp;
-        if (rh > 420) { rh = 420; }
+      var slim = iw < 640, DH = (slim ? 196 : 168) + netH, av = ih - DH - gp, th, rh = 0;
+      var want = Math.round(clamp(ih * 0.2, 170, 340)), th1 = Math.min(av - want - gp, Math.round(iw * 1.62));
+      if (th1 / iw >= 1.15) {
+        // tall enough for the table in one column, the bets one under another as on a phone
+        P.arr = 'a1'; th = th1; rh = Math.min(420, av - th - gp);
         s = Math.min(iw / 402, th / 811);
       } else {
-        th = Math.round(clamp(av, iw / 2.7, iw / 1.3)); rh = av - th - gp;
-        if (rh < 150) { th = Math.min(av, Math.round(iw / 1.25)); rh = 0; }
+        th = Math.round(clamp(av - want - gp, iw / 2.7, iw / 1.3)); rh = av - th - gp;
+        if (rh < 150 || sc(iw, th) < 0.62) { th = Math.round(clamp(av, iw / 2.7, iw / 1.02)); rh = 0; }   // (a small window: the table has it all)
         s = sc(iw, th);
       }
       var usedK = th + (rh ? rh + gp : 0), offK = Math.max(0, Math.floor((av - usedK) / 2));
@@ -1447,9 +1460,9 @@ html.cr-big .rm.col{flex-direction:column;}
     } else {
       var lw = iw - SW - gp;
       var roomT = Math.round(clamp(ih * 0.28, 170, 460)), thT = Math.round(clamp(ih - roomT - gp, lw / 2.7, Math.min(lw / 1.75, capH))), rT = ih - thT - gp;
-      if (rT < 150) { thT = Math.round(Math.min(ih, lw / 1.3, capH)); rT = 0; }
+      if (rT < 150 || sc(lw, thT) < 0.62) { thT = Math.round(Math.min(ih, lw / 1.05, capH)); rT = 0; }
       var sT = sc(lw, thT);
-      var thU = Math.round(clamp(ih - Math.max(roomT, 330) - gp, iw / 2.7, Math.min(iw / 1.75, capH))), bU = ih - thU - gp, sU = bU >= 300 ? sc(iw, thU) : 0;
+      var thU = Math.round(clamp(ih - Math.max(roomT, 330 + netC) - gp, iw / 2.7, Math.min(iw / 1.75, capH))), bU = ih - thU - gp, sU = bU >= 300 + netC ? sc(iw, thU) : 0;
       var RW = Math.round(clamp(iw * 0.2, 260, 400)), twR = iw - SW - RW - 2 * gp, sR = ih <= twR / 1.45 ? sc(twR, ih) : 0;
       if (!rT && sR >= sT * 0.8) {
         P.comp = 'R'; s = sR; P.col = true;
@@ -1487,7 +1500,7 @@ html.cr-big .rm.col{flex-direction:column;}
       if (P.r) { if (R.rm.parentNode !== app) app.appendChild(R.rm); box(R.rm, P.r); R.rm.classList.toggle('col', !!P.col); } else R.rm.remove();
       app.classList.toggle('hasrm', !!P.r);
       placeInfo();
-      if (R.netBox && R.netBox.parentNode !== R.info) R.info.insertBefore(R.netBox, R.info.firstChild);
+      if (R.netBox) { var nb = P.dock ? R.railIn : R.info; if (R.netBox.parentNode !== nb) nb.insertBefore(R.netBox, nb.firstChild); }
       if (!R.myb) R.myb = el('div', { class: 'myb' });
       if (R.myb.parentNode !== R.railIn) R.railIn.insertBefore(R.myb, R.tray);
       if (railEl) {
@@ -1499,8 +1512,9 @@ html.cr-big .rm.col{flex-direction:column;}
       }
       paintStacks(); paintPuck(); if (!busy) placeDice(false);
       bigPaint();
+      if (railEl) { railEl.classList.remove('snug'); if (R.railIn.scrollHeight > R.railIn.clientHeight + 1) { railEl.classList.add('snug'); bigPaint(); } }
     };
-    if (glide && was && was.key !== P.key && !busy) Kit.glide(go); else go();
+    if (glide && was && was.key !== P.key && !busy && Date.now() - shapeAt > 700) Kit.glide(go); else go();
   }
   // back to the device's own layout (a window dragged down to a phone's size, the setup, the results card)
   function bigOff() {
@@ -1510,7 +1524,7 @@ html.cr-big .rm.col{flex-direction:column;}
     app.classList.remove('hasrm');
     if (R.rm) { R.rm.remove(); R.rm = null; }
     if (R.myb) { R.myb.remove(); R.myb = null; }
-    if (railEl) { unbox(railEl); railEl.classList.remove('dock', 'slim', 'roomy'); ['--ss', '--dkr', '--chip'].forEach(function (k) { railEl.style.removeProperty(k); }); }
+    if (railEl) { unbox(railEl); railEl.classList.remove('dock', 'slim', 'roomy', 'snug'); ['--ss', '--dkr', '--chip'].forEach(function (k) { railEl.style.removeProperty(k); }); }
     if (!S || !R.felt || !document.body.contains(R.felt)) return;
     R.felt.classList.remove('a1', 'a2'); unbox(R.felt.parentNode);
     if (R.netBox && R.netBox.parentNode !== app) app.insertBefore(R.netBox, app.firstChild);
@@ -1599,7 +1613,7 @@ html.cr-big .rm.col{flex-direction:column;}
       el('div', { class: 'tx' + (on ? ' on' : '') }, [el('b', { text: on ? 'The point is ' + M.point : 'Come-out roll' }), el('span', { text: sub })])]), grid]);
     p._fill = function () {
       var bw = Math.floor(grid.getBoundingClientRect().width) - 1, bh = grid.clientHeight, n = M.rolls.length, g = 8, d, tw, th, cap = 0, pu = BIG.pu;
-      if (!n) { grid.appendChild(el('div', { class: 'none', text: 'The rolls of this session line up here as dice.' })); grid.style.display = 'flex'; return; }
+      if (!n) { grid.appendChild(el('div', { class: 'none', text: 'No rolls yet' })); grid.style.display = 'flex'; return; }
       for (d = Math.round(40 * pu); ; d -= 2) {
         tw = d * 2 + 3 + Math.round(d * 1.35) + 16; if (tw < 96) tw = 96; th = d + 12 + Math.max(11, Math.round(d * 0.42)) + 4;
         cap = Math.floor((bw + g) / (tw + g)) * Math.floor((bh + g) / (th + g));
@@ -1661,7 +1675,13 @@ html.cr-big .rm.col{flex-direction:column;}
         el('div', { class: 'bts', text: x.out ? (x.me ? 'You are sitting out.' : x.name + ' is sitting out.') : x.bets.length ? x.bets.join(', ') : 'No chips on the table' })]));
     });
     var p = el('div', { class: 'pn pn-tbl' }, [el('h4', null, [el('span', { text: 'At the table' }), el('b', { text: M.players.length + ' players' })]), list]);
-    p._fill = function () { if (list.scrollHeight > list.clientHeight + 1) list.classList.add('tight'); };
+    // everyone shows: with their bets where there is the height, without them where there isn't, and in a list that scrolls by whole rows at the last
+    p._fill = function () {
+      var room = list.clientHeight;
+      if (list.scrollHeight > room + 1) list.classList.add('tight');
+      if (list.scrollHeight > room + 1 && list.children.length > 2 && list.clientWidth >= 350 * BIG.pu) list.classList.add('two');
+      if (list.scrollHeight > room + 1) { var rh = list.firstChild.offsetHeight; list.classList.add('scr'); list.style.height = Math.max(rh, Math.floor(room / rh) * rh) + 'px'; }
+    };
     return p;
   }
   function paintRoom(M) {
@@ -1684,7 +1704,7 @@ html.cr-big .rm.col{flex-direction:column;}
     render();
   } else showSetup();
   var turned = false;
-  window.addEventListener('resize', function () { bigLay(true); if (S && R.puck) { if (busy) turned = true; else { paintPuck(); placeDice(false); } } });
+  window.addEventListener('resize', function () { if (!shapePending()) bigLay(true); if (S && R.puck) { if (busy) turned = true; else { paintPuck(); placeDice(false); } } });
   window.addEventListener('pageshow', function () { if (S && R.bal && !busy) paintBank(); });
 })();
 </script>
