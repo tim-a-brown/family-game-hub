@@ -227,6 +227,48 @@ Underlying principles for everything:
   categories, Mazes' daily maze, Axis & Allies' countries) do not
   step up with the kit's controls yet; a history view is drawn at its own size inside the larger panels; the setup has
   no card for a game in progress.
+  **Craps at a desk** (`html.cr-big`, `bigPlan`/`bigLay`/`bigOff`, `bigModel`/`bigPaint` in craps.html; `deviceShape`
+  keeps a   window shaped like a phone or a tablet on the device layout, and a window under 481 wide or 560 tall is
+  never a desk):   the page is fixed to the window and `bigPlan` gives the table, the room and the station a box each,
+  in one of four   compositions: `U` the table across the whole window with the room and the station under it (a
+  window nearly square),   `T` the table at the top left with the room under it and the station the window's height at
+  the right, `R` a short   wide strip (the room, the table, the station side by side), `K` a narrow or tall window
+  (the table, in one column of   bets `a1` when it is tall enough, then the room, then the station as a dock). The
+  felt is a grid whose rows share the   table's height (`.felt-in.a2`/`.a1`), and its lettering, the puck, the chips
+  (`TU()`) and the dice (`DS()`, 44 to 92px,   thrown and landing by their own size in `tumble`) take their size from
+  the table's unit `--u` (0.7 to 2.35). The   room (`.rm`, glass panels `.pn`): the rolls of the session as dice
+  (`rollsPanel`: the puck and the point, whose   dice they are online, each roll's two dice with its total, what it
+  did and what it won or lost, this shooter's   bright and earlier hands dimmed, as many as fit whole); the session
+  (`sessPanel`: rolls, points made, seven-outs,   naturals, the longest hand, the biggest win, how often each total
+  came up, the money roll by roll); online, At the   table (`tablePanel`: every player's money, result and bets, the
+  shooter marked, two to a row before the list   scrolls). The station is the wooden rail stood up (`.rail`): the
+  money, what happened, Your bets with what each pays   and would win in the table's own numbers (`payOf`: PLACE,
+  TAKE, LAY, HARD, PROPS and the Field's 12 from the setup;   `.myb`, or a panel of the room where the station is
+  short), the chips, the buttons. While the dice are in the air the   room keeps the picture from before the throw
+  (`R.model`), since the roll is settled first. A change of the head   script's shape class lays the desk out inside
+  that transition (`shapePending`, the `shape` event), any other change   of composition glides (`Kit.glide`).
+  **Roulette at a desk** (`html.rl-big`, the same functions in roulette.html, and   `layout()` builds the betting
+  layout at the plan's row height): the wheel is large and the ball runs on it where it   stands (`animateSpin`'s
+  `here`; a click on the wheel skips; under 200px the old curtain is kept), with the last number   on a marker at its
+  corner (`paintWres`). Compositions: `P` the wheel over the room at the left, the layout upright   beside it, the
+  station at the right (with room beside the wheel too, the board stands there as a tower, `r2`); `Q`   the same with
+  a dock; `W` a short wide strip (the wheel, the layout on its side with the room under it, the   station); `K` a
+  narrow tall window (the wheel with the board beside it, the layout upright, a dock); `S` a small   window (the
+  layout on its side across it, a small wheel beside the board). Rows are 17 to 124px, the chips half a   row
+  (`G.cs`), the lines between numbers wider targets for a mouse (`hit`'s bands), a mouse over the layout shows the
+  bet a click would make and what it pays (`onLayHover`), and a chip on a dozen, an even chance (upright) or a column
+  (on its side) lies beside the box's lettering (`spot`). The room: the board of last numbers (`boardPanel`: a tower
+  with reds at the left and blacks at the right in a tall box, a run of markers in a low one), the session
+  (`sessPanel`: spins, the biggest win, the money bet, the best run, red against black, odd against even, low against
+  high, the numbers that came up most, the money spin by spin), online At the table, and Your bets where the station
+  is short. Online every player's chips lie on the one layout as small discs in their seat's color with their initial
+  (`paintOthers`). In both games an online table's strip of players stands at the head of the station, or in a row
+  of its own across a dock (`netH`). The scratchpad's `big/craps/` has the scripts for both: `lib.js` (the scenes),
+  `mkstate.js` (saved games made by the starting version), `shots.js` with `scan.js` (any scene at any window: page
+  scroll, anything off the window, cut or under 9px, boxes over one another), `flow.js` (a round's phases),
+  `resize.js`,   `online.js` (up to six people, a laptop host and a phone guest), `demo.js`, `snap.js` with `cmp.sh`
+  (the device proof).   **Not done**: Craps draws the other players' bets as a list, not as chips on the felt; a
+  window under 481 wide that   is not a phone's keeps the phone layout, which scrolls in Craps as it does on a phone.
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
