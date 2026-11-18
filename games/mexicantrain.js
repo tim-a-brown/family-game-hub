@@ -432,7 +432,7 @@
     ladEl = el('aside', { class: 'mdk-panel mdk-lad', 'aria-label': 'Rounds', style: { 'view-transition-name': 'mt-lad' } });
     sideEl = el('aside', { class: 'mdk-panel mdk-side', 'aria-label': 'This round', style: { 'view-transition-name': 'mt-side' } });
     W_.appendChild(ladEl); W_.appendChild(sideEl);
-    MDK = null; mKey = '';
+    MDK = null; mKey = ''; mOffKey = '';
     app.appendChild(W_);
     setBarH();
     // (names are fitted by measuring, so measure again once the fonts are in)
@@ -444,7 +444,7 @@
     if (!S || !W_ || !W_.isConnected) return;
     W_.setAttribute('data-n', S.n);
     mdkSet();
-    paintWho(); paintStatus(); paintRack(o); paintDesk(); paintTable(o);   // (the panels first: a counted round's panel takes its own height, and the table is laid out in what is left)
+    paintWho(); paintStatus(); paintRack(o); paintDesk(); mdkGive(o); paintTable(o);   // (the panels first: a counted round's panel takes its own height, and the table is laid out in what is left)
   }
   function V() {
     if (showPrev && S.prev) return { trains: S.prev.trains, hands: S.prev.hands, eng: S.prev.eng, round: S.prev.round, cur: -1, dbl: null, scores: S.prev.scores, prev: true };
@@ -611,9 +611,45 @@
     if (W >= 900 && H >= 900) return 'stack';
     return null;
   }
+  // The panels give way, not the tiles. A desk layout is kept only while its table is no worse than the tablet's
+  // layout would be in the same window: every train whole at WHOLE_MIN across or more, or else tiles as large as
+  // the tablet's and no train pushed together that the tablet's layout would lay whole. mdkGive() measures the felt the tablet's layout has here once a round
+  // and a window size and lays the trains out on both; where the desk loses, the window has the tablet's layout
+  // until the next round (mOff).
+  var mOff = false, mOffKey = '', mDev = null;
   function mdkSet() {
     if (!W_ || !S) return null;
-    var W = innerWidth, H = innerHeight, pl = mdkPlan(W, H), st = W_.style, n = S.n;
+    var key = [innerWidth, innerHeight, S.n, S.round, S.phase === 'over' ? 1 : 0].join(':');
+    if (key !== mOffKey) { mOffKey = key; mOff = false; mDev = null; }
+    return mdkApply(mOff ? null : mdkPlan(innerWidth, innerHeight));
+  }
+  function mdkGive(o) {
+    if (!MDK || S.phase !== 'play' || showPrev || mCount) return;
+    var v = V(), tests = [v];
+    if (!mDev) {
+      var pl = MDK.pl;
+      mdkApply(null); paintWho(); paintStatus(); paintRack({});
+      mDev = { w: feltEl.clientWidth, h: feltEl.clientHeight + 6 };
+      mdkApply(pl); paintWho(); paintStatus(); paintRack(o); paintDesk();
+    }
+    if (!mDev.w || !mDev.h) return;
+    function look(g) { var u = 0, whole = true; g.lanes.forEach(function (ln) { u = Math.max(u, ln.u || 0); if (ln.tight) whole = false; }); return { u: u, whole: whole }; }
+    var W = feltEl.clientWidth, H = feltEl.clientHeight, keep = MDK, lose = false;
+    tests.forEach(function (vv) {
+      if (lose) return;
+      var a = look(layoutAll(W, H, vv)); MDK = null;
+      var d; try { d = look(layoutAll(mDev.w, mDev.h, vv)); } finally { MDK = keep; }
+      // (whole at WHOLE_MIN or more is what a desk is for; short of that, the desk must not have smaller tiles than the
+      // tablet's layout, nor push trains together where the tablet's layout would lay them whole)
+      var ok = a.whole ? a.u >= Math.min(WHOLE_MIN, d.u) - .3 : !d.whole && a.u >= d.u - .3;   // (both pushed together: the desk's tiles no smaller)
+      if (!ok) lose = true;
+    });
+    if (!lose) return;
+    mOff = true; mdkApply(null); mKey = '';
+    paintWho(); paintStatus(); paintRack(o); paintDesk();
+  }
+  function mdkApply(pl) {
+    var W = innerWidth, H = innerHeight, st = W_.style, n = S.n;
     if (!pl) {
       if (MDK) { W_.className = 'mtw'; app.classList.remove('mdkapp'); ['--k', '--lw', '--rw', '--ph', '--pk'].forEach(function (k) { st.removeProperty(k); }); }
       MDK = null; return null;
@@ -622,7 +658,7 @@
     var count = !!mCount || (S.phase === 'over' && !!S.prev);
     function need(w, t) { var per = Math.max(1, Math.floor((w - 20) / (t + 8))), rows = Math.ceil(deal / per); return rows * 2 * t + (rows - 1) * 8 + 34; }
     if (pl === 'wide') {
-      lw = clampN(280, W * .2, 500); rw = clampN(300, W * .21, 520);
+      lw = clampN(250, W * .17, 500); rw = clampN(270, W * .18, 520);   // (no wider than they need: the trains want the table's width)
       rt = clampN(48, rw / 5.6, MT_U);
       rackH = Math.min(need(rw, rt), H * .46, colH - 130);
       // (the round in play needs its head and a row a train; a column too short for that gives the room to your tiles)
@@ -653,7 +689,7 @@
   // the window changed between a desk and a device's size while a round is counted: the count moves with it
   function mdkSync() {
     if (!S || !W_) return;
-    var on = !!mdkPlan(innerWidth, innerHeight);
+    var on = !!mdkSet();
     if (on && sheetH && sheetGo) { var g = sheetGo; sheetKeep.v = true; try { sheetH.close(); } catch (e) {} sheetH = null; sheetGo = null; deskRound(g.r, g.go); }
     else if (!on && mCount) { var c = mCount; mCount = null; mdkSet(); roundSheet(c.r, c.go); }
   }
@@ -711,7 +747,7 @@
     var goal = el('div', { class: 'mdk-goal', text: 'After ' + S.R + ' rounds the lowest total wins.' });
     inn.appendChild(goal);
     ladEl.innerHTML = ''; ladEl.appendChild(inn);
-    ladEl.classList.toggle('gone', ladEl.clientHeight < 150);
+    ladEl.classList.toggle('gone', ladEl.clientHeight < 170);
     // the numbers as large as a column allows; names under the pictures only where they can be read
     var fs = parseFloat(getComputedStyle(pad).fontSize), colW = (pad.clientWidth - fs * 1.1 - fs * 2.6) / n;
     pad.style.setProperty('--cf', clampN(11, colW / 2.25, fs * 1.42).toFixed(1) + 'px');
@@ -844,6 +880,7 @@
     out.push(mex());
     return out;
   }
+  var WHOLE_MIN = 42;   // (a desk: the smallest a tile is made so that every train lies whole)
   function tileMax() { return MDK ? MDK.max : Math.min(innerWidth, innerHeight) >= 700 ? 54 : 40; }
   function deskCap(g) { return Math.max(g.len / 11, Math.min(54, g.len / 9)); }
   function geometry(W, H, tr) {
@@ -896,8 +933,8 @@
     return list.map(function (tr, k) { var w = open[k] ? t : t * fw, o = { w: w, c: at + w / 2, fold: !open[k] && fw < 1 }; at += w; return o; });
   }
   // every lane's box and its tiles' places
-  function layoutAll(W, H) {
-    var v = V(), g = geometry(W, H, v.trains), ord = laneOrder(), L = ord.length, pad = g.pad, lanes = [];
+  function layoutAll(W, H, vv) {
+    var v = vv || V(), g = geometry(W, H, v.trains), ord = laneOrder(), L = ord.length, pad = g.pad, lanes = [];
     var Lb = Math.ceil(L / 2), LW = g.banks === 2 ? laneWidths(ord.slice(0, Lb), W - 2 * pad, g, v).concat(laneWidths(ord.slice(Lb), W - 2 * pad, g, v)) : laneWidths(ord, (g.o === 'col' ? W : H) - 2 * pad, g, v);
     var tOpen = Math.max.apply(null, LW.map(function (x) { return x.w; }));
     if (LW.some(function (x) { return x.fold; })) { g.u = Math.max(g.u, Math.min(tileMax(), (tOpen - 6) * 0.82, MDK ? deskCap(g) : 1e9)); g.wc = tOpen; }
@@ -923,6 +960,21 @@
       placeTiles(ln, v.trains[tr].t, g);
       lanes.push(ln);
     });
+    // A desk: no tile lies on another, as on a real table. The tiles come down from the size the window allows until
+    // every train lies whole, running straight out or bent back beside itself where its lane is wide enough, as far
+    // as WHOLE_MIN across; only a table that can't hold its trains whole at that size pushes them together.
+    if (MDK) {
+      var sizes = [], q;
+      for (q = g.u; q > WHOLE_MIN; q *= 0.96) sizes.push(q);
+      if (g.u >= WHOLE_MIN) sizes.push(WHOLE_MIN); else sizes.push(g.u);
+      for (var si = 0; si < sizes.length; si++) {
+        var gw = Object.assign({}, g, { u: sizes[si], whole: true });
+        lanes.forEach(function (ln) { placeTiles(ln, v.trains[ln.tr].t, gw); });
+        if (!lanes.some(function (ln) { return ln.tight; })) { g.u = sizes[si]; g.lanes = lanes; return g; }
+      }
+      g.u = Math.min(g.u, WHOLE_MIN);
+      lanes.forEach(function (ln) { placeTiles(ln, v.trains[ln.tr].t, g); });
+    }
     // every train's tiles one size: the size the most crowded lane needs, unless that is under three quarters of the
     // full size (then only that lane's tiles come down further)
     // (the open lanes only, when some are folded: a folded lane's tiles are its own size)
@@ -941,7 +993,7 @@
     var A = Math.abs(ln.a1 - ln.a0), n = T.length, gap = Math.max(1.5, u * 0.06);
     function lens(uu, cr) { return T.map(function (t) { return t[0] === t[1] && cr ? uu : 2 * uu; }); }
     var ls = lens(u, cross), total = ls.reduce(function (s, x) { return s + x + gap; }, 0) + 2 * u + gap;
-    ln.lines = [ln.c]; ln.sgn = sgn;
+    ln.lines = [ln.c]; ln.sgn = sgn; ln.tight = false;
     // pushed together, the newest K tiles and the doubles whole and every older tile showing CF of its length: the
     // largest tile size that fits the lane that way
     var K = Math.min(n, 3), CF = 0.3, fixU = 2.06, oldU = 0;
@@ -950,13 +1002,16 @@
     if (total > A) {
       // bend: as many lines as the lane is wide (up to four), the tiles as large as they can be, when that keeps them
       // larger than pushing together would
-      for (var uu = u; uu >= 9 && uu > uPush * 1.08; uu *= 0.96) {
+      for (var uu = u; uu >= 9 && (g.whole || uu > uPush * 1.08); uu *= 0.96) {
         var k = Math.min(4, Math.floor((ln.wc - 4) / (uu * 1.3)));
-        if (k < 2) continue;
-        var gp = Math.max(1.5, uu * 0.06), per = Math.floor((A - gp) / (2 * uu + gp));
-        if (per >= 2 && per * k >= n + 1) return snake(ln, T, uu, k, per, gp);
+        if (k >= 2) {
+          var gp = Math.max(1.5, uu * 0.06), per = Math.floor((A - gp) / (2 * uu + gp));
+          if (per >= 2 && per * k >= n + 1) return snake(ln, T, uu, k, per, gp);
+        }
+        if (g.whole) break;   // (a desk looking for the size at which every train lies whole: this size or none)
       }
     }
+    if (total > A) ln.tight = true;   // (from here on the train is pushed together, or its own tiles made smaller)
     var adv;
     if (total > A && n > K) {
       // push together: doubles keep their room, the older plain tiles slide under the next
