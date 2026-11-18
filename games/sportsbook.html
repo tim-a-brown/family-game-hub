@@ -502,7 +502,11 @@ html.sb-desk .sd-r{overflow-y:auto;overscroll-behavior:contain;}
 html.sb-desk .sd-r .sb-money{margin:0;}
 html.sb-desk .sd-r .tkw{margin:0 0 4px;}
 html.sb-desk .sd-r .sideslip{flex:none;}
-html.sb-desk .sd-r .place{position:sticky;bottom:6px;z-index:2;}                                   /* (a slip taller than its column: Place bet stays in view) */
+.sd-foot{display:contents;}
+/* (a slip taller than its column: the stake, its chips, the totals and Place bet stay in view at its foot, the picks
+   scrolling under them; the part is the ticket's own paper, edge to edge) */
+html.sb-desk .sd-r .sd-foot{display:block;position:sticky;bottom:0;z-index:2;background:#f6f4ee;margin:0 calc(-14px * var(--sdf,1));padding:0 calc(14px * var(--sdf,1)) 2px;}
+html.sb-desk .sd-r.stuck .sd-foot{box-shadow:0 -12px 14px -12px rgba(29,29,34,.35);}
 html.sb-desk .sd-done{flex:none;}
 html.sb-desk .sd-done .sb-day{margin-top:4px;}
 html.sb-desk .sd-done .sb-money{margin:0 0 12px;}
@@ -1267,7 +1271,7 @@ html.sb-desk .sd-l{view-transition-name:sb-book;} html.sb-desk .sd-b{view-transi
     if (!SD.on) window.scrollTo(0, 0);
     document.documentElement.classList.add('sb-desk'); SD.on = true; SD.key = P.key;
     var sd = SD.box || (SD.box = el('div', { class: 'sbd' }));
-    SD.l = SD.l || el('div', { class: 'sd-col sd-l' }); SD.b = SD.b || el('div', { class: 'sd-col sd-b' }); SD.r = SD.r || el('div', { class: 'sd-col sd-r fx' });
+    SD.l = SD.l || el('div', { class: 'sd-col sd-l' }); SD.b = SD.b || el('div', { class: 'sd-col sd-b' }); if (!SD.r) { SD.r = el('div', { class: 'sd-col sd-r fx' }); SD.r.addEventListener('scroll', sdStuck, { passive: true }); }
     SD.row = SD.row || el('div', { class: 'sd-row' });
     while (sd.firstChild) sd.removeChild(sd.firstChild);
     if (SD.l.parentNode) SD.l.parentNode.removeChild(SD.l); SD.l.innerHTML = '';
@@ -1323,6 +1327,13 @@ html.sb-desk .sd-l{view-transition-name:sb-book;} html.sb-desk .sd-b{view-transi
     if (view === 'board') sdWhole(dom.body, '.gm, .sb-day, .myt, .sb-empty', '.gm, .sb-empty, .myt'); else dom.body.style.maxHeight = '';
     if (SD.P.bc) sdWhole(SD.l, '.tkw, .sb-day, .sb-money, .sd-none', '.tkw, .sd-none');
     sdWhole(SD.r, '.tkw, .sb-day, .sb-money, .sd-none', '.tkw, .sd-none, .sb-money');
+    sdStuck();
+  }
+  // the slip's foot casts its shadow up over the picks only while picks lie under it (the slip runs past the column's foot)
+  function sdStuck() {
+    if (!SD.on || !SD.r) return;
+    var f = SD.r.querySelector('.sd-foot'), tk = f && f.parentNode, cb = SD.r.getBoundingClientRect().bottom;
+    SD.r.classList.toggle('stuck', !!tk && tk.getBoundingClientRect().bottom > cb + 1 && f.getBoundingClientRect().top > tk.getBoundingClientRect().top + 1);
   }
   // a league with no games (between games, out of season): at a desk the room under its note holds the games under way
   // and coming up today and tomorrow in the other leagues, from the boards the tickers already loaded, each a tap from the slip
@@ -2040,7 +2051,7 @@ html.sb-desk .sd-l{view-transition-name:sb-book;} html.sb-desk .sd-b{view-transi
     if (!n && slipOpen) openSlip(false);
     // the slip itself
     var body = slipBody();
-    if (dom.wide) { dom.sideSlip.innerHTML = ''; dom.sideSlip.appendChild(body); }
+    if (dom.wide) { dom.sideSlip.innerHTML = ''; dom.sideSlip.appendChild(body); sdStuck(); }
     else {
       dom.sideSlip.innerHTML = '';
       dom.slipIn.innerHTML = '';
@@ -2081,6 +2092,9 @@ html.sb-desk .sd-l{view-transition-name:sb-book;} html.sb-desk .sd-b{view-transi
       ]);
       t.appendChild(lg);
     });
+    // (the stake, its chips, the totals and Place bet as one part: at a desk it stays at the foot of the column while the
+    // picks above it scroll; anywhere else it is no box at all, display: contents)
+    var t0 = t; t = el('div', { class: 'sd-foot' }); t0.appendChild(t);
     t.appendChild(el('hr'));
     var num = slipNums(), bank = Casino.balance();
     t.appendChild(el('div', { class: 'stake' }, [

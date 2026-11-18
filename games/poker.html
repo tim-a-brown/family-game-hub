@@ -5262,38 +5262,76 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
       }
       var s = n <= 2 ? per / 2 : g + (per - 2 * g) * (i - 1) / Math.max(1, n - 2), p = ovalAt(w, h, s), d = pod(p), sup = d.hw * Math.abs(p.nx) + d.hh * Math.abs(p.ny);
       var x = rim + p.x - p.nx * (sup + 6 * u), y = rim + p.y - p.ny * (sup + 6 * u), tx = -p.ny, ty = p.nx;   // (the tangent: along the rail)
-      var bx = x - p.nx * (sup + 30 * u), by = y - p.ny * (sup + 30 * u), side = p.nx < -0.5 ? 'l' : p.nx > 0.5 ? 'r' : '';
-      if (side) { bx = x - p.nx * (d.hw + 14 * u); by = y + (y < th / 2 ? 1 : -1) * 6 * u; }   // (an end seat's chips are placed by their near edge)
-      var kx = x - p.nx * (sup + 30 * u) + tx * (d.hw * 0.8), ky = y - p.ny * (sup + 30 * u) + ty * (d.hw * 0.8);
-      if (side) { kx = x - p.nx * (d.hw + 26 * u); ky = y + (y < th / 2 ? 1 : -1) * (d.hh + 4 * u); }   // (an end seat: at the pod's inner corner, on the side away from its chips)
+      // (the seat as it was drawn last time at this table, measured (deskPods): its chips, the button and what the board
+      // keeps clear of go by the seat's real size, which a long stack, a blind's token or cards beside the name widen)
+      var m = P.pm && P.pm[i], e = m ? { hw: Math.max(m[0], d.hw * 0.5), hh: Math.max(m[1], d.hh * 0.5) } : d, sue = e.hw * Math.abs(p.nx) + e.hh * Math.abs(p.ny);
+      var bx = x - p.nx * (sue + 30 * u), by = y - p.ny * (sue + 30 * u), side = p.nx < -0.5 ? 'l' : p.nx > 0.5 ? 'r' : '';
+      if (side) { bx = x - p.nx * (e.hw + 14 * u); by = y + (y < th / 2 ? 1 : -1) * 6 * u; }   // (an end seat's chips are placed by their near edge)
+      var kx = x - p.nx * (sue + 30 * u) + tx * (e.hw * 0.8), ky = y - p.ny * (sue + 30 * u) + ty * (e.hw * 0.8);
+      if (side) { kx = x - p.nx * (e.hw + 26 * u); ky = y + (y < th / 2 ? 1 : -1) * (e.hh + 4 * u); }   // (an end seat: at the pod's inner corner, on the side away from its chips)
       out.pos.push([x / tw * 100, y / th * 100]); out.bet.push([bx / tw * 100, by / th * 100]); out.btn.push([kx / tw * 100, ky / th * 100]); out.side.push(side); out.wide.push(d.wide);
       // (what the board must keep clear of: the seat, its chips in front of it and the dealer button)
-      out.obs = (out.obs || []).concat([[x - d.hw, y - d.hh, x + d.hw, y + d.hh], side === 'l' ? [bx, by - 16 * u, bx + 90 * u, by + 16 * u] : side === 'r' ? [bx - 90 * u, by - 16 * u, bx, by + 16 * u] : [bx - 45 * u, by - 16 * u, bx + 45 * u, by + 16 * u], [kx - 15 * u, ky - 15 * u, kx + 15 * u, ky + 15 * u]]);
-      if (p.ny < -0.8 && Math.abs(x - tw / 2) < (nob ? 150 * u : P.bcw * 2.7) + d.hw) out.topB = Math.max(out.topB || 0, y + d.hh);   // (a seat over the board)
+      (out.hard = out.hard || []).push([x - e.hw, y - e.hh, x + e.hw, y + e.hh]);
+      out.obs = (out.obs || []).concat([[x - e.hw, y - e.hh, x + e.hw, y + e.hh], side === 'l' ? [bx, by - 18 * u, bx + 100 * u, by + 18 * u] : side === 'r' ? [bx - 100 * u, by - 18 * u, bx, by + 18 * u] : [bx - 50 * u, by - 18 * u, bx + 50 * u, by + 18 * u], [kx - 15 * u, ky - 15 * u, kx + 15 * u, ky + 15 * u]]);
+      if (p.ny < -0.8 && Math.abs(x - tw / 2) < (nob ? 150 * u : P.bcw * 2.7) + e.hw) out.topB = Math.max(out.topB || 0, y + e.hh);   // (a seat over the board)
     }
     // the pot and the board between the top rail's seats and your own cards
-    var topB = (out.topB || rim + 20 * u) + 46 * u, botB = out.myTop - 62 * u, bh = nob ? 76 * u : P.bcw * 1.4, potH = 44 * u, mid = (topB + botB) / 2;
+    var topB = (out.topB || rim + 20 * u) + 46 * u, botB = out.myTop - 66 * u, bh = nob ? 76 * u : P.bcw * 1.4, potH = 44 * u, mid = (topB + botB) / 2;
     var by0 = clamp(mid + (potH + 8 * u) / 2, topB + potH + 8 * u + bh / 2, Math.max(topB + potH + 8 * u + bh / 2, botB - bh / 2));
     // A seat at the side of the board's row (three or four at a table taller than wide or square) would lie under it:
     // the board then moves up or down the felt to the nearest place clear of every seat, its chips and the button, or
     // where there is none, its cards get smaller (to six tenths at least) until one is clear
     if (!nob && out.obs) {
-      var clear = function (c, y) {
+      var clear = function (c, y, obs) {
         var b = c * 1.4, bw = c * 5.28 / 2 + 6 * u, pt = y - b / 2 - 8 * u - potH;
         if (pt < rim + 14 * u || y + b / 2 > botB) return false;
         var boxes = [[tw / 2 - bw, y - b / 2, tw / 2 + bw, y + b / 2], [tw / 2 - 120 * u, pt, tw / 2 + 120 * u, y - b / 2 - 8 * u]];
-        return !out.obs.some(function (o) { return boxes.some(function (q) { return o[0] < q[2] && o[2] > q[0] && o[1] < q[3] && o[3] > q[1]; }); });
+        return !(obs || out.obs).some(function (o) { return boxes.some(function (q) { return o[0] < q[2] && o[2] > q[0] && o[1] < q[3] && o[3] > q[1]; }); });
       };
       if (!clear(P.bcw, by0)) {
         var got = null;
         for (var c = P.bcw; c >= P.bcw * 0.6 && !got; c *= 0.96) {
           for (var y = rim; y < th; y += 3 * u) if (clear(c, y) && (!got || Math.abs(y - by0) < Math.abs(got[1] - by0))) got = [c, y];
         }
+        // (no place clear of the chips too: then of the places clear of every seat, the one whose board and pot lie least
+        // on the places chips go (the pot counting most), the larger cards first, then the nearer; a pile that comes in
+        // over the board finds room round it, placeBets)
+        if (!got) {
+          var soft = function (c, y) {
+            var b = c * 1.4, bw = c * 5.28 / 2 + 6 * u, pt = y - b / 2 - 8 * u - potH, a = 0;
+            [[tw / 2 - bw, y - b / 2, tw / 2 + bw, y + b / 2, 1], [tw / 2 - 120 * u, pt, tw / 2 + 120 * u, y - b / 2 - 8 * u, 3]].forEach(function (q) {
+              out.obs.forEach(function (o) { a += Math.max(0, Math.min(o[2], q[2]) - Math.max(o[0], q[0])) * Math.max(0, Math.min(o[3], q[3]) - Math.max(o[1], q[1])) * q[4]; });
+            });
+            return a;
+          }, bestS = Infinity;
+          for (c = P.bcw; c >= P.bcw * 0.6; c *= 0.96) for (y = rim; y < th; y += 3 * u) {
+            if (!clear(c, y, out.hard)) continue;
+            var sc = soft(c, y) + (P.bcw - c) * 40 * u + Math.abs(y - by0) * u;
+            if (sc < bestS) { bestS = sc; got = [c, y]; }
+          }
+        }
         if (got) { P.bcw = Math.round(got[0]); bh = P.bcw * 1.4; by0 = got[1]; }
       }
     }
     out.board = [50, by0 / th * 100]; out.pot = [50, (by0 - bh / 2 - 8 * u - potH / 2) / th * 100]; out.msg = [50, (by0 + bh / 2 + 22 * u) / th * 100];
     return out;
+  }
+  // Each seat's size as drawn at this table (half its width and height), the largest seen: a seat only ever grows in
+  // the plan, so its chips, the button and the board never move back and forth from one action to the next
+  function deskPodMem(P, n) {
+    var k = [P.key, P.W, P.H, n, S && S.game, S && S.circ ? 1 : 0].join();
+    if (R.podK !== k) { R.podK = k; R.pod = []; }
+    return R.pod;
+  }
+  function deskPods(P) {
+    var grew = false, mem = P.pm; if (!mem) return false;
+    seatEls.forEach(function (se, i) {
+      if (!i || !se || !se.isConnected || se.classList.contains('me')) return;
+      var r = se.getBoundingClientRect(), hw = Math.ceil(r.width / 2), hh = Math.ceil(r.height / 2), o = mem[i];
+      if (!r.width) return;
+      if (!o || hw > o[0] + 1 || hh > o[1] + 1) { mem[i] = [Math.max(hw, o ? o[0] : 0), Math.max(hh, o ? o[1] : 0)]; grew = true; }
+    });
+    return grew;
   }
   // turning the device: the table, your cards and the rail glide from the old layout to the new one
   function onLand() {
@@ -5358,7 +5396,7 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
     app.innerHTML = '';
     app.classList.toggle('pland', land);
     app.classList.toggle('pport', port);
-    if (desk) { DK = deskPlan(); DS = deskSeats(DK, n, gv0.stud ? 7 : gv0.hc || 2, !!gv0.stud, noBoard()); deskOn(DK, DS); } else deskOff();
+    if (desk) { DK = deskPlan(); DK.pm = deskPodMem(DK, n); DS = deskSeats(DK, n, gv0.stud ? 7 : gv0.hc || 2, !!gv0.stud, noBoard()); deskOn(DK, DS); } else deskOff();
     app.classList.toggle('k-hold', lme);   // a phone's table is laid out to the screen: the page never scrolls
     app.classList.toggle('after', !!final);
     app.classList.toggle('pcirc', !!S.circ);
@@ -5588,6 +5626,8 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
     if (desk) { deskRoom(final).forEach(function (b) { app.appendChild(b); }); fitRoom(); }
     if (port) lockPort(app);
     fitTiles();   // (placed before the table is ever drawn: nothing shows in a first spot and then moves)
+    // (at a desk: a seat larger than the plan allowed for is laid out again at once, before anything is painted)
+    if (desk && !R.podRe && deskPods(DK)) { R.podRe = 1; try { renderTable(final); } finally { R.podRe = 0; } return; }
     if (ZOOM != null) drawZoom(false);   // (still holding: the big cards stay up over the new table)
 
     if (H && R.mine) { R.mineNo = H.no; if (!picking) R.mine = null; }
@@ -6417,6 +6457,8 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
     var hit = function (a, q) { return Math.min(a.right, q.right) - Math.max(a.left, q.left) > 1 && Math.min(a.bottom, q.bottom) - Math.max(a.top, q.top) > 1; };
     var fixed = [].slice.call(document.querySelectorAll('.ptable :is(.pseat .tag, .pseat .pstk, .pseat .cards, .phand .pcard, .pboard .pcard, .ppot, .psay)')).map(function (o) { return o.getBoundingClientRect(); });
     var placed = [], fe = document.querySelector('.ptable .felt-in'), fr = fe && fe.getBoundingClientRect();   // (and never off the felt)
+    var dk = !!document.querySelector('.stage.pdesk');   // (at a desk no pile lies on the board's cards, a bet as well as a won pot)
+    var pe0 = dk && document.querySelector('.ptable .ppot'), potR = pe0 && pe0.getBoundingClientRect();   // (nor a bet on the pot)
     var board = [].slice.call(document.querySelectorAll('.ptable .pboard :is(.pcard,.card)')).map(function (o) { return o.getBoundingClientRect(); }), bb = null;
     board.forEach(function (c) { bb = bb ? { left: Math.min(bb.left, c.left), right: Math.max(bb.right, c.right), top: Math.min(bb.top, c.top), bottom: Math.max(bb.bottom, c.bottom) } : { left: c.left, right: c.right, top: c.top, bottom: c.bottom }; });
     // (a bet still flying in from its seat is measured where it lands)
@@ -6435,18 +6477,41 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
       var area = function (a, q) { return Math.max(0, Math.min(a.right, q.right) - Math.max(a.left, q.left)) * Math.max(0, Math.min(a.bottom, q.bottom) - Math.max(a.top, q.top)); };
       // each spot scored by what it covers: another bet counts most, then a seat, a card or the pot (moving is a last resort)
       var cost = function (dx, dy) { var q = { left: r.left + dx, right: r.right + dx, top: r.top + dy, bottom: r.bottom + dy }, c = 0;
-        placed.forEach(function (p) { c += area(q, p) * 10; }); if (won) board.forEach(function (f) { c += area(q, f) * 5; }); if (dx || dy) { fixed.forEach(function (f) { c += area(q, f); }); if (fr) c += ((q.right - q.left) * (q.bottom - q.top) - area(q, fr)) * 10; } return c + (Math.abs(dx) + Math.abs(dy)) * 0.01; };
-      var onBoard = won && board.some(function (c) { return hit(r, c); }), k0 = keyOf(b), m = mem[k0];
+        placed.forEach(function (p) { c += area(q, p) * 10; }); if (won || dk) board.forEach(function (f) { c += area(q, f) * 5; }); if (potR && !won) c += area(q, potR) * 5; if (dx || dy) { fixed.forEach(function (f) { c += area(q, f); }); if (fr) c += ((q.right - q.left) * (q.bottom - q.top) - area(q, fr)) * 10; } return c + (Math.abs(dx) + Math.abs(dy)) * 0.01; };
+      var onBoard = (won || dk) && board.some(function (c) { return hit(r, c); }) || !won && potR && hit(r, potR), k0 = keyOf(b), m = mem[k0];
       var put = function (t) { if (t[0] || t[1]) b.style.translate = t[0].toFixed(0) + 'px ' + t[1].toFixed(0) + 'px'; R.betAt[k0] = { t: t, a: (b.querySelector('.amt') || b).textContent }; placed.push({ left: r.left + t[0], right: r.right + t[0], top: r.top + t[1], bottom: r.bottom + t[1] }); };
       var amtT = (b.querySelector('.amt') || b).textContent;
       if (m && m.a === amtT) return put(m.t);   // (the same pile as before stays exactly where it was)
-      if (m) { var q1 = { left: r.left + m.t[0], right: r.right + m.t[0], top: r.top + m.t[1], bottom: r.bottom + m.t[1] }; if (!placed.some(function (p) { return hit(q1, p); }) && !(won && board.some(function (c) { return hit(q1, c); }))) return put(m.t); }
+      if (m) { var q1 = { left: r.left + m.t[0], right: r.right + m.t[0], top: r.top + m.t[1], bottom: r.bottom + m.t[1] }; if (!placed.some(function (p) { return hit(q1, p); }) && !((won || dk) && board.some(function (c) { return hit(q1, c); })) && !(!won && potR && hit(q1, potR))) return put(m.t); }
       if (!onBoard && !placed.some(function (p) { return hit(r, p); })) return put([0, 0]);
       var tries = [[0, 0], [0, d], [0, -d], [w, 0], [-w, 0], [w, d], [-w, d], [w, -d], [-w, -d], [0, 2 * d], [0, -2 * d], [1.6 * w, 0], [-1.6 * w, 0]], go = tries[0], best = Infinity;
       if (bb) [[0, bb.top - r.bottom - 4], [0, bb.bottom - r.top + 4], [bb.right - r.left + 4, 0], [bb.left - r.right - 4, 0]].forEach(function (t) { tries.push(t); });
+      if (potR && !won) [[potR.right - r.left + 6, 0], [potR.left - r.right - 6, 0], [potR.right - r.left + 6, -d], [potR.left - r.right - 6, -d]].forEach(function (t) { tries.unshift(t); });   // (beside the pot first: the pile stays near its seat)
       tries.forEach(function (t) { var c = cost(t[0], t[1]); if (c < best - 0.001) { best = c; go = t; } });
       put(go);
     });
+  }
+  // At a desk the dealer button never lies on a seat, its chips, a blind's token, the board or the pot: where its usual
+  // spot touches one it takes the nearest clear spot round it, and keeps it for the hand while that stays clear
+  function placeBtn() {
+    var bt = document.querySelector('.stage.pdesk .ptable > .pdealer'); if (!bt) return;
+    bt.style.translate = '';
+    var r = bt.getBoundingClientRect(), pad = 4, fe = document.querySelector('.ptable .felt-in'), fr = fe && fe.getBoundingClientRect();
+    var obs = [].slice.call(document.querySelectorAll('.ptable :is(.pseat .tag, .pseat .pstk, .pseat .cards, .pseat .pout, .pboard .pcard, .pboard .card, .ppot, .pbet, .phand .pcard, .pmsg)')).map(function (o) { return o.getBoundingClientRect(); }).filter(function (q) { return q.width && q.height; });
+    var clear = function (dx, dy) {
+      var q = { left: r.left + dx - pad, right: r.right + dx + pad, top: r.top + dy - pad, bottom: r.bottom + dy + pad };
+      if (fr && (q.left < fr.left + 6 || q.right > fr.right - 6 || q.top < fr.top + 6 || q.bottom > fr.bottom - 6)) return false;
+      return !obs.some(function (o) { return Math.min(q.right, o.right) - Math.max(q.left, o.left) > 0 && Math.min(q.bottom, o.bottom) - Math.max(q.top, o.top) > 0; });
+    };
+    var H0 = S && S.hand, k = (H0 && H0.no) + ':' + window.innerWidth + 'x' + window.innerHeight, m = R.btnK === k && R.btnAt;
+    var go = m && clear(m[0], m[1]) ? m : clear(0, 0) ? [0, 0] : null;
+    if (!go) {
+      var st = r.width * 0.5;
+      for (var j = 1; j <= 14 && !go; j++) for (var a = 0; a < 16 && !go; a++) { var t = a * Math.PI / 8, dx = Math.cos(t) * st * j, dy = Math.sin(t) * st * j; if (clear(dx, dy)) go = [dx, dy]; }
+    }
+    if (!go) go = [0, 0];
+    R.btnK = k; R.btnAt = go;
+    if (go[0] || go[1]) bt.style.translate = go[0].toFixed(0) + 'px ' + go[1].toFixed(0) + 'px';
   }
   function fitTiles() {
     placeSpot();
@@ -6481,7 +6546,7 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
       for (var k = 1; k <= 4 && !one(); k++) sm.style.fontSize = (f * (1 - k * 0.05)).toFixed(2) + 'px';
       if (!one()) { sm.style.letterSpacing = ''; sm.style.fontSize = ''; }
     });
-    placeBets(); placeSays(); fitWins();
+    placeBets(); placeBtn(); placeSays(); fitWins();
     fly.forEach(function (f) { f[0].style.transform = f[1]; f[0].style.transition = f[2]; });
     // (a pill popping in or chips sliding measure small or in the wrong place: once they've settled, place again)
     clearTimeout(fitTiles.t); fitTiles.t = setTimeout(function () { placeSays(true); fitWins(); }, 560);
