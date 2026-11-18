@@ -3399,7 +3399,7 @@
     ui.lay = M ? layModeN() : layMode();
     // (the shape of the two-player table, for the style sheet: ln the battle line, up and short its upright and low
     // forms, rw the rows of a phone held upright; and the game bar folds down while a phone on its side plays)
-    if (dom.felt) { const L = ui.lay, want = 'an-felt felt-in' + (dom.track ? ' has-trk' : '') + (M ? ' many' + (G.teams ? ' teams' : '') + (L.nbl ? ' bl' : '') + (L.dk ? ' desk dn d-' + L.dock + (L.dk.hmid ? ' hmid' : '') : '') : L.ln ? ' bl' + (L.up ? ' up' : '') + (L.short ? ' short' : '') + (L.dk ? ' desk d-' + L.dock + (L.pil ? ' pil' : '') + (L.dk.mid ? ' fmid' : '') + (L.dk.hmid ? ' hmid' : '') : '') : ' rw'); if (dom.felt.className !== want) dom.felt.className = want;
+    if (dom.felt) { const L = ui.lay, want = 'an-felt felt-in' + (dom.track ? ' has-trk' : '') + (M ? ' many' + (G.teams ? ' teams' : '') + (L.nbl ? ' bl' : '') + (L.dk ? ' desk dn d-' + L.dock + (L.dk.hmid ? ' hmid' : '') : L.nbl && deskWin() ? ' big' : '') : L.ln ? ' bl' + (L.up ? ' up' : '') + (L.short ? ' short' : '') + (L.dk ? ' desk d-' + L.dock + (L.pil ? ' pil' : '') + (L.dk.mid ? ' fmid' : '') + (L.dk.hmid ? ' hmid' : '') : '') : ' rw'); if (dom.felt.className !== want) dom.felt.className = want;
       // (the desk's own measures, for the style sheet: the bars' scale, the widths of the dock's column and of a pillar, the track's height)
       const D = L.dk, fs = dom.felt.style; [['--bs', D && D.bs.toFixed(3)], ['--aw', D && D.dock === 'b' ? D.aw + 'px' : null], ['--rw', D && D.dock === 'r' ? D.rw + 'px' : null], ['--pw', D && D.pil ? D.pw + 'px' : null], ['--dth', D && D.tk + 'px'], ['--cs', D && D.cs.toFixed(3)]].forEach(x => { if (x[1]) fs.setProperty(x[0], x[1]); else fs.removeProperty(x[0]); }); }
     document.documentElement.classList.toggle('an-low', !!((ui.lay.short || (M && window.innerWidth > window.innerHeight && window.innerHeight < 520)) && dom.root && dom.root.isConnected));   // (and with more players too)
@@ -4176,7 +4176,7 @@
   // empty dock. Nothing is scaled here either: the table is composed for the window and its cards sized from the room.
   // Every Domain on the table is a cell built like a column of the two-player line: the Domain across its middle, the
   // Figures of the other sides in a band above it and your side's in a band below it, as real cards wherever a cell has
-  // the room for cards 58 px wide (a party is one player's cards, under a tag with that player's name), each side's
+  // the room for cards 64 px wide (a party is one player's cards, under a tag with that player's name), each side's
   // Might on a shield on the Domain's edge in that side's color. Each player's cells lie on that player's own mat with
   // that player's bar on it: the other players' at the head of their mats, yours at the foot of yours, over your hand.
   // A bar says what a plate could not: the Spark, each Relic, and where a mat is wide and tall enough the Guide's name
@@ -4192,17 +4192,17 @@
   // them in a column at the right of a low wide window (r). The iPad's and the phones' layouts are untouched: this
   // starts where the two-player desk does (deskWin), and a window in which your own cells would have no room for cards
   // keeps the iPad's table.
-  const DN_MIN = 58, DN_MAX = 220, clampN = (a, v, b) => Math.max(a, Math.min(b, v));
+  const DN_MIN = 64, DN_MAX = 220, clampN = (a, v, b) => Math.max(a, Math.min(b, v));
   // a Domain's cell, w by h: the largest cards at which a band of them above the Domain and one below it fit (yours, and
   // a line's); one: the Domain at the cell's head with everyone's cards there in one band under it (a mat whose Gate
-  // lies over its Outpost, where two bands a cell would halve the cards). Where no card of 58 px fits, the cell's
+  // lies over its Outpost, where two bands a cell would halve the cards). Where no card of 64 px fits, the cell's
   // parties are stacks (stk)
   function dnCell(w, h, cap, one) {
     const tw = Math.floor(Math.min(w - 10, 640)), sh = Math.round(clampN(24, tw * .17, 64)), bg = Math.round(sh * .62 + 3), nb = one ? 1 : 2;
     const tag = c => (c >= 90 ? Math.round(clampN(17, c * .13, 27)) : 0), thOf = c => Math.round(Math.max(tw * .34, Math.min(tw * .62, c * 1.3)));
     const need = c => nb * (c * 1.4 + tag(c) + 10 + bg) + thOf(c);
-    // (a cell with a band for each side holds a pile of two with the first card's name still showing; one band holds two piles)
-    let c = Math.floor(Math.min(cap || DN_MAX, (w - 8) / (one ? 2 : 1.6)));
+    // (a pile of two side by side with the first card's name still showing: more piles than a row holds make a second row, dnBand)
+    let c = Math.floor(Math.min(cap || DN_MAX, (w - 8) / 1.6));
     while (c >= DN_MIN && need(c) > h) c -= 2;
     if (c >= DN_MIN) { const th = Math.round(Math.min(tw * .66, thOf(c) + (h - need(c)) * .5)); return { w: w, h: h, tw: tw, th: th, sh: sh, bg: bg, c: c, tag: tag(c), one: !!one, band: (h - th - nb * bg) / nb, use: Math.min(1, (need(c) - thOf(c) + th) / h) }; }
     const th = Math.round(clampN(tw * .34, h * (one ? .42 : .34), tw * .62)), band = (h - th - nb * bg) / nb, sw = Math.floor(Math.min(60, (w - 12) / 3 - 4, (band - 8) / 1.36));
@@ -4215,11 +4215,11 @@
   function dnBar(bw, bh) {
     // (a rich form at the scale its mat's width gives it, or as much smaller as keeps it to its share of the mat's height)
     const rich = (f, h0, lo, bsW, cap) => { const bs = Math.min(bsW, (bh * cap - 14) / h0); return bs >= lo ? { f: f, bs: bs, h: Math.round(h0 * bs + 14) } : null; };
-    const r = bw >= 760 ? rich('rich', 118, 1, clampN(1, bw / 1100, 1.4), .135) : bw >= 400 ? rich('rich2', 140, .95, clampN(1, bw / 400, 1.5), .15) : bw >= 250 ? rich('rich3', 182, .85, clampN(.85, bw / 330, 1.15), .15) : null;
+    const r = (bw >= 760 && rich('rich', 118, 1, clampN(1, bw / 1100, 1.4), .135)) || (bw >= 400 && rich('rich2', 140, .95, clampN(1, bw / 400, 1.5), .15)) || (bw >= 240 && bw < 400 && rich('rich3', 182, .85, clampN(.85, bw / 330, 1.15), .15)) || null;
     if (r) return r;
     if (bw >= 330) { const bs = Math.max(.74, Math.min(bw / 450, 1.45, (bh * .085 - 12) / 42)); return { f: 'one', bs: bs, h: Math.round(42 * bs + 12) }; }
     if (bw >= 200) { const bs = clampN(.74, bw / 270, .95); return { f: 'two', bs: bs, h: Math.round(62 * bs + 12) }; }
-    return { f: 'three', bs: .74, h: 86 };
+    return { f: 'three', bs: .74, h: 92 };
   }
   // The table in a room W by H. o: {arr: 'row' | 'stack', cells: 'v' | 'h', rw: a rival's column against one of yours
   // (row), split: the share of the height the other players' mats take (stack), N, tm: teams}. Gives each mat's box,
@@ -4239,7 +4239,7 @@
     // yours: the teams' bar at its head (a team game), your three cells, your bar at its foot
     const mb = dnBar(Math.min(mine.w - 2 * pad, 1500), mine.h), sdH = o.tm ? 44 : 0;
     const ah = mine.h - 2 * pad - sdH - mb.h - 8, cw0 = (mine.w - 2 * pad - 2 * cg) / 3, cw = Math.min(cw0, Math.max(300, ah * .62));
-    const mc = dnCell(cw, ah, DN_MAX); if (mc.stk || ah < 200) return null;
+    const mc = dnCell(cw, ah, DN_MAX); if (mc.stk || ah < 200 || mc.tw < 140) return null;   // (your own Domains keep cards, and a width their names and powers read at)
     const mx = mine.x + pad + (mine.w - 2 * pad - 3 * cw - 2 * cg) / 2, cells = {}, v = o.v || 0;
     [2 * v, 2 * v + 1, 2 * N].forEach((i, n) => { cells[i] = { x: mx + n * (cw + cg), y: mine.y + pad + sdH, g: mc }; });
     mb.x = mine.x + pad; mb.w = mine.w - 2 * pad; mb.y = mine.y + mine.h - pad - mb.h;
@@ -4255,7 +4255,8 @@
     const f = c => Math.min(c, 150) + .35 * Math.max(0, c - 150), er = rc.stk ? rc.sw * .6 : rc.c;
     const fill = (3 * mc.w * mc.h * mc.use + 2 * R * rc.w * rc.h * rc.use) / (W * H);
     const fm = c => Math.min(c, 170) + .5 * Math.max(0, c - 170);
-    const worth = (4.5 * fm(mc.c) + 2 * R * f(er)) / (4.5 + 2 * R) + .16 * (3 * Math.min(mc.tw, 300) + 2 * R * Math.min(rc.tw, 300)) / (3 + 2 * R);
+    const tl = tw => .16 * Math.min(tw, 300) - .6 * Math.max(0, 150 - tw);   // (a Domain under 150 px wide has its power in words too small to read)
+    const worth = (4.5 * fm(mc.c) + 2 * R * f(er)) / (4.5 + 2 * R) + (3 * tl(mc.tw) + 2 * R * tl(rc.tw)) / (3 + 2 * R);
     return { o: o, mine: mine, rim: rim, mb: mb, rb: rb, mc: mc, rc: rc, cells: cells, sdH: sdH, pad: pad, worth: worth, fill: fill };
   }
   // the best table for a room: every composition tried
@@ -4279,9 +4280,12 @@
     const aw = Math.round(clampN(270, W * .19, 400)), rw = Math.round(clampN(360, W * .28, 470)), sizes = [240, 220, 200, 184, 168, 152, 140, 128, 116, 104, 96, 88];
     let top = null;
     const offer = (dock, x, h, bw, bh) => { const tk = Math.round(clampN(14, h * .11, 24)), t = dnBest(bw, bh - (trk ? tk + RG : 0), N, tm); if (!t) return;
+      // (stacks for the others and small cards for you is what the iPad's table already gives, and it is made for that
+      // room; so are its lanes in a low wide window, where the others' Domains here would be under 120 px)
+      if (t.rc.stk && (dock !== 'r' ? t.mc.c < 100 : t.rc.sw < 40 || t.rc.tw < 120)) return;
       const worth = (t.worth + .45 * Math.min(h, t.mc.c * 1.12)) * (dock === 'r' ? .94 : 1);
       if (!top || worth > top.worth + .5) top = Object.assign({ dock: dock, h: h, worth: worth, tk: tk, dn: t }, x); };
-    if (a >= 1.2 && !side) sizes.forEach(u => { const h = Math.floor(Math.min(u, (W - aw - 18 - 7 * g) / 8)); if (h >= 88) offer('b', { aw: aw, per: 8, rows: 1 }, h, W, H - (Math.max(h * 1.4 + 12, 122) + RG)); });
+    if (a >= 1.2 && !side) sizes.forEach(u => { const h = Math.floor(Math.min(u, (W - aw - 18 - 7 * g) / 8)); if (h >= 80) offer('b', { aw: aw, per: 8, rows: 1 }, h, W, H - (Math.max(h * 1.4 + 12, 122) + RG)); });
     if (a >= 1.9 && !side) [[2, 4], [3, 3], [4, 2]].forEach(x => { const room = H - 48 - 62 - 3 * RG, h = Math.floor(Math.min((rw - (x[1] - 1) * g) / x[1], (room - (x[0] - 1) * g) / x[0] / 1.4, 240)); if (h >= 80) offer('r', { rw: rw, per: x[1], rows: x[0] }, h, W - rw - 14, H); });
     if (a < 1.5 || side) [1, 2].forEach(r => sizes.forEach(u => { const per = r === 1 ? 8 : 4, h = Math.floor(Math.min(u, (W - (per - 1) * g) / per)); if (h >= 80) offer('s', { per: per, rows: r }, h, W, H - (66 + r * h * 1.4 + (r - 1) * g + 12 + RG)); }));
     const D = top ? Object.assign(top, { c: top.dn.mc.c, bs: 1, cs: clampN(1, top.h / 190, 1.5), mid: false, hmid: top.h >= 150, pil: false, pw: 0, W: W, H: H }) : null;
@@ -6073,7 +6077,7 @@
     roundEnd: roundEnd, banner: banner, suRoll: suRoll, tally: tally, logEvs: logEvs, logEnd: logEnd, posOrder: () => posOrder(), quickOf: a => quickOf(a), cfgOf: cfgOf, cfgStd: cfgStd, capOf: capOf,
     deckOf: deckOf, stackOf: stackOf, readyDeck: readyDeck, deckChoice: deckChoice, starterId: starterId, deckPicker: deckPicker, seatColors: seatColors, teamsFor: teamsFor, setCols: setCols,
     profOf: profOf, askPend: () => askPend(), moveSaid: a => moveSaid(a), showWin: showWin, endShow: () => endShow(), record: record, showSetup: showSetup, resume: resume, logScreen: logScreen, LEVEL: LEVEL, matKey: MATK };
-  window.__anoria = { sd: SDK, seatColors: seatColors, teamsFor: teamsFor, scan: scan, relegal: () => { legal(); V = snap(); render(); }, E: E, ui: ui, mats: MATS, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
+  window.__anoria = { sd: SDK, dn: { best: dnBest, table: dnTable, plan: deskPlanN }, seatColors: seatColors, teamsFor: teamsFor, scan: scan, relegal: () => { legal(); V = snap(); render(); }, E: E, ui: ui, mats: MATS, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
 
   // The art proof (anoria.html?art=1): every card as it is drawn at each size, side by side, so a new or changed
   // picture can be checked in one look: the full card, the small card, the smallest hand card and the piece on the
