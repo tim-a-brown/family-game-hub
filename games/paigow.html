@@ -21,7 +21,11 @@
 // set before the first paint and changed inside a View Transition, so turning the device glides the table and controls to their new places
 (function () {
   var R = document.documentElement, cur = '';
-  function shape() { var w = innerWidth, h = innerHeight; return w <= h ? 'tall' : h < 560 ? 'side' : w >= 900 ? 'wide' : 'tall'; }
+  // sh-desk: a window on a computer, of any shape (and a large iPad), laid out for its room by deskLay below. A window shaped
+  // like a phone or a tablet (402x874, 874x402, 768x1024, 1024x768, 320x568 and the iPads near them) keeps its layout exactly.
+  function desk(w, h) { var lo = Math.min(w, h), hi = Math.max(w, h); return (w > 480 || h > 1000) && w >= 340 && h > 540 && !((lo <= 480 && hi <= 1000) || (lo >= 620 && lo <= 840 && hi >= 900 && hi <= 1200)); }
+  function shape() { var w = innerWidth, h = innerHeight; return desk(w, h) ? 'desk' : w <= h ? 'tall' : h < 560 ? 'side' : w >= 900 ? 'wide' : 'tall'; }
+  window.__sh = shape;
   function set() {
     var s = shape(); if (s === cur) return;
     var go = function () { if (cur) R.classList.remove('sh-' + cur); cur = s; R.classList.add('sh-' + s); window.dispatchEvent(new Event('shape')); };
@@ -196,6 +200,197 @@
 .czlk{display:inline-grid;place-items:center;width:1.3em;height:1.3em;margin-right:4px;border-radius:50%;background:#5b8cff;color:#fff;vertical-align:-.3em;}
 .czlk.pl{background:#8b6cf0;}
 .czlk .ico{width:.85em!important;height:.85em!important;color:#fff!important;stroke-width:3;}
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   LARGE WINDOWS (html.pgd, set by deskLay in the script while the table shows in a window that is no phone or tablet).
+   Nothing is scaled: deskPlan works the felt's box out from the window and sizes the cards from it (--dc, the width of
+   your cards, 210px at most), and the circle, the chips and the felt's printing follow. Four compositions: pgd-3 the
+   sheet of this session's hands at the left, the felt, your money and the betting station at the right; pgd-s the felt
+   across the window with the panels and the station in a strip under it; pgd-r the felt with the column at its right;
+   pgd-t the felt over the station, the panels under it. On the felt: fa-s stacked (the dealer, your low hand, your high
+   hand), fa-m the dealer beside your bet and low hand over your high hand, fa-l one line (the dealer's two hands over
+   your two, high over high and low over low).
+   ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+html.pgd,html.pgd body{overflow:hidden;overscroll-behavior:none;}
+html.pgd .stage{max-width:none;margin:0;box-sizing:border-box;height:var(--dkh,100vh);min-height:0;padding:2px var(--gp) var(--gp);display:grid;gap:var(--gp);}
+html.pgd-3 .stage{grid-template-columns:var(--lw) minmax(0,1fr) var(--rw);grid-template-rows:minmax(0,1fr);grid-template-areas:"l felt r";}
+html.pgd-r .stage{grid-template-columns:minmax(0,1fr) var(--rw);grid-template-rows:minmax(0,1fr);grid-template-areas:"felt r";}
+html.pgd-s .stage{grid-template-columns:minmax(0,1fr) var(--rw);grid-template-rows:minmax(0,1fr) var(--sh);grid-template-areas:"felt felt" "l r";}
+html.pgd-t .stage{grid-template-columns:minmax(0,1fr);grid-template-rows:var(--fh) auto minmax(0,1fr);grid-template-areas:"felt" "r" "l";}
+html.pgd-t.pgd-nol .stage{grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"felt" "r";}
+html.pgd .stage > .ctable{grid-area:felt;margin:0;min-width:0;min-height:0;display:flex;flex-direction:column;padding:clamp(9px,.75vmin,14px);border-radius:clamp(28px,2.2vmin,40px);}
+html.pgd .ctable .felt-in.tbl{flex:1 1 0;height:auto;min-height:0;border-radius:clamp(21px,1.7vmin,30px);padding:calc(var(--dc) * .1) calc(var(--dc) * .12);gap:calc(var(--dc) * .06);justify-content:space-evenly;}
+html.pgd .ctable .felt-in.tbl > *{flex:none;}
+html.pgd .stage.dk-meas,html.pgd .stage.dk-meas *,html.pgd .stage.dk-meas *::before{transition:none!important;}   /* (while deskApply measures: a size set is a size read) */
+/* the cards, the two places for your hands, the names and the shoe */
+html.pgd .prow{--cw:var(--dc);min-height:calc(var(--dc) * 1.4);}
+html.pgd .pz.lo .prow > .pcard + .pcard{margin-left:calc(var(--dc) * .07);}
+html.pgd .row7,html.pgd .dset{--cw:calc(var(--dc) * .8);}
+html.pgd .row7{min-height:calc(var(--cw) * 1.4 + 3px + var(--glh));align-items:flex-start;}
+html.pgd .row7 > .pcard + .pcard{margin-left:calc(var(--cw) * -.2);}
+html.pgd .dset{gap:calc(var(--dc) * .3);}
+html.pgd .dset .cs > .pcard + .pcard{margin-left:calc(var(--cw) * -.2);}
+html.pgd .dset .grp{gap:3px;}
+html.pgd .dset .gl{font-size:max(9.5px,calc(var(--dp) * .085));line-height:1.2;height:var(--glh);white-space:normal;text-align:center;width:0;min-width:100%;}
+html.pgd .fa-s:not(.ov) .dset .cs > .pcard + .pcard{margin-left:calc(var(--cw) * .07);}   /* (stacked: the dealer's two hands laid out whole) */
+html.pgd .dset .grp.win .cs .pcard{box-shadow:0 0 0 max(2px,calc(var(--dc) * .016)) var(--yellow),0 0 calc(var(--dc) * .1) rgba(255,200,61,.5);}
+html.pgd .zone{gap:6px;}
+html.pgd .pz{flex:none;align-self:auto;box-sizing:border-box;padding:calc(var(--dc) * .1) calc(var(--dc) * .12) calc(var(--dc) * .08);gap:calc(var(--dc) * .05);border-radius:calc(12px + var(--dc) * .05);border-width:max(1.5px,calc(var(--dc) * .012));}
+html.pgd .pz .zh{min-height:var(--zh);gap:calc(var(--dc) * .06);}
+html.pgd .pz .zh .print{font-size:max(10px,calc(var(--dp) * .09));white-space:nowrap;}
+html.pgd .pz .zh .hn{font-size:max(.78rem,calc(var(--dp) * .085));padding:.08em .7em;overflow:visible;}
+html.pgd .pz.lo .zh{flex-wrap:wrap;align-content:center;row-gap:2px;min-height:var(--zhl);}
+html.pgd .pz.hi{width:calc(var(--hin) * var(--dc) + (var(--hin) - 1) * var(--dc) * .07 + var(--dc) * .24);}
+html.pgd .pz.lo{width:max(128px,calc(var(--dc) * 2.31));}
+html.pgd .pz.win .prow .pcard{box-shadow:0 0 0 max(3px,calc(var(--dc) * .02)) var(--yellow),0 0 calc(var(--dc) * .12) rgba(255,200,61,.55);}
+html.pgd .pz .res{font-size:max(10px,calc(var(--dp) * .075));padding:.22em .6em;top:-.95em;right:auto;left:50%;transform:translateX(-50%) scale(.6);}
+html.pgd .pz .res.show{transform:translateX(-50%) scale(1);}
+html.pgd .shoe{--cw:calc(var(--dc) * .36);top:calc(var(--dc) * .1);right:calc(var(--dc) * .12);}
+html.pgd .who{height:var(--th);min-height:0;box-sizing:border-box;font-size:calc(var(--th) * .47);padding:0 .9em 0 .25em;gap:.45em;max-width:none;}
+html.pgd .who .avatar{width:calc(var(--th) * .76);height:calc(var(--th) * .76);font-size:.82em;}
+html.pgd .merow{flex-wrap:nowrap;width:auto;min-height:var(--th);}
+/* what is printed on the felt, the betting circle and the chips on it */
+html.pgd .print.rule{font-size:max(10px,calc(var(--dp) * .085));padding:.3em 1.1em;white-space:nowrap;}
+html.pgd .spot{width:max(60px,calc(var(--dp) * .9));}
+html.pgd .spot .lab{font-size:max(10px,calc(var(--dp) * .12));}
+html.pgd .spot.has .lab{font-size:max(9px,calc(var(--dp) * .07));top:auto;bottom:8%;}
+html.pgd .spotw{gap:calc(4px + var(--dp) * .02);}
+html.pgd .cstack{--s:var(--chs);width:var(--chs);height:calc(var(--chs) + var(--n,0) * var(--chs) * .13)!important;}
+html.pgd .cstack .chp{--s:var(--chs);bottom:calc(var(--i,0) * var(--chs) * .13)!important;}
+html.pgd .spot .cstack{margin-top:calc(var(--chs) * -.25);}
+html.pgd .amt{font-size:max(.82rem,calc(var(--dp) * .07));min-height:1.5em;line-height:1.4;padding:.05em .7em;}
+html.pgd .spot > .res{font-size:max(.72rem,calc(var(--dp) * .075));top:-.95em;padding:.25em .8em;}
+html.pgd .dk-lab .spot.has .lab{display:none;}
+html.pgd .dk-lab .spot .cstack{margin-top:0;}
+html.pgd .dk-lab .amt:not(:empty)::before{content:"Bet";margin-right:.5em;font-weight:700;color:rgba(255,226,160,.95);}
+/* fa-s: stacked, as on a tablet: the dealer; your bet beside your low hand; your high hand */
+html.pgd .fa-s > .mid{width:auto;gap:calc(var(--dc) * .25);justify-content:center;}
+html.pgd .fa-s > .zone{width:auto;}
+/* fa-m: the dealer beside your bet and low hand, your high hand across under them */
+html.pgd .felt-in.tbl.fa-m{display:grid;grid-template-columns:auto auto auto;grid-template-rows:auto auto auto auto;grid-template-areas:"d bet lo" "rule bet lo" "hi hi hi" "me me me";align-content:space-evenly;justify-content:center;align-items:center;justify-items:center;gap:calc(var(--dc) * .06) calc(var(--dc) * .2);padding-left:calc(var(--dc) * .6);}
+html.pgd .fa-m > .zone{grid-area:d;width:auto;align-self:end;}
+html.pgd .fa-m > .print.rule{grid-area:rule;align-self:start;white-space:normal;max-width:calc(var(--dc) * 4.3);}
+html.pgd .fa-m > .mid{display:contents;}
+html.pgd .fa-m > .mid > .spotw{grid-area:bet;}
+html.pgd .fa-m > .mid > .pz.lo{grid-area:lo;}
+html.pgd .fa-m > .pz.hi{grid-area:hi;}
+html.pgd .fa-m > .who,html.pgd .fa-m > .merow{grid-area:me;}
+html.pgd .fa-m .row7,html.pgd .fa-m .dset{--cw:calc(var(--dc) * .7);}
+html.pgd .fa-m .row7 > .pcard + .pcard,html.pgd .fa-m .dset .cs > .pcard + .pcard{margin-left:calc(var(--cw) * -.3);}
+html.pgd .fa-m .dset{gap:calc(var(--dc) * .25);}
+html.pgd .fa-m .shoe{right:auto;left:calc(var(--dc) * .1);}
+/* fa-l: one line. The dealer's high hand over yours and the dealer's low hand over yours, at one size; your bet at the left */
+html.pgd .felt-in.tbl.fa-l{display:grid;grid-template-columns:auto auto auto;grid-template-rows:auto auto auto auto;grid-template-areas:"dn dc dc" "rule dc dc" "bet hi lo" "me hi lo";align-content:space-evenly;justify-content:center;align-items:center;justify-items:center;gap:calc(var(--dc) * .06) calc(var(--dc) * .2);padding-right:calc(var(--dc) * .6);}
+html.pgd .fa-l:has(.dset){grid-template-areas:"dn dh dl" "rule dh dl" "bet hi lo" "me hi lo";}
+html.pgd .fa-l > .zone{display:contents;}
+html.pgd .fa-l > .zone > .who{grid-area:dn;align-self:end;}
+html.pgd .fa-l > .zone > .row7{grid-area:dc;--cw:var(--dc);}
+html.pgd .fa-l > .zone > .row7 > .pcard + .pcard{margin-left:calc(var(--cw) * -.35);}
+html.pgd .fa-l > .zone > .dset{display:contents;--cw:var(--dc);}
+html.pgd .fa-l .dset .grp:first-child{grid-area:dh;} html.pgd .fa-l .dset .grp:last-child{grid-area:dl;}
+html.pgd .fa-l .dset .cs > .pcard + .pcard{margin-left:calc(var(--dc) * .07);}
+html.pgd .fa-l .dset .grp{--cw:var(--dc);}
+html.pgd .fa-l > .print.rule{grid-area:rule;align-self:start;white-space:normal;max-width:calc(var(--dc) * 1.45);padding:.3em .4em;}
+html.pgd .fa-l > .mid{display:contents;}
+html.pgd .fa-l > .mid > .spotw{grid-area:bet;align-self:end;}
+html.pgd .fa-l > .mid > .pz.lo{grid-area:lo;}
+html.pgd .fa-l > .pz.hi{grid-area:hi;}
+html.pgd .fa-l > .who,html.pgd .fa-l > .merow{grid-area:me;align-self:start;}
+html.pgd .fa-l > .merow{flex-direction:column;gap:6px;}
+/* the columns beside the felt and the panels in them (Night glass) */
+html.pgd .dk-l,html.pgd .dk-r{min-width:0;min-height:0;display:flex;flex-direction:column;gap:var(--gp);}
+html.pgd .dk-l{grid-area:l;} html.pgd .dk-r{grid-area:r;}
+html.pgd-t .dk-l,html.pgd-s .dk-l{flex-direction:row;}
+html.pgd-t .dk-l > .dk-pan,html.pgd-s .dk-l > .dk-pan{flex:1 1 0;}
+html.pgd-t .dk-l > .dk-log,html.pgd-s .dk-l > .dk-log{flex:1.3 1 0;}
+html.pgd-t .dk-l > .dk-info,html.pgd-s .dk-l > .dk-info{justify-content:flex-start;}
+html.pgd-s .dk-r > .dk-stn{flex:1 1 auto;}
+.dk-info{flex:1 1 0;min-width:0;min-height:0;display:flex;flex-direction:column;justify-content:space-between;gap:var(--gp);}
+.dk-pan{flex:none;min-width:0;box-sizing:border-box;border-radius:calc(15px + 3px * var(--pu));background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);padding:calc(11px * var(--pu)) calc(13px * var(--pu));font-size:calc(.84rem * var(--pu));color:var(--text-2);overflow:hidden;}
+.dk-pan > h4{margin:0 0 calc(6px * var(--pu));font:600 1em/1.3 var(--font);color:var(--text-2);display:flex;justify-content:space-between;align-items:baseline;gap:10px;white-space:nowrap;}
+.dk-pan > h4 b{font-family:var(--display);font-weight:800;font-size:1.55em;line-height:1;color:var(--text);font-variant-numeric:tabular-nums;}
+.dk-pan[hidden],.dk-pan [hidden]{display:none!important;}
+/* the sheet of this session's hands: a row a hand, your two hands over the dealer's two, the winner of each lit, the rows to come ruled and empty */
+.dk-log{flex:1 1 0;min-height:0;display:flex;flex-direction:column;padding-bottom:calc(5px * var(--pu));view-transition-name:pg-log;}
+.dk-rows{flex:1 1 0;min-height:0;display:grid;grid-auto-flow:column;column-gap:calc(16px * var(--pu));}
+.dk-h{display:grid;grid-template-columns:auto auto minmax(0,1fr);grid-template-rows:auto auto;align-content:center;align-items:center;column-gap:calc(8px * var(--pu));row-gap:calc(3px * var(--pu));border-top:1px solid var(--gl-line);min-width:0;min-height:0;}
+.dk-h .n{grid-row:1 / 3;min-width:1.5em;text-align:center;font-weight:700;color:var(--text-3);font-variant-numeric:tabular-nums;}
+.dk-h .hd{display:flex;gap:calc(7px * var(--pu));}
+.dk-h .cs,.dk-seat .cs{display:flex;gap:calc(2px * var(--pu));padding-bottom:calc(3px * var(--pu));border-bottom:calc(2px * var(--pu)) solid transparent;}
+.dk-h .cs.w,.dk-seat .cs.w{border-bottom-color:var(--lit);}
+.dk-h .cs.l,.dk-seat .cs.l{opacity:.5;}
+.dk-h .net{justify-self:end;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text-2);white-space:nowrap;}
+.dk-h .why{justify-self:end;font-size:.9em;color:var(--text-3);white-space:nowrap;}
+.dk-h.now .n{color:var(--lit);}
+.dk-h.e .n{opacity:.45;}
+.dk-c{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;flex:none;box-sizing:border-box;width:calc(21px * var(--pu));height:calc(29px * var(--pu));border-radius:calc(4px * var(--pu));
+  background:linear-gradient(160deg,#fff,#f1ead9);color:#1d1b2e;font:900 calc(11.5px * var(--pu))/1 var(--font);letter-spacing:-.04em;box-shadow:0 1px 2px rgba(0,0,0,.4);}
+.dk-c i{font-style:normal;font-size:.95em;margin-top:.06em;}
+.dk-c.r{color:#d81e3a;}
+.dk-c.jk{color:#7a2bbf;font-size:calc(9px * var(--pu));letter-spacing:0;}
+:root.k-4c .dk-c.sc{color:#14803e;} :root.k-4c .dk-c.sd{color:#1c5fd0;}
+.dk-c.bk{background:repeating-linear-gradient(45deg,rgba(255,255,255,.2) 0 2px,transparent 2px 5px),rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,.28);}
+/* this session: the money hand by hand, and what the cash-out card would say */
+.dk-ses{view-transition-name:pg-ses;}
+.dk-ses .ch{display:block;width:100%;height:calc(78px * var(--pu));margin:0 0 calc(6px * var(--pu));overflow:visible;}
+.dk-ses .tri{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:calc(6px * var(--pu));margin-bottom:calc(5px * var(--pu));}
+.dk-ses .tri span{display:flex;flex-direction:column;align-items:center;padding:.35em 0 .3em;border-radius:calc(10px * var(--pu));background:rgba(255,255,255,.05);}
+.dk-ses .tri b{font-size:1.3em;line-height:1.15;color:var(--text);font-weight:800;font-variant-numeric:tabular-nums;}
+.dk-ses .tri small{font-size:.9em;color:var(--text-3);}
+.dk-kv{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:calc(5px * var(--pu)) 0;border-top:1px solid var(--gl-line);white-space:nowrap;}
+.dk-kv b{color:var(--text);font-weight:800;font-variant-numeric:tabular-nums;}
+.dk-hl p{margin:0;padding:.45em 0;border-top:1px solid var(--gl-line);line-height:1.3;}
+/* this hand: what the bet pays as the game pays it, and once the dealer has turned over how each hand went */
+.dk-hand{view-transition-name:pg-hand;}
+.dk-hand p{margin:0;padding:.4em 0;border-top:1px solid var(--gl-line);line-height:1.3;color:var(--text);}
+.dk-kv.on{margin:0 calc(-7px * var(--pu));padding-left:calc(7px * var(--pu));padding-right:calc(7px * var(--pu));border-radius:calc(8px * var(--pu));border-top-color:transparent;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--gold-ink);}
+.dk-kv.on b{color:var(--gold-ink);}
+.dk-kv.on + .dk-kv{border-top-color:transparent;}
+/* online: the others at the table, their bets, and their two hands once the dealer has turned over */
+.dk-net{view-transition-name:pg-net;}
+.dk-seat{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:calc(3px * var(--pu)) calc(8px * var(--pu));padding:calc(6px * var(--pu)) 0;border-top:1px solid var(--gl-line);}
+.dk-seat .avatar{grid-row:1 / 3;width:calc(30px * var(--pu));height:calc(30px * var(--pu));font-size:calc(.8rem * var(--pu));}
+.dk-seat .nm{font-weight:750;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dk-seat .mo{font-weight:800;color:var(--lit);font-variant-numeric:tabular-nums;}
+.dk-seat .ln{display:flex;align-items:center;gap:calc(6px * var(--pu));min-width:0;white-space:nowrap;}
+.dk-seat .st{justify-self:end;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.dk-seat.up .ln{color:var(--lit);}
+.dk-seat.off{opacity:.5;}
+/* the betting station: your money, what to do, the chips and the buttons */
+.dk-stn{flex:none;box-sizing:border-box;min-height:var(--stnh);border-radius:20px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);padding:12px;display:flex;flex-direction:column;gap:10px;view-transition-name:pg-stn;}
+html.pgd .dk-stn .bankbar{margin:0;min-height:calc(48px * var(--su));view-transition-name:none;}
+html.pgd .dk-stn .bankbar:not(.net){display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:0 10px;}   /* (your money over the session's line, Cash out beside them) */
+html.pgd .dk-stn .bankbar:not(.net) .bk{grid-column:1;grid-row:1;}
+html.pgd .dk-stn .bankbar:not(.net) .ss{grid-column:1;grid-row:2;text-align:left;white-space:nowrap;}
+html.pgd .dk-stn .bankbar:not(.net) .ss span{display:inline;margin-right:.5em;}
+html.pgd .dk-stn .bankbar:not(.net) .btn-sm{grid-column:2;grid-row:1 / 3;}
+html.pgd .dk-stn .bankbar .bk b{font-size:calc(1.5rem * var(--su));}
+html.pgd .dk-stn .bankbar .ss{font-size:calc(.8rem * var(--su));} html.pgd .dk-stn .bankbar .ss span{font-size:calc(.98rem * var(--su));}
+html.pgd .dk-stn .ctl{flex:1 1 auto;gap:10px;view-transition-name:none;}
+html.pgd .dk-stn .ctl > .status{flex:1 1 auto;min-height:calc(58px * var(--su));align-content:center;font-size:calc(1rem * var(--su));}
+html.pgd .dk-stn .status .big{font-size:calc(1.8rem * var(--su));}
+html.pgd .dk-stn .ctl > .acts{margin-top:auto;padding:0;}
+html.pgd .dk-stn .acts .btn{min-height:calc(58px * var(--su));font-size:calc(1.08rem * var(--su));}
+html.pgd .dk-stn .cz-rack{--cs:calc(54px * var(--su));}
+html.pgd-cmp .dk-stn{padding:10px 12px;gap:8px;}
+html.pgd-cmp .dk-stn .bankbar{min-height:40px;} html.pgd-cmp .dk-stn .bankbar .bk b{font-size:1.3rem;}
+html.pgd-cmp .dk-stn .ctl{gap:8px;}
+html.pgd-cmp .dk-stn .ctl > .status{min-height:40px;font-size:.92rem;}
+html.pgd-cmp .dk-stn .status .big{font-size:1.4rem;}
+html.pgd-cmp .dk-stn .status .tip{font-size:.76rem;}
+html.pgd-cmp .dk-stn .acts .btn{min-height:48px;font-size:1rem;}
+html.pgd-cmp .dk-stn .cz-rack{--cs:42px;}
+html.pgd-two.pgd-cmp .dk-stn .ctl > .status{font-size:.88rem;line-height:1.25;} html.pgd-two.pgd-cmp .dk-stn .status .tip{font-size:.74rem;margin-top:0;}
+/* under the felt, from 520 wide: your money and what to do at the left, the chips over the buttons at the right */
+html.pgd-two .dk-stn{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);grid-template-rows:minmax(var(--rkh),auto) minmax(0,1fr);gap:10px 18px;align-items:center;}
+html.pgd-two .dk-stn .bankbar{grid-column:1;grid-row:1;}
+html.pgd-two .dk-stn .ctl{display:contents;}
+html.pgd-two .dk-stn .ctl > .status{grid-column:1;grid-row:2;}
+html.pgd-two .dk-stn .ctl > .cz-rack{grid-column:2;grid-row:1;}
+html.pgd-two .dk-stn .ctl > .acts{grid-column:2;grid-row:2;margin:0;align-self:end;}
+@media (hover:hover){
+  html.pgd .prow .pcard.tap:hover{transform:translateY(-4%);box-shadow:0 0 0 2px rgba(255,222,150,.8),0 8px 18px rgba(0,0,0,.4);}
+}
 </style>
 </head>
 <body>
@@ -247,7 +442,8 @@
   function stackEl(amt) {
     var list = breakdown(amt), shown = list.slice(0, 7), st = el('div', { class: 'cstack' });
     st.style.height = (40 + (shown.length - 1) * 5) + 'px';
-    shown.forEach(function (v, i) { var c = chip(v); c.style.bottom = (i * 5) + 'px'; c.style.zIndex = i + 1; st.appendChild(c); });
+    shown.forEach(function (v, i) { var c = chip(v); c.style.bottom = (i * 5) + 'px'; c.style.zIndex = i + 1; c.style.setProperty('--i', i); st.appendChild(c); });
+    st.style.setProperty('--n', shown.length - 1);
     return st;
   }
   function flyChips(amt, fromEl, toEl, ms) {
@@ -256,8 +452,9 @@
     var list = breakdown(amt).slice(0, 4);
     return Promise.all(list.map(function (v, i) {
       var c = chip(v, { class: 'flying' });
-      c.style.setProperty('--s', '40px');
-      c.style.left = (a.left + a.width / 2 - 20) + 'px'; c.style.top = (a.top + a.height / 2 - 20 - i * 4) + 'px';
+      var px = chipPx();
+      c.style.setProperty('--s', px + 'px');
+      c.style.left = (a.left + a.width / 2 - px / 2) + 'px'; c.style.top = (a.top + a.height / 2 - px / 2 - i * px / 10) + 'px';
       document.body.appendChild(c);
       return new Promise(function (res) {
         requestAnimationFrame(function () { requestAnimationFrame(function () {
@@ -503,7 +700,7 @@
   function moneyHome() { Casino.home(); }
 
   function showSetup() {
-    S = null; token++; undoStack = []; moneyHome();
+    S = null; token++; undoStack = []; moneyHome(); deskOff();
     Kit.setup(app, {
       intro: 'Set a high hand and a low hand, beat the dealer with both. Your bankroll: ' + money(myBankroll()),
       modes: Kit.modes(['solo', { id: 'online', desc: 'Everyone plays against the same dealer, each on their own device' }]),
@@ -525,7 +722,7 @@
   // Test hook (the demo, games/demos/paigow.js): start at the table, and say what the next deal is (your seven cards and the
   // dealer's, as 'As', '10h', 'JK' for the joker)
   var DEMO_DEAL = null;
-  window.__pg = { start: function (name) { begin({ players: [{ name: name }], options: { coach: 'off' } }); }, state: function () { return S; }, busy: function () { return busy; },
+  window.__pg = { start: function (name) { begin({ players: [{ name: name }], options: { coach: 'off' } }); }, state: function () { return S; }, busy: function () { return busy; }, desk: function () { return DK; },
     next: function (p, d) { var n = 0, c = function (k) { return k === 'JK' ? { r: 'JK', s: 'j', id: 'jk' } : { r: k.slice(0, -1), s: k.slice(-1), id: 'dm' + (n++) }; }; DEMO_DEAL = { p: p.map(c), d: d.map(c) }; } };
 
   // ── Betting ───────────────────────────────────────────────────────────────
@@ -692,7 +889,7 @@
         big: s.bigH || null, last: (s.hl || []).filter(function (x) { return !s.bigH || x.h !== s.bigH.h; }).slice(-10),
         sk: skString(bank() - net, s.log), best: s.st.best >= 2 ? s.st.best : 0 })
     });
-    clearSave(); S = null;
+    clearSave(); S = null; deskOff();
     Kit.win({
       icon: net >= 0 ? 'trophy' : 'meh', lose: net < 0,
       title: net > 0 ? 'Up ' + money(net) + '!' : net < 0 ? 'Down ' + money(-net) : 'Broke even',
@@ -854,8 +1051,10 @@
     anim = anim || {};
     if (!S || PURE) return;
     token++; busy = false;
+    var fromR = DK.on && anim.reveal ? cardRects() : null;   // (a large window: your hands close up as the dealer turns over, and the cards glide there)
     app.innerHTML = '';
     var res = S.phase === 'result' ? S.res : null, revealing = !!anim.reveal, showD = res && !revealing;
+    DK.rev = revealing;
     var ss = el('div', { class: 'ss' }, [
       el('span', { class: S.net > 0 ? 'pos' : S.net < 0 ? 'neg' : '', text: S.log.length ? (S.net ? signed(S.net) : 'Even') : 'New session' }),
       document.createTextNode(S.log.length ? S.log.length + ' hand' + (S.log.length === 1 ? '' : 's') + ' this session' : 'Good luck, ' + S.name)
@@ -959,6 +1158,8 @@
     }
     ctl.appendChild(acts);
     app.appendChild(ctl);
+    deskSync();   // (a large window: the felt, the station and the panels take their places before anything flies)
+    if (fromR && DK.on) flyFrom(fromR, 320);
     if (anim.deal) animateDeal();
     if (revealing) animateReveal();
   }
@@ -970,7 +1171,7 @@
   function fitRow(row) {
     var cards = row.querySelectorAll('.pcard'); if (cards.length <= 1) return;
     var w = row.clientWidth - 4, cw = cards[0].offsetWidth || 56, n = cards.length;
-    var ov = Math.min(5, (w - cw) / (n - 1) - cw);
+    var ov = Math.min(DK.on ? DK.c * .07 : 5, (w - cw) / (n - 1) - cw);
     row.style.setProperty('--overlap', Math.max(ov, -cw * .6) + 'px');
   }
   function dealerCards(face) {
@@ -1059,7 +1260,7 @@
       spot.appendChild(stackEl(res.amt)); amtEl.textContent = money(res.amt); Kit.sfx('chip');
     }
     spot.querySelector('.res').classList.add('show');
-    busy = false;
+    busy = false; DK.rev = false; deskPaint();
     var hk = key5(split(S.p, S.low).hi);
     if (hk[0] >= 7) {
       // four of a kind and better are rare in seven cards: a moment on the table, whatever the dealer had (straight flush and up bigger)
@@ -1188,6 +1389,7 @@
       amount: function (i) { var R0 = st.seats[i].R; return revealing && R0 && R0.res && R0.res.rd === NETR - 1 ? st.seats[i].bank - R0.res.net : i === NET.seat && ME ? (S && S.phase === 'bet' ? bank() - pending() : ME.bank) : st.seats[i].bank; },
       delta: function (i) { var R0 = st.seats[i].R; return !revealing && R0 && R0.res && R0.res.rd === st.round - 1 && st.phase === 'bet' && !st.ready[i] ? R0.res.net : null; }
     }));
+    if (DK.on) deskPaint();
   }
   function netBet() {
     if (!NET || NET.seat < 0 || amIn()) return;
@@ -1236,6 +1438,285 @@
     var sv = load();
     if (sv && sv.phase && !sv.online) { S = sv; moneyFor(S.name || 'You'); if (S.phase === 'result' && !S.res) S.phase = 'bet'; render(); } else showSetup();
   }
+
+  // ── Large windows (a computer; html.pgd and the CSS block of that name) ─────────────────────────────────────────
+  // The head script says whether the window is a desk (sh-desk: no phone's or tablet's shape). While the table shows in
+  // one, deskSync lays it out for the room: deskPlan tries the four compositions ('3' the sheet of hands | the felt |
+  // your money and the station; 's' the felt across the window, the panels and the station in a strip under it; 'r' the
+  // felt | the column; 't' the felt over the station, the panels under it) with the ways the felt can be laid (need: 's'
+  // stacked, 'so' stacked with your seven cards overlapping until two have gone low, 'm' the dealer beside your bet and
+  // low hand, 'l' one line) and keeps the one that gives the largest cards, 210px at most; deskApply puts the bankroll
+  // and the controls into the station (DK.stn), stands the panels in their places and sets the sizes; deskFit measures
+  // the felt and eases the cards down if anything would not fit; deskPaint fills the panels from S: the sheet of this
+  // session's hands (paintLog, from S.hl), this session (paintSes, S.st and S.log), this hand (paintHand: what the bet
+  // pays as the game pays it, and how each hand went), the highlights (paintHl, S.ev) and, online, the others at the
+  // table (paintSeats). A phone and a tablet never get here, and deskOff puts everything back as it was.
+  var DK = { on: false, rev: false, fit: {} }, GL = { s: '♠', h: '♥', d: '♦', c: '♣' };
+  var PRE = ['pgd', 'pgd-3', 'pgd-s', 'pgd-r', 'pgd-t', 'pgd-nol', 'pgd-two', 'pgd-cmp'], VARS = ['--dc', '--dp', '--th', '--chs', '--zh', '--zhl', '--glh', '--hin', '--gp', '--lw', '--rw', '--dkh', '--fh', '--sh', '--pu', '--su', '--stnh', '--rkh'];
+  function deskWin() { return document.documentElement.classList.contains('sh-desk'); }
+  function tableUp() { return !!S && !PURE && !!app.querySelector('.ctable'); }
+  function chipPx() { return DK.on ? DK.chs : 40; }
+  function deskOff() {
+    var R = document.documentElement;
+    if (!DK.on && !R.classList.contains('pgd')) return;
+    DK.on = false; DK.dom = '';
+    PRE.forEach(function (c) { R.classList.remove(c); });
+    VARS.forEach(function (v) { app.style.removeProperty(v); });
+    // (the table is still up, in a window that is now a phone's or a tablet's shape: the bankroll, the table and the controls as they were)
+    var tbl = app.querySelector('.ctable'), bank = app.querySelector('.bankbar'), ctl = app.querySelector('.ctl');
+    if (tbl && bank && ctl) { app.insertBefore(bank, tbl); app.appendChild(ctl); var f = tbl.querySelector('.felt-in'); if (f) f.classList.remove('fa-s', 'fa-m', 'fa-l', 'ov'); }
+    [DK.l, DK.r].forEach(function (n) { if (n && n.parentNode) n.remove(); });
+    app.classList.remove('dk-lab', 'dk-meas');
+    var hr = document.getElementById('hrow'); if (hr) fitRow(hr);
+  }
+  function deskPlan() {
+    var W = innerWidth, H = innerHeight, top = Math.max(0, app.offsetTop), coach = coachOn();
+    var gp = W >= 1500 && H >= 900 ? 16 : W >= 800 && H >= 640 ? 12 : 8;
+    var pu = +Math.max(1, Math.min(1.5, W / 1700, H / 1100)).toFixed(3), su = +(1 + (pu - 1) * .6).toFixed(3), cmp = H < 760;
+    if (cmp) su = 1;
+    var availH = H - top - 2 - gp, pad = Math.max(9, Math.min(14, .0075 * Math.min(W, H))) + 1;
+    var rw = Math.round(cmp ? Math.max(300, Math.min(340, W * .24)) : Math.max(330, Math.min(460, W * .17 + 80)));
+    var lw = Math.round(Math.max(300 * pu, Math.min(620 * pu, W * .2)));
+    var rkh = cmp ? 77 : Math.round(54 * su + 35), stnS = cmp ? 268 : Math.round(89 + 229 * su), stn2 = cmp ? 175 : Math.round(69 + 140 * su);
+    // what a way of laying the felt needs, across and down, with your cards c wide (the CSS block's own sizes; k: the
+    // felt's printing, the circle and the name plates a step up where the cards are at their largest and the felt has room)
+    function need(a, c, k) {
+      var p = c * (k || 1), th = Math.max(26, .18 * p), fr = Math.max(10, .085 * p), zh = Math.max(20, .17 * c), glh = c < 100 ? 2.4 * Math.max(9.5, .085 * p) + 1 : Math.max(12, .105 * p), zhl = c < 100 ? 42 : zh;
+      var zone = .23 * c + zh + 1.4 * c + 4, zlo = zone + zhl - zh, sp = Math.max(60, .9 * p), amt = 1.5 * Math.max(13.2, .07 * p) + 2, bet = sp + 4 + .02 * p + amt, hiw = 7.66 * c, low = Math.max(128, 2.31 * c), me = Math.max(th, coach ? 36 : 0);
+      if (a === 's' || a === 'so') return [Math.max((a === 'so' ? 6.36 : 7.9) * c, 34 * fr + .24 * c, sp + .25 * c + low + .24 * c), .2 * c + (th + 6 + 1.12 * c + 3 + glh) + (1.8 * fr + 2) + Math.max(zlo, bet) + zone + me + .3 * c + 6];
+      if (a === 'm') return [.72 * c + Math.max(hiw, 4.1 * c + sp + low + .4 * c), .2 * c + Math.max((th + 6 + .98 * c + 3 + glh) + .06 * c + (34 * fr > 4.3 * c ? 3 : 1.8) * fr + 2, zlo, bet) + zone + me + .18 * c + 6];
+      return [.72 * c + Math.max(sp, 1.45 * c) + hiw + low + .4 * c, .2 * c + Math.max(1.4 * c + 3 + glh, th + .06 * c + 4.2 * fr + 2) + .06 * c + Math.max(zlo, bet + .06 * c + th + (coach ? 42 : 0)) + 6];
+    }
+    function fit(fw, fh) {
+      fw -= 2 * pad; fh -= 2 * pad;
+      var all = ['s', 'so', 'm', 'l'].map(function (a) {
+        var lo = 30, hi = 210, n = need(a, hi), k = 1;
+        if (n[0] > fw || n[1] > fh) { for (var i = 0; i < 12; i++) { var m = (lo + hi) / 2; n = need(a, m); if (n[0] <= fw && n[1] <= fh) lo = m; else hi = m; } hi = lo; n = need(a, hi); }
+        else { var kl = 1, kh = 1.3; for (var j = 0; j < 8; j++) { var km = (kl + kh) / 2, q = need(a, hi, km); if (q[0] <= fw && q[1] <= fh * .9) kl = km; else kh = km; } k = +kl.toFixed(3); n = need(a, hi, k); }
+        return { arr: a, c: Math.floor(hi), k: k, fill: n[0] * n[1] / Math.max(1, fw * fh), nh: n[1] };
+      });
+      // (your seven cards overlap only where that makes them a good deal larger)
+      var plain = all.filter(function (x) { return x.arr !== 'so'; }), mx = Math.max.apply(null, plain.map(function (x) { return x.c; })), so = all[1];
+      if (so.c >= 1.15 * mx) return so;
+      return plain.filter(function (x) { return x.c >= .97 * mx; }).sort(function (a, b) { return b.fill - a.fill; })[0];
+    }
+    var two = W >= 520, stnT = two ? stn2 : stnS;
+    var f3 = W >= 1100 ? fit(W - 4 * gp - lw - rw, availH) : null, fr = W >= 700 ? fit(W - 3 * gp - rw, availH) : null,
+      fs = W >= 900 ? fit(W - 2 * gp, availH - stnS - gp) : null, ft = fit(W - 2 * gp, availH - stnT - gp);
+    var mx = Math.max(f3 ? f3.c : 0, fr ? fr.c : 0, fs ? fs.c : 0, ft.c);
+    var comp = f3 && f3.c >= .9 * mx ? '3' : fs && fs.c >= .9 * mx ? 's' : fr && fr.c >= .9 * mx ? 'r' : ft.c >= mx ? 't' : fs && fs.c >= mx ? 's' : 'r';
+    var f = comp === '3' ? f3 : comp === 's' ? fs : comp === 'r' ? fr : ft;
+    var out = { comp: comp, arr: f.arr, c0: f.c, k: f.k, gp: gp, pu: pu, su: su, cmp: cmp, rw: rw, lw: lw, two: comp === 't' && two, nol: false, fh: 0, sh: 0, coach: coach, rkh: rkh, stnh: comp === 't' && two ? stn2 : stnS, dkh: H - top };
+    var want = Math.round((f.nh + 2 * pad) * 1.1);
+    if (comp === 't') {
+      // the felt as tall as its pieces want with room to breathe; what is left under the station is the panels'
+      var fhA = availH - stnT - gp, spare = fhA - want;
+      if (spare >= 150 * pu + gp) out.fh = want; else { out.nol = true; out.fh = fhA; }
+    }
+    if (comp === 's') out.sh = Math.max(stnS, Math.min(availH - gp - want, Math.round(.42 * availH)));   // (the strip takes the height the felt has no use for)
+    return out;
+  }
+  function deskSync(glide) {
+    if (!(deskWin() && tableUp())) { deskOff(); return; }
+    var p = deskPlan(), same = DK.on && p.comp === DK.comp && p.arr === DK.arr && p.two === DK.two && p.nol === DK.nol;
+    if (glide && DK.on && !same) Kit.glide(function () { deskApply(p); }); else deskApply(p);
+  }
+  function deskApply(p) {
+    var R = document.documentElement, tbl = app.querySelector('.ctable'), felt = tbl.querySelector('.felt-in'), bank = app.querySelector('.bankbar'), ctl = app.querySelector('.ctl');
+    if (!DK.r) {
+      DK.l = el('div', { class: 'dk-l' }); DK.r = el('div', { class: 'dk-r' }); DK.info = el('div', { class: 'dk-info' }); DK.stn = el('div', { class: 'dk-stn' });
+      DK.log = el('div', { class: 'dk-pan dk-log' }); DK.ses = el('div', { class: 'dk-pan dk-ses' }); DK.hl = el('div', { class: 'dk-pan dk-hl' }); DK.net = el('div', { class: 'dk-pan dk-net' });
+      DK.hand = el('div', { class: 'dk-pan dk-hand', 'data-drop': '3.5' });
+    }
+    Object.keys(p).forEach(function (k) { DK[k] = p[k]; }); DK.on = true;
+    app.classList.add('dk-meas');
+    R.classList.add('pgd');
+    ['3', 's', 'r', 't'].forEach(function (c) { R.classList.toggle('pgd-' + c, p.comp === c); });
+    R.classList.toggle('pgd-nol', p.nol); R.classList.toggle('pgd-two', p.two); R.classList.toggle('pgd-cmp', p.cmp);
+    var st = app.style;
+    st.setProperty('--gp', p.gp + 'px'); st.setProperty('--lw', p.lw + 'px'); st.setProperty('--rw', p.rw + 'px'); st.setProperty('--dkh', p.dkh + 'px'); st.setProperty('--fh', p.fh + 'px'); st.setProperty('--sh', p.sh + 'px');
+    st.setProperty('--pu', p.pu); st.setProperty('--su', p.su); st.setProperty('--stnh', p.stnh + 'px'); st.setProperty('--rkh', p.rkh + 'px');
+    st.setProperty('--hin', S.phase === 'set' ? (p.arr === 'so' ? 5.5 : 7) : 5);   // (your high hand's place: room for all seven while you set them)
+    // the parts in their places (only when the composition changed or the table was drawn again: a part moved is a part whose motion starts over)
+    var dom = p.comp + (p.nol ? 'n' : '') + (NET ? 'o' : '');
+    if (DK.dom !== dom || !DK.r.isConnected || bank.parentNode !== DK.stn || ctl.parentNode !== DK.stn) {
+      DK.dom = dom;
+      if (bank.parentNode !== DK.stn || ctl.parentNode !== DK.stn) { while (DK.stn.firstChild) DK.stn.removeChild(DK.stn.firstChild); DK.stn.appendChild(bank); DK.stn.appendChild(ctl); }   // (the table drawn again: its new bankroll and controls take the old ones' place)
+      var into = function (box, list) { list.forEach(function (n) { if (n) box.appendChild(n); }); }, net = NET ? DK.net : null;
+      [DK.l, DK.r, DK.info].forEach(function (n) { while (n.firstChild) n.removeChild(n.firstChild); });
+      if (DK.l.parentNode) DK.l.remove();
+      var row = function (w) { w /= p.pu; return w >= 1240 ? [net, DK.log, DK.ses, DK.hand] : w >= 940 ? (net ? [net, DK.log, DK.hand] : [DK.log, DK.ses, DK.hand]) : w >= 600 ? [DK.log, net || DK.hand] : [DK.log]; };
+      // (a tall row with room for two columns: the sheet, and beside it the session over this hand)
+      var tallRow = function (w, h) { if (h < 540 * p.pu || w / p.pu < 600) return false; into(DK.info, [net, DK.ses, DK.hand]); into(DK.l, [DK.log, DK.info]); return true; };
+      if (p.comp === '3') { into(DK.l, [net, DK.log]); into(DK.info, [DK.ses, DK.hl, DK.hand]); into(DK.r, [DK.info, DK.stn]); app.insertBefore(DK.l, tbl); }
+      else if (p.comp === 'r') { into(DK.info, [net, DK.ses, DK.log, DK.hand]); into(DK.r, [DK.info, DK.stn]); }
+      else if (p.comp === 's') { if (!tallRow(innerWidth - 3 * p.gp - p.rw, p.sh)) into(DK.l, row(innerWidth - 3 * p.gp - p.rw)); into(DK.r, [DK.stn]); app.appendChild(DK.l); }
+      else { into(DK.r, [DK.stn]); if (!p.nol && !tallRow(innerWidth - 2 * p.gp, p.dkh - 2 - 3 * p.gp - p.fh - p.stnh)) into(DK.l, row(innerWidth - 2 * p.gp)); }
+      app.appendChild(DK.r);
+      if (p.comp === 't' && !p.nol) app.appendChild(DK.l);
+    }
+    felt.classList.remove('fa-s', 'fa-m', 'fa-l', 'ov'); felt.classList.add('fa-' + p.arr.charAt(0)); if (p.arr === 'so') felt.classList.add('ov');
+    deskFit(felt);
+    deskPaint();
+    void app.offsetHeight; app.classList.remove('dk-meas');
+  }
+  // The sizes that follow your card's width; then the felt is measured, and the cards eased down until every piece is inside it
+  function deskSize(c) {
+    var p = c * DK.k, sp = Math.max(60, .9 * p);
+    DK.c = c; DK.th = Math.round(Math.max(26, .18 * p)); DK.chs = Math.round(.42 * sp);
+    var st = app.style;
+    st.setProperty('--dc', c + 'px'); st.setProperty('--dp', p.toFixed(1) + 'px'); st.setProperty('--th', DK.th + 'px'); st.setProperty('--chs', DK.chs + 'px');
+    var zh = Math.round(Math.max(20, .17 * c));
+    st.setProperty('--zh', zh + 'px'); st.setProperty('--zhl', (c < 100 ? 42 : zh) + 'px'); st.setProperty('--glh', Math.round(c < 100 ? 2.4 * Math.max(9.5, .085 * p) + 1 : Math.max(12, .105 * p)) + 'px');
+    app.classList.toggle('dk-lab', p >= 150);
+  }
+  function deskOver(felt) {
+    if (felt.scrollHeight > felt.clientHeight + 1 || felt.scrollWidth > felt.clientWidth + 1) return true;
+    var fr = felt.getBoundingClientRect(), bad = false, sh = felt.querySelector('.shoe'), s = sh ? sh.getBoundingClientRect() : null;
+    felt.querySelectorAll('.zone .who, .row7, .dset .grp, .print.rule, .spotw, .pz, :scope > .who, .merow').forEach(function (n) {
+      var r = n.getBoundingClientRect(); if (!r.width) return;
+      if (r.left < fr.left - 1 || r.right > fr.right + 1 || r.top < fr.top - 1 || r.bottom > fr.bottom + 1) bad = true;
+      if (s && s.left < r.right + 2 && s.right > r.left - 2 && s.top < r.bottom + 2 && s.bottom > r.top - 2) bad = true;
+    });
+    return bad;
+  }
+  function deskFit(felt) {
+    var key = [innerWidth, innerHeight, DK.comp, DK.arr, DK.coach ? 1 : 0, NET ? NET.state.seats.length : 0, S.phase === 'set' ? 1 : 0].join(), k = DK.fit[key] || 1, i = 0;
+    var row = function () { var hr = document.getElementById('hrow'); if (hr) fitRow(hr); };
+    deskSize(Math.floor(DK.c0 * k)); row();
+    while (i++ < 20 && DK.c > 40 && deskOver(felt)) { k *= .96; deskSize(Math.floor(DK.c0 * k)); row(); }
+    DK.fit[key] = k;
+    // (one size for every phase of a hand: the phase that needed the smaller cards decides)
+    var all = Object.keys(DK.fit).filter(function (x) { return x.slice(0, -1) === key.slice(0, -1); }).map(function (x) { return DK.fit[x]; }), least = Math.min.apply(null, all);
+    if (least < k) { deskSize(Math.floor(DK.c0 * least)); row(); }
+  }
+  // ── The panels ──
+  function mini(k) { if (!k) return '<span class="dk-c bk"></span>'; if (k === 'JK') return '<span class="dk-c jk">Jkr</span>'; var s = k.slice(-1), r = k.slice(0, -1); return '<span class="dk-c s' + s + (s === 'h' || s === 'd' ? ' r' : '') + '">' + r + '<i>' + GL[s] + '</i></span>'; }
+  function minis(str, n) { var a = str ? str.split(' ') : []; for (var o = '', i = 0; i < (n || a.length); i++) o += mini(a[i]); return o; }
+  function codes(cs) { return cs.map(function (c) { return isJ(c) ? 'JK' : c.r + c.s; }).join(' '); }
+  function pair(hi, lo, hw, lw) { return '<span class="hd"><span class="cs' + (hw == null ? '' : hw ? ' w' : ' l') + '">' + hi + '</span><span class="cs' + (lw == null ? '' : lw ? ' w' : ' l') + '">' + lo + '</span></span>'; }
+  function deskPaint() {
+    if (!DK.on || !S || !DK.r || !DK.r.isConnected) return;
+    paintSeats(); paintSes(); paintHl(); paintHand();
+    DK.log.hidden = false; DK.log.innerHTML = '<h4><span>Hands this session</span></h4><div class="dk-rows"></div>';
+    fitInfo(); paintLog();
+  }
+  function paintSes() {
+    var st = S.st, a = [0], t = 0, n = S.log.length;
+    S.log.forEach(function (x) { t += x; a.push(t); });
+    var lo = Math.min.apply(null, a), hi = Math.max.apply(null, a); if (hi - lo < 1) { hi += 1; lo -= 1; }
+    var y = function (v) { return (5 + 70 * (hi - v) / (hi - lo)).toFixed(1); }, x = function (i) { return (300 * i / Math.max(1, a.length - 1)).toFixed(1); };
+    var kv = function (drop, lab, val) { return '<div class="dk-kv" data-drop="' + drop + '"><span>' + lab + '</span><b>' + val + '</b></div>'; };
+    DK.ses.innerHTML = '<h4><span>This session</span><b class="' + (S.net > 0 ? 'pos' : S.net < 0 ? 'neg' : '') + '">' + (S.net ? signed(S.net) : n ? 'Even' : money(0)) + '</b></h4>' +
+      '<svg class="ch" data-drop="5" viewBox="0 0 300 80" preserveAspectRatio="none" role="img" aria-label="Your money, hand by hand"><line x1="0" x2="300" y1="' + y(0) + '" y2="' + y(0) + '" stroke="rgba(255,255,255,.25)" stroke-dasharray="3 4" vector-effect="non-scaling-stroke"/>' +
+      (n ? '<polyline fill="none" stroke="' + (t >= 0 ? '#3ddc84' : '#ff6b78') + '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" points="' + a.map(function (v, i) { return x(i) + ',' + y(v); }).join(' ') + '"/>' : '') + '</svg>' +
+      '<div class="tri" data-drop="3"><span><b>' + st.won + '</b><small>Won</small></span><span><b>' + st.push + '</b><small>Pushed</small></span><span><b>' + st.lost + '</b><small>Lost</small></span></div>' +
+      (st.big ? kv(4, 'Biggest win', signed(st.big.amt)) : '') + kv(6, 'Commission paid', money(st.comm)) + (n ? kv(7, 'Set the house way', st.house + ' of ' + n) : '') + (st.best >= 2 ? kv(8, 'Longest winning streak', st.best) : '');
+  }
+  // This hand: what the bet pays, as the game pays it (a win less the 5% commission, at least $1; one hand each is a push), and
+  // once the dealer has turned over how each of the two hands went, with the row that happened lit
+  function paintHand() {
+    var res = S.phase === 'result' && !DK.rev ? S.res : null, bet = S.phase === 'bet' ? S.bet : (S.last || S.bet), com = bet ? commission(bet) : 0;
+    var h = '<h4><span>This hand</span><span>Hand ' + (S.phase === 'bet' ? S.hand + 1 : S.hand) + '</span></h4>';
+    var kv = function (lab, val, on) { return '<div class="dk-kv' + (on ? ' on' : '') + '"><span>' + lab + '</span><b>' + val + '</b></div>'; };
+    if (res) {
+      var say = function (which, w, copy, mine, theirs) { return '<p>' + (w ? 'Your ' + which + ' hand, ' + Kit.esc(mine) + ', beat the dealer’s ' + Kit.esc(theirs) + '.' : copy ? 'The dealer’s ' + which + ' hand is a copy of yours, ' + Kit.esc(mine) + ', and a copy goes to the dealer.' : 'The dealer’s ' + which + ' hand, ' + Kit.esc(theirs) + ', beat your ' + Kit.esc(mine) + '.') + '</p>'; };
+      h += say('high', res.hiW, res.hiCopy, res.phn, res.dhn) + say('low', res.loW, res.loCopy, res.pln, res.dln);
+    }
+    h += kv('Bet', money(bet)) + kv('Both hands win', bet ? signed(bet - com) : money(0), res && res.out === 'win') + kv('The 5% commission on a win', money(com)) +
+      kv('One hand each', 'Push', res && res.out === 'push') + kv('The dealer wins both', bet ? signed(-bet) : money(0), res && res.out === 'lose');
+    DK.hand.innerHTML = h;
+  }
+  function paintHl() {
+    var ev = (S.ev || []).slice(0, 6);
+    DK.hl.hidden = !ev.length;
+    DK.hl.innerHTML = '<h4><span>Highlights</span></h4>' + ev.map(function (e, i) { return '<p data-drop="' + (40 + i) + '">' + Kit.esc(e.t) + '.</p>'; }).join('');
+  }
+  // Online: everyone else at the table. A bet once it is in, seven cards face down while the hands are set, and the two
+  // hands a player set once the dealer has turned over on this device, the winner of each marked.
+  function paintSeats() {
+    var box = DK.net; if (!NET || !box.isConnected) return;
+    var st = NET.state, me = NET.seat, h = '<h4><span>At the table</span></h4>';
+    st.seats.forEach(function (s, i) {
+      if (i === me) return;
+      var x = s.S, R0 = s.R, last = R0 && R0.res && R0.res.rd === st.round - 1 ? R0 : null, cls = '', ln = '', tail = '';
+      var bank = revealing && R0 && R0.res && R0.res.rd === NETR - 1 ? s.bank - R0.res.net : s.bank;
+      if (s.out) { cls = ' off'; ln = 'Left the table'; }
+      else if (st.phase === 'set') { if (x.phase === 'set') { ln = '<span class="cs">' + minis('', 7) + '</span>' + (x.dec ? 'Set' : 'Setting'); if (!x.dec) cls = ' up'; } else ln = 'Sitting this hand out'; }
+      else if (st.phase === 'bet' && last && !st.ready[i] && !revealing) {
+        var sp = split(last.p, last.low);
+        ln = pair(minis(codes(sp.hi)), minis(codes(sp.lo)), last.res.hiW, last.res.loW);
+        tail = '<span class="st ' + (last.res.net > 0 ? 'pos' : last.res.net < 0 ? 'neg' : '') + '">' + (last.res.net ? signed(last.res.net) : 'Push') + '</span>';
+      }
+      else if (s.bust) ln = 'Out of chips';
+      else if (st.phase === 'bet' && st.ready[i]) ln = 'Bet ' + money(x.bet);
+      else if (st.phase === 'bet') { ln = 'Betting'; cls = ' up'; }
+      h += '<div class="dk-seat' + cls + '"><span class="avatar" style="--c:' + Kit.color(i) + '">' + Kit.esc(s.name.charAt(0).toUpperCase()) + '</span><span class="nm">' + Kit.esc(s.name) + '</span><span class="mo">' + money(bank) + '</span><span class="ln">' + ln + '</span>' + tail + '</div>';
+    });
+    box.innerHTML = h;
+  }
+  // The panels of a column give up their least parts, whole, until the column holds them; the sheet takes the room left
+  function fitInfo() {
+    var rowed = (DK.comp === 't' || DK.comp === 's') && DK.info.parentNode !== DK.l, col = rowed ? DK.l : DK.info;
+    if (!col.isConnected) return;
+    col.querySelectorAll('[data-drop]').forEach(function (n) { n.hidden = false; });
+    var sorted = function () { return Array.prototype.slice.call(col.querySelectorAll('[data-drop]')).sort(function (a, b) { return +b.dataset.drop - +a.dataset.drop; }); }, parts = sorted();
+    var drop = function () {
+      var n = parts.shift(); if (!n) return false;
+      n.hidden = true;
+      var pan = n.closest('.dk-hl'); if (pan && !pan.querySelector('p:not([hidden])')) pan.hidden = true;
+      return true;
+    };
+    if (rowed) {   // (side by side: each panel to the row's height)
+      [DK.ses, DK.net, DK.hand].forEach(function (pan) {
+        if (!pan.isConnected) return;
+        var mine = parts.filter(function (n) { return n !== pan && pan.contains(n); });
+        while (pan.scrollHeight > pan.clientHeight + 1 && mine.length) mine.shift().hidden = true;
+      });
+      return;
+    }
+    var logIn = DK.log.parentNode === col, lrh = Math.round(72 * DK.pu), logMin = logIn ? Math.round(34 * DK.pu + 2 * lrh + 16 * DK.pu) : 0;
+    var used = function () { var h = 0, n = 0; Array.prototype.forEach.call(col.children, function (c) { if (c === DK.log || c.hidden) return; h += c.offsetHeight; n++; }); return h + Math.max(0, n - 1 + (logIn && !DK.log.hidden ? 1 : 0)) * DK.gp; };
+    var avail = col.clientHeight;
+    if (logIn) {
+      // (the sheet of hands is worth more than the last lines of the session: they give way down to the session's three counts)
+      while (used() + logMin > avail && parts.length && +parts[0].dataset.drop >= 3.5) drop();
+      if (used() + logMin > avail) { DK.log.hidden = true; col.querySelectorAll('[data-drop]').forEach(function (n) { n.hidden = false; }); parts = sorted(); }
+    }
+    while (used() > avail && drop());
+    // (room to spare beside the felt: the session's chart is drawn taller)
+    var ch = DK.ses.querySelector('.ch');
+    if (!logIn && ch && !ch.hidden && !DK.ses.hidden) { var spare = avail - used() - 2 * DK.gp; if (spare > 20) ch.style.height = Math.round(Math.min(ch.getBoundingClientRect().height + spare, DK.ses.clientWidth * .55)) + 'px'; }
+  }
+  // The sheet: as many whole rows as its box holds (in columns where it is wide), the newest hands, the hand on the
+  // table lit with the dealer's cards still face down, and the rows to come ruled and empty. Your two hands over the
+  // dealer's two; a gold line under the hand that won.
+  function paintLog() {
+    var pan = DK.log, box = pan.querySelector('.dk-rows');
+    if (!pan.isConnected || pan.hidden || !box) return;
+    var pu = DK.pu, lrh = 72 * pu, rows = Math.floor(box.clientHeight / lrh), cols = Math.max(1, Math.floor((box.clientWidth + 16 * pu) / (270 * pu)));
+    if (rows < 1) { pan.hidden = true; return; }
+    var hl = (S.hl || []).slice(), live = S.p && (S.phase === 'set' || S.phase === 'result' && DK.rev);
+    if (live) { if (hl.length && hl[hl.length - 1].h === S.hand) hl.pop(); var cur = current(); hl.push({ h: S.hand, ph: codes(cur.hi), pl: codes(cur.lo), now: 1 }); }
+    while (cols > 1 && hl.length <= rows * (cols - 1) && (box.clientWidth + 16 * pu) / cols < 330 * pu) cols--;   // (no more columns than the hands need, unless they are roomy)
+    var slots = rows * cols; hl = hl.slice(-slots);
+    var next = hl.length ? hl[hl.length - 1].h + 1 : S.hand + 1, h = '';
+    hl.forEach(function (x) {
+      h += '<div class="dk-h' + (x.now ? ' now' : '') + '"><span class="n">' + x.h + '</span>' + (x.now ? pair(minis(x.ph), minis(x.pl)) : pair(minis(x.ph), minis(x.pl), x.hw === 1, x.lw === 1)) +
+        '<span class="net ' + (x.n > 0 ? 'pos' : x.n < 0 ? 'neg' : '') + '">' + (x.now ? '' : x.n ? signed(x.n) : 'Push') + '</span>' +
+        (x.now ? pair(minis('', 5), minis('', 2)) : pair(minis(x.dh), minis(x.dl), x.hw !== 1, x.lw !== 1)) + '<span class="why">' + (x.now ? '' : x.o === 'win' ? 'Won' : x.o === 'push' ? 'One each' : 'Lost') + '</span></div>';
+    });
+    for (var i = hl.length; i < slots; i++) h += '<div class="dk-h e"><span class="n">' + (next++) + '</span></div>';
+    box.style.gridTemplateRows = 'repeat(' + rows + ',minmax(0,1fr))'; box.style.gridTemplateColumns = 'repeat(' + cols + ',minmax(0,1fr))';
+    box.innerHTML = h;
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (DK.on) { DK.fit = {}; deskSync(false); } });   // (the felt's lettering is measured again once its face has loaded)
+  window.addEventListener('shape', function () { if (S || DK.on) deskSync(false); });   // (inside the head script's View Transition)
+  window.addEventListener('resize', function () {
+    if (!S && !DK.on) return;
+    if (!document.documentElement.classList.contains('sh-' + window.__sh())) return;   // (the shape is about to change: its own event lays the page out)
+    deskSync(true);
+  });
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = load();

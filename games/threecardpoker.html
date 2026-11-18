@@ -265,6 +265,7 @@ html.tcd .dk-l{grid-area:l;} html.tcd .dk-r{grid-area:r;}
 html.tcd-t .dk-l{flex-direction:row;}
 html.tcd-t .dk-l > .dk-pan{flex:1 1 0;}
 html.tcd-t .dk-l > .dk-log{flex:1.3 1 0;}
+html.tcd-t .dk-l > .dk-info{justify-content:flex-start;}
 .dk-info{flex:1 1 0;min-width:0;min-height:0;display:flex;flex-direction:column;justify-content:space-between;gap:var(--gp);}
 .dk-pan{flex:none;min-width:0;box-sizing:border-box;border-radius:calc(15px + 3px * var(--pu));background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);padding:calc(11px * var(--pu)) calc(13px * var(--pu));font-size:calc(.84rem * var(--pu));color:var(--text-2);overflow:hidden;}
 .dk-pan > h4{margin:0 0 calc(6px * var(--pu));font:600 1em/1.3 var(--font);color:var(--text-2);display:flex;justify-content:space-between;align-items:baseline;gap:10px;white-space:nowrap;}
@@ -1328,7 +1329,7 @@ html.tcd-two .dk-stn .ctl > .acts{grid-column:2;grid-row:2;margin:0;align-self:e
       if (DK.l.parentNode) DK.l.remove();
       if (p.comp === '3') { into(DK.l, [net, DK.log]); into(DK.info, [DK.ses, DK.hl, DK.hand]); into(DK.r, [DK.info, DK.stn]); app.insertBefore(DK.l, tbl); }
       else if (p.comp === 'r') { into(DK.info, [net, DK.ses, DK.log, DK.hand]); into(DK.r, [DK.info, DK.stn]); }
-      else { into(DK.r, [DK.stn]); if (!p.nol) { var w = innerWidth / p.pu; into(DK.l, w >= 1240 ? [net, DK.ses, DK.hand, DK.log] : w >= 940 ? (net ? [net, DK.ses, DK.log] : [DK.ses, DK.hand, DK.log]) : w >= 600 ? [net || DK.ses, DK.log] : [DK.log]); } }
+      else { into(DK.r, [DK.stn]); if (!p.nol && p.dkh - 2 - 3 * p.gp - p.fh - p.stnh >= 540 * p.pu && innerWidth / p.pu >= 600) { into(DK.info, [net, DK.ses, DK.hand]); into(DK.l, [DK.log, DK.info]); } else if (!p.nol) { var w = innerWidth / p.pu; into(DK.l, w >= 1240 ? [net, DK.ses, DK.hand, DK.log] : w >= 940 ? (net ? [net, DK.ses, DK.log] : [DK.ses, DK.hand, DK.log]) : w >= 600 ? [net || DK.ses, DK.log] : [DK.log]); } }
       app.appendChild(DK.r);
       if (p.comp === 't' && !p.nol) app.appendChild(DK.l);
     }
@@ -1430,7 +1431,7 @@ html.tcd-two .dk-stn .ctl > .acts{grid-column:2;grid-row:2;margin:0;align-self:e
   }
   // The panels of a column give up their least parts, whole, until the column holds them; the sheet takes the room left
   function fitInfo() {
-    var col = DK.comp === 't' ? DK.l : DK.info;
+    var rowed = DK.comp === 't' && DK.info.parentNode !== DK.l, col = rowed ? DK.l : DK.info;
     if (!col.isConnected) return;
     col.querySelectorAll('[data-drop]').forEach(function (n) { n.hidden = false; });
     var parts = Array.prototype.slice.call(col.querySelectorAll('[data-drop]')).sort(function (a, b) { return +b.dataset.drop - +a.dataset.drop; });
@@ -1440,7 +1441,7 @@ html.tcd-two .dk-stn .ctl > .acts{grid-column:2;grid-row:2;margin:0;align-self:e
       var pan = n.closest('.dk-hl'); if (pan && !pan.querySelector('p:not([hidden])')) pan.hidden = true;
       return true;
     };
-    if (DK.comp === 't') {   // (side by side under the station: each panel to the row's height)
+    if (rowed) {   // (side by side under the station: each panel to the row's height)
       [DK.ses, DK.net].forEach(function (pan) { if (!pan.isConnected) return; while (pan.scrollHeight > pan.clientHeight + 1 && parts.some(function (n) { return pan.contains(n); })) { var i = parts.findIndex(function (n) { return pan.contains(n); }); parts.splice(i, 1)[0].hidden = true; } });
       return;
     }
