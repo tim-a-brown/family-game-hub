@@ -3039,7 +3039,7 @@
   // mini's area, 1024 x 768.
   const DESK = 800000, pxOf = v => parseFloat(v) || 0;
   // (are the table's cards, 'c', or the hand's, 'h', large enough to wear their words?)
-  const deskMid = w => { const D = !many() && ui.lay && ui.lay.dk; return !!D && (w === 'h' ? D.hmid : D.mid); };
+  const deskMid = w => { const D = ui.lay && ui.lay.dk; return !!D && (w === 'h' ? D.hmid : D.dn ? !!ui.dnMid : D.mid); };
   // The words under a mid card's name keep to the paper: where they would make the paper more than half the card (the
   // picture's room), they step down a size, then give way to the card's skill words, then go.
   function fitMid(root) {
@@ -3396,10 +3396,10 @@
     if (!G || !V || !dom.root) return;
     const v = ui.view, M = many();
     // (more players on an iPad held sideways: the battle line, its dock along the bottom as with two: nblFits)
-    ui.lay = M ? (nblFits() ? { ln: true, nbl: true } : {}) : layMode();
+    ui.lay = M ? layModeN() : layMode();
     // (the shape of the two-player table, for the style sheet: ln the battle line, up and short its upright and low
     // forms, rw the rows of a phone held upright; and the game bar folds down while a phone on its side plays)
-    if (dom.felt) { const L = ui.lay, want = 'an-felt felt-in' + (dom.track ? ' has-trk' : '') + (M ? ' many' + (G.teams ? ' teams' : '') + (L.nbl ? ' bl' : '') : L.ln ? ' bl' + (L.up ? ' up' : '') + (L.short ? ' short' : '') + (L.dk ? ' desk d-' + L.dock + (L.pil ? ' pil' : '') + (L.dk.mid ? ' fmid' : '') + (L.dk.hmid ? ' hmid' : '') : '') : ' rw'); if (dom.felt.className !== want) dom.felt.className = want;
+    if (dom.felt) { const L = ui.lay, want = 'an-felt felt-in' + (dom.track ? ' has-trk' : '') + (M ? ' many' + (G.teams ? ' teams' : '') + (L.nbl ? ' bl' : '') + (L.dk ? ' desk dn d-' + L.dock + (L.dk.hmid ? ' hmid' : '') : '') : L.ln ? ' bl' + (L.up ? ' up' : '') + (L.short ? ' short' : '') + (L.dk ? ' desk d-' + L.dock + (L.pil ? ' pil' : '') + (L.dk.mid ? ' fmid' : '') + (L.dk.hmid ? ' hmid' : '') : '') : ' rw'); if (dom.felt.className !== want) dom.felt.className = want;
       // (the desk's own measures, for the style sheet: the bars' scale, the widths of the dock's column and of a pillar, the track's height)
       const D = L.dk, fs = dom.felt.style; [['--bs', D && D.bs.toFixed(3)], ['--aw', D && D.dock === 'b' ? D.aw + 'px' : null], ['--rw', D && D.dock === 'r' ? D.rw + 'px' : null], ['--pw', D && D.pil ? D.pw + 'px' : null], ['--dth', D && D.tk + 'px'], ['--cs', D && D.cs.toFixed(3)]].forEach(x => { if (x[1]) fs.setProperty(x[0], x[1]); else fs.removeProperty(x[0]); }); }
     document.documentElement.classList.toggle('an-low', !!((ui.lay.short || (M && window.innerWidth > window.innerHeight && window.innerHeight < 520)) && dom.root && dom.root.isConnected));   // (and with more players too)
@@ -3410,6 +3410,7 @@
     try {
       // (more players: the other players' plates are on the rim, so where the other player's strip is with two there
       // is the teams' bar in a team game, and nothing otherwise)
+      if (dom.me._dn && !(M && ui.lay.dk)) dnOff();   // (the desk with more players places your bar and the teams' bar itself: drawD)
       if (!M) stripEl(dom.opp, 1 - v, false); else if (G.teams) sidesEl(dom.opp); else { dom.opp.className = 'an-strip opp wn-none'; dom.opp.innerHTML = ''; }
       stripEl(dom.me, v, true);
       dom.map.innerHTML = '';
@@ -3426,7 +3427,7 @@
       if (dom.track) window.AnoriaDomains.track(dom.track, { round: V.round, turn: G.over ? -1 : V.turn, due: V.P.map((p, o) => (p.guide === 'lincoln' ? { r: 5, o: o } : null)) });
     } finally { pass = null; }
     ui.T = T;
-    fitStrips(); if (!M) layout(); fitPlates(); fitNames(); if (!M) { fitMid(); fitRecent(); } piles(); coverNames(); foldPiles(); lines(); fitSides();
+    fitStrips(); if (!M) layout(); fitPlates(); fitNames(); if (!M || ui.lay.dk) { fitMid(); fitRecent(); } piles(); coverNames(); foldPiles(); lines(); fitSides(); if (M && ui.lay.dk) dnAfter();
     dom.root.querySelectorAll('.st-name').forEach(n => Kit.fitText(n, .6));
     relicChooser();   // (a Relic picked up that has to go over one of yours: the slots it can go to, over your bar)
   }
@@ -3436,7 +3437,7 @@
   // far as it has to: smaller gaps and marks first, then smaller words, then the colour dot goes (the bar is in that colour).
   function fitStrips() {
     [dom.opp, dom.me].forEach(s => {
-      if (!s || !s.isConnected) return; s.classList.remove('n1', 'n2', 'n3'); if ((ui.lay || {}).short || (ui.lay || {}).pil) return;   // (a phone on its side stands the bars on end, with a layout of their own)
+      if (!s || !s.isConnected) return; s.classList.remove('n1', 'n2', 'n3'); if ((ui.lay || {}).short || (ui.lay || {}).pil || (many() && (ui.lay || {}).dk)) return;   // (a phone on its side stands the bars on end, with a layout of their own; the desk with more players fits its own: dnFitBars)
       const over = () => { const r = s.getBoundingClientRect(); return r.width > 0 && Array.prototype.some.call(s.querySelectorAll(':scope > *, .st-top > *, .st-bot > *'), c => { const b = c.getBoundingClientRect(); return b.width > 0 && b.right > r.right - 1; }); };
       ['n1', 'n2', 'n3'].forEach(k => { if (over()) s.classList.add(k); });
     });
@@ -3475,7 +3476,7 @@
     const bad = t => {
       // (the paper starts below the Might totals; on the battle line they are shields standing on the tile's top and
       // bottom edges, so only the top one counts)
-      const p = plate(t), tr = t.getBoundingClientRect(), pr = p.getBoundingClientRect(), tt = t.querySelector('.pl-tots'), ln = !!t.closest('.an-map.bl');
+      const p = plate(t), tr = t.getBoundingClientRect(), pr = p.getBoundingClientRect(), tt = t.querySelector('.pl-tots'), ln = !!t.closest('.an-map.bl, .pl.dn-c');
       const top = ln ? Math.max(tr.top, ...Array.prototype.map.call(t.querySelectorAll('.pl-tot.L'), x => x.getBoundingClientRect().bottom)) : tt ? tt.getBoundingClientRect().bottom : tr.top;
       const nm = p.querySelector('.pl-name'), a = nm && nm.getBoundingClientRect();
       const hits = a && Array.prototype.some.call(t.querySelectorAll('.pl-flag, .pl-tot'), x => { const r = x.getBoundingClientRect(); return a.top - 2 < r.bottom && a.bottom > r.top && a.left < r.right && a.right > r.left; });
@@ -3728,7 +3729,7 @@
   function piles() {
     if (!dom.map || (many() && !(ui.lay && ui.lay.nbl))) return;
     const L = many() ? {} : ui.lay || {};   // (more players on the battle line: your cards at your three Domains, side by side or overlapping)
-    dom.map.querySelectorAll(many() ? '.pl.wn-bl .pl-side.R' : '.pl-side').forEach(sd => {
+    dom.map.querySelectorAll(many() ? (ui.lay.dk ? '.pl.dn-c .pl-side.dn-p' : '.pl.wn-bl .pl-side.R') : '.pl-side').forEach(sd => {
       const ks = Array.prototype.filter.call(sd.children, c => c.matches('.fp, .slot, .stk')), n = ks.length;
       ks.forEach(k => { k.style.zIndex = ''; }); sd.classList.remove('ovl');
       if (n < 2) { sd.style.removeProperty('--ov'); return; }
@@ -3821,7 +3822,7 @@
   function setFold(sd, c) {
     const p = +sd.parentNode.dataset.p, o = +sd.dataset.o, figs = V.figs.filter(f => f.p === p && f.o === o).sort((a, b) => a.u - b.u);
     Array.prototype.slice.call(sd.children).forEach(k => { if (k.matches('.fp, .stk')) k.remove(); });
-    const ref = sd.firstChild; pileEls(sd, o, p, figs, ui.T, !many() || sd.parentNode.classList.contains('wn-bl'), c).forEach(nd => sd.insertBefore(nd, ref));
+    const ref = sd.firstChild; pileEls(sd, o, p, figs, ui.T, !many() || sd.closest('.pl').classList.contains('wn-bl'), c).forEach(nd => sd.insertBefore(nd, ref));
   }
   // is a pile as it lies more than its room can show?
   function pileBad(sd, cards, slot) {
@@ -3845,8 +3846,8 @@
     const sig = foldSig(); ui.folds = ui.folds || {};
     for (let g = 0; g < 16; g++) {
       let again = false;
-      dom.map.querySelectorAll(M ? '.pl.wn-bl .pl-side.R' : '.pl-side').forEach(sd => {
-        if (sd.dataset.o == null) return;
+      dom.map.querySelectorAll(M ? (L.dk ? '.pl.dn-c .pl-side.dn-p' : '.pl.wn-bl .pl-side.R') : '.pl-side').forEach(sd => {
+        if (sd.dataset.o == null) return; if (sd.dataset.mid != null) ui.dnMid = sd.dataset.mid === '1';   // (the desk with more players: do this party's cards wear their words?)
         const kids = Array.prototype.slice.call(sd.children), cards = kids.filter(k => k.matches('.fp')), stk = kids.filter(k => k.matches('.stk'))[0], slot = kids.filter(k => k.matches('.slot'))[0];
         if (!cards.length || cards.length + (stk ? 1 : 0) + (slot ? 1 : 0) < 2) return;
         if (!pileBad(sd, cards, slot)) return;
@@ -4022,6 +4023,7 @@
   // Lay the table out in the map's room and draw it
   function drawN(T, X) {
     const M = dom.map, mr = M.getBoundingClientRect(), W = Math.floor(mr.width), H = Math.floor(mr.height); if (W < 60 || H < 60) return;
+    if (ui.lay && ui.lay.dk) return drawD(T, X);   // (a window larger than an iPad's: the desk)
     const N = S.N, v = ui.view, rim = seatsFrom(v).slice(1), R = rim.length, land = window.innerWidth > window.innerHeight && W > H * 1.15;
     const put = (n, x, y, w, h) => { n.style.left = Math.round(x) + 'px'; n.style.top = Math.round(y) + 'px'; if (w != null) n.style.width = Math.round(w) + 'px'; if (h != null) n.style.height = Math.round(h) + 'px'; M.appendChild(n); return n; };
     const here = (i, q) => V.figs.filter(f => f.p === i && f.o === q);
@@ -4165,6 +4167,259 @@
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('class', 'wn-roads'); svg.setAttribute('aria-hidden', 'true');
     svg.innerHTML = '<path class="rd" d="' + d + '"/>' + (d2 ? '<path class="rd ring" d="' + d2 + '"/>' : '') + (ringD ? '<path class="rd ring" d="' + ringD + '"/>' : '') + (lit ? '<path class="rd lit" d="' + lit + '"/>' : '');
     M.insertBefore(svg, M.firstChild);
+  }
+
+  // ═══ The desk with three to six players, and teams ══════════════════════════════════════════════════════
+  // Tim, 2026-11-18, of the desk made for two: "Don't just stop with Arvela two player, but also include multiplayer
+  // games too". In a window larger than an iPad's a table of more players was the iPad's battle line on a sea of empty
+  // stone: your cards 124 px wide whatever the window, everyone else's Figures as stacks, the hand in the middle of an
+  // empty dock. Nothing is scaled here either: the table is composed for the window and its cards sized from the room.
+  // Every Domain on the table is a cell built like a column of the two-player line: the Domain across its middle, the
+  // Figures of the other sides in a band above it and your side's in a band below it, as real cards wherever a cell has
+  // the room for cards 58 px wide (a party is one player's cards, under a tag with that player's name), each side's
+  // Might on a shield on the Domain's edge in that side's color. Each player's cells lie on that player's own mat with
+  // that player's bar on it: the other players' at the head of their mats, yours at the foot of yours, over your hand.
+  // A bar says what a plate could not: the Spark, each Relic, and where a mat is wide and tall enough the Guide's name
+  // and power in words, each Relic's name and the Renown along its track (dnBar's rich).
+  // The compositions (dnTable), the best of which is taken for the window (deskPlanN):
+  //   row    your mat at the left, your Gate, your Outpost and the Crossroads side by side, and the other players' mats
+  //          in a row at its right, in seat order from your left; a mat's Gate over its Outpost (cells 'v'), or its
+  //          Outpost and its Gate side by side so the whole table is one line (cells 'h');
+  //   stack  the other players' mats in a row across the top and yours the window's width under them: tall and square
+  //          windows.
+  // The dock is the two-player desk's: the hand along the bottom with the last things that happened, the caption and
+  // the turn's button at its right (b), the caption and button in a row over a hand the window's width (s), or all of
+  // them in a column at the right of a low wide window (r). The iPad's and the phones' layouts are untouched: this
+  // starts where the two-player desk does (deskWin), and a window in which your own cells would have no room for cards
+  // keeps the iPad's table.
+  const DN_MIN = 58, DN_MAX = 220, clampN = (a, v, b) => Math.max(a, Math.min(b, v));
+  // a Domain's cell, w by h: the largest cards at which a band of them above the Domain and one below it fit; where
+  // none of 58 px does, the cell's parties are stacks (stk)
+  function dnCell(w, h, cap) {
+    const tw = Math.floor(Math.min(w - 10, 640)), sh = Math.round(clampN(24, tw * .17, 64)), bg = Math.round(sh * .62 + 3);
+    const tag = c => (c >= 90 ? Math.round(clampN(17, c * .13, 27)) : 0), thOf = c => Math.round(Math.max(tw * .34, Math.min(tw * .62, c * 1.3)));
+    const need = c => 2 * (c * 1.4 + tag(c) + 10) + thOf(c) + 2 * bg;
+    let c = Math.floor(Math.min(cap || DN_MAX, (w - 8) / 2));
+    while (c >= DN_MIN && need(c) > h) c -= 2;
+    if (c >= DN_MIN) { const th = Math.round(Math.min(tw * .66, thOf(c) + (h - need(c)) * .5)); return { w: w, h: h, tw: tw, th: th, sh: sh, bg: bg, c: c, tag: tag(c), band: (h - th - 2 * bg) / 2 }; }
+    const th = Math.round(clampN(tw * .34, h * .34, tw * .62)), band = (h - th - 2 * bg) / 2, sw = Math.floor(Math.min(60, (w - 12) / 3 - 4, (band - 8) / 1.36));
+    return { w: w, h: h, tw: tw, th: th, sh: sh, bg: bg, c: 0, stk: true, sw: sw, tag: 0, band: band };
+  }
+  // a player's bar on a mat bw wide and bh tall: its form, its scale and the height it takes
+  function dnBar(bw, bh) {
+    if (bw >= 430) { const bs = clampN(1, bw / 560, 1.4), h = Math.round(118 * bs + 14); if (h <= bh * .135) return { f: 'rich', bs: bs, h: h }; }
+    if (bw >= 330) { const bs = Math.max(.74, Math.min(bw / 450, 1.45, (bh * .085 - 12) / 42)); return { f: 'one', bs: bs, h: Math.round(42 * bs + 12) }; }
+    if (bw >= 200) { const bs = clampN(.74, bw / 270, .95); return { f: 'two', bs: bs, h: Math.round(62 * bs + 12) }; }
+    return { f: 'three', bs: .74, h: 86 };
+  }
+  // The table in a room W by H. o: {arr: 'row' | 'stack', cells: 'v' | 'h', rw: a rival's column against one of yours
+  // (row), split: the share of the height the other players' mats take (stack), N, tm: teams}. Gives each mat's box,
+  // each bar's, each Domain's cell, and what the composition is worth: the size of its cards, yours weighing more.
+  function dnTable(W, H, o) {
+    const N = o.N, R = N - 1, g = 8, k = o.cells === 'h' ? 2 : 1, cg = W > 1500 ? 12 : 8, pad = 5;
+    let mine; const rim = [];
+    if (o.arr === 'row') {
+      const colW = (W - g * R) / (3 + R * k * o.rw), bw = colW * k * o.rw;
+      mine = { x: 0, y: 0, w: colW * 3, h: H };
+      for (let j = 0; j < R; j++) rim.push({ x: mine.w + g + j * (bw + g), y: 0, w: bw, h: H });
+    } else {
+      const hr = Math.round(H * o.split), bw = (W - g * (R - 1)) / R;
+      for (let j = 0; j < R; j++) rim.push({ x: j * (bw + g), y: 0, w: bw, h: hr });
+      mine = { x: 0, y: hr + g, w: W, h: H - hr - g };
+    }
+    // yours: the teams' bar at its head (a team game), your three cells, your bar at its foot
+    const mb = dnBar(Math.min(mine.w - 2 * pad, 1500), mine.h), sdH = o.tm ? 44 : 0;
+    const ah = mine.h - 2 * pad - sdH - mb.h - 8, cw0 = (mine.w - 2 * pad - 2 * cg) / 3, cw = Math.min(cw0, Math.max(300, ah * .62));
+    const mc = dnCell(cw, ah, DN_MAX); if (mc.stk || ah < 200) return null;
+    const mx = mine.x + pad + (mine.w - 2 * pad - 3 * cw - 2 * cg) / 2, cells = {}, v = o.v || 0;
+    [2 * v, 2 * v + 1, 2 * N].forEach((i, n) => { cells[i] = { x: mx + n * (cw + cg), y: mine.y + pad + sdH, g: mc }; });
+    mb.x = mine.x + pad; mb.w = mine.w - 2 * pad; mb.y = mine.y + mine.h - pad - mb.h;
+    // the others: each mat its bar at its head, then its Gate and its Outpost
+    const b0 = rim[0], rb = dnBar(b0.w - 2 * pad, b0.h), rh = b0.h - 2 * pad - rb.h - 8;
+    const rc = k === 2 ? dnCell((b0.w - 2 * pad - cg) / 2, rh, DN_MAX) : dnCell(Math.min(b0.w - 2 * pad, Math.max(260, rh * .5)), (rh - cg) / 2, DN_MAX);
+    if (rh < 150 || (rc.stk && rc.sw < 24)) return null;
+    (o.seats || []).forEach((q, j) => { const b = rim[j], x0 = b.x + pad, y0 = b.y + pad + rb.h + 8;
+      if (k === 2) { cells[2 * q + 1] = { x: x0, y: y0, g: rc }; cells[2 * q] = { x: x0 + rc.w + cg, y: y0, g: rc }; }
+      else { const x1 = b.x + (b.w - rc.w) / 2; cells[2 * q] = { x: x1, y: y0, g: rc }; cells[2 * q + 1] = { x: x1, y: y0 + rc.h + cg, g: rc }; } });
+    const er = rc.stk ? rc.sw * .45 : rc.c;
+    const worth = (4.5 * mc.c + 2 * R * er) / (4.5 + 2 * R) + .1 * (3 * Math.min(mc.tw, 330) + 2 * R * Math.min(rc.tw, 330)) / (3 + 2 * R);
+    return { o: o, mine: mine, rim: rim, mb: mb, rb: rb, mc: mc, rc: rc, cells: cells, sdH: sdH, pad: pad, worth: worth };
+  }
+  // the best table for a room: every composition tried
+  function dnBest(W, H, N, tm) {
+    if (W < 560 || H < 300) return null; let b = null;
+    const tryT = o => { const t = dnTable(W, H, Object.assign({ N: N, tm: tm }, o)); if (t && (!b || t.worth > b.worth + .01)) b = t; };
+    ['v', 'h'].forEach(c => { [1, .8, .64].forEach(rw => tryT({ arr: 'row', cells: c, rw: rw })); [.34, .4, .46, .52, .58].forEach(sp => tryT({ arr: 'stack', cells: c, split: sp })); });
+    return b;
+  }
+  // The plan for the window: the dock and the hand's size with the table that the room they leave is best for. It has
+  // the two-player plan's own measures (dock, h, per, rows, aw, rw, tk, cs, hmid), so the hand, the dock and the last
+  // events are laid out by the same code; dn is the table.
+  function deskPlanN() {
+    if (!deskWin() || !dom.felt || !dom.felt.isConnected || !S) return null;
+    const cs = getComputedStyle(dom.felt), W = dom.felt.clientWidth - pxOf(cs.paddingLeft) - pxOf(cs.paddingRight), H = dom.felt.clientHeight - pxOf(cs.paddingTop) - pxOf(cs.paddingBottom);
+    if (W < 620 || H < 430) return null;
+    const N = S.N, tm = !!G.teams, side = !!sideEl, key = [W, H, N, tm ? 1 : 0, side ? 1 : 0].join(',');
+    if (ui.dnC && ui.dnC.key === key) return ui.dnC.D;
+    const g = 8, RG = 8, a = W / H, trk = !!dom.track;
+    const aw = Math.round(clampN(270, W * .19, 400)), rw = Math.round(clampN(360, W * .28, 470)), sizes = [240, 220, 200, 184, 168, 152, 140, 128, 116, 104, 96, 88];
+    let top = null;
+    const offer = (dock, x, h, bw, bh) => { const tk = Math.round(clampN(14, h * .11, 24)), t = dnBest(bw, bh - (trk ? tk + RG : 0), N, tm); if (!t) return;
+      const worth = (t.worth + .45 * Math.min(h, t.mc.c * 1.35)) * (dock === 'r' ? .94 : 1);
+      if (!top || worth > top.worth + .5) top = Object.assign({ dock: dock, h: h, worth: worth, tk: tk, dn: t }, x); };
+    if (a >= 1.2 && !side) sizes.forEach(u => { const h = Math.floor(Math.min(u, (W - aw - 18 - 7 * g) / 8)); if (h >= 88) offer('b', { aw: aw, per: 8, rows: 1 }, h, W, H - (Math.max(h * 1.4 + 12, 122) + RG)); });
+    if (a >= 1.9 && !side) [[2, 4], [3, 3], [4, 2]].forEach(x => { const room = H - 48 - 62 - 3 * RG, h = Math.floor(Math.min((rw - (x[1] - 1) * g) / x[1], (room - (x[0] - 1) * g) / x[0] / 1.4, 240)); if (h >= 80) offer('r', { rw: rw, per: x[1], rows: x[0] }, h, W - rw - 14, H); });
+    if (a < 1.5 || side) [1, 2].forEach(r => sizes.forEach(u => { const per = r === 1 ? 8 : 4, h = Math.floor(Math.min(u, (W - (per - 1) * g) / per)); if (h >= 80) offer('s', { per: per, rows: r }, h, W, H - (66 + r * h * 1.4 + (r - 1) * g + 12 + RG)); }));
+    const D = top ? Object.assign(top, { c: top.dn.mc.c, bs: 1, cs: clampN(1, top.h / 190, 1.5), mid: false, hmid: top.h >= 150, pil: false, pw: 0, W: W, H: H }) : null;
+    if (D) D.say = [D.dock, D.dn.o.arr, D.dn.o.cells, D.dn.o.arr === 'row' ? D.dn.o.rw : D.dn.o.split, 'c' + D.dn.mc.c, 'r' + (D.dn.rc.stk ? 's' + D.dn.rc.sw : D.dn.rc.c), 'h' + D.h].join(' ');
+    ui.dnC = { key: key, D: D };
+    return D;
+  }
+  function layModeN() {
+    const D = deskPlanN();
+    if (D) return { ln: true, nbl: true, dk: D, dock: D.dock, dn: true };
+    return nblFits() ? { ln: true, nbl: true } : {};
+  }
+  // (the desk's inline places for your bar and the teams' bar, taken away when the table is drawn another way)
+  function dnOff() { [dom.me, dom.opp].forEach(n => { if (!n) return; ['margin-left', 'margin-top', 'width', 'height', '--bs'].forEach(p => n.style.removeProperty(p)); n._dn = 0; }); }
+  // the parties of one band laid in rows in a room w by h, their cards c0 wide or as much smaller as holds them all:
+  // each party the width of its cards side by side where the row has it, else sharing the row, its cards overlapping
+  // (piles, foldPiles). null: no size of card holds them, and they are stacks.
+  function dnBand(parties, w, h, c0, tag0) {
+    const n = p => p.figs.length + (p.slot ? 1 : 0), gap = 10, sum = a => a.reduce((x, y) => x + y, 0);
+    for (let c = c0; c >= DN_MIN - 10; c -= Math.max(2, Math.round(c0 * .06))) {
+      const tag = c >= 90 ? Math.round(tag0 * Math.max(.8, c / c0)) : 0, rowH = c * 1.4 + tag + 8, rowsMax = Math.max(1, Math.floor((h + 4) / rowH));
+      const minW = p => c * (1 + .42 * Math.min(n(p) - 1, 2)), natW = p => n(p) * c + (n(p) - 1) * 6;
+      const rows = [[]]; let x = 0, ok = true;
+      parties.forEach(p => { const m = minW(p), r = rows[rows.length - 1]; if (m > w) ok = false; if (r.length && x + gap + m > w) { rows.push([p]); x = m; } else { x += (r.length ? gap : 0) + m; r.push(p); } });
+      if (!ok || rows.length > rowsMax) continue;
+      return { c: c, tag: tag, rowH: rowH, rows: rows.map(r => { const mins = r.map(minW), nats = r.map(natW), room = w - gap * (r.length - 1), sm = sum(mins), sn = sum(nats), t = sn <= room ? 1 : Math.max(0, (room - sm) / ((sn - sm) || 1));
+        return r.map((p, j) => ({ p: p, w: Math.floor(sn <= room ? nats[j] : mins[j] + (nats[j] - mins[j]) * t) })); }) };
+    }
+    return null;
+  }
+  // (where a card picked up would land: what it would cost, its Might there, and what carries it)
+  function landSlot(pv) {
+    const s = el('span', { class: 'slot land' }); if (pv.cost != null) s.appendChild(el('span', { class: 'pv-c' }, [el('b', { text: String(pv.cost) })])); if (pv.m != null) s.appendChild(el('span', { class: 'pv-m' }, [el('b', { text: String(pv.m) })]));
+    if (pv.via) { const vi = el('span', { class: 'pv-v' }); const im = artImg(pv.via, true) || mono(pv.via); if (im) vi.appendChild(im); s.appendChild(vi); }
+    return s;
+  }
+  // (the sizes of a cell's own furniture, from its Domain's width, as the two-player desk's are: layoutLine)
+  function dnVars(row, g) {
+    const tw = g.tw, pn = Math.max(Math.min(16.8, Math.max(10.5, tw * .075)), Math.min(30, tw * .062)), pr = Math.max(Math.min(14.4, Math.max(9.5, tw * .064)), Math.min(23, tw * .05)), fl = Math.round(Math.max(Math.min(32, Math.max(16, tw * .16)), Math.min(52, tw * .13)));
+    [['--tw', tw + 'px'], ['--th', g.th + 'px'], ['--sh', g.sh + 'px'], ['--bg', g.bg + 'px'], ['--band', g.band.toFixed(1) + 'px'], ['--fw', (g.c || g.sw) + 'px'], ['--sw', (g.sw || g.c) + 'px'], ['--pn', pn.toFixed(1) + 'px'], ['--pr', pr.toFixed(1) + 'px'], ['--fl', fl + 'px'], ['--ts', clampN(.72, tw / 230, 2.5).toFixed(3)]].forEach(x => row.style.setProperty(x[0], x[1]));
+  }
+  // One Domain's cell: the tile, each side's Might on a shield on its edge (the other sides' along the top in seat
+  // order from your left, your side's at the foot), the other sides' parties in the band above and your side's below.
+  function cellD(i, T, g) {
+    const v = ui.view, N = S.N, pk = S.places[i], pi = C.PLACES[pk], hold = V.hold[i], tg = T.places[i], sil = vSil(i);
+    const row = el('div', { class: 'pl wn-bl dn-c' + (g.stk ? ' dn-s' : '') + (hold >= 0 ? ' held' + hold : '') + (tg ? ' tgt' : '') + (ui.count === i ? ' count' : '') + (ui.pend && ui.pend.x === i ? ' pk' : ''), 'data-p': i });
+    if (S.dm) { row.dataset.ban = S.ban[i]; row.dataset.kind = pi.d; row.dataset.rule = E.pw(S, i); if (sil) row.dataset.silenced = sil.c; }
+    dnVars(row, g);
+    const own = E.ownerOfSpoke(S, i), kind = own < 0 ? 'posCross' : E.isGate(S, i) ? 'posGate' : 'posOut';
+    const ours = q => q === v || E.ally(S, q, v), figsOf = q => V.figs.filter(f => f.p === i && f.o === q).sort((a, b) => a.u - b.u);
+    const lim = E.capAt(S, i), pv = tg && figsOf(S.turn).length < lim ? landPreview(tg) : null;
+    const ps = seatsFrom(v).map(q => ({ o: q, figs: figsOf(q), slot: pv && q === S.turn ? pv : null })).filter(p => p.figs.length || p.slot);
+    const top = ps.filter(p => !ours(p.o)), bot = ps.filter(p => ours(p.o));
+    // the sides above: one shield for each other side with Figures here (with none, the side that holds it, or a gray 0)
+    const sides = []; top.forEach(p => { if (p.figs.length && !sides.some(s => s.o === p.o || E.ally(S, s.o, p.o))) sides.push({ o: p.o, n: sideTot(i, p.o) }); });
+    if (!sides.length) { const r = rivalAt(i); sides.push({ o: r, n: sideTot(i, r) }); }
+    const tile = tileEl(i, T, sides[0], { o: v, n: sideTot(i, v) }, sil);
+    const tots = tile.querySelector('.pl-tots'), R0 = tots.querySelector('.pl-tot.R'), won = o => hold >= 0 && (hold === o || E.ally(S, hold, o)), ns = sides.length;
+    tots.querySelectorAll('.pl-tot.L').forEach(n => n.remove());
+    const shk = Math.round(Math.max(20, Math.min(g.sh, (g.tw * .6) / ns))), step = shk * 1.12, off = ns > 2 ? -g.tw * .07 : 0;
+    sides.forEach((s, k) => tots.insertBefore(el('span', { class: 'pl-tot L' + (s.n ? '' : ' zero') + (won(s.o) ? ' win' : hold >= 0 ? ' lose' : ''), 'data-o': s.o,
+      style: { '--tc': 'var(--pc' + (S.tm ? teamOf(s.o)[0] : s.o) + ')', '--sh': shk + 'px', left: 'calc(50% + ' + (off + (k - (ns - 1) / 2) * step).toFixed(1) + 'px)' }, text: String(s.n) }), R0));
+    if (S.tm) R0.style.setProperty('--tc', 'var(--pc' + teamOf(v)[0] + ')');
+    const bandEl = (cls, parties) => {
+      const band = el('div', { class: 'dn-band ' + cls, 'data-p': i }); if (!parties.length) return band;
+      const L = g.stk ? null : dnBand(parties, g.w - 4, g.band - 4, g.c, g.tag);
+      if (!L) {   // (stacks: a cell too small for cards, or more parties than any size of card holds)
+        band.classList.add('S'); const sw = g.stk ? g.sw : Math.floor(Math.min(g.c, (g.w - 8) / parties.length - 6, (g.band - 8) / 1.36)); band.style.setProperty('--sw', sw + 'px'); band.style.setProperty('--fw', sw + 'px');
+        parties.forEach(p => { if (p.figs.length) band.appendChild(stackEl(p.o, i, p.figs, T, sw, true)); if (p.slot) band.appendChild(landSlot(p.slot)); });
+        return band;
+      }
+      L.rows.forEach((r, rn) => { const tot = r.reduce((a, x) => a + x.w, 0) + 10 * (r.length - 1); let x = (g.w - tot) / 2;
+        r.forEach(it => { const p = it.p, key = foldKey(i, p.o), wd = Math.round(it.w) + ':' + L.c;
+          const sd = el('div', { class: 'pl-side dn-p ' + cls + (p.o === v ? ' me' : ''), 'data-o': p.o, style: { left: Math.round(x) + 'px', width: Math.round(it.w) + 'px', '--fw': L.c + 'px', '--sw': L.c + 'px', '--tg': L.tag + 'px', '--pc': 'var(--pc' + p.o + ')' } });
+          sd.style[cls === 'T' ? 'bottom' : 'top'] = Math.round(rn * L.rowH + 2) + 'px'; sd.dataset.mid = L.c >= 150 ? '1' : '0'; ui.dnMid = L.c >= 150;
+          // (a pile folded at another width is measured again: foldPiles)
+          ui.dnW = ui.dnW || {}; const memo = ui.dnW[key] === wd ? foldFor(i, p.o, p.figs.length, p.slot ? 1 : 0) : null; ui.dnW[key] = wd;
+          if (p.figs.length) pileEls(sd, p.o, i, p.figs, T, true, memo).forEach(nd => sd.appendChild(nd));
+          if (p.slot) sd.appendChild(landSlot(p.slot));
+          // (whose cards: the player's name under their color, except your own and a player's at their own Domains, which their mat says)
+          if (L.tag && p.o !== v && p.o !== own && p.figs.length) sd.appendChild(el('span', { class: 'dn-tag' }, [el('i'), el('span', { text: pname(p.o) })]));
+          band.appendChild(sd); x += it.w + 10; }); });
+      return band;
+    };
+    row.appendChild(bandEl('T', top)); row.appendChild(tile); row.appendChild(bandEl('B', bot));
+    row.appendChild(el('i', { class: 'pl-pos L', style: own >= 0 ? { '--pc': 'var(--pc' + own + ')' } : null, html: SVG[kind] }));
+    if (V.pb[i][v]) row.appendChild(el('span', { class: 'pl-decree R', text: '+' + V.pb[i][v], 'aria-label': V.pb[i][v] + ' more Might here until the end of the round' }));
+    return row;
+  }
+  // a cell at the set-up: the two-player row's own slots (suRow), stood as a cell: everyone else's offers above the
+  // Crossroads and yours below it
+  function suCellD(i, X, g) {
+    const row = suRow(i, X); row.classList.remove('wn-row'); row.classList.add('wn-bl', 'dn-c'); dnVars(row, g);
+    const N = S.N, band = g.band - 6, os = Math.min(1, band / g.th), sw = Math.floor(Math.max(26, Math.min(band / 1.4, (g.w - 8) / Math.min(N - 1, 3) - 12, 150)));
+    [['--ofw', g.tw * os], ['--ofh', g.th * os], ['--opn', Math.max(10.5, Math.min(22, g.tw * os * .07))], ['--opr', Math.max(10, Math.min(17, g.tw * os * .056))], ['--sw', sw]].forEach(x => row.style.setProperty(x[0], (Math.round(x[1] * 10) / 10) + 'px'));
+    return row;
+  }
+  // Lay the desk's table out in the room the map has, and draw it
+  function drawD(T, X) {
+    const M = dom.map, D = ui.lay.dk, mr = M.getBoundingClientRect(), W = Math.floor(mr.width), H = Math.floor(mr.height); if (W < 60 || H < 60) return;
+    const N = S.N, v = ui.view, rim = seatsFrom(v).slice(1);
+    // (the plan's composition in the room the map really has; if the room turned out smaller than planned, the best for it)
+    const t = dnTable(W, H, Object.assign({}, D.dn.o, { v: v, seats: rim, N: N, tm: !!G.teams })) || (() => { const b = dnBest(W, H, N, !!G.teams); return b ? dnTable(W, H, Object.assign({}, b.o, { v: v, seats: rim })) : null; })();
+    if (!t) return;
+    M.dataset.lay = 'dn';
+    const put = (n, x, y, w, h) => { n.style.left = Math.round(x) + 'px'; n.style.top = Math.round(y) + 'px'; if (w != null) n.style.width = Math.round(w) + 'px'; if (h != null) n.style.height = Math.round(h) + 'px'; M.appendChild(n); return n; };
+    const live = o => V.turn === o && !G.over && G.ph !== 'setup';
+    // the mats, and on each its player's bar
+    rim.forEach((o, j) => { const b = t.rim[j], col = matN(o); col.className = 'an-pm wn-col dn-mat' + (live(o) ? ' on' : '') + (S.P[o].out ? ' out' : ''); col.style.setProperty('--pc', 'var(--pc' + o + ')'); put(col, b.x, b.y, b.w, b.h);
+      const bar = el('div'); stripEl(bar, o, false); bar.classList.add('dn-bar', 'f-' + t.rb.f); if (!live(o)) bar.classList.remove('on'); bar.style.setProperty('--bs', t.rb.bs.toFixed(3)); bar.style.setProperty('--pc', 'var(--pc' + o + ')');
+      if (S.P[o].out) { bar.classList.add('out'); bar.appendChild(el('span', { class: 'wn-out', text: 'Out' })); }
+      put(bar, b.x + t.pad, b.y + t.pad, b.w - 2 * t.pad, t.rb.h); });
+    const mm = matN(v); mm.className = 'an-pm wn-col wn-mine dn-mat' + (live(v) ? ' on' : ''); mm.style.setProperty('--pc', 'var(--pc' + v + ')'); put(mm, t.mine.x, t.mine.y, t.mine.w, t.mine.h);
+    // (your bar and the teams' bar are the table's own pieces, laid over the map's room: placed from here)
+    const me = dom.me; me.classList.add('dn-bar', 'f-' + t.mb.f); me._dn = 1; if (!live(v)) me.classList.remove('on');
+    [['margin-left', Math.round(t.mb.x) + 'px'], ['margin-top', Math.round(t.mb.y) + 'px'], ['width', Math.round(t.mb.w) + 'px'], ['height', t.mb.h + 'px'], ['--bs', t.mb.bs.toFixed(3)]].forEach(x => me.style.setProperty(x[0], x[1]));
+    if (G.teams && dom.opp) { dom.opp._dn = 1; dom.opp.style.setProperty('margin-left', Math.round(t.mine.x + t.pad) + 'px'); dom.opp.style.setProperty('margin-top', Math.round(t.mine.y + t.pad) + 'px'); }
+    // the cells
+    D.mid = t.mc.c >= 150;
+    Object.keys(t.cells).forEach(k => { const i = +k, c = t.cells[k]; ui.dnMid = c.g.c >= 150; put(X ? suCellD(i, X, c.g) : cellD(i, T, c.g), c.x, c.y, c.g.w, c.g.h); });
+    ui.dnT = t;
+    if (!X) roadsD();
+  }
+  // The roads between the Domains, drawn from where the tiles lie, straight from one tile's edge to the next one's:
+  // each mat's Gate to its Outpost, each Outpost to the Crossroads, and round the ring from Outpost to Outpost; gold
+  // where the Figure picked up can walk.
+  function roadsD() {
+    const M = dom.map, mr = M.getBoundingClientRect(), N = S.N, box = {};
+    M.querySelectorAll('.pl.dn-c[data-p]').forEach(n => { const tl = n.querySelector('.pl-tile'); if (!tl) return; const r = tl.getBoundingClientRect(); box[n.dataset.p] = { cx: r.left - mr.left + r.width / 2, cy: r.top - mr.top + r.height / 2, w: r.width, h: r.height }; });
+    const sel = ui.sel && ui.sel.kind === 'fig' && idle() ? E.byU(S, ui.sel.u) : null, from = sel ? sel.p : -1, T = sel ? targets() : null;
+    let d = '', ring = '', lit = '';
+    const seg = (a, b, isRing) => { const A = box[a], B = box[b]; if (!A || !B) return; const dx = B.cx - A.cx, dy = B.cy - A.cy;
+      const cut = q => Math.min(dx ? (q.w / 2 + 5) / Math.abs(dx) : 9, dy ? (q.h / 2 + 5) / Math.abs(dy) : 9), ta = cut(A), tb = cut(B); if (ta + tb >= 1) return;
+      const path = 'M' + (A.cx + dx * ta).toFixed(1) + ' ' + (A.cy + dy * ta).toFixed(1) + 'L' + (B.cx - dx * tb).toFixed(1) + ' ' + (B.cy - dy * tb).toFixed(1);
+      const on = from >= 0 && ((a === from && T.places[b]) || (b === from && T.places[a]));
+      if (on) lit += path; else if (isRing) ring += path; else d += path; };
+    for (let o = 0; o < N; o++) { seg(2 * o, 2 * o + 1); seg(2 * o + 1, 2 * N); }
+    if (N >= 3) for (let o = 0; o < N; o++) seg(2 * o + 1, 2 * ((o + 1) % N) + 1, true);
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('class', 'wn-roads dn-roads'); svg.setAttribute('aria-hidden', 'true');
+    svg.innerHTML = '<path class="rd" d="' + d + '"/>' + (ring ? '<path class="rd ring" d="' + ring + '"/>' : '') + (lit ? '<path class="rd lit" d="' + lit + '"/>' : '');
+    M.insertBefore(svg, M.firstChild);
+  }
+  // After the table is drawn and its piles are laid: each bar keeps what it holds inside its edge (its scale steps down
+  // until it does), and a party's tag that is wider than its party goes whole.
+  function dnAfter() {
+    dom.root.querySelectorAll('.an-strip.dn-bar').forEach(b => {
+      const over = () => { const r = b.getBoundingClientRect(); return r.width > 0 && Array.prototype.some.call(b.querySelectorAll(':scope > *, .st-top > *, .st-bot > *, .st-relics > *'), c => { if (c.matches('.wn-tm, .wn-out, .st-fill')) return false; const q = c.getBoundingClientRect(); return q.width > 0 && (q.right > r.right - 2 || q.bottom > r.bottom - 1 || q.left < r.left + 1); }); };
+      let bs = parseFloat(b.style.getPropertyValue('--bs')) || 1; b.classList.remove('q1');
+      if (over() && b.classList.contains('f-rich')) b.classList.add('q1');   // (the Guide's power in words goes first)
+      while (over() && bs > .62) { bs -= .04; b.style.setProperty('--bs', bs.toFixed(3)); }
+    });
+    dom.map.querySelectorAll('.dn-tag').forEach(tg => { const sd = tg.parentNode; if (tg.scrollWidth > sd.clientWidth + 1 || tg.offsetWidth > sd.clientWidth + 1) tg.remove(); });
   }
 
   // ═══ Picking things up: what can this card or Figure do? ══════════════════════════════════════════════════
