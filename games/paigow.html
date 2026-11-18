@@ -1195,13 +1195,11 @@ html.pgd-two .dk-stn.net .ctl > .acts{grid-row:3;}
     if (!S.d) { var r = el('div', { class: 'row7' }); for (var i = 0; i < 7; i++) r.appendChild(el('div', { class: 'pcard slot' })); return r; }
     if (!face) { var b = el('div', { class: 'row7', id: 'drow' }); S.d.forEach(function (c) { var n = cardEl(c, true); n.dataset.id = c.id; b.appendChild(n); }); return b; }
     var res = S.res, ds = split(S.d, res.dlo);
-    function grp(cards, label, name, won) {
+    function grp(cards, label, won) {
       var cs = el('div', { class: 'cs' }); cards.forEach(function (c) { cs.appendChild(cardEl(c)); });
-      // (a name with a hyphen in it, King-Queen, is one piece: in a large window's small cards the label may wrap, but never at the hyphen)
-      var gl = /^\S+-\S+$/.test(name) ? el('span', { class: 'print gl', html: Kit.esc(label) + '<span class="hy">' + Kit.esc(name) + '</span>' }) : el('span', { class: 'print gl', text: label + name });
-      return el('div', { class: 'grp' + (won ? ' win' : '') }, [cs, gl]);
+      return el('div', { class: 'grp' + (won ? ' win' : '') }, [cs, el('span', { class: 'print gl', text: label })]);
     }
-    return el('div', { class: 'dset', id: 'dset' }, [grp(ds.hi, 'High: ', res.dhn, !res.hiW), grp(ds.lo, 'Low: ', res.dln, !res.loW)]);
+    return el('div', { class: 'dset', id: 'dset' }, [grp(ds.hi, 'High: ' + res.dhn, !res.hiW), grp(ds.lo, 'Low: ' + res.dln, !res.loW)]);
   }
   function paintResult(status, res, hidden) {
     if (hidden) { status.innerHTML = '<span class="big">&nbsp;</span>&nbsp;'; return; }
@@ -1251,7 +1249,7 @@ html.pgd-two .dk-stn.net .ctl > .acts{grid-row:3;}
     if (my !== token) return;
     // Dealer sets the cards the house way
     var rects = {}; drow.querySelectorAll('.pcard').forEach(function (n) { rects[n.dataset.id] = n.getBoundingClientRect(); });
-    var set = dealerCards(true); drow.replaceWith(set);
+    var set = dealerCards(true); drow.replaceWith(set); if (DK.on) hyFix(true);
     set.querySelectorAll('.pcard').forEach(function (n) { var r = rects[n.dataset.id]; if (r) Cards.fly(n, { getBoundingClientRect: function () { return r; } }, { ms: 380 }); });
     Kit.sfx('whoosh');
     await wait(700);
@@ -1475,10 +1473,19 @@ html.pgd-two .dk-stn.net .ctl > .acts{grid-row:3;}
   function deskWin() { return document.documentElement.classList.contains('sh-desk'); }
   function tableUp() { return !!S && !PURE && !!app.querySelector('.ctable'); }
   function chipPx() { return DK.on ? DK.chs : 40; }
+  // A dealer's hand named with a hyphen (King-Queen) is one piece at a desk: under small cards its label may wrap, but
+  // never at the hyphen. A phone and a tablet keep the label as plain text, as it always was.
+  function hyFix(on) {
+    Array.prototype.forEach.call(app.querySelectorAll('.dset .gl'), function (g) {
+      var hy = g.querySelector('.hy'), m;
+      if (on && !hy && (m = /^(.*: )(\S+-\S+)$/.exec(g.textContent))) g.innerHTML = Kit.esc(m[1]) + '<span class="hy">' + Kit.esc(m[2]) + '</span>';
+      else if (!on && hy) g.textContent = g.textContent;
+    });
+  }
   function deskOff() {
     var R = document.documentElement;
     if (!DK.on && !R.classList.contains('pgd')) return;
-    DK.on = false; DK.dom = '';
+    DK.on = false; DK.dom = ''; hyFix(false);
     PRE.forEach(function (c) { R.classList.remove(c); });
     VARS.forEach(function (v) { app.style.removeProperty(v); });
     // (the table is still up, in a window that is now a phone's or a tablet's shape: the bankroll, the table and the controls as they were)
@@ -1588,6 +1595,7 @@ html.pgd-two .dk-stn.net .ctl > .acts{grid-row:3;}
       app.appendChild(DK.r);
       if (p.comp === 't' && !p.nol) app.appendChild(DK.l);
     }
+    hyFix(true);
     // (online, the felt over the station: a station taller than planned is planned for, once)
     if (NET && p.sk && (p.re || 0) < 2) {
       var more = DK.stn.offsetHeight - (p.comp === 's' ? p.sh : p.stnh);
