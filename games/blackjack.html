@@ -310,6 +310,9 @@ html.bj-dk .bjinfo.row{flex-direction:row;align-items:stretch;}
 .bjinfo .bi-col .bi{flex:none;}
 .bjinfo.row.two .bi{flex:1 1 0;max-width:30em;align-self:flex-start;}
 /* your bankroll before a hand is played: its line session by session, then the casino sessions newest first */
+/* (a column: the hands so far are only as tall as they are, so the placard and your bankroll keep their places
+   under them; with more hands than fit, the list gives up its last ones whole) */
+.bjinfo:not(.row) .bi-hands{flex:0 1 auto;} .bjinfo:not(.row) .bi-hands .bi-list{flex:0 1 auto;}
 .bjinfo .bi-bank{flex:1 1 0;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
 .bjinfo.row.two .bi-bank{align-self:stretch;}
 .bi-bank .bk-ln svg{display:block;width:100%;overflow:visible;}
@@ -1777,6 +1780,13 @@ html.bj-dk .bjinfo.row{flex-direction:row;align-items:stretch;}
     c.style.setProperty('--sp', pad + 'px'); c.style.setProperty('--sc', P.cp ? 1 : P.sc);
     c.style.setProperty('--bjcs', clamp(Math.floor((inner - 28 - 4 * gp) / 5) - 4, 34, Math.round(58 * P.sc)) + 'px'); c.style.setProperty('--bjgap', gp + 'px');
     if (!P.infoR) return;
+    // (beside the table, a station with less to hold than its place (a settled hand) is only as tall as what it holds,
+    // standing at the foot of the column, and the room over it takes the rest, so no glass stands empty)
+    if (P.kind === 'duo' && c.isConnected) {
+      c.style.minHeight = ''; var ch = Math.ceil(c.offsetHeight);
+      if (ch > 0 && ch < r.h) { c.style.top = (r.y + r.h - ch) + 'px'; P.infoR = Object.assign({}, P.infoR, { h: P.infoR.h + r.h - ch }); }
+      else c.style.minHeight = r.h + 'px';
+    }
     var box = infoPanel(P); if (!box) return;
     app.appendChild(box); infoFit(box);
   }
@@ -1836,9 +1846,9 @@ html.bj-dk .bjinfo.row{flex-direction:row;align-items:stretch;}
       hl.forEach(function (x) { list.appendChild(handRow(x, n)); });
       pHands = part('bi-hands', 'Hands so far', null, list);
     }
-    // your bankroll, before any hand is played: the casino sessions behind it (what the menu's bankroll history
-    // shows), so the room has something to say before this session has; the hands so far take its place
-    var pBank = !pHands && !(row && (pChart || r.w < 900)) ? bankPanel(r, bf, row) : null;
+    // your bankroll: the casino sessions behind it (what the menu's bankroll history shows), so the room has
+    // something to say before this session has; it gives way as soon as the hands so far need the room
+    var pBank = !(row && (pHands || pChart || r.w < 900)) ? bankPanel(r, bf, row) : null;
     if (row && !pHands) { box.classList.add('two'); box.appendChild(pSess); box.appendChild(pRules); if (pChart && r.w >= 900) box.appendChild(pChart); if (pBank) box.appendChild(pBank); }   // (nothing played yet: the session and the placard side by side)
     else if (row) {
       var col = el('div', { class: 'bi-col' }, [pSess, pRules]);
@@ -1908,7 +1918,9 @@ html.bj-dk .bjinfo.row{flex-direction:row;align-items:stretch;}
   // nothing in the room is cut: a part that doesn't fit goes whole (the placard first, then the chart), and the list
   // of hands keeps only the hands that show whole
   function infoFit(box) {
-    var list = box.querySelector('.bi-list'), all = list ? Array.prototype.slice.call(list.children) : [];
+    var list = box.querySelector('.bi-list'), bk0 = box.querySelector('.bi-bank');
+    if (bk0 && list) { var LB = list.getBoundingClientRect().bottom; if (Array.prototype.some.call(list.children, function (b) { return b.getBoundingClientRect().bottom > LB + .5; })) bk0.remove(); }
+    var all = list ? Array.prototype.slice.call(list.children) : [];
     function over() { return box.scrollHeight > box.clientHeight + 1 || box.scrollWidth > box.clientWidth + 1; }
     function trim() {
       if (!list || !list.isConnected) return 0;
