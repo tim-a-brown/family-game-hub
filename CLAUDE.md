@@ -201,6 +201,24 @@ Underlying principles for everything:
   `big/dominoes/` has the scripts: `gen.js` (fixed positions as saved states), `snap.js` with `cmp.sh` (the device proof,
   `proof.txt`), `scan.js` (anything cut, small, half a row or overlapping, every phase at every window), `resize.js`,
   `online.js`, `demo.js`, `misc.js`, `audit2.js`, and `all.sh`, which runs them one after another.
+  **Flip 7 at a desk** (`deskFit`, `paintSheet`, `paintSide` in flip7-ai.html; `.f7.dk` is on the stage only while one of
+  Cards.DESK's windows shows): every player's row is a cell of the felt, laid out for the felt there is (the others in 1
+  to 4 columns, the deck in a row or in a column of its own at the right, your row larger or one of the grid, the name
+  over the cards or at their left), each row with seven places for its seven different numbers, the cards to 210px; the
+  score sheet at the left (`Cards.pad`: a row a round, a bust, a Flip 7 and a freeze marked, the round in play lit, a
+  meter to the target), and at the right the race to the target with this round's points on each line (solid once they
+  are safe, hatched while a bust would lose them) and what has happened, round by round from `S.ev`, over Flip and Stay.
+  A wide window whose table would have under half its width stands both panels at the left. A scored round goes onto the
+  sheet and the bar deals the next one, online too. A computer's window smaller than those (a mouse, `FINE`), in which
+  the game's own layout would scroll, gets the same felt fitted to the window with no panels (`dk-small`, remembered by
+  window and player count in `SMALL`); a touch screen never does. **Go Fish at a desk** (`paintDesk`, `paintTally`, `paintLog` and the
+  `DKS` parts of `fit` in gofish.html; `.gf.dk`): the seats, the pond and your hand step up with the felt (your cards to
+  210px), the books and pairs as large as their places allow (`--obw`, `--mbw`, with a themed deck's full pictures). Two
+  panels: the books by player with the cards each holds and the deck's 13 books by who made them; and the asks as they
+  were said aloud, newest first, from the game's own `S.log` (its last 60 asks; a fished card is named only when it was
+  the rank asked for, as it is shown then). They stand at the left with your hand at the right (side by side in a strip
+  wide enough for it), at the left with the hand below in a nearly square window, along the bottom of a tall one. The
+  scripts are the scratchpad's `big/flip7/` and `big/gofish/`.
   **The setup and the results card at a desk, for every game** (kit.js "The desk" and the last section of kit.css; every
   rule hangs off `.k-dk`, which kit.js sets only in a window wider than 1024 or more than 768 the shorter way, taller
   than 520 and 480 wide at least: `deskShape`, `winShape`, `Kit.desk()`. The devices are drawn by the rules they always
