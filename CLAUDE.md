@@ -535,7 +535,10 @@ Underlying principles for everything:
   Doubled, Split or Insured, and what it paid), and This table, the placard's rules as set; before a hand is played
   the session and the placard stand side by side (`.row.two`). While a hand is in play the room counts only the hands
   before it. `infoFit` drops the placard, then the chart, and keeps only whole hands. No strategy chart, count or hint
-  beyond the game's own hint button.
+  beyond the game's own hint button. Where a seat plays from your own bankroll and not online, the room
+  also holds Your bankroll (`bankPanel`: its line over past casino sessions and those sessions newest first, from the
+  casino's ledger), which gives way as soon as the hands so far need the room; a station beside the table with less to
+  hold than its place stands at the column's foot at its own height.
   **Baccarat at a desk** (`html.bc-dk`; `deskPlan`, `feltFit`/`feltGeo`, `deskLay`, `printWide`, `boardFit`,
   `boardBuild`, `paintRoadsDesk`, `sessView` in baccarat.html; `deskLay` lays the same nodes out for the window
   without rebuilding them, so a window dragged mid-squeeze keeps the hand). The felt is a wide half-moon between 520
@@ -566,7 +569,9 @@ Underlying principles for everything:
   session (net, bet in all, spins that won, biggest win, longest dry spell, free games, Hold & Spin, jackpots), the
   credit spin by spin, and Last spins, each as the grid the reels stopped on with what it made and paid. While the
   reels turn or a feature plays the room keeps the session as it stood before (`IM`). `infoFit` drops the chart, the
-  spins, then the session, keeps only whole spins, and hides the room where nothing fits.
+  spins, then the session, keeps only whole spins, and hides the room where nothing fits. After the camera is placed,
+  `deskDeck` measures the deck and its buttons as they land on the screen (the deck stands out toward the camera, so it
+  lands lower than the plan's heights say) and moves the machine up, then smaller, until the whole deck is in view.
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
