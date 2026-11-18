@@ -74,10 +74,11 @@
       await D.set(endOfHand);
       await D.say('Now we skip ahead to the end of the hand.', { pos: 'center', ring: false, wait: 2200 });
       await D.you(mine(0, 3), 'You have one tile left, and its 0 matches the 0 at the end of the line. Play it to go out.', { until: function () { return S().phase !== 'play'; } });
-      await D.wait(function () { return document.querySelector('.k-sheet .hres'); }, 8000);
+      // (the hand's count: a sheet over the table on a phone or a tablet, the panel beside the table in a large window)
+      await D.wait(function () { return document.querySelector('.hres .row2'); }, 8000);
       await D.wait(600);
-      await D.say('Domino! You went out first, so you score the dots left in Bender’s hand: 19 points.', { at: function () { return document.querySelectorAll('.k-sheet .hres .row2')[1]; }, pos: 'below' });
-      await D.say('A new hand is dealt each time, until someone reaches 100 points and wins the match.', { at: '.k-sheet .hres .tot' });
+      await D.say('Domino! You went out first, so you score the dots left in Bender’s hand: 19 points.', { at: function () { return document.querySelectorAll('.hres .row2')[1]; }, pos: 'below' });
+      await D.say('A new hand is dealt each time, until someone reaches 100 points and wins the match.', { at: function () { return document.querySelector('.k-sheet .hres .tot') || document.querySelector('.dk-sheet .dk-pad .pf'); } });
     }
   });
 })();

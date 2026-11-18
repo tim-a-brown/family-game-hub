@@ -150,6 +150,17 @@ Underlying principles for everything:
   180 points as one bar with the bid marked, the counters each side has captured as small cards, the nest, the last trick.
   Both fit the right panel by measuring it (`f1` to `f7`: the least needed part goes first), and keep `html.cdesk` on only
   while a desk layout shows, since Cards.desk's in-between layouts assume Hearts' stage.
+  **Dominoes at a desk** (its own, not Cards.desk: `deskPlan`, `deskSet`, `paintSheet`, `paintSide` in dominoes.html; `.dk`
+  and `.dk-wide`, `.dk-strip`, `.dk-tall` or `.dk-square` on `.dw` only while a desk layout shows): the table takes the
+  window, its tiles to 104px across (135 while the line is short), your tiles the same size, the plaques on the felt
+  stepping up with it (`--k`); the score sheet hand by hand with the race to the target at the left; at the right the
+  hand in play: how many tiles each player holds and what each drew or passed, the open ends (in All Fives the count of
+  the ends piece by piece), and the hand play by play from `S.pl`, over whose turn it is and the buttons. A counted hand
+  is written there with what everyone was left holding and its button stands where the turn's buttons are (`deskHand`;
+  `deskSync` moves the count between the sheet and the panel when the window changes size). Mexican Train at a desk is in
+  its own section. The scratchpad's `big/dominoes/` has the scripts: `gen.js` (fixed positions as saved states),
+  `snap.js` with `cmp.sh` (the device proof), `scan.js` (anything cut, small, half a row or overlapping, every phase at
+  every window), `resize.js`, `online.js`, `demo.js`, `audit2.js`.
   **The setup and the results card at a desk, for every game** (kit.js "The desk" and the last section of kit.css; every
   rule hangs off `.k-dk`, which kit.js sets only in a window wider than 1024 or more than 768 the shorter way, taller
   than 520 and 480 wide at least: `deskShape`, `winShape`, `Kit.desk()`. The devices are drawn by the rules they always
@@ -579,6 +590,18 @@ Underlying principles for everything:
   room and the others lie in thinner lanes (`laneOpen`, `laneWidths`); a long train bends back (up to four lines) while
   that keeps its tiles larger than pushing together would; a narrow table with many trains keeps the hub's column to the
   hub (`nar`); on a 320-wide phone the four-to-a-row plates drop the avatar for the name.
+- **At a desk** (a large window; `mdkPlan`, `mdkSet` in mexicantrain.js, `.mdk` on `.mtw` only while a desk layout
+  shows): the hub, the lanes and the tiles are sized from the window (`MT_U`, 88px across at most; `deskCap` keeps a
+  tile small enough for a train to run five or six tiles out before it bends), the plaques and the heads step up
+  (`--k`). **wide**: the players over the rounds at the left, a ladder from the double 12 down with every round's dots,
+  the rounds to come ruled and empty, the totals, and the totals round by round drawn under it where there is room
+  (`paintLadder`, `drawRace`); at the right, between whose turn it is and your tiles, the round in play (`paintSide`:
+  the double that must be covered, every train's length, open end and marker, the round play by play from `S.pl`),
+  left out where the column is too short for a row a train. **tall**: the players, the rounds and the round in play
+  side by side (seven or eight players: the rounds alone), the table, your tiles. **stack** (nearly square): the
+  players in a row and the table the full width, no panels. A counted round is written where your tiles were, its
+  button where the turn's buttons are (`paintCount`, `deskRound`; `mdkSync` moves it between the sheet and the panel
+  when the window changes size).
 - **Easy** (Tim, 2026-11-15: "nudge mexican train easy up slightly"): any tile that fits, but a little more than half
   the time it looks first (its own train when its marker is out, a double it can follow, a heavier tile): `EZ` in the
   core. The sim (mulberry32 now) has Easy winning about 1 match in 5 against Normal head to head, 1 in 15 against Hard.

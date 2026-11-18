@@ -229,7 +229,8 @@
 #app .dw.dk-wide{grid-template-columns:var(--lw) minmax(0,1fr) var(--rw);grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"sheet tbl side" "sheet rack foot";}
 #app .dw.dk-wide .status{flex-direction:column;justify-content:center;align-items:stretch;align-self:stretch;gap:12px;padding:14px 18px;border-radius:22px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),inset 0 1px 0 rgba(255,255,255,.1);}
 #app .dw.dk-wide .msg{flex:0 0 auto;font-size:clamp(1.1rem,1.15vw,1.4rem);} #app .dw.dk-wide .msg small{font-size:.8em;margin-top:.15em;}
-#app .dw.dk-wide .acts{flex-direction:column;}
+#app .dw.dk-wide .acts{flex-direction:row;} #app .dw.dk-wide .acts .btn{flex:1 1 0;padding:0 12px;}
+#app .dw.dk-wide.low .status{gap:8px;padding:9px 14px;} #app .dw.dk-wide.low .acts .btn{min-height:44px;}
 /* a short wide strip: the table the whole height, your tiles and the buttons in the right column under the hand in play */
 #app .dw.dk-strip{grid-template-columns:var(--lw) minmax(0,1fr) var(--rw);grid-template-rows:minmax(0,1fr) auto auto;grid-template-areas:"sheet tbl side" "sheet tbl foot" "sheet tbl rack";gap:8px 14px;}
 #app .dw.dk-strip .status{align-items:center;min-height:46px;}
@@ -348,6 +349,9 @@
 .dk-res .row2 .pp small{display:block;margin-top:.15em;font:650 .62em/1 var(--font);color:var(--text-3);}
 .dk-res.tight .row2 .tl .dm{--tw:1.15em;} .dk-res.tiny .row2 .tl .dm{--tw:.8em;}
 .dk-res.bare .row2 .tl{display:none;} .dk-res.bare .row2 .who{flex:1 1 0;width:auto;}
+/* (a narrow panel: the tiles on a line of their own under the name, so they have the panel's width) */
+.dk-res.stk .row2{flex-wrap:wrap;row-gap:.35em;} .dk-res.stk .row2 .who{flex:1 1 0;width:auto;} .dk-res.stk .row2 .tl{order:3;flex:1 0 100%;box-sizing:border-box;padding-left:2.3em;}
+.dk-res.stk .row2 .tl:has(em){order:0;flex:0 0 auto;padding:0;}
 </style>
 </head>
 <body>
@@ -1420,7 +1424,7 @@
     else { lw = clampN(250, W * .28, 320); u = Math.min((W - 94 - lw) / 9.6, (H - 250) / 11.6); }
     u = clampN(34, u, DESK_U);
     DK = { pl: pl, u: u, k: clampN(pl === 'strip' ? .8 : 1, u / 52, 1.8), rt: pl === 'strip' ? clampN(34, Math.min(u * 1.1, (rw - 56) / 7), 52) : Math.max(40, u) };
-    var cls = 'dw dk dk-' + pl;
+    var cls = 'dw dk dk-' + pl + (H < 800 ? ' low' : '');
     if (dw.className !== cls) dw.className = cls;
     app.classList.add('dkapp');
     st.setProperty('--k', DK.k.toFixed(3)); st.setProperty('--lw', Math.round(lw) + 'px'); st.setProperty('--rw', Math.round(rw) + 'px'); st.setProperty('--ph', Math.round(ph) + 'px');
@@ -1535,7 +1539,7 @@
   // the hand in play (or, once it is counted, what everyone was left holding)
   function paintSide() {
     var inn = el('div', { class: 'dk-in' }), v = viewerIdx(), n = S.players.length, i;
-    var X = deskRes && deskRes.X ? deskRes.X : (S.phase === 'handend' || S.phase === 'over') && S.res ? { res: S.res, score: S.score, handPts: S.handPts, hand: S.hand } : null;
+    var X = deskRes && deskRes.X && S.phase !== 'over' ? deskRes.X : (S.phase === 'handend' || S.phase === 'over') && S.res ? { res: S.res, score: S.score, handPts: S.handPts, hand: S.hand } : null;
     sideEl.innerHTML = ''; sideEl.appendChild(inn);
     if (X) {
       var r = X.res, hd = r.kind === 'match' ? '<b>' + Kit.esc(sideName(r.side)) + '</b> reached ' + S.target : handHead(r);
@@ -1550,6 +1554,7 @@
           el('div', { class: 'pp', html: r.pips[k] + '<small>' + (r.pips[k] === 1 ? 'dot' : 'dots') + '</small>' })]));
       });
       inn.appendChild(box);
+      if (sideEl.clientWidth < 340) box.classList.add('stk');
       // (the tiles as large as the panel has room for; a panel too short for them keeps the dots alone)
       ['tight', 'tiny', 'bare'].forEach(function (c) { if (box.scrollHeight > box.clientHeight + 1) box.classList.add(c); });
       deskLog = -1;

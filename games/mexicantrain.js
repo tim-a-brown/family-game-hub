@@ -444,7 +444,7 @@
     if (!S || !W_ || !W_.isConnected) return;
     W_.setAttribute('data-n', S.n);
     mdkSet();
-    paintWho(); paintStatus(); paintRack(o); paintTable(o); paintDesk();
+    paintWho(); paintStatus(); paintRack(o); paintDesk(); paintTable(o);   // (the panels first: a counted round's panel takes its own height, and the table is laid out in what is left)
   }
   function V() {
     if (showPrev && S.prev) return { trains: S.prev.trains, hands: S.prev.hands, eng: S.prev.eng, round: S.prev.round, cur: -1, dbl: null, scores: S.prev.scores, prev: true };
@@ -631,7 +631,9 @@
       cols = n <= 4 ? 1 : 2;
     } else if (pl === 'tall') {
       rt = clampN(48, W / 12, MT_U);
-      ph = n <= 4 ? clampN(260, H * .22, 400) : clampN(200, H * .14, 260); rackH = Math.min(need(W - 40, rt), H * .18); side = true;
+      // (five or six players: the room the round in play needs for a row a train; seven or eight: the rounds alone, across the window)
+      ph = n <= 4 ? clampN(260, H * .22, 400) : n <= 6 ? Math.max(clampN(200, H * .14, 260), 88 + (n + 1) * 25) : clampN(200, H * .14, 260);
+      rackH = Math.min(need(W - 40, rt), H * .18); side = n <= 6;
       cols = n <= 4 ? n : Math.ceil(n / 2);
     } else { rt = clampN(48, W / 12, MT_U); rackH = Math.min(need(W - 40, rt), H * .22); cols = (W - 40) / n >= 112 ? n : Math.ceil(n / 2); }
     MDK = { pl: pl, max: MT_U, rt: rt, k: clampN(1, Math.min(W / 1500, H / 950), 1.6), side: side, rackH: rackH, fill: fill, cols: cols, count: count };
@@ -802,14 +804,14 @@
     if (over()) tb.classList.add('tight');
     if (over()) [].forEach.call(tb.querySelectorAll('.mk:not(.hot)'), function (x) { x.remove(); });
     if (over() && ow) ow.remove();
-    if (over()) lbl1.remove();
+    sideEl.classList.toggle('gone', over());   // (never cut: a panel that still can't hold its rows is left empty)
   }
   // a round that has been counted: what everyone was left holding, their dots and their new totals
   function paintCount() {
     var P = S.prev, r = mCount ? mCount.r : P && P.res; if (!P || !r) return;
     var last = S.phase === 'over' && P.round === S.R - 1;
     var inn = el('div', { class: 'mdk-in' });
-    sideEl.innerHTML = ''; sideEl.appendChild(inn);
+    sideEl.innerHTML = ''; sideEl.appendChild(inn); sideEl.classList.remove('gone');
     inn.appendChild(el('div', { class: 'mdk-h' }, [el('h2', { text: 'Round ' + (r.round + 1) }), el('small', { text: 'of ' + S.R })]));
     var box = el('div', { class: 'mdk-res' });
     box.appendChild(el('p', { class: 'head', html: r.k === 'out' ? '<b>' + Kit.esc(who(r.w)) + '</b> went out.' : r.w >= 0 ? 'Nobody could play. <b>' + Kit.esc(who(r.w)) + '</b> had the fewest dots.' : 'Nobody could play.' }));
@@ -827,7 +829,7 @@
     inn.appendChild(box);
     // (the tiles as large as the panel has room for; a panel too short for them keeps the dots alone)
     function over() { return inn.scrollHeight > inn.clientHeight + 1 || sideEl.scrollHeight > sideEl.clientHeight + 1; }
-    ['tight', 'small', 'tiny', 'bare'].forEach(function (c) { if (over()) box.classList.add(c); });
+    ['tight', 'small', 'tiny', 'bare', 'slim'].forEach(function (c) { if (over()) box.classList.add(c); });
     if (over()) foot.remove();
     mLog = -1;
   }
