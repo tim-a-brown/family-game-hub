@@ -1404,6 +1404,9 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
 .pn-stand b{text-align:right;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap;} .pn-stand .me b{color:var(--lit-ink);}
 .pn-stand .net,.pn-stand .w{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--text-2);} .pn-stand .net.up{color:var(--green);} .pn-stand .net.down{color:var(--red);}
 .pn-stand .out :is(.nm,b,.net,.w){opacity:.5;}
+/* (a panel taller than its list: the rows take the height, each to a comfortable most, so the panel is not half air) */
+.proom.rr > .pn-table > .pn-stand{flex:1 1 auto;min-height:0;grid-template-rows:auto;grid-auto-rows:minmax(min-content,calc(42px * var(--pu)));align-content:start;}
+.proom.rr > .pn-rank:not(.two) > .pn-rk{flex:1 1 auto;min-height:0;grid-auto-rows:minmax(min-content,calc(46px * var(--pu)));}
 /* the tournament */
 .pn-lv{flex:none;display:flex;align-items:flex-end;justify-content:space-between;gap:calc(12px * var(--pu));}
 .pn-lv > div{display:flex;flex-direction:column;min-width:0;} .pn-lv .nxt{align-items:flex-end;text-align:right;}
@@ -1439,8 +1442,8 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
 .pn .pn-img.wait{background-image:linear-gradient(100deg,#17131f 30%,#2a2438 50%,#17131f 70%);background-size:220% 100%;animation:czshim 1.3s linear infinite;}
 /* the hand rankings */
 .pn-rk{flex:0 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1fr);align-content:start;row-gap:calc(4px * var(--pu));}
-.pn-rk.pn-rk > div{display:grid;grid-template-columns:1.3em minmax(0,1fr) auto;align-items:center;column-gap:calc(6px * var(--pu));}
-.pn-rk .k{font-size:calc(.7rem * var(--pu));color:var(--text-3);text-align:right;} .pn-rk .nm{color:var(--text);font-weight:800;line-height:1.15;white-space:nowrap;} .pn-rk .cs{white-space:nowrap;line-height:1;}
+.pn-rk.pn-rk > div{display:grid;grid-template-columns:1.3em minmax(min-content,1fr) auto;align-items:center;column-gap:calc(6px * var(--pu));}
+.pn-rk .k{font-size:calc(.7rem * var(--pu));color:var(--text-3);text-align:right;} .pn-rk .nm{color:var(--text);font-weight:800;line-height:1.15;} .pn-rk .cs{white-space:nowrap;line-height:1;}
 .pn-rk .mc.up{top:0;box-shadow:0 0 0 1.5px var(--yellow);} .pn-rk .mc:not(.up){opacity:.55;} .pn-rk .mc.up + .mc:not(.up){margin-left:calc(2px * var(--pu));}
 .pn.two .pn-rk{flex:1 1 auto;align-content:space-evenly;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:repeat(5,auto);grid-auto-flow:column;column-gap:calc(22px * var(--pu));}
 /* the hand so far, and every hand before it: the table's receipt, printed as it goes */
@@ -5171,7 +5174,8 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
     var pu = 1 + (clamp(Math.min(W / 1440, H / 900), 1, 2.1) - 1) * 0.5, ss = 1 + (pu - 1) * 0.6;
     var SW = Math.round(318 * ss), DOCK = Math.round(206 * ss), COLH = Math.round(548 * ss);
     // the board's card for a table of this size: five of them with the seats at either end, or the pot over them and
-    // your own cards under them, whichever is tighter (a table taller than wide has its side seats above and below)
+    // your own cards under them, whichever is tighter (a table taller than wide has its side seats above and below, so
+    // its board may take a little more of the width)
     function cardW(tw, th) { var a = tw / th, k = clamp(0.082 + (1.6 - a) * 0.05, 0.082, 0.115); return Math.min(tw * k, th * 0.18, 210); }
     function plan(form, t, s, rooms) { return { form: form, t: t.map(Math.round), s: s, rooms: rooms.filter(function (r) { return r.box[2] >= 220 && r.box[3] >= 140; }), b: cardW(t[2], t[3]) }; }
     function col(x, y, w, h) { return { box: [x, y, w, h].map(Math.round), form: 'col' }; }
@@ -5192,7 +5196,7 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
       // stacked: the largest table the window allows with a dock under it; or, when it costs the cards nothing, a
       // lower table with the room and your station side by side under it
       var narrow = iw < 900, aMin = narrow ? 0.8 : 1.45, k1, k2 = null;
-      var slim = iw < 640, DH = slim ? Math.round(240 * ss) : DOCK, th1 = Math.min(ih - gp - DH, iw / aMin), bh = ih - th1 - gp;
+      var slim = iw < 640, DH = slim ? Math.round(258 * ss) : DOCK, th1 = Math.min(ih - gp - DH, iw / aMin), bh = ih - th1 - gp;
       var want = Math.round(clamp(ih * 0.2, 150, 420));
       // (the room as a band between the table and the dock, where the cards lose a tenth at most for it)
       if (bh - DH - gp < 150 && cardW(iw, th1 - want - gp) >= cardW(iw, th1) * 0.88 && (th1 - want - gp) >= iw / 2.6) { th1 -= want + gp; bh = ih - th1 - gp; }
@@ -5226,7 +5230,7 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
     // (a game with no board has the middle of the felt to spare: your own cards take it, less covered)
     if (nob && nC > 2) { show = nC >= 6 ? 0.64 : 0.8; hcw = Math.min(210, tw * 0.46 / (1 + (nC - 1) * show), th * 0.25); }
     var handW = hcw * (1 + Math.max(0, nC - 1) * show);
-    var fcw = Math.max(30, P.bcw * (stud ? 0.7 : 0.6)), scw = Math.max(22, P.bcw * 0.42), podCards = stud ? fcw * (1 + 6 * 0.42) : nC > 2 ? scw * (1 + (nC - 1) * 0.42) : scw * 1.5;
+    var fcw = Math.max(42, P.bcw * (stud ? 0.7 : 0.6)), scw = Math.max(22, P.bcw * 0.42), podCards = stud ? fcw * (1 + 6 * 0.42) : nC > 2 ? scw * (1 + (nC - 1) * 0.42) : scw * 1.5;
     out.hcw = Math.round(hcw); out.hov = Math.round(hcw * (show - 1)); out.fcw = Math.round(fcw); out.scw = Math.round(scw);
     var myHalf = handW / 2 + 120 * u, tagW = 150 * u;
     function pod(p) {
@@ -5248,11 +5252,31 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
       var kx = x - p.nx * (sup + 30 * u) + tx * (d.hw * 0.8), ky = y - p.ny * (sup + 30 * u) + ty * (d.hw * 0.8);
       if (side) { kx = x - p.nx * (d.hw + 26 * u); ky = y + (y < th / 2 ? 1 : -1) * (d.hh + 4 * u); }   // (an end seat: at the pod's inner corner, on the side away from its chips)
       out.pos.push([x / tw * 100, y / th * 100]); out.bet.push([bx / tw * 100, by / th * 100]); out.btn.push([kx / tw * 100, ky / th * 100]); out.side.push(side); out.wide.push(d.wide);
+      // (what the board must keep clear of: the seat, its chips in front of it and the dealer button)
+      out.obs = (out.obs || []).concat([[x - d.hw, y - d.hh, x + d.hw, y + d.hh], side === 'l' ? [bx, by - 16 * u, bx + 90 * u, by + 16 * u] : side === 'r' ? [bx - 90 * u, by - 16 * u, bx, by + 16 * u] : [bx - 45 * u, by - 16 * u, bx + 45 * u, by + 16 * u], [kx - 15 * u, ky - 15 * u, kx + 15 * u, ky + 15 * u]]);
       if (p.ny < -0.8 && Math.abs(x - tw / 2) < (nob ? 150 * u : P.bcw * 2.7) + d.hw) out.topB = Math.max(out.topB || 0, y + d.hh);   // (a seat over the board)
     }
     // the pot and the board between the top rail's seats and your own cards
     var topB = (out.topB || rim + 20 * u) + 46 * u, botB = out.myTop - 62 * u, bh = nob ? 76 * u : P.bcw * 1.4, potH = 44 * u, mid = (topB + botB) / 2;
     var by0 = clamp(mid + (potH + 8 * u) / 2, topB + potH + 8 * u + bh / 2, Math.max(topB + potH + 8 * u + bh / 2, botB - bh / 2));
+    // A seat at the side of the board's row (three or four at a table taller than wide or square) would lie under it:
+    // the board then moves up or down the felt to the nearest place clear of every seat, its chips and the button, or
+    // where there is none, its cards get smaller (to six tenths at least) until one is clear
+    if (!nob && out.obs) {
+      var clear = function (c, y) {
+        var b = c * 1.4, bw = c * 5.28 / 2 + 6 * u, pt = y - b / 2 - 8 * u - potH;
+        if (pt < rim + 14 * u || y + b / 2 > botB) return false;
+        var boxes = [[tw / 2 - bw, y - b / 2, tw / 2 + bw, y + b / 2], [tw / 2 - 120 * u, pt, tw / 2 + 120 * u, y - b / 2 - 8 * u]];
+        return !out.obs.some(function (o) { return boxes.some(function (q) { return o[0] < q[2] && o[2] > q[0] && o[1] < q[3] && o[3] > q[1]; }); });
+      };
+      if (!clear(P.bcw, by0)) {
+        var got = null;
+        for (var c = P.bcw; c >= P.bcw * 0.6 && !got; c *= 0.96) {
+          for (var y = rim; y < th; y += 3 * u) if (clear(c, y) && (!got || Math.abs(y - by0) < Math.abs(got[1] - by0))) got = [c, y];
+        }
+        if (got) { P.bcw = Math.round(got[0]); bh = P.bcw * 1.4; by0 = got[1]; }
+      }
+    }
     out.board = [50, by0 / th * 100]; out.pot = [50, (by0 - bh / 2 - 8 * u - potH / 2) / th * 100]; out.msg = [50, (by0 + bh / 2 + 22 * u) / th * 100];
     return out;
   }
@@ -6027,7 +6051,7 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
       var pay = payList(C, me, rk, est); pay.classList.add('pk-rows'); pay.setAttribute('data-give', '1');
       body.push(el('div', { class: 'pn-sub', 'data-give': '1', text: 'What each place pays' })); body.push(pay);
     } else {
-      var rk2 = me.out ? me.place : 1 + al.filter(function (i) { return S.players[i].stack > me.stack; }).length;
+      var rk2 = me.out ? me.place : 1 + al.filter(function (i) { return stackAt(i) > stackAt(0); }).length;
       fact('Players left', String(al.length), 'of ' + N());
       fact('Your place', ordinal(rk2), me.out ? '' : bbs + ' big blinds', 'gold');
       fact('Average stack', amt(avg), Math.round(avg / Math.max(1, S.bb)) + ' big blinds');
@@ -6107,6 +6131,11 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
   }
   // after the room is in the page: a list shows whole rows, and a panel short of room gives up its least parts whole
   function fitRoom() {
+    // (the station's card: the chip counts go whole, rather than lose their last rows, where the card is short of room;
+    // then the line under the odds street by street)
+    [].slice.call(document.querySelectorAll('.pdesk > .prail .pside')).forEach(function (sd) {
+      ['.pstand', '.pyou .precap .say'].forEach(function (q) { var x = sd.querySelector(q); if (x && sd.scrollHeight > sd.clientHeight + 1) x.remove(); });
+    });
     [].slice.call(document.querySelectorAll('.proom .pn, .dks > .pn')).forEach(function (pn) {
       if (pn.classList.contains('pn-log')) return;
       var hl = pn.querySelector('.pn-hx, .pn-vh'), pu0 = (DK || VD || { pu: 1 }).pu;
@@ -6118,6 +6147,8 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
       if (over()) [].slice.call(pn.querySelectorAll('[data-give="2"]')).forEach(function (x) { x.remove(); });
       trim(2);
       if (over()) [].slice.call(pn.querySelectorAll('[data-give="1"]')).forEach(function (x) { x.remove(); });
+      // (then the facts from their end, a whole fact at a time, down to two)
+      [].slice.call(pn.querySelectorAll('.pn-facts')).forEach(function (f) { while (over() && f.children.length > 2) f.removeChild(f.lastChild); });
       pn.classList.toggle('cut', over());
     });
   }
