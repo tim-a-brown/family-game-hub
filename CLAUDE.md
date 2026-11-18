@@ -305,6 +305,59 @@ Underlying principles for everything:
   `resize.js`, `online.js` (up to six people, a laptop host and a phone guest), `demo.js`, `snap.js` with `cmp.sh`
   (the device proof). **Not done**: Craps draws the other players' bets as a list, not as chips on the felt; a window
   under 481 wide that is not a phone's keeps the phone layout, which scrolls in Craps as it does on a phone.
+  **Three Card Poker at a desk** (its own layouts, a felt with a betting station; the head script's `desk(w, h)`,
+  Horse Race's test, gives every window that is not a phone's or a tablet's shape `sh-desk`, and `deskSync`,
+  `deskPlan`, `deskApply`, `deskFit` and `deskPaint` in threecardpoker.html set `html.tcd` only while the table shows
+  there; `deskOff` puts the bankroll, the table and the controls back as a device has them): your three cards are the
+  hero, to 210px wide, and the felt's circles, chips, name plates and printing are sized from the card (`--dc`,
+  `--dp`, a step up to 1.3 once the card is at its largest). `deskPlan` works out the largest card each composition
+  allows from what each way of laying the felt needs across and down (`need`), and `deskFit` measures the felt and
+  eases the card down until every piece is inside it. Compositions: `tcd-3` (the sheet at the left, the felt, the
+  session and this hand over the station at the right), `tcd-r` (the felt and one column), `tcd-t` (the felt over the
+  station, the panels in a row under it; `tcd-two` the station laid two-up, `tcd-nol` no room for panels), `tcd-cmp`
+  under 760 tall. On the felt: `fa-t` stacked as a tablet has it, `fa-w` the cards at the left with the pay tables,
+  the rule and the circles at the right (short wide windows), `fa-g` the pay tables either side of the dealer (the
+  widest). The pay tables are the felt's own numbers: `litRows` rings the row of the hand you hold while its bet is
+  still to be decided and lights it gold once it has paid. The station (`DK.stn`, `.dk-stn`) is the game's own
+  bankroll bar and controls at the right. The room: `paintLog`, Hands this session, a ruled sheet with a row a hand
+  (your cards over the dealer's as small cards, what each hand was, what the hand came to and why: Won, Lost, Tied,
+  Folded, Didn’t qualify), the hand in play lit with the dealer face down and the rows to come ruled and empty;
+  `paintSes`, This session (the net, your money hand by hand as a line, Won, Lost and Tied, the biggest win, the
+  folds, what Pair Plus and the Ante bonus have paid, how often the dealer didn’t qualify); `paintHand`, This hand
+  (what is on each circle and what the Play bet will cost, then what each circle paid); `paintHl`, Highlights
+  (`S.ev`); online `paintSeats`, At the table (each other player's money and bet, cards face down while they decide,
+  and the hand they played once the dealer has turned over on this device, a folded hand kept face down; two seats a
+  line, `c2`, in a low row). `fitInfo` gives up whole parts by `data-drop`, never a cut one. Online the table's seat
+  plates flow across the station (`.dk-stn.net`) and the plan uses the station's measured height (`DK.stx`). K, L, N
+  and 1100 by 640 count as tablets and keep the tablet's layout. Test hook `__tcp.desk()`; the scripts are the
+  scratchpad's `big/threecardpoker/` (`lib.js`, `gen.js` the saved games, `shots.js` the scan and the pixel proof with
+  `cmp.js`, `resize.js`, `online.js` three people, `online6.js` six people in six window shapes, `demo.js`).
+  **Pai Gow at a desk** (the same functions in paigow.html, `html.pgd`): setting seven cards is the hero, a card to
+  210px wide, with your high hand and your low hand as two places sized from the card (`--dc`, `--dp`, `--hin` the
+  width of the high hand's place: seven cards while you set, five after). Compositions: `pgd-3` (the sheet, the felt,
+  the session and this hand over the station), `pgd-s` (the felt across the window, the panels and the station in a
+  strip under it, `--sh`), `pgd-r` (the felt and one column), `pgd-t` (the felt over the station, the panels under it;
+  `pgd-two`, `pgd-nol`), `pgd-cmp` under 760 tall; `deskPlan` weighs them by the card each allows (the strip a little
+  ahead, the stack a little behind). On the felt: `fa-s` stacked (`ov` where your seven cards overlap in a narrow
+  window), `fa-m` the dealer beside the bet and your low hand over your high hand (short windows), `fa-l` one line
+  (very wide, low windows): at the showdown the dealer's high hand stands over yours and the dealer's low hand over
+  yours, each marked Win, Lose or a copy. The card is one size through a hand (`DK.fit`, keyed by window and phase,
+  the least of them). The felt prints the game's own rule (the dealer wins copies, wins pay a 5% commission); no
+  house-way table is shown beyond the game's own House way button and its Strategy help. The room: `paintLog`, Hands
+  this session (your two hands over the dealer's two as small cards, a gold line under each hand that won, the loser
+  dimmed, what the hand came to); `paintSes`, This session (the net, the line, Won, Pushed and Lost, the biggest win,
+  the commission paid, how often you set the house way, the longest winning streak); `paintHand`, This hand (after the
+  showdown one sentence a hand saying which beat which or that a copy went to the dealer; the bet, what both hands
+  winning pays, the 5% commission, a push, the dealer winning both, the row that happened lit); `paintHl`, Highlights;
+  online `paintSeats`, At the table (each other player's bet, seven cards face down while they set, their two hands
+  once the dealer has turned over on this device, the winner of each marked; two seats a line, `c2`, in the strip). At
+  a desk a dealer's hand named with a hyphen (King-Queen) is one piece (`hyFix`, `.hy`; a device keeps the label as
+  plain text), so under small cards its label never breaks at the hyphen. With nothing bet yet, This hand says what a
+  bet would come to in words (Even money, Push, Bet lost). Online the seat plates flow across the station and the plan
+  uses its measured height (`DK.stx`), as in Three Card Poker. `games/demos/paigow.js` points its dealer captions at
+  the dealer's two hands in the one-line felt, where the dealer's zone has no box. Test hook `__pg.desk()`; the
+  scripts are the scratchpad's `big/paigow/` (`gen.js` the saved games; the rest are Three Card Poker's, which take
+  the game's name).
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
