@@ -1795,7 +1795,7 @@ window.dispatchEvent(new Event('cab3d-ready'));
   function fitCab() {
     if (!cab || !canvas) return;
     var P = deskPlan(); deskApply(P);
-    if (P) { cab.resize(P.mw, window.innerHeight, P.mTop, P.mBottom, P.cut); return; }
+    if (P) { cab.resize(P.mw, window.innerHeight, P.mTop, P.mBottom, P.cut); deskDeck(P); return; }
     var W = innerWidth, H = innerHeight, top = dom.bank ? dom.bank.getBoundingClientRect().bottom + 4 : 64;
     var sb = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-b')) || 0;
     var cr = dom.ctl ? dom.ctl.el.getBoundingClientRect() : null, side = !!(cr && cr.left > W * 0.45);
@@ -1882,6 +1882,31 @@ window.dispatchEvent(new Event('cab3d-ready'));
     }
     P.mTop = P.mBottom - span;
     return P;
+  }
+  // The plan frames the machine by heights at its front face, but the sloped deck stands out toward the camera, so in
+  // perspective its front edge and its Spin and Max bet buttons land lower on the screen than the plan reckoned. After
+  // the camera is placed, the deck's printed surface and every button on it are measured as they project, and the
+  // machine is moved up, then made smaller about its top, until the whole deck is in view: above the window's foot,
+  // or above the station where the station stands under the machine. What must stay in view at the top is the
+  // cabinet's top (the reels' glass in a short strip, whose top box is meant to run past the window's head).
+  function deskDeck(P) {
+    if (!cab.deckSurf || !cab.objBox || !cab.placeCamera) return;
+    var limit = P.kind === 'tall' ? P.H - P.g - P.ctrl.h - 8 : P.H - 14, head = P.top + 4, top = P.mTop, bottom = P.mBottom;
+    var floorY = P.cut != null ? P.cut : -.14, ext = cab.L.height + .05 - floorY;
+    for (var i = 0; i < 4; i++) {
+      cab.placeCamera();
+      var r = cab.rects(), d = cab.objBox(cab.deckSurf, 4), yb = d.y + d.h;
+      ['lm', 'lp', 'bm', 'bp', 'max', 'spin'].forEach(function (k) { if (r[k]) yb = Math.max(yb, r[k].y + r[k].h + 2); });
+      var ov = yb - limit; if (ov <= .5) return;
+      var q = P.crop ? r.win.y : top + 7, fa = Math.max(0, q - head);
+      if (ov <= fa) { top -= ov; bottom -= ov; }
+      else {
+        // (move up as far as the head allows, then shrink about the part that must stay at the head)
+        var qn = q - fa, ybn = yb - fa, yt = top + 7 - fa, f = Math.max(.5, (limit - qn) / (ybn - qn)), k = cab.kpm * f;
+        top = qn - (qn - yt) * f - 7; bottom = top + k * ext + 14;
+      }
+      cab.resize(P.mw, P.H, top, bottom, P.cut);
+    }
   }
   // put the pieces where the plan says (or hand them back to the phone's and the tablet's own places)
   function deskApply(P) {
