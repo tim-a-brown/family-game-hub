@@ -161,12 +161,19 @@ Underlying principles for everything:
   sheet and the bar deals the next one, online too. A computer's window smaller than those (a mouse, `FINE`), in which
   the game's own layout would scroll, gets the same felt fitted to the window with no panels (`dk-small`, remembered by
   window and player count in `SMALL`); a touch screen never does. **Go Fish at a desk** (`paintDesk`, `paintTally`, `paintLog` and the
-  `DKS` parts of `fit` in gofish.html; `.gf.dk`): the seats, the pond and your hand step up with the felt (your cards to
-  210px), the books and pairs as large as their places allow (`--obw`, `--mbw`, with a themed deck's full pictures). Two
-  panels: the books by player with the cards each holds and the deck's 13 books by who made them; and the asks as they
-  were said aloud, newest first, from the game's own `S.log` (its last 60 asks; a fished card is named only when it was
-  the rank asked for, as it is shown then). They stand at the left with your hand at the right (side by side in a strip
-  wide enough for it), at the left with the hand below in a nearly square window, along the bottom of a tall one. The
+  `DKS` parts of `fit` in gofish.html; `.gf.dk`): the seats, the pond and your hand step up with the felt. Every
+  player's books or pairs, yours along the foot too, are one size, the largest at which every seat's fit in even rows
+  (`--obw`, `--mbw`, `fitMineDesk`; with a themed deck's full pictures). Your hand lies in a tray of the table's own wood
+  and felt (`.gftray`, `paintHead`): at its head your name with how many cards you hold and the turn's prompt on a glass
+  plate lit gold while the move is yours, under them your cards as large as the tray allows, to 210px, a few standing
+  down a tall tray and many in rows that fill it (`handRows` with `tray`). Two panels: the books by player with the cards
+  each holds and the deck's 13 books by who made them, the grid as large as the room left allows (`sizeGrid`); and the
+  last ask alone (Tim, 2026-11-18: "only the last ask in go fish in the panel nothing beyond"; `paintLog`): the rank as a
+  card or the deck's picture, lit gold when cards came over and dim at Go fish, who asked whom, and what happened (a
+  fished card named only when it was the rank asked for, as it is shown then). The last ask takes only the height it
+  needs and the books the rest; with no ask yet the books have the whole column. They stand at the left with the tray
+  at the right (side by side in a strip wide enough for it), at the left with the tray below in a nearly square window,
+  along the bottom of a tall one, the last ask's card over its words there. The
   scripts are the scratchpad's `big/flip7/` and `big/gofish/`.
   **The setup and the results card at a desk, for every game** (kit.js "The desk" and the last section of kit.css; every
   rule hangs off `.k-dk`, which kit.js sets only in a window wider than 1024 or more than 768 the shorter way, taller
