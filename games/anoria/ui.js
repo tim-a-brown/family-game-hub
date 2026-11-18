@@ -4265,7 +4265,8 @@
     const tl = tw => .16 * Math.min(tw, 300) - .6 * Math.max(0, 150 - tw);   // (a Domain under 150 px wide has its power in words too small to read)
     // (your three Domains weigh as much as half the table however many players there are: with ten of the others'
     // Domains to three of yours, a plain sum had the others' cards larger than your own)
-    const wm = Math.max(4.5, 2 * R * .8), worth = (wm * fm(mc.c) + 2 * R * f(er)) / (wm + 2 * R) + (3 * tl(mc.tw) + 2 * R * tl(rc.tw)) / (3 + 2 * R);
+    const wm = Math.max(4.5, 2 * R * .8), worth = (wm * fm(mc.c) + 2 * R * f(er)) / (wm + 2 * R) + (3 * tl(mc.tw) + 2 * R * tl(rc.tw)) / (3 + 2 * R)
+      - .25 * Math.max(0, mc.c * .6 - er);   // (and a table whose other players' cards are under three fifths of yours is lopsided)
     return { o: o, mine: mine, rim: rim, mb: mb, rb: rb, mc: mc, rc: rc, cells: cells, sdH: sdH, pad: pad, worth: worth, fill: fill };
   }
   // the best table for a room: every composition tried
@@ -4409,7 +4410,7 @@
   // a cell at the set-up: the two-player row's own slots (suRow), stood as a cell: everyone else's offers above the
   // Crossroads and yours below it
   function suCellD(i, X, g) {
-    const row = suRow(i, X); row.classList.remove('wn-row'); row.classList.add('wn-bl', 'dn-c'); dnVars(row, g);
+    const row = suRow(i, X); row.classList.remove('wn-row'); row.classList.add('wn-bl', 'dn-c'); if (g.one) row.classList.add('dn-1'); dnVars(row, g);   // (another player's Domain lies where it will lie in play: at its cell's head)
     const N = S.N, band = g.band - 6, os = Math.min(1, band / g.th), sw = Math.floor(Math.max(26, Math.min(band / 1.4, (g.w - 8) / Math.min(N - 1, 3) - 12, 150)));
     [['--ofw', g.tw * os], ['--ofh', g.th * os], ['--opn', Math.max(10.5, Math.min(22, g.tw * os * .07))], ['--opr', Math.max(10, Math.min(17, g.tw * os * .056))], ['--sw', sw]].forEach(x => row.style.setProperty(x[0], (Math.round(x[1] * 10) / 10) + 'px'));
     return row;
