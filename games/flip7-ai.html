@@ -845,7 +845,7 @@
     if (!S) return;
     app.innerHTML = '';
     var n = S.players.length;
-    deskClass(deskShape() || (SMALL[smallKey()] ? 'small' : ''));
+    deskClass(deskShape() || (SMALL[smallKey()] === 1 ? 'small' : ''));
     app.appendChild(el('div', { class: 'tinfo' }, [
       el('span', { html: 'Round <b>' + S.round + '</b>, dealt by ' + Kit.esc(S.players[S.dealer].name) }),
       el('span', { html: 'First to <b>' + S.target + '</b>' })
@@ -869,10 +869,12 @@
     app.appendChild(barEl);
     paintBar();
     if (padOn()) { app.appendChild(PL); app.appendChild(PR); }
+    // (a window so small that even the fitted felt can't hold every row keeps the game's own layout, which scrolls)
+    if (DKS === 'small' && !deskFit(felt, n, 1)) { SMALL[smallKey()] = 2; return render(); }
     if (DKS) { deskFit(felt, n); paintDesk(); }
     // (a computer's window that is none of the large shapes, and too short for the game's own layout: it would scroll,
     // so the felt is fitted to the window instead; remembered for this size of window and this many players)
-    else if (FINE && document.documentElement.scrollHeight > innerHeight + 2) { SMALL[smallKey()] = 1; return render(); }
+    else if (FINE && !SMALL[smallKey()] && document.documentElement.scrollHeight > innerHeight + 2) { SMALL[smallKey()] = 1; return render(); }
     requestAnimationFrame(function () {
       spotEls.forEach(function (s) { if (s) fit(s.querySelector('.cards')); });
       flyIds.forEach(function (f) {
@@ -1056,7 +1058,7 @@
   // and your own row larger across the bottom or (the deck in its column) as one of the grid. A row is wide enough
   // for its seven numbers and one more card side by side; more than that overlap.
   var SW = 9.6;
-  function deskFit(felt, n) {
+  function deskFit(felt, n, test) {
     var W0 = felt.clientWidth, H0 = felt.clientHeight, P = Math.round(Math.max(8, Math.min(18, Math.min(W0, H0) * .016)));
     var W = W0 - 2 * P, H = H0 - 2 * P, m = n - 1, best = null;
     // (a row: its name over its cards, or, ln, at their left)
@@ -1085,6 +1087,7 @@
         });
       });
     });
+    if (test) return !!best;
     if (!best) best = { c: 1, midCol: 0, meCell: 0, ln: 1, cw: 16, mcw: 16, pcw: 46, G: 7, wm: 0, R: m, slack: 0 };
     var b = best, fs = felt.style;
     // (the deck in its row: with height to spare the deck and the discards are larger, as far as a card in a hand)
