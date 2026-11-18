@@ -39,7 +39,8 @@
       await D.wait(spun(2), 12000);
       await D.wait(2200);
       await D.say('19 came up! Your $5 on 19 straight up won $175, and 19 is red, so your red bet won too.', { at: cell(19) });
-      await D.say('The board keeps the last numbers that came up, newest first.', { at: '.board', avoid: ['.lay'] });
+      // (in a large window the board is a panel of the room, .pn-board; on a phone or tablet it is beside the little wheel)
+      await D.say('The board keeps the last numbers that came up, newest first.', { at: function () { return document.querySelector('.pn-board') || document.querySelector('.board'); }, avoid: ['.lay'] });
     }
   });
 })();
