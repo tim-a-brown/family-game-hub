@@ -421,6 +421,47 @@ Underlying principles for everything:
   fixes it: `.an .an-felt.many.bl > .wn-sides{grid-area:map;align-self:start;justify-self:start;margin:2px 0 0
   2px;z-index:5;}`), and while the Domains are laid with three or more players your bar lies over the last player's
   plate there. Neither was changed, since the tablet's pixels were not to change.
+  **Poker at a desk** (`games/poker.html` only; `winShape` gives `desk` to any window that is not a phone's or a
+  tablet's, and a short window under 1100 wide and 620 tall keeps the phone's sideways layout; `deskPlan`,
+  `deskSeats`, `deskOn`, `deskOff` set `.stage.pdesk` and `html.pk-big` only while the table shows there). The oval is
+  sized from the window and everything on the felt from the board's card (`--bcw`, to 210px, and `--u`, that card over
+  90px): the seats, their names, stacks, bets, chips, the button and blinds, your cards (`--hcw`), the seats' backs
+  (`--scw`) and cards shown face up (`--fcw`, never under 42px, so their corners read at 9px). `deskSeats` spaces the
+  seats round the rail from yours at the bottom, each seat's chips straight in front of it; the board and pot sit
+  between the top seats and your cards, and where a seat at the side would lie under the board (three or four players
+  at a tall or square table) the board moves up or down to the nearest place clear of every seat, its chips and the
+  button, or its cards get smaller until one is (`out.obs`, `clear`). Compositions: `T` the table at the top left with
+  a band of the room under it and your station the window's height at the right; `K` the table the window's width with
+  the room and the station as a dock under it (or a column at the right under a lower table, `col`), `slim` under 760
+  wide (the station's card over the betting controls, the full width); `R` a short wide strip (the hand so far at the
+  left, the table, the station at the right). The station (`.prail.dks`) is the game's own rail stood up: the game,
+  blinds and hand, your money, the coach's odds when it is on, the betting controls at its foot; with height to spare
+  the hand so far sits between them (`has.slog`); a card short of room gives up the chip counts whole, then the line
+  under the street-by-street odds (`fitRoom`). The room (`roomList`, `roomFill`, `roomBuild`, glass panels `.pn`, in
+  order of want): This table, the hand so far street by street as the game's own receipt (`fullLog`); At the table
+  (`tablePanel`: every player's chips as a bar, up or down in a cash game or big blinds in a tournament, hands won;
+  its rows take the panel's height); in a tournament the level and blinds, the next level and when, players left, your
+  place counted by the chips each started the hand with (as the station's tile counts it), the average stack, the
+  rebuy window, and the levels to come; on the circuit the field, the places paid with the min cash and where you
+  stand (`tournPanel`, `payList`); Your session (`sessPanel`: the net or your chips, hands won, the biggest pot, the
+  best hand seen, your stack hand by hand as a line, your hands newest first with your cards, the board, what you made
+  and what it won or lost); the room's own picture on the circuit (`picPanel`, at its own size or smaller, never
+  stretched); the hand rankings with their cards (`rankPanel`, in two columns in a low band; a name wraps rather than
+  lie under its cards). A panel gives up its list's last rows, then its least parts, then whole facts (`fitRoom`).
+  **Video poker** (`vpDesk`, `vpOn`, `vpRoom`; `.stage.pvd`): the machine sized from the window by its card (`--vc`,
+  to 210px), lying wide with the pay table beside the screen or upright with it over the screen (`.vup`), its own
+  buttons under it; the room holds This session, Hands so far (dealt with the held cards raised, after the draw, what
+  paid) and What has paid; early in a session, when the room under the machine holds little, it is only as tall and as
+  wide as what it holds and the machine and the room stand together in the middle of the window. **The circuit's
+  lobby** (`lobbyDesk`, `.czapp.czd`): the head, the road's choice and your totals over the room's picture and the
+  stop's facts at the left, the stops in two columns at the right (a list that scrolls within itself). A resize lays
+  the table out again from the state; online tables (TurnNet) use the same desk. The scratchpad's `big/poker/` has the
+  scripts: `lib.js` (scenes through `window.__pk`), `mkstate.js` (saved games made by the starting version),
+  `shots.js` (any scene at any window: scroll, off the window, clipped, under 9px, overflowing panels, rank names
+  under their cards; `--png --dev` with `cmp.sh` is the device proof), `tbl.js` (fresh tables of 2 to 6 at any window
+  with an overlap check of the pieces on the felt), `rz.js` (one hand through 19 window sizes, the state kept),
+  `act.js` (a step then a picture: the lobby), `demo.js` (the demo to its end), `online.js` (a laptop host, a phone
+  guest and a 2100x1860 guest at one TurnNet table).
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
