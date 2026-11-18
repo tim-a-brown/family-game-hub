@@ -4236,18 +4236,20 @@
       for (let j = 0; j < R; j++) rim.push({ x: j * (bw + g), y: 0, w: bw, h: hr });
       mine = { x: 0, y: hr + g, w: W, h: H - hr - g };
     }
-    // yours: the teams' bar at its head (a team game), your three cells, your bar at its foot
-    const mb = dnBar(Math.min(mine.w - 2 * pad, 1500), mine.h), sdH = o.tm ? 44 : 0;
-    const ah = mine.h - 2 * pad - sdH - mb.h - 8, cw0 = (mine.w - 2 * pad - 2 * cg) / 3, cw = Math.min(cw0, Math.max(300, ah * .62));
+    // yours: the teams' bar at its head (a team game), your three cells, your bar at its foot; the others: each mat its
+    // bar at its head, then its Gate and its Outpost. Where the whole table is one line (row, cells 'h') every cell has
+    // the same top and foot, clear of the others' bars above and of yours below, so the Domains lie on one line.
+    const b0 = rim[0], mb = dnBar(Math.min(mine.w - 2 * pad, 1500), mine.h), rb = dnBar(b0.w - 2 * pad, b0.h), sdH = o.tm ? 44 : 0;
+    const line = o.arr === 'row' && k === 2, top = line ? Math.max(sdH, rb.h + 8) : sdH;
+    const ah = mine.h - 2 * pad - top - mb.h - 8, cw0 = (mine.w - 2 * pad - 2 * cg) / 3, cw = Math.min(cw0, Math.max(300, ah * .62));
     const mc = dnCell(cw, ah, DN_MAX); if (mc.stk || ah < 200 || mc.tw < 140) return null;   // (your own Domains keep cards, and a width their names and powers read at)
     const mx = mine.x + pad + (mine.w - 2 * pad - 3 * cw - 2 * cg) / 2, cells = {}, v = o.v || 0;
-    [2 * v, 2 * v + 1, 2 * N].forEach((i, n) => { cells[i] = { x: mx + n * (cw + cg), y: mine.y + pad + sdH, g: mc }; });
+    [2 * v, 2 * v + 1, 2 * N].forEach((i, n) => { cells[i] = { x: mx + n * (cw + cg), y: mine.y + pad + top, g: mc }; });
     mb.x = mine.x + pad; mb.w = mine.w - 2 * pad; mb.y = mine.y + mine.h - pad - mb.h;
-    // the others: each mat its bar at its head, then its Gate and its Outpost
-    const b0 = rim[0], rb = dnBar(b0.w - 2 * pad, b0.h), rh = b0.h - 2 * pad - rb.h - 8;
+    const rh = line ? ah : b0.h - 2 * pad - rb.h - 8;
     const rc = k === 2 ? dnCell((b0.w - 2 * pad - cg) / 2, rh, DN_MAX) : dnCell(Math.min(b0.w - 2 * pad, Math.max(260, rh * .62)), (rh - cg) / 2, DN_MAX, true);
     if (rh < 150 || (rc.stk && rc.sw < 24)) return null;
-    (o.seats || []).forEach((q, j) => { const b = rim[j], x0 = b.x + pad, y0 = b.y + pad + rb.h + 8;
+    (o.seats || []).forEach((q, j) => { const b = rim[j], x0 = b.x + pad, y0 = b.y + pad + (line ? top : rb.h + 8);
       if (k === 2) { cells[2 * q + 1] = { x: x0, y: y0, g: rc }; cells[2 * q] = { x: x0 + rc.w + cg, y: y0, g: rc }; }
       else { const x1 = b.x + (b.w - rc.w) / 2; cells[2 * q] = { x: x1, y: y0, g: rc }; cells[2 * q + 1] = { x: x1, y: y0 + rc.h + cg, g: rc }; } });
     // (what it is worth: its cards' size, a card past 150 px counting for less, yours for more than another player's;
