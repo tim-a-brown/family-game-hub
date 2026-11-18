@@ -440,7 +440,7 @@ Underlying principles for everything:
   seats round the rail from yours at the bottom, each seat's chips straight in front of it; the board and pot sit
   between the top seats and your cards, and where a seat at the side would lie under the board (three or four players
   at a tall or square table) the board moves up or down to the nearest place clear of every seat, its chips and the
-  button, or its cards get smaller until one is (`out.obs`, `clear`). Compositions: `T` the table at the top left with
+  button, or its cards get smaller until one is (`out.obs`, `clear`); every seat, its chips and the button are placed from the seat's size as drawn (`deskPodMem`, `deskPods`: the largest seen at that table, measured with what spills from it, the table laid out again before it is painted when a seat grew), and where no place is clear the board takes the one clear of every seat that lies least on the chips (`out.hard`), never over your own cards. The dealer button takes the nearest clear spot round it (`placeBtn`), and a bet never lies on the board, the pot or the game's name (`placeBets`). Compositions: `T` the table at the top left with
   a band of the room under it and your station the window's height at the right; `K` the table the window's width with
   the room and the station as a dock under it (or a column at the right under a lower table, `col`), `slim` under 760
   wide (the station's card over the betting controls, the full width); `R` a short wide strip (the hand so far at the
@@ -464,7 +464,7 @@ Underlying principles for everything:
   paid) and What has paid; early in a session, when the room under the machine holds little, it is only as tall and as
   wide as what it holds and the machine and the room stand together in the middle of the window. **The circuit's
   lobby** (`lobbyDesk`, `.czapp.czd`): the head, the road's choice and your totals over the room's picture and the
-  stop's facts at the left, the stops in two columns at the right (a list that scrolls within itself). A resize lays
+  stop's facts at the left, the stops in two columns at the right (a list that scrolls within itself, ending under its last whole stop). A resize lays
   the table out again from the state; online tables (TurnNet) use the same desk. The scratchpad's `big/poker/` has the
   scripts: `lib.js` (scenes through `window.__pk`), `mkstate.js` (saved games made by the starting version),
   `shots.js` (any scene at any window: scroll, off the window, clipped, under 9px, overflowing panels, rank names
@@ -512,8 +512,7 @@ Underlying principles for everything:
   A league with no games (out of season, between games) keeps its note, and a league whose few games fill under three
   fifths of the board keeps them, and under either the games under way and coming up today and tomorrow in the other
   leagues (`sdElsewhere`, from the boards the tickers load), each a tap from the slip. The board's cards, the tickets
-  and the slip grow with `--sdf` (1 at 1512 by 982, 1.3 at 3024 by 1964); Place bet stays in view in a slip taller
-  than its column (sticky). A new ticket prints and flies into the open tickets' heading (`SD.betsHead`); the first
+  and the slip grow with `--sdf` (1 at 1512 by 982, 1.3 at 3024 by 1964); in a slip taller than its column the stake, its chips, the totals and Place bet stay at its foot while the picks scroll under them (`.sd-foot`, `sdStuck`). A new ticket prints and flies into the open tickets' heading (`SD.betsHead`); the first
   ticket gives your book its column. A resize glides (`Kit.glide`) and keeps the slip, the league and the view. The
   demo (games/demos/sportsbook.js) points at Open bets at a desk. Scripts: the scratchpad's `big/sportsbook/`
   (`shots.js` scenes board, nba, my, team, bets, settled, new, off, down, slip with `--scan`; `espn.js` the stand-in
