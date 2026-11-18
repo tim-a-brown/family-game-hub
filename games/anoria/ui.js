@@ -4464,7 +4464,7 @@
   // until it does), and a party's tag that is wider than its party goes whole.
   function dnAfter() {
     dom.root.querySelectorAll('.an-strip.dn-bar').forEach(b => {
-      const over = () => { const r = b.getBoundingClientRect(); const nm = b.querySelector('.st-name'); if (r.width > 0 && nm && nm.scrollWidth > nm.clientWidth + 1) return true; return r.width > 0 && Array.prototype.some.call(b.querySelectorAll(':scope > *, .st-top > *, .st-bot > *, .st-relics > *'), c => { if (c.matches('.wn-tm, .wn-out, .st-fill')) return false; const q = c.getBoundingClientRect(); return q.width > 0 && (q.right > r.right - 2 || q.bottom > r.bottom - 1 || q.left < r.left + 1); }); };
+      const over = () => { const r = b.getBoundingClientRect(); const nm = b.querySelector('.st-name'); if (r.width > 0 && nm && nm.scrollWidth > nm.clientWidth + 1) return true; return r.width > 0 && Array.prototype.some.call(b.querySelectorAll(':scope > *, .st-top > *, .st-bot > *, .st-relics > *'), c => { if (c.matches('.wn-tm, .wn-out, .st-fill')) return false; const q = c.getBoundingClientRect(); return q.width > 0 && (q.right > r.right - 2 || q.bottom > r.bottom - 1 || q.left < r.left + 1 || q.top < r.top - 1); }); };
       let bs = parseFloat(b.style.getPropertyValue('--bs')) || 1; b.classList.remove('q1');
       if (over() && /f-rich/.test(b.className)) b.classList.add('q1');   // (the Guide's power in words goes first)
       while (over() && bs > .62) { bs -= .04; b.style.setProperty('--bs', bs.toFixed(3)); }
