@@ -33,10 +33,14 @@
   }
   function A() { return M.A(); }
   function segBtn(t) { return function () { return [].slice.call(document.querySelectorAll('.mk-main .seg button')).filter(function (b) { return b.textContent === t; })[0]; }; }
-  function chipBtn(t) { return function () { return [].slice.call(document.querySelectorAll('.k-sheet .qchips button')).filter(function (b) { return b.textContent === t; })[0]; }; }
+  // (at a desk, a large window, the ticket stands open beside the chosen stock instead of coming up as a sheet)
+  function desk() { return !!(M.desk && M.desk()); }
+  function seen(l) { return [].slice.call(l).filter(function (b) { return b.offsetWidth; }); }
+  function inSheet(q) { var sh = document.querySelector('.k-sheet'); return seen(document.querySelectorAll(sh ? '.k-sheet ' + q : '.dk-tkt ' + q)); }   // (a sheet that is up first; at a desk, else the ticket)
+  function chipBtn(t) { return function () { return inSheet('.qchips button').filter(function (b) { return b.textContent === t; })[0]; }; }
   function row(name) { return function () { return [].slice.call(document.querySelectorAll('.mk-main .row')).filter(function (b) { var n = b.querySelector('.nm b'); return n && n.textContent === name; })[0]; }; }
   function group(g) { return '.mk-main .chips .chip[data-g="' + g + '"]'; }
-  var addMoney = '.cashrow .btn-g', sheetGo = '.k-sheet .tt > .btn-primary';
+  var addMoney = '.cashrow .btn-g', sheetGo = function () { return seen(document.querySelectorAll(document.querySelector('.k-sheet') ? '.k-sheet .tt > .btn-primary' : '.dk-tkt .tt .btn-primary'))[0]; };
   var paneBuy = function () { return [].slice.call(document.querySelectorAll('.pane.on .btn-g')).filter(function (b) { return b.textContent === 'Buy'; })[0]; };
   var cash = function () { return document.querySelector('.cashrow') || document.querySelector('.mk'); };
   var value = function () { return document.querySelector('.pnl .val') || document.querySelector('.mk'); };
@@ -60,16 +64,16 @@
       await D.tap(segBtn('Market'), { after: 800 });
       await D.say('The Market tab has stocks and funds in groups. An index fund like VOO owns a slice of 500 companies in one share.', { at: '.mk-main .rows' });
       await D.tap(group('tech'), { after: 800 });
-      await D.you(row('Apple'), 'Tap Apple to see its price and chart.', { until: function () { return !!document.querySelector('.pane.on'); } });
+      await D.you(row('Apple'), 'Tap Apple to see its price and chart.', { until: function () { return M.sym() === 'AAPL' && !!document.querySelector('.pane.on'); } });
       await D.wait(900);
       await D.say('A share of Apple costs $228.40 today. The chart shows how the price has moved.', { at: function () { var p = document.querySelector('.pane.on .in .val') || document.querySelector('.pane.on .in .pnl'); return p || document.querySelector('.pane.on .in'); }, avoid: [paneBuy] });
-      await D.tap(paneBuy, { after: 900 });
+      if (!desk()) await D.tap(paneBuy, { after: 900 });
       await D.tap(chipBtn('$500'), { say: 'You can buy part of a share. Here’s $500 worth.', after: 900 });
       await D.you(sheetGo, 'Tap Buy AAPL to buy it at today’s price.', { until: function () { return A().lots.length > 0; } });
       await D.wait(2000);
-      await D.tap('.pane.on .top .back', { after: 600 });
-      await D.tap(segBtn('Portfolio'), { after: 900 });
-      await D.say('Your portfolio shows what you own and what it’s worth now. When the price of Apple moves, so does your account.', { at: function () { return [].slice.call(document.querySelectorAll('.mk-main .pnl')).filter(function (p) { var h = p.querySelector('h3'); return h && /^Stocks, funds/.test(h.textContent); })[0] || document.querySelector('.mk-main'); } });
+      if (!desk()) await D.tap('.pane.on .top .back', { after: 600 });
+      var pb = segBtn('Portfolio')(); if (pb && pb.offsetWidth) await D.tap(segBtn('Portfolio'), { after: 900 });
+      await D.say('Your portfolio shows what you own and what it’s worth now. When the price of Apple moves, so does your account.', { at: function () { return seen(document.querySelectorAll('.mk-main .pnl, .dk-hold .pnl')).filter(function (p) { var h = p.querySelector('h3'); return h && /^Stocks, funds/.test(h.textContent); })[0] || document.querySelector('.mk-main'); } });
       await D.say('Sell any time, and Cash out sends money back to your bankroll for the other casino games.', { at: cash });
     }
   });

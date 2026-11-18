@@ -44,7 +44,9 @@
       await D.say('The slip shows your pick, your stake and what it would win. The stake starts at $25, so a Bills win pays $18 on top of your $25.', { at: slipBody });
       await D.you(place, 'Tap Place bet.', { until: function () { return bets().length > 0; } });
       await D.wait(2600);
-      await D.say('Your ticket waits under My bets until the game is played. Now we skip ahead to the final score.', { at: function () { return D.q('.sb-view') || money(); }, wait: 3600 });
+      // (at a desk, a large window, open tickets have a column of their own at the left)
+      var openCol = function () { var h = document.querySelector('.sd-l .sb-day'); return h && h.offsetWidth ? h : null; };
+      await D.say(openCol() ? 'Your ticket waits under Open bets until the game is played. Now we skip ahead to the final score.' : 'Your ticket waits under My bets until the game is played. Now we skip ahead to the final score.', { at: function () { return openCol() || D.q('.sb-view') || money(); }, wait: 3600 });
       await D.set(function () { return B.finish('demo-1', 20, 27); });
       await D.wait(function () { return document.querySelector('.k-sheet'); }, 6000);
       await D.wait(1600);

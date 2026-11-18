@@ -229,6 +229,242 @@ body{overflow-x:hidden;}
   .tapes{grid-column:1/-1;margin:2px 0 4px;}
   .chips{margin:0 0 10px;padding:2px 0 4px;}
 }
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   THE DESK (html.mk-desk, set by the script's arrange()): a laptop or desktop window of any shape. A trading desk:
+   what a phone shows a tab or a sheet at a time stands open side by side. The account at the left (its value
+   through time, what it is in, what you own), the market in the middle (the chosen stock large with its chart, the
+   board of the group it is in as tiles with a chart each), and at the right, where you act, the ticket to buy and
+   sell it, your cash, and your orders and trades. Nothing is scaled: every panel is sized from the window by
+   deskPlan(), charts are drawn at their own pixels, and the bar, sheets and buttons keep their size. A phone and a
+   tablet never get the class (deskPlan says null), so nothing below reaches them.
+   ════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+html.mk-desk,html.mk-desk body{overflow:hidden;overscroll-behavior:none;}
+html.mk-desk .mk{max-width:none;margin:0;display:flex;flex-direction:column;gap:12px;height:var(--mkh,100vh);box-sizing:border-box;padding:0 16px 16px;}
+html.mk-desk .mk > .mk-side{display:none;}
+html.mk-desk .tapes{flex:none;margin:2px -16px 0;}
+html.mk-desk .dk{flex:1 1 0;min-height:0;display:flex;gap:14px;}
+html.mk-desk .dk-col{display:flex;flex-direction:column;gap:12px;min-width:0;min-height:0;flex:1 1 0;}
+html.mk-desk .dk-col.fx{flex:none;}
+html.mk-desk .dk-col > *{min-width:0;}
+html.mk-desk .dk.tall{flex-direction:column;gap:12px;}
+html.mk-desk .dk.tall > *{min-width:0;}
+html.mk-desk .dk.tall > .mk-main{flex:1 1 0;}
+html.mk-desk .dk.tall > .dk-hold{flex:0 0 24%;}
+html.mk-desk .dk.tall > .dk-acct{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;}
+html.mk-desk .dk-rowx{flex:none;display:flex;gap:14px;min-height:0;min-width:0;}
+html.mk-desk .dk-rowx > .dk-focus{flex:1 1 0;min-width:0;}
+html.mk-desk .dk-rowx > .dk-tkt{flex:none;max-height:100%;}
+html.mk-desk .pnl{margin:0;}
+html.mk-desk .dk ::-webkit-scrollbar{width:0;height:0;}
+html.mk-desk .dk *{scrollbar-width:none;}
+html.mk-desk .dk button{cursor:pointer;}
+html.mk-desk .dk button[disabled]{cursor:default;}
+/* what is content steps up gently with the window (--dkf, 1 to 1.22); controls keep their size */
+html.mk-desk .val .big{font-size:calc(2.5rem * var(--dkf,1));}
+html.mk-desk .row .nm b{font-size:calc(.95rem * var(--dkf,1));}
+html.mk-desk .row .nm small,html.mk-desk .row .px small{font-size:calc(.76rem * var(--dkf,1));}
+html.mk-desk .row .px{font-size:calc(1rem * var(--dkf,1));}
+html.mk-desk .pnl h3{font-size:calc(.86rem * var(--dkf,1));}
+html.mk-desk .kv b{font-size:calc(1.05rem * var(--dkf,1));}
+html.mk-desk .cap{font-size:calc(.78rem * var(--dkf,1));}
+html.mk-desk .about{font-size:calc(.9rem * var(--dkf,1));}
+html.mk-desk .row{border-radius:10px;transition:background .15s;}
+html.mk-desk button.row:hover{background:var(--gl);}
+html.mk-desk .row.on{background:rgba(255,211,77,.1);box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.55);border-top-color:transparent;}
+html.mk-desk .row.on + .row{border-top-color:transparent;}
+html.mk-desk .dk .tk{font-size:calc(.74rem * var(--dkf,1));min-width:calc(52px * var(--dkf,1));height:calc(30px * var(--dkf,1));}
+html.mk-desk .dk .pill{font-size:calc(.8rem * var(--dkf,1));min-width:calc(62px * var(--dkf,1));}
+html.mk-desk .dk .asof{font-size:calc(.74rem * var(--dkf,1));}
+html.mk-desk .dk .span{font-size:calc(.8rem * var(--dkf,1));}
+html.mk-desk .dk .rep li{font-size:calc(.88rem * var(--dkf,1));}
+html.mk-desk .dk .legend div{font-size:calc(.78rem * var(--dkf,1));}
+html.mk-desk .dk .legend{grid-template-columns:repeat(auto-fill,minmax(calc(120px * var(--dkf,1)),1fr));}
+html.mk-desk .dk .val .chg{font-size:calc(.95rem * var(--dkf,1));}
+html.mk-desk .dk .val .chg small{font-size:calc(.78rem * var(--dkf,1));}
+html.mk-desk .dk .empty{font-size:calc(.9rem * var(--dkf,1));}
+/* the controls take their own gentler step (--dkc, 1 to 1.3) */
+html.mk-desk .dk .seg button{font-size:calc(.92rem * var(--dkc,1));min-height:calc(40px * var(--dkc,1));}
+html.mk-desk .dk .chip{font-size:calc(.9rem * var(--dkc,1));min-height:calc(40px * var(--dkc,1));}
+html.mk-desk .dk .btn-g,html.mk-desk .dk .btn-d{font-size:calc(.9rem * var(--dkc,1));padding:calc(10px * var(--dkc,1)) calc(14px * var(--dkc,1));}
+html.mk-desk .dk .rng button{font-size:calc(.78rem * var(--dkc,1));padding:calc(7px * var(--dkc,1)) 0;}
+html.mk-desk .dk .q{font-size:calc(1rem * var(--dkc,1));min-height:calc(44px * var(--dkc,1));}
+html.mk-desk .dk-tkt .sum div{font-size:calc(.92rem * var(--dkc,1));}
+html.mk-desk .dk-tkt .sum .tot{font-size:calc(1rem * var(--dkc,1));}
+html.mk-desk .dk-tkt .why{font-size:calc(.84rem * var(--dkc,1));}
+html.mk-desk .dk-tkt .tt .btn-primary{font-size:calc(1rem * var(--dkc,1));min-height:calc(54px * var(--dkc,1))!important;}
+html.mk-desk .dk-tkt .amtbox input{font-size:calc(1.9rem * var(--dkc,1));}
+html.mk-desk .dk .lesson b{font-size:calc(1rem * var(--dkf,1));} html.mk-desk .dk .lesson small{font-size:calc(.8rem * var(--dkf,1));}
+html.mk-desk .dk .lsn{font-size:calc(.98rem * var(--dkf,1));}
+html.mk-desk .dk .bcard b{font-size:calc(.95rem * var(--dkf,1));} html.mk-desk .dk .bcard small{font-size:calc(.74rem * var(--dkf,1));} html.mk-desk .dk .bcard .y{font-size:calc(1.7rem * var(--dkf,1));}
+html.mk-desk .dk .chain .crow .k,html.mk-desk .dk .chain .crow .pr{font-size:calc(1rem * var(--dkf,1));}
+html.mk-desk .dk .chain .crow small{font-size:calc(.72rem * var(--dkf,1));}
+
+/* the account: its value through time, what it is in, taxes */
+html.mk-desk .dk-sum{flex:none;display:flex;flex-direction:column;gap:12px;}
+html.mk-desk .dk-sum .chart{margin:10px 0 0;}
+html.mk-desk .dk-sum .chart svg{aspect-ratio:auto!important;}
+html.mk-desk .dk-sum.no-tax .p-tax,html.mk-desk .dk-sum.no-alloc .p-alloc,html.mk-desk .dk-sum.no-chart .chart,html.mk-desk .dk-sum.no-chart .rng{display:none;}
+html.mk-desk .dk-sum.compact .p-alloc,html.mk-desk .dk-sum.compact .p-tax,html.mk-desk .dk-sum.compact .chart,html.mk-desk .dk-sum.compact .rng,html.mk-desk .dk-sum.compact .asof{display:none;}
+html.mk-desk .dk-sum.compact .val .big{font-size:1.7rem;}
+html.mk-desk .dk-sum.compact .pnl{padding:10px 14px;}
+html.mk-desk .dk-sum.compact .pnl h3{margin-bottom:4px;}
+html.mk-desk .dk-cash{flex:none;}
+html.mk-desk .dk-cash .cashrow{flex-wrap:wrap;}
+html.mk-desk .dk-sum .val .chg{margin-left:auto;}
+html.mk-desk .dk-cash .cashrow .amt{font-size:calc(1.5rem * var(--dkf,1));}
+html.mk-desk .dk-acct{flex:none;display:grid;grid-template-columns:minmax(0,1fr);gap:8px;}                /* (a short window: value and cash as two slim tiles over the chosen stock) */
+html.mk-desk .dk-f > .dk-acct{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;}
+html.mk-desk .dk-acct .pnl{padding:8px 12px;}
+html.mk-desk .dk-acct .pnl h3{margin-bottom:2px;}
+html.mk-desk .dk-acct .cashrow .amt{font-size:1.25rem;}
+html.mk-desk .dk-acct .btn-g,html.mk-desk .dk-acct .btn-d{padding:7px 11px;font-size:.84rem;}
+/* what you own; orders and trades: a card whose rows scroll inside it, whole rows (trimRows in the script) */
+html.mk-desk .dk-hold,html.mk-desk .dk-acts{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:12px;overflow-y:auto;}
+html.mk-desk .dk-hold > .pnl,html.mk-desk .dk-acts > .pnl{flex:none;display:flex;flex-direction:column;min-height:0;}
+html.mk-desk .dk-acts > .pnl.grow{flex:0 1 auto;min-height:150px;}
+html.mk-desk .dk-hold{scroll-snap-type:y proximity;overscroll-behavior:contain;}
+html.mk-desk .dk-hold .row,html.mk-desk .dk-hold > .pnl{scroll-snap-align:start;}
+html.mk-desk .pnl.grow > .rows{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scroll-snap-type:y mandatory;}
+html.mk-desk .pnl.grow > .rows > .row{scroll-snap-align:start;}
+html.mk-desk .dk-hold .row svg.spark{width:calc(64px * var(--dkf,1));height:calc(26px * var(--dkf,1));}
+html.mk-desk .dk-hold.thin .row > span:nth-child(3){display:none;}                                           /* (a narrow column: the row without its small chart) */
+html.mk-desk .dk-hold.thin .row{grid-template-columns:auto minmax(0,1fr) auto;}
+html.mk-desk .empty{text-align:left;padding:6px 2px;}
+
+html.mk-desk .dk-lrn{flex:1 1 0;min-height:0;display:flex;flex-direction:column;}
+html.mk-desk .dk-lrn > .pnl{flex:0 1 auto;min-height:0;display:flex;flex-direction:column;}
+html.mk-desk .dk-lrn .lessons{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;}
+html.mk-desk .dk-lrn .lesson{padding:10px 12px;}
+/* the board: the tabs, the search, the three indexes, the groups, and the group's names as tiles */
+html.mk-desk .mk-main{display:flex;flex-direction:column;min-height:0;flex:44 1 0;}
+html.mk-desk .dk-col.one > .mk-main{flex:1 1 0;}
+html.mk-desk .mk-main > .seg{flex:none;margin:0 0 10px!important;}
+html.mk-desk .mk-main > div:last-child{flex:1 1 0;min-height:0;display:flex;flex-direction:column;}
+html.mk-desk .mk-main .bhead{flex:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;margin:0 0 10px;}
+html.mk-desk .mk-main .bhead .seg{margin:0!important;flex-wrap:nowrap;min-width:220px;}
+html.mk-desk .mk-main .bhead .seg button{flex:1 1 0;white-space:nowrap;padding-left:16px;padding-right:16px;}
+html.mk-desk .mk-main .bhead.solo{grid-template-columns:minmax(0,420px);}
+html.mk-desk .mk-main .bhead .q{margin:0;}
+html.mk-desk .mk-main .bhead .idx{margin:0;display:flex;gap:8px;}
+html.mk-desk .mk-main .bhead .idx div{padding:5px 12px;display:grid;grid-template-columns:auto auto;gap:0 8px;align-items:baseline;}
+html.mk-desk .mk-main .bhead .idx .cap{grid-column:1/-1;font-size:calc(.72rem * var(--dkc,1));}
+html.mk-desk .mk-main .bhead .idx b{font-size:calc(.95rem * var(--dkc,1));}
+html.mk-desk .mk-main .bhead .idx small{font-size:calc(.76rem * var(--dkc,1));}
+html.mk-desk .mk-main.narrow .bhead{grid-template-columns:minmax(0,1fr);}
+html.mk-desk .mk-main.narrow .bhead .idx{display:grid;grid-template-columns:repeat(3,1fr);}
+html.mk-desk .mk-main.narrow .bhead .idx div{display:block;padding:6px 8px;}
+html.mk-desk .mk-main.mid .bhead{grid-template-columns:auto minmax(0,1fr);}
+html.mk-desk .mk-main.mid .bhead .idx{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);}
+html.mk-desk .mk-main .chips{flex:none;margin:0 0 10px;padding:2px 0;flex-wrap:wrap;overflow:visible;}
+html.mk-desk .mk-main.cx .chips{flex-wrap:nowrap;overflow-x:auto;-webkit-mask:linear-gradient(90deg,#000 calc(100% - 30px),transparent);mask:linear-gradient(90deg,#000 calc(100% - 30px),transparent);padding-right:26px;}
+html.mk-desk .mk-main.cx .chips.sc{-webkit-mask:linear-gradient(90deg,transparent,#000 30px,#000 calc(100% - 30px),transparent);mask:linear-gradient(90deg,transparent,#000 30px,#000 calc(100% - 30px),transparent);}
+html.mk-desk .mk-main .chips.mk-sub{margin:0 0 8px;padding:0;}
+html.mk-desk .mk-main.short .bhead .idx,html.mk-desk .mk-main.short .mk-blurb{display:none!important;}
+html.mk-desk .mk-main.short.narrow .bhead{grid-template-columns:auto minmax(0,1fr);}
+html.mk-desk .mk-main.short.narrow .bhead .seg{min-width:0;}
+html.mk-desk .mk-main.slim .bhead{grid-template-columns:minmax(0,1fr)!important;gap:8px;}                   /* (a slim board: the search on a line of its own under the tabs) */
+html.mk-desk .mk-main.short.narrow .bhead .seg button{padding-left:10px;padding-right:10px;}
+html.mk-desk .mk-main .list{flex:1 1 0;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;}
+html.mk-desk .mk-main .list > *{flex:none;}
+html.mk-desk .mk-main .list > .rows.tiles{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;}
+html.mk-desk .mk-main .port{flex:1 1 0;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;}
+html.mk-desk .mk-main .lessons{flex:1 1 0;overflow-y:auto;min-height:0;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));align-content:start;}
+html.mk-desk .mk-main .lhead{flex:none;margin-bottom:10px;}
+html.mk-desk .rows.tiles{display:grid;grid-template-columns:repeat(var(--tc,1),minmax(0,1fr));grid-auto-rows:var(--th,64px);gap:10px;align-content:start;scroll-snap-type:y mandatory;}
+html.mk-desk .rows.tiles .row{border:0;border-radius:var(--r);background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);padding:8px 12px;gap:4px 10px;min-height:0;scroll-snap-align:start;overflow:hidden;
+  grid-template-columns:auto minmax(0,1fr) minmax(56px,var(--sw,120px)) auto;}
+html.mk-desk .rows.tiles button.row:hover{background:var(--gl-2);}
+html.mk-desk .rows.tiles .row.on{background:rgba(255,211,77,.1);box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.6),0 0 16px rgba(255,190,60,.14);}
+html.mk-desk .rows.tiles .row .spk{align-self:stretch;min-height:0;display:block;}
+html.mk-desk .rows.tiles .row svg.spark{width:100%;height:100%;}
+html.mk-desk .rows.tiles .row .nm b{line-height:1.15;}
+html.mk-desk .rows.tiles .row .nm small:first-of-type{font-size:calc(.86rem * var(--dkf,1));font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;}
+/* a narrow row: its chart under its name */
+html.mk-desk .rows.tiles.r2 .row{grid-template-columns:auto auto minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) 26px;gap:4px 10px;align-items:center;}
+html.mk-desk .rows.tiles.r2 .row .nm{display:contents;}
+html.mk-desk .rows.tiles.r2 .row .tk{grid-column:1;grid-row:1;}
+html.mk-desk .rows.tiles.r2 .row .nm b{grid-column:2 / span 2;grid-row:1;font-size:.9rem;}
+html.mk-desk .rows.tiles.r2 .row .pill{grid-column:4;grid-row:1;}
+html.mk-desk .rows.tiles.r2 .row .nm small:first-of-type{grid-column:1 / span 2;grid-row:2;font-size:.92rem;}
+html.mk-desk .rows.tiles.r2 .row .nm small + small{display:none;}
+html.mk-desk .rows.tiles.r2 .row .spk{grid-column:3 / span 2;grid-row:2;height:26px;}
+/* a short board: the rows without their charts, so more of the group is in view at once (fitTiles' rs) */
+html.mk-desk .rows.tiles.rs .row{grid-template-columns:auto minmax(0,1fr) auto;padding:6px 12px;}
+html.mk-desk .rows.tiles.rs .row .spk{display:none;}
+html.mk-desk .rows.tiles.rs .row .nm small + small{display:none;}
+/* a tile with the height for it: its symbol and today's change, its name and price, and its chart under them */
+html.mk-desk .rows.tiles.tl .row{grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto auto minmax(0,1fr);padding:10px 12px 8px;gap:6px 10px;align-items:start;}
+html.mk-desk .rows.tiles.tl .row .tk{grid-column:1;grid-row:1;}
+html.mk-desk .rows.tiles.tl .row .pill{grid-column:3;grid-row:1;}
+html.mk-desk .rows.tiles.tl .row .nm{grid-column:1/-1;grid-row:2;}
+html.mk-desk .rows.tiles.tl .row .spk{grid-column:1/-1;grid-row:3;}
+html.mk-desk .rows.tiles.tl .row .nm small:first-of-type{font-size:calc(1.05rem * var(--dkf,1));}
+html.mk-desk .bcards{grid-template-columns:repeat(auto-fill,minmax(190px,1fr));}
+
+/* the chosen stock: its price and chart large, what the game knows about it beside or under the chart */
+html.mk-desk .dk-focus{flex:56 1 0;min-height:0;display:flex;flex-direction:column;}
+html.mk-desk .dk-col.one > .dk-focus{flex:1 1 0;}
+html.mk-desk .pane{position:static;transform:none;visibility:visible;transition:none;padding:0;background:none;z-index:auto;overflow:hidden;flex:1 1 0;min-height:0;display:flex;flex-direction:column;}
+html.mk-desk .pane .in{max-width:none;margin:0;padding:0;min-height:0;flex:1 1 0;overflow-y:auto;overscroll-behavior:contain;}
+html.mk-desk .pane.sym .in{display:grid;gap:12px;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(var(--fmin,250px),1fr);grid-auto-rows:auto;}
+html.mk-desk .pane.sym.two .in{grid-template-columns:minmax(0,1fr) minmax(280px,var(--fside,340px));grid-template-rows:auto auto auto auto auto minmax(0,1fr);}
+html.mk-desk .pane.sym.two .in > .top{grid-column:1/-1;}
+html.mk-desk .pane.sym.two .in > .f-chart{grid-column:1;grid-row:2 / span 5;}
+html.mk-desk .pane.sym.two .in > .f-about{grid-column:2;grid-row:2;}
+html.mk-desk .pane.sym.two .in > .f-own{grid-column:2;grid-row:3;}
+html.mk-desk .pane.sym.two .in > .f-lots{grid-column:2;grid-row:4;}
+html.mk-desk .pane.sym.two .in > .f-div{grid-column:2;grid-row:5;}
+html.mk-desk .pane.sym .f-lots .row,html.mk-desk .pane.sym .f-div .row{padding:7px 2px;}
+html.mk-desk .pane.sym .top{margin:0;}
+html.mk-desk .pane.sym .top .back{display:none;}
+html.mk-desk .pane .top .t b{font-size:calc(1.45rem * var(--dkf,1));}
+html.mk-desk .pane .top .t small{font-size:calc(.84rem * var(--dkf,1));}
+html.mk-desk .pane .top .star,html.mk-desk .pane .top .back{cursor:pointer;}
+html.mk-desk .pane .tradebar{display:none;}
+html.mk-desk .pane.sym .kv{grid-template-columns:repeat(auto-fit,minmax(calc(120px * var(--dkf,1)),1fr));}
+html.mk-desk .f-chart{display:flex;flex-direction:column;min-height:0;}
+html.mk-desk .f-chart > *{flex:none;}
+html.mk-desk .f-chart > .f-box{flex:1 1 0;min-height:0;overflow:hidden;position:relative;margin-top:10px;}
+html.mk-desk .f-chart .f-box .chart{margin:0;height:100%;}
+html.mk-desk .f-chart .f-box .chart svg{aspect-ratio:auto!important;height:100%;}
+html.mk-desk .f-chart .f-box .chart .empty{text-align:center;padding-top:40px;}
+html.mk-desk .f-chart .rng{max-width:560px;}
+html.mk-desk .f-chart .rng button{cursor:pointer;}
+html.mk-desk .pane.doc .in{border-radius:var(--r-lg);background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);padding:14px 18px 18px;}
+html.mk-desk .pane.doc .in > *{max-width:820px;}
+html.mk-desk .pane.doc .in > .pnl{background:none;box-shadow:none;padding:0;margin:0 0 12px;-webkit-backdrop-filter:none;backdrop-filter:none;}
+html.mk-desk .pane.doc .in > .btn{max-width:420px;display:block;}
+html.mk-desk .chart text{font:700 calc(11px * var(--dkf,1)) var(--font);fill:rgba(255,255,255,.5);font-variant-numeric:tabular-nums;}
+
+/* the ticket: buy and sell the chosen stock without a sheet */
+html.mk-desk .dk-tkt{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;}
+html.mk-desk .dk-tkt .pnl h3{align-items:baseline;}
+html.mk-desk .dk-tkt .pnl h3 span:first-child{font:800 calc(1.15rem * var(--dkc,1))/1.15 var(--display);letter-spacing:-.015em;color:var(--text);}
+html.mk-desk .dk-tkt > .pnl{background:var(--sheet-solid);}
+html.mk-desk .dk-tkt .tgo{position:sticky;bottom:-14px;margin:0 -14px -14px;padding:0 14px 14px;background:linear-gradient(180deg,transparent,var(--sheet-solid) 12px);border-radius:0 0 var(--r-lg) var(--r-lg);}
+html.mk-desk .dk-tkt .opt{width:100%;margin-top:8px;}
+/* a short wide strip: what you choose at the left of the ticket, what it comes to and the button at the right */
+html.mk-desk .dk-tkt.t2 .tt{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 16px;align-items:start;}
+html.mk-desk .dk-tkt.t2 .tt > *{grid-column:1;}
+html.mk-desk .dk-tkt.t2 .tt > .sum{grid-column:2;grid-row:1 / span 2;margin-top:0;}
+html.mk-desk .dk-tkt.t2 .tt > .sum + div{grid-column:2;grid-row:3;}
+html.mk-desk .dk-tkt.t2 .tt > .tgo{grid-column:2;grid-row:4 / span 3;align-self:end;position:static;margin:0;padding:0;background:none;}
+html.mk-desk .dk-tkt.t2 .why{display:none;}
+html.mk-desk .dk-tkt.t2 .tt .btn-primary{margin-top:0!important;}
+html.mk-desk .dk-tkt.t2 .pnl > .seg{max-width:calc(50% - 8px);}
+html.mk-desk .dk-tkt .seg{margin-bottom:8px!important;}
+html.mk-desk .dk-tkt .qchips{flex-wrap:nowrap;margin-bottom:10px;}
+html.mk-desk .dk-tkt .qchips button{flex:1 1 0;padding:calc(7px * var(--dkc,1)) 4px;white-space:nowrap;font-size:calc(.82rem * var(--dkc,1));}
+html.mk-desk .dk-tkt .amtbox{margin-bottom:8px;}
+html.mk-desk .dk-tkt.tight .why{display:none;}
+html.mk-desk .dk-tkt.tight .amtbox input{font-size:1.5rem;padding:2px 0;}
+html.mk-desk .dk-tkt.tight .tt .seg{margin-bottom:8px;}
+html.mk-desk .dk-tkt.tight .qchips{margin-bottom:8px;}
+html.mk-desk .dk-tkt.tight .tt .btn-primary{min-height:46px!important;margin-top:8px!important;}
+/* (a resize moves the panels to their new places; Kit.glide) */
+html.mk-desk .dk-sum{view-transition-name:mk-sum;} html.mk-desk .dk-hold{view-transition-name:mk-hold;} html.mk-desk .mk-main{view-transition-name:mk-board;}
+html.mk-desk .dk-focus{view-transition-name:mk-focus;} html.mk-desk .dk-tkt{view-transition-name:mk-tkt;} html.mk-desk .dk-cash{view-transition-name:mk-cash;} html.mk-desk .dk-acts{view-transition-name:mk-acts;}
 </style>
 </head>
 <body>
@@ -608,27 +844,38 @@ body{overflow-x:hidden;}
   // a line over time: points [[ms, value]], with a finger-following readout
   function lineChart(pts, o) {
     o = o || {};
-    var W = 340, H = o.h || 150, box = el('div', { class: 'chart' });
+    // (the desk draws a chart at its own pixels, o.w by o.h, with the prices and the dates it spans along its edges:
+    // o.axes; everywhere else it is the 340-wide drawing it always was)
+    var W = o.w || 340, H = o.h || 150, box = el('div', { class: 'chart' }), FS = o.f || 1, AX = o.axes ? Math.round(20 * FS) : 0, PW = W - (o.axes ? Math.round(58 * FS) : 0);
     if (pts.length < 2) { box.appendChild(el('div', { class: 'empty', text: o.empty || 'The chart fills in as days go by.' })); return box; }
     var vs = pts.map(function (p) { return p[1]; }), lo = Math.min.apply(null, vs), hi = Math.max.apply(null, vs);
     if (o.base != null) { lo = Math.min(lo, o.base); hi = Math.max(hi, o.base); }
     var pad = (hi - lo) * .08 || hi * .02 || 1; lo -= pad; hi += pad;
     var t0 = pts[0][0], t1 = pts[pts.length - 1][0] || t0 + 1;
-    function X(t) { return (t - t0) / ((t1 - t0) || 1) * W; } function Y(v) { return H - (v - lo) / (hi - lo) * H; }
+    function X(t) { return (t - t0) / ((t1 - t0) || 1) * PW; } function Y(v) { return (H - AX) - (v - lo) / (hi - lo) * (H - AX); }
     var up = vs[vs.length - 1] >= (o.base != null ? o.base : vs[0]), col = up ? '#3ddc84' : '#ff6470', gid = 'g' + rid();
     var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1); }).join('');
-    var base = o.base != null ? o.base : vs[0];
-    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="aspect-ratio:' + W + '/' + H + '"><defs><linearGradient id="' + gid + '" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="' + col + '" stop-opacity=".28"/><stop offset="1" stop-color="' + col + '" stop-opacity="0"/></linearGradient></defs>' +
-      '<line x1="0" x2="' + W + '" y1="' + Y(base).toFixed(1) + '" y2="' + Y(base).toFixed(1) + '" stroke="rgba(255,255,255,.22)" stroke-dasharray="3 4" vector-effect="non-scaling-stroke"/>' +
-      '<path d="' + d + 'L' + W + ' ' + H + 'L0 ' + H + 'Z" fill="url(#' + gid + ')"/>' +
+    var base = o.base != null ? o.base : vs[0], ax = '';
+    if (o.axes) {
+      // three or four round prices as faint rules, each named at the right; the dates along the foot
+      var step = Math.pow(10, Math.floor(Math.log((hi - lo) / 3) / Math.LN10)), k = (hi - lo) / 3 / step; step *= k >= 5 ? 5 : k >= 2 ? 2 : 1;
+      for (var gv = Math.ceil(lo / step) * step; gv < hi; gv += step) { var gy = Y(gv); if (gy < 14 * FS || gy > H - AX - 6) continue;
+        ax += '<line x1="0" x2="' + PW + '" y1="' + gy.toFixed(1) + '" y2="' + gy.toFixed(1) + '" stroke="rgba(255,255,255,.08)"/><text x="' + (W - 2) + '" y="' + (gy + 4 * FS).toFixed(1) + '" text-anchor="end">' + esc((o.fmt || money)(gv)) + '</text>'; }
+      var nd = Math.max(2, Math.min(6, Math.floor(PW / (150 * FS)))), yr = t1 - t0 > 300 * DAY;
+      for (var di = 0; di < nd; di++) { var dt = t0 + (t1 - t0) * di / (nd - 1);
+        ax += '<text x="' + (di === 0 ? 2 : di === nd - 1 ? PW - 2 : X(dt).toFixed(1)) + '" y="' + (H - Math.round(5 * FS)) + '" text-anchor="' + (di === 0 ? 'start' : di === nd - 1 ? 'end' : 'middle') + '">' + esc(new Date(dt).toLocaleDateString([], yr ? { month: 'short', year: 'numeric' } : { month: 'short', day: 'numeric' })) + '</text>'; }
+    }
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="aspect-ratio:' + W + '/' + H + '"><defs><linearGradient id="' + gid + '" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="' + col + '" stop-opacity=".28"/><stop offset="1" stop-color="' + col + '" stop-opacity="0"/></linearGradient></defs>' + ax +
+      '<line x1="0" x2="' + PW + '" y1="' + Y(base).toFixed(1) + '" y2="' + Y(base).toFixed(1) + '" stroke="rgba(255,255,255,.22)" stroke-dasharray="3 4" vector-effect="non-scaling-stroke"/>' +
+      '<path d="' + d + 'L' + PW + ' ' + (H - AX) + 'L0 ' + (H - AX) + 'Z" fill="url(#' + gid + ')"/>' +
       '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
-      '<line class="xh" x1="0" x2="0" y1="0" y2="' + H + '" stroke="rgba(255,255,255,.5)" vector-effect="non-scaling-stroke" style="display:none"/>' +
+      '<line class="xh" x1="0" x2="0" y1="0" y2="' + (H - AX) + '" stroke="rgba(255,255,255,.5)" vector-effect="non-scaling-stroke" style="display:none"/>' +
       '<circle class="dot" r="4" fill="' + col + '" stroke="#0b0f15" stroke-width="2" vector-effect="non-scaling-stroke" style="display:none"/></svg>';
     box.innerHTML = svg;
     var tip = el('div', { class: 'tip', style: { display: 'none' } }); box.appendChild(tip);
     var s = box.querySelector('svg'), xh = s.querySelector('.xh'), dot = s.querySelector('.dot');
     function show(e) {
-      var r = s.getBoundingClientRect(), fx = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), t = t0 + fx * (t1 - t0), best = pts[0];
+      var r = s.getBoundingClientRect(), fx = Math.max(0, Math.min(1, (e.clientX - r.left) / (r.width * PW / W))), t = t0 + fx * (t1 - t0), best = pts[0];
       pts.forEach(function (p) { if (Math.abs(p[0] - t) < Math.abs(best[0] - t)) best = p; });
       var x = X(best[0]), y = Y(best[1]);
       xh.setAttribute('x1', x); xh.setAttribute('x2', x); xh.style.display = ''; dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.style.display = '';
@@ -640,8 +887,16 @@ body{overflow-x:hidden;}
     s.addEventListener('pointerleave', hide); s.addEventListener('pointerup', function (e) { if (e.pointerType !== 'mouse') setTimeout(hide, 1200); });
     return box;
   }
-  function spark(sym) {
-    var s = S(sym); if (!s || !s.h || s.h.length < 2) return el('span');
+  // (big: a board tile's chart at a desk, every close the board has, filled under the line, stretched to its tile)
+  function spark(sym, big) {
+    var s = S(sym); if (!s || !s.h || s.h.length < 2) return el('span', big ? { class: 'spk' } : null);
+    if (big) {
+      var hb = s.h, lb =Math.min.apply(null, hb), ub = Math.max.apply(null, hb), BW = 200, BH = 60, gid = 's' + rid();
+      var db = hb.map(function (v, i) { return (i ? 'L' : 'M') + (i / (hb.length - 1) * BW).toFixed(1) + ' ' + (BH - 3 - (v - lb) / ((ub - lb) || 1) * (BH - 8)).toFixed(1); }).join('');
+      var cb = hb[hb.length - 1] >= hb[0] ? '#3ddc84' : '#ff6470';
+      return el('span', { class: 'spk', html: '<svg class="spark" viewBox="0 0 ' + BW + ' ' + BH + '" preserveAspectRatio="none"><defs><linearGradient id="' + gid + '" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="' + cb + '" stop-opacity=".24"/><stop offset="1" stop-color="' + cb + '" stop-opacity="0"/></linearGradient></defs>' +
+        '<path d="' + db + 'L' + BW + ' ' + BH + 'L0 ' + BH + 'Z" fill="url(#' + gid + ')"/><path d="' + db + '" fill="none" stroke="' + cb + '" stroke-width="1.8" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>' });
+    }
     var h = s.h.slice(-22), lo = Math.min.apply(null, h), hi = Math.max.apply(null, h), W = 56, H = 24;
     var d = h.map(function (v, i) { return (i ? 'L' : 'M') + (i / (h.length - 1) * W).toFixed(1) + ' ' + (H - 2 - (v - lo) / ((hi - lo) || 1) * (H - 4)).toFixed(1); }).join('');
     var col = h[h.length - 1] >= h[0] ? '#3ddc84' : '#ff6470';
@@ -650,7 +905,7 @@ body{overflow-x:hidden;}
   function tkBadge(sym) { var s = S(sym); return el('span', { class: 'tk', style: { background: (s && (GCOL[s.g] || SCOL[s.sec])) || '#2b3648' }, text: sym.replace('-USD', '') }); }
 
   // ── Layout ──
-  var tab = 'port', mkt = { g: 'index', q: '' }, dom = {};
+  var tab = 'port', mkt = { g: 'index', q: '' }, dom = {}, DK = { on: false };   // (DK: the desk, a large window: see "The desk" below)
   function layout() {
     app.innerHTML = '';
     var root = el('div', { class: 'mk' });
@@ -666,15 +921,295 @@ body{overflow-x:hidden;}
     app.appendChild(root);
     dom.pane = el('div', { class: 'pane' }, [dom.paneIn = el('div', { class: 'in' })]);
     document.body.appendChild(dom.pane);
+    // the desk's own parts (in the page only while a desk layout shows: arrange, below)
+    dom.root = root; dom.dk = el('div', { class: 'dk' });
+    dom.cash = el('div', { class: 'dk-cash' }); dom.hold = el('div', { class: 'dk-hold' }); dom.acts = el('div', { class: 'dk-acts' });
+    dom.tkt = el('div', { class: 'dk-tkt' }); dom.lrn = el('div', { class: 'dk-lrn' }); dom.focus = el('div', { class: 'dk-focus' }); dom.acct = el('div', { class: 'dk-acct' });
+    DK.on = false; DK.key = ''; DK.P = null;
     var mq = window.matchMedia('(min-width:900px),(orientation:landscape) and (min-width:640px)');
-    function place() { dom.wide = mq.matches; if (dom.wide) dom.side.appendChild(dom.sum); paint(); }
+    function place() { dom.wide = mq.matches; if (arrange()) return; if (dom.wide) dom.side.appendChild(dom.sum); paint(); }
     if (mq.addEventListener) mq.addEventListener('change', place); else mq.addListener(place);
     place();
+    if (!DK.wired) { DK.wired = true; window.addEventListener('resize', function () { if (DK.raf) return; DK.raf = requestAnimationFrame(function () { DK.raf = 0; if (dom.root && (DK.on || deskPlan())) arrange(true); }); }); }
   }
   function paint() {
+    if (DK.on) return deskPaint();
     paintTape(); paintSum(); paintSeg();
     if (!dom.wide && tab === 'port') dom.body.innerHTML = '', dom.body.appendChild(dom.sum); else dom.body.innerHTML = '';
     if (tab === 'port') paintPort(); else if (tab === 'mkt') paintMarket(); else paintLearn();
+  }
+
+  // ── The desk: a large window (a laptop or a desktop, the window dragged to any shape) ──────────────────────────
+  // Tim, 2026-11-17: "gameplay needs to take up as much screen as the device will give it, but also adapt to every
+  // possible resizing option in there", and "simply scaling things up is not thoughtful design". Here the play surface
+  // is the information, so the desk shows at once what a phone shows a tab or a sheet at a time:
+  //   left    the account: its value through time, what it is in, taxes, and everything you own (dom.sum, dom.hold)
+  //   middle  the chosen stock large (the pane, standing open in dom.focus: its chart at its own pixels with prices and
+  //           dates along its edges, what the game knows about it beside or under it) and the board (dom.main: the
+  //           group's names as tiles, each with its price, today's change and a chart; fitTiles sizes them to the room)
+  //   right   where you act: the ticket to buy and sell the chosen stock (dom.tkt, no sheet), your cash with Add money
+  //           and Cash out (dom.cash), and your waiting orders and the trades behind you (dom.acts)
+  // deskPlan decides the columns from the window; deskBuild moves the parts into them; deskPaint draws them. A phone
+  // and a tablet (402x874, 874x402, 768x1024, 1024x768, 320x568) get null from deskPlan, and nothing here runs.
+  var DESK_MQ = window.matchMedia('(min-width:1025px) and (min-height:521px), (min-height:1025px) and (min-width:700px), (min-width:769px) and (min-height:769px)');
+  function clampN(lo, v, hi) { return Math.max(lo, Math.min(hi, v)); }
+  function acctUsed() { return !!(A.dep || A.cash > 0 || A.lots.length || A.opts.length || A.bonds.length || A.orders.length || A.tx.length); }
+  // Three compositions by the window's shape:
+  //   stacked  (1000 or more wide, room for 1000 of height under the tickers): the chosen stock over the board
+  //   side     (1000 or more wide, shorter): the board as a column of rows beside the chosen stock
+  //   tall     (700 to 999 wide, 860 or more of height): value and cash as two tiles, the chosen stock beside its
+  //            ticket, the board across the window, and what you own under it when there is the height
+  // The account has a column of its own at the left from 1280 wide (1340 beside the board), once it has been used.
+  function deskPlan() {
+    if (!dom.root || !DESK_MQ.matches) return null;
+    var W = window.innerWidth, H = window.innerHeight; if (W < 700) return null;
+    var top = Math.max(0, Math.round(app.getBoundingClientRect().top + (DK.on ? 0 : window.scrollY || 0)));
+    var U = H - top - 2 - 72 - 12 - 16, used = acctUsed(), TK = lvl() >= 2 ? 600 : lvl() >= 1 ? 548 : 492, TKT = TK - 96, CASH = 112, SUMC = 86, G = 12;
+    var P = { W: W, H: H, top: top, U: U, used: used };
+    P.tall = W < 1000;
+    if (P.tall && U < 860) return null;                           // (a window like a tablet held upright keeps the tablet's page)
+    P.side = !P.tall && U < 1000;
+    P.L = !P.tall && used && W >= (P.side ? 1340 : 1280);
+    P.f = Math.round(clampN(1, Math.min(W / 1750, (U + 180) / 1000), 1.6) * 100) / 100;   // (content's type: 1 at 1512 by 982, 1.2 at 2100 by 1860, 1.6 at 3024 by 1964)
+    P.fc = Math.round(Math.min(1.3, 1 + (P.f - 1) * .5) * 100) / 100;                      // (the controls' own step, gentler: a button stays a button)
+    TK = Math.round(TK * (1 + (P.fc - 1) * .8)); TKT = Math.round(TKT * (1 + (P.fc - 1) * .8)); CASH = Math.round(CASH * P.fc); SUMC = Math.round(SUMC * P.fc);
+    P.Rw = Math.round(clampN(300, W * .2, 400 * P.fc)); P.Lw = Math.round(clampN(290, W * .23, 440 * P.f)); P.Bw = Math.round(clampN(300, W * .225, 420));
+    P.t2 = P.side && U < 520 && W >= 1500;                          // (a short wide strip: the ticket in two columns)
+    if (P.t2) { P.Rw = 500; P.Lw = 300; P.Bw = 330; TK = TKT = 330; }
+    if (P.Rw < 340 || (P.t2 && P.Lw < 340)) CASH = 138;
+    if (P.tall) {
+      P.fh = Math.round(clampN(TK, U * .4, 680));                 // (the chosen stock and its ticket: one row this tall)
+      P.holdOwn = used && U >= 1450; P.holdTab = used && !P.holdOwn;
+      P.tight = false;
+    } else if (P.L) {
+      P.cashL = U < TKT + CASH + G;                                // (no room under the ticket: the cash goes with the account)
+      P.tight = U < TK + (P.cashL ? 0 : CASH + G);                 // (the ticket without its small print)
+      P.actsR = U - (P.tight ? TKT : TK) - (P.cashL ? 0 : CASH + G) - G >= 190;   // (orders and trades under the ticket, when there is room)
+      P.holdL = U - 250 - (P.cashL ? CASH + G : 0) >= 200;         // (what you own under the account; in a strip it stays a tab of the board)
+      P.holdTab = !P.holdL;
+    } else {
+      P.acctTop = P.side && U < SUMC + CASH + TKT + 2 * G;         // (value and cash as slim tiles over the chosen stock)
+      P.tight = U < TK + (P.acctTop ? 0 : SUMC + CASH + 2 * G);
+      P.holdR = used && !P.acctTop && U - SUMC - CASH - TK - 3 * G >= 230;
+      P.holdTab = used && !P.holdR;                                // (what you own stays a tab of the board, as on a phone)
+    }
+    P.key = [P.tall ? 't' : P.side ? 's' : 'v', P.t2 ? '2' : '', P.L ? 'L' : '', P.cashL ? 'c' : '', P.actsR ? 'a' : '', P.holdL ? 'l' : '', P.acctTop ? 't' : '', P.holdR ? 'h' : '', P.holdOwn ? 'o' : '', P.holdTab ? 'b' : ''].join('');
+    return P;
+  }
+  function arrange(glide) {
+    var P = deskPlan();
+    if (!P) { if (DK.on) deskOff(); return false; }
+    var re = !DK.on || P.key !== DK.key;
+    function go() { DK.P = P; if (re) deskBuild(P); deskVars(P); deskPaint(); }
+    if (re && DK.on && glide && Kit.glide) Kit.glide(go); else go();
+    return true;
+  }
+  function deskVars(P) {
+    var st = dom.root.style;
+    st.setProperty('--mkh', (P.H - P.top) + 'px'); st.setProperty('--dkf', String(P.f)); st.setProperty('--dkc', String(P.fc));
+    dom.tkt.classList.toggle('tight', !!P.tight); dom.tkt.classList.toggle('t2', !!P.t2); dom.main.classList.toggle('short', P.U < 560);
+  }
+  function deskBuild(P) {
+    var root = dom.root, first = !DK.on;
+    if (first) { releasePage(); window.scrollTo(0, 0); }
+    document.documentElement.classList.add('mk-desk'); DK.on = true; DK.key = P.key;
+    while (dom.dk.firstChild) dom.dk.removeChild(dom.dk.firstChild);
+    [dom.hold, dom.acts, dom.acct, dom.lrn].forEach(function (n) { if (n.parentNode) n.parentNode.removeChild(n); });
+    function col(cls, w, kids) { var c = el('div', { class: 'dk-col ' + cls + (w ? ' fx' : '') }); if (w) c.style.width = w + 'px'; kids.forEach(function (k) { if (k) c.appendChild(k); }); dom.dk.appendChild(c); return c; }
+    dom.focus.appendChild(dom.pane); dom.pane.classList.add('on');
+    dom.dk.classList.toggle('tall', !!P.tall); dom.tkt.style.width = P.tall ? P.Rw + 'px' : '';
+    if (P.acctTop || P.tall) { dom.acct.appendChild(dom.sum); dom.acct.appendChild(dom.cash); }
+    if (P.tall) {
+      var r2 = el('div', { class: 'dk-rowx' }, [dom.focus, dom.tkt]); r2.style.height = P.fh + 'px';
+      [dom.acct, r2, dom.main, P.holdOwn ? dom.hold : null].forEach(function (k) { if (k) dom.dk.appendChild(k); });
+    } else {
+      if (P.L) col('dk-l', P.Lw, [dom.sum, P.cashL ? dom.cash : null, P.holdL ? dom.hold : null]);
+      if (P.side) { col('dk-b one', P.Bw, [dom.main]); col('dk-f one', 0, [P.acctTop ? dom.acct : null, dom.focus]); }   // (value and cash as two slim tiles over the chosen stock, so the board has the column's height)
+      else col('dk-c', 0, [dom.focus, dom.main]);
+      col('dk-r', P.Rw, P.L ? [dom.tkt, P.cashL ? null : dom.cash, P.actsR && P.holdL ? dom.acts : null] : [P.acctTop ? null : dom.sum, P.acctTop ? null : dom.cash, dom.tkt, P.holdR ? dom.hold : null, P.used ? null : dom.lrn]);
+    }
+    dom.sum.className = 'dk-sum' + (P.L ? '' : ' compact');
+    dom.main.classList.toggle('narrow', !!P.side);
+    if (dom.dk.parentNode !== root) root.appendChild(dom.dk);
+  }
+  function deskOff() {
+    var root = dom.root;
+    document.documentElement.classList.remove('mk-desk'); DK.on = false; DK.key = ''; DK.P = null;
+    if (dom.dk.parentNode) dom.dk.parentNode.removeChild(dom.dk);
+    root.appendChild(dom.side); root.appendChild(dom.main); dom.main.insertBefore(dom.seg, dom.body);
+    dom.sum.className = ''; dom.tkt.style.width = ''; dom.hold.style.maxHeight = ''; dom.main.classList.remove('narrow', 'cx', 'mid', 'short', 'slim'); root.style.removeProperty('--mkh'); root.style.removeProperty('--dkf'); root.style.removeProperty('--dkc');
+    dom.pane.classList.remove('on', 'sym', 'doc', 'two'); document.body.appendChild(dom.pane); dom.paneIn.innerHTML = '';
+    if (dom.wide) dom.side.appendChild(dom.sum);
+    paint();
+  }
+  // the stock the desk opens on: the one last looked at, else the largest holding, the first on the watchlist, the
+  // first index fund
+  function deskSym() {
+    if (DK.sym && S(DK.sym)) return DK.sym;
+    var hs = holdings(), w = WATCH.filter(S), g = Q && Q.q ? Object.keys(Q.q).filter(function (k) { return Q.q[k].g === 'index' && findable(k, Q.q[k]); }) : [];
+    return (hs[0] && hs[0].sym) || w[0] || (S('VOO') ? 'VOO' : g[0]) || (Q && Q.q ? Object.keys(Q.q)[0] : null);
+  }
+  function deskPaint() {
+    var P = DK.P; if (!P) return;
+    // (the account going from never used to used, or back, changes which columns there are)
+    if (acctUsed() !== P.used) { DK.P = P = deskPlan(); if (!P) { deskOff(); return; } if (P.key !== DK.key) deskBuild(P); deskVars(P); }
+    DK.chh = Math.round(clampN(120, P.U * .2, 320 * P.f));                // (the value chart's height, before deskFit weighs it against what you own)
+    paintTape(); paintSum(); deskBoard();
+    dom.hold.innerHTML = ''; dom.acts.innerHTML = '';
+    if (dom.hold.parentNode) paintPort(dom.hold, dom.acts.parentNode ? dom.acts : null);
+    else if (dom.acts.parentNode) paintPort(null, dom.acts);
+    // the chosen stock and its ticket (a lesson or an options chain in the pane stays as it is)
+    if (Q) {
+      var sym = deskSym();
+      if (sym && (!DK.mode || DK.mode === 'sym' || !dom.paneIn.firstChild)) openSym(sym, DK.mode === 'sym' && dom.paneSym === sym);
+      else if (DK.tref) DK.tref();
+    } else if (!dom.paneIn.firstChild) dom.paneIn.appendChild(el('div', { class: 'pnl empty', text: qErr ? 'Can’t reach the market prices right now. Try again in a bit.' : 'Getting today’s prices…' }));
+    paintLrn();
+    deskFit();
+  }
+  // an account not used yet: the lessons still to read stand under the ticket, where the account's orders and trades
+  // will be (a lesson opens in the chosen stock's place)
+  function paintLrn() {
+    var c = dom.lrn; c.innerHTML = ''; if (!c.parentNode) return;
+    var L = lessons(), done = L.filter(function (l) { return LEARN[l.id]; }).length; if (done === L.length) return;
+    var p = el('div', { class: 'pnl' }), r = el('div', { class: 'lessons' });
+    p.appendChild(el('h3', null, [el('span', { text: 'How investing works' }), el('span', { text: done + ' of ' + L.length + ' read' })]));
+    L.forEach(function (l, i) { if (LEARN[l.id]) return; r.appendChild(el('button', { type: 'button', class: 'lesson', onclick: function () { openLesson(l); } }, [el('span', { class: 'n', text: String(i + 1) }), el('span', null, [el('b', { text: l.t }), el('small', { text: l.s })]), el('span', { class: 'go', html: Kit.icon('right') })])); });
+    p.appendChild(r); c.appendChild(p);
+  }
+  function deskBoard() {
+    var P = DK.P; if (!P) return;
+    if (!P.holdTab && tab === 'port') tab = 'mkt';
+    var bw = dom.main.clientWidth; dom.main.classList.toggle('cx', bw < 1100); dom.main.classList.toggle('mid', !P.side && bw < 800); dom.main.classList.toggle('slim', bw < 320);
+    paintSeg();
+    dom.body.innerHTML = '';
+    if (tab === 'port') { var pb = el('div', { class: 'port' }); dom.body.appendChild(pb); paintPort(pb); }
+    else if (tab === 'mkt') paintMarket(); else paintLearn();
+    // (the tabs stand at the head of the board, on the search's line when the board is the market)
+    if (!dom.body.contains(dom.seg)) dom.body.insertBefore(el('div', { class: 'bhead solo' }, [dom.seg]), dom.body.firstChild);
+  }
+  // after a paint: when the account column is too short for what you own, the value chart gives height first, and then
+  // the column gives up its last parts whole (taxes, then what it is in, then the chart); every list that scrolls is
+  // trimmed to whole rows
+  function deskFit() {
+    var P = DK.P; if (!P) return;
+    dom.sum.classList.remove('no-tax', 'no-alloc', 'no-chart');
+    dom.hold.classList.toggle('thin', dom.hold.clientWidth > 0 && dom.hold.clientWidth < 400);
+    if (P.L && !P.holdL) {
+      var colL = dom.sum.parentNode, tooTall = function () { return colL.scrollHeight > colL.clientHeight + 1; };
+      // (taxes go first, then what it is in; the value through time gives height before it goes, last)
+      ['no-tax', 'no-alloc'].some(function (c) { if (!tooTall()) return true; dom.sum.classList.add(c); return false; });
+      var ov2 = colL.scrollHeight - colL.clientHeight;
+      if (ov2 > 0 && DK.chh - ov2 >= 80) { DK.chh -= ov2; paintSum(); }
+      if (tooTall()) dom.sum.classList.add('no-chart');
+    } else if (P.L) {
+      var over = function () { return dom.hold.scrollHeight - dom.hold.clientHeight; }, ov = over();
+      var chMin = Math.round(150 * (1 + (P.f - 1) * .6));
+      if (ov > 0 && DK.chh > chMin) { DK.chh = Math.max(chMin, DK.chh - ov); paintSum(); ov = over(); }
+      // (what you own keeps at least four of its rows in view, or half the column)
+      var starved = function () { return over() > 0 && dom.hold.clientHeight < Math.min(dom.hold.scrollHeight, Math.max(330, P.U * .5)); };
+      ['no-tax', 'no-alloc', 'no-chart'].some(function (c) { if (!starved()) return true; dom.sum.classList.add(c); return false; });
+    }
+    growRows(dom.acts);
+    var ml = dom.main.querySelector('.lessons'); if (ml) { ml.style.maxHeight = ''; trimRows(ml); }   // (the board's lessons: whole ones)
+    // (the lessons under the ticket: whole lessons only, and none at all when not even one fits)
+    var lr = dom.lrn.querySelector('.lessons'); if (lr) { dom.lrn.style.display = ''; lr.style.maxHeight = ''; trimRows(lr); dom.lrn.style.display = lr.clientHeight < 60 ? 'none' : ''; }
+    [].forEach.call(dom.root.querySelectorAll('.pnl.grow > .rows'), trimRows);
+    wholeRows(dom.hold);
+  }
+  // a column of cards that scrolls as one: it ends on a whole row (or a whole card), never through one
+  function wholeRows(colEl) {
+    colEl.style.maxHeight = '';
+    if (!colEl.parentNode || colEl.scrollHeight <= colEl.clientHeight + 1) return;
+    var t0 = colEl.getBoundingClientRect().top - colEl.scrollTop, h = colEl.clientHeight, best = 0;
+    [].forEach.call(colEl.querySelectorAll('.row, .pnl'), function (r) { var b = r.getBoundingClientRect().bottom - t0 + (r.classList.contains('row') ? 1 : 0); if (b <= h + .5 && b > best) best = b; });
+    if (best > 60) colEl.style.maxHeight = Math.floor(best) + 'px';
+  }
+  // the chosen stock, when its panel is one column: the chart takes the height the parts under it leave; parts that
+  // do not fit whole start under the fold (a scroll away), so nothing is cut through
+  function foldFocus() {
+    var w = dom.paneIn; w.style.gridTemplateRows = '';
+    if (DK.mode !== 'sym') return;
+    var parts = ['.f-div', '.f-lots', '.f-own'].map(function (q) { return w.querySelector(q); }).filter(Boolean);
+    parts.forEach(function (x) { x.style.display = ''; });
+    if (dom.pane.classList.contains('two')) {
+      // (the facts beside the chart: the last of them go, whole, when the column is too short: dividends, then the lots)
+      for (var k = 0; k < parts.length - 1 && w.scrollHeight > w.clientHeight + 1; k++) parts[k].style.display = 'none';
+      if (w.scrollHeight <= w.clientHeight + 1) return;
+      // (still too tall beside the chart: one column, the chart over the facts)
+      dom.pane.classList.remove('two'); parts.forEach(function (x) { x.style.display = ''; });
+    }
+    var ch = w.querySelector('.f-chart'), box = ch && ch.querySelector('.f-box'); if (!box) return;
+    var kids = [].slice.call(w.children).filter(function (k) { return k.offsetHeight > 0; }), H = w.clientHeight, gap = 12;
+    var chrome = ch.offsetHeight - box.offsetHeight, least = chrome + Math.round(clampN(150, H * .3, 260)), used = kids[0] === ch ? 0 : kids[0].offsetHeight + gap, rest = kids.filter(function (k, i) { return k !== ch && i > 0; }), take = 0;
+    for (var i = 0; i < rest.length; i++) { if (used + least + take + gap + rest[i].offsetHeight <= H) take += gap + rest[i].offsetHeight; else break; }
+    w.style.gridTemplateRows = (kids[0] === ch ? '' : 'auto ') + Math.max(least, H - used - take) + 'px';
+  }
+  // a column of cards: the one long list in it (marked grow) takes the room the others leave and scrolls inside itself
+  function growRows(colEl) {
+    if (!colEl.parentNode) return;
+    var g = colEl.querySelector('.pnl.grow'); if (!g) return;
+    var rows = g.querySelector('.rows'); rows.style.maxHeight = '';
+    var over = colEl.scrollHeight - colEl.clientHeight;
+    if (over > 0) rows.style.maxHeight = Math.max(100, rows.offsetHeight - over) + 'px';
+  }
+  function trimRows(rows) {
+    if (rows.scrollHeight <= rows.clientHeight + 1) return;
+    var t0 = rows.getBoundingClientRect().top - rows.scrollTop, h = rows.clientHeight, best = 0;
+    [].forEach.call(rows.children, function (r) { var b = r.getBoundingClientRect().bottom - t0; if (b <= h + .5 && b > best) best = b; });
+    if (best > 40) rows.style.maxHeight = Math.floor(best) + 'px';
+  }
+  // the board's tiles: as many across as makes each one largest, to a comfortable largest size; a tile tall enough
+  // has its chart under its name (tl), a short one beside it
+  function fitTiles(list) {
+    if (!DK.on || !list.isConnected) return;
+    var rows = list.querySelectorAll('.rows'); if (!rows.length) return;
+    var P = DK.P, gap = 10, w = list.clientWidth, n = 0, extra = 0;
+    [].forEach.call(rows, function (r) { r.classList.add('tiles'); n += r.children.length; });
+    [].forEach.call(list.children, function (c) { if (!c.classList.contains('rows')) { var cs = getComputedStyle(c); extra += c.offsetHeight + (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.marginBottom) || 0); } });
+    var cs2 = getComputedStyle(list), h = list.clientHeight - extra - (parseFloat(cs2.paddingTop) || 0) - (parseFloat(cs2.paddingBottom) || 0) - (rows.length - 1) * gap;
+    w -= (parseFloat(cs2.paddingLeft) || 0) + (parseFloat(cs2.paddingRight) || 0);
+    var F = 1 + (P.f - 1) * .8, MAXH = Math.round(270 * F), best = null, cmax = Math.max(1, Math.min(n, Math.floor((w + gap) / (190 * F + gap))));
+    var H_TL = 150 * F, W_RW = 330 * F, H_RW = Math.round(68 * F), H_R2 = Math.round(88 * F);
+    for (var c = 1; c <= cmax; c++) {
+      var tw = (w - (c - 1) * gap) / c, r = 0; [].forEach.call(rows, function (x) { r += Math.ceil(x.children.length / c); });
+      var th = (h - (r - rows.length) * gap) / r, cand = null, vis = function (t) { return c * Math.max(1, Math.floor((h + gap) / (t + gap))); };
+      // three kinds of tile: tl, its chart under its name (150 of height or more); a row with the chart beside the name
+      // (330 of width or more); r2, a narrow row with the chart under the name. When they can't all fit, the kind that
+      // shows the most at once, and the list scrolls by whole tiles
+      if (tw >= 190 * F && th >= H_TL) { th = Math.min(th, MAXH, tw * .78); cand = { kind: 'tl', th: th, s: 3e6 + Math.min(tw, 560 * F) * th }; }
+      else if (tw >= W_RW) cand = th >= H_RW ? { kind: 'rw', th: Math.min(th, H_RW * 1.4), s: 2e6 + Math.min(tw, 520 * F) * Math.min(th, H_RW * 1.4) } : { kind: 'rw', th: H_RW + 4, more: 1, s: 1e6 + vis(H_RW + 4) * 1000 + tw };
+      else if (tw >= 250 * F || c === 1) cand = th >= H_R2 ? { kind: 'r2', th: Math.min(th, H_R2 * 1.18), s: 2e6 + tw * Math.min(th, H_R2 * 1.18) } : { kind: 'r2', th: H_R2, more: 1, s: 1e6 + vis(H_R2) * 1000 + tw };
+      if (cand && (!best || cand.s > best.s)) { cand.c = c; cand.tw = tw; best = cand; }
+    }
+    if (!best) return;
+    // (a board so short that fewer than four of the group would show: plain rows without their charts, more at once)
+    var H_RS = Math.round(62 * F), seen = function (b) { return b.more ? Math.max(1, Math.floor((h + gap) / (b.th + gap))) * b.c : n; };
+    if (rows.length === 1 && seen(best) < Math.min(n, 4)) {
+      var rc = Math.max(1, Math.min(n, Math.floor((w + gap) / (300 + gap)))), rr = Math.ceil(n / rc), rth = (h - (rr - 1) * gap) / rr;
+      best = { kind: 'rs', c: rc, tw: (w - (rc - 1) * gap) / rc, th: rth >= H_RS ? Math.min(rth, H_RS * 1.2) : H_RS, more: rth < H_RS ? 1 : 0 };
+    }
+    best.th = Math.floor(best.th);
+    [].forEach.call(rows, function (x) {
+      x.classList.toggle('tl', best.kind === 'tl'); x.classList.toggle('r2', best.kind === 'r2'); x.classList.toggle('rs', best.kind === 'rs');
+      x.style.setProperty('--tc', best.c); x.style.setProperty('--th', best.th + 'px'); x.style.setProperty('--sw', Math.round(clampN(70, best.tw * .3, 200)) + 'px');
+      x.style.maxHeight = '';
+    });
+    // (a group longer than the board scrolls inside itself by whole tiles, and the tiles stretch a little to end at the
+    // board's foot instead of leaving a band under the last whole row)
+    var r0 = rows[0];
+    if (rows.length === 1 && (list.scrollHeight > list.clientHeight + 1 || r0.scrollHeight > r0.clientHeight + 1)) {
+      var avail = list.getBoundingClientRect().bottom - (parseFloat(cs2.paddingBottom) || 0) - r0.getBoundingClientRect().top;
+      var k = Math.max(1, Math.floor((avail + gap) / (best.th + gap))), th2 = Math.floor(Math.min(best.th * 1.3, (avail - (k - 1) * gap) / k));
+      if (th2 > best.th) { best.th = th2; r0.style.setProperty('--th', th2 + 'px'); }
+      r0.style.maxHeight = (k * (best.th + gap) - gap) + 'px';
+    }
+    // a name too long for its tile steps down a size, then a second; then the tile is its symbol and its price
+    [].forEach.call(list.querySelectorAll('.rows.tiles .row'), function (t) {
+      var b = t.querySelector('.nm b'); if (!b) return;
+      var over = function () { return t.scrollHeight > t.clientHeight + 1 || b.scrollWidth > b.clientWidth + 1 || b.scrollHeight > b.clientHeight + 1; };
+      if (over()) { b.style.fontSize = '.8rem'; if (over()) { b.style.fontSize = '.72rem'; if (over()) b.style.display = 'none'; } }
+    });
   }
   // The two strips (Kit.marquee: they roll on through new prices and can be swiped; the top one moves left, the bottom
   // one right). The key at each strip's right end names what it shows and picks something else (mk_tk1, mk_tk2).
@@ -742,7 +1277,8 @@ body{overflow-x:hidden;}
   }
   function paintSeg() {
     dom.seg.innerHTML = '';
-    [['port', 'Portfolio'], ['mkt', 'Market'], ['learn', 'Learn']].forEach(function (x) {
+    // (at a desk what you own has a panel of its own wherever there is room, and the board's tabs are the market and the lessons)
+    [['port', 'Portfolio'], ['mkt', 'Market'], ['learn', 'Learn']].filter(function (x) { return !DK.on || x[0] !== 'port' || (DK.P && DK.P.holdTab); }).forEach(function (x) {
       dom.seg.appendChild(el('button', { type: 'button', class: tab === x[0] ? 'on' : '', onclick: function () { if (tab === x[0]) return; tab = x[0]; Kit.sfx('tap'); paint(); window.scrollTo(0, 0); } }, [x[1]]));
     });
   }
@@ -759,7 +1295,9 @@ body{overflow-x:hidden;}
     if (Q) p.appendChild(el('div', { class: 'asof', text: asofTxt() + (qErr ? '  (saved copy)' : '') }));
     var now = Date.now(), cut = { w: 7, m: 31, q: 92, all: 1e5 }[valRange], pts = A.vals.map(function (v) { return [Date.parse(v[0] + 'T12:00:00'), v[1]]; }).filter(function (v) { return now - v[0] <= cut * DAY; });
     if (pts.length === 1) pts.unshift([pts[0][0] - DAY, A.dep ? A.dep - A.wd : pts[0][1]]);
-    p.appendChild(lineChart(pts, { h: 120, empty: 'Your account’s value is charted here, day by day.' }));
+    // (at a desk the chart is drawn at its own pixels, as tall as the window allows, with its values and dates)
+    var dch = DK.on && DK.P.L ? DK.chh || 120 : 0;
+    p.appendChild(lineChart(pts, dch ? { w: DK.P.Lw - 28, h: dch, axes: dch >= 150, f: DK.P.f, empty: 'Your account’s value is charted here, day by day.' } : { h: 120, empty: 'Your account’s value is charted here, day by day.' }));
     var rg = el('div', { class: 'rng' });
     [['w', '1W'], ['m', '1M'], ['q', '3M'], ['all', 'All']].forEach(function (r) { rg.appendChild(el('button', { type: 'button', class: valRange === r[0] ? 'on' : '', text: r[1], onclick: function () { valRange = r[0]; paintSum(); } })); });
     p.appendChild(rg);
@@ -771,11 +1309,11 @@ body{overflow-x:hidden;}
       el('button', { type: 'button', class: 'btn-g', text: 'Add money', onclick: deposit }),
       el('button', { type: 'button', class: 'btn-d', text: 'Cash out', disabled: t.all < .01 ? true : null, onclick: withdraw })])]));
     if (reserved() > 0) c.appendChild(el('div', { class: 'asof', text: money(reserved(), 1) + ' set aside for limit orders' }));
-    s.appendChild(c);
+    if (DK.on) { dom.cash.innerHTML = ''; dom.cash.appendChild(c); } else s.appendChild(c);   // (the desk: the cash is a panel of its own, where you act)
     // what it's in
     if (t.all > .01) {
       var parts = [['Stocks', t.stock, '#6d4bd6'], ['Funds', t.fund, '#2f6fd6'], ['Bonds', t.bond + t.tb, '#1f8a5a'], ['Options', t.opt, '#c2417a'], ['Crypto', t.coin, '#c48a12'], ['Cash', t.cash, '#5a6270']].filter(function (x) { return x[1] > .005; });
-      var al = el('div', { class: 'pnl' }); al.appendChild(el('h3', null, [el('span', { text: 'What it’s in' })]));
+      var al = el('div', { class: 'pnl p-alloc' }); al.appendChild(el('h3', null, [el('span', { text: 'What it’s in' })]));
       var bar = el('div', { class: 'alloc' }); parts.forEach(function (x) { bar.appendChild(el('i', { style: { width: (x[1] / t.all * 100) + '%', background: x[2] } })); });
       al.appendChild(bar);
       var lg = el('div', { class: 'legend' }); parts.forEach(function (x) { lg.appendChild(el('div', null, [el('span', null, [el('i', { style: { background: x[2] } }), document.createTextNode(x[0])]), el('b', { class: 'num', text: Math.round(x[1] / t.all * 100) + '%' })])); });
@@ -785,7 +1323,7 @@ body{overflow-x:hidden;}
     // taxes
     var ty = taxYears().filter(function (o) { return o.y === new Date().getFullYear(); })[0], due = taxDue();
     if ((ty || due) && taxesOn()) {
-      var tx = el('div', { class: 'pnl' }); tx.appendChild(el('h3', null, [el('span', { text: 'Taxes this year' }), el('button', { type: 'button', text: 'Details', onclick: taxSheet })]));
+      var tx = el('div', { class: 'pnl p-tax' }); tx.appendChild(el('h3', null, [el('span', { text: 'Taxes this year' }), el('button', { type: 'button', text: 'Details', onclick: taxSheet })]));
       tx.appendChild(el('div', { class: 'kv' }, [
         el('div', null, [el('span', { class: 'cap', text: 'Gains sold' }), el('b', { class: cls(ty ? ty.st + ty.lt : 0), text: signed(ty ? ty.st + ty.lt : 0, 1) })]),
         el('div', null, [el('span', { class: 'cap', text: due >= 0 ? 'Tax owed' : 'Tax refund' }), el('b', { text: money(Math.abs(due), 1) })])]));
@@ -795,20 +1333,25 @@ body{overflow-x:hidden;}
   }
 
   // ── Portfolio tab ──
-  function paintPort() {
-    var b = dom.body;
+  // (b: where what you own goes; acts: where the waiting orders and the activity go. A phone has one place for both,
+  // the tab's body; the desk gives each a panel wherever there is room, and marks the long list in each to scroll)
+  function paintPort(b, acts) {
+    if (b === undefined) b = dom.body;
+    var own = b, desk = DK.on, split = desk && acts && acts !== b;
+    acts = acts || b;
+    if (!b) { b = el('div'); own = null; }   // (the desk's orders and trades alone)
     if (report && report.length) {
       var r = el('div', { class: 'pnl rep' }); r.appendChild(el('h3', null, [el('span', { text: 'Since your last visit' }), el('button', { type: 'button', text: 'Got it', onclick: function () { report = null; paint(); } })]));
       var ul = el('ul'); report.forEach(function (x) { ul.appendChild(el('li', null, [el('span', { text: x[0] }), el('b', { class: /^\+/.test(x[1]) ? 'up' : /^−/.test(x[1]) ? 'dn' : '', text: x[1] })])); });
       r.appendChild(ul); b.appendChild(r);
     }
     var hs = holdings();
-    var p = el('div', { class: 'pnl' }); p.appendChild(el('h3', null, [el('span', { text: 'Stocks, funds and crypto' }), el('span', { text: hs.length ? '' : '' })]));
+    var p = el('div', { class: 'pnl' + (desk ? ' grow' : '') }); p.appendChild(el('h3', null, [el('span', { text: 'Stocks, funds and crypto' }), el('span', { text: hs.length ? '' : '' })]));
     var rows = el('div', { class: 'rows' });
     if (!hs.length) rows.appendChild(el('div', { class: 'empty', text: A.cash > 0 ? 'Nothing bought yet. Find something in Market.' : 'Add money from your bankroll, then find something in Market.' }));
     hs.forEach(function (h) {
       var g = h.val - h.cost;
-      rows.appendChild(el('button', { type: 'button', class: 'row', onclick: function () { openSym(h.sym); } }, [tkBadge(h.sym),
+      rows.appendChild(el('button', { type: 'button', class: 'row' + (desk && DK.mode === 'sym' && dom.paneSym === h.sym ? ' on' : ''), 'data-sym': h.sym, onclick: function () { openSym(h.sym); } }, [tkBadge(h.sym),
         el('span', { class: 'nm' }, [el('b', { text: S(h.sym) ? S(h.sym).n : h.sym }), el('small', { text: shares(h.q) + (isCoin(h.sym) ? ' coins' : ' shares') })]),
         spark(h.sym),
         el('span', { class: 'px' }, [document.createTextNode(money(h.val, 1)), el('small', { class: cls(g), text: signed(g, 1) })])]));
@@ -843,13 +1386,14 @@ body{overflow-x:hidden;}
         rl.appendChild(el('div', { class: 'row' }, [tkBadge(o.sym), el('span', { class: 'nm' }, [el('b', { text: (o.side === 'buy' ? 'Buy ' + money(o.amt, 1) : 'Sell ' + shares(o.q) + ' shares') }), el('small', { text: 'when ' + (o.side === 'buy' ? 'at or below ' : 'at or above ') + px(o.lim) })]), el('span'),
           el('button', { type: 'button', class: 'btn-d', text: 'Cancel', onclick: function () { A.orders = A.orders.filter(function (x) { return x !== o; }); save(); Kit.sfx('tap'); paint(); } })]));
       });
-      pl.appendChild(rl); b.appendChild(pl);
+      pl.appendChild(rl); acts.appendChild(pl);
     }
-    var hist = el('div', { class: 'pnl' }); hist.appendChild(el('h3', null, [el('span', { text: 'Activity' })]));
-    var rh = el('div', { class: 'rows' }), recent = A.tx.slice(-12).reverse();
+    // (the desk's own panel of trades has the room for more of them than a phone's twelve)
+    var hist = el('div', { class: 'pnl' + (split ? ' grow' : '') }); hist.appendChild(el('h3', null, [el('span', { text: 'Activity' })]));
+    var rh = el('div', { class: 'rows' }), recent = A.tx.slice(split ? -60 : -12).reverse();
     if (!recent.length) rh.appendChild(el('div', { class: 'empty', text: 'Trades, dividends and interest show up here.' }));
     recent.forEach(function (x) { rh.appendChild(el('div', { class: 'row', style: { 'grid-template-columns': 'minmax(0,1fr) auto' } }, [el('span', { class: 'nm' }, [el('b', { text: txTitle(x) }), el('small', { text: dateTxt(x.t, true) })]), el('span', { class: 'px' }, [document.createTextNode(txAmt(x)), x.gain != null ? el('small', { class: cls(x.gain), text: (x.gain >= 0 ? 'Gain ' : 'Loss ') + money(Math.abs(x.gain), 1) }) : null])])); });
-    hist.appendChild(rh); b.appendChild(hist);
+    hist.appendChild(rh); acts.appendChild(hist);
   }
   function txTitle(x) {
     switch (x.type) {
@@ -901,28 +1445,35 @@ body{overflow-x:hidden;}
     if (!Q) { b.appendChild(el('div', { class: 'pnl empty', text: qErr ? 'Can’t reach the market prices right now. Try again in a bit.' : 'Getting today’s prices…' })); return; }
     var ix = el('div', { class: 'idx' });
     ['spx', 'dji', 'ixic'].forEach(function (k) { var i = Q.idx && Q.idx[k]; if (!i) return; var c = (i.p - i.pc) / i.pc; ix.appendChild(el('div', null, [el('span', { class: 'cap', text: i.n }), el('b', { text: Math.round(i.p).toLocaleString() }), el('small', { class: cls(c), text: pct(c) })])); });
-    b.appendChild(ix);
+    if (!DK.on) b.appendChild(ix);
     var q = el('input', { class: 'q', type: 'search', placeholder: lvl() >= 1 ? 'Search every US stock and fund' : 'Search by name or symbol', value: mkt.q, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', enterkeyhint: 'search' });
-    var list = el('div', { class: 'pnl' });
+    var list = el('div', { class: 'pnl' + (DK.on ? ' list' : '') });
     q.addEventListener('input', function () { mkt.q = q.value; fill(); });
-    b.appendChild(q);
+    if (DK.on) b.appendChild(el('div', { class: 'bhead' }, [dom.seg, q, ix])); else b.appendChild(q);   // (the desk: the tabs, the search and the three indexes on one line)
     var gs = groupsOn();
     if (!gs.some(function (g) { return g[0] === mkt.g; })) mkt.g = WATCH.length ? 'watch' : 'index';
     var chips = el('div', { class: 'chips' });
     gs.forEach(function (g) { chips.appendChild(el('button', { type: 'button', class: 'chip' + (mkt.g === g[0] ? ' on' : ''), 'data-g': g[0], html: (g[0] === 'watch' ? Kit.icon('star') : '') + '<span>' + esc(g[1]) + '</span>', onclick: function () { mkt.g = g[0]; mkt.q = ''; q.value = ''; Kit.sfx('tap'); [].forEach.call(chips.children, function (c) { c.classList.toggle('on', c.dataset.g === g[0]); }); fill(); } })); });
     b.appendChild(chips);
     b.appendChild(list);
+    if (DK.on) {
+      if (q.clientWidth > 0 && q.clientWidth < 250) q.placeholder = 'Search';
+      chips.addEventListener('scroll', function () { chips.classList.toggle('sc', chips.scrollLeft > 4); }, { passive: true });
+      chips.addEventListener('wheel', function (e) { if (chips.scrollWidth > chips.clientWidth + 1 && Math.abs(e.deltaY) > Math.abs(e.deltaX)) { chips.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
+      var con = chips.querySelector('.on'); if (con && chips.scrollWidth > chips.clientWidth + 1) { chips.scrollLeft = Math.max(0, con.getBoundingClientRect().left - chips.getBoundingClientRect().left - chips.clientWidth / 2 + con.offsetWidth / 2); chips.classList.toggle('sc', chips.scrollLeft > 4); }
+    }
     function row(k, sub) {
       var x = S(k), c = dayChg(k);
-      return el('button', { type: 'button', class: 'row', onclick: function () { openSym(k); } }, [tkBadge(k),
+      return el('button', { type: 'button', class: 'row' + (DK.on && DK.mode === 'sym' && dom.paneSym === k ? ' on' : ''), 'data-sym': k, onclick: function () { openSym(k); } }, [tkBadge(k),
         el('span', { class: 'nm' }, [el('b', { text: x.n }), el('small', { text: px(x.p) }), sub ? el('small', { text: sub }) : null]),
-        spark(k), el('span', { class: 'pill ' + (c >= 0 ? 'up' : 'dn'), text: pct(c) })]);
+        spark(k, DK.on), el('span', { class: 'pill ' + (c >= 0 ? 'up' : 'dn'), text: pct(c) })]);
     }
     function head(t, n) { list.appendChild(el('h3', null, [el('span', { text: t }), el('span', { text: n == null ? '' : String(n) })])); }
     function blurb(t) { list.appendChild(el('p', { class: 'about mk-blurb', text: t })); }
     function rows(syms, sub) { var r = el('div', { class: 'rows' }); syms.forEach(function (k) { r.appendChild(row(k, sub && sub(k))); }); list.appendChild(r); return r; }
     function waitAll() { if (!ALL) { list.appendChild(el('div', { class: 'empty loading', text: 'Getting every US stock' })); loadAll().then(function () { if (list.isConnected && ALL) fill(); }); return true; } }
-    function fill() {
+    function fill() { fill0(); if (DK.on) fitTiles(list); }   // (the desk: the names as tiles, sized to the board)
+    function fill0() {
       list.innerHTML = '';
       var s = mkt.q.trim();
       if (s) {
@@ -1002,8 +1553,16 @@ body{overflow-x:hidden;}
     requestAnimationFrame(function () { requestAnimationFrame(function () { if (heldY == null) window.scrollTo(0, y); }); });
     setTimeout(function () { if (heldY == null && Math.abs(window.scrollY - y) > 2) window.scrollTo(0, y); }, 120);
   }
-  function openPane() { dom.pane.classList.add('on'); dom.pane.scrollTop = 0; holdPage(); }
-  function closePane() { dom.pane.classList.remove('on'); releasePage(); paint(); }
+  // (at a desk the pane stands open in the middle of the window: opening it sets what it shows, a stock (sym) or a
+  // lesson or an options chain (doc), and closing it goes back to the stock)
+  function openPane(mode) {
+    if (DK.on) { DK.mode = mode || 'doc'; dom.pane.classList.add('on'); dom.pane.classList.toggle('sym', DK.mode === 'sym'); dom.pane.classList.toggle('doc', DK.mode !== 'sym'); if (DK.mode !== 'sym') dom.pane.classList.remove('two'); dom.paneIn.scrollTop = 0; return; }
+    dom.pane.classList.add('on'); dom.pane.scrollTop = 0; holdPage();
+  }
+  function closePane() {
+    if (DK.on) { DK.mode = 'sym'; dom.paneIn.innerHTML = ''; paint(); return; }
+    dom.pane.classList.remove('on'); releasePage(); paint();
+  }
   function paneTop(title, sub, extra) {
     return el('div', { class: 'top' }, [el('button', { type: 'button', class: 'back', 'aria-label': 'Back', html: Kit.icon('back'), onclick: function () { Kit.sfx('tap'); closePane(); } }), el('span', { class: 't' }, [el('b', { text: title }), el('small', { text: sub })]), extra || null]);
   }
@@ -1016,19 +1575,20 @@ body{overflow-x:hidden;}
       Kit.sfx(on ? 'good' : 'tap'); Kit.haptic('light');
       Kit.toast(on ? 'On your watchlist' : 'Off your watchlist');
       if (isLite(sym)) openSym(sym, true);
+      if (DK.on) deskBoard();   // (the desk: the board's Watchlist is in view beside the star)
     };
     return b;
   }
   function kv(cap, val, c) { return el('div', null, [el('span', { class: 'cap', text: cap }), el('b', { class: c || '', text: val })]); }
   function openSym(sym, keep) {
     var s = S(sym); if (!s) return;
-    var w = dom.paneIn, y0 = keep ? dom.pane.scrollTop : 0; w.innerHTML = '';
-    dom.paneSym = sym;
+    var w = dom.paneIn, y0 = keep ? (DK.on ? w : dom.pane).scrollTop : 0; w.innerHTML = '';
+    dom.paneSym = sym; if (DK.on) { DK.sym = sym; DK.mode = 'sym'; DK.redraw = null; }
     var det = DET[sym], pending = det === undefined;
-    if (pending) loadDetail(sym).then(function () { if (dom.paneSym === sym && dom.pane.classList.contains('on')) openSym(sym, true); });
+    if (pending) loadDetail(sym).then(function () { if (dom.paneSym === sym && dom.pane.classList.contains('on') && (!DK.on || DK.mode === 'sym')) openSym(sym, true); });
     var lite = isLite(sym) && !det && !pending;
     w.appendChild(paneTop(sym.replace('-USD', ''), s.n, starBtn(sym)));
-    var p = el('div', { class: 'pnl' }), c = dayChg(sym);
+    var p = el('div', { class: 'pnl f-chart' }), c = dayChg(sym);
     p.appendChild(el('div', { class: 'val' }, [el('span', { class: 'big', text: px(s.p) }), el('span', { class: 'chg ' + cls(c) }, [el('small', { text: 'Today' }), document.createTextNode(signed(s.p - s.pc, 1) + '  ' + pct(c))])]));
     p.appendChild(el('div', { class: 'asof', text: asofTxt() }));
     if (lite) {
@@ -1043,7 +1603,7 @@ body{overflow-x:hidden;}
         el('span', null, [el('b', { text: mine ? 'Its chart is on the way' : 'Star it to see its chart' }), el('small', { text: mine ? 'The chart, dividends and history arrive with the next full update: soon after the market opens, or after it closes.' : 'Star it or buy it, and its chart, dividends and history arrive with the next full update.' })])]);
       p.appendChild(lc);
     } else {
-      var chartBox = el('div'); p.appendChild(chartBox);
+      var chartBox = el('div', { class: 'f-box' }); p.appendChild(chartBox);
       var span = el('div', { class: 'span' }); p.appendChild(span);
       var rg = el('div', { class: 'rng' });
       var drawChart = function () {
@@ -1057,7 +1617,10 @@ body{overflow-x:hidden;}
         var se;
         if (long) { se = longSeries(sym); if (r === '5y') { var cut = Date.now() - 5 * 365.25 * DAY; se = se.filter(function (pt) { return pt[0] >= cut; }); } }
         else se = series(sym).slice(-n);
-        chartBox.innerHTML = ''; chartBox.appendChild(lineChart(se, { fmt: px }));
+        chartBox.innerHTML = '';
+        // (the desk: the chart at the pixels its box has, with its prices and dates)
+        if (DK.on && chartBox.isConnected && chartBox.clientHeight > 60) chartBox.appendChild(lineChart(se, { fmt: px, w: chartBox.clientWidth, h: chartBox.clientHeight, axes: chartBox.clientHeight >= 150, f: DK.P.f }));
+        else chartBox.appendChild(lineChart(se, { fmt: px }));
         // how it did over the span shown
         span.innerHTML = '';
         if (se.length > 1) {
@@ -1068,9 +1631,10 @@ body{overflow-x:hidden;}
       };
       [['w', '1W'], ['m', '1M'], ['q', '3M'], ['h', '6M'], ['y', '1Y'], ['5y', '5Y'], ['max', 'All']].forEach(function (r) { rg.appendChild(el('button', { type: 'button', 'data-r': r[0], text: r[1], onclick: function () { Kit.sfx('tap'); detRange = r[0]; drawChart(); } })); });
       p.appendChild(rg); drawChart();
+      if (DK.on) DK.redraw = drawChart;
     }
     w.appendChild(p);
-    var a = el('div', { class: 'pnl' }), facts = [];
+    var a = el('div', { class: 'pnl f-about' }), facts = [];
     a.appendChild(el('h3', null, [el('span', { text: 'About' }), el('span', { text: ({ stock: 'Stock', fund: 'Fund', bond: 'Bond fund', coin: 'Crypto' })[s.k] })]));
     if (s.a) a.appendChild(el('p', { class: 'about', text: s.a }));
     if (!lite && !pending) {
@@ -1090,24 +1654,97 @@ body{overflow-x:hidden;}
     var q = heldQty(sym);
     if (q > 0) {
       var cost = costOf(sym), val = q * s.p, lots = A.lots.filter(function (l) { return l.sym === sym; }), oldest = Math.min.apply(null, lots.map(function (l) { return l.at; }));
-      var yo = el('div', { class: 'pnl' }); yo.appendChild(el('h3', null, [el('span', { text: 'You own' })]));
+      var yo = el('div', { class: 'pnl f-own' }); yo.appendChild(el('h3', null, [el('span', { text: 'You own' })]));
       yo.appendChild(el('div', { class: 'kv' }, [kv(isCoin(sym) ? 'Coins' : 'Shares', shares(q)), kv('Worth', money(val, 1)), kv('Average cost', px(cost / q)), kv('Gain', signed(val - cost, 1), cls(val - cost))]));
       var lt = oldest + YEAR;
       if (taxesOn()) yo.appendChild(el('div', { class: 'asof', text: Date.now() > lt ? 'Held over a year: gains on your oldest shares are taxed at the lower long-term rate.' : 'Hold until ' + dateTxt(lt, true) + ' for the lower long-term tax rate.' }));
       w.appendChild(yo);
     }
+    if (DK.on) deskFacts(w, sym, s);
     var ownsOpt = A.opts.some(function (o) { return o.sym === sym; });
     var tb = el('div', { class: 'tradebar' }, [
       el('button', { type: 'button', class: 'btn-g', text: 'Buy', onclick: function () { ticket(sym, 'buy'); } }),
       q > 0 ? el('button', { type: 'button', class: 'btn-d', text: 'Sell', onclick: function () { ticket(sym, 'sell'); } }) : null,
       !isCoin(sym) && !isLite(sym) && (lvl() >= 2 || ownsOpt) ? el('button', { type: 'button', class: 'btn-d', text: 'Options', onclick: function () { openChain(sym); } }) : null]);
     w.appendChild(tb);
+    if (DK.on) {
+      // the desk: the facts beside the chart when the panel is wide, the chart drawn again at the room it now has, this
+      // stock lit on the board and among what you own, and its ticket at the right (kept as it is while it is being
+      // filled in for the same stock)
+      openPane('sym');
+      dom.pane.classList.toggle('two', dom.focus.clientWidth >= 860 * DK.P.f);
+      w.style.setProperty('--fside', Math.round(clampN(290 * DK.P.f, dom.focus.clientWidth * .3, 400 * DK.P.f)) + 'px');
+      w.style.setProperty('--fmin', Math.round(clampN(190, dom.focus.clientHeight * .5, 380)) + 'px');
+      foldFocus();
+      if (!lite && DK.redraw) DK.redraw();
+      w.scrollTop = keep ? y0 : 0;
+      [].forEach.call(dom.root.querySelectorAll('.row[data-sym]'), function (r) { r.classList.toggle('on', r.getAttribute('data-sym') === sym); });
+      if (!(keep && DK.tsym === sym && dom.tkt.firstChild && DK.tref)) deskTicket(sym, keep && DK.tsym === sym ? DK.tside : 'buy'); else DK.tref();
+      return;
+    }
     if (!dom.pane.classList.contains('on')) openPane();
     else if (keep) dom.pane.scrollTop = y0; else dom.pane.scrollTop = 0;
   }
 
+  // The desk has the room for two things the game knows and a phone keeps to the tax line and the yield: each lot of
+  // shares you bought (when, how many, at what price, what it has gained, and whether a sale of it would be a
+  // long-term or a short-term gain; a sale takes the oldest first), and the dividends the stock has paid a share
+  function deskFacts(w, sym, s) {
+    var lots = A.lots.filter(function (l) { return l.sym === sym; }).sort(function (a, b) { return a.at - b.at; }), now = Date.now();
+    if (lots.length) {
+      var pl = el('div', { class: 'pnl f-lots' }); pl.appendChild(el('h3', null, [el('span', { text: lots.length === 1 ? 'When you bought' : 'When you bought, oldest first' }), el('span', { text: lots.length > 1 ? 'A sale takes the oldest first' : '' })]));
+      var rl = el('div', { class: 'rows' });
+      lots.forEach(function (l) {
+        var g = l.q * (s.p - l.c), long = now - l.at > YEAR;
+        rl.appendChild(el('div', { class: 'row', style: { 'grid-template-columns': 'minmax(0,1fr) auto' } }, [
+          el('span', { class: 'nm' }, [el('b', { text: dateTxt(l.at, true) }), el('small', { text: shares(l.q) + (isCoin(sym) ? ' coins at ' : ' shares at ') + px(l.c) })]),
+          el('span', { class: 'px' }, [el('span', { class: cls(g), text: signed(g, 1) }), taxesOn() ? el('small', { style: { color: 'var(--text-3)' }, text: long ? 'Long-term' : 'Short-term until ' + dateTxt(l.at + YEAR, true) }) : null])]));
+      });
+      pl.appendChild(rl); w.appendChild(pl);
+    }
+    var dv = (s.dv || []).slice(-6).reverse();
+    if (dv.length) {
+      var pd = el('div', { class: 'pnl f-div' }); pd.appendChild(el('h3', null, [el('span', { text: 'Dividends' }), el('span', { text: 'A share' })]));
+      var rd = el('div', { class: 'rows' });
+      dv.forEach(function (d) {
+        var t = Date.parse(d[0] + 'T12:00:00'), got = A.tx.filter(function (x) { return x.type === 'div' && x.sym === sym && Math.abs(x.t - t) < 40 * DAY; })[0];
+        rd.appendChild(el('div', { class: 'row', style: { 'grid-template-columns': 'minmax(0,1fr) auto' } }, [
+          el('span', { class: 'nm' }, [el('b', { text: dateTxt(t, true) }), got ? el('small', { text: 'Paid you ' + money(got.amt, 1) }) : null]),
+          el('span', { class: 'px', text: '$' + d[1].toFixed(Math.abs(d[1] * 100 - Math.round(d[1] * 100)) > 1e-6 ? 4 : 2) })]));
+      });
+      pd.appendChild(rd); w.appendChild(pd);
+    }
+  }
+
   // ── Buy and sell ──
+  // The ticket is one box (ticketBox): a phone opens it in a sheet; the desk stands it open at the right for the
+  // chosen stock (deskTicket), with Buy and Sell as its two sides when you own some
   function ticket(sym, side) {
+    if (DK.on) { deskTicket(sym, side); if (DK.tinp) DK.tinp.focus(); return; }
+    var sh = null, t = ticketBox(sym, side, function () { if (sh) sh.close(); });
+    sh = Kit.sheet({ title: t.title, node: t.box });
+  }
+  function deskTicket(sym, side) {
+    var s = S(sym), host = dom.tkt; host.innerHTML = ''; DK.tref = null; DK.tinp = null;
+    if (!s) return;
+    var have = heldQty(sym); if (side !== 'sell' || !(have > 0)) side = 'buy';
+    DK.tsym = sym; DK.tside = side;
+    var t = ticketBox(sym, side, function () {}), pn = el('div', { class: 'pnl' });
+    pn.appendChild(el('h3', null, [el('span', { text: t.title }), el('span', { class: 'num', text: px(s.p) })]));
+    if (have > 0) {
+      var sg = el('div', { class: 'seg', style: { margin: '0 0 12px' } });
+      [['buy', 'Buy'], ['sell', 'Sell']].forEach(function (x) { sg.appendChild(el('button', { type: 'button', class: side === x[0] ? 'on' : '', text: x[1], onclick: function () { if (side === x[0]) return; Kit.sfx('tap'); deskTicket(sym, x[0]); } })); });
+      pn.appendChild(sg);
+    }
+    pn.appendChild(t.box);
+    // (the button stands on a footing that stays in view when the ticket is taller than its window)
+    var go = t.box.querySelector('.btn-primary'), foot = el('div', { class: 'tgo' }); t.box.appendChild(foot); foot.appendChild(go);
+    var ownsOpt = A.opts.some(function (o) { return o.sym === sym; });
+    if (!isCoin(sym) && !isLite(sym) && (lvl() >= 2 || ownsOpt)) foot.appendChild(el('button', { type: 'button', class: 'btn-d opt', text: 'Options', onclick: function () { openChain(sym); } }));
+    host.appendChild(pn); host.scrollTop = 0;
+    DK.tref = t.refresh; DK.tinp = t.inp;
+  }
+  function ticketBox(sym, side, close) {
     var s = S(sym), p = s.p, box = el('div', { class: 'tt' }), mode = 'mkt', unit = side === 'buy' ? 'usd' : 'qty';
     var seg = el('div', { class: 'seg' }), inp = el('input', { type: 'number', inputmode: 'decimal', min: '0', step: 'any', placeholder: '0' }), lim = el('input', { type: 'number', inputmode: 'decimal', min: '0', step: 'any', value: p.toFixed(2) });
     var unitSeg = el('div', { class: 'seg' }), chipsRow = el('div', { class: 'qchips' }), sum = el('div', { class: 'sum' }), notes = el('div'), limWrap = el('div');
@@ -1118,6 +1755,7 @@ body{overflow-x:hidden;}
     function amtUsd() { var v = parseFloat(inp.value) || 0; return unit === 'usd' ? v : v * (mode === 'lim' ? parseFloat(lim.value) || p : p); }
     function qtyOf() { var v = parseFloat(inp.value) || 0, pp = mode === 'lim' ? parseFloat(lim.value) || p : p; return unit === 'qty' ? v : v / pp; }
     function refresh() {
+      if (DK.on) { have = heldQty(sym); cash = avail(); }   // (the desk's ticket stays open while money comes and goes)
       [].forEach.call(seg.children, function (b) { b.classList.toggle('on', b.dataset.m === mode); });
       [].forEach.call(unitSeg.children, function (b) { b.classList.toggle('on', b.dataset.u === unit); });
       limWrap.style.display = mode === 'lim' ? '' : 'none';
@@ -1154,22 +1792,23 @@ body{overflow-x:hidden;}
     box.appendChild(el('div', { class: 'amtbox' }, [el('span', { text: unit === 'usd' ? '$' : '#' }), inp]));
     box.appendChild(chipsRow); box.appendChild(sum); box.appendChild(notes); box.appendChild(go);
     inp.addEventListener('input', refresh); lim.addEventListener('input', refresh);
-    var sh = Kit.sheet({ title: (side === 'buy' ? 'Buy ' : 'Sell ') + s.n, node: box });
     go.onclick = function () {
       var usd = amtUsd(), q = qtyOf();
       if (mode === 'lim') {
         var L = parseFloat(lim.value); if (!(L > 0)) return;
         A.orders.push({ id: rid(), sym: sym, side: side, lim: L, amt: side === 'buy' ? r2(usd) : 0, q: side === 'sell' ? q : 0, at: Date.now(), exp: Date.now() + 30 * DAY });
-        save(); sh.close(); Kit.sfx('chip'); Kit.toast('Limit order placed'); openSym(sym); return;
+        save(); close(); Kit.sfx('chip'); Kit.toast('Limit order placed'); if (DK.on) { DK.tsym = null; paint(); return; } openSym(sym); return;
       }
       var res = side === 'buy' ? buy(sym, usd) : sell(sym, q);
       if (!res) return;
-      recordValue(); save(); sh.close();
+      recordValue(); save(); close();
       var amt = side === 'buy' ? res.amt : res.reduce(function (a, x) { return a + x.amt; }, 0), qq = side === 'buy' ? res.q : res.reduce(function (a, x) { return a + x.q; }, 0);
       confirmCard(side === 'buy' ? 'Bought' : 'Sold', sym.replace('-USD', ''), [[isCoin(sym) ? 'Coins' : 'Shares', shares(qq)], ['Price', px(p)], [side === 'buy' ? 'Cost' : 'Proceeds', money(amt, 1)]], side);
+      if (DK.on) { DK.tsym = null; paint(); return; }   // (the desk: the account, what you own, the trades and a fresh ticket)
       openSym(sym);
     };
     refresh();
+    return { box: box, title: (side === 'buy' ? 'Buy ' : 'Sell ') + s.n, refresh: refresh, inp: inp };
   }
   function confirmCard(word, sym, lines, side) {
     var c = el('div', { class: 'card' }, [el('div', { class: 'h', text: 'Trade confirmation' }), el('div', { class: 'l' }, [el('span', { text: word }), el('b', { text: sym })])].concat(lines.map(function (l) { return el('div', { class: 'l' }, [el('span', { text: l[0] }), el('b', { text: l[1] })]); })).concat([el('div', { class: 'st' + (side === 'sell' ? ' sell' : ''), text: 'FILLED' })]));
@@ -1211,7 +1850,7 @@ body{overflow-x:hidden;}
     if (!spotDone) list.appendChild(el('div', { class: 'spot', text: 'Stock now ' + px(s.p) }));
     p.appendChild(list); w.appendChild(p);
     w.appendChild(el('p', { class: 'why', style: { padding: '0 4px' }, text: 'Prices are the book’s fair value from ' + sym + '’s recent swings (Black-Scholes), plus a small spread. Each contract covers 100 shares. Options here settle in cash at the end date.' }));
-    openPane();
+    openPane('chain');
   }
   function payoffSvg(S0, K, prem, call, n) {
     var W = 320, H = 130, lo = S0 * .75, hi = S0 * 1.25, pts = [], mx = 0, mn = 0;
@@ -1260,7 +1899,7 @@ body{overflow-x:hidden;}
       var t = own ? sellOpt(own, n) : buyOpt(sym, K, exp, call, n); if (!t) return;
       recordValue(); save(); sh.close();
       confirmCard(own ? 'Sold' : 'Bought', sym + ' $' + K + ' ' + (call ? 'call' : 'put'), [['Contracts', String(n)], ['Price', cents(t.px) + ' a share'], [own ? 'Proceeds' : 'Cost', money(t.amt, 1)]], own ? 'sell' : 'buy');
-      if (dom.pane.classList.contains('on')) { if (own) closePane(); else openChain(sym); } else paint();
+      if (dom.pane.classList.contains('on')) { if (own) closePane(); else { openChain(sym); if (DK.on) paint(); } } else paint();
     };
     refresh();
   }
@@ -1408,7 +2047,7 @@ body{overflow-x:hidden;}
   function lessons() { return LESSONS.filter(function (l) { return (LESSON_LV[l.id] || 0) <= lvl(); }); }
   function paintLearn() {
     var LESSONS = lessons(), b = dom.body, done = LESSONS.filter(function (l) { return LEARN[l.id]; }).length;
-    var p = el('div', { class: 'pnl' });
+    var p = el('div', { class: 'pnl' + (DK.on ? ' lhead' : '') });
     p.appendChild(el('h3', null, [el('span', { text: 'How investing works' }), el('span', { text: done + ' of ' + LESSONS.length + ' read' })]));
     p.appendChild(el('p', { class: 'about', text: 'Short lessons with real numbers from today’s market. Each ends with something to try.' }));
     b.appendChild(p);
@@ -1436,7 +2075,7 @@ body{overflow-x:hidden;}
     } });
     w.appendChild(tryBtn);
     w.appendChild(el('button', { type: 'button', class: 'btn btn-soft', style: { width: '100%', 'min-height': '48px' }, text: 'Got it', onclick: function () { LEARN[l.id] = Date.now(); lsSet(LK, LEARN); Kit.sfx('good'); closePane(); } }));
-    openPane();
+    openPane('lesson');
   }
   function tryLabel(l) { var t = l.try; return t[0] === 'sym' ? 'Look at ' + (S(t[1]) ? S(t[1]).n : t[1]) : t[0] === 'opt' ? 'See Apple’s options' : t[0] === 'tax' ? 'See your taxes' : t[1] === 'tbond' ? 'See Treasuries' : 'See index funds'; }
   function ex(cap, html) { return '<div class="ex"><span class="cap">' + cap + '</span>' + html + '</div>'; }
@@ -1504,6 +2143,7 @@ body{overflow-x:hidden;}
     DEPTH = d; depthItem.sub = depthTitle();
     if (!dom.main) { layout(); return; }
     if (tab === 'learn' || tab === 'mkt') window.scrollTo(0, 0);
+    if (DK.on || deskPlan()) { DK.mode = 'sym'; dom.paneIn.innerHTML = ''; arrange(); return; }   // (the desk: the ticket's height goes with the depth)
     if (dom.pane.classList.contains('on')) closePane(); else paint();
   }
   Kit.init({
@@ -1560,9 +2200,9 @@ body{overflow-x:hidden;}
   else layout();
   if (!DEMO) loadQuotes().then(ensureAll).then(start);
   // the latest prices, and anything they settle (orders filled, options expired, dividends): on coming back, or Sync now
-  function refreshAll() { return loadQuotes().then(ensureAll).then(function () { var ev = catchUp(); if (ev.length) report = (report || []).concat(ev); save(); if (dom.main && !dom.pane.classList.contains('on')) paint(); }); }
+  function refreshAll() { return loadQuotes().then(ensureAll).then(function () { var ev = catchUp(); if (ev.length) report = (report || []).concat(ev); save(); if (dom.main && (DK.on || !dom.pane.classList.contains('on'))) paint(); }); }
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') refreshAll(); });
-  window.__mk = { demoMarket: function (q, depth) { Q = q; setDepth(depth || 'basic'); start(); }, tab: function (t) { closePane(); tab = t; paint(); }, loadAll: loadAll, depth: function () { return DEPTH; }, setDepth: setDepth, ALL: function () { return ALL; }, open: function (s) { openSym(s); }, A: function () { return A; }, Q: function () { return Q; }, catchUp: catchUp, taxYears: taxYears, withdrawPlan: withdrawPlan, buy: buy, sell: sell, paint: paint, setQ: function (q) { Q = q; }, totals: totals };
+  window.__mk = { sym: function () { return dom.paneSym; }, desk: function () { return DK.on ? DK.P : null; }, demoMarket: function (q, depth) { Q = q; setDepth(depth || 'basic'); start(); }, tab: function (t) { closePane(); tab = t; paint(); }, loadAll: loadAll, depth: function () { return DEPTH; }, setDepth: setDepth, ALL: function () { return ALL; }, open: function (s) { openSym(s); }, A: function () { return A; }, Q: function () { return Q; }, catchUp: catchUp, taxYears: taxYears, withdrawPlan: withdrawPlan, buy: buy, sell: sell, paint: paint, setQ: function (q) { Q = q; }, totals: totals };
 })();
 </script>
 </body>
