@@ -252,6 +252,13 @@ html.rl-big .cell.note{font-size:max(9px,calc(var(--rh) * .17));}
 html.rl-big .lay.rot .cell.fx{font-size:max(10px,calc(var(--rh) * .36));}
 html.rl-big .lay.rot .cell.fx.dz span{font-size:max(10px,calc(var(--rh) * .42));}
 html.rl-big .lay.rot .cell.note{font-size:max(9px,calc(var(--rh) * .17));letter-spacing:0;}
+/* an outside box keeps its lettering to one side and the chip's place to the other: an even chance's lettering at the
+   head of its box (upright) or its left (on its side), a column's at the top of its box, the chip under it */
+html.rl-big .lay:not(.rot) .cell.fx.ev{padding-bottom:calc(var(--rh) * .8);}
+html.rl-big .lay.rot .cell.fx.ev{padding-right:calc(var(--rh) * .8);}
+html.rl-big .lay .cell.fx.ev .diamond{width:74%;} html.rl-big .lay .cell.fx.ev .diamond-wrap::before{width:calc(74% + 4px);}
+html.rl-big .lay:not(.rot) .cell.fx.col{align-items:start;padding-top:calc(var(--rh) * .07);}
+html.rl-big .lay.rot .cell.fx.col{align-items:start;padding-top:calc(var(--rh) * .1);}
 html.rl-big .dolly{transform:translate(-50%,-78%) scale(var(--dk,1));transform-origin:50% 100%;}
 html.rl-big .stk .pay{font-size:calc(.78rem * var(--pk,1));}
 html.rl-big .och{position:absolute;z-index:4;width:var(--os,14px);height:var(--os,14px);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;background:var(--c,#888);box-shadow:inset 0 0 0 2px rgba(255,255,255,.85),0 2px 4px rgba(0,0,0,.5);display:grid;place-items:center;font:900 calc(var(--os,14px) * .5)/1 var(--font);color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.6);}
@@ -559,10 +566,10 @@ html.rl-big .rm.col{flex-direction:column;}
   // rot (wide screens): the same layout turned on its side, like a real table: 0 on the left, the numbers in three rows
   // of twelve, the dozens and even-money bets along the bottom, 2 to 1 at the right. Bets, spots and taps all work in
   // the upright layout's units; scr() and logi() turn those into screen positions and back.
-  function geom(W, RH, rot) {
+  function geom(W, RH, rot, big) {
     var OW = Math.round(W * 0.15), DW = Math.round(W * 0.12), SW = Math.round(W * 0.07);
     var SX = OW + DW, GX = SX + SW, CW = (W - GX) / 3;
-    var ZH = Math.round(RH * 1.3), COLH = Math.round(RH * 1.1);
+    var ZH = Math.round(RH * 1.3), COLH = Math.round(RH * (big ? 1.45 : 1.1));   // (big: a large window's layout, whose column boxes are deeper so the lettering and a chip both have room)
     var GY = ZH, H = GY + 12 * RH + COLH;
     return { W: W, OW: OW, DW: DW, SW: SW, SX: SX, GX: GX, CW: CW, RH: RH, ZH: ZH, COLH: COLH, GY: GY, GB: GY + 12 * RH, H: H,
       rot: !!rot, sw: rot ? H : W, sh: rot ? W : H,
@@ -588,11 +595,11 @@ html.rl-big .rm.col{flex-direction:column;}
     if ((m = /^co(\d+)$/.exec(id))) { a = +m[1]; return { x: g.GX + (((a - 1) % 3) + 1) * g.CW, y: g.GY + (Math.floor((a - 1) / 3) + 1) * g.RH }; }
     if ((m = /^st(\d+)$/.exec(id))) { a = +m[1]; return { x: g.SX + g.SW / 2, y: ry((a - 1) / 3) }; }
     if ((m = /^sl(\d+)$/.exec(id))) { a = +m[1]; return { x: g.SX + g.SW / 2, y: g.GY + ((a - 1) / 3 + 1) * g.RH }; }
-    // (a large layout has the room to set a chip beside a box's lettering, not on it: the dozens, the even chances upright, the columns on its side)
-    if ((m = /^d(\d)$/.exec(id))) { a = +m[1] - 1; return { x: g.OW + g.DW / 2, y: g.GY + (a * 4 + (g.big ? 3.25 : 2)) * g.RH }; }
-    if ((m = /^c(\d)$/.exec(id))) { return { x: cx(+m[1] - 1) - (g.big && g.rot ? g.CW * 0.29 : 0), y: g.GB + g.COLH / 2 }; }
+    // (a large layout sets a chip beside a box's lettering, never on it: each outside box keeps its lettering to one side and the chip's place to the other, .ev and .col in the styles)
+    if ((m = /^d(\d)$/.exec(id))) { a = +m[1] - 1; return { x: g.OW + g.DW * (g.big && g.rot ? 0.42 : 0.5), y: g.GY + (a * 4 + (g.big ? 3.25 : 2)) * g.RH }; }
+    if ((m = /^c(\d)$/.exec(id))) { return { x: cx(+m[1] - 1) - (g.big && g.rot ? g.CW * 0.26 : 0), y: g.GB + g.COLH * (g.big && !g.rot ? 0.7 : 0.5) }; }
     var OUT = ['low', 'even', 'red', 'black', 'odd', 'high'], oi = OUT.indexOf(id);
-    if (oi >= 0) return { x: g.OW / 2, y: g.GY + (oi * 2 + (g.big && !g.rot ? 1.58 : 1)) * g.RH };
+    if (oi >= 0) return { x: g.OW / 2, y: g.GY + (oi * 2 + (g.big ? 1.6 : 1)) * g.RH };
     var Z = { z1: [cx(0), g.GY], z2: [S.wheel === 'us' ? g.GX + 1.25 * g.CW : cx(1), g.GY], z3: [cx(2), g.GY], y2: [g.GX + 1.75 * g.CW, g.GY], y3: [cx(2), g.GY],
       t1: [g.GX + g.CW, g.GY], t2: [g.GX + 2 * g.CW, g.GY], t3: [g.GX + 2 * g.CW, g.GY], tz: [mid, g.GY], ff: [g.GX, g.GY], bk: [g.GX, g.GY], zz: [mid, g.ZH * 0.55] };
     if (Z[id]) return { x: Z[id][0], y: Z[id][1] };
@@ -741,7 +748,7 @@ html.rl-big .rm.col{flex-direction:column;}
     var below = px(fs.paddingBottom) + px(ts.paddingBottom) + px(getComputedStyle(app).paddingBottom) + 2;
     var maxRH = (window.innerHeight - top - below) / ROWS_H;
     var RH = Math.floor(Math.max(18, Math.min(side ? 44 : 48, side ? 1e9 : W * 0.115, maxRH, capRH || 99)));
-    if (BIG) { G = geom(BIG.LW, BIG.RH, BIG.rot); G.cs = BIG.cs; G.big = true; }
+    if (BIG) { G = geom(BIG.LW, BIG.RH, BIG.rot, true); G.cs = BIG.cs; G.big = true; }
     else if (side) {
       // Wide screens: the table on its side, across the screen; the numbers a little taller than wide
       var availH = Math.max(150, window.innerHeight - top - below - (cutH || 0));
@@ -773,9 +780,9 @@ html.rl-big .rm.col{flex-direction:column;}
     ['1st 12', '2nd 12', '3rd 12'].forEach(function (t, i) { cell('fx dz', g.OW, g.GY + i * 4 * g.RH, g.DW, 4 * g.RH, '<span>' + t + '</span>', 'd' + (i + 1)); });
     [['low', '1-18'], ['even', 'Even'], ['red', ''], ['black', ''], ['odd', 'Odd'], ['high', '19-36']].forEach(function (o, i) {
       var html = o[1] || '<div class="diamond-wrap"><div class="diamond ' + o[0] + '"></div></div>';
-      cell('fx', 0, g.GY + i * 2 * g.RH, g.OW, 2 * g.RH, html, o[0]);
+      cell(g.big ? 'fx ev' : 'fx', 0, g.GY + i * 2 * g.RH, g.OW, 2 * g.RH, html, o[0]);
     });
-    for (c = 0; c < 3; c++) cell('fx', g.GX + c * g.CW, g.GB, g.CW, g.COLH, '2 to 1', 'c' + (c + 1));
+    for (c = 0; c < 3; c++) cell(g.big ? 'fx col' : 'fx', g.GX + c * g.CW, g.GB, g.CW, g.COLH, '2 to 1', 'c' + (c + 1));
     cell('note', 0, g.GB, g.GX, g.COLH, g.big && g.rot ? 'Straight<br>up pays<br>35 to 1' : 'Straight up<br>pays 35 to 1');
     R.stacks = {};
     if (BIG) { hoverId = null; paintOthers(R.model || {}); return; }
@@ -1612,21 +1619,21 @@ html.rl-big .rm.col{flex-direction:column;}
       if (dock && W >= 1200 && C.length) return;   // (a wide window keeps the station standing at the right)
       var hh = ih - (dock ? DH + gp : 0), ww = iw - (dock ? 0 : SW + gp);
       // the layout upright: its rows from the height, the wheel in the column left over
-      var RH = Math.min(CAP, (hh - pad) / 14.4), f = 7.4, left = ww - RH * f - pad - gp;
+      var RH = Math.min(CAP, (hh - pad) / 14.75), f = 7.4, left = ww - RH * f - pad - gp;
       if (left < 320) { f = 6.4; left = ww - RH * f - pad - gp; }
       if (left >= 280) cand({ comp: dock ? 'Q' : 'P', dock: !!dock, RH: RH, f: f, hh: hh, ww: ww });
       // the layout on its side beside the wheel, the room under the layout
-      var r1 = (ww - gp - 2 * pad) / 21.2, r2 = (hh - pad - gp - 104) / 6.8;
+      var r1 = (ww - gp - 2 * pad) / 21.55, r2 = (hh - pad - gp - 104) / 6.8;
       cand({ comp: 'W', dock: !!dock, RH: Math.min(r1, r2), hh: hh, ww: ww, bias: 0.9 });
     });
-    (function () { var hh = ih - DH - gp, t = Math.round(clamp(ih * 0.22, 200, 360)); cand({ comp: 'K', dock: true, RH: Math.min((iw - pad) / 6.4, (hh - t - gp - pad) / 14.4), hh: hh, ww: iw, bias: 0.92 }); })();
+    (function () { var hh = ih - DH - gp, t = Math.round(clamp(ih * 0.22, 200, 360)); cand({ comp: 'K', dock: true, RH: Math.min((iw - pad) / 6.4, (hh - t - gp - pad) / 14.75), hh: hh, ww: iw, bias: 0.92 }); })();
     C.sort(function (a, b) { return b.score - a.score; });
     // a small window: the layout on its side across the window, the wheel small beside the board under it
-    (function () { var hh = ih - DH - gp, r = Math.floor(Math.min(CAP, (iw - pad) / 14.4, (hh - gp - 80 - pad) / 6.8)); if (r >= 17 && (!C[0] || (C[0].RH < 30 && r > C[0].RH * 1.2))) C.unshift({ comp: 'S', dock: true, RH: r, hh: hh, ww: iw }); })();
+    (function () { var hh = ih - DH - gp, r = Math.floor(Math.min(CAP, (iw - pad) / 14.75, (hh - gp - 80 - pad) / 6.8)); if (r >= 17 && (!C[0] || (C[0].RH < 30 && r > C[0].RH * 1.2))) C.unshift({ comp: 'S', dock: true, RH: r, hh: hh, ww: iw }); })();
     var c = C[0] || { comp: 'W', dock: true, RH: 17, hh: ih - DH - gp, ww: iw }, RH = c.RH, g, P = { W: W, H: H, top: top, gp: gp, pu: pu, wd: wd, fp: fp, comp: c.comp, dock: c.dock, slim: slim && c.dock, RH: RH, SW: c.dock ? iw : SW };
     var hh = c.hh, ww = c.ww, tw, th, wD;
     if (c.comp === 'P' || c.comp === 'Q') {
-      P.rot = false; P.LW = Math.floor(RH * c.f); g = geom(P.LW, RH, false); tw = g.sw + pad; th = g.sh + pad;
+      P.rot = false; P.LW = Math.floor(RH * c.f); g = geom(P.LW, RH, false, true); tw = g.sw + pad; th = g.sh + pad;
       var left = ww - tw - gp;
       wD = Math.floor(Math.min(left, Math.max(240, hh - gp - roomMin), 1000));
       var side = left - wD - gp;
@@ -1638,18 +1645,18 @@ html.rl-big .rm.col{flex-direction:column;}
       P.r = hh - wD - gp >= 96 ? [x0, y0 + wD + gp, left, hh - wD - gp] : null; P.col = left < 2 * 250 * pu + gp;
       if (!P.r) P.w[1] = y0 + Math.floor((hh - wD) / 2);
     } else if (c.comp === 'S') {
-      P.rot = true; P.LW = Math.floor(RH * 6.8); g = geom(P.LW, RH, true); tw = g.sw + pad; th = g.sh + pad;
+      P.rot = true; P.LW = Math.floor(RH * 6.8); g = geom(P.LW, RH, true, true); tw = g.sw + pad; th = g.sh + pad;
       var sh = hh - th - gp; wD = Math.floor(Math.min(sh, 150));
       P.t = [x0 + Math.floor((iw - tw) / 2), y0, tw, th]; P.w = [x0, y0 + th + gp + Math.floor((sh - wD) / 2), wD, wD]; P.r = [x0 + wD + gp, y0 + th + gp, iw - wD - gp, sh];
     } else if (c.comp === 'W') {
-      P.rot = true; P.LW = Math.floor(RH * 6.8); g = geom(P.LW, RH, true); tw = g.sw + pad; th = g.sh + pad;
+      P.rot = true; P.LW = Math.floor(RH * 6.8); g = geom(P.LW, RH, true, true); tw = g.sw + pad; th = g.sh + pad;
       wD = Math.floor(Math.min(hh, ww - gp - tw, 900));
       var off = Math.max(0, Math.floor((ww - wD - gp - tw) / 2));
       P.w = [x0 + off, y0 + Math.floor((hh - wD) / 2), wD, wD];
       P.t = [x0 + off + wD + gp, y0, tw, th];
       P.r = [x0 + off + wD + gp, y0 + th + gp, tw, hh - th - gp];
     } else {
-      P.rot = false; P.LW = Math.floor(Math.min(iw - pad, RH * 9.2)); g = geom(P.LW, RH, false); tw = g.sw + pad; th = g.sh + pad;
+      P.rot = false; P.LW = Math.floor(Math.min(iw - pad, RH * 9.2)); g = geom(P.LW, RH, false, true); tw = g.sw + pad; th = g.sh + pad;
       var topH = hh - gp - th; wD = Math.floor(Math.min(topH, iw * 0.5));
       P.w = [x0, y0 + Math.floor((topH - wD) / 2), wD, wD]; P.r = [x0 + wD + gp, y0, iw - wD - gp, topH]; P.col = true;
       P.t = [x0 + Math.floor((iw - tw) / 2), y0 + topH + gp, tw, th];
