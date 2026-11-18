@@ -150,13 +150,21 @@ Underlying principles for everything:
   180 points as one bar with the bid marked, the counters each side has captured as small cards, the nest, the last trick.
   Both fit the right panel by measuring it (`f1` to `f7`: the least needed part goes first), and keep `html.cdesk` on only
   while a desk layout shows, since Cards.desk's in-between layouts assume Hearts' stage.
-  **Dominoes at a desk** (its own, not Cards.desk: `deskPlan`, `deskSet`, `paintSheet`, `paintSide` in dominoes.html; `.dk`
-  and `.dk-wide`, `.dk-strip`, `.dk-tall` or `.dk-square` on `.dw` only while a desk layout shows). The line of play wants
-  width, so in a wide window (1200 or more across, 640 or more tall) the table lies across the whole window, as the
-  Landscape rule says, and a strip under it holds the score sheet and the hand in play at the left, your tiles, then
-  whose turn it is and the buttons at the right; a short strip of a window (under 640 tall) gives the table its whole
-  height with the panels in columns beside it; a tall window has the two panels side by side over the table; a nearly
-  square one has them one over the other at the left. The tiles go to 104px across (135 while the line is short), your
+  **Dominoes at a desk** (its own, not Cards.desk: `deskPlan`, `deskChoose`, `deskApply`, `paintSheet`, `paintSide` in
+  dominoes.html; `.dk` and `.dk-wide`, `.dk-col`, `.dk-strip`, `.dk-tall` or `.dk-square` on `.dw` only while a desk
+  layout shows). The line of play wants width, so in a wide window (1200 or more across, 640 or more tall) the table
+  lies across the whole window, as the Landscape rule says, and a strip under it holds the score sheet and the hand in
+  play at the left, your tiles, then whose turn it is and the buttons at the right; where that strip would cost the
+  tiles their size (1512 by 982 in All Fives, 1280 by 720 in every game) the table keeps the window's whole height and
+  one column at the right holds the sheet, the hand in play, your tiles and the buttons (`col`); a short strip of a
+  window (under 640 tall) gives the table its whole height with the panels in columns beside it; a tall window has the
+  two panels side by side over the table; a nearly square one has them one over the other at the left. **The panels
+  give way, not the tiles** (the play surface is the point of a large window): a desk layout is used only while its tiles are
+  at least as large as the tablet's layout would make them in the same window. Once a hand and a window size
+  `deskChoose` measures the felt of the tablet's layout and of each composition the window could have, works out the
+  tile each gives (`tileFor`) for lines a hand of this game makes (`refLines`) and for the line on the table, and takes
+  the one that keeps the largest tiles; `deskGive` gives way again mid-hand when the line outgrows the choice, to the
+  next composition or to the tablet's layout (`DK` null), until the next hand. The tiles go to 104px across (135 while the line is short), your
   tiles the same size, and the plaques on the felt step up with them (`--k`). The sheet is a row a hand with the race to
   the target; the hand in play is how many tiles each player holds and what each drew or passed, the open ends (in All
   Fives the count of the ends piece by piece), and the hand play by play from `S.pl` (in a column of its own from 2400
@@ -165,7 +173,8 @@ Underlying principles for everything:
   sheet and the panel when the window changes size). Mexican Train at a desk is in its own section. The scratchpad's
   `big/dominoes/` has the scripts: `gen.js` (fixed positions as saved states), `snap.js` with `cmp.sh` (the device proof,
   `proof.txt`), `scan.js` (anything cut, small, half a row or overlapping, every phase at every window), `resize.js`,
-  `online.js`, `demo.js`, `misc.js`, `audit2.js`, and `all.sh`, which runs them one after another.
+  `online.js`, `demo.js`, `misc.js`, `audit2.js`, `tile.js` (the largest tile and any covered tile at each window, before
+  and after: `mkbase.js` builds the starting commit's game from links and four files), and `all3.sh`, which runs them all.
   **The setup and the results card at a desk, for every game** (kit.js "The desk" and the last section of kit.css; every
   rule hangs off `.k-dk`, which kit.js sets only in a window wider than 1024 or more than 768 the shorter way, taller
   than 520 and 480 wide at least: `deskShape`, `winShape`, `Kit.desk()`. The devices are drawn by the rules they always
@@ -598,7 +607,12 @@ Underlying principles for everything:
 - **At a desk** (a large window; `mdkPlan`, `mdkSet` in mexicantrain.js, `.mdk` on `.mtw` only while a desk layout
   shows): the hub, the lanes and the tiles are sized from the window (`MT_U`, 88px across at most; `deskCap` keeps a
   tile small enough for a train to run five or six tiles out before it bends), the plaques and the heads step up
-  (`--k`). **wide**: the players over the rounds at the left, a ladder from the double 12 down with every round's dots,
+  (`--k`). **No tile lies on another at a desk**, as on a real table: the tiles come down from the window's size until
+  every train lies whole, straight out or bent back beside itself where its lane is wide enough, as far as `WHOLE_MIN`
+  (42px across); only a table that can't hold its trains whole at that size pushes them together (`layoutAll`,
+  `ln.tight`). **The panels give way, not the tiles** (`mdkGive`, `mOff`): where the desk's table would push trains
+  together that the tablet's layout would lay whole, or its tiles would be smaller with both pushed together, the
+  window has the tablet's layout until the next round. **wide**: the players over the rounds at the left, a ladder from the double 12 down with every round's dots,
   the rounds to come ruled and empty, the totals, and the totals round by round drawn under it where there is room
   (`paintLadder`, `drawRace`); at the right, between whose turn it is and your tiles, the round in play (`paintSide`:
   the double that must be covered, every train's length, open end and marker, the round play by play from `S.pl`),

@@ -211,6 +211,7 @@
   box-shadow:inset 0 0 0 1px var(--gl-line),inset 0 1px 0 rgba(255,255,255,.1),var(--shadow-sm);container-type:size;}
 .dk-panel::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:color-mix(in srgb,var(--h,#6c7bff) 70%,transparent);opacity:.8;}
 #app.stage.dmapp.dkapp{padding:2px 20px 18px;}
+#app.stage.dmapp.dkapp.dkt{padding:2px 12px 18px;}   /* (tall: the table as wide as it was before the desk layouts) */
 #app .dw.dk{max-width:none;min-height:0;height:calc(100dvh - var(--barh,60px) - 20px);display:grid;gap:12px 16px;}
 #app .dw.dk .dk-panel{display:flex;}
 #app .dw.dk .dk-sheet{grid-area:sheet;}
@@ -240,6 +241,17 @@
 #app .dw.dk-strip .msg{font-size:.96rem;line-height:1.15;} #app .dw.dk-strip .msg small{font-size:.78rem;}
 #app .dw.dk-strip .acts .btn{min-height:44px;padding:0 14px;}
 #app .dw.dk-strip .rack{padding:14px 10px 12px;gap:8px 6px;}
+/* col: a window where a strip under the table would cost the tiles their size: the table keeps the window's whole
+   height, and one column at the right holds the sheet, the hand in play, your tiles and the buttons */
+#app .dw.dk-col{grid-template-columns:minmax(0,1fr) var(--rw);grid-template-rows:minmax(0,1.1fr) minmax(0,1fr) auto auto;grid-template-areas:"tbl sheet" "tbl side" "tbl rack" "tbl foot";gap:10px 14px;}
+#app .dw.dk-col.noside{grid-template-rows:minmax(0,1fr) auto auto;grid-template-areas:"tbl sheet" "tbl rack" "tbl foot";}
+#app .dw.dk-col.noside .dk-side{display:none;}
+#app .dw.dk-col.cnt{grid-template-rows:minmax(0,1fr) minmax(0,1.3fr) auto;grid-template-areas:"tbl sheet" "tbl side" "tbl foot";}
+#app .dw.dk-col.cnt .rack{display:none;}
+#app .dw.dk-col .status{flex-direction:column;justify-content:center;align-items:stretch;gap:8px;padding:10px 14px;border-radius:20px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),inset 0 1px 0 rgba(255,255,255,.1);}
+#app .dw.dk-col .msg{font-size:1rem;line-height:1.15;} #app .dw.dk-col .msg small{font-size:.8rem;}
+#app .dw.dk-col .acts{flex-direction:row;} #app .dw.dk-col .acts .btn{flex:1 1 0;min-height:44px;padding:0 12px;}
+#app .dw.dk-col .rack{padding:14px 10px 12px;gap:8px 6px;}
 /* tall: the sheet and the hand in play side by side over the table; whose turn and your tiles at the foot */
 #app .dw.dk-tall{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:var(--ph) minmax(0,1fr) auto auto;grid-template-areas:"sheet side" "tbl tbl" "foot foot" "rack rack";gap:10px 12px;}
 #app .dw.dk-tall .status{align-items:center;min-height:50px;}
@@ -318,6 +330,7 @@
 .dk-pl{flex:none;display:flex;flex-direction:column;padding:0 1em;}
 .dk-pl .row{--c:#888;display:flex;align-items:center;gap:.6em;min-height:2.5em;padding:.3em 0;border-bottom:1px solid var(--gl-line);}
 .dk-pl .row:last-child{border-bottom:0;}
+.dk-pl.slim .row{min-height:2em;padding:.1em 0;}
 .dk-pl .row .avatar{width:1.7em;height:1.7em;font-size:.82em;flex:none;box-shadow:0 0 0 2px var(--c);}
 .dk-pl .row.on .avatar{box-shadow:0 0 0 2px var(--lit),0 0 10px var(--litg);}
 .dk-pl .tx{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:.1em;}
@@ -1249,7 +1262,7 @@
     sheetEl = el('aside', { class: 'dk-panel dk-sheet', 'aria-label': 'Score sheet', style: { 'view-transition-name': 'dm-sheet' } });
     sideEl = el('aside', { class: 'dk-panel dk-side', 'aria-label': 'This hand', style: { 'view-transition-name': 'dm-side' } });
     dw.appendChild(sheetEl); dw.appendChild(sideEl);
-    deskRes = null; deskKey = '';
+    deskRes = null; deskKey = ''; deskPickKey = '';
     app.appendChild(dw);
     setBarH(); deskSet();
   }
@@ -1262,7 +1275,7 @@
     o = o || {};
     if (!S || !dw) return;
     deskSet();
-    paintScores(); paintSeats(o); paintStatus(); paintRack(o); paintBoard(o); paintDesk();
+    paintScores(); paintSeats(o); paintStatus(); paintRack(o); deskGive(o); paintBoard(o); paintDesk();
   }
   function paintScores() {
     scoresEl.innerHTML = '';
@@ -1378,7 +1391,7 @@
     rackEl.classList.toggle('on', turn);
     rackEl.style.setProperty('--c', P.color);
     var sz = rackSize(Math.max(P.hand.length, S.players.length === 2 ? 7 : 5));
-    rackEl.style.minHeight = DK && DK.pl === 'wide' ? '' : (sz.tw * 2 * sz.rows + (sz.rows - 1) * (DK && DK.pl !== 'strip' ? 10 : 8) + (DK && DK.pl !== 'strip' ? 32 : 26)) + 'px';
+    rackEl.style.minHeight = DK && DK.pl === 'wide' ? '' : (sz.tw * 2 * sz.rows + (sz.rows - 1) * (DK && DK.pl !== 'strip' && DK.pl !== 'col' ? 10 : 8) + (DK && DK.pl !== 'strip' && DK.pl !== 'col' ? 32 : 26)) + 'px';
     rackEl.appendChild(el('div', { class: 'lbl', html: hidden ? 'Hidden tiles' : P.name === 'You' ? 'Your tiles' : '<b>' + Kit.esc(P.name) + '</b>’s tiles' }));   // (the rack names whose tiles they are)
     var ms = turn && !lock ? legalFor(v) : [];
     var fit = {}; ms.forEach(function (m) { fit[tid(m.t)] = 1; });
@@ -1415,6 +1428,7 @@
   // felt, rt: your tiles}); every other window keeps the phone's and the tablet's layouts.
   // ═════════════════════════════════════════════════════════════════════════
   var DK = null, DESK_U = 104, deskRes = null, deskKey = '', deskRounds = -1, deskLog = -1, deskFor = 0;
+  var deskPl = null, deskPickKey = '', deskDev = null;
   function clampN(a, x, b) { return Math.max(a, Math.min(b, x)); }
   function deskPlan(W, H) {
     if (H >= 1200 && H >= W * 1.25 && W >= 560) return 'tall';
@@ -1423,14 +1437,59 @@
     if (W >= 900 && H >= 900) return 'square';
     return null;
   }
+  // The panels give way, not the tiles: a desk layout is used only while its tiles are at least as large as the
+  // tablet's layout would make them in this window. deskChoose() measures the felt of the tablet's layout and of
+  // each composition the window could have (a wide window: the strip under the table, or the column beside it),
+  // works out the tile each gives for lines a hand of this game makes (refLines) and for the line on the table,
+  // and takes the composition that keeps the largest tiles; when none keeps them as large as the tablet's layout,
+  // the window has the tablet's layout (DK null). Chosen once a hand and a window size; deskGive() gives way again
+  // during a hand if the line outgrows the choice, and never goes back before the next hand.
+  function deskCands(W, H) { var pl = deskPlan(W, H); return !pl ? [] : pl === 'wide' ? ['wide', 'col'] : [pl]; }
+  function refLines(v) {
+    function arm(n) { var a = []; for (var i = 0; i < n; i++) a.push({ t: [1, 2] }); return a; }
+    function L(r, e, w, n, s, spin) { return { root: { t: r }, arms: { E: arm(e), W: arm(w), N: arm(n), S: arm(s) }, spin: spin }; }
+    return v === 'fives' ? [L([6, 6], 2, 2, 1, 0, true), L([6, 6], 3, 3, 2, 1, true), L([6, 6], 7, 4, 3, 4, true)] : [L([1, 2], 4, 4, 0, 0, false), L([1, 2], 11, 10, 0, 0, false)];
+  }
+  function devMaxU() { return Math.min(innerWidth, innerHeight) >= 700 ? 62 : 46; }
+  function deskProbe(pl) { deskApply(pl); paintScores(); paintStatus(); paintRack({}); return areaSize(); }
+  function deskChoose() {
+    var W = innerWidth, H = innerHeight, c = deskCands(W, H);
+    if (!c.length) { deskPickKey = ''; deskPl = null; return null; }
+    var key = [W, H, S.variant, S.players.length, S.teams ? 1 : 0, S.hand].join(':');
+    if (key === deskPickKey) return deskPl;
+    deskPickKey = key;
+    var dev = deskProbe(null); deskDev = { w: dev.w, h: dev.h + 8 };   // (8px: what the status line's height can add to the felt)
+    var refs = refLines(S.variant); if (S.line) refs.push(S.line);
+    var sd = refs.map(function (L) { return tileFor(L, deskDev, devMaxU(), false); }), best = null, bq = 0;
+    c.forEach(function (pl) {
+      var A = deskProbe(pl), q = 1e9;
+      refs.forEach(function (L, i) { q = Math.min(q, (tileFor(L, A, DESK_U, true) + .3) / sd[i]); });
+      if (q >= 1 && (!best || q > bq * 1.08)) { best = pl; bq = q; }   // (the first that keeps them; a later one only for clearly larger tiles)
+    });
+    deskPl = best;
+    return best;
+  }
+  // during a hand: the line on the table has outgrown the layout (its tiles would be smaller than the tablet's)
+  function deskGive(o) {
+    if (!DK || !S.line || S.phase !== 'play' || !deskDev) return;
+    var need = tileFor(S.line, deskDev, devMaxU(), false);
+    if (tileFor(S.line, areaSize(), DESK_U, true) + .3 >= need) return;
+    var c = deskCands(innerWidth, innerHeight), at = c.indexOf(DK.pl), next = null;
+    for (var i = at + 1; i < c.length && !next; i++) if (tileFor(S.line, deskProbe(c[i]), DESK_U, true) + .3 >= need) next = c[i];
+    deskPl = next; deskApply(next); deskKey = '';
+    paintScores(); paintStatus(); paintRack(o || {});
+  }
   function deskSet() {
-    if (!dw) return null;
-    var W = innerWidth, H = innerHeight, pl = deskPlan(W, H), st = dw.style;
+    if (!dw || !S) return null;
+    return deskApply(deskChoose());
+  }
+  function deskApply(pl) {
+    var W = innerWidth, H = innerHeight, st = dw.style;
     if (!pl) {
-      if (DK) { dw.className = 'dw'; app.classList.remove('dkapp'); ['--k', '--lw', '--rw', '--ph', '--fw'].forEach(function (k) { st.removeProperty(k); }); }
+      if (DK) { dw.className = 'dw'; app.classList.remove('dkapp', 'dkt'); ['--k', '--lw', '--rw', '--ph', '--fw'].forEach(function (k) { st.removeProperty(k); }); }
       DK = null; return null;
     }
-    var lw = 0, rw = 0, ph = 0, fw = 0, u, rackW = 0, two = false;
+    var lw = 0, rw = 0, ph = 0, fw = 0, u, rackW = 0, two = false, cnt = !!(S && (S.phase === 'handend' || S.phase === 'over') && S.res);
     if (pl === 'wide') {
       // (the strip's height: room for a sheet of a few hands and four players' rows; the table has the rest)
       ph = clampN(240, H * .3, 460); lw = clampN(250, W * .17, 480); rw = clampN(240, W * .16, 440); fw = clampN(220, W * .15, 400);
@@ -1439,23 +1498,24 @@
       var lh = H - 80 - ph - 12 - 18 - 138;   // (about the height the line has, under the plaques and over the boneyard)
       u = Math.min((W - 76) / 9.6, Math.max(lh / 9.6, Math.min(lh / 6.5, (W - 76) / 16)));
     }
+    else if (pl === 'col') { rw = clampN(290, W * .23, 380); var cw2 = W - 112 - rw, lh2 = H - 238; u = Math.min(cw2 / 9.6, Math.max(lh2 / 9.6, Math.min(lh2 / 6.5, cw2 / 16))); }
     else if (pl === 'strip') { lw = clampN(250, W * .19, 330); rw = clampN(300, W * .25, 420); var cw = W - 108 - lw - rw; u = Math.min(cw / 9.6, Math.max((H - 196) / 9.6, Math.min((H - 196) / 6.5, cw / 16))); }
     else if (pl === 'tall') { ph = clampN(250, H * .24, 440); u = Math.min((W - 80) / 9.6, (H - ph - 330) / 11.6); }
     else { lw = clampN(250, W * .28, 320); u = Math.min((W - 94 - lw) / 9.6, (H - 250) / 11.6); }
     u = clampN(34, u, DESK_U);
     DK = { pl: pl, u: u, k: clampN(pl === 'strip' ? .8 : 1, u / 52, 1.8), two: two,
-      rt: pl === 'strip' ? clampN(34, Math.min(u * 1.1, (rw - 56) / 7), 52) : pl === 'wide' ? clampN(36, Math.min(u, (ph - 36) / 2, (rackW - 76) / 7), DESK_U) : Math.max(40, u) };
-    var cls = 'dw dk dk-' + pl + (H < 800 ? ' low' : '') + (S && (S.phase === 'handend' || S.phase === 'over') && S.res ? ' cnt' : '');
+      rt: pl === 'col' ? clampN(34, Math.min(u * 1.1, (rw - 40) / 4), 58) : pl === 'strip' ? clampN(34, Math.min(u * 1.1, (rw - 56) / 7), 52) : pl === 'wide' ? clampN(36, Math.min(u, (ph - 36) / 2, (rackW - 76) / 7), DESK_U) : Math.max(40, u) };
+    var cls = 'dw dk dk-' + pl + (H < 800 ? ' low' : '') + (cnt ? ' cnt' : '') + (pl === 'col' && !cnt && H < 860 ? ' noside' : '');
     if (dw.className !== cls) dw.className = cls;
-    app.classList.add('dkapp');
+    app.classList.add('dkapp'); app.classList.toggle('dkt', pl === 'tall');
     st.setProperty('--k', DK.k.toFixed(3)); st.setProperty('--lw', Math.round(lw) + 'px'); st.setProperty('--rw', Math.round(rw) + 'px'); st.setProperty('--ph', Math.round(ph) + 'px'); st.setProperty('--fw', Math.round(fw) + 'px');
     if (sideEl) sideEl.classList.toggle('two', two);
     return DK;
   }
   // your tiles at a desk: the size of the tiles on the table, in one row while that keeps them large
   function deskRack(n) {
-    var strip = DK.pl === 'strip', gap = strip ? 6 : 8, rg = strip ? 8 : 10, pad = strip ? 26 : 32, w = rackEl.clientWidth - (strip ? 20 : 28);
-    var hMax = strip ? Math.max(150, innerHeight * 0.42) : DK.pl === 'wide' ? rackEl.clientHeight : Math.max(2 * DK.rt + pad, innerHeight * 0.3), best = null;
+    var strip = DK.pl === 'strip' || DK.pl === 'col', gap = strip ? 6 : 8, rg = strip ? 8 : 10, pad = strip ? 26 : 32, w = rackEl.clientWidth - (strip ? 20 : 28);
+    var hMax = DK.pl === 'col' ? Math.max(150, innerHeight * 0.36) : strip ? Math.max(150, innerHeight * 0.42) : DK.pl === 'wide' ? rackEl.clientHeight : Math.max(2 * DK.rt + pad, innerHeight * 0.3), best = null;
     for (var rows = 1; rows <= 3; rows++) {
       var per = Math.ceil(n / rows), tw = Math.min(DK.rt, (w - (per - 1) * gap) / per);
       tw = Math.min(tw, (hMax - pad - (rows - 1) * rg) / (rows * 2));
@@ -1476,7 +1536,7 @@
   // the window changed between a desk and a device's size while a hand is counted: the count moves with it
   function deskSync() {
     if (!S || !dw) return;
-    var on = !!deskPlan(innerWidth, innerHeight);
+    var on = !!deskSet();
     if (on && handSheet) { var X = handX; if (handKeep) handKeep.v = true; try { handSheet.close(); } catch (e) {} handSheet = null; deskSet(); deskHand(X); }
     else if (!on && deskRes) { var X2 = deskRes.X || null; deskRes = null; deskSet(); if (X2 || (S.phase === 'handend' && S.res && S.res.kind !== 'match')) showHandSheet(X2 || undefined); }
   }
@@ -1646,26 +1706,38 @@
     if (over()) [].forEach.call(pl.querySelectorAll('.mk'), function (m) { m.remove(); });
     if (over()) [].forEach.call(pl.querySelectorAll('.bk'), function (m) { m.remove(); });
     if (over()) lbl1.remove();
+    if (over()) pl.classList.add('slim');
   }
 
   // ── Board ────────────────────────────────────────────────────────────────
   var curLay = null, curXf = null, ghostEls = [];
   function areaSize() { return { w: layerEl.clientWidth, h: layerEl.clientHeight }; }
-  function computeLayout() {
-    var A = areaSize(), maxU = DK ? DESK_U : Math.min(innerWidth, innerHeight) >= 700 ? 62 : 46;
+  function computeLayout() { return fitLine(S.line, areaSize(), DK ? DESK_U : Math.min(innerWidth, innerHeight) >= 700 ? 62 : 46, !!DK); }
+  function fitLine(L, A, maxU, desk) {
     var u = Math.max(14, Math.min(A.w / 9.6, A.h / 9.6, maxU));
     // (a desk's short wide table: the line runs across it, so its tiles needn't be held to a ninth of its height)
-    if (DK) u = Math.max(14, Math.min(A.w / 9.6, Math.max(A.h / 9.6, Math.min(A.h / 6.5, A.w / 16)), maxU));
-    var lay = null;
-    for (var k = 0; k < 7; k++) {
-      lay = layout(S.line, A.w / u - .3, A.h / u - .3, 0);
+    if (desk) u = Math.max(14, Math.min(A.w / 9.6, Math.max(A.h / 9.6, Math.min(A.h / 6.5, A.w / 16)), maxU));
+    var lay = null, step = desk ? .94 : .88, n = desk ? 14 : 7;   // (a desk comes down in finer steps)
+    for (var k = 0; k < n; k++) {
+      lay = layout(L, A.w / u - .3, A.h / u - .3, 0);
       if (lay.ok) break;
-      u *= .88;
+      u *= step;
     }
-    if (!lay.ok) lay = layout(S.line, A.w / u - .3, A.h / u - .3, 1);
-    if (!lay.ok) lay = layout(S.line, A.w / u - .3, A.h / u - .3, 2);
+    if (!lay.ok) lay = layout(L, A.w / u - .3, A.h / u - .3, 1);
+    if (!lay.ok) lay = layout(L, A.w / u - .3, A.h / u - .3, 2);
     lay.u = u;
     return lay;
+  }
+  // how large a tile of line L comes out on a felt of size A (what paintBoard works out, without drawing)
+  function tileFor(L, A, maxU, desk) {
+    var lay = fitLine(L, A, maxU, desk), bx0 = 1e9, bx1 = -1e9, by0 = 1e9, by1 = -1e9;
+    function grow(r) { bx0 = Math.min(bx0, r.x0); bx1 = Math.max(bx1, r.x1); by0 = Math.min(by0, r.y0); by1 = Math.max(by1, r.y1); }
+    lay.rects.forEach(grow);
+    var oe = ends(L);
+    oe.forEach(function (e) { var ns = nextSlot(lay, e.end, false); if (ns) grow(ns.r); });
+    if (L && L.spin) ['N', 'S'].forEach(function (k) { if (!oe.some(function (e) { return e.end === k; })) { var ns = nextSlot(lay, k, false); if (ns) grow(ns.r); } });
+    if (bx0 > bx1) return lay.u * 1.3;
+    return Math.min(lay.u * 1.3, A.w / (bx1 - bx0 + .8), A.h / (by1 - by0 + .8));
   }
   function paintBoard(o) {
     var A = areaSize();
