@@ -462,6 +462,52 @@ Underlying principles for everything:
   with an overlap check of the pieces on the felt), `rz.js` (one hand through 19 window sizes, the state kept),
   `act.js` (a step then a picture: the lobby), `demo.js` (the demo to its end), `online.js` (a laptop host, a phone
   guest and a 2100x1860 guest at one TurnNet table).
+  **Stock Market at a desk** (`html.mk-desk`, the block "The desk" in stocks.html: `deskPlan`, `deskBuild`,
+  `deskPaint`, `deskFit`, `fitTiles`, `deskOff`; styles after the comment "THE DESK"): a trading desk, what a phone
+  shows a tab or a sheet at a time standing open together. Three compositions by the window's shape (`deskPlan`, null
+  at every device size and in a window like a tablet held upright): **stacked** (1000 wide or more, 1000 of height
+  under the tickers): the chosen stock large over the board; **side** (as wide, lower): the board as a column beside
+  the chosen stock; **tall** (700 to 999 wide): value and cash as two tiles, the chosen stock beside its ticket, the
+  board across the window. From 1280 wide (1340 beside the board) an account that has been used has a column of its
+  own at the left (`P.L`): its value through time with prices and dates along the chart's edges, what it is in, taxes,
+  Since your last visit and what you own, giving up taxes, then what it is in, then the chart's height, then the
+  chart, whole, as the column gets shorter. The chosen stock (the pane, standing open in `.dk-focus`, no sheet) has
+  its chart at its own pixels with its facts beside it or under it (`foldFocus`). The board is the group's names as
+  tiles (`fitTiles`): as many across as makes each largest, a chart under the name when there is height (`tl`), beside
+  it in a row (`rw`), under it in a narrow one (`r2`), and in a board so short that fewer than four would show, plain
+  rows without charts (`rs`); a long group scrolls inside itself by whole tiles, which stretch a little to end at the
+  board's foot. At the right, where you act: the ticket (`.dk-tkt`, buy and sell without a sheet; two columns in a
+  short wide strip, `t2`; without its small print when tight), your cash with Add money and Cash out, and waiting
+  orders and the trades behind you (`dom.acts`), whole rows. In a short window value and cash are two slim tiles over
+  the chosen stock (`acctTop`), so the board keeps the column's height; a board under 320 wide puts its search on its
+  own line (`slim`). An account not used yet has the lessons still to read under the ticket (`paintLrn`, `.dk-lrn`,
+  whole lessons). Content type steps with `--dkf` (1 at 1512 by 982 to 1.6 at 3024 by 1964), the controls with the
+  gentler `--dkc` (to 1.3). A resize glides (`Kit.glide`, view-transition names on each panel) and keeps the stock,
+  the tab and what is typed. The demo (games/demos/stocks.js) skips the phone's Buy and back buttons at a desk, where
+  the ticket stands open, and waits for Apple by `__mk.sym()`. Scripts: the scratchpad's `big/stocks/` (`shots.js`
+  scenes port, mkt, learn, sym, ticket, sell, chain, lesson, new, cash, basic with `--scan`; `prove.sh` the device
+  proof; `resize.js`; `demo.js`; `lib.js` the saved market and accounts).
+  **Sportsbook at a desk** (`html.sb-desk`, the block "The desk" in sportsbook.html: `sdPlan`, `sdBuild`, `sdBook`,
+  `sdGrid`, `sdFit`, `sdWhole`, `sdElsewhere`, `sdOff`; styles after the comment "THE DESK", the desk's own box is
+  `.sbd`): a sportsbook's wall. Three compositions (`sdPlan`, null at every device size and in a window like a tablet
+  held upright): **three** (1180 wide or more, once there is a ticket): your book at the left (`sdBook`: the open
+  tickets, nearest game first, then the settled ones newest first under Won, Lost and Net), the board in the middle,
+  and at the right your bankroll, what is in play and what there is to collect over the printed slip; from 900 of
+  height the settled tickets stand under the slip instead (`split`), so both kinds are in view; **two** (narrower, or
+  no tickets yet): the board with Board and My bets over it, as on a tablet, and the money and slip at the right;
+  **tall** (700 to 999 wide): the money across the top, the board, and your book beside the slip under it (`rowH`).
+  The board's games are cards in as many columns as the room holds (`sdGrid`, `--gc`, a card at least 400 wide at
+  `--sdf`), the leagues and My teams over them (one scrolling row when the board is narrow or the window short, `cx`);
+  every column that scrolls rests on a whole card or ticket (`sdWhole`, never so high it leaves half a column empty).
+  A league with no games (out of season, between games) keeps its note, and a league whose few games fill under three
+  fifths of the board keeps them, and under either the games under way and coming up today and tomorrow in the other
+  leagues (`sdElsewhere`, from the boards the tickers load), each a tap from the slip. The board's cards, the tickets
+  and the slip grow with `--sdf` (1 at 1512 by 982, 1.3 at 3024 by 1964); Place bet stays in view in a slip taller
+  than its column (sticky). A new ticket prints and flies into the open tickets' heading (`SD.betsHead`); the first
+  ticket gives your book its column. A resize glides (`Kit.glide`) and keeps the slip, the league and the view. The
+  demo (games/demos/sportsbook.js) points at Open bets at a desk. Scripts: the scratchpad's `big/sportsbook/`
+  (`shots.js` scenes board, nba, my, team, bets, settled, new, off, down, slip with `--scan`; `espn.js` the stand-in
+  feed) with `big/stocks/lib.js`, `prove.sh`, `resize.js`, `demo.js`.
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
