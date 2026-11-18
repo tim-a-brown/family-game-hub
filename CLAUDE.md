@@ -358,6 +358,61 @@ Underlying principles for everything:
   the dealer's two hands in the one-line felt, where the dealer's zone has no box. Test hook `__pg.desk()`; the
   scripts are the scratchpad's `big/paigow/` (`gen.js` the saved games; the rest are Three Card Poker's, which take
   the game's name).
+  **Arvela's table at a desk with three to six players, and teams** (for CLAUDE.md's "Large windows" bullet, after the
+  Arvela pilot; Tim, 2026-11-18: "Don't just stop with Arvela two player, but also include multiplayer games too". The
+  code is the block "The desk with three to six players, and teams" in `games/anoria/ui.js`, before "Picking things
+  up", and the last block of `games/anoria/ui.css`.) Before, a table of more players in a large window was the iPad's
+  battle line on empty stone: your cards 124 px wide whatever the window, everyone else's Figures as stacks (18% to
+  40% of a 2100 by 1860 or 3024 by 1964 window covered). Now `layModeN` takes `deskPlanN` wherever the two-player desk
+  starts (`deskWin`), and `drawN` hands over to `drawD`. Nothing is scaled: the table is composed for the window and
+  its cards sized from the room. A phone and a tablet never get here. **A cell for every Domain** (`dnCell`, `cellD`,
+  `.pl.dn-c`): the Domain across the middle, the other sides' Figures in a band above it and your side's (yours and
+  your team's) in a band below, as real cards wherever a cell holds cards 58 px wide or more. One player's cards at a
+  Domain are a party (`.pl-side.dn-p`, laid out by `dnBand`: one row down to three quarters of the size, then rows)
+  under a tag with that player's name and color (`.dn-tag`; not on your own cards, nor on a player's at their own
+  Domain, which the mat says). A cell with height to spare draws a lone card or a pile of two up to 1.3 times larger
+  (`cx`), so a card from 150 px says its power (`fitMid`). The other players' Gate and Outpost are one-band cells
+  (`.dn-1`): the Domain at the head, everyone's cards there under it, the owner's first and yours at the right. Stacks
+  (`.dn-band.S`) only where a cell cannot hold cards, and the place a card would land among them is a stack's size
+  with 8 px figures. Each side's Might is a shield on the Domain's edge in that side's color, the holder's lit: the
+  other sides' along the top in seat order, yours at the foot. **Each player's cells lie on that player's mat**
+  (`matN`), in seat order from your left (`seatsFrom`), with that player's bar on it (`.an-strip.dn-bar`, sized by its
+  own `--bs`): yours at the foot of your mat over your hand, the others' at the head of theirs. `dnBar` chooses the
+  form by the mat's width: `rich` (760 px: the Guide's portrait, name and power in words, the Renown along its track,
+  Seals, hand, Spark, each Relic by name), `rich2` (540), `rich3` (240: the same on short lines in a narrow mat), then
+  `one`, `two`, `three` lines of marks. `dnAfter` eases a bar down until everything on it fits, the Guide's power
+  going first. In a team game the sides' bar lies at the head of your mat, no wider than the mat (`bigSides`, then
+  `fitSides` folds the names to diamonds). **Compositions** (`dnTable`, the best of them chosen by `dnBest`): `row`,
+  your mat at the left with your Gate, your Outpost and the Crossroads side by side and the other players' mats in a
+  row at its right, each with its Gate over its Outpost (cells `v`) or the two side by side so the whole table is one
+  line (cells `h`, low wide windows); `stack`, the other players' mats across the top and yours the window's width
+  under them (tall windows). What a composition is worth: the size of its cards, a card past 150 px counting for less;
+  your three Domains weighing as much as four fifths of all the others' (`wm`); a Domain under 150 px wide counting
+  against it; a table whose other players' cards are under three fifths of yours counting against it. Of two as good,
+  the one that fills the room. **The dock** is the two-player desk's, by the same code (`layoutHandPlay`, `capRecent`,
+  `fitRecent`): `b`, the hand along the bottom with the last things that happened, the caption and the turn's button
+  at its right (any window wider than tall, and a squarer one large enough for a hand of 150 px cards beside them);
+  `s`, the caption's row over a hand the window's width (tall and square windows; no last events there); `r`, all of
+  them in a column at the right of a low wide window. The round track lies between the table and the dock. **Where the
+  desk has no better table than the tablet's** (`deskPlanN` gives null: 1280 by 720 with four or more, 1000 by 1000
+  and 820 by 1180 with five or six, 1180 by 820 and 1080 by 810 with six, 1600 by 560 with five or six, 560 by 620)
+  the tablet's table is drawn, and the felt says `big` (`bsu` while the Domains are laid) so that the teams' bar has a
+  place over your mat, your bar keeps off the others' rows at the set-up, and a card's name is 8 px. The set-up is the
+  same cells with the set-up's own slots (`suCellD`); the dice, the scan, the face-off, the playback (`figN` finds a
+  Figure's card in its party or its stack) and the plaque are the game's own. Roads are `roadsD`. A resize lays the
+  table out again from the state (the plan is remembered by window, players and teams: `ui.dnC`). Test hook:
+  `__anoria.dn` (`best`, `table`, `plan`). **Checking**: the scratchpad's `big/arvela-n/`: `h.js <tag> <sizes>
+  <states> [--n=4] [--teams[=3]] [--pnp] [--base]` (screenshots and an audit: anything off the window, cut, under 8 px
+  or over another part, the smallest name and card), `sweep.sh`, `audit.js` (the table before and after), `plans.js`
+  (the plan at every window for every count), `pure.js W H N` (the compositions for a room, without a browser),
+  `play.js` (a whole game, `--pnp` with real hand-overs, `--resize`), `rs.js` (a table dragged through 21 window
+  sizes), `rs2.js` (the computers' turns), `clash.js`, `online.js` (a table of three on two devices), `proof.js` (the
+  devices and the two-player desk, before and after, pixel by pixel; `--noise` is the starting files against
+  themselves). **Known, in the starting files too**: on the iPad's battle line (1024 by 768) a team game is drawn in a
+  third of the screen, because the teams' bar (`.wn-sides`) asks for a grid area the battle line has not (one rule
+  fixes it: `.an .an-felt.many.bl > .wn-sides{grid-area:map;align-self:start;justify-self:start;margin:2px 0 0
+  2px;z-index:5;}`), and while the Domains are laid with three or more players your bar lies over the last player's
+  plate there. Neither was changed, since the tablet's pixels were not to change.
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
