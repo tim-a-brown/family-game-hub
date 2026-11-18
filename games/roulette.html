@@ -588,10 +588,11 @@ html.rl-big .rm.col{flex-direction:column;}
     if ((m = /^co(\d+)$/.exec(id))) { a = +m[1]; return { x: g.GX + (((a - 1) % 3) + 1) * g.CW, y: g.GY + (Math.floor((a - 1) / 3) + 1) * g.RH }; }
     if ((m = /^st(\d+)$/.exec(id))) { a = +m[1]; return { x: g.SX + g.SW / 2, y: ry((a - 1) / 3) }; }
     if ((m = /^sl(\d+)$/.exec(id))) { a = +m[1]; return { x: g.SX + g.SW / 2, y: g.GY + ((a - 1) / 3 + 1) * g.RH }; }
-    if ((m = /^d(\d)$/.exec(id))) { a = +m[1] - 1; return { x: g.OW + g.DW / 2, y: g.GY + (a * 4 + 2) * g.RH }; }
-    if ((m = /^c(\d)$/.exec(id))) { return { x: cx(+m[1] - 1), y: g.GB + g.COLH / 2 }; }
+    // (a large layout has the room to set a chip beside a box's lettering, not on it: the dozens, the even chances upright, the columns on its side)
+    if ((m = /^d(\d)$/.exec(id))) { a = +m[1] - 1; return { x: g.OW + g.DW / 2, y: g.GY + (a * 4 + (g.big ? 3.25 : 2)) * g.RH }; }
+    if ((m = /^c(\d)$/.exec(id))) { return { x: cx(+m[1] - 1) - (g.big && g.rot ? g.CW * 0.29 : 0), y: g.GB + g.COLH / 2 }; }
     var OUT = ['low', 'even', 'red', 'black', 'odd', 'high'], oi = OUT.indexOf(id);
-    if (oi >= 0) return { x: g.OW / 2, y: g.GY + (oi * 2 + 1) * g.RH };
+    if (oi >= 0) return { x: g.OW / 2, y: g.GY + (oi * 2 + (g.big && !g.rot ? 1.58 : 1)) * g.RH };
     var Z = { z1: [cx(0), g.GY], z2: [S.wheel === 'us' ? g.GX + 1.25 * g.CW : cx(1), g.GY], z3: [cx(2), g.GY], y2: [g.GX + 1.75 * g.CW, g.GY], y3: [cx(2), g.GY],
       t1: [g.GX + g.CW, g.GY], t2: [g.GX + 2 * g.CW, g.GY], t3: [g.GX + 2 * g.CW, g.GY], tz: [mid, g.GY], ff: [g.GX, g.GY], bk: [g.GX, g.GY], zz: [mid, g.ZH * 0.55] };
     if (Z[id]) return { x: Z[id][0], y: Z[id][1] };
