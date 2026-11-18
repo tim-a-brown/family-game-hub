@@ -3399,7 +3399,7 @@
     ui.lay = M ? layModeN() : layMode();
     // (the shape of the two-player table, for the style sheet: ln the battle line, up and short its upright and low
     // forms, rw the rows of a phone held upright; and the game bar folds down while a phone on its side plays)
-    if (dom.felt) { const L = ui.lay, want = 'an-felt felt-in' + (dom.track ? ' has-trk' : '') + (M ? ' many' + (G.teams ? ' teams' : '') + (L.nbl ? ' bl' : '') + (L.dk ? ' desk dn d-' + L.dock + (L.dk.hmid ? ' hmid' : '') : L.nbl && deskWin() ? ' big' + (G.ph === 'setup' ? ' bsu' : '') : '') : L.ln ? ' bl' + (L.up ? ' up' : '') + (L.short ? ' short' : '') + (L.dk ? ' desk d-' + L.dock + (L.pil ? ' pil' : '') + (L.dk.mid ? ' fmid' : '') + (L.dk.hmid ? ' hmid' : '') : '') : ' rw'); if (dom.felt.className !== want) dom.felt.className = want;
+    if (dom.felt) { const L = ui.lay, want = 'an-felt felt-in' + (dom.track ? ' has-trk' : '') + (M ? ' many' + (G.teams ? ' teams' : '') + (L.nbl ? ' bl' : '') + (L.dk ? ' desk dn d-' + L.dock + (L.dk.hmid ? ' hmid' : '') : L.nbl && deskWin() ? ' big' : '') : L.ln ? ' bl' + (L.up ? ' up' : '') + (L.short ? ' short' : '') + (L.dk ? ' desk d-' + L.dock + (L.pil ? ' pil' : '') + (L.dk.mid ? ' fmid' : '') + (L.dk.hmid ? ' hmid' : '') : '') : ' rw'); if (dom.felt.className !== want) dom.felt.className = want;
       // (the desk's own measures, for the style sheet: the bars' scale, the widths of the dock's column and of a pillar, the track's height)
       const D = L.dk, fs = dom.felt.style; [['--bs', D && D.bs.toFixed(3)], ['--aw', D && D.dock === 'b' ? D.aw + 'px' : null], ['--rw', D && D.dock === 'r' ? D.rw + 'px' : null], ['--pw', D && D.pil ? D.pw + 'px' : null], ['--dth', D && D.tk + 'px'], ['--cs', D && D.cs.toFixed(3)]].forEach(x => { if (x[1]) fs.setProperty(x[0], x[1]); else fs.removeProperty(x[0]); }); }
     document.documentElement.classList.toggle('an-low', !!((ui.lay.short || (M && window.innerWidth > window.innerHeight && window.innerHeight < 520)) && dom.root && dom.root.isConnected));   // (and with more players too)
@@ -3411,6 +3411,7 @@
       // (more players: the other players' plates are on the rim, so where the other player's strip is with two there
       // is the teams' bar in a team game, and nothing otherwise)
       if (dom.me._dn && !(M && ui.lay.dk)) dnOff();   // (the desk with more players places your bar and the teams' bar itself: drawD)
+      suBarsOff();   // (and so does the set-up on the battle line with four or more: drawN)
       if (!M) stripEl(dom.opp, 1 - v, false); else if (G.teams) sidesEl(dom.opp); else { dom.opp.className = 'an-strip opp wn-none'; dom.opp.innerHTML = ''; }
       stripEl(dom.me, v, true);
       dom.map.innerHTML = '';
@@ -3971,6 +3972,14 @@
     });
   }
   const fitSides = () => { const n = dom.opp; if (!n || !n.classList.contains('wn-sides')) return; n.classList.remove('tight'); if (n.scrollWidth > n.clientWidth + 1 || n.getBoundingClientRect().height > 40) n.classList.add('tight'); };
+  // The set-up on the battle line with four or more players (drawN): your bar at the foot of your mat and the teams' bar
+  // over the head of your rows, both at your mat's left edge, which is not the map's while the Domains are laid.
+  function suBars(mine) {
+    const x = Math.round(mine.x + 2) + 'px', me = dom.me, op = dom.opp;
+    if (me) { me.style.marginLeft = x; me.style.maxWidth = Math.round(mine.w - 6) + 'px'; me._su = 1; }
+    if (op && op.classList.contains('wn-sides')) { op.style.marginLeft = x; op._su = 1; }
+  }
+  function suBarsOff() { [dom.me, dom.opp].forEach(n => { if (n && n._su) { n.style.removeProperty('margin-left'); n.style.removeProperty('max-width'); n._su = 0; } }); }
   // each player's mat on this table, made once and moved to wherever their spoke lies
   function matN(o) {
     dom.nm = dom.nm || [];
@@ -4095,18 +4104,25 @@
     if (bl) { mineLine(T, mine, put); fitRim(); roadsN(land); return; }
     // your three rows: the Crossroads, your Outpost, your Gate, drawn as the two-player rows are, on your own mat
     // (the tiles as wide as the two-player rows' where the room allows: on an iPad wide and low as there, on a phone taller)
-    const rh = mine.h / 3, mw = Math.round(Math.min(mine.w * (land ? .4 : mine.w > 560 ? .42 : .38), 300, (rh - 6) * (mine.w > 560 ? 2.4 : 1 / .62))), bh = Math.round(Math.min(rh - 8, mw * .64));
+    // (the Domains being laid on an iPad held sideways with four or more players: your bar rides the map's lower left, as
+    // it does once the table plays, but there the last of the other players' rows lies while the Domains are laid, and it
+    // lay over that player's plate and Domain. So your three rows leave a strip at the foot of your mat, and your bar lies
+    // there; in a team game the sides' bar lies over the head of your rows the same way: suBars. With three players the
+    // bar covers nothing, and that set-up is as it was.)
+    const suB = !!X && !!(ui.lay && ui.lay.nbl) && R >= 3, headR = suB && G.teams && dom.opp ? dom.opp.offsetHeight + 6 : 0, footR = suB && dom.me ? dom.me.offsetHeight + 8 : 0;
+    const rh = (mine.h - headR - footR) / 3, mw = Math.round(Math.min(mine.w * (land ? .4 : mine.w > 560 ? .42 : .38), 300, (rh - 6) * (mine.w > 560 ? 2.4 : 1 / .62))), bh = Math.round(Math.min(rh - 8, mw * .64));
     // (your Figures as cards: as big as the row and the room beside the tile allow for the most you have in one row, two
     // at least; the engraved places for the rest of the three are drawn where they fit)
     // (how many things a row holds beside its tile: three, or as many pieces of the smallest size as fit, a phone on its side)
     const sideW = (mine.w - mw) / 2 - 10, rowFit = Math.max(1, Math.min(3, Math.floor((sideW + 3) / 27))), most = Math.max(Math.min(2, rowFit), Math.min(rowFit, Math.max.apply(null, [2 * N, 2 * v + 1, 2 * v].map(i => V.figs.filter(f => f.p === i && f.o === v).length + (T.places[i] ? 1 : 0)))));   // (three things in a row at most: more Figures than that are a stack, rowEl)
     const fw = Math.floor(Math.max(24, Math.min((rh - 10) / 1.36, sideW / (most * 1.1), 96))), slots = Math.max(most, Math.min(3, Math.floor((sideW + 4) / (fw * 1.1))));
-    const mm = matN(v); mm.className = 'an-pm wn-col wn-mine' + (V.turn === v && !G.over && G.ph !== 'setup' ? ' on' : ''); mm.style.setProperty('--pc', 'var(--pc' + v + ')'); put(mm, mine.x, mine.y + rh - 2, mine.w, mine.h - rh + 2);
+    const mm = matN(v); mm.className = 'an-pm wn-col wn-mine' + (V.turn === v && !G.over && G.ph !== 'setup' ? ' on' : ''); mm.style.setProperty('--pc', 'var(--pc' + v + ')'); put(mm, mine.x, mine.y + headR + rh - 2, mine.w, mine.h - headR - rh + 2);
     [2 * N, 2 * v + 1, 2 * v].forEach((i, r) => {
       const row = X ? suRow(i, X) : rowEl(i, T, { many: true, slots: slots, fit: rowFit });
       row.style.setProperty('--mw', mw + 'px'); row.style.setProperty('--fw', fw + 'px'); row.style.setProperty('--sw', Math.round(Math.min(fw * .92, X ? (sideW - 4) / (N - 1) - 10 : (sideW - 8) / 2.2, (rh - 12) / 1.42)) + 'px');   // (the set-up: everyone else's offers in one line)
-      put(row, mine.x, mine.y + r * rh + (rh - bh) / 2, mine.w, bh);
+      put(row, mine.x, mine.y + headR + r * rh + (rh - bh) / 2, mine.w, bh);
     });
+    if (suB) suBars(mine);
     fitRim();
     if (!X) roadsN(land);
   }
@@ -4315,12 +4331,13 @@
   }
   // (the desk's inline places for your bar and the teams' bar, taken away when the table is drawn another way)
   function dnOff() { [dom.me, dom.opp].forEach(n => { if (!n) return; ['margin-left', 'margin-top', 'width', 'height', '--bs'].forEach(p => n.style.removeProperty(p)); n._dn = 0; }); }
-  // (the teams' bar over your mat's head is no wider than your mat: at the desk, and on the iPad's battle line in a
-  // larger window; fitSides then folds its names to diamonds where they do not fit)
+  // (the teams' bar over your mat's head is no wider than your mat: at the desk, and on the battle line of an iPad held
+  // sideways or of a larger window that keeps the iPad's table; fitSides then folds its names to diamonds where they do
+  // not fit)
   function bigSides() {
     const n = dom.opp; if (!n || !n.classList.contains('wn-sides')) return;
-    const L = ui.lay || {}, big = L.nbl && deskWin(), m = big && !L.dk && dom.map.querySelector('.an-pm.wn-mine');
-    const w = !big ? 0 : L.dk ? ui.dnT && ui.dnT.mine.w - 2 * ui.dnT.pad : m ? m.getBoundingClientRect().width - 8 : 0;
+    const L = ui.lay || {}, m = L.nbl && !L.dk && dom.map.querySelector('.an-pm.wn-mine');
+    const w = L.dk ? ui.dnT && ui.dnT.mine.w - 2 * ui.dnT.pad : m ? m.getBoundingClientRect().width - 8 : 0;
     if (w > 0) n.style.maxWidth = Math.round(w) + 'px'; else n.style.removeProperty('max-width');
   }
   // the parties of one band laid in rows in a room w by h, their cards c0 wide or as much smaller as holds them all:
