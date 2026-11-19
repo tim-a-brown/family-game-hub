@@ -4350,27 +4350,55 @@
       if (!ov.isConnected) { window.removeEventListener('resize', sync); recWait = null; return; }
       var shape = own() ? null : winShape();
       if (!shape && !ov.classList.contains('k-dk')) return;   // (a phone, a tablet, a game's own card: nothing to do or undo)
-      ov.classList.toggle('k-dk', !!shape); ov.classList.remove('k-dk-side', 'k-dk-strip', 'k-dk-stack', 'has-game');
-      card.style.minHeight = '';
-      if (!shape) { ov.style.removeProperty('--dk'); ov.style.removeProperty('--dkc'); if (!ov.getAttribute('style')) ov.removeAttribute('style'); if (pane && pane.parentNode) pane.parentNode.removeChild(pane); return; }
+      ov.classList.toggle('k-dk', !!shape); ov.classList.remove('k-dk-side', 'k-dk-strip', 'k-dk-stack', 'k-dk-two', 'k-dk-rk2', 'k-dk-low', 'has-game');
+      card.style.minHeight = ''; card.style.removeProperty('--rr');
+      if (!shape) { ov.style.removeProperty('--dk'); ov.style.removeProperty('--dkc'); if (!ov.getAttribute('style')) ov.removeAttribute('style'); if (!card.getAttribute('style')) card.removeAttribute('style'); if (pane && pane.parentNode) pane.parentNode.removeChild(pane); return; }
       ov.style.setProperty('--dk', deskUnit().toFixed(3)); ov.style.setProperty('--dkc', deskCtl().toFixed(3));
       fill();
-      if (!pane || empty) return;
-      if (pane.parentNode !== card) card.insertBefore(pane, card.querySelector(':scope > .k-acts'));
-      // the arrangements to try, the first that holds the whole card: side by side, then (wide enough) the buttons in
-      // a column of their own, which a long table of standings needs
-      var ways = shape === 'side' ? (window.innerWidth >= 1160 ? ['side', 'strip'] : ['side']) : [shape], ok = false;
-      ov.classList.add('has-game');
-      for (var i = 0; i < ways.length && !ok; i++) {
-        ov.classList.remove('k-dk-side', 'k-dk-strip', 'k-dk-stack'); ov.classList.add('k-dk-' + ways[i]);
-        card.style.minHeight = '';
-        // (beside the standings the record is out of the flow: the card is as tall as the taller of the two, within
-        // the window)
-        if (ways[i] !== 'stack') card.style.minHeight = Math.ceil(Math.min(window.innerHeight - 2 * Math.max(16, window.innerHeight * .03), pane.offsetHeight - body.clientHeight + body.scrollHeight + 2 * (parseFloat(getComputedStyle(pane).top) || 0))) + 'px';
-        ok = card.scrollHeight <= card.clientHeight + 1 && pane.offsetHeight >= 150;
+      var rk = card.querySelector(':scope > .rank'), nr = rk ? rk.children.length : 0;
+      if (nr > 3) card.style.setProperty('--rr', String(Math.ceil(nr / 2)));
+      // (the whole card in the window, nothing under the card's foot and nothing past the window's sides)
+      function whole() { return card.scrollHeight <= card.clientHeight + 1 && card.offsetWidth <= window.innerWidth - 32; }
+      // (the record not cut at its sides: a score table wider than the pane, past its edge or scrolling sideways)
+      function sideCut() {
+        var r = body.getBoundingClientRect().right + 1;
+        return body.scrollWidth > body.clientWidth + 1 || [].some.call(body.querySelectorAll('*'), function (e) {
+          return e.getBoundingClientRect().right > r || (e.scrollWidth > e.clientWidth + 1 && /auto|scroll/.test(getComputedStyle(e).overflowX));
+        });
       }
-      // (standings too long for this window however they are set: the plain card, which scrolls)
-      if (!ok) { ov.classList.remove('k-dk-side', 'k-dk-strip', 'k-dk-stack', 'has-game'); card.style.minHeight = ''; pane.parentNode.removeChild(pane); }
+      var ok = false;
+      if (pane && !empty) {
+        if (pane.parentNode !== card) card.insertBefore(pane, card.querySelector(':scope > .k-acts'));
+        // the arrangements to try, the first that holds the whole card: side by side, then (wide enough) the buttons in
+        // a column of their own, which a long table of standings needs, then the standings in two columns
+        var W = window.innerWidth, ways = shape === 'side' ? (W >= 1160 ? ['side', 'strip', 'strip rk2'] : ['side']) : shape === 'strip' ? ['strip', 'strip rk2'] : [shape];
+        ov.classList.add('has-game');
+        for (var i = 0; i < ways.length && !ok; i++) {
+          ov.classList.remove('k-dk-side', 'k-dk-strip', 'k-dk-stack', 'k-dk-rk2');
+          ways[i].split(' ').forEach(function (c) { ov.classList.add('k-dk-' + c); });
+          if (/rk2/.test(ways[i]) && nr <= 3) continue;
+          card.style.minHeight = '';
+          // (beside the standings the record is out of the flow: the card is as tall as the taller of the two, within
+          // the window)
+          if (ways[i] !== 'stack') card.style.minHeight = Math.ceil(Math.min(window.innerHeight - 2 * Math.max(16, window.innerHeight * .03), pane.offsetHeight - body.clientHeight + body.scrollHeight + 2 * (parseFloat(getComputedStyle(pane).top) || 0))) + 'px';
+          ok = whole() && pane.offsetHeight >= 150 && !sideCut();
+        }
+        if (!ok) { ov.classList.remove('k-dk-side', 'k-dk-strip', 'k-dk-stack', 'k-dk-rk2', 'has-game'); card.style.minHeight = ''; pane.parentNode.removeChild(pane); }
+      }
+      // (no record, or standings too long to stand beside it: the card without the record, as it is where it fits, then
+      // its buttons in a column of their own beside the standings (k-dk-two), then the standings in two columns
+      // (k-dk-rk2), then the trophy and the title a size smaller for a low window (k-dk-low). Nothing is cut off or
+      // under the window's foot; a card that none of these holds is the plain card, which scrolls)
+      if (!ok && !whole() && window.innerWidth >= 760) {
+        var two = nr > 3 ? ['two', 'two rk2', 'two rk2 low'] : ['two', 'two low'];
+        for (var j = 0; j < two.length && !ok; j++) {
+          ov.classList.remove('k-dk-two', 'k-dk-rk2', 'k-dk-low');
+          two[j].split(' ').forEach(function (c) { ov.classList.add('k-dk-' + c); });
+          ok = whole();
+        }
+        if (!ok) ov.classList.remove('k-dk-two', 'k-dk-rk2', 'k-dk-low');
+      }
+      if (!card.getAttribute('style')) card.removeAttribute('style');
       more();
     }
     sync();
