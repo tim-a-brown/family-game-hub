@@ -627,6 +627,48 @@ Underlying principles for everything:
   with `--base --png --dev`; `flow.js end|resize|mull`; `demo.js`; `measure.js` audit.js's measure with the cards
   routed in; `probe.js`; `padbase/` the starting page padded to the new one's size, which shows the two device
   differences below are the page's own animation timing).
+  **Spanish One at a desk** (`.so.dk` with `dk-wide`, `dk-strip`, `dk-square` or `dk-tall` from `Cards.DESK`, set by
+  `applyDesk` only while such a window shows; `deskShape`, `deskCol`, `fitDesk`, `deskCardCap`, `paintDkL`,
+  `paintDkR` in spanishone.html; the styles after the comment "At a desk"). The felt is a column of its own, sized
+  from the window: the other players' plates across its head in one row or two (`--opw`, `--fz`, to 250px), the draw
+  pile and the pile played on inside the direction ring, and your hand along its foot, the cards to 210px
+  (`deskCardCap`: a quarter of the height, a hand of up to 12 in one or two rows). In a short wide strip, and in a
+  wide window under 1000 tall with seven or more players, the other players stand in a column at the felt's left as
+  on a phone held sideways (`dk-col`, the `.so.dk-col` selectors added to the sideways plate rules), with your hand
+  under the piles and that column. At the left the score sheet (`.so-dk.l`): a row a hand (who went out, the card
+  they went out with, what they scored, the hand in play lit), the oldest hands given up first, and under it the
+  race to the target, a line a player in their color, yours named in gold; a one-hand game has no left panel (`dk-
+  one`). At the right this hand (`.so-dk.r`): every player in the order play goes with the cards they hold, One Card
+  when called, their last turn (`LT`, kept by the page from the playback's events, not saved: "Played the Red Skip"
+  with the card, "Drew a card", "Took 4 cards and lost the turn"), which way play goes and a Draw card waiting, then
+  This table, the house rules as set; a panel too short gives up the rules, then the sentence under its head, then
+  goes two to a row without the last turns (`.pt.two`), never a cut row. The caption and its buttons stand under it,
+  beside your hand. A nearly square window has the sheet over this hand at the right; a tall one has both side by
+  side under the table. A counted hand is written in the right panel (`showTally`'s `place`, `TALLY`) with its Deal
+  hand button where the turn's buttons are, and moves between the panel and the sheet over the table when the window
+  changes size. A resize glides (`relayout`, `Kit.glide`). Test hooks `__so.desk`, `__so.lt`. The scratchpad's
+  `big/spanishone/`: `lib.js` (positions made by the core's robots), `shots.js` (any scene at any window with the
+  scan), `flow.js` (a whole game on the page, `--resize` through 14 windows mid-hand and with the count up),
+  `proof.js` (the devices before and after, pixel by pixel; `NOISE=1` is the starting files against themselves),
+  `online.js` (a laptop host and a phone guest), `demo.js`, `oldsave.js`.
+  **Balatro at a desk** (its files say jokerrun; `html.jr-dk` with `jdk-c`, `jdk-s` or `jdk-b` on `.jr`, set by
+  `deskLay` from `layout()` in jokerrun/ui.js only while one of the card tables' desk windows shows, `DESKQ`, the
+  same queries as `Cards.DESK`; `handsList`, `deckGrid`, `paintDk`, `litHand`; the styles after the comment "At a
+  desk" in jokerrun.html). The table loses its 1,500px cap, the hand's cards go to 210px and the Jokers to 170
+  (`layout`'s caps), and the score panel steps up with the table by `zoom` on `.side` alone (`--sbz`, 1 to 1.45, its
+  column `--sb` widened to match; the bar, menus and sheets keep their size). A panel of the game's own slate
+  (`.jdk.pn`) holds what is otherwise behind Run Info and the deck: Poker hands (each hand's level, its Chips and
+  Mult, how often it was played this run; the hand you have picked lit as you pick it), this ante's three blinds
+  with their targets, rewards and the boss's rule (the one being played or next lit, the ones behind you dimmed),
+  and while a blind is played the cards left, a row a suit and a column a rank with the cards still to draw lit and
+  the ones drawn or used this round dimmed, as the deck's own view shows them. Where it stands: a column between the
+  score panel and the table (`jdk-c`) while that costs the hand none of its size; otherwise under the score panel,
+  in the room the score panel leaves (`jdk-s`, Tim's 1512 by 982); along the foot of a tall or nearly square window
+  (`jdk-b`, the hands in as many columns of 290px or more as fit). A panel too short gives up whole rows: this ante
+  first, then hands never played and never leveled from the rarest, then the cards left, then the rest from the
+  foot, never the lit one. A resize keeps the run and the cards picked. The scratchpad's `big/jokerrun/`: `shots.js`
+  (scenes blind, play, sel, shop at any window with the scan), `resize.js` (17 windows mid-blind), and
+  `big/spanishone/proof.js` with `GAME=jokerrun` (the devices before and after).
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
