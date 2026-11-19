@@ -599,6 +599,34 @@ Underlying principles for everything:
   and a scan), `proof.js` (the devices against ad89101, pixel by pixel; `BB=1` is base against base), `resize.js`
   (sixteen windows on one page, the sheet open through three), `perf.js` (layers, scroll frames at 4x, a sync
   redraw), `n320.js`.
+  **Lorcana at a desk** (`deskPlan`, `deskSet`, `deskRoom`, `deskFitRoom` in lorcana-play.html, before `layoutVars`,
+  which asks for the plan on every render; styles in the last block of the page's main stylesheet, every rule under
+  `html.lc-dk`, set only while the table shows in a window that is not a phone's or a tablet's shape (`deskDevice`,
+  Horse Race's test), at least 560 tall and 1000 wide or 1100 tall). Nothing is scaled: the table keeps its felt,
+  mats and strips, and the board's cards (`fitBoards`' `maxCu` from `DK.bmax`) and your hand (`--hh` from the plan)
+  grow to 210px wide (`--cu` 293). The strips' plates (avatar, name, lore ring, inkwell, deck and discard piles, the
+  other hand) and the phase ribbon step up with `--dkf` (1 at 1512 by 982, 1.5 at most). Compositions: `lc-dk-w`
+  (wider than tall): the room at the left (`--rw`), the table, your hand along the foot with End turn standing at
+  its right at a button's height (`--sw`); under 820 tall (`lc-dk-p`) each player's strip stands on end beside their
+  side of the table (`--pw`, the felt's grid in two columns, the inkwell's hexes folded to one), so the cards keep
+  the height; `lc-dk-t` (taller than wide): the table, the hand and the bar as on a tablet, and from 1100 tall the
+  room under them (`--ph`) in two columns. **The room** (`deskRoom`, glass panels `.dk-pn`, drawn in `renderBar`
+  instead of the plain log): Lore, the race turn by turn from the lore ledger (`S.ll`, the same running totals
+  `record` keeps as `lr`) with the goal ruled across, each player's lore of what they need and where it came from
+  (quests, abilities, locations), a tap opening the ledger (`data-tap="lore"`); This game, what each player has done
+  from `S.st` (cards played and inked, quests, challenges, characters banished and lost; left out until something
+  has happened); Discard piles, both, newest first as small cards (public at a real table), a tap reading the card
+  in its pile (`dk-disc` → `discZoom`), the heading opening the pile; Game log, newest first, whole lines only, its
+  heading opening the full log. `deskFitRoom` gives up This game, then the discard piles, then the race whole when
+  the room is too short for the log to keep 110px. The opening hand spreads across the felt in one row of cards to
+  210px (`renderMull`'s width and cap read `DK`). A window dragged from one composition to another lays the table
+  out again from the state inside `Kit.glide` (`onResize`, `deskKey`; the table, hand, bar and room carry view-
+  transition names only at a desk). The setup and the results card are the kit's desk. The scripts are the
+  scratchpad's `big/lorcana/` (`lib.js` routes Lorcast's card list from `demo/lorcast` and fetches card art once
+  from the Storage backup; `gen.js` saved games made by the starting page; `shots.js` the scan and the device proof
+  with `--base --png --dev`; `flow.js end|resize|mull`; `demo.js`; `measure.js` audit.js's measure with the cards
+  routed in; `probe.js`; `padbase/` the starting page padded to the new one's size, which shows the two device
+  differences below are the page's own animation timing).
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
