@@ -393,7 +393,8 @@
     var bot = R.jr && R.jr.classList.contains('jdk-b');
     if (bot) {
       var cols = 1; R.jr.style.setProperty('--hlc', 1);
-      while (cols < 3 && a.scrollHeight > dk.clientHeight - 4) { cols++; R.jr.style.setProperty('--hlc', cols); }
+      var most = Math.max(1, Math.min(3, Math.floor(a.clientWidth / 290)));
+      while (cols < most && a.scrollHeight > dk.clientHeight - 4) { cols++; R.jr.style.setProperty('--hlc', cols); }
     }
     function over() { return dk.scrollHeight > dk.clientHeight + 1 || a.scrollHeight > a.clientHeight + 1; }
     var rare = [].slice.call(hl.querySelectorAll('.hr.rare:not(.on)'));
