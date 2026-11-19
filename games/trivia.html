@@ -1912,13 +1912,17 @@ html.tr-dk .tr-room .qr.no .qw{color:#ff9a9a;}
     p2.appendChild(list);
     room.appendChild(p2);
     // (a list gives up its oldest rows whole, never a row cut through)
-    requestAnimationFrame(function () {
+    function whole() {
+      if (!room.isConnected) return;
       [room.querySelector('.ql'), room.querySelector('.pn.st')].forEach(function (box) {
         if (!box) return;
-        var b = box.getBoundingClientRect().bottom - (box.classList.contains('st') ? 12 : 0), rs = box.querySelectorAll(':scope > .qr, :scope > .srow');
+        var rs = box.querySelectorAll(':scope > .qr, :scope > .srow');
+        [].forEach.call(rs, function (r) { r.style.display = ''; });
+        var b = Math.min(box.getBoundingClientRect().bottom - (box.classList.contains('st') ? 12 : 0), room.getBoundingClientRect().bottom - 12, innerHeight - 20);
         for (var q = rs.length - 1; q >= 0; q--) { if (rs[q].getBoundingClientRect().bottom <= b + 1) break; rs[q].style.display = 'none'; }
       });
-    });
+    }
+    requestAnimationFrame(whole); setTimeout(whole, 300);
   }
   window.addEventListener('resize', function () { if (DKT.on || dkWin()) deskLay(); });
 

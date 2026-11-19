@@ -1923,7 +1923,7 @@ html.aa-dk.aa-tall .aa-room .pn.won{max-height:none;}
       p1.appendChild(el('div', { class: 'row' + (i === V.me && V.mode !== 'pass' ? ' me' : ''), style: { '--c': p.color } }, [
         el('div', { class: 'nm' }, [el('b', { text: p.name }), el('span', { class: 'n', text: p.score + ' of ' + V.target })]), chips]));
     });
-    room.appendChild(p1);
+    if (V.wonC) room.appendChild(p1);   // (a table hosted by a copy from before these panels sends neither list)
     var p2 = el('section', { class: 'pn rds' }, [el('h4', { text: log.length ? 'Rounds so far' : 'Rounds so far will be written here' })]);
     var list = el('div', { class: 'rl' });
     log.slice().reverse().forEach(function (l, k) {
@@ -1933,15 +1933,19 @@ html.aa-dk.aa-tall .aa-room .pn.won{max-height:none;}
         el('div', { class: 'by', html: (l.w >= 0 ? '<b style="--c:' + (V.players[l.w] ? V.players[l.w].color : '#fff') + '">' + esc(who) + '</b>' : esc(who)) + ' won it, and ' + esc(J) + ' judged.' })])]));
     });
     p2.appendChild(list);
-    room.appendChild(p2);
+    if (V.log) room.appendChild(p2);
     // (a list gives up its oldest rounds whole, never a row cut through)
-    requestAnimationFrame(function () {
+    function whole() {
+      if (!room.isConnected) return;
       [room.querySelector('.rl'), room.querySelector('.pn.won')].forEach(function (rl) {
         if (!rl) return;
-        var b = rl.getBoundingClientRect().bottom - (rl.classList.contains('won') ? 12 : 0), rows = rl.querySelectorAll(':scope > .rd, :scope > .row');
+        var rows = rl.querySelectorAll(':scope > .rd, :scope > .row');
+        [].forEach.call(rows, function (r) { r.style.display = ''; });
+        var b = Math.min(rl.getBoundingClientRect().bottom - (rl.classList.contains('won') ? 12 : 0), room.getBoundingClientRect().bottom - 12, innerHeight - 20);
         for (var q = rows.length - 1; q >= 0; q--) { if (rows[q].getBoundingClientRect().bottom <= b + 1) break; rows[q].style.display = 'none'; }
       });
-    });
+    }
+    requestAnimationFrame(whole); setTimeout(whole, 300);
   }
   window.addEventListener('resize', function () { if (DK.on || (DK.V && dkWin())) deskLay(); });
 
