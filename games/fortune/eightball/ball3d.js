@@ -313,9 +313,11 @@ export function create(host, ANSWERS, post) {
     if (composer) { composer.setPixelRatio(dpr); composer.setSize(W, H); }
     camera.aspect = W / H;
     // a believable size: about 60% of the width on a phone, less of the height on wide screens
-    const avail = H - top - bottom, rPx = Math.max(40, Math.min(W * 0.31, avail * 0.32, 200));
+    // (a window larger than a phone's or a tablet's lets the ball grow: CLAUDE.md, Large windows)
+    const lo = Math.min(innerWidth, innerHeight), hi = Math.max(innerWidth, innerHeight), dk = innerWidth > 480 && innerHeight > 540 && !((lo <= 480 && hi <= 1000) || (lo >= 620 && lo <= 840 && hi >= 900 && hi <= 1200));
+    const avail = H - top - bottom, rPx = Math.max(40, Math.min(W * 0.31, avail * 0.32, dk ? 360 : 200));
     // at the reveal the camera pushes in until the window reads: a little on a phone held upright, more on a short landscape screen
-    zoomK = 1 - rPx / Math.max(rPx, Math.min(W * 0.38, (H - 16) * 0.45, 260));
+    zoomK = 1 - rPx / Math.max(rPx, Math.min(W * 0.38, (H - 16) * 0.45, dk ? 470 : 260));
     dist = (H / 2) / (rPx * Math.tan(FOV / 2 * Math.PI / 180));
     // put the ball in the middle of the free area (between the top and bottom insets)
     shift = (top + avail / 2) - H / 2;

@@ -77,6 +77,8 @@ const BASE = [[1, 0, 0], [0, -SE, CE], [0, -CE, -SE]];
 function toView(v) { return [v[0], v[1] * CE - v[2] * SE, v[1] * SE + v[2] * CE]; }
 
 // ── 2D fallback: the same ball drawn with gradients on a canvas ──
+// (a window larger than a phone's or a tablet's: CLAUDE.md, Large windows; the device sizes keep the caps they had)
+function deskWin() { const w = window.innerWidth, h = window.innerHeight, lo = Math.min(w, h), hi = Math.max(w, h); return w > 480 && h > 540 && !((lo <= 480 && hi <= 1000) || (lo >= 620 && lo <= 840 && hi >= 900 && hi <= 1200)); }
 function create2D(host) {
   const cv = document.createElement('canvas'), g = cv.getContext('2d');
   host.insertBefore(cv, host.firstChild);
@@ -89,8 +91,9 @@ function create2D(host) {
   function layout(w, h, t, b) {
     W = Math.max(2, w); H = Math.max(2, h); top = t || 0; bottom = b || 0; dpr = Math.min(2, window.devicePixelRatio || 1);
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
-    R = Math.max(40, Math.min(W * 0.31, (H - top - bottom) * 0.32, 200));
-    RZ = Math.max(R, Math.min(W * 0.38, (H - 16) * 0.45, 260));
+    const dk = deskWin();
+    R = Math.max(40, Math.min(W * 0.31, (H - top - bottom) * 0.32, dk ? 360 : 200));
+    RZ = Math.max(R, Math.min(W * 0.38, (H - 16) * 0.45, dk ? 470 : 260));
   }
   // an ellipse-mapped cap on the ball: pole p, up u (view coords), half-angle a; fn draws in a unit disc
   function cap(cx, cy, r, p, u, a, fn) {

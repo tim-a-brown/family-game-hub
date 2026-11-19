@@ -8,6 +8,9 @@
 import FORTUNES from './swami-fortunes.js';
 import { createScene } from './swami/scene.js';
 import { layout, paint, paintToken } from './swami/cabinet.js';
+// (a window larger than a phone's or a tablet's: CLAUDE.md, Large windows; the device sizes keep the caps they had)
+function deskWin() { const w = window.innerWidth, h = window.innerHeight, lo = Math.min(w, h), hi = Math.max(w, h); return w > 480 && h > 540 && !((lo <= 480 && hi <= 1000) || (lo >= 620 && lo <= 840 && hi >= 900 && hi <= 1200)); }
+
 import { paintCard, CARD_RATIO } from './swami/card.js';
 
 const DECK_KEY = 'fortune_swami_deck', VOICE_KEY = 'fortune_swami_voice', SEEN_KEY = 'fortune_zandor_seen';
@@ -442,7 +445,7 @@ export default {
     // ── Reading the card up close ──
     function bigSize() {
       const wide = W / H > 1.05;
-      const maxW = wide ? Math.min(W * 0.5, 460) : Math.min(W - 40, 440);
+      const maxW = wide ? Math.min(W * 0.5, deskWin() ? 640 : 460) : Math.min(W - 40, deskWin() ? 600 : 440);
       const maxH = wide ? H - 40 : H - 120;
       const w = Math.max(140, Math.min(maxW, maxH / CARD_RATIO));
       return { w, h: w * CARD_RATIO, wide };

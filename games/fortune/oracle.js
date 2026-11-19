@@ -468,6 +468,8 @@ function makePaper(px, seed) {
 // Fit one fortune into a wedge, printed along the radius from the rim inward (like the real dial):
 // one or two lines of condensed capitals, as large as the wedge allows.
 const COND = 0.7, LH = 0.92;
+// (a window larger than a phone's or a tablet's: CLAUDE.md, Large windows; the device sizes keep the caps they had)
+function deskWin() { const w = window.innerWidth, h = window.innerHeight, lo = Math.min(w, h), hi = Math.max(w, h); return w > 480 && h > 540 && !((lo <= 480 && hi <= 1000) || (lo >= 620 && lo <= 840 && hi >= 900 && hi <= 1200)); }
 function layoutWedge(c, text, R) {
   const words = text.split(' '), opts = [[text]];
   for (let i = 1; i < words.length; i++) opts.push([words.slice(0, i).join(' '), words.slice(i).join(' ')]);
@@ -687,7 +689,8 @@ function mount(stage, api) {
     const B = clamp(h * 0.3, 200, 330), kP = Math.min((w - 2 * pad) / CW, (h - B - 2 * pad) / CH);
     const Rr = clamp(w * 0.36, 250, 400), kL = Math.min((w - Rr - 2 * pad) / CW, (h - 2 * pad) / CH);
     const mode = kL > kP * 1.05 ? 'l' : 'p';
-    const k = Math.max(0.05, Math.min(mode === 'l' ? kL : kP, 0.8));
+    const dk = deskWin(), kd = dk ? 1.75 : 1;
+    const k = Math.max(0.05, Math.min(mode === 'l' ? kL : kP, 0.8 * kd));
     const cw = CW * k, ch = CH * k;
     let x0, y0;
     if (mode === 'p') { x0 = (w - cw) / 2; y0 = pad + Math.max(0, (h - 2 * pad - ch - B) * 0.35); }
@@ -702,17 +705,17 @@ function mount(stage, api) {
     cv.width = L.pxW; cv.height = L.pxH;
     // ticket
     if (mode === 'p') {
-      const sy = y0 + TSLOT_P.y * k, cwid = Math.min(TSLOT_P.w * k * 0.98, 400);
+      const sy = y0 + TSLOT_P.y * k, cwid = Math.min(TSLOT_P.w * k * 0.98, 400 * kd);
       const chgt = clamp(h - sy - 74 - pad, 96, 240);
       L.clipH = chgt + 20;
       Object.assign(clip.style, { left: (x0 + cw / 2 - cwid / 2 - 14) + 'px', top: sy + 'px', width: (cwid + 28) + 'px', height: L.clipH + 'px' });
     } else {
-      const sx = x0 + TSLOT_L.x * k, ht = Math.min(TSLOT_L.h * k * 0.98, 300) + 32, wd = Math.min(w - pad - sx, 380);
+      const sx = x0 + TSLOT_L.x * k, ht = Math.min(TSLOT_L.h * k * 0.98, 300 * kd) + 32, wd = Math.min(w - pad - sx, 380 * kd);
       L.clipH = ht;
       Object.assign(clip.style, { left: sx + 'px', top: (y0 + TSLOT_L.y * k - ht / 2) + 'px', width: wd + 'px', height: ht + 'px' });
     }
     // coin, caption, button
-    const cr = clamp(Math.round(k * 64), 22, 34);
+    const cr = clamp(Math.round(k * 64), 22, dk ? 56 : 34);
     L.coinR = cr;
     if (mode === 'p') { L.coinX = w - pad - cr - 10; L.coinY = h - pad - cr - 20; }
     else { L.coinX = Math.min(x0 + cw + cr + 46, w - pad - cr - 140); L.coinY = y0 + COINPLATE.y * k + 10; }
