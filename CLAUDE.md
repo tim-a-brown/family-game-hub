@@ -819,6 +819,72 @@ Underlying principles for everything:
   size (`kd`, with its ticket, slot and coin); the Great Zandor's booth to 1,900px wide (`layout` in
   swami/cabinet.js, a cap no device reaches) and the card read up close to 640. Scripts: the scratchpad's
   `big/showgames/` (`ft.js <sizes> picker,cookie,eightball, oracle,swami`, `proof.js` with `cmp.sh`).
+  **Bingo at a desk** (the block "The desk" in bingo.html: `dkWin`, `deskLay`, `dkFit`, `dkBest`, `dkRatio`,
+  `deskSeq`, `dkOff`; styles after the comment "The desk", every rule under `html.bg-dk`, set only while a desk
+  layout shows; `dkWin` says no at the phones, at the iPad mini either way up and at the other iPads by touch).
+  Cards and Keno: every player's card is the hero, all at once (Show every board), sized from the room they really
+  have: `dkRatio` measures a card's height for its width once a kind of card, `dkBest` tries every number of columns
+  and takes the one that gives the largest card (to 680px wide for Bingo, 600 to 680 for Keno), and `dkFit` sets
+  `--dc` and `--dw` from the box the cards really have (a ResizeObserver on `.k-main` lays them out again whenever
+  that box changes). The caller's station (`.kn-side`: the cage or the deck with the ball or card just drawn, the
+  buttons, the board of what has been called) stands at the right (`bg-side`), or across the top of a tall window
+  with the board at the left and the buttons at the right (`bg-stack`, `bg-nar` under 900 wide); a short window lays
+  the station in two columns where the cards keep nearly their size (`bg-two`), or leaves its board out (`bg-nod`).
+  The room under the station holds every call so far, newest first (`.k-seq`, `deskSeq`: balls as large as the room
+  lets every call show, 40 to 64px, or the playing cards drawn; whole rows only). A card's name and its count of
+  what it still needs step up with the card inside a container query (`@container (min-width:261px)`), so a small
+  card keeps the short name. Call only (paper cards): the flashboard is the hero, its 75 squares as large as the
+  window allows (`--dfh`, `--dff`), either across the top with the calls so far, the cage and the buttons in a strip
+  under it (`bg-top`; the cage grows with the strip, `--dcw2`; under 900 wide the strip stands as a column, `bg-
+  nar`) or at the left with the cage, the buttons and the calls in a column at the right (`bg-side`), whichever
+  gives the larger squares. A resize lays it out again from the state (`Kit.glide` when the composition changes).
+  The scratchpad's `big/p4/` has the scripts: `bingo-states.js` (fixed saves), `scenes-bingo.js`, `snap.js` with
+  `cmp.sh` (the device proof and the desk shots, `SCAN=1` for the scan), `resize.js`, `demo.js`, `online-bingo.js`
+  (a laptop host and a phone guest at one TurnNet table).
+  **Apples to Apples at a desk** (the block "The desk" in applestoapples.html: `dkWin`, `deskLay`, `dkFit`,
+  `dkRoom`, `dkOff`; styles after the comment "The desk", every rule under `html.aa-dk`, set only while a desk
+  layout shows and the table is in play; the game's end and the setup leave it). The table is sized from the window:
+  `dkFit` shares the column's height between the table's cards and your hand (about three to two), then measures the
+  felt and gives the pile and the card turned over (`--dmc`, to 250px) and the played cards (`--dpc`, to 230px, the
+  rows that make them largest, a seat's name tag counted) their sizes; a felt taller than it is wide lays the pile
+  over the played cards (`aa-stk`); cards drawn small leave out their small print as the phone's small cards do
+  (`aa-sm`, `aa-smm`). Compositions: `aa-wide` (the room at the left, the scores, the table and your hand on its
+  rail at the right), `aa-strip` (a short wide window: your hand stood up in a column at the right as on a phone on
+  its side, the room at the left from 1500 wide), `aa-tall` (the scores, the table, the hand, and the room's two
+  panels side by side under them). The panels give way, not the cards: where the played cards would be under 100px
+  the room goes (`aa-noroom`). The room (`.aa-room`) holds what lies face up on a real table: the cards each player
+  has won by name with how many of the target (`V.wonC`), and the rounds so far newest first, each round's green
+  card and winning red card with who won it and who judged (`V.log`; the grown-up deck's rounds as the filled
+  sentence); whole rows only. Both lists come from `viewFor`, so a guest gets them from the host; a table hosted by
+  an older copy sends neither and the room leaves them out. The table is measured again on the frame after it is
+  laid out (`DK.raf`). Scripts: the scratchpad's `big/p4/scenes-applestoapples.js` (3, 4 and 10 players in every
+  phase) with `snap.js`, `cmp.sh`, `resize.js`, `demo.js`.
+  **Mini Golf at a desk** (`dkShape`, `dkSet`, `dkFill` in minigolf.html; styles after the comment "The desk", every
+  rule under `html.mg-dk` with the stage's `mg-dkp`, set by `render()` only while a desk layout shows; a phone, the
+  iPad mini, the other iPads by touch and a wide window under 1000 across keep their own layouts). The paper
+  scorecard is the hero: `dkFill` gives its rows the height the window allows (`--dh`, 36 to 130px, no taller than
+  half again a hole's width), the strokes and totals sized to both (`--dfv`, `--dft`) and the names' column from the
+  card's width (`--dnw`); an 18-hole card where it makes every box larger stands as the front nine over the back
+  nine (`render`'s block choice at a desk). `mg-wide`: the card and the room under it at the left, the green with
+  its steppers the window's height at the right where the taps go (`--dgw`, 440 to 600px); `mg-tall`: the card, the
+  room, then the green with its rows sized to what is left (`--dph`). The room (`.mg-room`) holds the standings,
+  fewest strokes first, each with where it stands against par, holes in one and how far behind the leader, and this
+  course's best rounds over the same number of holes from past rounds (`GameHistory`); a room under 170px tall is
+  left out, and its lists give up whole rows. A resize draws the page again (the game's own resize handler).
+  Scripts: the scratchpad's `big/p4/scenes-minigolf.js` with `snap.js`, `cmp.sh`, `resize.js`, `demo.js`.
+  **Trivia at a desk** (the block "The desk" in trivia.html, before "The end": `dkWin`, `deskLay`, `dkRoom`,
+  `dkRows`, `dkStand`, `dkOff`; styles at the end of the page's style, every rule under `html.tr-dk`, set only while
+  a question is in play, in Countdown, Pass and play or Buzz in; the final screens and the setup leave it). The
+  studio stage takes the window (the stage's own layouts inside it: the question and its clock at the left, the
+  answers at the right in a wide stage), its question and its answers in larger type from the stage's size (`--dqf`,
+  `--dtf`: 1 to 1.7 times the tablet's); a mouse over an answer lights it. `tr-wide` (1100 wide and at least nearly
+  square): the room at the left (`--drw`), the score strip or the HUD over the stage at the right; `tr-tall`: the
+  room's panels side by side under the stage. The room (`.tr-room`) holds the questions so far, newest first, each
+  with its category, the question, the right answer, how it went (you got it, you picked another answer, who got it
+  in a group game, nobody got it) and the points it scored (Countdown from `VW.log`, the other ways from `S.log`),
+  and with more than one player the standings (online Countdown from `VW.ro` and `VW.sc`); whole rows only. Scripts:
+  the scratchpad's `big/p4/scenes-trivia.js` (saved Pass and play and Buzz in games, 1 to 6 players) with `snap.js`,
+  `cmp.sh`, `resize.js`, `demo.js`.
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
