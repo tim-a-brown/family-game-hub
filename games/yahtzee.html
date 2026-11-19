@@ -125,7 +125,8 @@ html.yw .ylay .sc .lbl small{display:none;}
 :root.yz-dk.yz-dk .ylay,:root.yz-dk.yz-dk .ycard{position:fixed;inset:0;display:block;z-index:1;pointer-events:none;}
 :root.yz-dk.yz-dk .ylay > *,:root.yz-dk.yz-dk .ycard > *{position:absolute;margin:0;box-sizing:border-box;pointer-events:auto;}
 :root.yz-dk.yz-dk .ylay .yleft{min-height:0;display:flex;flex-direction:column;justify-content:center;}
-:root.yz-dk.yz-dk .ycard .yleft{display:none;}
+:root.yz-dk.yz-dk .ycard .yleft{display:flex;flex-direction:column;justify-content:center;--dds:0px;}
+:root.yz-dk.yz-dk .ycard .yleft .turnline{justify-content:flex-start;margin:0;}
 :root.yz-dk.yz-dk .ylay .turnline{font-size:calc(1.35rem + var(--dds) * .06);margin:0 0 calc(var(--dds) * .12);}
 :root.yz-dk.yz-dk .ylay .tray{position:static;margin:0;padding:8px;}
 :root.yz-dk.yz-dk .ylay .tray .felt-in{min-height:0;height:var(--fh);padding:0 12px;display:flex;align-items:center;justify-content:center;}
@@ -1027,9 +1028,10 @@ html.yw .ylay .sc .lbl small{display:none;}
     L.pf = Math.round(Math.max(14, Math.min(24, 15 * Math.min(W / 1500, Hw / 1000))));
     function slot(x, y, w, h, kind) { if (w >= 280 && h >= 150) slots.push({ x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h), kind: kind }); }
     if (P0.comp === 'card') {
+      // real dice: the card, and over the room at its left whose card is being filled in
       var cw0 = P0.cw, left = AW - cw0 - G;
-      if (left >= 300) { L.card = [X0 + left + G, Y0, cw0, c.h]; slot(X0, Y0, left, AH, 'left'); }
-      else L.card = [X0 + (AW - cw0) / 2, Y0, cw0, c.h];
+      if (left >= 300) { L.card = [X0 + left + G, Y0, cw0, c.h]; L.tray = [X0, Y0, left, 56]; slot(X0, Y0 + 56 + G, left, AH - 56 - G, 'left'); }
+      else { L.card = [X0 + (AW - cw0) / 2, Y0, cw0, c.h]; }
       if (AH - c.h - G >= 150) slot(L.card[0], Y0 + c.h + G, cw0, AH - c.h - G, 'under');
     } else if (P0.comp === 'col') {
       var t = P0.t, R = P0.R, rx = X0 + P0.cw + G, tw = R > 1300 ? Math.max(t.w, 1300) : R, low = AH - t.h - G < 170;
@@ -1195,7 +1197,9 @@ html.yw .ylay .sc .lbl small{display:none;}
     var ths = [].slice.call(card.querySelectorAll('thead th:not(.lbl)')), thf = 1.15 * 16 * L.ys;
     for (var g2 = 0; g2 < 12 && thf > 10 && ths.some(function (t) { return t.scrollWidth > t.clientWidth + 1; }); g2++) { thf -= 1; card.style.setProperty('--thf', thf + 'px'); }
     var lc = wrap.querySelector('.yleft');
-    if (lc && L.tray) { box(lc, L.tray); lc.style.setProperty('--dds', L.ds + 'px'); lc.style.setProperty('--fh', L.fh + 'px'); lc.classList.toggle('k3', L.k === 3); }
+    if (lc && !L.tray) lc.style.display = 'none';
+    if (lc && L.tray && S.mode === 'card') box(lc, L.tray);
+    else if (lc && L.tray) { box(lc, L.tray); lc.style.setProperty('--dds', L.ds + 'px'); lc.style.setProperty('--fh', L.fh + 'px'); lc.classList.toggle('k3', L.k === 3); }
     // the panels: the race where a wide, low place is, then the turns so far, then the best scores
     var slots = L.slots.map(function (s) { return { x: s.x, y: s.y, w: s.w, h: s.h, kind: s.kind }; }), G = L.gp, put = [];
     var race = racePanel(), TURNS = {}, turns = S.players.some(function (q) { return q.log && q.log.length; }) ? TURNS : null, bestP = bestPanel();
