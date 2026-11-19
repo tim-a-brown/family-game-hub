@@ -736,6 +736,8 @@ html.pyl-big .pyls .pod .pb{font-size:calc(34px * var(--pu,1));}
 html.pyl-big .pyls .pod .ps{font-size:calc(14px * var(--pu,1));}
 html.pyl-big .pyls .pod .pw svg{width:calc(22px * var(--pu,1));height:calc(18px * var(--pu,1));}
 html.pyl-big .pyls.land .side{justify-content:center;gap:calc(28px * var(--pu,1));}
+html.pyl-big .pyls.land.rside .side{justify-content:flex-start;gap:calc(18px * var(--pu,1));}
+html.pyl-big .pyls.rside .side > .pyr{width:100%;flex:1 1 0;height:auto;min-height:0;}
 html.pyl-big .ctl{--dome:calc(150px * var(--pu,1));}
 html.pyl-big .hint{font-size:calc(17px * var(--pu,1));}
 html.pyl-big .passb span{font-size:calc(23px * var(--pu,1));} html.pyl-big .passb small{font-size:calc(14px * var(--pu,1));}
@@ -1098,26 +1100,33 @@ html.pyl-big .buzzers{--bz:calc(118px * var(--pu,1));}
     if (!DK.on) return; DK.on = false;
     document.documentElement.classList.remove('pyl-big');
     if (shell && shell.room) { shell.room.remove(); shell.room = null; }
+    if (shell) shell.stage.classList.remove('rside');
     if (shell) ['--rw', '--rh', '--pu'].forEach(function (k) { shell.stage.style.removeProperty(k); });
+    app.style.removeProperty('--dg');
   }
   function fit() {
     if (!shell) return;
-    if (deskWanted()) { if (deskFit()) return; } else deskOff();
+    if (deskWanted() && deskFit()) return;
+    deskOff();
     fit0();
   }
   function deskFit() {
     var top = shell.stage.getBoundingClientRect().top, H = window.innerHeight - top - 16, Wf = window.innerWidth;
-    var g = Math.round(Math.max(12, Math.min(24, Wf / 110))), W = Wf - 2 * g;
+    var g = Math.round(Math.max(12, Math.min(24, Wf / 110))); app.style.setProperty('--dg', g + 'px');
+    var W = Wf - 2 * g;
     var pu = Math.round(Math.max(1, Math.min(1.45, Math.min(Wf / 1500, H / 900))) * 100) / 100;
-    var land = W > H * 1.05, bw, bh, sw = 0, rw = 0, rh = 0;
+    var land = W > H * 1.05, bw, bh, sw = 0, rw = 0, rh = 0, side = false;
     if (land) {
       sw = Math.round(Math.max(320, Math.min(480, W * 0.2)));
       rw = Math.round(Math.max(300, Math.min(500, W * 0.18)));
       bw = W - sw - rw - 2 * g; bh = H;
       if (bw < 560) { rw = 0; bw = W - sw - g; }
-      if (bh > bw * 0.95) bh = bw * 0.95;
+      if (bh > bw * 1.15) bh = bw * 1.15;   // (the squares may stand a little taller than wide, so the board takes the height)
       if (bh < bw * 0.7) bw = bh / 0.7;
       rh = bh;
+      // (a nearly square window: the board takes the room's width too, and the room stands under SPIN at the right)
+      var bw2 = W - sw - g, bh2 = Math.min(H, bw2 * 1.15), sideH = Math.round(620 * pu);
+      if (rw && bh2 > bh * 1.12 && bh2 - sideH >= 260) { rw = 0; bw = bw2; bh = bh2; if (bh < bw * 0.7) bw = bh / 0.7; side = true; rh = Math.floor(bh - sideH); }
     } else {
       bw = W; var reserve = Math.round(372 * Math.min(pu, 1.2));
       bh = Math.min(H - reserve, bw * 1.1);
@@ -1132,11 +1141,13 @@ html.pyl-big .buzzers{--bz:calc(118px * var(--pu,1));}
     var r = shell.stage.style;
     r.setProperty('--bw', bw + 'px'); r.setProperty('--bh', bh + 'px'); r.setProperty('--sw', sw + 'px');
     r.setProperty('--pad', pad + 'px'); r.setProperty('--gap', gap + 'px'); r.setProperty('--pu', pu);
-    r.setProperty('--rw', (land ? rw : bw) + 'px'); r.setProperty('--rh', rh + 'px'); r.setProperty('--dg', g + 'px');
+    r.setProperty('--rw', (side ? sw : land ? rw : bw) + 'px'); r.setProperty('--rh', rh + 'px'); r.setProperty('--dg', g + 'px');
     shell.stage.classList.toggle('land', land); shell.stage.classList.remove('short');
-    if (rw || (!land && rh)) {
+    shell.stage.classList.toggle('rside', side);
+    if (rw || side || (!land && rh)) {
       if (!shell.room) shell.room = el('aside', { class: 'pyr', 'aria-label': 'The show so far' });
-      if (land) { if (shell.stage.firstChild !== shell.room) shell.stage.insertBefore(shell.room, shell.stage.firstChild); }
+      if (side) { if (shell.room.parentNode !== shell.ctl.parentNode) shell.ctl.parentNode.appendChild(shell.room); }
+      else if (land) { if (shell.stage.firstChild !== shell.room) shell.stage.insertBefore(shell.room, shell.stage.firstChild); }
       else if (shell.room.parentNode !== shell.stage || shell.stage.lastChild !== shell.room) shell.stage.appendChild(shell.room);
       paintRoom();
     } else if (shell.room) { shell.room.remove(); shell.room = null; }

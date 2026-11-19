@@ -977,7 +977,9 @@ html.wf-big .wfi{font-size:calc(16px * var(--ks,1));display:flex;flex-direction:
   function layoutStage() {
     if (!shell) return;
     if (deskLayout()) return;
-    var desk = mq.matches && !mqShort.matches, short = mqShort.matches;
+    // (a low window wider than tall that no phone or tablet has, where no desk fits: a phone's sideways layout)
+    var sh2 = !mqShort.matches && DK.low;
+    var desk = mq.matches && !mqShort.matches && !sh2, short = mqShort.matches || sh2;
     shell.show.classList.toggle('desk', desk);
     shell.show.classList.toggle('short', short); app.classList.toggle('short', short);
     if (desk) { if (shell.boardcam.parentNode !== shell.bwrap) shell.bwrap.appendChild(shell.boardcam); }
@@ -1102,6 +1104,7 @@ html.wf-big .wfi{font-size:calc(16px * var(--ks,1));display:flex;flex-direction:
   }
   function deskLayout() {
     var want = deskWanted();
+    DK.low = false;
     if (!want) { if (deskOff()) { /* the device layout takes over */ } return false; }
     var W = window.innerWidth, H = window.innerHeight;
     var ks = Math.round(clamp(Math.min(W / 1500, H / 960), 1, 1.4) * 100) / 100;
@@ -1117,7 +1120,7 @@ html.wf-big .wfi{font-size:calc(16px * var(--ks,1));display:flex;flex-direction:
     var top = Math.round(app.getBoundingClientRect().top + (window.scrollY || 0)), MH = H - top - Math.round(clamp(H / 80, 10, 20));
     var P = deskPlan(W, MH, ks, m);
     window.__wofDesk = { m: m, MH: MH, ks: ks, P: P };
-    if (!P) { DK.kind = DK.kind || 'x'; deskOff(); s.classList.remove('desk', 'big'); if (shell.info) shell.info.remove(); return false; }
+    if (!P) { DK.kind = DK.kind || 'x'; deskOff(); s.classList.remove('desk', 'big'); if (shell.info) shell.info.remove(); DK.low = W > H * 1.2 && H <= 760; return false; }
     var kind = P.k + (P.IW ? 'i' : '') + (P.infoB ? 'b' : '') + (P.infoK ? 'k' : '');
     function apply() {
       var g = P.g, st = s.style, cols, rows, areas;
