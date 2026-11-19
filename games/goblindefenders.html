@@ -407,6 +407,20 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
   function enemyKey(e) {
     var d = e.dir === 'l' ? 'r' : e.dir; return e.type + '_' + d + (Math.floor(e.phase * 8) % 8);
   }
+  // A window larger than any phone or tablet (Tim's laptop and up) is many millions of pixels, and two pictures the
+  // size of the whole canvas were laid down every frame: the map, stretched 4 px past the edges (so a shake shows no
+  // edge) and so resampled pixel by pixel, and the wooden frame, mostly empty in the middle. There the map is laid down
+  // at its own pixels, a whole pixel off when the field shakes (the frame covers the edge), and the frame, everywhere,
+  // only along the four bands where it has anything to show (the same pixels: they are copied one for one).
+  function bigWin() { return Math.max(innerWidth, innerHeight) > 1366 || Math.min(innerWidth, innerHeight) > 1024; }
+  function drawFrame() {
+    var fw = frame.width, fh = frame.height, b = Math.ceil(L.T * 4.2 * dpr);
+    if (fw !== L.W * dpr || fh !== L.H * dpr || 2 * b >= Math.min(fw, fh)) { g.drawImage(frame, 0, 0, L.W, L.H); return; }
+    g.save(); g.setTransform(1, 0, 0, 1, 0, 0);
+    g.drawImage(frame, 0, 0, fw, b, 0, 0, fw, b); g.drawImage(frame, 0, fh - b, fw, b, 0, fh - b, fw, b);
+    g.drawImage(frame, 0, b, b, fh - 2 * b, 0, b, b, fh - 2 * b); g.drawImage(frame, fw - b, b, b, fh - 2 * b, fw - b, b, b, fh - 2 * b);
+    g.restore();
+  }
   function draw() {
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     if (screen === 'map') { drawWorld(); g.drawImage(frame, 0, 0, L.W, L.H); return; }
@@ -414,7 +428,8 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
     if (!bg) bg = mapPicture() || A.paintMap(mapDef, S, L, dpr);
     var sx = shake ? (Math.random() - .5) * shake : 0, sy = shake ? (Math.random() - .5) * shake : 0;
     g.save(); g.translate(sx, sy);
-    g.drawImage(bg, -2, -2, L.W + 4, L.H + 4);
+    if (bigWin()) { g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(bg, Math.round(sx * dpr), Math.round(sy * dpr)); g.restore(); }   // (bigWin, below)
+    else g.drawImage(bg, -2, -2, L.W + 4, L.H + 4);
     var Cs = L.C;
     // scorch marks and acid on the ground
     parts.forEach(function (p) { if (p.kind !== 'scorch') return; var a = 1 - p.t / p.life; g.fillStyle = 'rgba(30,18,8,' + (.35 * a) + ')'; g.beginPath(); g.ellipse(X(p.x), Y(p.y), p.size * Cs, p.size * Cs * .55, 0, 0, 7); g.fill(); });
@@ -464,7 +479,7 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
     if (leakT > 0) { var vg = g.createRadialGradient(L.W / 2, L.H / 2, L.H * .3, L.W / 2, L.H / 2, L.W * .7); vg.addColorStop(0, 'rgba(255,0,0,0)'); vg.addColorStop(1, 'rgba(255,0,0,' + leakT * .45 + ')'); g.fillStyle = vg; g.fillRect(0, 0, L.W, L.H); }
     drawHud();
     drawFlyers();
-    g.drawImage(frame, 0, 0, L.W, L.H);
+    drawFrame();
     drawCorners();
     if (paused || welcome) drawPaused();
     if (ending) drawEnding();

@@ -667,13 +667,16 @@ html.wf-big .wfi{font-size:calc(16px * var(--ks,1));display:flex;flex-direction:
       if (!g) return;
       now = now || performance.now();
       g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, C, C);
-      var cx = C / 2, cy = C / 2 + C * 0.03, i;
+      var cx = C / 2, cy = C / 2 + C * 0.03, i, pc = statics();
+      if (pc) { g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(pc.under, 0, 0); g.setTransform(dpr, 0, 0, dpr, 0, 0); }
+      else {
       var fl = g.createRadialGradient(cx, cy + R * 0.1, R * 0.8, cx, cy + R * 0.1, R * 1.3);
       fl.addColorStop(0, 'rgba(0,0,0,.55)'); fl.addColorStop(1, 'rgba(0,0,0,0)');
       g.fillStyle = fl; g.beginPath(); g.arc(cx, cy + R * 0.1, R * 1.3, 0, Math.PI * 2); g.fill();
       var ring = g.createRadialGradient(cx, cy, R * 0.98, cx, cy, R * 1.14);
       ring.addColorStop(0, '#0a0c2c'); ring.addColorStop(0.5, '#262a72'); ring.addColorStop(1, '#0b0d33');
       g.beginPath(); g.arc(cx, cy, R * 1.13, 0, Math.PI * 2); g.fillStyle = ring; g.fill();
+      }
       var nb = 40, mode = power !== null ? 'power' : spinning ? 'chase' : glow >= 0 && now - glowT0 < 2600 ? 'flash' : 'idle', step = Math.floor(now / (spinning ? 70 : 520));
       var full = power !== null && power >= 1, blink = Math.floor(now / 140) % 2 === 0;
       for (i = 0; i < nb; i++) {
@@ -698,10 +701,40 @@ html.wf-big .wfi{font-size:calc(16px * var(--ks,1));display:flex;flex-direction:
         g.fillStyle = 'rgba(255,255,255,' + (age < 2600 ? 0.1 + 0.22 * pulse : 0.1) + ')'; g.fill();
         g.lineWidth = Math.max(2, R * 0.022); g.strokeStyle = 'rgba(255,236,150,.95)'; g.stroke(); g.restore();
       }
+      if (pc) { g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(pc.over, pc.ox, pc.oy); g.setTransform(dpr, 0, 0, dpr, 0, 0); }
+      else {
       var gl = g.createRadialGradient(cx - R * 0.4, cy - R * 0.5, R * 0.05, cx - R * 0.2, cy - R * 0.3, R * 1.1);
       gl.addColorStop(0, 'rgba(255,255,255,.16)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
       g.fillStyle = gl; g.beginPath(); g.arc(cx, cy, R * 0.97, 0, Math.PI * 2); g.fill();
+      }
       drawFlapper(cx, cy - R * WP.HP);
+    }
+    // At a desk the wheel is millions of pixels, and three gradients over the whole of it (the shadow it casts, the
+    // marquee's ring and the gloss) were painted afresh every frame of a spin. None of them turns, so there they are
+    // painted once for each size, the shadow and ring on a picture under the wheel and the gloss on one over it, each at
+    // the canvas's own pixels, and laid down as two copies. (A phone and a tablet paint them as they always did.)
+    var stc = null;
+    function statics() {
+      if (!document.documentElement.classList.contains('wf-big')) return null;
+      var key = [C, dpr, R].join();
+      if (stc && stc.key === key) return stc;
+      var cx = C / 2, cy = C / 2 + C * 0.03, px = Math.round(C * dpr);
+      var u = document.createElement('canvas'); u.width = u.height = px;
+      var x = u.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0);
+      var fl = x.createRadialGradient(cx, cy + R * 0.1, R * 0.8, cx, cy + R * 0.1, R * 1.3);
+      fl.addColorStop(0, 'rgba(0,0,0,.55)'); fl.addColorStop(1, 'rgba(0,0,0,0)');
+      x.fillStyle = fl; x.beginPath(); x.arc(cx, cy + R * 0.1, R * 1.3, 0, Math.PI * 2); x.fill();
+      var ring = x.createRadialGradient(cx, cy, R * 0.98, cx, cy, R * 1.14);
+      ring.addColorStop(0, '#0a0c2c'); ring.addColorStop(0.5, '#262a72'); ring.addColorStop(1, '#0b0d33');
+      x.beginPath(); x.arc(cx, cy, R * 1.13, 0, Math.PI * 2); x.fillStyle = ring; x.fill();
+      // the gloss only where it lies: the box round its disc, from a pixel the gradient's dither repeats on (8)
+      var ox = Math.max(0, Math.floor((cx - R) * dpr / 8) * 8), oy = Math.max(0, Math.floor((cy - R) * dpr / 8) * 8), ow = Math.min(px, Math.ceil((cx + R) * dpr)) - ox, oh = Math.min(px, Math.ceil((cy + R) * dpr)) - oy;
+      var o = document.createElement('canvas'); o.width = ow; o.height = oh;
+      var y = o.getContext('2d'); y.setTransform(dpr, 0, 0, dpr, -ox, -oy);
+      var gl = y.createRadialGradient(cx - R * 0.4, cy - R * 0.5, R * 0.05, cx - R * 0.2, cy - R * 0.3, R * 1.1);
+      gl.addColorStop(0, 'rgba(255,255,255,.16)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
+      y.fillStyle = gl; y.beginPath(); y.arc(cx, cy, R * 0.97, 0, Math.PI * 2); y.fill();
+      return (stc = { key: key, under: u, over: o, ox: ox, oy: oy });
     }
     // The flapper bends like rubber: the root stays nearly upright and the tip carries the deflection
     function flapperPath(o, L, b) {
