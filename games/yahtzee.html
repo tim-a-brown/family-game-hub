@@ -1009,6 +1009,8 @@ html.yw .ylay .sc .lbl small{display:none;}
       var a = fit(5), b = fit(3), k = a >= b * .92 ? 5 : 3, ds = k === 5 ? a : b;
       return { ds: ds, k: k, fh: feltH(ds, k), w: Math.round(ds * (k === 5 ? 6.2 : 3.6) + 48), h: feltH(ds, k) + 136 };
     }
+    // (a game with nothing for the room yet, no turns scored and no history on this device, gives the room to the tray)
+    var roomy = S.players.some(function (q) { return q.log && q.log.length; }) || pastGames().length > 0;
     var best = null;
     function consider(p) { if (!best || p.score > best.score) best = p; }
     [false, true].forEach(function (sp) {
@@ -1017,7 +1019,7 @@ html.yw .ylay .sc .lbl small{display:none;}
       var c = card(noTray ? AH - 62 : AH, sp, noTray ? AW : AW - 400), ok = c.rh >= 23 && c.min <= AW;
       if (noTray) { if (ok) consider({ comp: 'card', c: c, cw: Math.min(AW, c.ideal), score: Math.min(c.rh, 56) / 56 - (sp ? .05 : 0) }); return; }
       var cw = Math.max(c.min, Math.min(c.ideal, AW - G - 420)), R = AW - cw - G, t = { ds: 0 };
-      if (ok && R >= 150) { t = tray(R, AH * .62); if (AH - t.h - G < 170) t = tray(R, AH); }
+      if (ok && R >= 150) { t = tray(R, roomy ? AH * .62 : AH); if (AH - t.h - G < 170) t = tray(R, AH); }
       if (t.ds >= 44) consider({ comp: 'col', c: c, cw: cw, t: t, R: R, score: Math.min(c.rh, 56) / 56 + 1.2 * Math.min(t.ds, 120) / 120 - (sp ? .05 : 0) });
       // the tray across the top, the card under it
       var t2 = tray(AW, AH * .4), c2 = card(AH - t2.h - G, sp, AW);
@@ -1034,7 +1036,7 @@ html.yw .ylay .sc .lbl small{display:none;}
       else { L.card = [X0 + (AW - cw0) / 2, Y0 + 62, cw0, c.h]; L.tray = [L.card[0], Y0, cw0, 56]; }
       if (AH - 62 - c.h - G >= 150) slot(L.card[0], Y0 + 62 + c.h + G, cw0, AH - 62 - c.h - G, 'under');
     } else if (P0.comp === 'col') {
-      var t = P0.t, R = P0.R, rx = X0 + P0.cw + G, tw = R > 1300 ? Math.max(t.w, 1300) : R, low = AH - t.h - G < 170;
+      var t = P0.t, R = P0.R, rx = X0 + P0.cw + G, tw = R > 1300 && roomy ? Math.max(t.w, 1300) : R, low = AH - t.h - G < 170 || !roomy;
       L.card = [X0, Y0, P0.cw, c.h];
       L.tray = [rx + R - tw, Y0, tw, low ? AH : t.h];
       if (R - tw - G >= 280) slot(rx, Y0, R - tw - G, low ? AH : t.h, 'beside');
