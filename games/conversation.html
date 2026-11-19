@@ -158,6 +158,58 @@
   .ccard .q{padding:8px 16px;}
   .ccard .foot{padding:0 14px 9px;}
 }
+
+/* ── The desk: a large window (deskPlan; html.cv-dk only while it shows). The card takes the table's whole height,
+   with no cap left over from the tablet, and its question grows with it to a comfortable largest size; the piles stand
+   in the column at the right over the buttons, as on an iPad on its side; the room at the left holds the cards talked
+   about so far, newest first, with each one's pile and its star. 'wide' with the room (1300 wide or more, once a card
+   has been talked about); 'solo' without it; 'tall' (an upright window) the tablet's column with a larger card. ── */
+html.cv-dk body{overflow:hidden;}
+html.cv-dk{--side:clamp(260px,20vw,380px);}
+html.cv-dk .stage.dk:not(.r-tall):has(> .table){--side:clamp(260px,20vw,380px);max-width:none;margin:0;padding-right:calc(var(--side) + 44px);padding-left:22px;padding-bottom:18px;}
+html.cv-dk .stage.dk.r-wide:has(> .table){padding-left:calc(var(--rw) + 44px);}
+html.cv-dk .stage.dk:not(.r-tall) .deckwrap{--dh:calc(var(--vvh,100dvh) - var(--bar) - var(--safe-b) - 106px);height:var(--dh);width:min(100%,calc(var(--dh) * 1.55));}
+html.cv-dk .stage.dk.short .deckwrap{--dh:calc(var(--vvh,100dvh) - var(--bar) - var(--safe-b) - 156px);}
+html.cv-dk .stage.dk:not(.r-tall) .table .felt-in{padding:16px 20px;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"tl tl" "deck who" "deck timer";column-gap:18px;row-gap:8px;align-items:center;justify-items:center;}
+html.cv-dk .stage.dk:not(.r-tall) .tl{grid-area:tl;margin-bottom:0;max-width:none;justify-content:center;gap:28px;}
+html.cv-dk .stage.dk:not(.r-tall) .deckwrap{grid-area:deck;}
+html.cv-dk .stage.dk:not(.r-tall) .who{grid-area:who;max-width:230px;margin-top:0;}
+html.cv-dk .stage.dk:not(.r-tall) .felt-in > .timer{grid-area:timer;}
+html.cv-dk .stage.dk .ccard .q{font-size:clamp(1.4rem,min(calc(var(--dh,500px) * .068),calc(var(--cw,600px) * .052)),3.6rem);padding:calc(18px * var(--u)) calc(34px * var(--u));line-height:1.18;}
+html.cv-dk .stage.dk .ccard .band{font-size:calc(.86rem * min(var(--u),1.35));padding:calc(16px * var(--u)) calc(20px * var(--u)) calc(14px * var(--u));}
+html.cv-dk .stage.dk .ccard .band .ico{width:calc(18px * min(var(--u),1.35));height:calc(18px * min(var(--u),1.35));}
+html.cv-dk .stage.dk .ccard .foot{font-size:calc(.78rem * min(var(--u),1.35));padding:0 calc(18px * var(--u)) calc(16px * var(--u));}
+html.cv-dk .stage.dk .ccard .depth i{width:calc(9px * min(var(--u),1.35));height:calc(9px * min(var(--u),1.35));}
+html.cv-dk .stage.dk .ccard .back b{font-size:calc(2.1rem * var(--u));}
+html.cv-dk .stage.dk .tl{font-size:calc(.9rem * min(var(--u),1.3));}
+/* the piles and the buttons in the column at the right */
+html.cv-dk .stage.dk:not(.r-tall) .cats{position:fixed;z-index:30;top:calc(var(--bar) + 4px);right:22px;width:var(--side);margin:0;padding:0;
+  flex-wrap:wrap;align-content:flex-start;overflow:visible;max-height:calc(var(--vvh,100dvh) - var(--bar) - 210px);overflow-y:auto;}
+html.cv-dk .stage.dk:not(.r-tall) .cats .chip{flex:1 1 auto;justify-content:flex-start;min-height:44px;}
+html.cv-dk:has(.stage.dk:not(.r-tall)) .dock{left:auto;right:0;top:var(--bar);width:calc(var(--side,320px) + 22px);padding:8px 22px 18px 0;background:none;display:flex;align-items:flex-end;pointer-events:none;}
+html.cv-dk:has(.stage.dk:not(.r-tall)) .dock-in{flex-wrap:wrap;width:100%;max-width:none;pointer-events:auto;}
+html.cv-dk:has(.stage.dk:not(.r-tall)) .dock .draw{order:-1;flex:1 1 100%;min-height:clamp(60px,14dvh,96px);font-size:1.15rem;}
+html.cv-dk:has(.stage.dk:not(.r-tall)) .dock .sq{flex:1 1 0;width:auto;}
+/* an upright window: the tablet's column, the card and its question larger */
+html.cv-dk .stage.dk.r-tall{max-width:min(100%,calc(700px * var(--u)));}
+html.cv-dk .stage.dk.r-tall .deckwrap{width:min(100%,calc(440px * var(--u)));--dh:clamp(300px,calc(var(--vvh,100dvh) - 560px - var(--tx,0px)),calc(560px * var(--u)));height:var(--dh);}
+html.cv-dk .stage.dk.r-tall .tl{max-width:calc(440px * var(--u));}
+html.cv-dk .stage.dk.r-tall .cats{flex-wrap:wrap;justify-content:center;overflow:visible;margin:0 0 10px;padding:0;}
+/* the room */
+.dk-room{position:fixed;z-index:20;left:22px;top:calc(var(--bar) + 4px);bottom:18px;width:var(--rw);display:flex;flex-direction:column;font-size:calc(1rem * var(--dku,1));}
+.dk-pn{min-height:0;display:flex;flex-direction:column;border-radius:20px;padding:14px 16px 12px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}
+.dk-pn h4{font-size:1.05em;font-weight:800;color:var(--text);margin:0 0 10px;}
+.dk-talk{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:8px;}
+.dk-tk{position:relative;display:flex;flex-direction:column;gap:3px;padding:9px 12px 10px 16px;border-radius:13px;background:rgba(255,255,255,.04);}
+.dk-tk::before{content:"";position:absolute;left:6px;top:10px;bottom:10px;width:4px;border-radius:2px;background:var(--cc);}
+.dk-tk .k{display:flex;align-items:center;gap:6px;font-size:.8em;font-weight:750;color:var(--text-3);}
+.dk-tk .k .ico{width:14px;height:14px;color:var(--cc);}
+.dk-tk .k .st{margin-left:auto;color:#ffd54a;}
+.dk-tk .k .st .ico{color:#ffd54a;fill:currentColor;}
+.dk-tk .t{font-weight:650;font-size:.95em;line-height:1.3;color:var(--text);}
+.dk-tk.now{background:color-mix(in srgb,var(--cc) 14%,rgba(255,255,255,.04));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--cc) 45%,transparent);}
+.dk-room.tall .dk-talk{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));align-content:start;}
+.dk-more{font-size:.85em;font-weight:700;color:var(--text-3);padding:2px 4px;}
 </style>
 </head>
 <body>
@@ -606,7 +658,7 @@
 
   // ── Setup ─────────────────────────────────────────────────────────────────
   function showSetup() {
-    S = null; stopTimer(); dock.remove();
+    S = null; stopTimer(); dock.remove(); if (DK) deskOff();
     Kit.setup(app, {
       intro: ALL.length + ' questions that get everyone talking.',
       // (no names: the talking happens round the table, nothing is kept per person)
@@ -698,6 +750,7 @@
     if (p) { var wb = whoBox(anim.spin); if (wb.children.length) felt.appendChild(wb); }
     app.appendChild(table);
     renderDock();
+    deskLay();
   }
 
   function buildBack() {
@@ -903,11 +956,87 @@
         againLabel: 'Keep talking', again: function () { start(again); },
         setup: showSetup, setupLabel: 'Change settings'
       });
-      S = null; dock.remove();
+      S = null; dock.remove(); if (DK) deskOff();
     };
     if (thenSetup) { go(); return; }
     Kit.confirm('Finish this talk?', { ok: 'Finish and save', body: S.drawn.length + ' cards will be saved in Past talks.' }).then(function (ok) { if (ok) go(); });
   }
+
+  // ── The desk: a large window ──────────────────────────────────────────────
+  // A window no phone or tablet has (Three Card Poker's test: an iPad's band only with a mouse, never at the iPad
+  // mini's own shape). Phones and tablets never get here: deskLay adds nothing unless deskPlan says so.
+  function deskWin(w, h) {
+    var lo = Math.min(w, h), hi = Math.max(w, h), pad = lo >= 620 && lo <= 840 && hi >= 900 && hi <= 1200;
+    var fine = !!(window.matchMedia && matchMedia('(pointer: fine)').matches);
+    return (w > 480 || h > 1000) && w >= 340 && h > 540 && !((lo <= 480 && hi <= 1000) || (pad && (!fine || (lo <= 790 && hi <= 1060))));
+  }
+  var DK = null;
+  function deskPlan() {
+    var w = innerWidth, h = innerHeight;
+    if (!S || !deskWin(w, h)) return null;
+    if (w < h) return w >= 700 ? 'tall' : null;
+    if (w < 900) return null;
+    return w >= 1300 && S.drawn.length ? 'wide' : 'solo';
+  }
+  function deskOff() {
+    DK = null; document.documentElement.classList.remove('cv-dk');
+    app.className = 'stage'; app.removeAttribute('style');
+    var r = document.querySelector('body > .dk-room'); if (r) r.remove();
+  }
+  function deskLay() {
+    var plan = deskPlan(), old = document.querySelector('body > .dk-room');
+    if (old) old.remove();
+    if (!plan || !app.querySelector(':scope > .table')) { if (DK) deskOff(); return; }
+    DK = plan;
+    var W = innerWidth, H = innerHeight;
+    document.documentElement.classList.add('cv-dk');
+    app.className = 'stage dk r-' + plan + (H < 760 ? ' short' : '');
+    app.style.setProperty('--u', String(plan === 'tall' ? Math.max(1, Math.min(1.5, W / 700, H / 1100)).toFixed(3) : Math.max(1, Math.min(1.6, W / 1400, H / 900)).toFixed(3)));
+    app.style.setProperty('--dku', String(Math.max(1, Math.min(1.35, W / 1700, H / 1100)).toFixed(3)));
+    app.style.setProperty('--rw', Math.round(Math.max(300, Math.min(480, W * .2))) + 'px');
+    var wrap = app.querySelector('.deckwrap'); if (wrap) app.style.setProperty('--cw', Math.round(wrap.getBoundingClientRect().width) + 'px');
+    if (plan === 'solo' || !S.drawn.length) return;
+    var D = S.drawn, list = el('div', { class: 'dk-talk' }), f = favs();
+    for (var k = D.length - 1; k >= 0; k--) {
+      var p = BYID[D[k].id]; if (!p) continue;
+      var c = CAT[p.c] || { name: '', color: '#888', icon: 'cards' }, star = f.indexOf(p.q) >= 0;
+      var row = el('div', { class: 'dk-tk' + (D[k].id === S.cur && k === D.length - 1 ? ' now' : ''), style: { '--cc': c.color } }, [
+        el('div', { class: 'k', html: catIcon(c) + '<span>' + esc(c.name) + '</span>' + (star ? '<span class="st">' + Kit.icon('star') + '</span>' : '') }),
+        el('div', { class: 't', text: p.q })
+      ]);
+      list.appendChild(row);
+    }
+    var room = el('aside', { class: 'dk-room', style: { '--rw': app.style.getPropertyValue('--rw'), '--dku': app.style.getPropertyValue('--dku') } }, [
+      el('section', { class: 'dk-pn', style: { flex: '0 1 auto', minHeight: '0' } }, [el('h4', { text: D.length === 1 ? 'The card talked about so far' : 'The ' + D.length + ' cards talked about so far' }), list])]);
+    document.body.appendChild(room);
+    if (plan === 'tall') {   // (an upright window: the cards so far fill the room between the table and the buttons)
+      var tb = app.querySelector(':scope > .table').getBoundingClientRect(), sr = app.getBoundingClientRect();
+      var dh = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dock-h')) || 90;
+      var top = tb.bottom + 16, room0 = innerHeight - dh - 10 - top;
+      if (room0 < 150) { room.remove(); return; }
+      room.classList.add('tall');
+      room.style.top = Math.round(top) + 'px'; room.style.bottom = Math.round(dh + 10) + 'px';
+      room.style.left = Math.round(sr.left + 16) + 'px'; room.style.width = Math.round(sr.width - 32) + 'px';
+    }
+    var gone = 0, more = null;
+    while (list.children.length > 1 && list.scrollHeight > list.clientHeight + 1) {
+      if (more) more.remove();
+      list.lastElementChild.remove(); gone++;
+      more = el('div', { class: 'dk-more', text: gone === 1 ? 'One earlier card is saved with this talk.' : gone + ' earlier cards are saved with this talk.' });
+      list.appendChild(more);
+    }
+  }
+  var dkRaf = 0;
+  window.addEventListener('resize', function () {
+    if (dkRaf) return;
+    dkRaf = requestAnimationFrame(function () {
+      dkRaf = 0;
+      if (!S || !app.querySelector(':scope > .table')) return;
+      var plan = deskPlan();
+      if (!plan && !DK) return;
+      if (plan !== DK) Kit.glide(deskLay); else deskLay();
+    });
+  });
 
   function histExtra(e) {
     if (!e || !Array.isArray(e.cards) || !e.cards.length) return null;
