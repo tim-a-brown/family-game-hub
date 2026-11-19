@@ -574,6 +574,31 @@ Underlying principles for everything:
   spins, then the session, keeps only whole spins, and hides the room where nothing fits. After the camera is placed,
   `deskDeck` measures the deck and its buttons as they land on the screen (the deck stands out toward the camera, so it
   lands lower than the plan's heights say) and moves the machine up, then smaller, until the whole deck is in view.
+  **The home screen at a desk** (`html.hdk`, the blocks marked `==DESK==` in index.html: `deskHome`, `deskLay`,
+  `deskKp`, and the styles at the end of the page's stylesheet). `deskHome` is the kit's test for a desk (480 wide
+  and over 520 tall at least, and over 1024 the long way or over 768 the short way), so a phone and a tablet never
+  get the class and their pages are unchanged; it is set before anything is drawn and again on every resize. The
+  page takes the window's width (the 1240px column is gone, the sides padded by `--dk-pad`, 24 to 64px). A tile is
+  sized from the window, about a twelfth of its width or a ninth of its height, 124 to 216px, and the columns are
+  widened a hair so they end exactly at the page's edge (`--dk-tw`, `--dk-cols`, `--dk-g`); the tile's name, its
+  player count, its star and its corners step up with it (`--dk-f`, `--dk-r`), and its art, stamp and baked glow are
+  already in the tile's own units, so `build-tile-glow.js` needs no new run. The sections lie in one grid of those
+  columns (`deskLay`, `--sp` on each section): each takes as many columns as its games need, at least what its
+  heading needs (measured all at once), and stands beside the one before when it fits in the rest of the row; a
+  longer one wraps into the rest of a row when that is at least half its width, so Favorites' four tiles and Classic
+  Cards share a row instead of leaving one of air; the Consoles always take the whole width. Keep playing lays every
+  game in progress out at once, wrapping instead of sliding (no arrow): cards a step larger than a tile while they
+  fit in a row, then down toward a tile's size so they share whole rows evenly (`deskKp`, `--dk-kc`, `--dk-kw`,
+  `--dk-kf`); the online games fill the row's width in columns of 380px or more. From 1800 wide the search, Players
+  and the kinds of games, Daily puzzles, the open tables' banner and Surprise stand in one bar. List view keeps its
+  sections one under another, its rows in columns from 256px times `--dk-f`. A resize lays it all out again in a
+  frame and keeps the section you were looking at where it was on the screen. The game sheet stays the kit's 560px
+  sheet (chrome keeps its size); its framed setup is the tablet's. The scratchpad's `big/home/` has the scripts:
+  `lib.js` (the page seeded: games in progress, favorites, online games and friends' tables through `__homeSeed`, a
+  fixed clock), `look.js` (any window, tile or list view, with or without Keep playing, the sheet open: a picture
+  and a scan), `proof.js` (the devices against ad89101, pixel by pixel; `BB=1` is base against base), `resize.js`
+  (sixteen windows on one page, the sheet open through three), `perf.js` (layers, scroll frames at 4x, a sync
+  redraw), `n320.js`.
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
