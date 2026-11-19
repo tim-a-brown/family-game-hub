@@ -70,6 +70,9 @@
   // is up, so it goes straight into the game.
   var IN_SHEET = EDIT_DEFAULTS && /[?&]sheet=1(&|$)/.test(location.search);
   if (IN_SHEET) root.classList.add('k-insheet');
+  // a drag in the frame that nothing in it can scroll goes to the home screen's sheet, which hears none of the
+  // frame's touches: past the sheet's ends it is stopped here, so the sheet never springs (trapScroll's outer)
+  if (IN_SHEET) trapScroll(root, true);
   var GO = null;
   try { GO = JSON.parse(sessionStorage.getItem('kit_go') || 'null'); sessionStorage.removeItem('kit_go'); } catch (e) {}
   if (GO && (IN_SHEET || EDIT_DEFAULTS || GO.page !== location.pathname.replace(/^.*\//, '').replace(/\.html$/, '') || !(Date.now() - GO.t < 30000))) GO = null;
@@ -803,13 +806,20 @@
   // While a sheet is up the page behind stays still: a drag (or wheel) moves only something in the sheet that can
   // scroll that way, and stops at its ends instead of carrying on into the page. Sliders and typing fields are left
   // to themselves; sideways rows (chips) still scroll sideways.
-  function trapScroll(scrim) {
+  // outer: the frame of the home screen's game sheet (IN_SHEET), where scrim is the frame's own page: a drag that
+  // nothing in the frame can take is handed by the browser to the sheet round the frame, whose touches the home
+  // screen never hears, so the frame decides for it and stops a drag past the sheet's ends too.
+  function trapScroll(scrim, outer) {
     var x0 = 0, y0 = 0, axis = null;
+    function scrolls(n, dir) {
+      var cs = n.ownerDocument.defaultView.getComputedStyle(n), ov = dir === 'x' ? cs.overflowX : cs.overflowY;
+      return (ov === 'auto' || ov === 'scroll') && (dir === 'x' ? n.scrollWidth > n.clientWidth + 1 : n.scrollHeight > n.clientHeight + 1);
+    }
     function scroller(t, dir) {
-      for (var n = t; n && n !== scrim; n = n.parentElement) {
-        var cs = getComputedStyle(n), ov = dir === 'x' ? cs.overflowX : cs.overflowY;
-        if ((ov === 'auto' || ov === 'scroll') && (dir === 'x' ? n.scrollWidth > n.clientWidth + 1 : n.scrollHeight > n.clientHeight + 1)) return n;
-      }
+      for (var n = t; n && n !== scrim; n = n.parentElement) if (scrolls(n, dir)) return n;
+      if (!outer) return null;
+      var fe = null; try { fe = window.frameElement; } catch (e) {}
+      for (n = fe && fe.parentElement; n; n = n.parentElement) if (scrolls(n, dir)) return n;
       return null;
     }
     function atEnd(s, d, dir) {

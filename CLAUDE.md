@@ -105,7 +105,9 @@ Underlying principles for everything:
 - **The page behind a sheet never moves** (Tim, 2026-11-17: "background wasn't fully locked while the dialog is up"). While
   a `.k-scrim` is up the page is locked (`html:has(body > .k-scrim)` in kit.css: overflow hidden, so iOS can't hand a drag
   that reached the end of the sheet on to the page), and `trapScroll` in kit.js stops a drag that would carry on past an
-  end from its very first pixels, since iOS decides on the first move whether a drag scrolls.
+  end from its very first pixels, since iOS decides on the first move whether a drag scrolls. A drag in the home screen's framed setup is heard only by the frame's page, so `trapScroll` runs there too with the
+  sheet round the frame as its outer scroller (`trapScroll(root, true)` under `IN_SHEET` in kit.js), and `.k-sheet` is
+  `overscroll-behavior:none`, so a drag past the sheet's top or foot never springs the sheet (Tim, 2026-11-19).
 - **Large windows (a computer): designed for the room, never scaled up** (Tim, 2026-11-17, of his MacBook at 3024 by 1964
   with the window dragged to any shape: "gameplay needs to take up as much screen as the device will give it, but also
   adapt to every possible resizing option in there", and of a first try that laid a game out at a tablet's size and scaled
