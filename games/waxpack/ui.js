@@ -433,7 +433,7 @@
       var t0 = Date.now();
       db().then(function () {
         return WaxScan.read(file, { E: E, onStep: function (st, p) {
-          var say = /load|init/.test(st) ? 'Getting the reader ready (the first time takes a moment)…' : /turning/.test(st) ? 'Turning the card to read it sideways…' : 'Reading the card…';
+          var say = /load|init/.test(st) ? 'Getting the reader ready (the first time takes a moment)…' : /turning/.test(st) ? 'Turning the card to read it sideways…' : /closer/.test(st) ? 'Looking closer at the name…' : 'Reading the card…';
           msg.textContent = say; if (p != null) bar.firstChild.style.width = Math.round(p * 100) + '%';
         } });
       }).then(function (r) {
@@ -514,13 +514,13 @@
   function bio(c) { var keep = S.g; if (!S.g) S.g = { seenRk: {} }; var t = history(c); S.g = keep; return t; }
 
   // ── The draft ────────────────────────────────────────────────────────────
-  var NOFLIP = false, AUTO = null;
+  var NOFLIP = false, AUTO = null, FIRST = null, RIG = null;
   // a name and its verb: "Pete picks", "You pick"
   function vb(name, s, p) { return name + ' ' + (name === 'You' ? p : s); }
   function startDraft() {
     snap();
     S.phase = 'draft';
-    S.draft = { first: R() < .5 ? 0 : 1, turn: 0, n: 0, flip: !NOFLIP };
+    S.draft = { first: FIRST != null ? FIRST : R() < .5 ? 0 : 1, turn: 0, n: 0, flip: !NOFLIP };
     S.draft.turn = S.draft.first;
     S.home = 1 - S.draft.first;
     save(); render();
@@ -794,7 +794,7 @@
   function pitcher() { return S.g.pit[ft()]; }
   function hst(id) { return S.g.st[id] || (S.g.st[id] = { ab: 0, h: 0, hr: 0, rbi: 0, bb: 0, k: 0, r: 0, d: 0, t: 0 }); }
   function pst(id) { return S.g.ps[id] || (S.g.ps[id] = { bf: 0, outs: 0, h: 0, r: 0, bb: 0, k: 0, hr: 0, pc: 0 }); }
-  function tired(id) { var c = S.C[id], lim = 6 + (c.r.sta || 3) * 2.3, bf = pst(id).bf; return Math.max(0, Math.min(1, (bf - lim) / 9)); }
+  function tired(id) { var c = S.C[id], lim = 6 + (c.r.sta || 3) * 2.3, bf = S.g.ps[id] ? S.g.ps[id].bf : 0; return Math.max(0, Math.min(1, (bf - lim) / 9)); }
 
   // an at-bat: who picks, then the reveal
   function newAB() {
@@ -818,7 +818,7 @@
   // pass and play: the pitcher picks with the screen covered
   function coverFor(t, step) {
     S.g.ab.cover = 1; paintPlay();
-    Kit.handoff({ name: S.T[t].name, color: S.T[t].color, what: step === 'pitch' ? 'to pick a pitch' : 'to bat', hold: 700 }).then(function () { if (S.g.ab) { S.g.ab.cover = 0; paintPlay(); } });
+    Kit.handoff({ name: S.T[t].name, color: S.T[t].color, what: step === 'pitch' ? 'pitches' : 'at-bat', msg: step === 'pitch' ? 'Pick your pitch where ' + S.T[1 - t].name + ' can’t see it.' : 'The pitch is in. Now guess what it is.', hint: 'Hold the button to see your ' + (step === 'pitch' ? 'pitches' : 'at-bat'), hold: 700 }).then(function () { if (S.g.ab) { S.g.ab.cover = 0; paintPlay(); } });
   }
   function choose(k) {
     var g = S.g, ab = g.ab; if (!ab || ab.busy) return;
@@ -850,7 +850,9 @@
     g.seen[f][ab.pitch]++; g.seen[f].n++; g.looks[t][ab.look]++; g.looks[t].n++;
     g.duels[guess ? 0 : 1]++;
     var ctx = { pitch: ab.pitch, guess: guess, tired: tired(ab.p), rally: g.fx.rally === g.inn * 2 + g.half, hot: !!fx.fire || !!fx.rk, sure: !!fx.sure, slug: !!fx.rb, err: g.fx.err === g.inn * 2 + g.half };
+    if (RIG && RIG.pitch && S.T[f].cpu) { ab.pitch = RIG.pitch; ab.guess = guess = ab.pitch === ab.look; ctx.pitch = ab.pitch; ctx.guess = guess; }
     var d = E.dist(bc.r, pc.r, ctx), o = E.pick(d, rand());
+    if (RIG && RIG.o) { o = RIG.o; } RIG = null;
     if (fx.as) { var o2 = E.pick(d, rand()); if (RANK[o2] > RANK[o]) o = o2; }
     // the ball in play goes to a fielder; one out of position may boot it
     var fld = null, fit = 'home';
@@ -1279,7 +1281,6 @@
     Kit.record(HKEY, {
       started: S.started, mode: S.mode === 'cpu' ? 'vs Computer (' + ({ easy: 'Easy', normal: 'Normal', hard: 'Hard' })[S.level] + ')' : 'Pass & play',
       players: S.T.map(function (T, t) { return { name: T.name, score: g.R[t], cpu: T.cpu }; }), winner: S.T[win].name,
-      rounds: { labels: g.line[0].map(function (_, i) { return String(i + 1); }), scores: g.line[0].map(function (_, i) { return [g.line[0][i] || 0, g.line[1][i] || 0]; }) },
       highlights: hl, detail: detail
     });
   }
@@ -1385,7 +1386,10 @@
     choose: choose, ab: function () { return S && S.g && S.g.ab; }, fast: function (v) { FAST = v; },
     // tests: a human's picks made at random, so a whole game plays itself
     auto: function (on) { clearInterval(AUTO); if (on) AUTO = setInterval(function () { var ab = S && S.g && S.g.ab; if (!ab || ab.busy || ab.cover) return; var t = ab.step === 'pitch' ? ft() : ab.step === 'look' ? bt() : -1; if (t >= 0 && !S.T[t].cpu) choose(E.PITCHES[Math.floor(Math.random() * 3)]); }, 60); },
-    set: function (fn) { fn(S); save(); render(); }
+    set: function (fn) { fn(S); save(); render(); },
+    first: function (t) { FIRST = t; }, rig: function (r) { RIG = r; },
+    finishDraft: function () { if (!S || S.phase !== 'draft') return; clearTimers(); while (!draftDone()) cpuPickNow(); save(); renderDraft(); },
+    busy: function () { return !!(S && S.g && S.g.ab && S.g.ab.busy); }
   };
   function cpuPickNow() { var t = S.draft.turn, left = draftLeft(); var T = S.T[t]; var pitchers = T.cards.filter(function (id) { return S.C[id].role === 'p'; }).length;
     var best = null; left.forEach(function (id) { var c = S.C[id], w = c.kind !== 'player' ? 2.5 : c.role === 'p' ? pv(c) / 3 * (pitchers ? .6 : 1.5) : hv(c) / 3.3; w += R() * .5; if (!best || w > best.w) best = { id: id, w: w }; });

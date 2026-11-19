@@ -32,11 +32,14 @@
   }
   // The photo drawn small enough to read quickly, gray, its contrast stretched; turned by a quarter turns
   function prep(img, turn, o) {
-    var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height, k = Math.min(2.5, (o && o.px || 2200) / Math.max(w, h));
+    // o.band: [top, bottom] as fractions of the upright photo, read enlarged (a name strip along a card's edge)
+    var W0 = img.naturalWidth || img.width, H0 = img.naturalHeight || img.height, band = o && o.band;
+    var sy = band ? Math.round(H0 * band[0]) : 0, sh = band ? Math.round(H0 * (band[1] - band[0])) : H0;
+    var w = W0, h = sh, k = Math.min(band ? 4 : 2.5, (o && o.px || (band ? 2000 : 2200)) / Math.max(w, h));
     var cw = Math.round(w * k), ch = Math.round(h * k), side = turn % 2;
     var c = document.createElement('canvas'); c.width = side ? ch : cw; c.height = side ? cw : ch;
     var g = c.getContext('2d', { willReadFrequently: true });
-    g.translate(c.width / 2, c.height / 2); g.rotate(turn * Math.PI / 2); g.drawImage(img, -cw / 2, -ch / 2, cw, ch);
+    g.translate(c.width / 2, c.height / 2); g.rotate(turn * Math.PI / 2); g.drawImage(img, 0, sy, W0, sh, -cw / 2, -ch / 2, cw, ch);
     var d = g.getImageData(0, 0, c.width, c.height), p = d.data, hist = new Uint32Array(256), n = p.length / 4;
     for (var i = 0; i < p.length; i += 4) { var v = (p[i] * 299 + p[i + 1] * 587 + p[i + 2] * 114) / 1000 | 0; p[i] = v; hist[v]++; }
     var lo = 0, hi = 255, acc = 0; while (acc < n * .02 && lo < 254) acc += hist[lo++]; acc = 0; while (acc < n * .02 && hi > lo + 1) acc += hist[hi--];
@@ -65,8 +68,8 @@
     o = o || {}; var t0 = Date.now(), step = o.onStep;
     return Promise.all([toImage(src), getWorker(step)]).then(function (a) {
       var img = a[0], w = a[1], best = null;
-      function pass(turn) {
-        return w.recognize(prep(img, turn), {}, { blocks: true, text: true }).then(function (r) {
+      function pass(turn, band) {
+        return w.recognize(prep(img, turn, { band: band }), {}, { blocks: true, text: true }).then(function (r) {
           var ocr = { text: r.data.text || '', lines: linesOf(r.data), rot: turn, conf: r.data.confidence || 0 };
           ocr.m = o.E ? match(ocr, o.E) : null;
           var sc = ocr.m && ocr.m.cands[0] ? ocr.m.cands[0].score : 0;
@@ -78,6 +81,11 @@
         if (sc >= .86 && !o.all) return;
         if (step) step('turning the card', 0);
         return pass(3).then(function (s3) { if (s3 >= .86 && !o.all) return; return pass(1).then(function (s1) { if (Math.max(sc, s1, s3) < .6 || o.all) return pass(2); }); });
+      }).then(function () {
+        // nothing sure yet: read the strips along the bottom and the top of the card enlarged, where fronts print the name
+        if (best.sc >= .7 || o.all === 'full') return;
+        if (step) step('looking closer', 0);
+        return pass(0, [.62, 1]).then(function (sb) { if (sb >= .7) return; return pass(0, [0, .3]); });
       }).then(function () { best.ocr.ms = Date.now() - t0; return best.ocr; });
     });
   }

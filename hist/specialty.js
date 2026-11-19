@@ -552,6 +552,8 @@
       svg += '</svg>';
       out.push(ui.section('How it ended', [ui.picture(svg, { max: 420 }), E.t ? el('p', { class: 'sx-play', text: '“' + E.t + '”' }) : null], { icon: 'flag' }));
     }
+    // Wax Pack's duel: how often the batters guessed the pitch
+    if (d.wp && d.duel) out.push(ui.stats([['Pitches guessed', d.duel[0] + ' of ' + (d.duel[0] + d.duel[1]), 'by the batters'], d.nh ? ['No-hitter', d.nh] : null]));
     out.push(ui.section('Scoreboard', sbNode(d), { icon: 'trophy' }));
     // every half-inning: the result of each play, and how the runs scored
     if (ck && d.hx && d.hx.length) {
@@ -578,10 +580,10 @@
       var tot = [0, 0, 0, 0, 0, 0, 0];
       var rows = T.b.map(function (s) {
         var a = s.split('|'), v = a.slice(2, 9).map(Number); v.forEach(function (x, k) { tot[k] += x; });
-        return [short(a[0], 15) + (a[1] ? ' ' + a[1] : '') + (a[9] === '1' ? ' (out)' : '')].concat(v.map(function (x, k) { return k === 2 && x >= 2 || k === 3 && x ? { t: x, c: 'hi' } : x; }));
+        return [short(a[0], 20) + (a[1] ? ' ' + a[1] : '') + (a[9] === '1' ? ' (out)' : '')].concat(v.map(function (x, k) { return k === 2 && x >= 2 || k === 3 && x ? { t: x, c: 'hi' } : x; }));
       });
       var nodes = [ui.table(['', 'AB', 'R', 'H', 'HR', 'RBI', 'BB', 'K'], rows, { foot: ['Team'].concat(tot), cls: 'sx-box' })];
-      if (T.p && T.p.length) nodes.push(ui.table(['Pitching', 'IP', 'H', 'R', 'BB', 'K', 'HR', 'PC'], T.p.map(function (s) { var a = s.split('|'); return [short(a[0], 15), Math.floor(a[1] / 3) + '.' + a[1] % 3].concat(a.slice(2)); })));
+      if (T.p && T.p.length) nodes.push(ui.table(['Pitching', 'IP', 'H', 'R', 'BB', 'K', 'HR', 'PC'], T.p.map(function (s) { var a = s.split('|'); return [short(a[0], 20), Math.floor(a[1] / 3) + '.' + a[1] % 3].concat(a.slice(2)); })));
       out.push(ui.section('Box score: ' + T.n, nodes));
     });
     if (d.plays && d.plays.length && !(d.hx && d.hx.length)) {
