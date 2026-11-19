@@ -885,6 +885,90 @@ Underlying principles for everything:
   and with more than one player the standings (online Countdown from `VW.ro` and `VW.sc`); whole rows only. Scripts:
   the scratchpad's `big/p4/scenes-trivia.js` (saved Pass and play and Buzz in games, 1 to 6 players) with `snap.js`,
   `cmp.sh`, `resize.js`, `demo.js`.
+  **Would You Rather at a desk** (`deskWin`, `deskPlan`, `deskApply`, `roomEl`, `qRow`, `fitRoom`, `deskOff` in
+  wouldyourather.html; `html.wy-dk` and the plan's class on `.wy` only while a desk layout shows; styles after the
+  comment "The desk"). The two cards are the hero: `deskApply` moves what `render` drew into `.dk-main` (a size
+  container), and the cards stand side by side (`c-row`, a main column wider than tall) or one over the other
+  (`c-col`), their words sized by the column's container units to 5.25rem at most, the A and B, the OR, the name
+  chips, the percentages and the bars a step up with them; a short window puts the pass-and-play cover's spot beside
+  its words (`short`). Compositions: `wide` (the room at the left, the cards at the right where the taps go, the
+  buttons under them at the right), `stack` (a squarer or taller window: the cards over the room), `solo` (the cards
+  alone, before a question is answered in a game without points, and in any window under 900 wide and 1100 tall,
+  where the cards keep their own height and the column scrolls only if eight names need it, `small`). The room: the
+  points (`.dk-st`, a row a player, the leader's number gold, the one passing the phone ringed in their color; the
+  strip over the table goes while the room shows it) and the questions so far newest first (`qRow`: the question's
+  number, both choices each with a bar in its card's color and the people who chose it, the side more people chose
+  in white), giving up its oldest questions whole and saying how many (`fitRoom`). The results under Kit.win's card
+  (`renderOver`) are every question as the room draws it, in columns, with the buttons in a column at the right. The
+  swipe hint is left off at a desk. A resize lays the page out again from the state (`render`), gliding when the
+  composition changes. The scripts are the scratchpad's `big/party/` (`wy.js` scenes and scan, `proof.sh` the device
+  proof, `rz.js` with `prep-wy.js`, `demo.js`, `lib.js`).
+  **Mind Meld at a desk** (`deskWin`, `deskPlan`, `deskLay`, `logPanel`, `fitLog`, `deskFin`, `deskOff` in
+  mindmeld.html; `html.mm-dk` and `.dk`, `.dk-wide`, `.dk-stack` or `.dk-small` with `t-row` or `t-col` on `#app`
+  only while a desk layout shows; styles after `@media (max-width:370px)`). The table takes the window, and the
+  card, the sand timer, the bowl, the clipboard's ruled lines and the slips are sized by `--u` (1 to 1.7, from the
+  window): the card's question to 4.25rem, a slip 184px wide times `--u`. A table wider than tall (`t-row`) keeps
+  the sideways grid, what you look at at the left and your paper or the stacks at the right, the card in the middle
+  of its column once the slips are turned over; a taller one (`t-col`) is one column with the stacks taking the
+  height between the card and the buttons. Compositions: `wide` (1100 wide and wider than tall: the room at the
+  left), `stack` (the table over the cards so far), `small` (under 900 by 1100: the table alone, its column
+  scrolling inside the felt if twelve names and a paper need it). The room: Points so far (the scoreboard `.sb`
+  itself, moved out of the felt, a row a player, two columns from six players in a window under 1300 tall), and the
+  cards so far newest first (each card's question and the answers that matched with how many wrote each, or "Nobody
+  matched on this card."), giving up its oldest cards whole (`fitLog`, run again after every `update`). The view
+  carries the log (`viewFor`'s `log`), so a guest's desk has it too; an older host's view without it shows the
+  scores alone. The end (`renderOver`) is the final scores and the buttons in one column and every card in columns
+  beside them (`deskFin`). A resize builds the table again from the last view (`render`), gliding when the
+  composition changes; what is written on the paper stays (`draft`). The demo's second answer goes in through the
+  box on a computer's own keyboard (it waited for screen keys that a mouse window has none of). Scripts: the
+  scratchpad's `big/party/` (`mm-shots.js`, `prep-mm.js`, `proof.sh`, `rz.js`, `demo.js`).
+  **Mad Libs at a desk** (`deskWin`, `deskPlan`, `deskLay`, `lastStory`, `wordsPanel`, `fitWords`, `fitStory`,
+  `deskOff` in madlibs.html; `html.ml-dk` and `.dk` with `solo`, `r-wide` or `r-stack` on `.ml` only while a desk
+  layout shows; styles at the end of the page's style). The legal pad takes the window, its words sized by `--u` (1
+  to 1.6) and its ruled lines with them (`--lh`); the pad scrolls inside itself, never the page. Filling in and the
+  pass cover are `solo`: the pad as a card in the middle of the window with the word type to 5.3rem, the idea chips
+  and the line you write on a size up. The shelf of stories is as many columns as the pad holds. A finished story is
+  fitted to the pad (`fitStory`): one column on a pad up to 46 of its letters' heights wide, two on a wider one, at
+  the largest step that fits (to 40px, never under 0.8 of its size), measured again once the handwriting face has
+  loaded; while it is still being typed out it is one column at its own size. Compositions: `wide` (1000 wide and
+  wider than tall: the room at the left), `stack` (the room under the pad), `solo` (no room, or a window under 900
+  by 1100). The room: at the shelf, the last story you made from the history (`lastStory`: its title, when and by
+  whom, the story with its words marked, scrolling inside its panel); once a story is read, every blank in it
+  (`wordsPanel`: the kind of word it asked for with the story's own hint, and the word written there in its writer's
+  color), giving up its last words whole and saying how many (`fitWords`). The buttons under a read story stand at
+  the right. A resize only lays the page out again (`deskLay`), so a story being typed out carries on. The demo's
+  body noise goes in through the box on a computer's own keyboard. Scripts: the scratchpad's `big/party/` (`ml-
+  shots.js`, `prep-ml.js`, `proof.sh`, `rz.js`, `demo.js`).
+  **Riddle Stories at a desk** (`deskWin`, `deskPlan`, `deskLay`, `deskOff` in riddlestories.html; `html.rs-dk` and
+  `.dk` with `r-wide`, `r-solo` or `r-tall` on the stage only while a desk layout shows; styles after `.cb-list
+  .ico`). The case file is read at a size from the window (`--u`, 1 to 1.9; an upright window 1 to 1.5 from its
+  width): the folder, its title and story, the clue cards (side by side where there is room), the sealed envelope
+  and the solution letter, ruled to their own lines, to 900px times `--u` wide and centered on the blotter, which
+  takes the window's height and scrolls inside itself if two clues and a short window need it. The controls stand in
+  a column at the right (`--dw`, 300 to 400), centered on the table, as on an iPad on its side. Compositions: `wide`
+  (1300 wide or more, a group game or a solo game with a case closed: the room at the left), `solo` (narrower, or
+  nothing to show yet: the scores stay over the case line), `tall` (under 1000 wide or upright, 700 wide or 1100
+  tall at least: the tablet's column and its dock along the foot, the case file a size up). The room: Points so far
+  (the strip of scores stood up, the reader ringed in their color) and the cases so far newest first (each case's
+  title and what happened: "Pete solved it with one clue for 2 points.", "Nobody solved it."), giving up its oldest
+  cases whole. A window under 700 wide and 1100 tall (560 by 620) keeps the tablet's layout, which scrolls there as
+  it did. A resize lays the page out again (`deskLay`, the strip going back to the page first), gliding when the
+  composition changes. Scripts: the scratchpad's `big/party/` (`rs-shots.js`, `prep-rs.js`, `proof.sh`, `rz.js`,
+  `demo.js`).
+  **Conversation Starters at a desk** (`deskWin`, `deskPlan`, `deskLay`, `deskOff` in conversation.html; `html.cv-
+  dk` and `.dk` with `r-wide`, `r-solo` or `r-tall` (and `short` under 760 tall) on the stage only while a desk
+  layout shows; styles at the end of the page's style). The card takes the table's whole height with no cap left
+  over from the tablet (`--dh`), and its question grows with it to 3.6rem (from the card's height and width,
+  `--cw`); its band, foot and depth dots step up with `--u`. The piles stand in the column at the right over the
+  draw and finish buttons, as on an iPad on its side (`--side`, 260 to 380, set on the page and the stage alike),
+  whatever the window's orientation. Compositions: `wide` (1300 wide or more once a card has been talked about: the
+  room fixed at the left), `solo` (narrower, or before the first card), `tall` (an upright window 700 wide or more:
+  the tablet's column with the piles wrapped over the table and the card a size up, the room under the table between
+  it and the buttons where it has 150px or more). The room: the cards talked about so far, newest first (each with
+  its pile's name and color, a gold star if it is starred, the card on the table lit in its pile's color), giving up
+  its oldest cards whole and saying how many. A resize lays the page out again (`deskLay`), gliding when the
+  composition changes. Windows under 900 wide that are not upright, and 560 by 620, keep the tablet's layout.
+  Scripts: the scratchpad's `big/party/` (`cv-shots.js`, `prep-cv.js`, `proof.sh`, `rz.js`, `demo.js`).
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
