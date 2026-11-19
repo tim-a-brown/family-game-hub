@@ -58,7 +58,9 @@
         autoTap: function () {
           var b = inp(1)(); if (!b) return null;
           if (document.activeElement !== b) { b.focus(); return b; }
-          var w = 'Mustard'; return b.value.length < w.length ? key(w[b.value.length]) : document.querySelector('.k-osk .k-osk-a-enter');
+          var w = 'Mustard';
+          // (a computer's own keyboard: no screen keys to press, so the word goes in and the paper is folded)
+          if (!oskOn()) { if (b.value !== w) { b.value = w; b.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: w })); } return document.querySelector('.pad .fold'); } return b.value.length < w.length ? key(w[b.value.length]) : document.querySelector('.k-osk .k-osk-a-enter');
         }
       });
       await D.wait(function () { return G().phase === 'reveal'; }, 8000);
