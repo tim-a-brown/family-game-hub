@@ -1401,6 +1401,36 @@ Underlying principles for everything:
 - Test hook `window.__tunnel`: `get`, `auto(on, missEvery, curve)`, `sim(seconds, untilPhase)` (full speed, no
   drawing), `hold`, `level`, `pts`, `lives`, `diff`, `tune`, `miss`, `point`, `curve`, `quality(q, lock)`, `perf`.
 
+## Wax Pack (2026-11-19; Tim: the Sandlot redesign, named "wax pack", the pitch duel "sure i'll try it", scanning "to log a player's deck")
+
+- Catalog id stays `sandlot` (favorites and `gh_sandlot` history carry over); the page is `games/waxpack.html` with
+  `games/waxpack/{engine,cards,scan,ui}.js` and `waxpack.css`. The old `sandlot.html`, `sandlot-mlb.json` and every
+  `sandlot_*` key are untouched; `sandlot_cards` is read once into the new league. Keys: `waxpack_state` (the saved
+  game, in `ST_SAVES`), `waxpack_league` (every card logged and its stats in your league, follows the PIN), the
+  `waxpack_photos` IndexedDB store (card photos, this device only), `waxpack_fast` (tests).
+- Real cards stay on the table; the page is umpire, scoreboard, announcer and record keeper. The flow: the stack (the
+  cards on the table, entered by name or photo; odd cards too: Team card, Checklist, League Leaders, Highlight), a
+  coin-flip draft (`startDraft`, `cpuPick`: the computer drafts by need), lineups on a drawn diamond (`arrange`,
+  `bestFit`, `smartOrder`; a rim green at his own position, amber near it, red out of it), then the game: every at-bat
+  is a secret pitch against a guess, revealed together.
+- `engine.js` (`WaxEngine`, pure, runs in Node) reads `games/waxpack/mlb.json` (from `scripts/build-waxpack-mlb.py`,
+  Lahman data through 2025, with honors and league averages a year). A card plays the season before its year. Ratings
+  1 to 10 (Contact, Power, Speed, Eye; Stuff, Control, Stamina) are measured against that season's league and moved to
+  a timeless one (`NEUTRAL`); an unknown name gets a seeded scout's report (`scout`). The at-bat is `dist(H, P, ctx)`:
+  a right guess multiplies average 1.2, home run power 1.4, strikeouts 0.72; a wrong one 0.9, 0.82, 1.16. Errors by
+  position fit (`fit`, `ERR`: .012, .04, .11). The computer's duel is `cpuPitch`/`cpuLook` (Hard reads this game's
+  tendencies). Special cards are `SPECIAL` in `cards.js`, each played once from the team's hand (`usePlay`,
+  `playable`). Cards are drawn by decade, no maker's design copied; a small card keeps the last name (`fitCardNames`).
+- Scanning is `scan.js` (`WaxScan`), Tesseract.js vendored in `games/waxpack/ocr/` and loaded only on the first scan,
+  nothing sent anywhere: the photo read upright and turned a quarter each way, names matched fuzzily with nicknames,
+  the year from the copyright line or the stat table; the person always picks from the top three or types the name.
+  A photo of one card filling the frame reads well; small scans and dark backs don't. The OCR files and `mlb.json`
+  are not precached.
+- The announcer is `games/talk/waxpack.js`, fed from the database's honors. History: `Kit.record('sandlot')` with
+  `detail.wp`, drawn by `hist/specialty.js`. Test hooks `window.__wax` (`quick`, `auto`, `rig`, `first`,
+  `finishDraft`, `choose`). Scripts: the scratchpad's `big/waxpack/` (`h.js`, `sc.js`, `pp.js`, `scanui.js`) and
+  `waxpack/ocrrun.js`. Not done: online, a desk layout, and the demo runs 118 s.
+
 ## Demos (2026-11-16; Tim: "add demo button and develop interactive animated demos to all games possible to walk first time players through animated versions of the game accessible with a small icon on the game menu")
 
 - **What a player sees**: on the home screen's game sheet, a small round button at the header's top right (`.pk-demo`,
