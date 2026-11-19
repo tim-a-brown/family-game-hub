@@ -81,11 +81,6 @@
         if (sc >= .86 && !o.all) return;
         if (step) step('turning the card', 0);
         return pass(3).then(function (s3) { if (s3 >= .86 && !o.all) return; return pass(1).then(function (s1) { if (Math.max(sc, s1, s3) < .6 || o.all) return pass(2); }); });
-      }).then(function () {
-        // nothing sure yet: read the strips along the bottom and the top of the card enlarged, where fronts print the name
-        if (best.sc >= .7 || o.all === 'full') return;
-        if (step) step('looking closer', 0);
-        return pass(0, [.62, 1]).then(function (sb) { if (sb >= .7) return; return pass(0, [0, .3]); });
       }).then(function () { best.ocr.ms = Date.now() - t0; return best.ocr; });
     });
   }

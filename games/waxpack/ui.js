@@ -94,7 +94,7 @@
   }
   // a printed name too long for its plate is set condensed, as card makers did, never cut
   function fitCardNames(root) {
-    (root || app).querySelectorAll('.wc-ln,.wc-fn,.wc-tm').forEach(function (n) { n.style.transform = ''; var w = n.parentNode.clientWidth - (n.nextElementSibling && n.nextElementSibling.classList.contains('wc-pos') ? 0 : 0), sw = n.scrollWidth, cw = n.clientWidth; if (sw > cw + 1 && cw > 0) { n.style.transform = 'scaleX(' + (cw / sw).toFixed(3) + ')'; n.style.transformOrigin = 'left center'; n.style.width = sw + 'px'; n.style.maxWidth = 'none'; } });
+    (root || app).querySelectorAll('.wc-ln,.wc-fn,.wc-tm').forEach(function (n) { n.style.transform = ''; n.style.width = ''; n.style.maxWidth = ''; var w = n.parentNode.clientWidth - (n.nextElementSibling && n.nextElementSibling.classList.contains('wc-pos') ? 0 : 0), sw = n.scrollWidth, cw = n.clientWidth; if (sw > cw + 1 && cw > 0) { n.style.transform = 'scaleX(' + (cw / sw).toFixed(3) + ')'; n.style.transformOrigin = 'left center'; n.style.width = sw + 'px'; n.style.maxWidth = 'none'; } });
   }
   function cardFace(c, o) { o = o || {}; var d = C.el({ kind: c.kind, name: c.kid ? 'Sandlot kid' : c.name, pos: c.role === 'p' ? 'P' : (o.at || (c.pos && c.pos[0]) || ''), year: c.year, team: c.team, role: c.role, rk: c.rk, as: c.as, rb: c.rb, kid: c.kid }, { photo: C.photoNow(c.ph) });
     if (c.ph && !C.photoNow(c.ph)) C.photoGet(c.ph).then(function (u) { if (u && d.isConnected) { var n = C.el({}, { photo: u }); d.className = n.className; d.innerHTML = n.innerHTML; } });
@@ -182,11 +182,11 @@
     else if (S.phase === 'lineup') renderLineup();
     else if (S.phase === 'play' || S.phase === 'over') renderPlay();
   }
-  function relayout() { if (!S) return; if (S.phase === 'stack' || S.phase === 'draft') { fitGrid(); fitCardNames(); } if (S.phase === 'play' || S.phase === 'over') fitPlay(); if (S.phase === 'lineup') fitLineup(); }
+  function relayout() { if (!S) return; if (S.phase === 'stack' || S.phase === 'draft') { fitGrid(); requestAnimationFrame(function () { fitCardNames(); }); } if (S.phase === 'play' || S.phase === 'over') fitPlay(); if (S.phase === 'lineup') fitLineup(); }
 
   // A grid of cards as large as the box allows, with no scrolling: try every column count, keep the largest card
   function gridFit(box, n, gap, minW) {
-    var W = box.clientWidth, H = box.clientHeight, best = { w: 0, cols: 1 };
+    var W = box.clientWidth, H = box.clientHeight - (parseFloat(getComputedStyle(box).paddingBottom) || 0) - 4, best = { w: 0, cols: 1 };
     if (!W || !H) return best;
     for (var cols = 1; cols <= Math.max(1, n); cols++) {
       var rows = Math.ceil(Math.max(1, n) / cols);
@@ -198,7 +198,8 @@
   }
   function fitGrid() {
     var g = app.querySelector('.wp-grid'); if (!g) return;
-    var n = g.children.length, f = gridFit(g.parentNode, n, 8, 46);
+    var dr = S && S.phase === 'draft', n = g.children.length, f = gridFit(g.parentNode, n, dr ? 16 : 8, 46);
+    g.style.rowGap = (dr ? 16 : 8) + 'px';
     g.style.setProperty('--cw', Math.min(180, f.w) + 'px'); g.style.gridTemplateColumns = 'repeat(' + f.cols + ', var(--cw))';
     g.parentNode.classList.toggle('scroll', !!f.scroll);
   }
@@ -236,7 +237,7 @@
     } });
     dock.appendChild(go);
     app.appendChild(el('div', { class: 'wp-scr wp-stk' }, [head, gridBox, dock]));
-    requestAnimationFrame(function () { fitGrid(); fitCardNames(); });
+    requestAnimationFrame(function () { fitGrid(); requestAnimationFrame(function () { fitCardNames(); }); });
   }
   function addToStack(c, quiet) {
     snap();
@@ -549,7 +550,7 @@
     var dock = el('div', { class: 'wp-dock' }, [cap]);
     if (draftDone()) dock.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block wp-go', text: 'Set the lineups', onclick: function () { toLineup(); } }));
     app.appendChild(el('div', { class: 'wp-scr wp-drf' }, [teams, gridBox, dock]));
-    requestAnimationFrame(function () { fitGrid(); fitCardNames(); });
+    requestAnimationFrame(function () { fitGrid(); requestAnimationFrame(function () { fitCardNames(); }); });
     if (D.flip) { D.flip = false; save(); coinFlip(); return; }
     if (!draftDone() && !myPick()) later(cpuPick, 900);
   }

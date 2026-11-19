@@ -35,8 +35,7 @@
       var a = s.split('|');
       var pl = { i: i, f: a[0], l: a[1], born: +a[2] || 0, bt: a[3] || '', hs: a[4] || '', ps: a[5] || '', hon: a[6] || '' };
       pl.k = skey(a[0] + ' ' + a[1]); pl.lk = skey(a[1]); pl.fk = skey(a[0]);
-      var y = /^(\d{4})/.exec(pl.hs || pl.ps); pl.y0 = y ? +y[1] : 0;
-      var m = /(\d{4}),[^;]*$/.exec(pl.hs.length > pl.ps.length ? pl.hs : pl.ps);
+      var a0 = pl.hs ? +pl.hs.slice(0, 4) : 9999, b0 = pl.ps ? +pl.ps.slice(0, 4) : 9999; pl.y0 = Math.min(a0, b0);
       pl.y1 = Math.max(lastYear(pl.hs), lastYear(pl.ps));
       pl.id = pl.lk.replace(/ /g, '') + '-' + pl.fk.replace(/ /g, '') + '-' + pl.y0;   // a stable id for the league
       DB.list.push(pl); DB.byId[pl.id] = pl;
