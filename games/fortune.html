@@ -65,6 +65,20 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidd
 .ft-soon h2{font-family:var(--display);font-size:1.8rem;letter-spacing:-.03em;}
 .ft-soon .when{margin:4px 0 6px;font-weight:700;font-size:.86rem;color:var(--lit-ink);}
 .ft-soon p{color:var(--text-2);margin-bottom:16px;}
+
+/* ── The picker at a desk (pickDesk): the booths sized from the window, only while html.ft-big is set ── */
+html.ft-big .ft-pick{display:flex;align-items:center;justify-content:center;overflow:hidden;}
+html.ft-big .ft-pick-in{max-width:none;}
+html.ft-big .ft-hero{padding:0 0 calc(22px * var(--ftu,1));}
+html.ft-big .ft-hero h1{font-size:calc(2.8rem * var(--ftu,1));}
+html.ft-big .ft-hero p{font-size:calc(1rem * var(--ftu,1));}
+html.ft-big .ft-grid{grid-template-columns:repeat(var(--ftc,4),var(--ftw));gap:var(--ftg,18px);max-width:none;margin:0 auto;}
+html.ft-big .ft-name{font-size:calc(1.15rem * var(--ftu,1));}
+html.ft-big .ft-name .ico{width:calc(19px * var(--ftu,1));height:calc(19px * var(--ftu,1));}
+html.ft-big .ft-blurb{font-size:calc(.9rem * var(--ftu,1));}
+html.ft-big .ft-txt{padding:calc(12px * var(--ftu,1)) calc(14px * var(--ftu,1)) calc(15px * var(--ftu,1));}
+html.ft-big .ft-card{cursor:pointer;}
+html.ft-big .ft-card:hover{transform:translateY(-3px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.28),0 18px 34px -16px rgba(0,0,0,.85);}
 </style>
 </head>
 <body>
@@ -202,7 +216,7 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidd
   // ═══ Screens ════════════════════════════════════════════════════════════
   var current = null, handle = null, loadToken = 0;
   function leaveTeller() {
-    loadToken++;
+    loadToken++; document.documentElement.classList.remove('ft-big');
     if (handle) { try { handle.unmount(); } catch (e) { console.warn('fortune: unmount', e); } }
     handle = null; current = null;
     stageEl.innerHTML = '';
@@ -228,7 +242,26 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidd
     var hero = el('div', { class: 'ft-hero' }, [el('h1', { text: 'Fortune Teller' }), el('p', { text: 'Who would you like to ask?' })]);
     prefetchAll();
     stageEl.appendChild(el('div', { class: 'ft-pick' }, [el('div', { class: 'ft-pick-in' }, [hero, grid])]));
+    pickDesk();
   }
+  // ── The picker at a desk (a window larger than a phone's or a tablet's; CLAUDE.md, Large windows) ──
+  // The four booths are sized from the window, in a row or two by two, whichever makes them larger, up to a
+  // comfortable largest size; a phone or a tablet never gets here (deviceShape), and pickDesk takes it all off again.
+  function deviceShape(w, h) { var lo = Math.min(w, h), hi = Math.max(w, h); return (lo <= 480 && hi <= 1000) || (lo >= 620 && lo <= 840 && hi >= 900 && hi <= 1200); }
+  function pickDesk() {
+    var pk = stageEl.querySelector('.ft-pick'), root = document.documentElement;
+    var W = window.innerWidth, H = window.innerHeight;
+    if (!pk || W <= 480 || H <= 540 || deviceShape(W, H)) { root.classList.remove('ft-big'); if (pk) pk.style.cssText = ''; return; }
+    var u = Math.max(1, Math.min(1.5, Math.min(W / 1500, H / 950)));
+    var sh = stageEl.clientHeight, sw = stageEl.clientWidth, gap = Math.round(18 * u), hero = Math.round(150 * u), txt = Math.round(78 * u), pad = 32;
+    var avH = sh - hero - pad, avW = sw - 2 * pad;
+    function wFor(cols) { var rows = 4 / cols; return Math.min((avW - (cols - 1) * gap) / cols, ((avH - (rows - 1) * gap) / rows - txt) / 0.8); }
+    var c4 = Math.min(wFor(4), 560), c2 = Math.min(wFor(2), 560), cols = c4 >= c2 ? 4 : 2, w = Math.floor(Math.max(c4, c2));
+    if (w < 200) { root.classList.remove('ft-big'); pk.style.cssText = ''; return; }
+    root.classList.add('ft-big');
+    pk.style.setProperty('--ftw', w + 'px'); pk.style.setProperty('--ftc', cols); pk.style.setProperty('--ftg', gap + 'px'); pk.style.setProperty('--ftu', u.toFixed(2));
+  }
+  window.addEventListener('resize', function () { if (!current) pickDesk(); });
 
   function comingSoon(t) {
     stageEl.innerHTML = '';

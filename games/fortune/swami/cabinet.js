@@ -59,7 +59,8 @@ export function layout(w, h) {
       L.bulbs.push({ x: x0 + 0.94 * W, y, side: 1 });
     }
   } else {
-    let H = h - 2 * m, W = Math.min(w - 2 * Math.max(m, 54), H * 1.95, 1300);
+    // (1300 at most; a window larger than any tablet's lets the booth grow to 1900: no device is that wide)
+    let H = h - 2 * m, W = Math.min(w - 2 * Math.max(m, 54), H * 1.95, w > 1400 ? 1900 : 1300);
     if (W < H * 1.5) H = W / 1.5;
     const x0 = (w - W) / 2, y0 = (h - H) / 2;
     const CR = 0.25, BASE = 0.06, FR = 0.06;
