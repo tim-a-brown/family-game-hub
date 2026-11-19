@@ -1402,7 +1402,11 @@ window.dispatchEvent(new Event('cab3d-ready'));
         var hold = document.createElement('div'); hold.className = 'sc-hold' + (n === 'back' && extra && extra.rock && !reduce ? ' rock' : ''); hold.appendChild(c);
         root.appendChild(hold); layers.push({ el: hold, depth: L[n].depth });
       });
-      lightCv = document.createElement('canvas'); lightCv.className = 'sc-l sc-light'; lightCv.width = Math.round(FW * Math.min(1.5, dpr)); lightCv.height = Math.round(FH * Math.min(1.5, dpr));
+      // (the lights are soft glows and signs drawn from pictures at their own size, so a larger window gets no more of them
+      // to see from more pixels: the light layer, cleared and drawn afresh every frame, keeps to about 4 million pixels and
+      // never under one a CSS pixel; every phone and tablet keeps its 1.5)
+      var ls = Math.min(1.5, dpr, Math.max(1, Math.sqrt(4.2e6 / (FW * FH))));
+      lightCv = document.createElement('canvas'); lightCv.className = 'sc-l sc-light'; lightCv.width = Math.round(FW * ls); lightCv.height = Math.round(FH * ls);
       lightCv.style.width = FW + 'px'; lightCv.style.height = FH + 'px'; lx = lightCv.getContext('2d'); lx.scale(lightCv.width / FW, lightCv.height / FH);
       var lh = document.createElement('div'); lh.className = 'sc-hold'; lh.appendChild(lightCv); root.appendChild(lh); layers.push({ el: lh, depth: 0.5 });
       if (lanterns.length && !lanternSprite.c) lanternSprite.c = lanternSprite();

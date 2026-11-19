@@ -971,6 +971,22 @@ Underlying principles for everything:
   its oldest cards whole and saying how many. A resize lays the page out again (`deskLay`), gliding when the
   composition changes. Windows under 900 wide that are not upright, and 560 by 620, keep the tablet's layout.
   Scripts: the scratchpad's `big/party/` (`cv-shots.js`, `prep-cv.js`, `proof.sh`, `rz.js`, `demo.js`).
+- **What a frame costs to draw in a large window** (Tim, 2026-11-19: "horse race got crazy jittery", then "any other games
+  gonna suffer from large scale animations like horse race did?"). Safari draws a 2D canvas on the CPU, so a frame's cost
+  grows with the window's pixels: anything that doesn't change from frame to frame is painted once for each size and
+  copied in, opaque where it can be, and only the part that changed is laid down. Horse Race: at a desk the sky's and
+  the infield's gradients (`backdrop`, `bkCopy`), the surface (opaque) and the oval's runners only (`R.ovLast`); the
+  horses as pictures were measured and stay paths (laid down scaled, pictures cost two to three times the paths, and
+  about 670 MB at 3024 by 1964). Pac-Man: the maze floor is part of the opaque walls picture (`buildWalls`). Flappy
+  Bird: each scenery strip keeps to its own rows (`band`). Asteroids: the starfield is opaque, and in a window larger
+  than any phone or tablet (`bigWin`) each rock has its own glow, not one blur over the field. Goblin Defenders: the
+  wooden frame is copied as its four bands (`drawFrame`), and in a large window (`bigWin`) the map goes down at its own
+  pixels. Wheel of Fortune: at a desk the wheel's shadow, ring and gloss are painted once a size (`statics`). Slots: the
+  light layer keeps to about 4 million pixels (`ls` in `build`; every device keeps 1.5). The scratchpad's `big/paint/`
+  has the sweep (`sweep.js`, `runall.sh`, `sweep1.txt`), the timings (`pcmp.sh`, `perf1.txt`, `perf2.txt`) and the
+  canvas-by-canvas device proof (`cvshot.js`, `cvcmp.sh`). Left for later: a pixel budget for the WebGL games (the Slots
+  machine, Plinko's Big Wheel, the 8 ball, Willy Crash) like Pinball's `budget`, and Centipede's 2D canvas, which reaches
+  6012 by 3546 at 3024 by 1964.
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,

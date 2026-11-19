@@ -207,6 +207,11 @@ html.ar-on .bezel{view-transition-name:fb-screen;} html.ar-on .hud{view-transiti
   ];
   var bc = COLORS[0];
   function mk(w, h) { var c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w * SC)); c.height = Math.max(1, Math.round(h * SC)); var x = c.getContext('2d'); x.setTransform(SC, 0, 0, SC, 0, 0); return { c: c, x: x }; }
+  // A scenery strip is the screen's whole height but holds something only in a band of it, and every frame lays each
+  // strip down across the screen: kept to the rows of its band (with room to spare), it is the same pixels for a
+  // fraction of the copying, which on a large window is most of what a frame costs. {c, y}: the strip and its top row.
+  function band(c, top, bot) { var r0 = Math.max(0, Math.floor(top * SC) - 2), r1 = Math.min(c.height, Math.ceil(bot * SC) + 2), b = document.createElement('canvas'); b.width = c.width; b.height = Math.max(1, r1 - r0);
+    b.getContext('2d').drawImage(c, 0, r0, c.width, r1 - r0, 0, 0, c.width, r1 - r0); return { c: b, y: r0 }; }
   function rnd(seed) { return function () { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; }
   function buildLayers() {
     var t = theme, R = rnd(7), base = H - GROUND, L = {};
@@ -227,14 +232,14 @@ html.ar-on .bezel{view-transition-name:fb-screen;} html.ar-on .hud{view-transiti
     x.beginPath(); x.moveTo(0, base);
     for (var hx = 0; hx <= fw; hx += 8) x.lineTo(hx, y0 + 24 + Math.sin(hx / fw * TAU * 3) * 10 + Math.sin(hx / fw * TAU * 7) * 5);
     x.lineTo(fw, base); x.closePath(); x.fill();
-    L.far = far.c;
+    L.far = band(far.c, base - 112, base + 1);   // (the skyline from base - 104, the hills from base - 61)
     // Clouds
     var cl = mk(fw, H); x = cl.x; x.fillStyle = t.cloud;
     for (var k = 0; k < 7; k++) {
       var cx = k * fw / 7 + R() * 30, cy = base - 110 - R() * 70 - (k % 2) * 40, s = .7 + R() * .6;
       [[0, 0, 16], [16, -8, 14], [30, 0, 15], [14, 6, 13], [-12, 4, 10]].forEach(function (p) { x.beginPath(); x.arc(cx + p[0] * s, cy + p[1] * s, p[2] * s, 0, TAU); x.fill(); });
     }
-    L.cloud = cl.c;
+    L.cloud = band(cl.c, base - 272, base - 70);   // (clouds from about base - 252 to base - 83)
     // Near bushes
     var bu = mk(fw, H); x = bu.x;
     x.fillStyle = t.bush2; x.beginPath(); x.moveTo(0, base);
@@ -243,7 +248,7 @@ html.ar-on .bezel{view-transition-name:fb-screen;} html.ar-on .hud{view-transiti
     x.fillStyle = t.bush; x.beginPath(); x.moveTo(0, base);
     for (var b3 = 6; b3 <= fw + 12; b3 += 14) x.arc(b3, base - 2 - (Math.sin(b3 * .07 + 1) + 1) * 4, 11, PI, 0);
     x.lineTo(fw, base); x.fill();
-    L.bush = bu.c;
+    L.bush = band(bu.c, base - 40, base + 1);   // (bushes from base - 34)
     // Ground tile (repeats every 24px)
     var gw = W + 48, gd = mk(gw, GROUND); x = gd.x;
     var gg = x.createLinearGradient(0, 0, 0, GROUND); gg.addColorStop(0, '#e8d792'); gg.addColorStop(1, '#d2b86a');
@@ -427,9 +432,9 @@ html.ar-on .bezel{view-transition-name:fb-screen;} html.ar-on .hud{view-transiti
     if (!layers) return;
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.drawImage(layers.sky, 0, 0);
-    tile(layers.cloud, scroll * .12, 0);
-    tile(layers.far, scroll * .25, 0);
-    tile(layers.bush, scroll * .55, 0);
+    tile(layers.cloud.c, scroll * .12, layers.cloud.y);
+    tile(layers.far.c, scroll * .25, layers.far.y);
+    tile(layers.bush.c, scroll * .55, layers.bush.y);
     g.setTransform(SC, 0, 0, SC, 0, 0);
     pipes.forEach(drawPipe);
     g.setTransform(1, 0, 0, 1, 0, 0);

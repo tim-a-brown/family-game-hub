@@ -516,7 +516,12 @@ html.pm-big .strip{view-transition-name:pm-strip;} #pn-fruit{view-transition-nam
     c2.fillStyle = fill; blob(c2, 3.7); c2.fill();
     var b = document.createElement('canvas'); b.width = cv.width; b.height = cv.height;
     var c3 = b.getContext('2d'); c3.shadowColor = glow; c3.shadowBlur = 5 * SC / 2; c3.drawImage(a, 0, 0); c3.shadowBlur = 0; c3.drawImage(a, 0, 0);
-    return b;
+    // The maze's dark floor goes into the picture too, and the picture is opaque: a frame then lays the walls down as one
+    // plain copy instead of filling the floor and blending the walls over it, the same pixels for half the painting
+    // (on a large window the maze is millions of pixels, and these two were most of what a frame cost to paint).
+    var o = document.createElement('canvas'); o.width = cv.width; o.height = cv.height;
+    var c4 = o.getContext('2d', { alpha: false }); c4.fillStyle = '#04030c'; c4.fillRect(0, 0, o.width, o.height); c4.drawImage(b, 0, 0);
+    return o;
   }
 
   // ═══ Game state ═════════════════════════════════════════════════════════
@@ -1006,10 +1011,10 @@ html.pm-big .strip{view-transition-name:pm-strip;} #pn-fruit{view-transition-nam
 
   function render() {
     g.setTransform(1, 0, 0, 1, 0, 0);
-    g.fillStyle = '#04030c'; g.fillRect(0, 0, cv.width, cv.height);
+    if (!wallImg || (G && phase === 'cut')) { g.fillStyle = '#04030c'; g.fillRect(0, 0, cv.width, cv.height); }
     if (G && phase === 'cut') { renderCut(); return; }
     var flashOn = phase === 'flash' && Math.floor(G.pt / 15) % 2 === 0;
-    if (wallImg) g.drawImage(flashOn ? wallFlash : wallImg, 0, 0);
+    if (wallImg) g.drawImage(flashOn ? wallFlash : wallImg, 0, 0);   // (the floor is in the picture: buildWalls)
     g.setTransform(SC, 0, 0, SC, 0, 0);
     // Door
     g.fillStyle = '#ffb4e6'; g.fillRect(13 * TS, 12 * TS + 3.2, 2 * TS, 1.6);
