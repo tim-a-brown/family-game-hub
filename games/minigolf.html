@@ -128,6 +128,48 @@ table.sc.more{border-top:3px double #1f9a4f;}
   .mg-side .card-h h2{font-size:1.15rem;}
   .stage.mg-play.mg-side{padding-bottom:calc(var(--safe-b) + 8px);}
 }
+/* ══ The desk: a large window (dkShape in the script; every rule hangs off html.mg-dk, set only there) ══════════ */
+html.mg-dk body{overflow:hidden;}
+html.mg-dk .stage.mg-dkp{position:fixed;left:0;right:0;top:var(--dkt);bottom:0;max-width:none;margin:0;min-height:0;padding:8px 26px 20px;display:grid;column-gap:26px;row-gap:16px;}
+html.mg-dk.mg-wide .stage.mg-dkp{grid-template-columns:minmax(0,1fr) var(--dgw);grid-template-rows:auto minmax(0,1fr);grid-template-areas:"card green" "room green";}
+html.mg-dk.mg-tall .stage.mg-dkp{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"card" "room" "green";}
+html.mg-dk .mg-dkp .card{grid-area:card;align-self:start;display:block;}
+html.mg-dk .mg-dkp .green{grid-area:green;margin:0;min-height:0;display:flex;}
+html.mg-dk.mg-wide .mg-dkp .green{align-self:stretch;}
+html.mg-dk .mg-dkp .prow{min-height:46px;}
+html.mg-dk.mg-wide .mg-dkp .prow{max-height:180px;}
+html.mg-dk .mg-dkp .holenav.done{grid-area:green;align-self:start;}
+html.mg-dk .mg-dkp .mg-room{grid-area:room;align-self:stretch;height:100%;max-height:100%;}
+html.mg-dk .mg-dkp .sc th,html.mg-dk .mg-dkp .sc td{height:var(--dh);}
+html.mg-dk .mg-dkp .sc thead th{height:40px;font-size:.95rem;}
+html.mg-dk .mg-dkp .sc th:first-child{width:var(--dnw,104px);font-size:clamp(.9rem,calc(var(--dh) * .3),1.25rem);}
+html.mg-dk .mg-dkp .sc thead th.sum{width:clamp(62px,7%,90px);font-size:.8rem;}
+html.mg-dk .mg-dkp .sc td.v{font-size:var(--dfv);}
+html.mg-dk .mg-dkp .sc td.tot{font-size:var(--dft);}
+html.mg-dk .mg-dkp .sc td.tot small{font-size:clamp(.7rem,calc(var(--dh) * .17),.95rem);}
+html.mg-dk .mg-dkp .sc tr.par td{font-size:clamp(.8rem,calc(var(--dh) * .26),1.15rem);}
+html.mg-dk .mg-dkp .card-h{padding:14px 18px 10px;}
+html.mg-dk .mg-dkp .card-h h2{font-size:1.6rem;}
+html.mg-dk .mg-dkp .card-h small{font-size:1.15rem;}
+html.mg-dk.mg-tall .mg-dkp .prow{max-height:110px;flex:none;height:var(--dph,64px);min-height:0;}
+html.mg-dk .mg-dkp .sc td.v:hover{background:rgba(255,220,60,.18);}
+.mg-room{display:none;}
+html.mg-dk .mg-room{display:flex;gap:16px;min-height:0;overflow:hidden;align-items:stretch;}
+html.mg-dk .mg-room .pn{align-self:start;max-height:100%;flex:1 1 0;min-width:0;min-height:0;overflow:hidden;border-radius:20px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);padding:14px 16px;display:flex;flex-direction:column;gap:8px;}
+html.mg-dk .mg-room h4{margin:0 0 2px;font-size:.95rem;font-weight:750;color:var(--text-2);}
+html.mg-dk .mg-room .srow{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:14px;background:rgba(255,255,255,.04);}
+html.mg-dk .mg-room .pl{flex:none;width:22px;text-align:center;font-weight:800;color:var(--text-3);font-variant-numeric:tabular-nums;}
+html.mg-dk .mg-room .srow .nm{flex:1;min-width:0;}
+html.mg-dk .mg-room .srow .nm b{display:block;font-weight:750;font-size:1.05rem;overflow-wrap:anywhere;}
+html.mg-dk .mg-room .srow .nm small{display:block;font-size:.84rem;color:var(--text-2);font-weight:600;}
+html.mg-dk .mg-room .tt{flex:none;text-align:right;}
+html.mg-dk .mg-room .tt b{display:block;font-family:var(--display);font-size:1.6rem;line-height:1;font-weight:400;}
+html.mg-dk .mg-room .tt small{display:block;font-weight:800;font-size:.85rem;}
+html.mg-dk .mg-room .tt .under{color:#5ee08d;} html.mg-dk .mg-room .tt .over{color:#ff8f8f;} html.mg-dk .mg-room .tt .even{color:var(--text-3);}
+html.mg-dk .mg-room .brow{display:flex;align-items:baseline;gap:10px;padding:5px 4px;border-bottom:1px solid var(--gl-line);}
+html.mg-dk .mg-room .brow .nm{flex:1;min-width:0;font-weight:700;overflow-wrap:anywhere;}
+html.mg-dk .mg-room .brow .dt{flex:none;font-size:.82rem;color:var(--text-3);font-weight:600;}
+html.mg-dk .mg-room .brow b{flex:none;font-family:var(--display);font-size:1.25rem;font-weight:400;}
 /* A narrow phone: smaller steppers, so the name and the total keep their room */
 @media (max-width:360px){
   .stage.mg-play{padding-left:10px;padding-right:10px;}
@@ -346,7 +388,7 @@ table.sc.more{border-top:3px double #1f9a4f;}
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
 
   function showSetup() {
-    S = null; app.className = 'stage';
+    S = null; app.className = 'stage'; dkSet(null);
     var setup = Kit.setup(app, {
       players: { min: 1, max: 6, count: 2 },
       options: [
@@ -469,6 +511,7 @@ table.sc.more{border-top:3px double #1f9a4f;}
     app.innerHTML = '';
     lastShape = sideways(); lastW = innerWidth;
     app.className = 'stage mg-play' + (lastShape ? ' mg-side' : '');
+    var dk = dkShape(); dkSet(dk);
     if (!S.over) {
       var green = el('div', { class: 'green wood' }), turf = el('div', { class: 'turf' });
       var parBtn = el('button', { type: 'button', class: 'parbtn', html: '<span>Par ' + S.par[S.hole] + '</span>' + Kit.icon('pencil') });
@@ -505,6 +548,12 @@ table.sc.more{border-top:3px double #1f9a4f;}
     var W = card.clientWidth || (innerWidth - 32), NAME = 78, SUM = 46, MIN = 25;
     var per = S.holes;
     [S.holes, 9, 6, 3].some(function (n) { if (n > S.holes) return false; per = n; return (W - NAME - SUM) / n >= MIN; });
+    // (at a desk, the front nine over the back nine where that makes every box larger than one long row would)
+    if (dk && S.holes === 18 && per === 18) {
+      var dtop = parseFloat(document.documentElement.style.getPropertyValue('--dkt')) || 58, nwd = Math.max(104, Math.min(200, W * .13)), swd = Math.max(62, Math.min(90, W * .07));
+      var colD = innerHeight - dtop - 28 - (dk === 'tall' ? 420 : 0) - 200, hOf = function (pp) { var nb = 18 / pp; return Math.min((W - nwd - swd) / pp * 1.5, (colD - 64 - nb * 40) / (nb * (1 + S.players.length)), 130); };
+      if (hOf(9) > hOf(18) * 1.12) per = 9;
+    }
     var blocks = []; for (var b0 = 0; b0 < S.holes; b0 += per) blocks.push([b0, Math.min(S.holes, b0 + per)]);
     var sumOf = function (arr, a, z) { var t = 0, any = false; for (var k = a; k < z; k++) if (arr[k] != null) { t += arr[k]; any = true; } return any ? t : null; };
     blocks.forEach(function (bk, bi) {
@@ -538,6 +587,93 @@ table.sc.more{border-top:3px double #1f9a4f;}
     // (each name eases its size down before it would be cut off)
     app.querySelectorAll('.prow .nm b').forEach(function (b) { Kit.fitText(b, 0.7); });
     bumped = -1;
+    if (dk) dkFill(card);
+  }
+
+  // ── The desk: a large window (a computer) ─────────────────────────────────
+  // The scorecard is the hero, as large as the window gives it, the green with its steppers at the right where the
+  // taps go (under the card in a tall window). Room the card can't use holds the round's standings and this course's
+  // records from past rounds. A phone's or a tablet's window never gets here (dkShape), and nothing is left behind.
+  function dkShape() {
+    var w = innerWidth, h = innerHeight, lo = Math.min(w, h), hi = Math.max(w, h);
+    if (!S || lo <= 480 && hi <= 1000) return null;                               // phones
+    if (lo >= 620 && lo <= 790 && hi <= 1060) return null;                        // the iPad mini, either way up
+    if (lo >= 620 && lo <= 840 && hi >= 900 && hi <= 1200 && !(window.matchMedia && matchMedia('(pointer: fine)').matches)) return null;   // other iPads by touch
+    if (w < 700 || h < 560) return null;
+    if (w < 1000 && w > h) return null;                                           // (a small wide window keeps the sideways layout)
+    return w >= 1000 && w >= 1.05 * h ? 'wide' : 'tall';
+  }
+  function dkSet(dk) {
+    var de = document.documentElement, bar = document.querySelector('.gbar');
+    de.classList.toggle('mg-dk', !!dk); de.classList.toggle('mg-wide', dk === 'wide'); de.classList.toggle('mg-tall', dk === 'tall');
+    if (dk) {
+      de.style.setProperty('--dkt', (bar ? Math.max(0, Math.round(bar.getBoundingClientRect().bottom)) : 58) + 'px');
+      de.style.setProperty('--dgw', Math.round(Math.max(440, Math.min(600, innerWidth * .3))) + 'px');
+    } else ['--dkt', '--dgw', '--dh', '--dph', '--dnw', '--dfv', '--dft'].forEach(function (v) { de.style.removeProperty(v); });
+    app.classList.toggle('mg-dkp', !!dk);
+  }
+  // The card's rows as tall as the room allows (to a comfortable most), and under it the standings and the records
+  function dkFill(card) {
+    var de = document.documentElement, tall = de.classList.contains('mg-tall'), top = parseFloat(de.style.getPropertyValue('--dkt')) || 58;
+    // (a tall window: the green's rows as tall as the room under a card of the smallest rows allows)
+    if (tall) de.style.setProperty('--dph', Math.round(Math.max(50, Math.min(96, (innerHeight - top - 28 - 16 - (64 + card.querySelectorAll('table.sc').length * 40 + card.querySelectorAll('table.sc').length * (1 + S.players.length) * 40) - 250) / S.players.length - 10))) + 'px');
+    var gr = app.querySelector(':scope > .green, :scope > .holenav.done');
+    var col = innerHeight - top - 28 - (tall && gr ? gr.offsetHeight + 16 : 0);
+    var nb = card.querySelectorAll('table.sc').length, rows = nb * (1 + S.players.length), head = 64 + nb * 40;
+    // (the room under the card needs 170 at least for its standings; without it the card has the column)
+    var roomOn = col - head - 40 * rows - 16 >= 170;
+    var h = Math.floor(Math.max(36, Math.min(130, (col - head - (roomOn ? 16 + Math.max(170, Math.min(420, 60 + S.players.length * 66)) : 0)) / rows)));
+    // (a hole's box no taller than half again its width, and the figures in it sized to both)
+    var nw = Math.round(Math.max(104, Math.min(200, card.clientWidth * .13))), sw = Math.max(62, Math.min(90, card.clientWidth * .07));
+    var per = Math.max(1, card.querySelector('table.sc thead tr').children.length - 2), cw = (card.clientWidth - nw - sw) / per;
+    h = Math.floor(Math.max(36, Math.min(h, cw * 1.5)));
+    de.style.setProperty('--dh', h + 'px');
+    de.style.setProperty('--dnw', nw + 'px');
+    de.style.setProperty('--dfv', Math.round(Math.max(18, Math.min(h * .5, cw * .62))) + 'px');
+    de.style.setProperty('--dft', Math.round(Math.max(18, Math.min(h * .5, sw * .42))) + 'px');
+    if (!roomOn) return;
+    var room = el('div', { class: 'mg-room' });
+    // the standings: fewest strokes first, with where each stands against par and how far behind the leader
+    var ord = S.players.map(function (p, i) { return i; }).sort(function (a, b) { return total(a) - total(b); });
+    var played = S.strokes[0].filter(function (v) { return v != null; }).length;
+    var st = el('section', { class: 'pn' }, [el('h4', { text: S.over ? 'How the round ended' : played ? 'Standings after ' + played + (played === 1 ? ' hole' : ' holes') : 'Standings' })]);
+    var lead = total(ord[0]);
+    ord.forEach(function (i, k) {
+      var aces = S.strokes[i].filter(function (v) { return v === 1; }).length, d = total(i) - lead, place = 1;
+      ord.forEach(function (j) { if (total(j) < total(i)) place++; });
+      var note = (aces ? (aces === 1 ? 'A hole in one. ' : aces + ' holes in one. ') : '') + (!played ? '' : d ? d + (d === 1 ? ' stroke' : ' strokes') + ' behind.' : ord.length > 1 && total(ord[1]) === lead ? 'Tied for the lead.' : ord.length > 1 ? 'In the lead.' : '');
+      st.appendChild(el('div', { class: 'srow' }, [
+        el('span', { class: 'pl', text: String(place) }),
+        el('span', { class: 'avatar sm', style: { '--c': Kit.color(i) }, text: S.players[i].name.charAt(0).toUpperCase() }),
+        el('span', { class: 'nm' }, [el('b', { text: S.players[i].name }), note ? el('small', { text: note }) : null]),
+        el('span', { class: 'tt' }, [el('b', { text: String(total(i)) }), el('small', { class: vsCls(i), text: vsPar(i) })])
+      ]));
+    });
+    room.appendChild(st);
+    // this course's records, from the rounds played here before over the same number of holes
+    var best = [], list = []; try { list = GameHistory.load(KEY) || []; } catch (e) {}
+    var ck = S.course ? S.course.key : null;
+    list.forEach(function (e) {
+      if ((e.course ? e.course.key : null) !== ck || e.holes !== S.holes) return;
+      (e.players || []).forEach(function (p) { best.push({ name: p.name, score: p.score, at: e._date || e.started || 0 }); });
+    });
+    best.sort(function (a, b) { return a.score - b.score || a.at - b.at; });
+    if (best.length) {
+      var rc = el('section', { class: 'pn rec2' }, [el('h4', { text: (S.course ? 'Best rounds at ' + label(S.course) : 'Best rounds with no course picked') + ', over ' + S.holes + ' holes' })]);
+      best.slice(0, 8).forEach(function (b, k) {
+        rc.appendChild(el('div', { class: 'brow' }, [el('span', { class: 'pl', text: String(k + 1) }), el('span', { class: 'nm', text: b.name }),
+          el('span', { class: 'dt', text: b.at ? new Date(b.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '' }), el('b', { text: String(b.score) })]));
+      });
+      room.appendChild(rc);
+    }
+    app.appendChild(room);
+    // (a list gives up its last rows whole, never a row cut through)
+    requestAnimationFrame(function () {
+      room.querySelectorAll('.pn').forEach(function (pn) {
+        var bt = pn.getBoundingClientRect().bottom, rs = pn.querySelectorAll('.srow, .brow');
+        for (var q = rs.length - 1; q >= 0; q--) { if (rs[q].getBoundingClientRect().bottom <= bt - 8) break; rs[q].style.display = 'none'; }
+      });
+    });
   }
   // Turning the device: the green and the scorecard glide to the new shape (a View Transition); a new width also
   // re-blocks the scorecard's holes, so the page is drawn again for it
@@ -546,7 +682,7 @@ table.sc.more{border-top:3px double #1f9a4f;}
     clearTimeout(rT);
     rT = setTimeout(function () {
       if (!S || !app.classList.contains('mg-play')) return;
-      var sh = sideways(); if (sh === lastShape && innerWidth === lastW) return;
+      var sh = sideways(); if (sh === lastShape && innerWidth === lastW && !dkShape() && !document.documentElement.classList.contains('mg-dk')) return;
       if (sh !== lastShape && document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches && !document.hidden) { try { document.startViewTransition(render); return; } catch (e) {} }
       render();
     }, 60);
