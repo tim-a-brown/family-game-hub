@@ -108,6 +108,53 @@ html.ls .sg-status .t{font-size:1.3rem;}
 html.ls .sg-go{grid-area:go;min-height:52px;}
 /* Turning the device: the board, the table and the button glide to their new places (a View Transition in the script) */
 .sg-board{view-transition-name:sg-board;} .sg-table{view-transition-name:sg-table;} .sg-go{view-transition-name:sg-go;} .sg-status{view-transition-name:sg-status;}
+/* AT A DESK (html.sg-dk, set by the script's deskPlan only while a computer's window shows the table; phones and
+   tablets never get it): the script places the table, the button and the column; the cups are sized in layout(). */
+:root.sg-dk,:root.sg-dk body{overflow:hidden;overscroll-behavior:none;}
+:root.sg-dk #app.stage{max-width:none;margin:0;padding:0;display:block;}
+:root.sg-dk #app > .sg-table,:root.sg-dk #app > .sg-go,:root.sg-dk #app > .gcol{position:fixed;margin:0;box-sizing:border-box;z-index:1;}
+:root.sg-dk #app > .sg-table{padding:10px;}
+:root.sg-dk #app > .sg-go{min-height:0;}
+:root.sg-dk .gcol{display:flex;flex-direction:column;gap:14px;overflow:hidden;font-size:var(--pf,16px);}
+:root.sg-dk .gcol > *{flex:none;margin:0;}
+:root.sg-dk .gcol .sg-board{padding:1.05em .95em .8em;}
+:root.sg-dk .gcol .sg-who{font-size:1.15em;}
+:root.sg-dk .gcol .sg-stat b{font-size:2.05em;}
+:root.sg-dk .gcol .sg-stat.lv b{font-size:3.1em;}
+:root.sg-dk .gcol .sg-stat small,:root.sg-dk .gcol .sg-sub{font-size:.84em;}
+:root.sg-dk .gcol .sg-lives i{width:.8em;height:.8em;}
+:root.sg-dk .gcol .sg-status{text-align:left;min-height:0;}
+:root.sg-dk .gcol .sg-status .t{font-size:1.55em;}
+:root.sg-dk .gcol .sg-status .s{font-size:.95em;}
+/* the room */
+.gpn{flex:0 1 auto !important;min-height:0;display:flex;flex-direction:column;gap:.55em;padding:.85em 1em .9em;border-radius:20px;color:var(--text);
+  background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),inset 0 1px 0 rgba(255,255,255,.1);overflow:hidden;}
+.gpn h4{flex:none;margin:0;font-family:var(--display);font-size:1.12em;font-weight:800;}
+.gpn .glist{flex:0 1 auto;min-height:0;overflow:hidden;display:flex;flex-direction:column;}
+.gpn .grun{display:grid;grid-template-columns:auto;gap:.35em;padding:.4em 0;border-bottom:1px solid var(--gl-line);}
+.gpn .grun:last-child{border-bottom:0;}
+.gpn .grun > b{display:flex;align-items:center;gap:.4em;font-weight:750;font-size:.95em;}
+.gpn .grun > b i{width:.6em;height:.6em;border-radius:50%;background:var(--c);}
+.gpn .grun.now > b{color:var(--lit-ink);}
+.gpn .gmk{display:flex;flex-wrap:wrap;gap:.3em;}
+.gpn .gmk i{min-width:1.7em;height:1.7em;padding:0 .2em;box-sizing:border-box;border-radius:.5em;display:grid;place-items:center;font-style:normal;font-size:.8em;font-weight:800;font-variant-numeric:tabular-nums;}
+.gpn .gmk i.ok{background:color-mix(in srgb,var(--green) 30%,transparent);color:var(--text);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--green) 60%,transparent);}
+.gpn .gmk i.no{background:color-mix(in srgb,var(--red) 22%,transparent);color:var(--bad-ink);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--red) 55%,transparent);}
+.gpn .gmk i.up{color:var(--lit-ink);box-shadow:inset 0 0 0 1.5px var(--lit);}
+.gpn .gn{font-family:var(--display);font-weight:800;font-size:.95em;color:var(--text-2);white-space:nowrap;}
+.gpn .grow{flex:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:.8em;padding:.45em 0;border-bottom:1px solid var(--gl-line);}
+.gpn .grow:last-child{border-bottom:0;}
+.gpn .gb{min-width:0;display:flex;flex-direction:column;line-height:1.2;}
+.gpn .gb b{font-weight:750;font-size:.95em;}
+.gpn .gb small{font-size:.82em;font-weight:600;color:var(--text-2);}
+.gpn .gk{font-family:var(--display);font-weight:800;color:var(--text-3);min-width:1.2em;text-align:center;}
+.gpn.gbest .grow:first-child .gk{color:var(--lit-ink);}
+.gpn .gcups{display:flex;gap:.22em;align-items:flex-end;}
+.gpn .gcups i{width:.9em;height:1.05em;border-radius:.25em .25em .1em .1em;background:linear-gradient(90deg,#8e5a1e,#f2cf7c 40%,#9a6424);opacity:.5;position:relative;}
+.gpn .gcups i.pick{opacity:1;box-shadow:0 0 0 2px var(--red);}
+.gpn .gcups i.ball{opacity:1;}
+.gpn .gcups i.ball::after{content:"";position:absolute;left:50%;bottom:-.5em;width:.45em;height:.45em;margin-left:-.225em;border-radius:50%;background:radial-gradient(circle at 34% 28%,#ffd0d0 0,#ff5a5a 18%,#d4142a 55%,#6a000c 100%);}
+.gpn.gmiss .grow{padding-bottom:.65em;}
 </style>
 </head>
 <body>
@@ -252,7 +299,7 @@ html.ls .sg-go{grid-area:go;min-height:52px;}
 
   // ── Setup ─────────────────────────────────────────────────────────────────
   function showSetup() {
-    S = null; busy = false; picking = false;
+    S = null; busy = false; picking = false; DK = null; dkKey = ''; R.col = null; document.documentElement.classList.remove('sg-dk');
     Kit.setup(app, {
       // one seat plays for a best run; with 2 to 4 seats everyone takes a run and the most levels cleared wins
       modes: Kit.modes(['solo', { id: 'pass', kind: 'local' }]),
@@ -308,6 +355,8 @@ html.ls .sg-go{grid-area:go;min-height:52px;}
     R.status = el('div', { class: 'sg-status' }, [R.t = el('div', { class: 't' }), R.s = el('div', { class: 's' })]);
     R.go = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block sg-go', onclick: onGo });
     app.appendChild(R.board); app.appendChild(table); app.appendChild(R.status); app.appendChild(R.go);
+    R.table = table; R.col = null; DK = deskPlan(); dkKey = DK ? DK.key : '';
+    if (DK) deskPaint(); else document.documentElement.classList.remove('sg-dk');
     paintBoard(); paintGo(); buildCups();   // the scoreboard first: the cups are sized to the room it leaves
   }
   function buildCups() {
@@ -334,7 +383,12 @@ html.ls .sg-go{grid-area:go;min-height:52px;}
   var WIDE = matchMedia('(orientation:landscape) and (min-width:900px) and (min-height:560px)');
   function layout() {
     var W = R.felt.clientWidth || 340, n = S.n, cw3, ch3;
-    if (document.documentElement.classList.contains('ls')) {
+    if (DK) {
+      // at a desk the felt is the table's box: cups as large as it allows, to 400px wide
+      var fa = DK.felt[3] - 20;
+      ch3 = Math.max(80, Math.min(fa / 2.45, (W - 20) / 3.7 * 1.1, 440)); cw3 = ch3 / 1.1;
+      G.H = Math.round(fa);
+    } else if (document.documentElement.classList.contains('ls')) {
       // A phone on its side: the felt takes the height above the Shuffle button
       var room = window.innerHeight - R.felt.getBoundingClientRect().top - 8 - 10 - R.go.offsetHeight - (parseFloat(getComputedStyle(app).paddingBottom) || 0);
       ch3 = Math.max(70, Math.min(room / 2.45, (W - 20) / 3.7 * 1.1)); cw3 = ch3 / 1.1;
@@ -369,7 +423,7 @@ html.ls .sg-go{grid-area:go;min-height:52px;}
     c.w.style.transform = 'translate3d(' + c.x.toFixed(1) + 'px,' + (G.base - G.ch + c.dy).toFixed(1) + 'px,0) scale(' + c.s.toFixed(3) + ')';
   }
   // also mid-shuffle: a move under way finishes on the new spots
-  window.addEventListener('resize', function () { if (S && R.felt && R.felt.isConnected) layout(); });
+  window.addEventListener('resize', function () { if (S && R.felt && R.felt.isConnected) { deskSync(); layout(); } });
 
   function paintBoard() {
     var r = run(), rec = Math.max(record(S.lives).v, r.cleared);
@@ -382,6 +436,7 @@ html.ls .sg-go{grid-area:go;min-height:52px;}
     R.info.textContent = c.n + ' cups and ' + c.moves + ' moves';
     R.lives.innerHTML = '';
     for (var i = 0; i < S.lives; i++) R.lives.appendChild(el('i', { class: i < S.lives - r.misses ? '' : 'gone' }));
+    if (DK) deskRoom();
   }
   function bump(node) { node.classList.remove('pop'); void node.offsetWidth; node.classList.add('pop'); }
   function status(t, s, cls) { R.t.textContent = t; R.t.className = 't' + (cls ? ' ' + cls : ''); R.s.textContent = s || ''; }
@@ -615,6 +670,136 @@ html.ls .sg-go{grid-area:go;min-height:52px;}
     return el('div', { class: 'k-hd-sum', text: 'Found the ball ' + e.rounds + ' time' + (e.rounds === 1 ? '' : 's') + ' before the first miss' });
   }
 
+  // ── At a desk (a computer's window of any shape; CLAUDE.md "Large windows") ──────────────────────────────────
+  // Phones and tablets keep the layouts above exactly as they were (deviceShape). In a larger window the table is
+  // sized from the window, its cups to 400px wide; the scoreboard, what just happened and the room stand in a column
+  // at the left (information), the table and its button at the right (where you act). The room holds the runs:
+  // every player's run level by level (found or missed), where the ball was each time it was missed, and the best
+  // runs at this table. html.sg-dk is on only while it shows.
+  var DK = null, dkKey = '';
+  function deviceShape(w, h) { var lo = Math.min(w, h), hi = Math.max(w, h); return (lo <= 480 && hi <= 1000) || (lo >= 620 && lo <= 840 && hi >= 900 && hi <= 1200); }
+  function deskPlan() {
+    var W = window.innerWidth, Hw = window.innerHeight;
+    if (!S || deviceShape(W, Hw) || W < 480 || Hw < 540) return null;
+    var bar = document.querySelector('.gbar'), top = (bar ? Math.round(bar.getBoundingClientRect().bottom) : 60) + 4;
+    var gp = Math.round(Math.max(14, Math.min(30, W / 90))), G = gp, X0 = gp, Y0 = top, AW = W - 2 * gp, AH = Hw - Y0 - Math.max(18, gp);
+    var L = { W: W, H: Hw, gp: G }, goH = 60;
+    L.pf = Math.round(Math.max(14, Math.min(24, 15 * Math.min(W / 1500, Hw / 1000))));
+    var cw = Math.round(Math.max(320, Math.min(480, W * .25)));
+    if (AW - cw - G >= 560 && AW >= AH * .95) {
+      // wide: the column at the left, the table and its button at the right
+      L.comp = 'wide';
+      L.col = [X0, Y0, cw, AH];
+      L.felt = [X0 + cw + G, Y0, AW - cw - G, AH - goH - G];
+      L.go = [X0 + AW - Math.min(420, AW - cw - G), Y0 + AH - goH, Math.min(420, AW - cw - G), goH];
+    } else {
+      // tall: the table across the top, the button under it at the right, the column under the table at the left
+      L.comp = 'tall';
+      var fh = Math.round(Math.min(AH * .55, AW * .95));
+      if (fh < 260) return null;
+      L.felt = [X0, Y0, AW, fh];
+      var y = Y0 + fh + G, gw = Math.min(420, Math.round(AW * .42));
+      L.go = [X0 + AW - gw, y, gw, goH];
+      L.col = [X0, y, AW - gw - G, AH - fh - G];
+      if (L.col[2] < 280) { L.col = [X0, y + goH + G, AW, AH - fh - goH - 2 * G]; L.go = [X0, y, AW, goH]; }
+    }
+    L.key = [L.comp, W, Hw].join(':');
+    return L;
+  }
+  function deskBox(e, b, h) { e.style.left = b[0] + 'px'; e.style.top = b[1] + 'px'; e.style.width = b[2] + 'px'; if (h !== false) e.style.height = b[3] + 'px'; }
+  // the room's panels
+  function runsPanel() {
+    var multi = S.players.length > 1, any = S.runs.some(function (r) { return (r.seq || '').length; });
+    if (!any) return null;
+    var pn = el('div', { class: 'gpn gruns' });
+    pn.appendChild(el('h4', { text: multi ? 'The runs' : 'This run' }));
+    var list = el('div', { class: 'glist' });
+    S.players.forEach(function (p, i) {
+      var r = S.runs[i], seq = (r.seq || '').split(''), row = el('div', { class: 'grun' + (i === S.cur && S.phase !== 'done' ? ' now' : '') });
+      if (multi) row.appendChild(el('b', { html: '<i style="--c:' + p.color + '"></i>' + Kit.esc(p.name) }));
+      var marks = el('span', { class: 'gmk' }), lv = 1;
+      seq.forEach(function (x) { marks.appendChild(el('i', { class: x === '1' ? 'ok' : 'no', title: 'Level ' + lv, text: String(lv) })); if (x === '1') lv++; });
+      if (i === S.cur && S.phase === 'ready' && i < S.runs.length) marks.appendChild(el('i', { class: 'up', text: String(r.level) }));
+      row.appendChild(marks);
+      row.appendChild(el('span', { class: 'gn', text: r.cleared + (r.cleared === 1 ? ' level' : ' levels') }));
+      list.appendChild(row);
+    });
+    pn.appendChild(list);
+    pn._fit = function () { trimG(list); };
+    return pn;
+  }
+  function missPanel() {
+    var rows = [];
+    S.players.forEach(function (p, i) { (S.runs[i].missLog || []).forEach(function (x) { rows.push({ p: p, x: x }); }); });
+    if (!rows.length) return null;
+    var pn = el('div', { class: 'gpn gmiss' }), list = el('div', { class: 'glist' });
+    pn.appendChild(el('h4', { text: 'Where the ball was' })); pn.appendChild(list);
+    rows.reverse().forEach(function (o) {
+      // the row of cups as they stood: the one picked and the one that had the ball
+      var cups = el('span', { class: 'gcups' });
+      for (var s = 0; s < o.x.n; s++) cups.appendChild(el('i', { class: s === o.x.as ? 'ball' : s === o.x.ps ? 'pick' : '' }));
+      var who = S.players.length > 1 ? o.p.name + ' picked the ' : 'You picked the ';
+      list.appendChild(el('div', { class: 'grow' }, [cups, el('span', { class: 'gb' }, [el('b', { text: 'Level ' + o.x.level }), el('small', { text: who + o.x.picked + '. The ball was under the ' + o.x.at + '.' })])]));
+    });
+    pn._fit = function () { trimG(list); };
+    return pn;
+  }
+  function bestPanel() {
+    var all = []; try { GameHistory.load(KEY).forEach(function (e) { if ((e.lives || 1) !== S.lives || e.v !== 2) return; (e.players || []).forEach(function (p) { if (typeof p.score === 'number') all.push({ n: p.name, s: p.score, at: e.started || 0 }); }); }); } catch (e) {}
+    if (!all.length) return null;
+    all.sort(function (a, b) { return b.s - a.s || a.at - b.at; });
+    var pn = el('div', { class: 'gpn gbest' }), list = el('div', { class: 'glist' });
+    pn.appendChild(el('h4', { text: S.lives === 1 ? 'Best runs with one miss' : 'Best runs with three misses' })); pn.appendChild(list);
+    all.slice(0, 10).forEach(function (r, i) {
+      var day = r.at ? new Date(r.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+      list.appendChild(el('div', { class: 'grow' }, [el('span', { class: 'gk', text: String(i + 1) }), el('span', { class: 'gb' }, [el('b', { text: r.n }), day ? el('small', { text: day }) : null]), el('span', { class: 'gn', text: r.s + (r.s === 1 ? ' level' : ' levels') })]));
+    });
+    pn._fit = function () { trimG(list); };
+    return pn;
+  }
+  function trimG(list) {
+    var g = 200; while (list.scrollHeight > list.clientHeight + 1 && list.children.length && g--) list.removeChild(list.lastElementChild);
+    if (!list.children.length) list.parentNode.style.display = 'none';
+  }
+  function deskPaint() {
+    var L = DK; if (!L) return;
+    document.documentElement.classList.add('sg-dk');
+    app.style.setProperty('--pf', L.pf + 'px');
+    deskBox(R.table, [L.felt[0], L.felt[1], L.felt[2], L.felt[3]]);
+    deskBox(R.go, L.go);
+    var col = R.col || (R.col = el('div', { class: 'gcol' }));
+    col.innerHTML = ''; col.appendChild(R.board); col.appendChild(R.status);
+    app.appendChild(col); deskBox(col, L.col);
+    deskRoom();
+  }
+  function deskRoom() {
+    var col = R.col; if (!col || !DK) return;
+    col.querySelectorAll('.gpn').forEach(function (n) { n.remove(); });
+    [runsPanel(), missPanel(), bestPanel()].forEach(function (pn) { if (pn) col.appendChild(pn); });
+    col.querySelectorAll('.gpn').forEach(function (pn) { if (pn._fit) pn._fit(); });
+    // a panel the column has no room for at all is left out whole, the last first
+    var ps = [].slice.call(col.querySelectorAll('.gpn'));
+    while (col.scrollHeight > col.clientHeight + 1 && ps.length) ps.pop().remove();
+  }
+  function deskSync() {
+    var L = deskPlan(), key = L ? L.key : '';
+    if (key === dkKey) return;
+    var same = DK && L && DK.comp === L.comp;
+    dkKey = key;
+    function go() {
+      DK = L;
+      if (!L) {
+        document.documentElement.classList.remove('sg-dk');
+        [R.table, R.go].forEach(function (e) { if (e) { e.style.left = e.style.top = e.style.width = e.style.height = ''; } });
+        if (R.col) { R.col.remove(); R.col = null; }
+        app.insertBefore(R.board, app.firstChild); app.insertBefore(R.status, R.go);
+        if (R.felt) R.felt.style.height = '';
+      } else deskPaint();
+      if (R.felt && R.felt.isConnected) layout();
+    }
+    if (same) go(); else Kit.glide(go);
+  }
+
   // ── Keyboard ──────────────────────────────────────────────────────────────
   document.addEventListener('keydown', function (e) {
     if (!S || !R.felt || document.querySelector('.k-scrim, .k-win')) return;
@@ -626,6 +811,7 @@ html.ls .sg-go{grid-area:go;min-height:52px;}
 
   // Test hooks (a demo starts a run and sets its level)
   window.__shell = { state: function () { return S; }, start: function (c) { start(c); }, picking: function () { return picking; }, busy: function () { return busy; },
+    desk: function () { return deskPlan(); },
     level: function (n) { run().level = n; save(); paintBoard(); status('Watch the ball', 'Then tap Shuffle'); paintGo('Next level', 'play'); } };
 
   // ── Boot / resume ─────────────────────────────────────────────────────────

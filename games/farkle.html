@@ -163,6 +163,61 @@
   .spot .die{--ds:min(64px,16svh);}
   .stage > .board .pc .sub{white-space:normal;overflow:visible;line-height:1.15;}
 }
+/* AT A DESK (html.fk-dk, set by the script's deskPlan only while a computer's window shows the table; phones and
+   tablets never get it): the script places the table and the two columns; the dice, the cup and the ledge's dice are
+   sized from the table (--fds, --cz). */
+:root.fk-dk,:root.fk-dk body{overflow:hidden;overscroll-behavior:none;}
+:root.fk-dk #app.stage{max-width:none;margin:0;padding:0;display:block;}
+:root.fk-dk #app > .table,:root.fk-dk #app > .fcol{position:fixed;margin:0;box-sizing:border-box;z-index:1;}
+:root.fk-dk #app > .table{display:flex;flex-direction:column;}
+:root.fk-dk #app > .table .felt-in{flex:1 1 auto;display:flex;flex-direction:column;}
+:root.fk-dk .spot .die{--ds:var(--fds);}
+:root.fk-dk .cup{zoom:var(--cz,1);cursor:pointer;}
+:root.fk-dk .zone .msg{font-size:calc(var(--fds) * .3);}
+:root.fk-dk .stamp{font-size:calc(var(--fds) * .95);}
+:root.fk-dk .ledge{flex:1 1 auto;min-height:calc(var(--fds) * .55 + 14px);padding:8px 16px;gap:16px;}
+:root.fk-dk .ledge .lbl{font-size:max(.74rem,calc(var(--fds) * .14));width:auto;max-width:7em;}
+:root.fk-dk .ledge .die{--ds:calc(var(--fds) * .45);}
+:root.fk-dk .ledge .set b{font-size:max(.74rem,calc(var(--fds) * .15));}
+:root.fk-dk .spot .die{cursor:pointer;}
+.fcol{display:flex;flex-direction:column;gap:14px;overflow:hidden;font-size:var(--pf,16px);}
+.fcol > *{flex:none;margin:0 !important;}
+:root.fk-dk .fleft .board{gap:8px;}
+:root.fk-dk .fleft .pc{padding:.55em .8em .55em .95em;}
+:root.fk-dk .fleft .pc .nm{font-size:.86em;}
+:root.fk-dk .fleft .pc .sc{font-size:1.6em;}
+:root.fk-dk .fleft .pc .sub{font-size:.74em;}
+:root.fk-dk .fright .readout{flex-direction:column;align-items:flex-start;gap:12px;min-height:0;}
+:root.fk-dk .fright .readout .who{font-size:1.4em;}
+:root.fk-dk .fright .readout .why{font-size:.86em;}
+:root.fk-dk .fright .tscore{text-align:left;}
+:root.fk-dk .fright .tscore b{font-size:2.4em;}
+:root.fk-dk .fright .acts{grid-template-columns:1fr;}
+:root.fk-dk .fright .acts .btn{min-height:64px;}
+:root.fk-dk .fright .rulechip{text-align:left;}
+/* the room */
+.fpn{flex:0 1 auto !important;min-height:0;display:flex;flex-direction:column;gap:.55em;padding:.85em 1em .9em;border-radius:20px;color:var(--text);
+  background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),inset 0 1px 0 rgba(255,255,255,.1);overflow:hidden;}
+.fpn h4{flex:none;margin:0;font-family:var(--display);font-size:1.12em;font-weight:800;}
+.fpn .fst{display:flex;flex-direction:column;min-height:0;flex:0 1 auto;overflow:hidden;}
+.fpn .fsb{display:flex;flex-direction:column;min-height:0;flex:0 1 auto;overflow:hidden;}
+.fpn .fsr{flex:none;display:grid;grid-template-columns:2em repeat(var(--n),minmax(0,1fr));gap:.5em;align-items:center;padding:.32em 0;border-bottom:1px solid var(--gl-line);font-variant-numeric:tabular-nums;}
+.fpn .fsr > span{text-align:right;font-weight:700;font-size:.9em;overflow-wrap:anywhere;}
+.fpn .fsr > span:first-child{text-align:left;color:var(--text-3);font-weight:800;}
+.fpn .fsr .up{color:var(--text);} .fpn .fsr .dn{color:var(--bad-ink);} .fpn .fsr .z{color:var(--text-3);}
+.fpn .fsr.now > span:first-child{color:var(--lit-ink);}
+.fpn .fsh > span{display:flex;align-items:center;justify-content:flex-end;gap:.35em;font-size:.8em;color:var(--text-2);}
+.fpn .fsh i{width:.6em;height:.6em;border-radius:50%;background:var(--c);flex:none;}
+.fpn .fst.many .fsh i{width:.85em;height:.85em;}
+.fpn .fst.many .fsr > span{font-size:.8em;}
+.fpn .fst.many .fsr{gap:.35em;grid-template-columns:1.6em repeat(var(--n),minmax(0,1fr));}
+.fpn .fst-t{border-bottom:0;border-top:2px solid color-mix(in srgb,var(--h) 50%,var(--gl-line));}
+.fpn .fst-t > span{font-family:var(--display);font-size:1em;}
+.fpn .fst-t > span:first-child{font-size:.82em;}
+.fpn .fcb{min-height:0;flex:0 1 auto;overflow:hidden;}
+.fpn .fcb .sctbl{font-size:.9em;}
+.fpn .fcb .sctbl td{border-bottom:1px solid var(--gl-line);}
+.fpn .fcb .mini .die{--ds:1.15em;}
 </style>
 </head>
 <body>
@@ -302,7 +357,7 @@
 
   // ── Setup ────────────────────────────────────────────────────────────────
   function showSetup() {
-    S = null;
+    S = null; DK = null; dkKey = ''; document.documentElement.classList.remove('fk-dk');
     Kit.setup(app, {
       modes: Kit.modes(['cpu', { id: 'pass', kind: 'local' }]),
       players: {
@@ -741,6 +796,7 @@
     function snap() { last = new Map(); document.querySelectorAll(SEL).forEach(function (e) { if (!e.getAnimations || !e.getAnimations().length) last.set(e, e.getBoundingClientRect()); }); }
     setInterval(snap, 400);
     window.addEventListener('resize', function () {
+      if (S && deskSync()) return;
       var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches, now = new Map();
       document.querySelectorAll(SEL).forEach(function (e) { now.set(e, e.getBoundingClientRect()); });
       if (!reduce) now.forEach(function (b, e) {
@@ -754,6 +810,8 @@
   })();
   function render() {
     if (!S) return;
+    DK = deskPlan(); dkKey = DK ? DK.key : '';
+    if (!DK) document.documentElement.classList.remove('fk-dk');
     app.innerHTML = '';
     var p = P(), live = S.phase !== 'over';
     // Scoreboard
@@ -861,6 +919,7 @@
       document.createTextNode('Play to ' + fmt(S.rules.target) + (S.rules.entry ? ', with ' + fmt(S.rules.entry) + ' to get on' : '') + (S.rules.dbl ? ', with doubling' : '') + '. '),
       el('button', { type: 'button', text: 'Scoring chart', onclick: chart })
     ]));
+    if (DK) deskPaint();
   }
 
   function tapDie(i) {
@@ -884,7 +943,8 @@
     save(); render();
   }
 
-  function chart() {
+  function chart() { Kit.sheet({ title: 'Scoring chart', html: chartHtml(), actions: [{ label: 'Got it', primary: true }] }); }
+  function chartHtml() {
     var dbl = S ? S.rules.dbl : false;
     function mini(vs) { return '<span class="mini">' + vs.map(function (v) { return Kit.die(v).outerHTML.replace('<button', '<span').replace('</button>', '</span>'); }).join('') + '</span>'; }
     var rows = [
@@ -894,8 +954,109 @@
       [[1, 2, 3, 4, 5, 6], 'Straight', 1500], [[2, 2, 3, 3, 6, 6], 'Three pairs', 1500], [[3, 3, 3, 3, 2, 2], 'Four of a kind + pair', 1500]
     ];
     if (!dbl) rows.push([[2, 2, 2, 6, 6, 6], 'Two triplets', 2500]);
-    var html = '<table class="sctbl">' + rows.map(function (r) { return '<tr><td>' + mini(r[0]) + '</td><td>' + r[1] + '</td><td>' + (typeof r[2] === 'number' ? fmt(r[2]) : r[2]) + '</td></tr>'; }).join('') + '</table>';
-    Kit.sheet({ title: 'Scoring chart', html: html, actions: [{ label: 'Got it', primary: true }] });
+    return '<table class="sctbl">' + rows.map(function (r) { return '<tr><td>' + mini(r[0]) + '</td><td>' + r[1] + '</td><td>' + (typeof r[2] === 'number' ? fmt(r[2]) : r[2]) + '</td></tr>'; }).join('') + '</table>';
+  }
+
+  // ── At a desk (a computer's window of any shape; CLAUDE.md "Large windows") ──────────────────────────────────
+  // Phones and tablets keep the layouts above exactly as they were (deviceShape). In a larger window the table is
+  // sized from the window and its dice from the table (--fds, to 130px); the scores, the score sheet round by round and
+  // the scoring chart stand at the left (to look at), the turn's readout and Roll and Bank at the right (where you
+  // act). html.fk-dk is on only while it shows.
+  var DK = null, dkKey = '';
+  function deviceShape(w, h) { var lo = Math.min(w, h), hi = Math.max(w, h); return (lo <= 480 && hi <= 1000) || (lo >= 620 && lo <= 840 && hi >= 900 && hi <= 1200); }
+  function deskPlan() {
+    var W = window.innerWidth, Hw = window.innerHeight;
+    if (!S || deviceShape(W, Hw) || W < 480 || Hw < 540) return null;
+    var bar = document.querySelector('.gbar'), top = (bar ? Math.round(bar.getBoundingClientRect().bottom) : 60) + 4;
+    var gp = Math.round(Math.max(14, Math.min(30, W / 90))), G = gp, X0 = gp, Y0 = top, AW = W - 2 * gp, AH = Hw - Y0 - Math.max(18, gp);
+    var L = { W: W, H: Hw, gp: G };
+    L.pf = Math.round(Math.max(14, Math.min(24, 15 * Math.min(W / 1500, Hw / 1000))));
+    var lw = Math.round(Math.max(300, Math.min(460, W * .22))), rw = Math.round(Math.max(260, Math.min(380, W * .17)));
+    if (AW - lw - rw - 2 * G >= 520 && AW >= AH * 1.05) {
+      L.comp = 'wide';
+      L.left = [X0, Y0, lw, AH];
+      L.table = [X0 + lw + G, Y0, AW - lw - rw - 2 * G, AH];
+      L.right = [X0 + AW - rw, Y0, rw, AH];
+    } else {
+      // tall or square: the table across the top; under it the scores at the left, the turn and its buttons at the right
+      var th = Math.round(Math.min(AW * .8, AH * .56));
+      if (th < 300) return null;
+      L.comp = 'tall';
+      L.table = [X0, Y0, AW, th];
+      var y = Y0 + th + G, r2 = Math.min(rw + 40, Math.round(AW * .42));
+      L.left = [X0, y, AW - r2 - G, AH - th - G];
+      L.right = [X0 + AW - r2, y, r2, AH - th - G];
+    }
+    var zw = L.table[2] - 16, zh = L.table[3] - 16;
+    L.ds = Math.round(Math.max(56, Math.min(130, zw / 8.2, (zh - 70) / 4)));
+    L.zh = Math.round(zh - Math.max(60, L.ds * .55 + 26));
+    L.key = [L.comp, W, Hw].join(':');
+    return L;
+  }
+  function deskBox(e, b, noH) { e.style.left = b[0] + 'px'; e.style.top = b[1] + 'px'; e.style.width = b[2] + 'px'; if (!noH) e.style.height = b[3] + 'px'; }
+  function sheetPanel() {
+    var rs = S.rounds || [], n = S.players.length;
+    if (!rs.length || (rs.length === 1 && !S.players.some(function (q) { return q.score; }))) return null;
+    var pn = el('div', { class: 'fpn fsheet' });
+    pn.appendChild(el('h4', { text: 'The score sheet' }));
+    // (with five or six players a column is narrow: its head is the player's color, as on the scoreboard over it)
+    var tb = el('div', { class: 'fst' + (n > 4 ? ' many' : ''), style: { '--n': n } });
+    tb.appendChild(el('div', { class: 'fsr fsh' }, [el('span')].concat(S.players.map(function (q) { return el('span', { 'aria-label': q.name, html: '<i style="--c:' + q.color + '"></i>' + (n > 4 ? '' : Kit.esc(q.name)) }); }))));
+    var body = el('div', { class: 'fsb' }), tot = S.players.map(function () { return 0; }), rows = [];
+    rs.forEach(function (row, r) {
+      var played = r < S.round - 1 || (r === S.round - 1);
+      if (!played) return;
+      rows.push(el('div', { class: 'fsr' + (r === S.round - 1 ? ' now' : '') }, [el('span', { class: 'fk', text: String(r + 1) })].concat(row.map(function (v, i) {
+        tot[i] += v;
+        return el('span', { class: v > 0 ? 'up' : v < 0 ? 'dn' : 'z', text: v > 0 ? fmt(v) : v < 0 ? '−' + fmt(-v) : '' });
+      }))));
+    });
+    rows.forEach(function (x) { body.appendChild(x); });
+    tb.appendChild(body);
+    tb.appendChild(el('div', { class: 'fsr fst-t' }, [el('span', { text: 'Total' })].concat(S.players.map(function (q) { return el('span', { text: fmt(q.score) }); }))));
+    pn.appendChild(tb);
+    // the oldest rounds give way first: the sheet keeps its latest rows and its totals
+    pn._fit = function () { var g = 200; while (body.scrollHeight > body.clientHeight + 1 && body.children.length > 1 && g--) body.removeChild(body.firstElementChild); };
+    return pn;
+  }
+  function chartPanel() {
+    var pn = el('div', { class: 'fpn fchart' }), box = el('div', { class: 'fcb', html: chartHtml() });
+    pn.appendChild(el('h4', { text: 'What scores' })); pn.appendChild(box);
+    pn._fit = function () { var rows = [].slice.call(box.querySelectorAll('tr')), g = 40; while (box.scrollHeight > box.clientHeight + 1 && rows.length > 4 && g--) rows.pop().remove(); if (box.scrollHeight > box.clientHeight + 1) pn.remove(); };
+    return pn;
+  }
+  function deskPaint() {
+    var L = DK; if (!L) return;
+    document.documentElement.classList.add('fk-dk');
+    app.style.setProperty('--pf', L.pf + 'px');
+    var table = app.querySelector(':scope > .table'), board = app.querySelector(':scope > .board'), fin = app.querySelector(':scope > .final');
+    var ro = app.querySelector(':scope > .readout'), acts = app.querySelector(':scope > .acts'), rule = app.querySelector(':scope > .rulechip');
+    if (table) { deskBox(table, L.table); table.style.setProperty('--fds', L.ds + 'px'); table.style.setProperty('--cz', (L.ds / 66).toFixed(3)); var z = table.querySelector('.zone'); if (z) z.style.height = L.zh + 'px'; }
+    var left = el('div', { class: 'fcol fleft' }), right = el('div', { class: 'fcol fright' });
+    [board, fin].forEach(function (e) { if (e) left.appendChild(e); });
+    if (board) board.style.setProperty('--cols', S.players.length > 3 && L.left[2] >= 400 ? 2 : 1);
+    var sh = sheetPanel(); if (sh) left.appendChild(sh);
+    [ro, acts, rule].forEach(function (e) { if (e) right.appendChild(e); });
+    app.appendChild(left); app.appendChild(right);
+    deskBox(left, L.left); deskBox(right, L.right);
+    // the chart goes where there is room for it: under the turn's buttons, or under the sheet
+    var ch = chartPanel(); right.appendChild(ch);
+    if (sh && sh._fit) sh._fit();
+    if (right.scrollHeight > right.clientHeight + 1) { ch.remove(); left.appendChild(ch); }
+    ch._fit && ch.isConnected && ch._fit();
+    if (sh && sh._fit) sh._fit();
+    if (left.scrollHeight > left.clientHeight + 1 && ch.isConnected) ch.remove();
+    if (sh && left.scrollHeight > left.clientHeight + 1) sh.remove();
+  }
+  function deskSync() {
+    var L = deskPlan(), key = L ? L.key : '';
+    if (key === dkKey) return !!L;
+    var same = DK && L && DK.comp === L.comp;
+    dkKey = key;
+    function go() { DK = L; if (!L) document.documentElement.classList.remove('fk-dk'); render(); }
+    if (lock) { go(); return !!L; }   // (mid-roll the table is drawn again where it now lies; the roll carries on)
+    if (same) go(); else Kit.glide(go);
+    return !!L;
   }
 
   // ── Online (turnnet.js) ──────────────────────────────────────────────────
@@ -1039,7 +1200,7 @@
   // Test hooks
   window.__farkle = {
     state: function () { return S; }, speed: function (x) { SPD = x; }, lock: function () { return lock; },
-    scoreOf: scoreOf, hasScore: hasScore, plan: function () { return cpuPlan(); }, start: function (cfg) { start(cfg); }
+    scoreOf: scoreOf, hasScore: hasScore, plan: function () { return cpuPlan(); }, start: function (cfg) { start(cfg); }, desk: function () { return deskPlan(); }, render: function () { render(); }
   };
 
   // ── Boot ─────────────────────────────────────────────────────────────────
