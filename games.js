@@ -55,7 +55,7 @@ var GAMES = [
   { id: 'pyramid',     name: 'Pyramid',      color: '#f59e0b', cat: 'cards', min: 1, max: 1, tag: 'Pair cards that add to 13', play: 'pyramid', demo: 1 },
   { id: 'jokerrun',    name: 'Balatro',      color: '#e11d48', cat: 'specialty', min: 1, max: 1, tag: 'Poker hands, wild jokers, beat the blinds', play: 'jokerrun', demo: 1 },
   { id: 'pokersquares',name: 'Poker Squares', color: '#ef4444', cat: 'cards', min: 1, max: 1, tag: 'Build ten poker hands on a 5×5 grid', play: 'pokersquares', demo: 1 },
-  { id: 'sandlot',     name: 'Sandlot',      color: '#000', cat: 'specialty', min: 1, max: 4, tag: 'Baseball card battles with your old cards', play: 'sandlot', demo: 1 },
+  { id: 'sandlot',     name: 'Wax Pack',     color: '#000', cat: 'specialty', min: 2, max: 2, tag: 'Baseball with the old cards in your shoebox', play: 'waxpack', demo: 1 },
   { id: 'lorcana',     name: 'Lorcana',      color: '#a855f7', cat: 'specialty', min: 1, max: 4, tag: 'Real cards and art, vs the computer or pass & play', play: 'lorcana-play', demo: 1, score: 'lorcana',
     launch: [
       { icon: 'phone', title: 'Play on this device', desc: 'Against the computer or pass and play, with the real cards', file: 'lorcana-play.html' },

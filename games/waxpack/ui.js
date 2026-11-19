@@ -1,0 +1,1399 @@
+'use strict';
+// Wax Pack: the game page. Real baseball cards on the table; this page is the umpire, the scoreboard, the announcer
+// and the record keeper. The flow: the stack (tell the app which cards are on the table), the draft (take turns
+// picking from the spread), the lineups (the cards laid round a diamond), then the game: every at-bat a secret duel,
+// the pitcher's pitch against what the batter looks for. The league keeps every card ever entered and its numbers.
+//
+// State S (saved in waxpack_state): {v, mode, level, inn, size, seed, phase: 'stack'|'draft'|'lineup'|'play'|'over',
+//   C: {cardId: card in this game}, stack: [ids], T: [team, team], home, draft: {turn, first, n}, g: the game}
+// A card here: {id, lid (its league id), kind ('player' or a special), pid, name, year, sy (the season it shows),
+//   role 'h'|'p', pos [positions, most first], r (ratings and rates), team (nickname), tc (team code), rk, as, rb,
+//   err, scout, kid, ph (photo key)}
+// A team: {name, cpu, color, cards: [ids], order: [9 ids], at: {id: position}, sp (pitcher), pen, bench, hand: [{k, id, used}]}
+(function () {
+  var E = window.WaxEngine, C = window.WaxCards, el = Kit.el, esc = Kit.esc;
+  var app = document.getElementById('app');
+  var SAVE = 'waxpack_state', LKEY = 'waxpack_league', HKEY = 'sandlot';
+  var FAST = (function () { try { return localStorage.getItem('waxpack_fast') === '1'; } catch (e) { return false; } })();
+  function ms(t) { return FAST ? Math.min(t, 20) : t; }
+  var timers = [];
+  function later(fn, t) { var id = setTimeout(fn, ms(t)); timers.push(id); return id; }
+  function clearTimers() { timers.forEach(clearTimeout); timers = []; }
+  var S = null, R = Math.random;
+  var POSN = { C: 'Catcher', '1B': 'First base', '2B': 'Second base', '3B': 'Third base', SS: 'Shortstop', LF: 'Left field', CF: 'Center field', RF: 'Right field', DH: 'Designated hitter', P: 'Pitcher' };
+  var SPOTS = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH'];
+  function ord(n) { var s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
+  function avg3(a) { if (a == null || !isFinite(a)) return '.000'; return a >= 1 ? a.toFixed(3) : '.' + String(Math.round(a * 1000)).padStart(3, '0'); }
+  function last(n) { var p = String(n || '').trim().split(/\s+/); return p[p.length - 1]; }
+  function shortName(n) { var p = String(n || '').trim().split(/\s+/); return p.length > 1 ? p[0].charAt(0) + '. ' + p[p.length - 1] : n; }
+
+  // ── The orientation: <html data-o> says which way the screen is turned, so a turn can glide ─────────────────
+  var LQ = window.matchMedia('(orientation: landscape)');
+  function setO() { document.documentElement.setAttribute('data-o', LQ.matches ? 'land' : 'port'); }
+  setO();
+  function onTurn() { Kit.glide(function () { setO(); relayout(); }); }
+  if (LQ.addEventListener) LQ.addEventListener('change', onTurn); else LQ.addListener(onTurn);
+  var rzT = null; window.addEventListener('resize', function () { clearTimeout(rzT); rzT = setTimeout(relayout, 80); });
+
+  // ── The database ─────────────────────────────────────────────────────────
+  var DBP = null;
+  function db() {
+    if (E.db()) return Promise.resolve(E.db());
+    if (!DBP) { DBP = fetch('waxpack/mlb.json').then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(function (j) { return E.load(j); }); DBP.catch(function () { DBP = null; }); }
+    return DBP;
+  }
+
+  // ── The league: every card ever entered, with its numbers from your games ─────────────────────────────────
+  // waxpack_league = {v, n, cards: {lid: {pid, n, y, role, k (kind), rk, as, rb, err, ph, sc (scout's role), at,
+  //   h: {g, ab, h, hr, rbi, bb, k, r}, p: {g, bf, outs, h, r, bb, k, w, l}}}, games}
+  var L = null;
+  function league() {
+    if (L) return L;
+    try { L = JSON.parse(localStorage.getItem(LKEY)); } catch (e) {}
+    if (!L || L.v !== 1) L = { v: 1, n: 0, cards: {}, games: 0 };
+    return L;
+  }
+  function saveLeague() { try { localStorage.setItem(LKEY, JSON.stringify(league())); } catch (e) {} }
+  // The old Sandlot's remembered cards come over once (its own keys are left exactly as they were)
+  function importOld() {
+    var Lg = league(); if (Lg.imp) return; Lg.imp = 1;
+    var old = null; try { old = JSON.parse(localStorage.getItem('sandlot_cards') || 'null'); } catch (e) {}
+    if (old) Object.keys(old).forEach(function (k) {
+      var rec = old[k], cy = +String(k).split('|')[1] || 0; if (!rec || !rec.name) return;
+      var pl = E.find(rec.name, { year: cy, max: 1 })[0];
+      if (!pl || E.name(pl).toLowerCase() !== String(rec.name).toLowerCase()) return;
+      var lid = 'L' + (++Lg.n); Lg.cards[lid] = { pid: pl.id, n: E.name(pl), y: cy || 0, role: rec.role === 'p' ? 'p' : 'h', k: 'player', at: Date.now() };
+    });
+    saveLeague();
+  }
+
+  // ── Making a card from the database ──────────────────────────────────────
+  function makeCard(o) {   // o: {pid | name, year, kind, role, rk, as, rb, err, ph, lid, scout role, team code}
+    var c = { id: 'c' + (++S.cn), lid: o.lid || null, kind: o.kind || 'player', year: o.year || 0, ph: o.ph || '', rk: !!o.rk, as: !!o.as, rb: !!o.rb, err: !!o.err };
+    if (c.kind !== 'player') { c.name = C.SPECIAL[c.kind].name; c.tc = o.tc || ''; c.team = o.tc ? E.nick(o.tc) : ''; return c; }
+    var pl = o.pid ? E.byId(o.pid) : null;
+    if (pl) {
+      c.pid = pl.id; c.name = E.name(pl); c.role = o.role || E.roleOf(pl, c.year);
+      var s = E.cardSeason(pl, c.role, c.year) || E.cardSeason(pl, c.role === 'p' ? 'h' : 'p', c.year);
+      if (s && !E.seasons(pl, c.role).length) c.role = c.role === 'p' ? 'h' : 'p';
+      c.sy = s ? s.y : c.year; c.tc = s ? s.t : ''; c.team = E.nick(c.tc);
+      c.r = c.role === 'p' ? E.rateP(s) : E.rateH(s);
+      c.pos = c.role === 'p' ? ['P'] : E.positionsNear(pl, c.sy);
+      if (c.role === 'p') c.pos = ['P'];
+      c.line = s;
+    } else {
+      c.name = o.name || 'Unknown'; c.role = o.role || 'h'; c.scout = true;
+      c.r = E.scout(c.name, c.role); c.pos = c.role === 'p' ? ['P'] : (o.pos ? [o.pos] : []); c.team = o.team || '';
+    }
+    return c;
+  }
+  function kid(i, role) {
+    var c = { id: 'c' + (++S.cn), kind: 'player', kid: true, name: 'Sandlot kid ' + i, role: role || 'h', pos: [], team: 'Sandlot', year: 0 };
+    c.r = role === 'p' ? E.ARM : E.KID; if (role === 'p') c.pos = ['P'];
+    return c;
+  }
+  // a printed name too long for its plate is set condensed, as card makers did, never cut
+  function fitCardNames(root) {
+    (root || app).querySelectorAll('.wc-ln,.wc-fn,.wc-tm').forEach(function (n) { n.style.transform = ''; var w = n.parentNode.clientWidth - (n.nextElementSibling && n.nextElementSibling.classList.contains('wc-pos') ? 0 : 0), sw = n.scrollWidth, cw = n.clientWidth; if (sw > cw + 1 && cw > 0) { n.style.transform = 'scaleX(' + (cw / sw).toFixed(3) + ')'; n.style.transformOrigin = 'left center'; n.style.width = sw + 'px'; n.style.maxWidth = 'none'; } });
+  }
+  function cardFace(c, o) { o = o || {}; var d = C.el({ kind: c.kind, name: c.kid ? 'Sandlot kid' : c.name, pos: c.role === 'p' ? 'P' : (o.at || (c.pos && c.pos[0]) || ''), year: c.year, team: c.team, role: c.role, rk: c.rk, as: c.as, rb: c.rb, kid: c.kid }, { photo: C.photoNow(c.ph) });
+    if (c.ph && !C.photoNow(c.ph)) C.photoGet(c.ph).then(function (u) { if (u && d.isConnected) { var n = C.el({}, { photo: u }); d.className = n.className; d.innerHTML = n.innerHTML; } });
+    d.dataset.id = c.id; return d; }
+
+  // ── Saving ───────────────────────────────────────────────────────────────
+  function save() {
+    if (!S) return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    var lab = S.phase === 'play' ? (S.g.half ? 'Bottom ' : 'Top ') + 'of the ' + ord(S.g.inn) : S.phase === 'draft' ? 'The draft' : S.phase === 'lineup' ? 'Lineups' : 'Your stack';
+    if (S.phase !== 'over') Kit.resume.set(lab);
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function load() { try { var s = JSON.parse(localStorage.getItem(SAVE)); return s && s.v === 1 ? s : null; } catch (e) { return null; } }
+  var undoStack = [];
+  function snap() { if (!S) return; undoStack.push(JSON.stringify(S)); if (undoStack.length > 30) undoStack.shift(); }
+  function undo() {
+    if (!undoStack.length) return Kit.toast('Nothing to take back');
+    clearTimers(); S = JSON.parse(undoStack.pop()); save(); render(); Kit.sfx('whoosh');
+  }
+
+  // ── Rules ────────────────────────────────────────────────────────────────
+  var RULES =
+    '<p class="goal">Grab a stack of old baseball cards, pick teams from it, and play a game of baseball with them. The cards stay on the table. The app is the umpire, the scoreboard and the announcer.</p>' +
+    '<h3>The stack</h3><ul><li>Spread 25 to 50 cards face up: any brand, any year, stars and commons mixed.</li>' +
+    '<li>Tell the app who is on each card. Type a few letters of the name, or take a photo of the card and the app reads it. Then pick the year printed on the card.</li>' +
+    '<li>The app knows every big leaguer through 2025. It rates each player from the season on the card, measured against his own league that year, so cards from any decade can play each other.</li>' +
+    '<li>A player the app can’t find gets a scout’s report instead.</li></ul>' +
+    '<h3>The draft</h3><ul><li>A coin flip decides who picks first. Then you take turns picking cards from the spread, the way kids pick teams at recess. Slide each card you pick to your side of the table.</li>' +
+    '<li>The team that picks second bats last, as the home team.</li></ul>' +
+    '<h3>Your lineup</h3><ul><li>Nine hitters: eight in the field and a designated hitter. One pitcher starts; the others wait in the bullpen.</li>' +
+    '<li>A player at a position he really played has a sure glove. A player out of position makes more errors, and a pitcher or catcher in the outfield makes the most.</li>' +
+    '<li>A team short of players fills in with sandlot kids.</li></ul>' +
+    '<h3>Every at-bat is a duel</h3><ul><li>The pitcher secretly picks a pitch: Heat, a Breaking ball or Junk.</li>' +
+    '<li>The batter picks what to look for. If he guesses the pitch, he hits it harder and strikes out less. If he guesses wrong, the pitcher has the edge.</li>' +
+    '<li>The ratings tilt every pitch: power hitters crush heat, strikeout pitchers own it, contact hitters handle the breaking ball, and a patient eye draws walks against junk.</li>' +
+    '<li>In pass and play, the pitcher picks with the screen covered, then hands the device to the batter.</li></ul>' +
+    '<h3>The odd cards</h3><ul><li>Cards that aren’t players are plays you hold and use once:</li>' +
+    '<li><b>Team card</b>: a rally, your hitters get a lift for the rest of the half-inning. <b>Checklist</b>: peek at the pitch before you pick. <b>League Leaders</b>: a sure hit. <b>Highlight card</b>: a clutch pitch the batter can’t guess.</li>' +
+    '<li>A player’s <b>All-Star card</b> gives one at-bat two swings, the better one counting. A <b>Record Breaker</b> triples his home run power for an at-bat. An <b>error card</b> makes the other team boot the next ball. A <b>second copy</b> of a player puts him on fire for an at-bat. A <b>rookie card</b> gets a lift in his first at-bat.</li></ul>' +
+    '<h3>Winning</h3><ul><li>A game is 3, 5 or 9 innings; 5 takes about 20 minutes. Most runs wins, and a tie goes to extra innings.</li>' +
+    '<li>Your league keeps every card you’ve entered and its numbers from every game, so the common card that keeps hitting home runs becomes a legend.</li></ul>' +
+    '<p class="note">Player seasons from the Lahman Baseball Database (seanlahman.com), CC BY-SA 3.0. Card photos are read on this device with Tesseract.js and never leave it.</p>';
+
+  Kit.init({
+    id: 'sandlot', mark: false,
+    rules: RULES,
+    onNew: function () { clearTimers(); clearSave(); undoStack = []; showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'book', label: 'Your league', onClick: function () { db().then(leagueSheet); } },
+      { icon: 'chart', label: 'Box score', onClick: function () { if (S && S.g) boxSheet(); else Kit.toast('The box score starts with the first pitch'); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Wax Pack: past games' }); } }
+    ]
+  });
+
+  // ── Setup ────────────────────────────────────────────────────────────────
+  function showSetup() {
+    S = null; clearTimers(); app.className = 'stage wp-setup';
+    Kit.setup(app, {
+      modes: Kit.modes([{ id: 'cpu', desc: 'Draft against the computer' }, { id: 'local', kind: 'local' }]),
+      options: [
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', when: function (m) { return m === 'cpu'; },
+          choices: [['easy', 'Easy', 'Throws and looks for pitches at random, and drafts loosely.'], ['normal', 'Normal', 'Plays the matchups: it throws what its pitcher does best and looks for it too.'], ['hard', 'Hard', 'Plays the matchups and remembers what you’ve been doing this game.']] },
+        { id: 'inn', label: 'Innings', value: 5, choices: [[3, '3\nQuick', 'About 12 minutes.'], [5, '5\nStandard', 'About 20 minutes.'], [9, '9\nFull game', 'About 35 minutes, the way the big leagues play.']] },
+        { id: 'size', label: 'Cards each', value: 12, choices: [[10, '10\nNo bench', 'Nine hitters and a pitcher. Every pick plays.'], [12, '12\nTwo extras', 'Room for a reliever or a pinch hitter, or an odd card.'], [15, '15\nFull bench', 'A bench, a bullpen and a hand of odd cards. Needs a bigger stack.']] }
+      ],
+      players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
+      onStart: function (cfg) {
+        S = { v: 1, mode: cfg.mode, level: cfg.options.level || 'normal', inn: +cfg.options.inn || 5, size: +cfg.options.size || 12, seed: (Math.random() * 1e9) >>> 0,
+          phase: 'stack', C: {}, cn: 0, stack: [], T: cfg.players.map(function (p, i) { return { name: p.name, cpu: !!p.cpu, color: p.color || Kit.color(i), cards: [] }; }) };
+        S.started = Date.now(); Kit.gameStart(); undoStack = [];
+        save(); db().then(function () { importOld(); render(); }).catch(function () { render(); });
+        render();
+      }
+    });
+  }
+
+  // ── Rendering: one screen per phase ──────────────────────────────────────
+  function render() {
+    if (!S) return showSetup();
+    app.className = 'stage wp wp-' + S.phase;
+    if (S.phase === 'stack') renderStack();
+    else if (S.phase === 'draft') renderDraft();
+    else if (S.phase === 'lineup') renderLineup();
+    else if (S.phase === 'play' || S.phase === 'over') renderPlay();
+  }
+  function relayout() { if (!S) return; if (S.phase === 'stack' || S.phase === 'draft') { fitGrid(); fitCardNames(); } if (S.phase === 'play' || S.phase === 'over') fitPlay(); if (S.phase === 'lineup') fitLineup(); }
+
+  // A grid of cards as large as the box allows, with no scrolling: try every column count, keep the largest card
+  function gridFit(box, n, gap, minW) {
+    var W = box.clientWidth, H = box.clientHeight, best = { w: 0, cols: 1 };
+    if (!W || !H) return best;
+    for (var cols = 1; cols <= Math.max(1, n); cols++) {
+      var rows = Math.ceil(Math.max(1, n) / cols);
+      var w = Math.min((W - gap * (cols - 1)) / cols, ((H - gap * (rows - 1)) / rows) / 1.4);
+      if (w > best.w) best = { w: Math.floor(w), cols: cols };
+    }
+    if (minW && best.w < minW) { var cols2 = Math.max(1, Math.floor((W + gap) / (minW + gap))); best = { w: Math.floor((W - gap * (cols2 - 1)) / cols2), cols: cols2, scroll: true }; }
+    return best;
+  }
+  function fitGrid() {
+    var g = app.querySelector('.wp-grid'); if (!g) return;
+    var n = g.children.length, f = gridFit(g.parentNode, n, 8, 46);
+    g.style.setProperty('--cw', Math.min(180, f.w) + 'px'); g.style.gridTemplateColumns = 'repeat(' + f.cols + ', var(--cw))';
+    g.parentNode.classList.toggle('scroll', !!f.scroll);
+  }
+
+  // ── The stack ────────────────────────────────────────────────────────────
+  function need() { return S.size * 2; }
+  function renderStack() {
+    app.innerHTML = '';
+    var n = S.stack.length, players = S.stack.filter(function (id) { return S.C[id].kind === 'player'; }).length;
+    var head = el('div', { class: 'wp-head' }, [
+      el('div', { class: 'wp-ttl' }, [el('h2', { text: 'Your stack' }), el('p', { class: 'wp-sub', text: n ? n + (n === 1 ? ' card' : ' cards') + ' on the table, ' + players + (players === 1 ? ' player.' : ' players.') + ' The draft takes ' + need() + '.' : 'Spread your cards face up, then tell the app who is on each one.' })])
+    ]);
+    var gridBox = el('div', { class: 'wp-gbox' }), grid = el('div', { class: 'wp-grid' });
+    S.stack.forEach(function (id) {
+      var c = S.C[id], f = cardFace(c);
+      var b = el('button', { type: 'button', class: 'wp-cbtn', 'aria-label': c.name, onclick: function () { cardSheet(c, true); } }, [f]);
+      grid.appendChild(b);
+    });
+    if (!n) grid.appendChild(el('button', { type: 'button', class: 'wp-cbtn wp-empty', onclick: function () { entrySheet(); } }, [el('div', { class: 'wc wc-slot' }, [el('span', { html: Kit.icon('plus') })])]));
+    gridBox.appendChild(grid);
+    var lg = league(), lgN = Object.keys(lg.cards).length;
+    var dock = el('div', { class: 'wp-dock' });
+    var row = el('div', { class: 'wp-row2' });
+    row.appendChild(el('button', { type: 'button', class: 'btn btn-soft', html: Kit.icon('camera') + '<span>Scan a card</span>', onclick: function () { scanFlow(); } }));
+    row.appendChild(el('button', { type: 'button', class: 'btn btn-soft', html: Kit.icon('search') + '<span>Find a player</span>', onclick: function () { entrySheet(); } }));
+    dock.appendChild(row);
+    var more = el('div', { class: 'wp-row2 quiet' });
+    if (lgN) more.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-sm', html: Kit.icon('book') + '<span>From your league</span>', onclick: function () { pickFromLeague(); } }));
+    if (n < need()) more.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-sm', html: Kit.icon('cards') + '<span>' + (n ? 'Fill with sample cards' : 'Try a sample stack') + '</span>', onclick: function () { sampleStack(); } }));
+    if (more.children.length) dock.appendChild(more);
+    var go = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block wp-go' + (players < 4 ? ' dim' : ''), html: '<span>Start the draft</span>', onclick: function () {
+      if (players < 2) return Kit.toast('Add at least two player cards first');
+      if (n < need()) return Kit.confirm('The stack has ' + n + ' cards and the draft takes ' + need() + '. Sandlot kids will fill the empty spots.', { ok: 'Start the draft' }).then(function (ok) { if (ok) startDraft(); });
+      startDraft();
+    } });
+    dock.appendChild(go);
+    app.appendChild(el('div', { class: 'wp-scr wp-stk' }, [head, gridBox, dock]));
+    requestAnimationFrame(function () { fitGrid(); fitCardNames(); });
+  }
+  function addToStack(c, quiet) {
+    snap();
+    S.C[c.id] = c; S.stack.push(c.id);
+    // into the league: a card it already has (the same player and year) is the same card
+    var Lg = league(), lid = null;
+    Object.keys(Lg.cards).some(function (k) { var x = Lg.cards[k]; if ((x.pid && x.pid === c.pid || !x.pid && x.n === c.name) && x.y === c.year && x.k === c.kind) { lid = k; return true; } });
+    if (!lid) { lid = 'L' + (++Lg.n); Lg.cards[lid] = { pid: c.pid || null, n: c.name, y: c.year, role: c.role, k: c.kind, at: Date.now() }; }
+    var rec = Lg.cards[lid]; ['rk', 'as', 'rb', 'err'].forEach(function (f) { if (c[f]) rec[f] = 1; }); if (c.ph) rec.ph = c.ph; if (c.tc && c.kind !== 'player') rec.tc = c.tc;
+    if (c.scout) rec.sr = c.role;
+    c.lid = lid; saveLeague(); save();
+    if (!quiet) { Kit.sfx('deal'); Kit.haptic('light'); }
+    if (S.phase === 'stack') renderStack();
+  }
+  function sampleStack() {
+    db().then(function () {
+      var have = {}; S.stack.forEach(function (id) { have[S.C[id].name + S.C[id].year] = 1; });
+      var added = 0;
+      C.SAMPLE.forEach(function (s) {
+        if (S.stack.length >= Math.max(need() + 4, 28) && added) return;
+        if (s[0].charAt(0) === ':') { var k = s[0].slice(1), x = s[2] || {}; if (have[C.SPECIAL[k].name + s[1]]) return; addToStack(makeCard({ kind: k, year: s[1], tc: x.team }), true); added++; return; }
+        if (have[s[0] + s[1]]) return;
+        var pl = E.find(s[0], { year: s[1], max: 1 })[0]; if (!pl) return;
+        var x2 = s[2] || {};
+        addToStack(makeCard({ pid: pl.id, year: s[1], rk: x2.rk, err: x2.err }), true); added++;
+      });
+      Kit.sfx('deal'); Kit.haptic('medium'); renderStack();
+    });
+  }
+  function pickFromLeague() {
+    var Lg = league(), inStack = {}; S.stack.forEach(function (id) { if (S.C[id].lid) inStack[S.C[id].lid] = 1; });
+    var ids = Object.keys(Lg.cards).filter(function (k) { return !inStack[k]; }).sort(function (a, b) { return (Lg.cards[b].at || 0) - (Lg.cards[a].at || 0); });
+    if (!ids.length) return Kit.toast('Every card in your league is already in the stack');
+    var box = el('div', { class: 'wp-lgpick' }), chosen = {};
+    var all = el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Take them all', onclick: function () { ids.forEach(function (k) { chosen[k] = 1; }); paint(); } });
+    function paint() {
+      box.innerHTML = ''; box.appendChild(all);
+      var g = el('div', { class: 'wp-lgg' });
+      ids.forEach(function (k) {
+        var x = Lg.cards[k], c = fromLeague(k, true);
+        g.appendChild(el('button', { type: 'button', class: 'wp-lgc' + (chosen[k] ? ' on' : ''), 'aria-pressed': String(!!chosen[k]), onclick: function () { chosen[k] = !chosen[k]; Kit.sfx('tap'); paint(); } }, [cardFace(c), el('span', { text: c.name + (x.y ? ', ' + x.y : '') })]));
+      });
+      box.appendChild(g);
+    }
+    paint();
+    var sh = Kit.sheet({ title: 'Cards from your league', node: box, actions: [{ label: 'Add to the stack', primary: true, onClick: function () {
+      Object.keys(chosen).forEach(function (k) { if (chosen[k]) addToStack(fromLeague(k), true); }); Kit.sfx('deal'); renderStack();
+    } }, { label: 'Cancel' }] });
+  }
+  function fromLeague(lid, peek) {
+    var x = league().cards[lid];
+    var c = makeCard({ pid: x.pid, name: x.n, year: x.y, kind: x.k, role: x.sr || (x.pid ? null : x.role), rk: x.rk, as: x.as, rb: x.rb, err: x.err, ph: x.ph, tc: x.tc, lid: lid });
+    if (peek) S.cn--;
+    return c;
+  }
+
+  // ── Telling the app who's on a card ───────────────────────────────────────
+  function entrySheet(pre) {
+    pre = pre || {};
+    var body = el('div', { class: 'wp-entry' }), sh;
+    var q = el('input', { type: 'search', class: 'wp-q', placeholder: 'Name on the card', autocomplete: 'off', autocapitalize: 'words', enterkeyhint: 'search', 'data-osk': 'name', 'aria-label': 'Name on the card' });
+    var res = el('div', { class: 'wp-res' });
+    var odd = el('div', { class: 'wp-odd' });
+    ['team', 'checklist', 'leaders', 'highlight'].forEach(function (k) {
+      odd.appendChild(el('button', { type: 'button', class: 'wp-oddb', onclick: function () { oddCard(k); } }, [C.el({ kind: k, year: 0 }), el('span', { text: C.SPECIAL[k].name })]));
+    });
+    var scanB = el('button', { type: 'button', class: 'btn btn-soft wp-scanb', html: Kit.icon('camera') + '<span>Scan the card instead</span>', onclick: function () { sh.close(); scanFlow(); } });
+    body.appendChild(q); body.appendChild(res);
+    var oddH = el('p', { class: 'wp-lbl', text: 'Not a player card? These are plays you hold for later.' });
+    body.appendChild(oddH); body.appendChild(odd); body.appendChild(scanB);
+    var qT = null;
+    q.addEventListener('input', function () { clearTimeout(qT); qT = setTimeout(paint, 120); });
+    function paint() {
+      var v = q.value.trim(); res.innerHTML = '';
+      var showOdd = !v; oddH.hidden = odd.hidden = scanB.hidden = !showOdd;
+      if (v.length < 2) return;
+      db().then(function () {
+        var found = E.find(v, { year: pre.year });
+        found.forEach(function (pl) {
+          var role = E.roleOf(pl, 0), hs = E.seasons(pl, 'h'), pos = role === 'p' ? 'Pitcher' : (function () { var c = {}; hs.forEach(function (s) { if (s.pos) c[s.pos] = (c[s.pos] || 0) + s.g; }); var b = '', m = 0; for (var k in c) if (c[k] > m) { m = c[k]; b = k; } return POSN[b] || ''; })();
+          var tms = {}; E.seasons(pl, role).forEach(function (s) { tms[E.nick(s.t)] = (tms[E.nick(s.t)] || 0) + s.g; });
+          var top = Object.keys(tms).sort(function (a, b) { return tms[b] - tms[a]; }).slice(0, 2).join(' and ');
+          res.appendChild(el('button', { type: 'button', class: 'wp-hit', onclick: function () { detail(pl); } }, [
+            el('b', { text: E.name(pl) }), el('span', { text: pos + (top ? ' for the ' + top : '') }), el('i', { text: pl.y0 + (pl.y1 > pl.y0 ? ' to ' + pl.y1 : '') })]));
+        });
+        res.appendChild(el('button', { type: 'button', class: 'wp-hit wp-unk', onclick: function () { unknown(v); } }, [el('b', { text: 'Someone else' }), el('span', { text: 'Not in the book? He gets a scout’s report.' })]));
+      });
+    }
+    function detail(pl, scanned) { sh.close(); yearSheet(pl, scanned || pre); }
+    function unknown(name) { sh.close(); unknownSheet(name); }
+    function oddCard(k) { sh.close(); oddSheet(k); }
+    sh = Kit.sheet({ title: pre.title || 'Who’s on the card?', node: body });
+    if (pre.q) { q.value = pre.q; paint(); }
+    setTimeout(function () { try { q.focus(); } catch (e) {} }, 300);
+  }
+  // Step two: the year printed on the card, what kind of card it is, and a photo
+  var lastYear = 0;
+  function yearSheet(pl, pre) {
+    pre = pre || {};
+    var role = E.roleOf(pl, pre.year || 0), years = [], y0 = pl.y0, y1 = Math.min(pl.y1 + 1, (E.db().upto || 2025) + 1);
+    for (var y = y0; y <= y1; y++) years.push(y);
+    var guess = pre.year && years.indexOf(pre.year) >= 0 ? pre.year : lastYear && years.indexOf(lastYear) >= 0 ? lastYear : (function () {
+      var L = E.seasons(pl, role), best = L[0]; L.forEach(function (s) { if ((role === 'p' ? s.ipo : s.ab) > (role === 'p' ? best.ipo : best.ab)) best = s; }); return Math.min(y1, best.y + 1); })();
+    var fx = { rk: false, as: false, rb: false, err: !!C.famousErr(E.name(pl), guess) }, ph = pre.ph || '';
+    var body = el('div', { class: 'wp-yr' });
+    var prev = el('div', { class: 'wp-yrprev' }), facts = el('div', { class: 'wp-yrfacts' });
+    var strip = el('div', { class: 'wp-yrs', role: 'listbox', 'aria-label': 'Year on the card' });
+    var flags = el('div', { class: 'wp-flags' });
+    var note = el('p', { class: 'wp-note' });
+    body.appendChild(el('div', { class: 'wp-yrtop' }, [prev, facts]));
+    body.appendChild(el('p', { class: 'wp-lbl', text: 'The year printed on the card' })); body.appendChild(strip);
+    body.appendChild(el('p', { class: 'wp-lbl', text: 'What kind of card it is' })); body.appendChild(flags); body.appendChild(note);
+    var cur = guess;
+    function card() { return makeCardPeek({ pid: pl.id, year: cur, rk: fx.rk, as: fx.as, rb: fx.rb, err: fx.err, ph: ph }); }
+    function paint() {
+      var c = card();
+      prev.innerHTML = ''; prev.appendChild(cardFace(c));
+      facts.innerHTML = ''; facts.appendChild(ratingsEl(c, true));
+      var s = c.line, ln = s ? (c.role === 'p' ? s.w + ' and ' + s.l + ', ' + (s.ipo ? (s.er * 27 / s.ipo).toFixed(2) : '0.00') + ' ERA, ' + s.so + ' strikeouts' : avg3(s.h / Math.max(1, s.ab)) + ', ' + s.hr + ' home runs, ' + s.rbi + ' runs batted in') : '';
+      facts.appendChild(el('p', { class: 'wp-sln', text: s ? 'His ' + s.y + ' season for the ' + c.team + ': ' + ln + '.' : '' }));
+      strip.innerHTML = '';
+      years.forEach(function (y) {
+        strip.appendChild(el('button', { type: 'button', class: 'wp-y' + (y === cur ? ' on' : ''), role: 'option', 'aria-selected': String(y === cur), text: String(y), onclick: function () { cur = y; lastYear = y; Kit.sfx('tap'); paint(); } }));
+      });
+      var on = strip.querySelector('.on'); if (on) setTimeout(function () { strip.scrollLeft = Math.max(0, on.offsetLeft - strip.clientWidth / 2 + on.offsetWidth / 2); }, 0);
+      flags.innerHTML = '';
+      [['rk', 'Rookie card'], ['as', 'All-Star card'], ['rb', 'Record Breaker'], ['err', 'Error card']].forEach(function (f) {
+        flags.appendChild(el('button', { type: 'button', class: 'wp-flag' + (fx[f[0]] ? ' on' : ''), 'aria-pressed': String(fx[f[0]]), text: f[1], onclick: function () { fx[f[0]] = !fx[f[0]]; Kit.sfx('pop'); paint(); } }));
+      });
+      var fam = C.famousErr(E.name(pl), cur);
+      note.textContent = fam ? fam.say : pre.line ? (pre.line.agree >= 3 ? 'The ' + pre.line.y + ' line on the back matches his ' + pre.line.y + ' season.' : '') : '';
+      note.hidden = !note.textContent;
+    }
+    paint();
+    var sh = Kit.sheet({ title: E.name(pl), node: body, actions: [
+      { label: 'Add to the stack', primary: true, onClick: function () { lastYear = cur; var c = makeCard({ pid: pl.id, year: cur, rk: fx.rk, as: fx.as, rb: fx.rb, err: fx.err, ph: ph }); addToStack(c); Kit.toast(c.name + ' is in the stack'); } },
+      { label: ph ? 'Retake the photo' : 'Add a photo of the card', onClick: function () { setTimeout(function () { takePhoto(function (key) { ph = key; pre.ph = key; yearSheet(pl, Object.assign({}, pre, { year: cur, ph: key })); }); }, 250); } },
+      { label: 'Back to the search', onClick: function () { setTimeout(function () { entrySheet({ q: pl.l, year: cur }); }, 250); } }
+    ] });
+  }
+  function makeCardPeek(o) { var c = makeCard(o); S.cn--; return c; }
+  function unknownSheet(name) {
+    var role = 'h', pos = '';
+    var body = el('div', { class: 'wp-unkb' }), prev = el('div', { class: 'wp-yrprev' }), roles = el('div', { class: 'wp-flags' }), poss = el('div', { class: 'wp-flags' });
+    body.appendChild(el('p', { class: 'wp-note', text: 'The record book has nobody called ' + name + '. A scout will size him up instead.' }));
+    body.appendChild(el('div', { class: 'wp-yrtop' }, [prev, el('div', { class: 'wp-yrfacts' })]));
+    body.appendChild(roles); body.appendChild(poss);
+    function paint() {
+      var c = makeCardPeek({ name: name, role: role, pos: pos });
+      prev.innerHTML = ''; prev.appendChild(cardFace(c));
+      var f = body.querySelector('.wp-yrfacts'); f.innerHTML = ''; f.appendChild(ratingsEl(c, true));
+      roles.innerHTML = ''; [['h', 'Hitter'], ['p', 'Pitcher']].forEach(function (r) { roles.appendChild(el('button', { type: 'button', class: 'wp-flag' + (role === r[0] ? ' on' : ''), text: r[1], onclick: function () { role = r[0]; paint(); } })); });
+      poss.innerHTML = ''; poss.hidden = role === 'p';
+      SPOTS.slice(0, 8).forEach(function (p) { poss.appendChild(el('button', { type: 'button', class: 'wp-flag sm' + (pos === p ? ' on' : ''), text: p, 'aria-label': POSN[p], onclick: function () { pos = pos === p ? '' : p; paint(); } })); });
+    }
+    paint();
+    Kit.sheet({ title: name, node: body, actions: [{ label: 'Add to the stack', primary: true, onClick: function () { addToStack(makeCard({ name: name, role: role, pos: pos })); } }, { label: 'Cancel' }] });
+  }
+  function oddSheet(k) {
+    var sp = C.SPECIAL[k], tc = '', y = lastYear || 1988;
+    var body = el('div', { class: 'wp-unkb' });
+    body.appendChild(el('div', { class: 'wp-yrtop' }, [el('div', { class: 'wp-yrprev' }, [C.el({ kind: k, year: y })]), el('div', { class: 'wp-yrfacts' }, [el('p', { class: 'wp-play', html: '<b>' + esc(sp.play) + '</b>' }), el('p', { class: 'wp-sln', text: sp.say })])]));
+    Kit.sheet({ title: sp.name, node: body, actions: [{ label: 'Add to the stack', primary: true, onClick: function () { addToStack(makeCard({ kind: k, year: y, tc: tc })); } }, { label: 'Cancel' }] });
+  }
+
+  // ── Photos and scanning ──────────────────────────────────────────────────
+  function pickImage(cb) {
+    var inp = el('input', { type: 'file', accept: 'image/*', capture: 'environment', style: { position: 'fixed', left: '-9999px' } });
+    document.body.appendChild(inp);
+    inp.addEventListener('change', function () { var f = inp.files && inp.files[0]; inp.remove(); if (f) cb(f); });
+    inp.click();
+  }
+  function shrink(file, px) {
+    return new Promise(function (res) {
+      var url = URL.createObjectURL(file), im = new Image();
+      im.onload = function () {
+        var k = Math.min(1, px / Math.max(im.width, im.height)), c = document.createElement('canvas');
+        c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        res(c.toDataURL('image/jpeg', .82));
+      };
+      im.onerror = function () { res(null); }; im.src = url;
+    });
+  }
+  function takePhoto(done) {
+    pickImage(function (f) { shrink(f, 640).then(function (u) { if (!u) return; var key = 'ph' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); C.photoPut(key, u).then(function () { done(key); }); }); });
+  }
+  function scanFlow() {
+    pickImage(function (file) {
+      var body = el('div', { class: 'wp-scan' }), pic = el('div', { class: 'wp-scanpic' }), msg = el('p', { class: 'wp-scanmsg', text: 'Reading the card…' }), bar = el('div', { class: 'wp-scanbar' }, [el('i')]);
+      body.appendChild(pic); body.appendChild(msg); body.appendChild(bar);
+      var sh = Kit.sheet({ title: 'Reading the card', node: body, actions: [{ label: 'Type the name instead', onClick: function () { setTimeout(function () { entrySheet(); }, 250); } }] });
+      var key = null;
+      shrink(file, 640).then(function (u) { if (!u) return; pic.style.backgroundImage = 'url("' + u + '")'; key = 'ph' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); C.photoPut(key, u); });
+      var t0 = Date.now();
+      db().then(function () {
+        return WaxScan.read(file, { E: E, onStep: function (st, p) {
+          var say = /load|init/.test(st) ? 'Getting the reader ready (the first time takes a moment)…' : /turning/.test(st) ? 'Turning the card to read it sideways…' : 'Reading the card…';
+          msg.textContent = say; if (p != null) bar.firstChild.style.width = Math.round(p * 100) + '%';
+        } });
+      }).then(function (r) {
+        var m = r.m || { cands: [] }, cands = m.cands.filter(function (c) { return c.score >= .5; }).slice(0, 3);
+        body.innerHTML = '';
+        if (key) body.appendChild(el('div', { class: 'wp-scanpic sm', style: { 'background-image': 'url("' + C.photoNow(key) + '")' } }));
+        body.appendChild(el('p', { class: 'wp-lbl', text: cands.length ? 'Is it one of these?' : 'The app couldn’t read a name it knows. Type it instead.' }));
+        cands.forEach(function (c, i) {
+          var pl = c.pl, s = E.cardSeason(pl, c.role, m.year || 0);
+          body.appendChild(el('button', { type: 'button', class: 'wp-hit' + (i === 0 && c.score > .8 ? ' best' : ''), onclick: function () { sh.close(); yearSheet(pl, { year: m.year || 0, ph: key, line: m.line }); } }, [
+            el('b', { text: E.name(pl) }), el('span', { text: (c.role === 'p' ? 'Pitcher' : 'Hitter') + (s ? ' for the ' + E.nick(s.t) : '') }), el('i', { text: pl.y0 + ' to ' + pl.y1 })]));
+        });
+        if (m.year) body.appendChild(el('p', { class: 'wp-note', text: 'The card looks like it’s from ' + m.year + '.' }));
+        body.appendChild(el('button', { type: 'button', class: 'wp-hit wp-unk', onclick: function () { sh.close(); entrySheet({ q: cands[0] ? cands[0].pl.l : '', year: m.year }); } }, [el('b', { text: 'None of these' }), el('span', { text: 'Find him by name' })]));
+        Kit.sfx(cands.length ? 'good' : 'bad');
+      }).catch(function () { msg.textContent = 'The reader couldn’t load on this device. Type the name instead.'; });
+    });
+  }
+
+  // ── Ratings ──────────────────────────────────────────────────────────────
+  function ratingsEl(c, labels) {
+    var r = c.r || {}, rows = c.role === 'p' ? [['Stuff', r.stf], ['Control', r.ctl], ['Stamina', r.sta]] : [['Contact', r.con], ['Power', r.pow], ['Speed', r.spd], ['Eye', r.eye]];
+    var d = el('div', { class: 'wp-rt' + (c.scout ? ' scout' : '') });
+    rows.forEach(function (x) {
+      var v = Math.round(x[1] || 1);
+      d.appendChild(el('div', { class: 'wp-rr' }, [el('span', { text: x[0] }), el('i', { class: 'wp-meter' }, [el('b', { style: { width: (v * 10) + '%' } })]), el('em', { text: String(v) })]));
+    });
+    if (c.scout && labels) d.appendChild(el('p', { class: 'wp-sln', text: 'A scout’s report: no record-book numbers for this card.' }));
+    return d;
+  }
+  function cardSheet(c, removable) {
+    var body = el('div', { class: 'wp-unkb' });
+    body.appendChild(el('div', { class: 'wp-yrtop' }, [el('div', { class: 'wp-yrprev' }, [cardFace(c)]), el('div', { class: 'wp-yrfacts' }, [c.kind === 'player' ? ratingsEl(c, true) : el('p', { class: 'wp-play', html: '<b>' + esc(C.SPECIAL[c.kind].play) + '</b><br>' + esc(C.SPECIAL[c.kind].say) })])]));
+    if (c.kind === 'player' && c.pid) body.appendChild(el('p', { class: 'wp-sln', text: bio(c) }));
+    var acts = removable ? [{ label: 'Take it out of the stack', danger: true, onClick: function () { snap(); S.stack = S.stack.filter(function (x) { return x !== c.id; }); delete S.C[c.id]; save(); renderStack(); } }, { label: 'Done' }] : [{ label: 'Done' }];
+    Kit.sheet({ title: c.kind === 'player' ? c.name : C.SPECIAL[c.kind].name, node: body, actions: acts });
+  }
+
+  // ── The announcer: his real history ──────────────────────────────────────
+  var TK = window.TALK_WAXPACK || {};
+  function say(key, v) { return window.Talk ? Talk.line('wp.' + key, TK[key], v) : ''; }
+  function slots(c) {
+    var v = { name: c.name, last: last(c.name), team: c.team, y: c.year, sy: c.sy };
+    var s = c.line;
+    if (s && c.role === 'h') { v.avg = avg3(s.h / Math.max(1, s.ab)); v.hr = s.hr; v.rbi = s.rbi; v.hits = s.h; v.g = s.g; v.sb = s.sb; }
+    if (s && c.role === 'p') { v.w = s.w; v.l = s.l; v.era = s.ipo ? (s.er * 27 / s.ipo).toFixed(2) : '0.00'; v.so = s.so; v.ip = Math.round(s.ipo / 3); v.g = s.g; v.sv = s.sv; }
+    return v;
+  }
+  function history(c) {   // one or two sentences about the man on the card, from the database
+    if (c.kid) return say('kid', {});
+    if (c.scout) return say('scout', { name: c.name, note: say('scoutNote', {}) });
+    var pl = E.byId(c.pid); if (!pl) return '';
+    var v = slots(c), h = E.honors(pl), out = [];
+    if (c.rk && !S.g.seenRk[c.id]) out.push(say('rookie', v));
+    var s = c.line;
+    if (c.role === 'h') {
+      if (s && (s.hr >= 30 || s.h / Math.max(1, s.ab) >= .32 && s.ab >= 300)) out.push(say('bigSeason', v));
+      else if (s && s.sb >= 40) out.push(say('speed', v));
+      else out.push(say('hitSeason', v));
+    } else out.push(s && s.sv >= 20 ? say('closer', v) : say('pitchSeason', v));
+    var extra = [];
+    if (h.H) extra.push(h.H[0] > (c.year || 0) && c.year ? say('hofLater', Object.assign(v, { hof: h.H[0] })) : say('hof', Object.assign(v, { hof: h.H[0] })));
+    if (h.M) extra.push(say('mvp', Object.assign(v, { mvp: h.M.join(' and ') })));
+    if (h.C) extra.push(say('cy', Object.assign(v, { cy: h.C.join(' and ') })));
+    if (h.W) { var wy = h.W[0], st = E.seasons(pl, c.role).concat(E.seasons(pl, c.role === 'p' ? 'h' : 'p')).filter(function (x) { return x.y === wy; })[0]; extra.push(say('ring', Object.assign(v, { ws: wy, wsteam: st ? E.nick(st.t) : c.team }))); }
+    if (h.A && h.A.length >= 2) extra.push(say('allStar', Object.assign(v, { n: h.A.length })));
+    if (h.R) extra.push(say('roy', Object.assign(v, { roy: h.R[0] })));
+    var lc = c.lid && league().cards[c.lid];
+    if (lc && lc.h && lc.h.g >= 2 && c.role === 'h') extra.push(say('league', Object.assign(v, { lhr: lc.h.hr, lg: lc.h.g, lavg: avg3(lc.h.h / Math.max(1, lc.h.ab)), lh: lc.h.h })));
+    if (lc && lc.p && lc.p.g >= 2 && c.role === 'p') extra.push(say('leagueP', Object.assign(v, { lk: lc.p.k, lg: lc.p.g })));
+    if (!extra.length) {
+      var L = E.seasons(pl, c.role), tot = { hr: 0, h: 0, so: 0, w: 0 }; L.forEach(function (x) { tot.hr += x.hr || 0; tot.h += x.h || 0; tot.so += x.so || 0; tot.w += x.w || 0; });
+      extra.push(c.role === 'h' ? say('careerHr', Object.assign(v, { chr: tot.hr, chits: tot.h, y0: pl.y0, y1: pl.y1, nys: L.length })) : say('careerK', Object.assign(v, { cso: tot.so, cw: tot.w, y0: pl.y0, y1: pl.y1, nys: L.length })));
+    }
+    out.push(extra[Math.floor(R() * extra.length)]);
+    return out.filter(Boolean).join(' ');
+  }
+  function bio(c) { var keep = S.g; if (!S.g) S.g = { seenRk: {} }; var t = history(c); S.g = keep; return t; }
+
+  // ── The draft ────────────────────────────────────────────────────────────
+  var NOFLIP = false, AUTO = null;
+  // a name and its verb: "Pete picks", "You pick"
+  function vb(name, s, p) { return name + ' ' + (name === 'You' ? p : s); }
+  function startDraft() {
+    snap();
+    S.phase = 'draft';
+    S.draft = { first: R() < .5 ? 0 : 1, turn: 0, n: 0, flip: !NOFLIP };
+    S.draft.turn = S.draft.first;
+    S.home = 1 - S.draft.first;
+    save(); render();
+  }
+  function draftLeft() { var taken = {}; S.T.forEach(function (T) { T.cards.forEach(function (id) { taken[id] = 1; }); }); return S.stack.filter(function (id) { return !taken[id]; }); }
+  function draftDone() { return draftLeft().length === 0 || S.T.every(function (T) { return T.cards.length >= S.size; }); }
+  function renderDraft() {
+    app.innerHTML = '';
+    var D = S.draft, T = S.T[D.turn];
+    var teams = el('div', { class: 'wp-dteams' });
+    S.T.forEach(function (tm, t) {
+      var row = el('div', { class: 'wp-dteam' + (t === D.turn && !draftDone() ? ' on' : ''), style: { '--tc': tm.color } }, [
+        el('div', { class: 'wp-dtn' }, [el('b', { text: tm.name }), el('span', { text: tm.cards.length + ' of ' + S.size })]),
+        el('div', { class: 'wp-dpile' }, tm.cards.map(function (id) { var f = cardFace(S.C[id]); f.classList.add('mini'); return f; }))
+      ]);
+      teams.appendChild(row);
+    });
+    var left = draftLeft();
+    var gridBox = el('div', { class: 'wp-gbox' }), grid = el('div', { class: 'wp-grid' });
+    left.forEach(function (id) {
+      var c = S.C[id];
+      grid.appendChild(el('button', { type: 'button', class: 'wp-cbtn', 'aria-label': 'Take ' + c.name, onclick: function (e) { if (!myPick()) return Kit.toast(S.T[S.draft.turn].name + ' is picking'); pick(id, e.currentTarget); } }, [cardFace(c), c.kind === 'player' ? el('span', { class: 'wp-cr', text: quick(c) }) : null]));
+    });
+    gridBox.appendChild(grid);
+    var cap = el('div', { class: 'wp-cap' }, [el('p', { text: draftDone() ? 'Both teams are picked. Slide each card to its team’s side of the table.' : myPick() ? T.name + ', take a card.' : vb(T.name, 'is', 'are') + ' choosing…' })]);
+    var dock = el('div', { class: 'wp-dock' }, [cap]);
+    if (draftDone()) dock.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block wp-go', text: 'Set the lineups', onclick: function () { toLineup(); } }));
+    app.appendChild(el('div', { class: 'wp-scr wp-drf' }, [teams, gridBox, dock]));
+    requestAnimationFrame(function () { fitGrid(); fitCardNames(); });
+    if (D.flip) { D.flip = false; save(); coinFlip(); return; }
+    if (!draftDone() && !myPick()) later(cpuPick, 900);
+  }
+  function quick(c) { var r = c.r || {}; return c.role === 'p' ? 'P ' + Math.round((r.stf + r.ctl + r.sta) / 3) : (c.pos[0] || 'UT') + ' ' + Math.round((r.con + r.pow + r.spd + r.eye) / 4); }
+  function myPick() { return !S.T[S.draft.turn].cpu; }
+  function coinFlip() {
+    var f = S.draft.first, coin = el('div', { class: 'wp-coin' }, [el('div', { class: 'wp-coinf h', text: S.T[0].name.charAt(0).toUpperCase() }), el('div', { class: 'wp-coinf t', text: S.T[1].name.charAt(0).toUpperCase() })]);
+    var ov = el('div', { class: 'wp-coinov' }, [coin, el('p', { class: 'wp-coinmsg', text: 'A coin flip for the first pick…' })]);
+    document.body.appendChild(ov); Kit.sfx('whoosh');
+    requestAnimationFrame(function () { coin.style.transform = 'rotateY(' + (1440 + (f ? 180 : 0)) + 'deg)'; });
+    later(function () {
+      Kit.sfx('chip'); Kit.haptic('medium');
+      ov.querySelector('.wp-coinmsg').textContent = vb(S.T[f].name, 'picks', 'pick') + ' first. ' + vb(S.T[1 - f].name, 'bats', 'bat') + ' last as the home team.';
+      later(function () { ov.classList.add('out'); later(function () { ov.remove(); if (!myPick()) later(cpuPick, 600); }, 350); }, 1700);
+    }, 1500);
+  }
+  function pick(id, from) {
+    if (draftDone()) return;
+    snap();
+    var t = S.draft.turn, T = S.T[t], c = S.C[id];
+    T.cards.push(id); S.draft.n++;
+    // the next team that still has room picks
+    var nx = 1 - t; if (S.T[nx].cards.length >= S.size) nx = t;
+    S.draft.turn = nx;
+    save();
+    flyTo(from, t, function () {
+      Kit.sfx('deal'); Kit.haptic('light');
+      if (T.cpu) Kit.toast(vb(T.name, 'takes', 'take') + ' ' + (c.kind === 'player' ? c.name : 'the ' + C.SPECIAL[c.kind].name) + '. Slide the card to ' + T.name + '’s side.');
+      renderDraft();
+    });
+  }
+  function flyTo(from, t, done) {
+    var dest = app.querySelectorAll('.wp-dteam')[t];
+    if (!from || !dest || FAST) return done();
+    var a = from.getBoundingClientRect(), b = dest.getBoundingClientRect(), g = from.cloneNode(true);
+    g.className = 'wp-fly'; g.style.left = a.left + 'px'; g.style.top = a.top + 'px'; g.style.width = a.width + 'px'; g.style.height = a.height + 'px';
+    document.body.appendChild(g); from.style.visibility = 'hidden';
+    requestAnimationFrame(function () { g.style.transform = 'translate(' + (b.left + b.width * .7 - a.left - a.width / 2) + 'px,' + (b.top + b.height / 2 - a.top - a.height / 2) + 'px) scale(.3) rotate(' + (t ? 8 : -8) + 'deg)'; g.style.opacity = '.4'; });
+    setTimeout(function () { g.remove(); done(); }, 420);
+  }
+  // The computer drafts by what its team still needs: a pitcher early, then the best hitter for an open position
+  function cpuPick() {
+    if (!S || S.phase !== 'draft' || draftDone() || myPick()) return;
+    var t = S.draft.turn, T = S.T[t], left = draftLeft(), have = T.cards.map(function (id) { return S.C[id]; });
+    var pitchers = have.filter(function (c) { return c.kind === 'player' && c.role === 'p'; }).length, hitters = have.filter(function (c) { return c.kind === 'player' && c.role === 'h'; }).length;
+    var posHave = {}; have.forEach(function (c) { if (c.role === 'h' && c.pos) c.pos.slice(0, 2).forEach(function (p) { posHave[p] = 1; }); });
+    var slotsLeft = S.size - T.cards.length;
+    function worth(c) {
+      if (c.kind !== 'player') return (S.level === 'easy' ? 3 : 2.2) + (slotsLeft > (10 - hitters - Math.min(1, pitchers)) ? 1 : -3);
+      var r = c.r, v;
+      if (c.role === 'p') v = (r.stf * 1.3 + r.ctl + r.sta * .6) / 2.9 * (pitchers === 0 ? 1.5 : pitchers === 1 ? .95 : .55);
+      else { v = (r.con * 1.2 + r.pow * 1.1 + r.spd * .4 + r.eye * .6) / 3.3; if (hitters >= 9) v *= .5; if (c.pos && c.pos[0] && !posHave[c.pos[0]]) v *= 1.15; if (c.pos && c.pos[0] === 'C' && !posHave.C) v *= 1.1; }
+      return v;
+    }
+    var best = null, noise = S.level === 'easy' ? 4 : S.level === 'normal' ? 1.2 : .3;
+    left.forEach(function (id) { var w = worth(S.C[id]) + (R() - .5) * noise; if (!best || w > best.w) best = { id: id, w: w }; });
+    var btn = app.querySelector('.wp-cbtn[aria-label="Take ' + CSS.escape(S.C[best.id].name) + '"]');
+    if (btn) btn.classList.add('cpu-pick');
+    later(function () { pick(best.id, btn); }, 450);
+  }
+
+  // ── Lineups ──────────────────────────────────────────────────────────────
+  function toLineup() {
+    snap();
+    S.T.forEach(function (T, t) { arrange(t); });
+    S.phase = 'lineup'; S.lt = S.T[0].cpu ? 1 : 0;
+    save(); render();
+  }
+  // Players and odd cards from a team's picks; empty spots go to sandlot kids. Positions by the best fit, the batting
+  // order by what each hitter does best.
+  function arrange(t) {
+    var T = S.T[t], cards = T.cards.map(function (id) { return S.C[id]; });
+    var hit = [], pit = [], hand = [], seen = {};
+    cards.forEach(function (c) {
+      if (c.kind !== 'player') { hand.push({ k: c.kind, id: c.id }); return; }
+      var key = c.pid || c.name;
+      if (seen[key]) { hand.push({ k: 'dup', id: c.id, of: seen[key] }); return; }
+      seen[key] = c.id;
+      (c.role === 'p' ? pit : hit).push(c);
+      if (c.as) hand.push({ k: 'as', id: c.id }); if (c.rb) hand.push({ k: 'rb', id: c.id }); if (c.err) hand.push({ k: 'err', id: c.id });
+    });
+    var kids = 0;
+    while (hit.length < 9) { var k = kid(++kids, 'h'); S.C[k.id] = k; hit.push(k); }
+    if (!pit.length) { var a = kid(++kids, 'p'); a.name = 'Sandlot kid ' + kids; S.C[a.id] = a; pit.push(a); }
+    pit.sort(function (x, y) { return pv(y) - pv(x); });
+    hit.sort(function (x, y) { return hv(y) - hv(x); });
+    var nine = hit.slice(0, 9), bench = hit.slice(9);
+    T.at = bestFit(nine);
+    T.order = smartOrder(nine);
+    T.sp = pit[0].id; T.pen = pit.slice(1).map(function (c) { return c.id; }); T.bench = bench.map(function (c) { return c.id; });
+    T.hand = hand.map(function (h) { return { k: h.k, id: h.id, of: h.of, used: false }; });
+  }
+  function hv(c) { var r = c.r || {}; return r.con * 1.2 + r.pow * 1.1 + r.spd * .4 + r.eye * .6; }
+  function pv(c) { var r = c.r || {}; return r.stf * 1.3 + r.ctl + r.sta * .9; }
+  function fitScore(c, at) { if (at === 'DH') return 1.2; var f = E.fit(c.pos, at); return f === 'home' ? 3 : f === 'near' ? 1.5 : 0; }
+  function bestFit(nine) {
+    var at = {}, used = {};
+    // the scarce spots first, then a pass of swaps that improves the total
+    ['C', 'SS', 'CF', '2B', '3B', '1B', 'RF', 'LF', 'DH'].forEach(function (p) {
+      var best = null; nine.forEach(function (c) { if (used[c.id]) return; var s = fitScore(c, p) - (p === 'DH' ? 0 : 0) + (p === 'DH' ? -.2 * (c.r.spd || 0) : 0); if (!best || s > best.s) best = { c: c, s: s }; });
+      at[best.c.id] = p; used[best.c.id] = 1;
+    });
+    for (var pass = 0; pass < 4; pass++) nine.forEach(function (a) { nine.forEach(function (b) {
+      if (a === b) return; var pa = at[a.id], pb = at[b.id];
+      if (fitScore(a, pb) + fitScore(b, pa) > fitScore(a, pa) + fitScore(b, pb) + .01) { at[a.id] = pb; at[b.id] = pa; }
+    }); });
+    return at;
+  }
+  function smartOrder(nine) {
+    var a = nine.slice().sort(function (x, y) { return hv(y) - hv(x); });
+    var top = a.slice(0, 5), rest = a.slice(5);
+    function take(f) { var bi = 0; top.forEach(function (x, i) { if (f(x) > f(top[bi])) bi = i; }); return top.splice(bi, 1)[0]; }
+    var c4 = take(function (x) { return x.r.pow; }), c1 = take(function (x) { return x.r.spd + x.r.eye + x.r.con * .5; }), c3 = take(function (x) { return x.r.con + x.r.pow; }), c2 = take(function (x) { return x.r.con + x.r.eye; });
+    return [c1, c2, c3, c4].concat(top, rest).map(function (c) { return c.id; });
+  }
+  var LSEL = null;
+  function renderLineup() {
+    app.innerHTML = '';
+    var t = S.lt, T = S.T[t];
+    var head = el('div', { class: 'wp-head' }, [el('div', { class: 'wp-ttl' }, [el('h2', { text: T.name === 'You' ? 'Your lineup' : T.name + '’s lineup' }), el('p', { class: 'wp-sub', text: 'Lay your cards on the table the same way. Tap two cards to swap them.' })])]);
+    var fieldBox = el('div', { class: 'wp-lfield' }), dia = el('div', { class: 'wp-dia' });
+    dia.innerHTML = fieldSVG(true);
+    var spots = el('div', { class: 'wp-spots' });
+    var posOf = {}; Object.keys(T.at).forEach(function (id) { posOf[T.at[id]] = id; });
+    ['LF', 'CF', 'RF', 'SS', '2B', '3B', '1B', 'C', 'DH', 'P'].forEach(function (p) {
+      var id = p === 'P' ? T.sp : posOf[p], c = S.C[id];
+      var fit = p === 'P' || p === 'DH' ? 'home' : E.fit(c.pos, p);
+      var b = el('button', { type: 'button', class: 'wp-spot s-' + p + ' f-' + fit + (LSEL === id ? ' sel' : ''), 'aria-label': POSN[p] + ': ' + c.name, onclick: function () { lineTap(id, p === 'P' ? 'P' : 'F'); } }, [
+        el('span', { class: 'wp-sp', text: p }), el('b', { text: c.kid ? 'Kid' : last(c.name) })]);
+      spots.appendChild(b);
+    });
+    dia.appendChild(spots); fieldBox.appendChild(dia);
+    var orderBox = el('ol', { class: 'wp-order' });
+    T.order.forEach(function (id, i) {
+      var c = S.C[id], p = T.at[id], fit = p === 'DH' ? 'home' : E.fit(c.pos, p);
+      orderBox.appendChild(el('li', {}, [el('button', { type: 'button', class: 'wp-orow' + (LSEL === id ? ' sel' : ''), onclick: function () { lineTap(id, 'O'); } }, [
+        el('span', { class: 'n', text: String(i + 1) }), el('b', { text: c.kid ? 'Kid' : last(c.name) }), el('span', { class: 'p f-' + fit, text: p }), el('span', { class: 'r', text: quick(c).replace(/^\S+ /, '') })])]));
+    });
+    var extra = el('div', { class: 'wp-extra' });
+    function chipRow(label, ids, kind) {
+      if (!ids.length) return;
+      var r = el('div', { class: 'wp-chips' }, [el('span', { class: 'wp-lbl', text: label })]);
+      ids.forEach(function (id) { var c = S.C[id]; r.appendChild(el('button', { type: 'button', class: 'wp-chip' + (LSEL === id ? ' sel' : ''), onclick: function () { lineTap(id, kind); } }, [el('b', { text: shortName(c.name) }), el('span', { text: kind === 'B' ? (c.pos[0] || 'UT') : 'P' })])); });
+      extra.appendChild(r);
+    }
+    chipRow('Bench', T.bench, 'B'); chipRow('Bullpen', T.pen, 'R');
+    if (T.hand.length) {
+      var hr = el('div', { class: 'wp-chips' }, [el('span', { class: 'wp-lbl', text: 'Your hand' })]);
+      T.hand.forEach(function (h) { hr.appendChild(el('span', { class: 'wp-chip play' }, [el('b', { text: C.SPECIAL[h.k].play })])); });
+      extra.appendChild(hr);
+    }
+    var other = S.T[1 - t], last2 = t === 1 || other.cpu || S.lt2;
+    var dock = el('div', { class: 'wp-dock wp-ldock' }, [
+      el('div', { class: 'wp-row2' }, [el('button', { type: 'button', class: 'btn btn-soft', html: Kit.icon('sparkle') + '<span>Best fit</span>', onclick: function () { snap(); var nine = T.order.map(function (id) { return S.C[id]; }); T.at = bestFit(nine); T.order = smartOrder(nine); LSEL = null; Kit.sfx('flip'); save(); renderLineup(); } })]),
+      el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block wp-go', text: last2 ? 'Play ball' : 'Next: ' + other.name + '’s lineup', onclick: function () {
+        LSEL = null;
+        if (!last2) { S.lt2 = 1; S.lt = 1 - t; save(); return renderLineup(); }
+        startGame();
+      } })
+    ]);
+    app.appendChild(el('div', { class: 'wp-scr wp-lin', style: { '--tc': T.color } }, [head, fieldBox, el('div', { class: 'wp-lcol' }, [orderBox, extra]), dock]));
+    fitLineup();
+  }
+  function fitLineup() { var d = app.querySelector('.wp-dia'); if (!d) return; var b = d.parentNode, w = Math.min(b.clientWidth, b.clientHeight * 1.21); d.style.width = Math.max(Math.min(b.clientWidth, 300), w) + 'px'; }
+  function lineTap(id, kind) {
+    var T = S.T[S.lt];
+    if (!LSEL) { LSEL = id; LKIND = kind; Kit.sfx('tap'); return renderLineup(); }
+    if (LSEL === id) { LSEL = null; return renderLineup(); }
+    snap();
+    var a = LSEL, ka = LKIND, b = id, kb = kind; LSEL = null;
+    function inNine(x) { return T.order.indexOf(x) >= 0; }
+    if (ka === 'O' && kb === 'O') { var i = T.order.indexOf(a), j = T.order.indexOf(b); T.order[i] = b; T.order[j] = a; }
+    else if (inNine(a) && inNine(b)) { var pa = T.at[a]; T.at[a] = T.at[b]; T.at[b] = pa; }
+    else if (ka === 'P' || ka === 'R' || kb === 'P' || kb === 'R') {
+      var p1 = ka === 'P' ? a : kb === 'P' ? b : null, r1 = ka === 'R' ? a : kb === 'R' ? b : null;
+      if (p1 && r1) { T.sp = r1; T.pen[T.pen.indexOf(r1)] = p1; } else { Kit.toast('Swap a pitcher with a pitcher'); }
+    } else {   // a bench player for one of the nine: he takes the spot and the place in the order
+      var inn = inNine(a) ? a : b, out = inn === a ? b : a;
+      if (T.bench.indexOf(out) < 0) return renderLineup();
+      T.at[out] = T.at[inn]; delete T.at[inn]; T.order[T.order.indexOf(inn)] = out; T.bench[T.bench.indexOf(out)] = inn;
+    }
+    Kit.sfx('flip'); Kit.haptic('light'); save(); renderLineup();
+  }
+  var LKIND = null;
+
+  // ── The ballpark (the drawing is the old Sandlot's, kept) ─────────────────
+  var HOME = { x: 250, y: 410 }, BASE = [{ x: 320.7, y: 339.3 }, { x: 250, y: 268.6 }, { x: 179.3, y: 339.3 }], MOUND = { x: 250, y: 341 };
+  var FPOS = { C: { x: 250, y: 425 }, '1B': { x: 318, y: 316 }, '2B': { x: 286, y: 262 }, SS: { x: 212, y: 262 }, '3B': { x: 182, y: 316 }, LF: { x: 125, y: 190 }, CF: { x: 250, y: 140 }, RF: { x: 375, y: 190 }, P: { x: 250, y: 335 } };
+  function fenceFt(a) { return 400 - 70 * Math.pow(Math.min(45, Math.abs(a)) / 45, 1.5); }
+  function spot(a, ft) { var r = ft * .91, rad = a * Math.PI / 180; return { x: HOME.x + r * Math.sin(rad), y: HOME.y - r * Math.cos(rad) }; }
+  function fieldSVG(lineup) {
+    var fence = [], track = [], a, p;
+    for (a = -45; a <= 45; a += 3) { p = spot(a, fenceFt(a)); fence.push(p.x.toFixed(1) + ',' + p.y.toFixed(1)); }
+    for (a = 45; a >= -45; a -= 3) { p = spot(a, fenceFt(a) - 15); track.push(p.x.toFixed(1) + ',' + p.y.toFixed(1)); }
+    var lp = spot(-45, 160), rp = spot(45, 160), stands = [];
+    for (a = -45; a <= 45; a += 3) { p = spot(a, fenceFt(a) + 6); stands.push(p.x.toFixed(1) + ',' + p.y.toFixed(1)); }
+    for (a = 45; a >= -45; a -= 3) { p = spot(a, fenceFt(a) + 380); stands.push(p.x.toFixed(1) + ',' + p.y.toFixed(1)); }
+    var crowd = ['#c9b79a', '#8d6e5a', '#e0d3c0', '#6b7a8f', '#b04a4a', '#3f5f8a', '#d9a441'], dots = '';
+    for (var k = 0; k < 18; k++) dots += '<circle cx="' + (k % 6 * 4 + 2) + '" cy="' + (Math.floor(k / 6) * 4 + 2) + '" r="1.25" fill="' + crowd[(k * 5 + (k >> 1)) % crowd.length] + '" opacity=".75"/>';
+    var s = '<svg class="fld" viewBox="' + (lineup ? '20 70 460 380' : '0 18 500 412') + '" preserveAspectRatio="xMidYMid meet" aria-hidden="true">' +
+      '<defs><pattern id="crowd" width="24" height="12" patternUnits="userSpaceOnUse"><rect width="24" height="12" fill="#2a3138"/>' + dots + '</pattern>' +
+      '<pattern id="mow" width="34" height="34" patternUnits="userSpaceOnUse" patternTransform="rotate(45 250 410)"><rect width="17" height="34" fill="rgba(255,255,255,.055)"/></pattern>' +
+      '<radialGradient id="dirt" cx="50%" cy="80%" r="70%"><stop offset="0" stop-color="#d39a62"/><stop offset="1" stop-color="#b47a45"/></radialGradient></defs>' +
+      '<polygon points="' + stands.join(' ') + '" fill="url(#crowd)"/>' +
+      '<polygon points="' + HOME.x + ',' + HOME.y + ' ' + fence.join(' ') + '" fill="#3f9a43"/>' +
+      '<polygon points="' + HOME.x + ',' + HOME.y + ' ' + fence.join(' ') + '" fill="url(#mow)"/>' +
+      '<polygon points="' + fence.join(' ') + ' ' + track.join(' ') + '" fill="#b98653" opacity=".9"/>' +
+      '<polyline points="' + fence.join(' ') + '" fill="none" stroke="#173a26" stroke-width="7" stroke-linejoin="round"/>' +
+      '<polyline points="' + fence.join(' ') + '" fill="none" stroke="#ffd34d" stroke-width="1.6" stroke-linejoin="round" transform="translate(0,-3.4)"/>' +
+      '<path d="M' + HOME.x + ' ' + HOME.y + ' L' + lp.x.toFixed(1) + ' ' + lp.y.toFixed(1) + ' A118 118 0 0 1 ' + rp.x.toFixed(1) + ' ' + rp.y.toFixed(1) + ' Z" fill="url(#dirt)"/>' +
+      '<polygon points="250,394 304,339.3 250,284.6 196,339.3" fill="#47a64b"/><polygon points="250,394 304,339.3 250,284.6 196,339.3" fill="url(#mow)"/>' +
+      '<circle cx="' + MOUND.x + '" cy="' + MOUND.y + '" r="13" fill="url(#dirt)"/><rect x="245" y="339.5" width="10" height="3" fill="#fff" rx="1"/>' +
+      '<circle cx="' + HOME.x + '" cy="' + (HOME.y - 2) + '" r="20" fill="url(#dirt)"/>';
+    var lpole = spot(-45, fenceFt(45)), rpole = spot(45, fenceFt(45));
+    s += '<line x1="' + HOME.x + '" y1="' + HOME.y + '" x2="' + lpole.x.toFixed(1) + '" y2="' + lpole.y.toFixed(1) + '" stroke="#fff" stroke-width="2" opacity=".85"/>' +
+      '<line x1="' + HOME.x + '" y1="' + HOME.y + '" x2="' + rpole.x.toFixed(1) + '" y2="' + rpole.y.toFixed(1) + '" stroke="#fff" stroke-width="2" opacity=".85"/>';
+    BASE.forEach(function (b) { s += '<rect class="bag" x="' + (b.x - 5.5) + '" y="' + (b.y - 5.5) + '" width="11" height="11" fill="#fff" transform="rotate(45 ' + b.x + ' ' + b.y + ')" rx="1"/>'; });
+    s += '<polygon points="245,406 255,406 255,410.5 250,414 245,410.5" fill="#fff"/>';
+    if (!lineup) { var cf = spot(0, 400), lf = spot(-45, 330), rf = spot(45, 330);
+      s += '<text x="' + cf.x + '" y="' + (cf.y + 19) + '" class="dm">400</text><text x="' + (lf.x + 22) + '" y="' + (lf.y + 4) + '" class="dm">330</text><text x="' + (rf.x - 22) + '" y="' + (rf.y + 4) + '" class="dm">330</text>'; }
+    s += '<g class="fl"></g><g class="rn"></g><g class="flight"></g></svg>';
+    return s;
+  }
+
+  // ── The game ─────────────────────────────────────────────────────────────
+  function startGame() {
+    snap();
+    S.phase = 'play';
+    S.g = { inn: 1, half: 0, outs: 0, bases: [null, null, null], R: [0, 0], H: [0, 0], E: [0, 0], line: [[], []], bat: [0, 0],
+      pit: [S.T[0].sp, S.T[1].sp], bf: {}, pc: {}, st: {}, ps: {}, hx: [], plays: [], sideK: 0, halfK: 0, halfBF: 0, halfStart: [0, 0],
+      seen: [{ H: 0, B: 0, J: 0, n: 0 }, { H: 0, B: 0, J: 0, n: 0 }], looks: [{ H: 0, B: 0, J: 0, n: 0 }, { H: 0, B: 0, J: 0, n: 0 }],
+      fx: { rally: -1, err: -1 }, seenRk: {}, firstAB: {}, ab: null, duels: [0, 0, 0], ph: {}, hl: [] };
+    S.g.line[1 - S.home].push(0);
+    var rng = E.rng(S.seed); S.rs = rng.state();
+    save(); render();
+    later(function () { announce(vb(S.T[1 - S.home].name, 'bats', 'bat') + ' first. ' + vb(S.T[S.home].name, 'takes', 'take') + ' the field.'); newAB(); }, 500);
+  }
+  function rand() { var r = E.rng(S.rs); var v = r(); S.rs = r.state(); return v; }
+  function bt() { return S.g.half === 0 ? 1 - S.home : S.home; }
+  function ft() { return 1 - bt(); }
+  function batter() { var t = bt(); return S.T[t].order[S.g.bat[t] % 9]; }
+  function pitcher() { return S.g.pit[ft()]; }
+  function hst(id) { return S.g.st[id] || (S.g.st[id] = { ab: 0, h: 0, hr: 0, rbi: 0, bb: 0, k: 0, r: 0, d: 0, t: 0 }); }
+  function pst(id) { return S.g.ps[id] || (S.g.ps[id] = { bf: 0, outs: 0, h: 0, r: 0, bb: 0, k: 0, hr: 0, pc: 0 }); }
+  function tired(id) { var c = S.C[id], lim = 6 + (c.r.sta || 3) * 2.3, bf = pst(id).bf; return Math.max(0, Math.min(1, (bf - lim) / 9)); }
+
+  // an at-bat: who picks, then the reveal
+  function newAB() {
+    if (!S || S.phase !== 'play') return;
+    var g = S.g, b = batter(), p = pitcher();
+    g.ab = { b: b, p: p, pitch: null, look: null, step: 'pitch', fx: {} };
+    var bc = S.C[b];
+    // the computer's own moves before the pitch: a tired pitcher comes out, a play from its hand
+    var F = S.T[ft()], B = S.T[bt()];
+    if (F.cpu && tired(p) >= .45 && F.pen.length) { changePitcher(ft(), F.pen[0], true); p = g.ab.p = pitcher(); }
+    if (B.cpu) cpuHand(bt());
+    if (F.cpu) cpuHandField(ft());
+    if (!g.firstAB[b]) { g.firstAB[b] = 1; announce(history(bc)); if (bc.rk) g.ab.fx.rk = 1; g.seenRk[b] = 1; }
+    else announce(todayLine(b));
+    save(); paintPlay();
+    // the pitcher's side picks first
+    if (F.cpu) { g.ab.pitch = E.cpuPitch(S.C[p].r, bc.r, S.level, g.looks[bt()], rand); g.ab.step = 'look'; save(); paintPlay(); if (B.cpu) later(cpuLookNow, 700); }
+    else if (!B.cpu) { coverFor(ft(), 'pitch'); }
+  }
+  function cpuLookNow() { var g = S.g; if (!g.ab || g.ab.look) return; g.ab.look = E.cpuLook(S.C[g.ab.p].r, S.C[g.ab.b].r, S.level, g.seen[ft()], rand); reveal(); }
+  // pass and play: the pitcher picks with the screen covered
+  function coverFor(t, step) {
+    S.g.ab.cover = 1; paintPlay();
+    Kit.handoff({ name: S.T[t].name, color: S.T[t].color, what: step === 'pitch' ? 'to pick a pitch' : 'to bat', hold: 700 }).then(function () { if (S.g.ab) { S.g.ab.cover = 0; paintPlay(); } });
+  }
+  function choose(k) {
+    var g = S.g, ab = g.ab; if (!ab || ab.busy) return;
+    Kit.sfx('tap'); Kit.haptic('light');
+    if (ab.step === 'pitch') {
+      ab.pitch = k; ab.step = 'look'; save();
+      var B = S.T[bt()];
+      if (B.cpu) { paintPlay(); later(cpuLookNow, 650); }
+      else { paintPlay(); coverFor(bt(), 'bat'); }
+    } else if (ab.step === 'look') { ab.look = k; save(); if (!ab.pitch) { ab.pitch = E.cpuPitch(S.C[ab.p].r, S.C[ab.b].r, S.level, g.looks[bt()], rand); } reveal(); }
+  }
+  function todayLine(id) {
+    var s = S.g.st[id], c = S.C[id]; if (!s) return c.name + ' steps in.';
+    var ab = s.ab, h = s.h;
+    return c.name + ' is ' + h + ' for ' + ab + ' today' + (s.hr ? ', with ' + (s.hr === 1 ? 'a home run' : s.hr + ' home runs') : '') + (s.bb ? (s.hr ? ' and ' : ', with ') + (s.bb === 1 ? 'a walk' : s.bb + ' walks') : '') + '.';
+  }
+
+  // the reveal and the play
+  var RANK = { K: 0, GB: 1, FB: 1, LD: 1, PU: 1, E: 3, BB: 4, HBP: 4, S: 5, D: 6, T: 7, HR: 8 };
+  function reveal() {
+    var g = S.g, ab = g.ab, t = bt(), f = ft(); if (!ab || ab.busy) return;
+    snap();
+    ab.busy = 1; ab.step = 'reveal';
+    var bc = S.C[ab.b], pc = S.C[ab.p], fx = ab.fx;
+    var guess = ab.pitch === ab.look;
+    if (fx.clutch) guess = false;
+    if (fx.fire || fx.peek && ab.look === ab.pitch) guess = true;
+    ab.guess = guess;
+    g.seen[f][ab.pitch]++; g.seen[f].n++; g.looks[t][ab.look]++; g.looks[t].n++;
+    g.duels[guess ? 0 : 1]++;
+    var ctx = { pitch: ab.pitch, guess: guess, tired: tired(ab.p), rally: g.fx.rally === g.inn * 2 + g.half, hot: !!fx.fire || !!fx.rk, sure: !!fx.sure, slug: !!fx.rb, err: g.fx.err === g.inn * 2 + g.half };
+    var d = E.dist(bc.r, pc.r, ctx), o = E.pick(d, rand());
+    if (fx.as) { var o2 = E.pick(d, rand()); if (RANK[o2] > RANK[o]) o = o2; }
+    // the ball in play goes to a fielder; one out of position may boot it
+    var fld = null, fit = 'home';
+    if (/^(GB|FB|LD|PU)$/.test(o)) {
+      var wpos = E.where(o, rand), F = S.T[f];
+      if (wpos === 'P') fld = ab.p; else { Object.keys(F.at).forEach(function (id) { if (F.at[id] === wpos) fld = id; }); }
+      if (fld) { var fc = S.C[fld]; fit = wpos === 'P' ? 'home' : fc.kid ? 'far' : E.fit(fc.pos, wpos); if (rand() < E.ERR[fit] - E.ERR.home) { o = 'E'; } }
+      ab.where = wpos;
+    } else if (o === 'E') { var F2 = S.T[f], ids = Object.keys(F2.at).filter(function (id) { return F2.at[id] !== 'DH'; }); fld = ids[Math.floor(rand() * ids.length)]; fit = E.fit(S.C[fld].pos, F2.at[fld]); ab.where = F2.at[fld]; }
+    if (ctx.err && o !== 'E' && /^(GB|FB|LD|PU|S)$/.test(o)) { o = 'E'; }
+    if (o === 'E') { g.fx.err = -1; }
+    ab.fld = fld; ab.fit = fit; ab.o = o;
+    var runners0 = g.bases.slice(), outs0 = g.outs;
+    var res = E.advance({ bases: g.bases, outs: g.outs, batter: ab.b }, o, rand, function (id) { return (S.C[id].r.sp != null ? S.C[id].r.sp : .4); });
+    ab.res = res; ab.from = runners0; ab.outs0 = outs0;
+    // the numbers
+    var hs = hst(ab.b), ps = pst(ab.p), pcN = E.pitchCount(o, rand);
+    ps.bf++; ps.pc += pcN; g.halfBF++;
+    var isHit = /^(S|D|T|HR)$/.test(o);
+    if (o !== 'BB' && o !== 'HBP' && res.tag !== 'sf') hs.ab++;
+    if (isHit) { hs.h++; g.H[t]++; ps.h++; }
+    if (o === 'D') hs.d++; if (o === 'T') hs.t++;
+    if (o === 'HR') { hs.hr++; ps.hr++; }
+    if (o === 'BB' || o === 'HBP') { hs.bb++; ps.bb++; }
+    if (o === 'K') { hs.k++; ps.k++; g.halfK++; }
+    if (o === 'E') g.E[f]++;
+    hs.rbi += res.rbi;
+    res.scored.forEach(function (id) { hst(id).r++; });
+    ps.r += res.scored.length; ps.outs += res.outs - outs0;
+    g.R[t] += res.scored.length;
+    var li = g.line[t]; li[li.length - 1] += res.scored.length;
+    g.bases = res.bases; g.outs = res.outs;
+    g.bat[t]++;
+    // what the play is called, for the log and the history
+    ab.code = res.tag === 'dp' ? 'DP' : o;
+    g.hx.push(ab.code + (res.scored.length ? '+' + res.scored.length : ''));
+    var txt = playText(ab, bc, pc);
+    ab.txt = txt;
+    if (res.scored.length) g.plays.push({ i: g.inn, h: g.half, t: txt, r: res.scored.length });
+    ab.hi = moments(ab, bc, pc, res);
+    save();
+    animatePlay(ab, function () { afterPlay(ab); });
+  }
+  function playText(ab, bc, pc) {
+    var o = ab.o, v = { name: bc.name, pit: pc.name, fld: ab.fld ? S.C[ab.fld].name : 'the fielder', home: ab.fld ? (POSN[S.C[ab.fld].pos[0]] || 'utility man').toLowerCase() : '', at: ab.where ? (POSN[ab.where] || '').toLowerCase() : '' };
+    if (o === 'HR' && ab.res.scored.length === 4) return say('slam', v);
+    if (ab.res.tag === 'dp') return say('dp', v);
+    if (ab.res.tag === 'sf') return say('sf', v);
+    if (o === 'E') return ab.fit !== 'home' && ab.fld && !S.C[ab.fld].kid && S.C[ab.fld].pos[0] ? say('Eoff', v) : say('E', v);
+    return say(o, v) || o;
+  }
+  // the special moments: a home run, a grand slam, a pinch hit, three strikeouts in a half-inning, a walk-off
+  function moments(ab, bc, pc, res) {
+    var g = S.g, out = [], t = bt();
+    var walk = g.half === 1 && g.inn >= S.inn && g.R[S.home] > g.R[1 - S.home] && res.scored.length;
+    if (walk) out.push({ k: 'walkoff' });
+    if (ab.o === 'HR') out.push({ k: res.scored.length === 4 ? 'slam' : 'hr', n: res.scored.length });
+    if (g.ph[ab.b] && /^(S|D|T|HR)$/.test(ab.o)) out.push({ k: 'pinch' });
+    if (ab.o === 'K' && g.halfK === 3 && g.halfBF === 3) out.push({ k: 'sideK' });
+    return out;
+  }
+  function afterPlay(ab) {
+    var g = S.g, bc = S.C[ab.b], pc = S.C[ab.p];
+    var v = { name: bc.name, pit: pc.name };
+    var big = ab.hi.filter(function (m) { return m.k === 'walkoff' || m.k === 'slam'; })[0];
+    ab.hi.forEach(function (m) {
+      if (m.k === 'hr') { Kit.moment({ title: ab.res.tag ? cap(ab.res.tag) + ' home run' : 'Home run', line: ab.txt, icon: 'trophy', pts: '+' + m.n, color: S.T[bt()].color, at: app.querySelector('.wp-field') }); g.hl.push(bc.name + ' hit a ' + (ab.res.tag || 'solo') + ' home run in the ' + ord(g.inn) + '.'); }
+      if (m.k === 'pinch') { var t2 = say(ab.o === 'HR' ? 'pinchHR' : 'pinch', v); announce(t2); g.hl.push(bc.name + ' came off the bench with a ' + ({ S: 'single', D: 'double', T: 'triple', HR: 'home run' })[ab.o] + '.'); if (ab.o !== 'HR') Kit.callout('Pinch hit!'); }
+      if (m.k === 'sideK') { Kit.moment({ title: 'Struck out the side', line: say('sideK', v), icon: 'flame', color: S.T[ft()].color, at: app.querySelector('.wp-field') }); g.hl.push(pc.name + ' struck out the side in the ' + ord(g.inn) + '.'); }
+    });
+    if (big && big.k === 'slam') { Kit.confetti(); Kit.moment({ big: true, title: 'Grand slam', line: ab.txt, icon: 'trophy', pts: '+4', color: S.T[bt()].color }); g.hl.push(bc.name + ' hit a grand slam in the ' + ord(g.inn) + '.'); }
+    announce(ab.txt);
+    // the half-inning or the game ends
+    var t = bt();
+    if (big && big.k === 'walkoff') { g.hl.push(bc.name + ' won it with a walk-off in the bottom of the ' + ord(g.inn) + '.'); return later(function () { endGame(true, ab); }, ab.o === 'HR' ? 2600 : 1600); }
+    if (g.half === 1 && g.inn >= S.inn && g.R[S.home] > g.R[1 - S.home]) return later(function () { endGame(true, ab); }, 1400);
+    if (g.outs >= 3) return later(endHalf, ab.hi.length ? 2200 : 1300);
+    later(function () { g.ab = null; newAB(); }, ab.hi.length ? 2300 : 1250);
+  }
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  function endHalf() {
+    var g = S.g;
+    g.outs = 0; g.bases = [null, null, null]; g.halfK = 0; g.halfBF = 0; g.ab = null;
+    if (g.half === 0) {
+      if (g.inn >= S.inn && g.R[S.home] > g.R[1 - S.home]) { return endGame(false); }
+      g.half = 1; g.line[S.home].push(0);
+    } else {
+      if (g.inn >= S.inn && g.R[0] !== g.R[1]) return endGame(false);
+      g.half = 0; g.inn++; g.line[1 - S.home].push(0);
+    }
+    Kit.sfx('whoosh');
+    announce((g.half ? 'Bottom' : 'Top') + ' of the ' + ord(g.inn) + '. ' + vb(S.T[bt()].name, 'is', 'are') + ' up.');
+    save(); paintPlay(); later(newAB, 900);
+  }
+
+  // ── Moves around the at-bat ──────────────────────────────────────────────
+  function changePitcher(t, id, quiet) {
+    var T = S.T[t], old = S.g.pit[t];
+    T.pen = T.pen.filter(function (x) { return x !== id; }); S.g.pit[t] = id;
+    T.used = (T.used || []).concat([old]);
+    if (S.g.ab && t === ft()) S.g.ab.p = id;
+    var line = say('change', { pit: S.C[id].name });
+    announce(line + ' ' + history(S.C[id])); Kit.sfx('whoosh');
+    if (!quiet) { save(); paintPlay(); }
+  }
+  function pinchHit(id) {
+    var t = bt(), T = S.T[t], g = S.g, b = g.ab.b;
+    snap();
+    T.order[T.order.indexOf(b)] = id; T.at[id] = T.at[b]; delete T.at[b];
+    T.bench = T.bench.filter(function (x) { return x !== id; }); T.out = (T.out || []).concat([b]);
+    g.ab.b = id; g.ph[id] = 1;
+    announce(S.C[id].name + ' comes off the bench to bat for ' + S.C[b].name + '. ' + history(S.C[id]));
+    if (!g.firstAB[id]) g.firstAB[id] = 1;
+    Kit.sfx('deal'); save(); paintPlay();
+  }
+  // a play from your hand
+  function usePlay(t, h) {
+    var g = S.g, ab = g.ab, sp = C.SPECIAL[h.k];
+    snap();
+    h.used = true;
+    if (h.k === 'team') g.fx.rally = g.inn * 2 + g.half;
+    else if (h.k === 'err') g.fx.err = g.inn * 2 + g.half;
+    else if (h.k === 'checklist') ab.fx.peek = 1;
+    else if (h.k === 'leaders') ab.fx.sure = 1;
+    else if (h.k === 'highlight') ab.fx.clutch = 1;
+    else if (h.k === 'as') ab.fx.as = 1;
+    else if (h.k === 'rb') ab.fx.rb = 1;
+    else if (h.k === 'dup') ab.fx.fire = 1;
+    Kit.sfx('sparkle'); Kit.haptic('success');
+    Kit.moment({ title: sp.play, line: S.T[t].name + ' played the ' + (h.k === 'dup' ? 'second copy of ' + S.C[h.of].name : h.k === 'as' || h.k === 'rb' || h.k === 'err' ? S.C[h.id].name + ' ' + sp.name : sp.name) + '. ' + sp.say, icon: 'cards', color: S.T[t].color, at: app.querySelector('.wp-field'), ms: 2600 });
+    g.hl.push(S.T[t].name + ' played the ' + sp.name + ' for ' + sp.play + '.');
+    save(); paintPlay();
+  }
+  function playable(t, h) {
+    var g = S.g, ab = g.ab; if (!ab || h.used || ab.step === 'reveal' || ab.busy) return false;
+    var batting = t === bt();
+    if (h.k === 'team') return batting && g.fx.rally !== g.inn * 2 + g.half;
+    if (h.k === 'err') return batting && g.fx.err < 0;
+    if (h.k === 'checklist') return batting && ab.step === 'look' && !ab.fx.peek;
+    if (h.k === 'leaders' || h.k === 'as' || h.k === 'rb') return batting && !ab.fx.sure && !ab.fx.as && !ab.fx.rb && (h.k === 'leaders' || ab.b === h.id);
+    if (h.k === 'highlight') return !batting && ab.step === 'pitch' && !ab.fx.clutch;
+    if (h.k === 'dup') return batting && ab.b === h.of && !ab.fx.fire;
+    return false;
+  }
+  function cpuHand(t) {
+    if (S.level === 'easy') return;
+    var g = S.g, T = S.T[t], late = g.inn >= S.inn - 1, behind = g.R[t] < g.R[1 - t], risp = g.bases[1] || g.bases[2];
+    T.hand.forEach(function (h) {
+      if (!playable(t, h)) return;
+      if (h.k === 'dup' || h.k === 'rb' && g.bases.some(Boolean)) return usePlay(t, h);
+      if (h.k === 'leaders' && risp && (g.outs === 2 || late)) return usePlay(t, h);
+      if (h.k === 'team' && (late && behind || g.bases.filter(Boolean).length >= 2)) return usePlay(t, h);
+      if (h.k === 'err' && late && behind) return usePlay(t, h);
+    });
+  }
+  function cpuHandField(t) {
+    if (S.level === 'easy') return;
+    var g = S.g, T = S.T[t];
+    T.hand.forEach(function (h) { if (h.k === 'highlight' && playable(t, h) && (g.bases[1] || g.bases[2]) && g.inn >= S.inn - 1) usePlay(t, h); });
+  }
+
+  // ── The play screen ──────────────────────────────────────────────────────
+  var V = null, ANN = '';
+  function announce(t) { if (!t) return; ANN = t; var a = app.querySelector('.wp-ann p'); if (a) { a.textContent = t; a.parentNode.classList.remove('new'); void a.offsetWidth; a.parentNode.classList.add('new'); } }
+  function renderPlay() {
+    app.innerHTML = '';
+    V = {};
+    var sb = el('div', { class: 'wp-sb' }), field = el('div', { class: 'wp-field' });
+    field.innerHTML = fieldSVG(false);
+    var mu = el('div', { class: 'wp-mu' }), ann = el('div', { class: 'wp-ann' }, [el('p', { text: ANN })]), duel = el('div', { class: 'wp-duel' }), hand = el('div', { class: 'wp-hand' });
+    var root = el('div', { class: 'wp-scr wp-ply' }, [field, sb, ann, mu, duel, hand]);
+    app.appendChild(root);
+    V = { root: root, sb: sb, field: field, svg: field.querySelector('svg'), mu: mu, ann: ann, duel: duel, hand: hand, tok: {} };
+    paintPlay(); fitPlay(); requestAnimationFrame(fitPlay);
+  }
+  // The ballpark drawn as large as its box allows: the field from the fence to home plate fills the room left by
+  // whatever lies over it (the scoreboard and the announcer sideways), and the grandstand fills the rest
+  function fitPlay() {
+    if (!V || !V.svg) return;
+    var W = V.field.clientWidth, H = V.field.clientHeight; if (!W || !H) return;
+    var land = document.documentElement.getAttribute('data-o') === 'land';
+    var T = land ? V.sb.offsetHeight + 6 : 0, B = 0;
+    var sc = Math.min(W / 470, Math.max(40, H - T - B) / 392);
+    var vw = W / sc, vh = H / sc;
+    var y0 = Math.min(42 - T / sc, 452 - vh);   // home plate near the foot, the grandstand filling any room above
+    V.svg.setAttribute('viewBox', (250 - vw / 2).toFixed(1) + ' ' + y0.toFixed(1) + ' ' + vw.toFixed(1) + ' ' + vh.toFixed(1));
+  }
+  function paintPlay() {
+    if (!V || !V.root || !V.root.isConnected) return renderPlay();
+    paintBoard(); paintField(); paintMatchup(); paintDuel(); paintHand();
+  }
+  function paintBoard() {
+    var g = S.g, n = Math.max(S.inn, g.line[0].length, g.line[1].length), from = Math.max(0, n - 9), tb = el('table', { class: 'wp-line' });
+    var hr = el('tr', {}, [el('th', { class: 'tm' })]);
+    for (var i = from; i < n; i++) hr.appendChild(el('th', { class: i + 1 === g.inn ? 'now' : '', text: String(i + 1) }));
+    ['R', 'H', 'E'].forEach(function (x) { hr.appendChild(el('th', { class: 'rhe', text: x })); });
+    tb.appendChild(hr);
+    [1 - S.home, S.home].forEach(function (t) {
+      var tr = el('tr', { class: bt() === t && S.phase === 'play' ? 'up' : '', style: { '--tc': S.T[t].color } }, [el('td', { class: 'tm' }, [el('i'), el('span', { text: S.T[t].name })])]);
+      for (var k = from; k < n; k++) { var v = g.line[t][k]; tr.appendChild(el('td', { class: k + 1 === g.inn && bt() === t ? 'now' : '', text: v == null ? (t === S.home && S.phase === 'over' && k === n - 1 && g.line[t].length < n ? 'X' : '') : String(v) })); }
+      [g.R[t], g.H[t], g.E[t]].forEach(function (v, j) { tr.appendChild(el('td', { class: 'rhe' + (j === 0 ? ' r' : ''), text: String(v) })); });
+      tb.appendChild(tr);
+    });
+    var outs = el('div', { class: 'wp-outs', 'aria-label': g.outs + ' out' + (g.outs === 1 ? '' : 's') }, [el('span', { text: (g.half ? 'Bottom ' : 'Top ') + ord(g.inn) })].concat([0, 1, 2].map(function (k) { return el('i', { class: k < g.outs ? 'on' : '' }); })));
+    V.sb.innerHTML = ''; V.sb.appendChild(tb); V.sb.appendChild(outs);
+  }
+  function svgEl(tag, a) { var n = document.createElementNS('http://www.w3.org/2000/svg', tag); for (var k in a) n.setAttribute(k, a[k]); return n; }
+  function paintField() {
+    var g = S.g, svg = V.svg; if (!svg) return;
+    // the fielding team at its positions, the batter at the plate
+    var fl = svg.querySelector('.fl'); fl.innerHTML = '';
+    var F = S.T[ft()], tc = F.color;
+    Object.keys(F.at).forEach(function (id) {
+      var p = F.at[id]; if (p === 'DH') return;
+      var c = S.C[id], fit = c.kid ? 'far' : E.fit(c.pos, p), q = FPOS[p];
+      var gg = svgEl('g', { class: 'fp f-' + fit + (g.ab && g.ab.fld === id && g.ab.step === 'reveal' ? ' act' : ''), transform: 'translate(' + q.x + ' ' + q.y + ')' });
+      gg.appendChild(svgEl('circle', { r: 7, fill: tc, stroke: '#fff', 'stroke-width': 1.6 }));
+      var tx = svgEl('text', { y: 17, class: 'fn' }); tx.textContent = c.kid ? 'Kid' : last(c.name); gg.appendChild(tx);
+      fl.appendChild(gg);
+    });
+    var pp = svgEl('g', { class: 'fp', transform: 'translate(' + FPOS.P.x + ' ' + FPOS.P.y + ')' }); pp.appendChild(svgEl('circle', { r: 7, fill: tc, stroke: '#fff', 'stroke-width': 1.6 }));
+    fl.appendChild(pp);
+    paintRunners();
+  }
+  function paintRunners(scoredNow) {
+    var g = S.g, rn = V.svg.querySelector('.rn'), want = {};
+    g.bases.forEach(function (id, i) { if (id) want[id] = BASE[i]; });
+    if (g.ab && g.ab.step !== 'reveal') want[g.ab.b] = { x: HOME.x - 22, y: HOME.y - 2, bat: 1 };
+    Object.keys(V.tok).forEach(function (id) {
+      if (want[id]) return; var t = V.tok[id]; delete V.tok[id];
+      if (scoredNow && scoredNow.indexOf(id) >= 0) { place(t, HOME); setTimeout(function () { t.classList.add('gone'); }, ms(520)); setTimeout(function () { t.remove(); }, ms(1000)); }
+      else { t.classList.add('gone'); setTimeout(function () { t.remove(); }, ms(400)); }
+    });
+    Object.keys(want).forEach(function (id) {
+      var t = V.tok[id], w = want[id];
+      if (!t) {
+        t = svgEl('g', { class: 'tk' + (w.bat ? ' bat' : '') }); var c = S.C[id];
+        t.appendChild(svgEl('circle', { r: 11, fill: S.T[c ? teamOf(id) : bt()].color, stroke: '#fff', 'stroke-width': 2 }));
+        var tx = svgEl('text', { y: 4.2, class: 'ti' }); tx.textContent = (c.kid ? 'K' : last(c.name).charAt(0)); t.appendChild(tx);
+        rn.appendChild(t); V.tok[id] = t; place(t, w, true);
+      } else { t.classList.toggle('bat', !!w.bat); place(t, w); }
+    });
+  }
+  function teamOf(id) { return S.T[0].cards.indexOf(id) >= 0 || S.T[0].order.indexOf(id) >= 0 ? 0 : 1; }
+  function place(t, p, now) { if (now) t.style.transition = 'none'; t.style.transform = 'translate(' + p.x.toFixed(1) + 'px,' + p.y.toFixed(1) + 'px)'; if (now) { void t.getBoundingClientRect(); t.style.transition = ''; } }
+  function paintMatchup() {
+    var g = S.g, ab = g.ab; V.mu.innerHTML = '';
+    var b = ab ? ab.b : batter(), p = ab ? ab.p : pitcher();
+    function side(id, cls, label) {
+      var c = S.C[id], t = cls === 'b' ? bt() : ft();
+      var face = cardFace(c, { at: S.T[t].at[id] }); face.classList.add('mu-card');
+      var tr = tired(id);
+      var info = el('div', { class: 'mu-info' }, [el('span', { class: 'mu-lbl', text: label }), el('b', { class: 'mu-nm', text: c.kid ? 'Sandlot kid' : c.name }),
+        el('span', { class: 'mu-line', text: cls === 'b' ? todayShort(id) : pitchShort(id) }), ratingsEl(c)]);
+      if (cls === 'p' && tr > 0) info.appendChild(el('span', { class: 'mu-tired', text: tr >= .5 ? 'Tired' : 'Tiring' }));
+      return el('button', { type: 'button', class: 'mu ' + cls, style: { '--tc': S.T[t].color }, onclick: function () { cardSheet(c, false); } }, [face, info]);
+    }
+    V.mu.appendChild(side(b, 'b', 'At bat')); V.mu.appendChild(side(p, 'p', 'Pitching'));
+    requestAnimationFrame(function () { fitCardNames(V.mu); });
+  }
+  function todayShort(id) { var s = S.g.st[id]; if (!s || !s.ab && !s.bb) { var c = S.C[id]; return c.sy ? c.sy + ' ' + (c.team || '') : c.kid ? 'Neighborhood kid' : 'Scout’s report'; } return s.h + ' for ' + s.ab + (s.hr ? ', ' + s.hr + ' HR' : ''); }
+  function pitchShort(id) { var s = S.g.ps[id]; if (!s || !s.bf) { var c = S.C[id]; return c.sy ? c.sy + ' ' + (c.team || '') : 'Fresh arm'; } return Math.floor(s.outs / 3) + '.' + s.outs % 3 + ' IP, ' + s.k + ' K'; }
+  // the three pitches, drawn as their own marks
+  var PICON = {
+    H: '<svg viewBox="0 0 48 48"><circle cx="30" cy="24" r="9" fill="#fff"/><path d="M26 16 q5 8 0 16 M34 16 q-5 8 0 16" stroke="#d33" stroke-width="1.6" fill="none"/><path d="M4 18 h14 M2 24 h16 M6 30 h12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>',
+    B: '<svg viewBox="0 0 48 48"><path d="M6 10 q26 0 30 26" stroke="currentColor" stroke-width="3" fill="none" stroke-dasharray="3 5" stroke-linecap="round"/><circle cx="36" cy="36" r="8" fill="#fff"/><path d="M32 29 q5 7 0 14" stroke="#d33" stroke-width="1.5" fill="none"/></svg>',
+    J: '<svg viewBox="0 0 48 48"><path d="M5 30 q8 -14 14 0 q6 14 12 0" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-dasharray="2 5"/><circle cx="38" cy="26" r="7.5" fill="#fff"/><path d="M34 20 q4 6 0 12" stroke="#d33" stroke-width="1.5" fill="none"/></svg>'
+  };
+  function paintDuel() {
+    var g = S.g, ab = g.ab; V.duel.innerHTML = '';
+    if (S.phase === 'over') { V.duel.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: 'See the results', onclick: function () { showWin(); } })); return; }
+    if (!ab) { V.duel.appendChild(el('p', { class: 'wp-wait', text: ' ' })); return; }
+    var F = S.T[ft()], B = S.T[bt()];
+    if (ab.step === 'reveal') {
+      var row = el('div', { class: 'wp-rev' + (ab.guess ? ' right' : ' wrong') });
+      row.appendChild(el('div', { class: 'rv p' }, [el('span', { class: 'rvl', text: 'Pitch' }), el('i', { html: PICON[ab.pitch] }), el('b', { text: E.PNAME[ab.pitch] })]));
+      row.appendChild(el('div', { class: 'rv mid', html: Kit.icon(ab.guess ? 'check' : 'close') }));
+      row.appendChild(el('div', { class: 'rv b' }, [el('span', { class: 'rvl', text: 'Looking for' }), el('i', { html: PICON[ab.look] }), el('b', { text: E.PNAME[ab.look] })]));
+      V.duel.appendChild(row);
+      return;
+    }
+    var picking = ab.step === 'pitch' ? F : B, human = !picking.cpu;
+    var who = ab.step === 'pitch' ? F.name + ', pick your pitch' : B.name + ', what are you looking for?';
+    if (!human || ab.cover) { V.duel.appendChild(el('p', { class: 'wp-wait', text: ab.cover ? 'Pass the device.' : picking.name + ' is thinking…' })); return; }
+    var w = E.pitchWeights(S.C[ab.p].r, S.C[ab.b].r), mx = Math.max(w.H, w.B, w.J), mn = Math.min(w.H, w.B, w.J);
+    V.duel.appendChild(el('p', { class: 'wp-ask' + (ab.step === 'pitch' ? ' p' : ''), style: { '--tc': picking.color }, text: who }));
+    var btns = el('div', { class: 'wp-pitches' });
+    E.PITCHES.forEach(function (k) {
+      var edge = (w[k] - mn) / Math.max(.01, mx - mn);   // how much this pitch favors the pitcher in this matchup
+      var peek = ab.step === 'look' && ab.fx.peek && ab.pitch === k;
+      btns.appendChild(el('button', { type: 'button', class: 'wp-pb' + (peek ? ' peek' : ''), style: { '--pc': F.color, '--bc': B.color }, onclick: function () { choose(k); } }, [
+        el('i', { html: PICON[k] }), el('b', { text: E.PNAME[k] }),
+        el('span', { class: 'edge', 'aria-label': 'Favors the pitcher ' + Math.round(edge * 100) + ' percent' }, [el('em', { style: { width: Math.round(18 + edge * 82) + '%' } })])]));
+    });
+    V.duel.appendChild(btns);
+  }
+  function paintHand() {
+    var g = S.g, ab = g.ab; V.hand.innerHTML = '';
+    if (S.phase !== 'play' || !ab || ab.step === 'reveal' || ab.cover) return;
+    // the human whose decision it is: their hand and their manager moves
+    var t = ab.step === 'pitch' ? ft() : bt(); if (S.T[t].cpu) return;
+    var T = S.T[t];
+    T.hand.forEach(function (h) {
+      if (!playable(t, h)) return;
+      var who = h.k === 'dup' ? S.C[h.of] : h.k === 'as' || h.k === 'rb' || h.k === 'err' ? S.C[h.id] : null;
+      V.hand.appendChild(el('button', { type: 'button', class: 'wp-hc', onclick: function () {
+        Kit.confirm(C.SPECIAL[h.k].say, { ok: 'Play it' }).then(function (ok) { if (ok) usePlay(t, h); });
+      } }, [el('span', { class: 'k', text: C.SPECIAL[h.k].name }), el('b', { text: C.SPECIAL[h.k].play + (who ? ': ' + last(who.name) : '') })]));
+    });
+    if (t === bt() && T.bench.length && ab.step === 'look') V.hand.appendChild(el('button', { type: 'button', class: 'wp-hc mv', onclick: function () { benchSheet(); } }, [el('span', { class: 'k', text: 'Manager' }), el('b', { text: 'Pinch hit' })]));
+    if (t === ft() && T.pen.length && ab.step === 'pitch') V.hand.appendChild(el('button', { type: 'button', class: 'wp-hc mv' + (tired(ab.p) >= .4 ? ' warn' : ''), onclick: function () { penSheet(); } }, [el('span', { class: 'k', text: 'Manager' }), el('b', { text: 'Bullpen' })]));
+  }
+  function benchSheet() {
+    var T = S.T[bt()], box = el('div', { class: 'wp-res' }), sh;
+    T.bench.forEach(function (id) { var c = S.C[id]; box.appendChild(el('button', { type: 'button', class: 'wp-hit', onclick: function () { sh.close(); pinchHit(id); } }, [el('b', { text: c.name }), el('span', { text: (POSN[c.pos[0]] || 'Utility') + '. Contact ' + c.r.con + ', Power ' + c.r.pow }), el('i', { text: c.year ? String(c.year) : '' })])); });
+    sh = Kit.sheet({ title: 'Bat for ' + S.C[S.g.ab.b].name, node: box, actions: [{ label: 'Cancel' }] });
+  }
+  function penSheet() {
+    var t = ft(), T = S.T[t], box = el('div', { class: 'wp-res' }), sh;
+    T.pen.forEach(function (id) { var c = S.C[id]; box.appendChild(el('button', { type: 'button', class: 'wp-hit', onclick: function () { sh.close(); snap(); changePitcher(t, id); } }, [el('b', { text: c.name }), el('span', { text: 'Stuff ' + c.r.stf + ', Control ' + c.r.ctl + ', Stamina ' + c.r.sta }), el('i', { text: c.year ? String(c.year) : '' })])); });
+    sh = Kit.sheet({ title: 'Relieve ' + S.C[S.g.ab.p].name, node: box, actions: [{ label: 'Cancel' }] });
+  }
+
+  // ── The play, animated ───────────────────────────────────────────────────
+  function animatePlay(ab, done) {
+    paintPlay();
+    var o = ab.o, svg = V.svg, fl = svg && svg.querySelector('.flight');
+    Kit.sfx('flip'); Kit.haptic(ab.guess ? 'medium' : 'light');
+    later(function () {
+      var tail = 0;
+      if (/^(S|D|T|HR|GB|FB|LD|PU|E)$/.test(o)) {
+        crack(o === 'HR');
+        var dest = ballSpot(ab);
+        if (fl && !FAST) {
+          var ball = svgEl('circle', { r: 4.5, class: 'ball', fill: '#fff' }); fl.innerHTML = ''; fl.appendChild(ball);
+          var t0 = performance.now(), dur = o === 'HR' ? 1300 : o === 'GB' ? 600 : 900, peak = o === 'GB' ? 4 : o === 'LD' ? 18 : o === 'PU' ? 120 : 70 + (o === 'HR' ? 60 : 0);
+          (function step(now) {
+            var k = Math.min(1, (now - t0) / dur), x = HOME.x + (dest.x - HOME.x) * k, y = HOME.y - 6 + (dest.y - HOME.y + 6) * k - Math.sin(k * Math.PI) * peak;
+            ball.setAttribute('cx', x.toFixed(1)); ball.setAttribute('cy', y.toFixed(1)); ball.setAttribute('r', (4.5 + Math.sin(k * Math.PI) * (peak / 30)).toFixed(1));
+            if (k < 1) requestAnimationFrame(step); else setTimeout(function () { ball.remove(); }, 400);
+          })(t0);
+        }
+        tail = o === 'HR' ? 1300 : 800;
+      } else if (o === 'K') { mitt(); tail = 300; } else { tail = 300; }
+      later(function () {
+        paintBoard(); paintRunners(ab.res.scored); paintField();
+        var g = S.g, big = ab.hi.length;
+        if (o === 'HR') { roar(1, 3); Kit.haptic('success'); }
+        else if (ab.res.scored.length) { roar(.6, 1.8); Kit.sfx('good'); }
+        else if (/^(S|D|T)$/.test(o)) { roar(.35, 1.2); Kit.sfx('pop'); }
+        else if (o === 'K') { Kit.sfx('bad'); }
+        else if (o === 'E') { ooh(); Kit.sfx('bad'); }
+        else Kit.sfx('tick');
+        if (ab.res.scored.length) { var r = V.sb.querySelectorAll('tr')[bt() === S.home ? 2 : 1]; if (r) { r.classList.remove('bump'); void r.offsetWidth; r.classList.add('bump'); } }
+        done();
+      }, tail);
+    }, 650);
+  }
+  function ballSpot(ab) {
+    var o = ab.o, r = rand;
+    if (o === 'HR') { var a = (r() - .5) * 80; return spot(a, fenceFt(a) + 40); }
+    if (ab.where && FPOS[ab.where]) { var q = FPOS[ab.where]; return { x: q.x + (r() - .5) * 18, y: q.y + (r() - .5) * 14 }; }
+    var a2 = (r() - .5) * 84, ft2 = o === 'S' ? 200 : o === 'D' ? 300 : o === 'T' ? 330 : 120;
+    return spot(a2, ft2);
+  }
+
+  // ── Ballpark sounds, synthesized (the old Sandlot's) ──────────────────────
+  var actx = null, nb = null;
+  function on() { try { return localStorage.getItem('gn_sound') !== '0'; } catch (e) { return true; } }
+  function ac() { if (!on()) return null; if (!actx) { var A = window.AudioContext || window.webkitAudioContext; if (!A) return null; try { actx = new A(); } catch (e) { return null; } } if (actx.state === 'suspended') actx.resume(); return actx; }
+  function nbuf(c) { if (nb) return nb; var n = Math.floor(c.sampleRate * 2), b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0), l = 0; for (var i = 0; i < n; i++) { var w = Math.random() * 2 - 1; l = l * .62 + w * .38; d[i] = l * 1.7; } return (nb = b); }
+  function noise(t0, dur, vol, type, freq, q, attack, loop) {
+    var c = ac(); if (!c) return null;
+    var s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(), t = c.currentTime + t0;
+    s.buffer = nbuf(c); s.loop = !!loop; f.type = type; f.frequency.value = freq; f.Q.value = q || 1;
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + (attack || .004)); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(c.destination); s.start(t, Math.random() * 1.5); s.stop(t + dur + .05);
+    return { f: f, g: g, t: t };
+  }
+  function tone(freq, t0, dur, type, vol, to) {
+    var c = ac(); if (!c) return;
+    var o = c.createOscillator(), g = c.createGain(), t = c.currentTime + t0;
+    o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t); if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .012); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + dur + .03);
+  }
+  function crack(big) { noise(0, .05, big ? .55 : .38, 'highpass', 1700, .7, .001); tone(big ? 1050 : 1400, 0, .06, 'triangle', .07, 600); noise(0, .14, .12, 'bandpass', 520, 1.4, .002); }
+  function mitt() { noise(0, .08, .45, 'lowpass', 420, .8, .001); tone(150, 0, .08, 'sine', .14, 80); }
+  function roar(level, dur) { var c = ac(); if (!c) return; [[620, .5, 1], [1250, .7, .45], [2400, .9, .18]].forEach(function (b) { var n = noise(0, dur, .32 * level * b[2], 'bandpass', b[0], b[1], .25, true); if (!n) return; n.f.frequency.setValueAtTime(b[0] * .9, n.t); n.f.frequency.linearRampToValueAtTime(b[0] * 1.08, n.t + dur * .4); }); }
+  function ooh() { var n = noise(0, 1.1, .16, 'bandpass', 420, 3, .15); if (!n) return; n.f.frequency.setValueAtTime(380, n.t); n.f.frequency.linearRampToValueAtTime(720, n.t + .45); n.f.frequency.linearRampToValueAtTime(520, n.t + 1.05); }
+  function organ() { [[392, 0, .14], [523, .15, .14], [659, .3, .14], [784, .45, .32], [659, .85, .14], [784, 1.0, .6]].forEach(function (n) { [1, 2, 3].forEach(function (h, i) { tone(n[0] * h, n[1], n[2] + .05, 'sine', [.07, .035, .02][i]); }); }); }
+
+  // ── The end ──────────────────────────────────────────────────────────────
+  function endGame(walkoff, ab) {
+    var g = S.g; S.phase = 'over'; g.ab = null; g.wo = !!walkoff;
+    var win = g.R[0] > g.R[1] ? 0 : 1, lose = 1 - win;
+    // a no-hitter: the losing side never got a hit
+    if (g.H[lose] === 0) { var nh = S.T[win]; var arms = Object.keys(g.ps).filter(function (id) { return teamOf(id) === win; }); g.nohit = arms.map(function (id) { return S.C[id].name; }).join(' and '); g.hl.unshift(g.nohit + ' threw a no-hitter.'); }
+    if (walkoff) { Kit.confetti(); Kit.moment({ big: true, title: 'Walk-off', line: say('walkoff', { name: ab ? S.C[ab.b].name : '' }), icon: 'trophy', color: S.T[win].color }); organ(); roar(1, 3.5); }
+    else if (g.nohit) { Kit.confetti(); Kit.moment({ big: true, title: 'A no-hitter', line: say('noHit', { pit: g.nohit }), icon: 'trophy', color: S.T[win].color }); organ(); }
+    // the league keeps every card's numbers
+    var Lg = league(); Lg.games = (Lg.games || 0) + 1;
+    Object.keys(g.st).forEach(function (id) { var c = S.C[id]; if (!c.lid || !Lg.cards[c.lid]) return; var x = Lg.cards[c.lid].h || (Lg.cards[c.lid].h = { g: 0, ab: 0, h: 0, hr: 0, rbi: 0, bb: 0, k: 0, r: 0 }); var s = g.st[id]; x.g++; ['ab', 'h', 'hr', 'rbi', 'bb', 'k', 'r'].forEach(function (k) { x[k] += s[k] || 0; }); });
+    Object.keys(g.ps).forEach(function (id) { var c = S.C[id]; if (!c.lid || !Lg.cards[c.lid]) return; var x = Lg.cards[c.lid].p || (Lg.cards[c.lid].p = { g: 0, bf: 0, outs: 0, h: 0, r: 0, bb: 0, k: 0, w: 0, l: 0 }); var s = g.ps[id]; x.g++; ['bf', 'outs', 'h', 'r', 'bb', 'k'].forEach(function (k) { x[k] += s[k] || 0; }); });
+    var wp = g.pit[win], lp = g.pit[lose]; if (S.C[wp].lid && Lg.cards[S.C[wp].lid] && Lg.cards[S.C[wp].lid].p) Lg.cards[S.C[wp].lid].p.w++; if (S.C[lp].lid && Lg.cards[S.C[lp].lid] && Lg.cards[S.C[lp].lid].p) Lg.cards[S.C[lp].lid].p.l++;
+    saveLeague();
+    record(win);
+    clearSave(); S.phase = 'over';
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    Kit.resume.clear();
+    paintPlay();
+    later(showWin, walkoff || g.nohit ? 3000 : 900);
+  }
+  function record(win) {
+    var g = S.g, aw = 1 - S.home;
+    function tm(t) {
+      var T = S.T[t];
+      var bats = T.order.concat(T.out || []).filter(function (id) { return g.st[id]; }).map(function (id) { var s = g.st[id], c = S.C[id]; return [c.kid ? 'Sandlot kid' : c.name, T.at[id] || 'PH', s.ab, s.r, s.h, s.hr, s.rbi, s.bb, s.k, T.out && T.out.indexOf(id) >= 0 ? 1 : 0].join('|'); });
+      var arms = Object.keys(g.ps).filter(function (id) { return teamOf(id) === t; }).map(function (id) { var s = g.ps[id], c = S.C[id]; return [c.name, s.outs, s.h, s.r, s.bb, s.k, s.hr, s.pc].join('|'); });
+      return { n: T.name, c: T.color, l: g.line[t].join(','), r: g.R[t], h: g.H[t], e: g.E[t], b: bats, p: arms };
+    }
+    var hx = []; // half-inning by half-inning from the plays
+    var detail = { wp: 1, home: S.home, inn: S.inn, wo: g.wo ? 1 : 0, tm: [tm(0), tm(1)], plays: g.plays.slice(-12), duel: g.duels.slice(0, 2), nh: g.nohit || '' };
+    var hl = g.hl.slice(0, 10);
+    hl.push('Batters guessed the pitch ' + g.duels[0] + ' times and were fooled ' + g.duels[1] + ' times.');
+    Kit.record(HKEY, {
+      started: S.started, mode: S.mode === 'cpu' ? 'vs Computer (' + ({ easy: 'Easy', normal: 'Normal', hard: 'Hard' })[S.level] + ')' : 'Pass & play',
+      players: S.T.map(function (T, t) { return { name: T.name, score: g.R[t], cpu: T.cpu }; }), winner: S.T[win].name,
+      rounds: { labels: g.line[0].map(function (_, i) { return String(i + 1); }), scores: g.line[0].map(function (_, i) { return [g.line[0][i] || 0, g.line[1][i] || 0]; }) },
+      highlights: hl, detail: detail
+    });
+  }
+  function showWin() {
+    var g = S.g, win = g.R[0] > g.R[1] ? 0 : 1, W = S.T[win], lose = W.cpu && !S.T[1 - win].cpu;
+    var pic = el('div', { class: 'wp-winline' }); var tb = V && V.sb && V.sb.querySelector('.wp-line'); if (tb) pic.appendChild(tb.cloneNode(true));
+    var stars = starOf();
+    Kit.win({
+      icon: lose ? 'bot' : 'trophy', lose: lose,
+      title: lose ? W.name + ' wins this one' : W.name === 'You' ? 'You win!' : W.name + ' win!',
+      sub: S.T[win].name + ' ' + g.R[win] + ', ' + S.T[1 - win].name + ' ' + g.R[1 - win] + (g.line[0].length > S.inn ? ' in ' + g.line[0].length + ' innings' : '') + (stars ? ' · ' + stars : ''),
+      pic: pic,
+      rank: S.T.map(function (T, t) { return { name: T.name, score: g.R[t], color: T.color, cpu: T.cpu }; }).sort(function (a, b) { return b.score - a.score; }),
+      again: function () { rematch(); },
+      look: true,
+      extra: [{ label: 'Box score', onClick: function () { boxSheet(); } }, { label: 'Your league', onClick: function () { leagueSheet(); } }],
+      setup: function () { clearSave(); showSetup(); }, setupLabel: 'New stack'
+    });
+  }
+  function starOf() {
+    var g = S.g, best = null;
+    Object.keys(g.st).forEach(function (id) { var s = g.st[id], v = s.h * 2 + s.hr * 4 + s.rbi * 1.5 + s.bb; if (!best || v > best.v) best = { id: id, v: v, s: s }; });
+    if (!best || best.s.h < 2 && !best.s.hr) return '';
+    var s = best.s; return S.C[best.id].name + ' went ' + s.h + ' for ' + s.ab + (s.hr ? ' with ' + (s.hr === 1 ? 'a home run' : s.hr + ' home runs') : '');
+  }
+  function rematch() {
+    snap();
+    S.phase = 'play'; S.home = 1 - S.home; S.started = Date.now(); Kit.gameStart();
+    S.T.forEach(function (T) { if (T.out) { T.out.forEach(function (id) { if (T.bench.indexOf(id) < 0) T.bench.push(id); }); } (T.used || []).forEach(function (id) { if (T.pen.indexOf(id) < 0) T.pen.push(id); }); T.out = []; T.used = []; T.hand.forEach(function (h) { h.used = false; }); });
+    S.T.forEach(function (T, t) { arrangeKeep(t); });
+    startGame();
+  }
+  function arrangeKeep(t) { var T = S.T[t]; if (S.g && S.g.pit[t] !== T.sp) { T.pen = T.pen.filter(function (x) { return x !== T.sp; }); } }
+
+  // ── The box score and the league ─────────────────────────────────────────
+  function boxSheet() {
+    var g = S.g, box = el('div', { class: 'wp-box' });
+    var tb = V && V.sb && V.sb.querySelector('.wp-line'); if (tb) box.appendChild(tb.cloneNode(true));
+    [1 - S.home, S.home].forEach(function (t) {
+      var T = S.T[t];
+      box.appendChild(el('h3', { text: T.name }));
+      var tab = el('table', { class: 'wp-bx' }), hr = el('tr', {}, [el('th', { text: '' })]);
+      ['AB', 'R', 'H', 'HR', 'RBI', 'BB', 'K'].forEach(function (x) { hr.appendChild(el('th', { text: x })); }); tab.appendChild(hr);
+      T.order.concat(T.out || []).forEach(function (id) { var s = g.st[id] || {}, c = S.C[id]; var tr = el('tr', {}, [el('td', { class: 'n', text: (c.kid ? 'Sandlot kid' : c.name) + ' ' + (T.at[id] || 'PH') })]); ['ab', 'r', 'h', 'hr', 'rbi', 'bb', 'k'].forEach(function (k) { tr.appendChild(el('td', { text: String(s[k] || 0) })); }); tab.appendChild(tr); });
+      box.appendChild(tab);
+      var pt = el('table', { class: 'wp-bx' }), ph = el('tr', {}, [el('th', { text: 'Pitching' })]); ['IP', 'H', 'R', 'BB', 'K'].forEach(function (x) { ph.appendChild(el('th', { text: x })); }); pt.appendChild(ph);
+      Object.keys(g.ps).filter(function (id) { return teamOf(id) === t; }).forEach(function (id) { var s = g.ps[id]; var tr = el('tr', {}, [el('td', { class: 'n', text: S.C[id].name })]); [Math.floor(s.outs / 3) + '.' + s.outs % 3, s.h, s.r, s.bb, s.k].forEach(function (v) { tr.appendChild(el('td', { text: String(v) })); }); pt.appendChild(tr); });
+      box.appendChild(pt);
+    });
+    Kit.sheet({ title: 'Box score', node: box, actions: [{ label: 'Done' }] });
+  }
+  function leagueSheet() {
+    var Lg = league(), ids = Object.keys(Lg.cards);
+    var box = el('div', { class: 'wp-lg' });
+    if (!ids.length) { box.appendChild(el('p', { class: 'wp-note', text: 'Your league starts with the first card you enter. Every card stays here with its numbers from your games.' })); return Kit.sheet({ title: 'Your league', node: box, actions: [{ label: 'Done' }] }); }
+    box.appendChild(el('p', { class: 'wp-sub', text: ids.length + (ids.length === 1 ? ' card' : ' cards') + ' in your league, ' + (Lg.games || 0) + (Lg.games === 1 ? ' game played.' : ' games played.') }));
+    function board(title, list, val) {
+      if (!list.length) return;
+      box.appendChild(el('h3', { text: title }));
+      var ol = el('ol', { class: 'wp-lb' });
+      list.slice(0, 5).forEach(function (k) { var x = Lg.cards[k]; ol.appendChild(el('li', {}, [el('span', { text: x.n + (x.y ? ', ' + x.y : '') }), el('b', { text: val(x) })])); });
+      box.appendChild(ol);
+    }
+    var hitters = ids.filter(function (k) { return Lg.cards[k].h && Lg.cards[k].h.ab; }), arms = ids.filter(function (k) { return Lg.cards[k].p && Lg.cards[k].p.bf; });
+    board('Home runs', hitters.filter(function (k) { return Lg.cards[k].h.hr; }).sort(function (a, b) { return Lg.cards[b].h.hr - Lg.cards[a].h.hr; }), function (x) { return String(x.h.hr); });
+    board('Batting average (10 at-bats or more)', hitters.filter(function (k) { return Lg.cards[k].h.ab >= 10; }).sort(function (a, b) { return Lg.cards[b].h.h / Lg.cards[b].h.ab - Lg.cards[a].h.h / Lg.cards[a].h.ab; }), function (x) { return avg3(x.h.h / x.h.ab); });
+    board('Strikeouts', arms.sort(function (a, b) { return Lg.cards[b].p.k - Lg.cards[a].p.k; }), function (x) { return String(x.p.k); });
+    board('Wins', arms.filter(function (k) { return Lg.cards[k].p.w; }).sort(function (a, b) { return Lg.cards[b].p.w - Lg.cards[a].p.w; }), function (x) { return String(x.p.w); });
+    box.appendChild(el('h3', { text: 'Every card' }));
+    var all = el('div', { class: 'wp-lgall' });
+    ids.sort(function (a, b) { return String(Lg.cards[a].n).localeCompare(Lg.cards[b].n); }).forEach(function (k) {
+      var x = Lg.cards[k], line = x.h && x.h.ab ? avg3(x.h.h / x.h.ab) + ', ' + x.h.hr + ' HR in ' + x.h.g + (x.h.g === 1 ? ' game' : ' games') : x.p && x.p.bf ? x.p.k + ' K in ' + x.p.g + (x.p.g === 1 ? ' game' : ' games') : x.k !== 'player' ? (C.SPECIAL[x.k] ? C.SPECIAL[x.k].play : '') : 'No games yet';
+      all.appendChild(el('div', { class: 'wp-lgr' }, [el('b', { text: x.n + (x.y ? ', ' + x.y : '') }), el('span', { text: line })]));
+    });
+    box.appendChild(all);
+    Kit.sheet({ title: 'Your league', node: box, actions: [{ label: 'Done' }] });
+  }
+
+  // ── Test and demo hooks ──────────────────────────────────────────────────
+  window.__wax = {
+    state: function () { return S; }, db: db, render: render,
+    // a stack from the sample cards, the draft and lineups made by the computer for both sides: straight to the game
+    quick: function (o) {
+      o = o || {};
+      return db().then(function () {
+        S = { v: 1, mode: o.mode || 'cpu', level: o.level || 'normal', inn: o.inn || 5, size: o.size || 12, seed: o.seed || 7, phase: 'stack', C: {}, cn: 0, stack: [],
+          T: [{ name: o.a || 'You', cpu: false, color: Kit.color(0), cards: [] }, { name: o.b || 'Sprocket', cpu: o.mode !== 'local', color: Kit.color(1), cards: [] }] };
+        S.started = Date.now();
+        R = E.rng(o.seed || 7);
+        sampleStack();
+        return new Promise(function (res) { setTimeout(res, 50); });
+      }).then(function () {
+        if (o.to === 'stack') { render(); return S; }
+        NOFLIP = true; startDraft(); NOFLIP = false;
+        if (o.to === 'draft') { render(); return S; }
+        while (!draftDone()) { var t = S.draft.turn, T = S.T[t]; T.cpu = true; var keep = S.level; cpuPickNow(); }
+        S.T[0].cpu = false; S.T[1].cpu = o.mode !== 'local';
+        toLineup();
+        if (o.to === 'lineup') { render(); return S; }
+        startGame(); return S;
+      });
+    },
+    choose: choose, ab: function () { return S && S.g && S.g.ab; }, fast: function (v) { FAST = v; },
+    // tests: a human's picks made at random, so a whole game plays itself
+    auto: function (on) { clearInterval(AUTO); if (on) AUTO = setInterval(function () { var ab = S && S.g && S.g.ab; if (!ab || ab.busy || ab.cover) return; var t = ab.step === 'pitch' ? ft() : ab.step === 'look' ? bt() : -1; if (t >= 0 && !S.T[t].cpu) choose(E.PITCHES[Math.floor(Math.random() * 3)]); }, 60); },
+    set: function (fn) { fn(S); save(); render(); }
+  };
+  function cpuPickNow() { var t = S.draft.turn, left = draftLeft(); var T = S.T[t]; var pitchers = T.cards.filter(function (id) { return S.C[id].role === 'p'; }).length;
+    var best = null; left.forEach(function (id) { var c = S.C[id], w = c.kind !== 'player' ? 2.5 : c.role === 'p' ? pv(c) / 3 * (pitchers ? .6 : 1.5) : hv(c) / 3.3; w += R() * .5; if (!best || w > best.w) best = { id: id, w: w }; });
+    T.cards.push(best.id); var nx = 1 - t; if (S.T[nx].cards.length >= S.size) nx = t; S.draft.turn = nx; }
+
+  // ── Start ────────────────────────────────────────────────────────────────
+  var saved = load();
+  if (Kit.inDemo()) { app.className = 'stage wp'; }
+  else if (saved && saved.phase !== 'over') { S = saved; db().then(function () { if (S.phase === 'play' && S.g) { S.g.ab = null; render(); later(newAB, 600); } else render(); }); }
+  else showSetup();
+})();
