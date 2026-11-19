@@ -183,6 +183,50 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
 @media (min-width:700px) and (orientation:portrait){
   .stage{max-width:640px;}
 }
+/* AT A DESK (html.pk-dk with pk-w or pk-t, set by the script's deskClass only while a computer's window shows the
+   game; phones and tablets never get it). The board's size comes from layout() and wheelLayout(). */
+:root.pk-dk,:root.pk-dk body{overflow:hidden;overscroll-behavior:none;}
+:root.pk-w #app:has(.pk-frame),:root.pk-w #app:has(.bw-frame){max-width:none;margin:0;height:calc(100dvh - var(--bar));box-sizing:border-box;padding:4px var(--pkgp) var(--pkgp);
+  display:grid;column-gap:var(--pkgp);row-gap:12px;grid-template-columns:minmax(340px,1fr) auto;grid-template-rows:auto auto auto minmax(0,1fr);align-items:start;font-size:var(--pf,16px);}
+:root.pk-w #app:has(.bw-frame){grid-template-columns:minmax(340px,1fr) auto minmax(300px,340px);}
+:root.pk-w #app > .pk-show,:root.pk-w #app > .pk-strip,:root.pk-w #app > .pk-hint,:root.pk-w #app > .pk-room{grid-column:1;width:100%;max-width:680px;justify-self:end;margin:0;}
+:root.pk-w #app > .pk-show{grid-row:1;}
+:root.pk-w #app > .pk-strip{grid-row:2;}
+:root.pk-w #app > .pk-hint{grid-row:3;}
+:root.pk-w #app > .pk-room{grid-row:4;align-self:stretch;}
+:root.pk-w #app > .pk-frame,:root.pk-w #app > .bw-frame{grid-column:2;grid-row:1 / -1;margin:0;justify-self:end;}
+:root.pk-w #app > .bw-act{grid-column:3;grid-row:1 / -1;align-self:center;margin:0;}
+:root.pk-t #app:has(.pk-frame),:root.pk-t #app:has(.bw-frame){max-width:none;margin:0;height:calc(100dvh - var(--bar));box-sizing:border-box;padding:4px var(--pkgp) var(--pkgp);
+  display:flex;flex-direction:column;gap:10px;font-size:var(--pf,16px);}
+:root.pk-t #app > *{flex:none;margin:0;}
+:root.pk-t #app > .pk-frame,:root.pk-t #app > .bw-frame{align-self:center;}
+:root.pk-t #app > .pk-room{flex:1 1 0;min-height:0;}
+/* the room */
+.pk-room{display:flex;flex-direction:column;gap:12px;min-height:0;overflow:hidden;}
+.pkpn{flex:none;display:flex;flex-direction:column;gap:.5em;padding:.85em 1em .9em;border-radius:20px;color:var(--text);
+  background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),inset 0 1px 0 rgba(255,255,255,.1);}
+.pkpn h4{margin:0;font-family:var(--display);font-size:1.12em;font-weight:800;}
+.pkpn .pkr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.35em .8em;padding:.45em 0;border-bottom:1px solid var(--gl-line);}
+.pkpn .pkr:last-child{border-bottom:0;}
+.pkpn .pkr > b{display:flex;align-items:center;gap:.4em;font-weight:750;font-size:.95em;overflow-wrap:anywhere;}
+.pkpn .pkr > b i{width:.6em;height:.6em;border-radius:50%;background:var(--c);flex:none;}
+.pkpn .pkr.on > b{color:var(--lit-ink);}
+.pkpn .pkt{font-family:var(--display);font-weight:800;font-variant-numeric:tabular-nums;}
+.pkpn .pkps{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:.3em;}
+.pkpn .pkps i{font-style:normal;min-width:3.6em;padding:.2em .45em;box-sizing:border-box;border-radius:.45em;text-align:center;font-size:.8em;font-weight:800;font-variant-numeric:tabular-nums;
+  background:color-mix(in srgb,var(--c) 22%,var(--gl-2));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 45%,transparent);}
+.pkpn .pkps i.top{background:linear-gradient(180deg,#ffe58a,#e0a21a);color:#2a1800;box-shadow:0 0 10px rgba(255,212,90,.45);}
+.pkpn .pkps i.zero{background:color-mix(in srgb,var(--red) 25%,transparent);color:var(--bad-ink);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--red) 50%,transparent);}
+.pkpn .pkps i.todo{background:none;box-shadow:inset 0 0 0 1.5px var(--gl-line);min-height:1.55em;}
+.pkpn .pkl{display:flex;flex-direction:column;}
+.pkpn .pkbr{display:grid;grid-template-columns:1.4em minmax(0,1fr) auto;align-items:center;gap:.7em;padding:.4em 0;border-bottom:1px solid var(--gl-line);}
+.pkpn .pkbr:last-child{border-bottom:0;}
+.pkpn .pkbr .k{font-family:var(--display);font-weight:800;color:var(--text-3);text-align:center;}
+.pkpn .pkbr:first-child .k{color:var(--lit-ink);}
+.pkpn .pkbr .b{display:flex;flex-direction:column;line-height:1.2;min-width:0;}
+.pkpn .pkbr .b b{font-weight:750;font-size:.95em;}
+.pkpn .pkbr .b small{font-size:.8em;color:var(--text-3);font-weight:600;}
+.pkpn .pkbr .v{font-family:var(--display);font-weight:800;font-variant-numeric:tabular-nums;}
 </style>
 </head>
 <body>
@@ -1031,7 +1075,7 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
 
   // ── Setup ─────────────────────────────────────────────────────────────────
   function showSetup() {
-    S = null; stopLoop(); dropWheel(); window.scrollTo(0, 0);
+    S = null; stopLoop(); dropWheel(); window.scrollTo(0, 0); DKS = null; ['pk-dk', 'pk-w', 'pk-t'].forEach(function (c) { document.documentElement.classList.remove(c); });
     Kit.setup(app, {
       players: { min: 1, max: 4, count: 1 },
       options: [{ id: 'chips', label: 'Chips', choices: [['wheel', 'Spin the Big Wheel', 'Each player spins once for 1 to 7 chips. Land on the 7 for the jackpot.'], ['five', 'Start with 5', 'Skip the wheel and go straight to the board with 5 chips each.']], value: 'wheel' }],
@@ -1094,6 +1138,7 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
     if (S.wangle == null) S.wangle = Math.random() * Math.PI * 2;
     BW.setAngle(S.wangle);
     paintWheelUI();
+    deskClass();
     wheelLayout();
   }
   // The 3D module loads after this script: if the wheel went up before it arrived, rebuild it in 3D
@@ -1105,6 +1150,8 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
     var W = Math.min(inner, side ? 620 : 560);
     var top = dom.wf.getBoundingClientRect().top + (window.scrollY || 0);
     var avail = (window.innerHeight || 800) - top - (side ? 24 : 128);
+    if (DKS === 'w') W = Math.min(inner - 360 - 340, 1100);
+    else if (DKS === 't') { W = inner; avail = window.innerHeight - top - 128 - Math.min(300, window.innerHeight * .18); }
     var H = Math.min(avail, W * 1.62);
     if (H < W * 1.05) { W = Math.max(250, H / 1.05); H = Math.max(H, W * 1.05); }
     if (side) { H = Math.max(240, Math.min((window.innerHeight || 800) - top - 24, 1.5 * W)); W = Math.min(W, H / 1.1); }
@@ -1227,6 +1274,7 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
     app.appendChild(dom.hint);
     g = cv.getContext('2d');
     bindPointer();
+    deskClass();
     layout();
     paintShow();
   }
@@ -1238,6 +1286,9 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
     var maxW = Math.min(inner, side ? 760 : 620) - 26;
     var top = dom.frame.getBoundingClientRect().top + (window.scrollY || 0);
     var avail = (window.innerHeight || 800) - top - 26 - (side ? 18 : 90);
+    // (at a desk the board is as tall as the window allows: beside the column in a wide window, over the room in a tall one)
+    if (DKS === 'w') { maxW = inner - 360 - 26; avail = window.innerHeight - top - 26 - 18; }
+    else if (DKS === 't') { maxW = inner - 26; avail = window.innerHeight - top - 26 - 70 - Math.min(320, window.innerHeight * .2); }
     var w = Math.max(side ? 150 : 180, Math.min(maxW, avail * WU / HU));
     cssW = Math.floor(w); scale = cssW / WU; cssH = Math.round(HU * scale);
     dpr = Math.min(3, window.devicePixelRatio || 1);
@@ -1261,8 +1312,64 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
     pts.forEach(function (p, i) { var b = document.createElement('i'); b.className = 'pk-b q' + (i % 3); b.style.left = p[0] + 'px'; b.style.top = p[1] + 'px'; frag.appendChild(b); });
     dom.frame.appendChild(frag);
   }
+
+  // ── At a desk (a computer's window of any shape; CLAUDE.md "Large windows") ──────────────────────────────────
+  // Phones and tablets keep the layouts above exactly as they were (deviceShape). In a larger window the board (or the
+  // Big Wheel) takes the window's height with no cap left over from the tablet, standing at the right where you drop;
+  // the show's plate, the players and the room stand in a column at the left: every chip each player has dropped and
+  // what it won, and the best totals played here. html.pk-dk is on only while it shows (pk-w a wide window, pk-t a tall one).
+  function deviceShape(w, h) { var lo = Math.min(w, h), hi = Math.max(w, h); return (lo <= 480 && hi <= 1000) || (lo >= 620 && lo <= 840 && hi >= 900 && hi <= 1200); }
+  function pkDesk() {
+    var W = window.innerWidth, H = window.innerHeight;
+    if (!S || S.phase === 'over' && !dom.frame || deviceShape(W, H) || W < 480 || H < 540) return null;
+    return W >= H * 1.05 && W >= 900 ? 'w' : 't';
+  }
+  var DKS = null;
+  function deskClass() {
+    var d = pkDesk(), R0 = document.documentElement;
+    DKS = d;
+    R0.classList.toggle('pk-dk', !!d); R0.classList.toggle('pk-w', d === 'w'); R0.classList.toggle('pk-t', d === 't');
+    if (d) { var gp = Math.round(Math.max(14, Math.min(30, window.innerWidth / 90))); R0.style.setProperty('--pkgp', gp + 'px'); R0.style.setProperty('--pf', Math.round(Math.max(14, Math.min(22, 15 * Math.min(window.innerWidth / 1500, window.innerHeight / 1000)))) + 'px'); }
+    paintRoom();
+    return d;
+  }
+  function paintRoom() {
+    var host = app; if (!host) return;
+    var old = host.querySelector(':scope > .pk-room'); if (old) old.remove();
+    if (!DKS || !S || !(dom.frame || dom.wf)) return;
+    var room = el('div', { class: 'pk-room' });
+    // every chip so far, a row a player
+    if (S.players.some(function (p) { return p.res.length; })) {
+      var pn = el('div', { class: 'pkpn' }, [el('h4', { text: S.players.length > 1 ? 'Every chip so far' : 'Your chips so far' })]);
+      S.players.forEach(function (p, i) {
+        var plates = el('span', { class: 'pkps' });
+        p.res.forEach(function (v) { plates.appendChild(el('i', { class: v === 10000 ? 'top' : v === 0 ? 'zero' : '', text: money(v) })); });
+        for (var k = p.res.length; k < p.chips; k++) plates.appendChild(el('i', { class: 'todo' }));
+        pn.appendChild(el('div', { class: 'pkr' + (i === S.cur && S.phase !== 'over' ? ' on' : ''), style: { '--c': p.color } }, [
+          el('b', { html: '<i></i>' + Kit.esc(p.name) }), el('span', { class: 'pkt', text: money(total(p)) }), plates]));
+      });
+      room.appendChild(pn);
+    }
+    var all = []; try { GameHistory.load(HKEY).forEach(function (e) { (e.players || []).forEach(function (q) { if (q && typeof q.score === 'number') all.push({ n: q.name, s: q.score, at: e.started || 0 }); }); }); } catch (e) {}
+    if (all.length) {
+      all.sort(function (a, b) { return b.s - a.s || a.at - b.at; });
+      var bp = el('div', { class: 'pkpn pkbest' }, [el('h4', { text: 'Best totals' })]), list = el('div', { class: 'pkl' });
+      all.slice(0, 10).forEach(function (r, i) {
+        var day = r.at ? new Date(r.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+        list.appendChild(el('div', { class: 'pkbr' }, [el('span', { class: 'k', text: String(i + 1) }), el('span', { class: 'b' }, [el('b', { text: r.n }), day ? el('small', { text: day }) : null]), el('span', { class: 'v', text: money(r.s) })]));
+      });
+      bp.appendChild(list); room.appendChild(bp);
+    }
+    if (!room.children.length) return;
+    host.appendChild(room);
+    // whole rows only: the best totals give up their last rows, then the panel; then the chips panel goes
+    var bl = room.querySelector('.pkl'), g = 40;
+    while (room.scrollHeight > room.clientHeight + 1 && bl && bl.children.length && g--) bl.removeChild(bl.lastElementChild);
+    if (bl && !bl.children.length) bl.parentNode.remove();
+    while (room.scrollHeight > room.clientHeight + 1 && room.lastElementChild) room.removeChild(room.lastElementChild);
+  }
   var rz = 0;
-  window.addEventListener('resize', function () { if (BW) wheelLayout(); else layout(); clearTimeout(rz); rz = setTimeout(function () { if (BW) wheelLayout(); else layout(); }, 120); });
+  window.addEventListener('resize', function () { var was = DKS; deskClass(); if (was !== DKS && Kit.glide && DKS) { Kit.glide(function () { if (BW) wheelLayout(); else layout(); paintRoom(); }); } if (BW) wheelLayout(); else layout(); clearTimeout(rz); rz = setTimeout(function () { if (BW) wheelLayout(); else layout(); }, 120); });
   // the header's display font can land after the first layout and push the board down: measure again
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (BW) wheelLayout(); else layout(); });
 
@@ -1549,7 +1656,7 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
   }
   // test hooks: the game (a demo), and board mode and the chip in play
   window.__plinko = { state: function () { return S; }, start: function (players, wheel) { start(players, wheel); }, mode: function () { return mode; },
-    wheelBusy: function () { return wheelBusy; }, canvas: function () { return cv; },
+    wheelBusy: function () { return wheelBusy; }, canvas: function () { return cv; }, paint: function () { if (dom.show) paintShow(); }, desk: function () { return DKS; },
     // where a slot's middle (or a spot on the drop rail, rail: true) lies on the screen
     at: function (x, rail) { if (!cv) return null; var b = cv.getBoundingClientRect(), k = b.width / WU; return { x: b.left + (x + WALL) * k, y: b.top + (rail ? RAIL_Y : FLOOR - 0.5) * k, k: k }; },
     rig: null };
@@ -1725,6 +1832,7 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
     dom.who.innerHTML = '<span class="nm">' + Kit.esc(p.name) + '</span><span class="sub">' + sub + '</span><div class="pk-pips">' + pips + '</div>';
   }
   function paintStrip() {
+    if (DKS) paintRoom();
     if (!dom.strip) return;
     dom.strip.innerHTML = '';
     S.players.forEach(function (p, i) {
