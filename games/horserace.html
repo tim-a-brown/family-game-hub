@@ -1052,7 +1052,7 @@ html.hr-big .tw.low .tw-in .call{font-size:.86rem;top:6px;padding:.3em .8em .3em
         x.fillStyle = '#4f9a3a'; x.fillRect(0, 0, 256, 96);
         for (i = 0; i < 1500; i++) { x.fillStyle = r() < 0.5 ? 'rgba(20,70,15,' + (0.15 + r() * 0.25) + ')' : 'rgba(160,220,110,' + (0.1 + r() * 0.2) + ')'; x.fillRect(r() * 256, r() * 96, 1, 1.5 + r() * 2.5); }
       }
-      tex[kind] = g.createPattern(c, 'repeat');
+      tex[kind] = g.createPattern(c, 'repeat'); tex[kind + ':c'] = c;
       return tex[kind];
     }
     function hash(a, b) { var h = (a * 374761393 + b * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
@@ -1101,10 +1101,12 @@ html.hr-big .tw.low .tw-in .call{font-size:.86rem;top:6px;padding:.3em .8em .3em
       });
       // Track surface
       var surf = F ? F.surface : 'Dirt';
+      var off = cam.x * ppu() * ds(0.5);
+      if (wideAsk !== null) drawSurf(surf, top, ((off % 256) + 256) % 256);   // (a large window: one picture laid down, below)
+      else {
       g.save();
       g.beginPath(); g.rect(0, top, W, Hh - top); g.clip();
       g.fillStyle = texFor(surf);
-      var off = cam.x * ppu() * ds(0.5);
       g.translate(-((off % 256) + 256) % 256, top);
       g.fillRect(-256, 0, W + 512, Hh - top);
       g.restore();
@@ -1112,6 +1114,7 @@ html.hr-big .tw.low .tw-in .call{font-size:.86rem;top:6px;padding:.3em .8em .3em
       var sh = g.createLinearGradient(0, top, 0, Hh);
       sh.addColorStop(0, 'rgba(0,0,0,.18)'); sh.addColorStop(0.3, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,.12)');
       g.fillStyle = sh; g.fillRect(0, top, W, Hh - top);
+      }
       // Hoof prints / divots, anchored to the track so they slide by
       var step = 1.6, keep = 0.55 * Math.min(1, 22 / cam.w);   // fewer of them when the camera is pulled back
       for (var row = 0; row < 6; row++) {
@@ -1139,6 +1142,27 @@ html.hr-big .tw.low .tw-in .call{font-size:.86rem;top:6px;padding:.3em .8em .3em
         g.beginPath(); g.moveTo(sx(D - 0.12, 0), top); g.lineTo(sx(D + 0.12, 0), top); g.lineTo(sx(D + 0.12, 1.05), gBot() + 8); g.lineTo(sx(D - 0.12, 1.05), gBot() + 8); g.closePath(); g.fill();
       }
       drawInsideRail();
+    }
+    // At a desk the track is several times the pixels of a tablet's, and its patterned surface, sampled afresh every
+    // frame with its shading laid over it, was most of what a frame cost to paint (Tim, 2026-11-19: "horse race got
+    // crazy jittery" on a large window). So there the surface and its shading are painted once, a tile wider than the
+    // picture, into a picture of their own (surfC), and each frame lays that down at the camera's offset in one copy.
+    var surfC = null;
+    function drawSurf(surf, top, sx0) {
+      var w = Math.ceil(W) + 256, h = Math.ceil(Hh - top) + 1, key = [surf, w, h, top, dpr].join();
+      if (!surfC || surfC.key !== key) {
+        texFor(surf);
+        var c = surfC && surfC.c || document.createElement('canvas'); c.width = Math.ceil(w * dpr); c.height = Math.ceil(h * dpr);
+        var x = c.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0);
+        x.fillStyle = x.createPattern(tex[surf + ':c'], 'repeat'); x.fillRect(0, 0, w, h);
+        var sh = x.createLinearGradient(0, 0, 0, Hh - top);
+        sh.addColorStop(0, 'rgba(0,0,0,.18)'); sh.addColorStop(0.3, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,.12)');
+        x.fillStyle = sh; x.fillRect(0, 0, w, h);
+        surfC = { key: key, c: c };
+      }
+      g.save(); g.setTransform(1, 0, 0, 1, 0, 0);
+      g.drawImage(surfC.c, Math.round(-sx0 * dpr), Math.round(top * dpr));
+      g.restore();
     }
     function drawInsideRail() {
       var top = gTop(), y = top - 1, s = ds(0), ph = 16 * s * Hh / 300;
@@ -2743,6 +2767,8 @@ html.hr-big .tw.low .tw-in .call{font-size:.86rem;top:6px;padding:.3em .8em .3em
       R.ovCv = el('canvas', { 'aria-label': 'The whole track from above' }); R.cls = el('div', { class: 'lns' });
       R.ovH = el('h4', null, [el('span', { text: 'The course' }), el('span', { text: '' })]);
       R.rp = el('div', { class: 'rp race-only' }, [el('div', { class: 'ov' }, [R.ovCv, R.ovH]), el('div', { class: 'cls' }, [el('h4', null, [el('span', { text: 'The call' })]), R.cls])]);
+      // (the oval's box, read when it changes rather than on every frame of a race: drawOval only draws)
+      if (window.ResizeObserver) { var ovRo = new ResizeObserver(function () { R.ovSz = null; }); ovRo.observe(R.ovCv); ovRo.observe(R.ovH); }
     }
     [R.tw, R.prog, R.tote, R.bx, R.rp].forEach(function (x) { app.appendChild(x); });
     R.twIn.appendChild(R.call);
@@ -2900,8 +2926,9 @@ html.hr-big .tw.low .tw-in .call{font-size:.86rem;top:6px;padding:.3em .8em .3em
     var rows = el('div', { class: 'rows', style: { '--n': n } });
     F.horses.forEach(function (h, i) { rows.appendChild(el('span', { class: 'ps', style: { '--i': i }, text: String(i + 1) })); });
     F.horses.forEach(function (h, i) {
-      var c = el('div', { class: 'o' + (mine[i] ? ' mine' : ''), style: { '--r': i } }, [el('i', { style: { background: CLOTH[i % 8][0], color: CLOTH[i % 8][1] }, text: String(h.post) }), el('b', { text: h.name }), el('span', { text: '' })]);
-      c._r = i; c._t = ''; rows.appendChild(c); R.orow.push(c);
+      var tn = document.createTextNode('');
+      var c = el('div', { class: 'o' + (mine[i] ? ' mine' : ''), style: { '--r': i } }, [el('i', { style: { background: CLOTH[i % 8][0], color: CLOTH[i % 8][1] }, text: String(h.post) }), el('b', { text: h.name }), el('span', null, [tn])]);
+      c._r = i; c._t = ''; c._tn = tn; rows.appendChild(c); R.orow.push(c);
     });
     R.ob.appendChild(rows);
     // the tickets riding on this race: each one lights while the order on the track would pay it
@@ -2925,13 +2952,14 @@ html.hr-big .tw.low .tw-in .call{font-size:.86rem;top:6px;padding:.3em .8em .3em
       var c = R.orow[hi]; if (!c) return;
       if (c._r !== r) { c._r = r; c.style.setProperty('--r', r); }
       var t = r === 0 || !running ? '' : backText((lead - xs[hi]) / HL);
-      if (c._t !== t) { c._t = t; c.lastChild.textContent = t; }
+      // (the text node's own data: a new child would wake the name fitting below on every frame)
+      if (c._t !== t) { c._t = t; if (c._tn) c._tn.data = t; else c.lastChild.textContent = t; }
     });
     if (R.ltk && R.lt.isConnected) {
       if (R.ltRun !== running) { R.ltRun = running; R.lt.classList.toggle('run', running); }
       R.ltk.forEach(function (row, j) { var k = S.tickets[j], on = !!k && running && wins(k.type, k.sel, rank); if (row._on !== on) { row._on = on; row.classList.toggle('live', on); } });
     }
-    if (R.rp && R.rp.isConnected && R.rp.clientHeight) drawOval(xs);
+    if (R.rp && R.rp.isConnected) drawOval(xs);
   }
   function paintCalls() {
     var c = R.cls; if (!c || !R.calls || !c.isConnected) return;
@@ -2940,26 +2968,48 @@ html.hr-big .tw.low .tw-in .call{font-size:.86rem;top:6px;padding:.3em .8em .3em
     while (c.children.length > 1 && c.lastChild.offsetTop + c.lastChild.offsetHeight - c.firstChild.offsetTop > c.clientHeight + 1) c.removeChild(c.firstChild);
   }
   // The whole oval from above, each runner its saddle cloth: where they are on the course, which the camera can't show
-  function drawOval(xs) {
-    var cv = R.ovCv; if (!cv || !cv.clientWidth || !xs || !xs.length) return;
-    var w = cv.clientWidth, h = cv.clientHeight, dpr = Math.min(2, window.devicePixelRatio || 1), F = S.field, n = F.n;
-    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
-    var g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  // The track itself is drawn once for each size into a picture of its own (R.ovSt) and only the runners every frame;
+  // the box's size is read once after it changes (R.ovSz), never after the frame has written to the page.
+  function ovalStatic(w, h, hd, dpr, surf) {
+    var key = [w, h, hd, dpr, surf].join(), st = R.ovSt;
+    if (st && st.key === key) return st;
+    var c = document.createElement('canvas'); c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+    var g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
     var Rr = OV.R, L = OV.L, band = 34, m = band / 2 + 16;
-    var hd = R.ovH ? R.ovH.offsetHeight : 0;   // (the panel's heading stands over the oval)
     var k = Math.min(w * 0.96 / (L + 2 * Rr + 2 * m), (h - hd - 8) / (2 * Rr + 2 * m)), ox = (w - (L + 2 * Rr) * k) / 2, oy = hd + (h - hd - 2 * Rr * k) / 2;
-    var mine = {};
-    S.tickets.forEach(function (t) { t.sel.forEach(function (i) { mine[i] = 1; }); });
     g.save(); g.translate(ox, oy); g.scale(k, k); g.lineJoin = 'round';
     function path(inset) { var r = Rr - inset; g.beginPath(); g.moveTo(Rr, inset); g.lineTo(Rr + L, inset); g.arc(Rr + L, Rr, r, -Math.PI / 2, Math.PI / 2); g.lineTo(Rr, 2 * Rr - inset); g.arc(Rr, Rr, r, Math.PI / 2, Math.PI * 1.5); g.closePath(); }
     path(0); g.strokeStyle = '#ece9e0'; g.lineWidth = band + 5; g.stroke();
-    path(0); g.strokeStyle = F.surface === 'Dirt' ? '#a3713f' : '#4f9a3a'; g.lineWidth = band; g.stroke();
+    path(0); g.strokeStyle = surf === 'Dirt' ? '#a3713f' : '#4f9a3a'; g.lineWidth = band; g.stroke();
     path(band / 2 + 2.5); g.fillStyle = '#3f7a32'; g.fill();
     // furlong poles, the gate and the wire
     function across(s, wd, col) { var a = ovalPt(s - 1), b = ovalPt(s + 1), tx = b[0] - a[0], ty = b[1] - a[1], q = Math.hypot(tx, ty) || 1, nx = -ty / q, ny = tx / q, c = ovalPt(s);
       g.strokeStyle = col; g.lineWidth = wd; g.beginPath(); g.moveTo(c[0] - nx * band / 2, c[1] - ny * band / 2); g.lineTo(c[0] + nx * band / 2, c[1] + ny * band / 2); g.stroke(); return [c, nx, ny]; }
     [1, 2, 3, 4, 5].forEach(function (f) { across(D - 201 * f, 1.5, 'rgba(255,255,255,.45)'); });
     var st0 = across(2, 4, '#2e7a4a'), fin = across(D, 4, '#fff');
+    g.restore();
+    var fs = clamp(h * 0.07, 11, 24);
+    g.fillStyle = '#fff'; g.globalAlpha = 0.72; g.font = '600 ' + fs + 'px ' + (getComputedStyle(document.body).fontFamily || 'system-ui,sans-serif'); g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('Start', ox + st0[0][0] * k, oy + st0[0][1] * k + (band / 2 + 4) * k + fs * 0.7);
+    g.fillText('Finish', ox + fin[0][0] * k, oy + fin[0][1] * k - (band / 2 + 4) * k - fs * 0.7);
+    g.globalAlpha = 1;
+    R.ovSt = { key: key, c: c, k: k, ox: ox, oy: oy, band: band };
+    return R.ovSt;
+  }
+  // The whole oval from above, each runner its saddle cloth: where they are on the course, which the camera can't show
+  function drawOval(xs) {
+    var cv = R.ovCv; if (!cv || !xs || !xs.length) return;
+    var sz = R.ovSz;
+    if (!sz) sz = R.ovSz = { w: cv.clientWidth, h: cv.clientHeight, hd: R.ovH ? R.ovH.offsetHeight : 0 };   // (the panel's heading stands over the oval)
+    var w = sz.w, h = sz.h; if (!w || !h) return;
+    var dpr = Math.min(2, window.devicePixelRatio || 1), F = S.field, n = F.n;
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    var st = ovalStatic(w, h, sz.hd, dpr, F.surface), k = st.k, band = st.band;
+    var g = cv.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height); g.drawImage(st.c, 0, 0);
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var mine = {};
+    S.tickets.forEach(function (t) { t.sel.forEach(function (i) { mine[i] = 1; }); });
+    g.save(); g.translate(st.ox, st.oy); g.scale(k, k); g.lineJoin = 'round';
     // the runners, the leader drawn last; post 1 runs nearest the rail
     xs.map(function (x, i) { return i; }).sort(function (a, b) { return xs[a] - xs[b]; }).forEach(function (i) {
       var s = Math.max(2, Math.min(xs[i], D + 260)), a = ovalPt(s - 1), b = ovalPt(s + 1), tx = b[0] - a[0], ty = b[1] - a[1], q = Math.hypot(tx, ty) || 1, c = ovalPt(s);
@@ -2970,11 +3020,6 @@ html.hr-big .tw.low .tw-in .call{font-size:.86rem;top:6px;padding:.3em .8em .3em
       if (rad * k >= 8) { g.fillStyle = cl[1]; g.font = '800 ' + (rad * 1.25) + 'px system-ui,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(F.horses[i].post), px, py + rad * 0.08); }
     });
     g.restore();
-    var fs = clamp(h * 0.07, 11, 24);
-    g.fillStyle = '#fff'; g.globalAlpha = 0.72; g.font = '600 ' + fs + 'px ' + (getComputedStyle(document.body).fontFamily || 'system-ui,sans-serif'); g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText('Start', ox + st0[0][0] * k, oy + st0[0][1] * k + (band / 2 + 4) * k + fs * 0.7);
-    g.fillText('Finish', ox + fin[0][0] * k, oy + fin[0][1] * k - (band / 2 + 4) * k - fs * 0.7);
-    g.globalAlpha = 1;
   }
 
   // ── The composition, from the window ──
@@ -3182,7 +3227,7 @@ html.hr-big .tw.low .tw-in .call{font-size:.86rem;top:6px;padding:.3em .8em .3em
     if (ph === 'bet') { if (live && !document.hidden) { if (RV.mode() !== 'idle') RV.idle(); } else if (RV.mode() === 'idle') RV.stop(); }
     if (R.lastRank) paintStrip(R.lastRank);
     if (ph === 'race' && showRp) { var rw = R.rp.clientWidth, rh = R.rp.clientHeight; R.rp.classList.toggle('col', rw / Math.max(1, rh) < 2.6); set('--bf', clamp(Math.min(15 * us, rw / 40), 13, 30).toFixed(1) + 'px'); }
-    if (ph === 'race') { if (R.ovH) R.ovH.lastChild.textContent = '6 furlongs on ' + S.field.cond.toLowerCase() + ' ' + S.field.surface.toLowerCase(); paintCalls(); if (showRp) drawOval(RV.positions()); }
+    if (ph === 'race') { if (R.ovH) R.ovH.lastChild.textContent = '6 furlongs on ' + S.field.cond.toLowerCase() + ' ' + S.field.surface.toLowerCase(); paintCalls(); if (showRp) { R.ovSz = null; drawOval(RV.positions()); } }
   }
 
   // ── Boot ─────────────────────────────────────────────────────────────────
