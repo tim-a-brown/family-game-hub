@@ -67,7 +67,10 @@
         autoTap: function () {
           var b = box(); if (!b) return null;
           if (document.activeElement !== b) { b.focus(); return b; }
-          var w = 'burp'; return b.value.length < w.length ? key(w[b.value.length]) : document.querySelector('.k-osk .k-osk-a-enter');
+          var w = 'burp';
+          // (a computer's own keyboard: no screen keys to press, so the word goes in and Next is pressed)
+          if (!oskOn()) { if (b.value !== w) { b.value = w; b.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: w })); } return document.querySelector('.fillacts .btn-primary'); }
+          return b.value.length < w.length ? key(w[b.value.length]) : document.querySelector('.k-osk .k-osk-a-enter');
         }
       });
       await D.wait(500);
