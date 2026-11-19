@@ -262,8 +262,7 @@ Underlying principles for everything:
   and, beside the standings (under them in a tall narrow window), This game: the record `Kit.record` has just made,
   drawn by its history view, so a finished game's score sheet, board or hands are on the card. In a short wide window
   (1160 or more wide, under 600 tall), and wherever the standings with the buttons under them are too tall for the
-  window, the buttons stand in a column of their own at the right of the record (`k-dk-strip`); standings too long for
-  that too get the plain card, which scrolls, so nothing is cut. A record with nothing to
+  window, the buttons stand in a column of their own at the right of the record (`k-dk-strip`); standings too long for that stand beside the buttons without the record (`k-dk-two`), in two columns (`k-dk-rk2`), with the trophy and title a size smaller in a low window (`k-dk-low`), and a record whose table would run past its pane's side is left out (`sideCut`); only a card none of these holds is the plain card, which scrolls. A record with nothing to
   draw leaves the card alone, and so does a card with a class of its own (Arvela's `.aw` plaque). **A resize** from
   large to small takes every class, style and panel away again and keeps what was chosen (`deskOff`). **The demo** in a
   large window sets its captions, curtain, end card and finger a size up (`--kdu`, 1 to 1.6, `deskSize` in demo.js); the
