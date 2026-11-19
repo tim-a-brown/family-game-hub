@@ -746,6 +746,79 @@ Underlying principles for everything:
   games on this device from the history). Whole rows only: the best totals give up their last rows, then the panel.
   Test hooks `__plinko.paint()`, `__plinko.desk()`; scenes in the scratchpad's `big/dice/ps.js`. Not checked: the
   Big Wheel's own picture at a desk (its three.js canvas does not screenshot in the headless browser here).
+  **Wheel of Fortune at a desk** (`html.wf-big`, the block "The desk" in wheeloffortune.html: `deviceShape`,
+  `deskWanted`, `deskPlan`, `deskLayout`, `deskOff`, `paintDesk`, `playRows`, `fitDesk`; styles after the comment
+  "The desk"; `.show.big` with `bT`, `bR`, `bQ`, `bS` or `bK`, only while a desk layout shows, and never at a
+  phone's or a tablet's shape, where the page's own `desk` and `short` layouts are as they were). The puzzle board
+  and the wheel are the show's set, sized from the window: the board's tiles to 100px (its letters are 80% of a tile
+  through `cqw`, so they grow with it), the wheel to 1,250px; the podiums, the host's line, the buttons and the keys
+  stay their size at the right, a step up in the largest windows (`--ks`, 1 to 1.4). `deskPlan` measures the right-
+  hand parts as drawn and weighs five compositions by the tile and the wheel each gives (the board counts a little
+  more, to a 66px tile, the wheel to 780px, the room a little): `T` the board across the top with the room, the
+  wheel and the podiums, host line and keys under it (near-square and large windows; with no column for the room it
+  lies under the keys, `infoB`); `R` the room, the wheel the window's height, and a column with the board over the
+  podiums and keys; `Q` a wide strip (the room, the wheel, the board at its own height, the podiums and keys); `S` a
+  short strip (the board over the podiums beside the keys, `--dw`); `K` a tall narrow window (board, wheel, podiums,
+  keys, the room under them). The room (`.wfi`, glass panels `.pn`): Scores, the rows of `S.rows` round by round
+  with the round in play lit (`S.row` and each bank, at risk until the puzzle is solved) and the totals; This
+  puzzle, play by play newest first from the puzzle's own event list in `S.log.pz` (each spin's value and the letter
+  called with what it found, a vowel bought, Free Play, Bankrupt with what it took, Lose a Turn, a wrong solve), the
+  count of a letter read from the board as it shows (`found`, so a letter still turning over is not counted early);
+  a contestant online, whose state has no log (it holds the puzzle's answer), sees the letters called in order with
+  what each found (`S.used`); Puzzles so far, newest first (`S.log.pz` entries with `m`: kind, category, answer, who
+  solved it and for how much). A low window wider than tall that no device has and no composition fits (900 by 600)
+  gets the phone's sideways layout (`DK.low`). `fitDesk` gives up whole rows, the oldest first, then the notes, then
+  whole panels, so nothing is cut. A change of composition glides (`Kit.glide`, view-transition names `wf-board`,
+  `wf-wheel`, `wf-pods`, `wf-deck`, `wf-info`); a resize mid-spin keeps the spin. Scripts: the scratchpad's
+  `big/showgames/` (`lib.js`, `wof.js <sizes> --phase=mid|r2|bonus|over|demo|setup`, `dbg.js`, `proof.js` with
+  `cmp.sh` the device proof).
+  **Deal or No Deal at a desk** (`html.dn-big`, the block "The desk" in dealornodeal.html: `deviceShape`,
+  `deskKind`, `deskPlan`, `deskResize`, `deskOff`, `roomEl`, `roundsHTML`, `caseChip`, `fitRoom`; styles after the
+  comment "The desk"; `#app` is a grid of the stage, the desk and the room only while `DK.on`, and never at a
+  phone's or a tablet's shape or in a window under 760 tall and less than 1.6 times as wide as tall, where the cases
+  are larger in the page's own layout). The stage, the money board and the 26 cases, is the hero and takes the room
+  the window gives: `arrangeCases` lifts its caps at a desk (`DKC`: a case to 196px, the money board's bars to 72px
+  tall and 260px wide, their amounts to 30px). The desk (your podium, the prompt, the Banker's offer with Deal and
+  No deal, the offers so far) keeps its parts and steps up with `--du` (1 to 1.5) in the largest windows.
+  Compositions (`deskKind`): `w` a window 1.6 times as wide as tall or more (the room, the stage, the desk side by
+  side; the room only from 1240 wide and 700 tall), `t` a tall or nearly square one (the stage across the top, the
+  room and the desk side by side under it), `s` a tall narrow one (the stage, the desk, the room). The room (`.dnr`,
+  glass panels): the contestant's game round by round, newest first (`roundsHTML`: each case opened in that round as
+  a chip with its number and the amount it held, blue or gold as on the board, then the Banker's offer that ended
+  the round and No deal, Deal at, or, after a deal, what the Banker would have offered; the round in play says how
+  many cases are still to open), and with 2 to 4 contestants a row each (`.ct`: who is playing now and in what
+  round, who is up next, and each finished contestant's result with how it ended). `fitRoom` hides the oldest rounds
+  whole, then the contestants. A change of composition rebuilds the screen inside `Kit.glide` (view-transition names
+  `dn-studio`, `dn-desk`, `dn-room`); the state is the game's own. Scripts: the scratchpad's `big/showgames/`
+  (`dond.js <sizes> --phase=mid|pick|offer|pass4|done|demo|setup`, `proof.js` with `cmp.sh`).
+  **Press Your Luck at a desk** (`html.pyl-big`, the block "The desk" in pressyourluck.html: `deviceShape`,
+  `deskWanted`, `deskFit`, `deskOff`, `paintRoom`; `fit()` hands over to `deskFit` and keeps the old body as `fit0`
+  for the devices; styles after the comment "The desk"; never at a phone's or a tablet's shape). The Big Board is
+  the hero, sized from the window as it always was but with the room taken off first: wider than tall, the room at
+  the left (`--rw`, 300 to 500), the board in the middle (its squares 0.7 to 1.15 as tall as wide), the podiums and
+  SPIN at the right (`--sw`, 320 to 480), centered in their column; a nearly square window, where the board would be
+  held back by the room's width, gives the board that width too and stands the room under SPIN at the right
+  (`rside`); upright or nearly square, the board across the top, the podiums and SPIN under it and the room under
+  them where 200px or more is left. The podiums, the button, Pass and the buzzers step up with `--pu` (1 to 1.45).
+  The room (`.pyr`, glass panels on the show's purple): Scores (each round from `S.rows`, the round in play lit gold
+  from each bank less `rStart`, the totals with the leader in gold, and each contestant's Whammies out of four, Out
+  once a fourth one lands), and Stops this round, newest first, from `S.log.st` (who, what the light stopped on:
+  cash with one more spin, a prize by name and worth, matched in order with `S.log.prizes`, a Whammy that took the
+  bank, Double your money, and the bank after; in the bonus round, the bonus stops); during the questions it says
+  that right answers earn the spins. The log is in what every podium's device receives (`pub`), so a contestant
+  online sees the same room, painted from `renderPods`. Whole rows go first, the oldest, then the panel
+  (`paintRoom0`). Scripts: the scratchpad's `big/showgames/` (`pyl.js <sizes> --phase=board|quiz|demo|setup`,
+  `proof.js` with `cmp.sh`).
+  **Fortune Teller at a desk** (`html.ft-big` on the picker only, `pickDesk` in fortune.html; `deskWin` in
+  games/fortune/eightball.js, oracle.js and swami.js, the same test in eightball/ball3d.js; never at a phone's or a
+  tablet's shape). Fortune Teller keeps no record of past fortunes, so a desk has no room to fill with the game's
+  own information and gets none: the tellers themselves grow. The picker's four booths are sized from the window, in
+  a row or two by two, whichever makes them larger, to 560px (`--ftw`, `--ftc`, the title and words by `--ftu`, 1 to
+  1.5), with a hover lift. The Fortune Cookie table already filled the window. The Mystic 8 Ball's ball grows to a
+  360px radius and its close-up to 470 (200 and 260 on the devices); the Oracle Dial's machine to 1.4 of its drawn
+  size (`kd`, with its ticket, slot and coin); the Great Zandor's booth to 1,900px wide (`layout` in
+  swami/cabinet.js, a cap no device reaches) and the card read up close to 640. Scripts: the scratchpad's
+  `big/showgames/` (`ft.js <sizes> picker,cookie,eightball, oracle,swami`, `proof.js` with `cmp.sh`).
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
