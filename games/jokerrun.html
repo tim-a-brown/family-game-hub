@@ -422,6 +422,59 @@ html.jr-idle .jk,html.jr-idle .pcard.jc,html.jr-idle .ed{animation-play-state:pa
   .blc .nm{font-size:1.25rem;} .blc .tg b{font-size:1.6rem;} .blc .bd2{font-size:.9rem;} .blc img.ch{width:60px;height:60px;} .price{font-size:1.1rem;}
   .cash{width:min(520px,100%);} .cash .ln{font-size:1.15rem;} .cash .ln .am{font-size:1.35rem;} .tip{width:min(300px,calc(100vw - 24px));} .tip h4{font-size:1.4rem;} .tip .ds{font-size:1.1rem;}
 }
+/* ── At a desk (a large window: html.jr-dk only while one of the card tables' desk windows shows; deskShape in ui.js):
+   the table takes the whole window with no width cap, the cards to 210px and the Jokers to 170, the score panel a step
+   up with the table, and a column of its own (.jdk) holds the run's poker hands with their levels and the cards left in
+   the deck, which are otherwise behind Run Info and the deck. Beside the score panel (jdk-c), or along the foot of a
+   tall or nearly square window (jdk-b) ── */
+html.jr-dk .jr{max-width:none;column-gap:14px;}
+html.jr-dk .jr .side{zoom:var(--sbz,1);}
+html.jr-dk .jr.jdk-c{grid-template-columns:var(--sbw) var(--dkw) minmax(0,1fr);grid-template-areas:"side jdk top" "side jdk mid" "side jdk hnd" "side jdk act";}
+html.jr-dk .jr.jdk-c.short{grid-template-columns:var(--sbw) var(--dkw) minmax(0,1fr) auto;grid-template-areas:"side jdk top top" "side jdk mid mid" "side jdk hnd act";}
+html.jr-dk .jr.jdk-b{grid-template-columns:var(--sbw) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto auto var(--dkh);grid-template-areas:"side top" "side mid" "side hnd" "side act" "jdk jdk";}
+html.jr-dk .jr.jdk-b.tall{grid-template-areas:"side top" "side mid" "hnd hnd" "act act" "jdk jdk";}
+html.jr-dk .jr.jdk-b.tall:not(.full){grid-template-areas:"top top" "side mid" "hnd hnd" "act act" "jdk jdk";}
+.jdk{grid-area:jdk;display:flex;flex-direction:column;gap:calc(10px * var(--dkf,1));min-height:0;min-width:0;overflow:hidden;padding:calc(10px * var(--dkf,1));font-size:calc(1rem * var(--dkf,1));color:#fff;}
+.jr.jdk-b .jdk{flex-direction:row;align-items:stretch;}
+.jdk > section{display:flex;flex-direction:column;gap:6px;min-height:0;min-width:0;flex-shrink:0;}
+.jr.jdk-b .jdk > section{flex:1 1 0;}
+.jdk h4{margin:0;font-weight:400;font-size:1.35em;line-height:1;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.4);}
+.jdk .hl{gap:calc(4px * var(--dkf,1));}
+.jdk .hl .hr{grid-template-columns:2.9em minmax(0,1fr) auto 0 2.2em;column-gap:.4em;font-size:1em;padding:.25em .4em;}
+.jdk .hl .hr .nm small{display:none;}
+.jdk .hl .hr .cm span{min-width:2.3em;padding:1px 4px;}
+.jdk .hl .hr .lv{font-size:.82em;}
+.jdk .hl .hr .nm{font-size:1.05em;}
+.jdk .hl .hr .cm span{font-size:.95em;}
+.jdk .hl .hr .pl{font-size:.9em;}
+.jdk .hl .hr.on{box-shadow:0 0 0 2px #fff;}
+.jr.jdk-b .jdk .hl{display:grid;grid-template-columns:repeat(var(--hlc,1),minmax(0,1fr));}
+/* the deck: a row a suit, a column a rank; a card still to come is lit, one drawn or used this round is dim */
+.jdk .dg{display:grid;grid-template-columns:2.1em repeat(13,minmax(0,1fr)) 2.2em;gap:2px;font-size:1em;}
+.jdk .dg span{display:grid;place-items:center;min-height:1.6em;border-radius:5px;line-height:1;}
+.jdk .dg .rk{color:#c9d4d8;font-size:.85em;min-height:1.1em;}
+.jdk .dg .su{justify-content:start;font-size:1.25em;}
+.jdk .dg .c{background:#f2ecd9;color:#1f2a31;font-size:.9em;box-shadow:0 2px 0 rgba(0,0,0,.35);}
+.jdk .dg .c.h,.jdk .dg .c.d{color:#d93a3a;}
+.jdk .dg .c.d{color:#e67e14;}
+.jdk .dg .c.x{background:rgba(255,255,255,.06);color:rgba(255,255,255,.28);box-shadow:none;}
+.jdk .dg .c.no{background:none;box-shadow:none;}
+.jdk .dg .n{color:#fff;font-size:.95em;justify-content:end;}
+.jdk .dk-st{display:flex;justify-content:space-between;gap:8px;color:#c9d4d8;font-size:.9em;}
+.jdk .dk-st b{color:#fff;}
+.jdk{view-transition-name:jr-jdk;}
+.side > .jdk.jdk-s{flex:1 1 0;min-height:0;padding:8px;}
+.jdk.jdk-s .hl .hr{grid-template-columns:2.6em minmax(0,1fr) auto 0 1.8em;column-gap:.3em;font-size:.92em;}
+.jdk.jdk-s .dg{font-size:.85em;}
+.jdk .bl{display:grid;grid-template-columns:2.2em minmax(0,1fr) auto;align-items:center;gap:.5em;padding:.3em .5em;border-radius:8px;background:var(--pn2);box-shadow:inset 0 2px 0 rgba(0,0,0,.25);}
+.jdk .bl img{width:2.2em;height:2.2em;image-rendering:pixelated;}
+.jdk .bl .tx{display:flex;flex-direction:column;line-height:1.1;min-width:0;}
+.jdk .bl .tx small{font-size:.78em;color:#c9d4d8;}
+.jdk .bl .tg{display:flex;flex-direction:column;align-items:flex-end;color:#ff6b5c;font-size:1.15em;line-height:1;}
+.jdk .bl .tg .chipi{display:none;}
+.jdk .bl .tg small{color:var(--c-gold);font-size:.7em;}
+.jdk .bl.on{box-shadow:0 0 0 2px #fff,inset 0 2px 0 rgba(0,0,0,.25);}
+.jdk .bl.past{opacity:.45;}
 /* Phone held upright: it sits behind the turn-your-phone cover; just keep it tidy */
 @media (orientation:portrait) and (max-width:600px){ :root{--sb:150px;} .jr{column-gap:6px;} }
 </style>

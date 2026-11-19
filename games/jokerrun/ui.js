@@ -262,21 +262,146 @@
     // Short (a phone on its side): the buttons stand in a column at the right of the hand, so the cards get the height.
     var tall = innerWidth >= 600 && innerHeight > innerWidth * 1.1, short = !tall && innerHeight <= 520 && innerWidth > innerHeight;
     jr.classList.toggle('tall', tall); jr.classList.toggle('short', short);
+    var DK = deskLay(jr, H);
     var sb = R.side ? R.side.getBoundingClientRect().width : 200, JW = jr.getBoundingClientRect().width;
     var aw = short && R.acts && !jr.classList.contains('full') ? R.acts.getBoundingClientRect().width + 8 : 0;
-    var W = Math.max(240, JW - sb - 10), WH = (tall ? JW : W) - aw, WT = tall && !jr.classList.contains('full') ? JW : W;
+    var s0 = S(), n0 = Math.max(5, s0 && s0.phase === 'play' ? Math.max(s0.hand.length, s0.hs || 8) : 8);
+    // the panel gives way, not the cards: beside the score panel only while the hand keeps the size it would have without it
+    if (DK && DK.c) {
+      var cwOf = function (w) { return Math.min(210, (H - 106) / 4.2, (Math.max(240, w) - aw - 10) / (1.3 + 1 + 0.5 * (n0 - 1) + 0.36)); };
+      if (cwOf(JW - sb - 10 - DK.w - 14) < cwOf(JW - sb - 10) - 1) DK = deskLay(jr, H, true);
+    }
+    var W = Math.max(240, JW - sb - 10 - (DK && DK.c ? DK.w + 14 : 0)), WH = (tall ? JW : W) - aw, WT = tall && !jr.classList.contains('full') ? JW : W;
+    if (DK && DK.b) H -= DK.h + 6;
     var s = S(), n = Math.max(5, s && s.phase === 'play' ? Math.max(s.hand.length, s.hs || 8) : 8);
     var cwH = short ? (H - 66) / 4.1 : (H - 106) / 4.2;
     var cwW = (WH - 10) / (1.3 + 1 + 0.5 * (n - 1) + 0.36);
-    var cw = Math.max(38, Math.min(140, cwH, cwW));
+    var cw = Math.max(38, Math.min(DK ? 210 : 140, cwH, cwW));
     var slots = (s ? E.jslots() + E.cslots() : 7);
-    var jw = Math.max(34, Math.min(104, cw * (short ? 0.9 : 1.0), (WT - 46) / (slots + 0.6)));
+    var jw = Math.max(34, Math.min(DK ? 170 : 104, cw * (short ? 0.9 : 1.0), (WT - 46) / (slots + 0.6), DK ? (H - 120) / 1.35 / 3.2 : 1e9));
     var pw = Math.max(36, Math.min(cw * (short ? 0.88 : 0.95), (W - 20) / 5.8));
-    var Hm = H - jw * 1.35 - 26, sw = Math.max(jw, Math.min(130, (Hm - 70) / 2 / 1.6, (W - 170) / 5.2));
+    var Hm = H - jw * 1.35 - 26, sw = Math.max(jw, Math.min(DK ? 190 : 130, (Hm - 70) / 2 / 1.6, (W - 170) / 5.2));
     jr.style.setProperty('--sw', sw.toFixed(1) + 'px');
     jr.style.setProperty('--cw', cw.toFixed(1) + 'px'); jr.style.setProperty('--jw', jw.toFixed(1) + 'px'); jr.style.setProperty('--pw', pw.toFixed(1) + 'px');
     R.cw = cw;
     placeHand();
+    if (DK) paintDk();
+  }
+
+  // ═══ At a desk ════════════════════════════════════════════════════════════
+  // A window no phone or tablet has (the card tables' desk windows, Cards.DESK in cards.js: wide, a short wide strip,
+  // nearly square, tall) gets html.jr-dk: the table with no width cap, the cards to 210px, the score panel a step up with
+  // the table (--sbz), and a panel of its own (.jdk) with the run's poker hands (level, Chips and Mult, times played, the
+  // hand you have picked lit) and, while a blind is played, the cards left in the deck. It stands beside the score panel
+  // (jdk-c), or along the foot of a tall or nearly square window (jdk-b). Nothing of it is made anywhere else.
+  var DESKQ = {
+    wide: '(min-width:1200px) and (min-aspect-ratio:77/100) and (max-aspect-ratio:1849/1000), (min-width:1200px) and (min-aspect-ratio:37/20) and (max-aspect-ratio:2099/1000) and (min-height:700px)',
+    strip: '(min-width:1200px) and (min-aspect-ratio:21/10), (min-width:1200px) and (min-aspect-ratio:37/20) and (max-height:699.98px)',
+    square: '(min-width:900px) and (max-width:1199.98px) and (min-aspect-ratio:77/100) and (max-aspect-ratio:1/1)',
+    tall: '(max-aspect-ratio:7699/10000) and (min-height:1200px)'
+  };
+  function deskShape() {
+    if (!window.matchMedia) return null;
+    for (var k in DESKQ) if (matchMedia(DESKQ[k]).matches) return k;
+    return null;
+  }
+  function deskLay(jr, H, bare) {
+    var k = deskShape(), root = document.documentElement;
+    root.classList.toggle('jr-dk', !!k);
+    jr.classList.remove('jdk-c', 'jdk-b');
+    if (!k) { if (R.dk) { R.dk.remove(); R.dk = null; } ['--sb', '--sbz', '--sbw', '--dkw', '--dkh', '--dkf', '--hlc'].forEach(function (v) { jr.style.removeProperty(v); }); return null; }
+    var W = innerWidth, f = Math.max(1, Math.min(1.5, W / 1700, H / 1000));
+    var sb0 = parseFloat(getComputedStyle(root).getPropertyValue('--sb')) || 280, z = Math.max(1, Math.min(1.45, f));
+    // (where a column of its own would cost the hand its size, the panel stands under the score panel instead, jdk-s)
+    if (bare) {
+      jr.style.setProperty('--sbz', z.toFixed(3)); jr.style.setProperty('--sb', Math.round(sb0 * z) + 'px'); jr.style.removeProperty('--sbw'); jr.style.setProperty('--dkf', 1);
+      if (R.dk && !R.dk.classList.contains('jdk-s')) { R.dk.remove(); R.dk = null; }
+      if (!R.dk) R.dk = el('div', { class: 'jdk pn jdk-s', 'aria-label': 'Poker hands and the deck' });
+      if (R.side && R.dk.parentNode !== R.side) R.side.appendChild(R.dk);
+      return { k: k, s: 1 };
+    }
+    if (R.dk && R.dk.classList.contains('jdk-s')) { R.dk.remove(); R.dk = null; }
+    var bot = k === 'tall' || k === 'square', dkw = Math.round(Math.max(330, Math.min(560, W * 0.2, 360 * f)));
+    var dkh = bot ? Math.round(Math.max(220, Math.min(440, H * 0.27))) : 0;
+    jr.classList.add(bot ? 'jdk-b' : 'jdk-c');
+    jr.style.setProperty('--sbz', z.toFixed(3)); jr.style.setProperty('--sbw', Math.round(sb0 * z) + 'px'); jr.style.setProperty('--sb', Math.round(sb0 * z) + 'px');
+    jr.style.setProperty('--dkw', dkw + 'px'); jr.style.setProperty('--dkh', dkh + 'px'); jr.style.setProperty('--dkf', f.toFixed(3));
+    if (!R.dk || !R.dk.isConnected) { R.dk = el('div', { class: 'jdk pn', 'aria-label': 'Poker hands and the deck' }); jr.appendChild(R.dk); }
+    return { k: k, c: !bot, b: bot, w: dkw, h: dkh };
+  }
+  function handsList(s, cur) {
+    var hl = el('div', { class: 'hl' });
+    E.HANDS.forEach(function (h) {
+      if (h.secret && !s.plays[h.id] && s.levels[h.id] <= 1) return;
+      var lv = s.levels[h.id];
+      hl.appendChild(el('div', { class: 'hr' + (cur === h.id ? ' on' : '') + (!s.plays[h.id] && lv <= 1 ? ' rare' : ''), 'data-h': h.id }, [el('span', { class: 'lv' + (lv > 1 ? ' up' : ''), text: 'lvl.' + lv }),
+        el('div', { class: 'nm', html: esc(h.n) + '<small>' + esc(h.ex) + '</small>' }),
+        el('div', { class: 'cm' }, [el('span', { class: 'c', text: String(E.hChips(h.id, lv)) }), el('span', { text: 'X' }), el('span', { class: 'm', text: String(E.hMult(h.id, lv)) })]),
+        el('span', {}), el('span', { class: 'pl', text: '#' + (s.plays[h.id] || 0) })]));
+    });
+    return hl;
+  }
+  function litHand(id) {
+    R.lit = id;
+    if (!R.dk || !R.dk.isConnected) return;
+    [].forEach.call(R.dk.querySelectorAll('.hl .hr'), function (n) { n.classList.toggle('on', n.dataset.h === id); });
+  }
+  function deckGrid(s) {
+    var inPlay = s.phase === 'play', left = {}, g = el('div', { class: 'dg' });
+    if (inPlay) s.draw.forEach(function (id) { left[id] = 1; });
+    var cards = s.deck.map(C).filter(function (c) { return c && !E.isStone(c); });
+    g.appendChild(el('span'));
+    E.RANKS.forEach(function (r) { g.appendChild(el('span', { class: 'rk', text: r })); });
+    g.appendChild(el('span'));
+    E.SUITS.forEach(function (su) {
+      g.appendChild(el('span', { class: 'su t-s' + su, text: E.GLYPH ? E.GLYPH[su] || su : su, 'aria-label': E.SUITN[su] }));
+      var n = 0;
+      E.RANKS.forEach(function (r) {
+        var all = cards.filter(function (c) { return c.s === su && c.r === r; }), k = all.filter(function (c) { return !inPlay || left[c.id]; }).length;
+        n += k;
+        g.appendChild(el('span', { class: 'c ' + su + (!all.length ? ' no' : !k ? ' x' : ''), text: all.length ? (all.length > 1 ? k + '' : r) : '' }));
+      });
+      g.appendChild(el('span', { class: 'n', text: String(n) }));
+    });
+    return g;
+  }
+  function paintDk() {
+    var s = S(), dk = R.dk; if (!s || !dk || !dk.isConnected) return;
+    dk.innerHTML = '';
+    dk.style.display = '';
+    if (dk.classList.contains('jdk-s') && dk.clientHeight < 150) { dk.style.display = 'none'; return; }
+    var hl = handsList(s, R.lit);
+    var a = el('section', {}, [el('h4', { text: 'Poker hands' }), hl]);
+    dk.appendChild(a);
+    // this ante's three blinds, as Run Info has them: the one being played (or next) lit, the ones behind you dimmed
+    var ante = el('section', { class: 'dka' }, [el('h4', { text: 'Ante ' + s.ante })]);
+    var beat = s.phase === 'cashout' || s.phase === 'shop', nb = beat ? s.bi + 1 : s.bi;
+    for (var b = 0; b < 3; b++) {
+      var info = E.blindInfo(b);
+      ante.appendChild(el('div', { class: 'bl' + (b === nb ? ' on' : b < nb ? ' past' : '') }, [el('img', { alt: '', src: A.url('b:' + (info.kind === 'boss' ? info.key : info.kind)) }),
+        el('div', { class: 'tx', html: '<b>' + esc(info.name) + '</b>' + (info.boss ? '<small>' + esc(info.boss.d) + '</small>' : '') }),
+        el('div', { class: 'tg', html: '<i class="chipi"></i>' + fmt(info.target) + '<small>' + '$'.repeat(info.reward) + '</small>' })]));
+    }
+    if (s.phase === 'play') {
+      var stones = s.deck.map(C).filter(function (c) { return c && E.isStone(c); }).length;
+      dk.appendChild(el('section', { class: 'dks' }, [el('h4', { text: 'Cards left' }),
+        el('div', { class: 'dk-st', html: '<span><b>' + s.draw.length + '</b> of ' + s.deck.length + ' still to draw</span>' + (stones ? '<span>' + stones + ' Stone</span>' : '') }), deckGrid(s)]));
+    }
+    if (!(R.jr && R.jr.classList.contains('jdk-b')) && !dk.classList.contains('jdk-s')) dk.appendChild(ante);
+    // a panel too short for all of it gives up whole rows: hands never played and never leveled up first, the rarest
+    // first (from the top), then the deck, then the rest from the foot
+    var bot = R.jr && R.jr.classList.contains('jdk-b');
+    if (bot) {
+      var cols = 1; R.jr.style.setProperty('--hlc', 1);
+      while (cols < 3 && a.scrollHeight > dk.clientHeight - 4) { cols++; R.jr.style.setProperty('--hlc', cols); }
+    }
+    function over() { return dk.scrollHeight > dk.clientHeight + 1 || a.scrollHeight > a.clientHeight + 1; }
+    var rare = [].slice.call(hl.querySelectorAll('.hr.rare:not(.on)'));
+    if (over() && ante.isConnected) ante.remove();
+    for (var i = 0; i < rare.length && over(); i++) rare[i].remove();
+    if (over()) { var d = dk.querySelector('.dks'); if (d) d.remove(); }
+    var rows = [].slice.call(hl.querySelectorAll('.hr')).reverse();
+    for (i = 0; i < rows.length && over(); i++) if (!rows[i].classList.contains('on')) rows[i].remove();
   }
   var lt = 0;
   // Turning the device: the panels and cards glide to the new layout (a View Transition where the browser has one)
@@ -566,6 +691,7 @@
     R.deck = dk; R.hnd.appendChild(dk);
     s.fresh = [];
     placeHand(fresh);
+    paintDk();
   }
   function countSel() {
     if (R.hcount && S().phase === 'pack') { R.hcount.innerHTML = sel.length ? '<b>' + sel.length + '</b> selected: now tap a card above to use it' : 'Select cards here, then tap a card above to use it on them'; return; }
@@ -645,11 +771,12 @@
   function preview() {
     var s = S(); if (!R.hn || busy) return;
     R.cm.classList.remove('fire');
-    if (s.phase !== 'play' || !sel.length) { R.hn.innerHTML = '&nbsp;'; R.hn.classList.remove('tot'); setCM(0, 0); return; }
+    if (s.phase !== 'play' || !sel.length) { R.hn.innerHTML = '&nbsp;'; R.hn.classList.remove('tot'); setCM(0, 0); litHand(null); return; }
     if (sel.some(function (id) { return s.fd[id]; })) { R.hn.innerHTML = '????'; setCM(0, 0); return; }
     var r = E.score(ordered(sel), false);
     R.hn.classList.remove('tot');
     R.hn.innerHTML = esc(E.HMAP[r.hand].n) + ' <small>lvl.' + r.level + '</small>';
+    litHand(r.hand);
     if (r.notAllowed) R.hn.innerHTML = '<span class="t-m">Not allowed</span>';
     setCM(r.bc, r.bm, null);
   }
