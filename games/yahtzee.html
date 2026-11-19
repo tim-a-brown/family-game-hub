@@ -1012,9 +1012,9 @@ html.yw .ylay .sc .lbl small{display:none;}
     var best = null;
     function consider(p) { if (!best || p.score > best.score) best = p; }
     [false, true].forEach(function (sp) {
-      if (sp && AH > 760 && !noTray) return;             // (a tall enough window keeps the card whole, as the pad is)
+      if (sp && AH > 760) return;             // (a tall enough window keeps the card whole, as the pad is)
       // the card at the left, the tray at the right of it, the room under the tray (or beside it in a low window)
-      var c = card(AH, sp, noTray ? AW : AW - 400), ok = c.rh >= 23 && c.min <= AW;
+      var c = card(noTray ? AH - 62 : AH, sp, noTray ? AW : AW - 400), ok = c.rh >= 23 && c.min <= AW;
       if (noTray) { if (ok) consider({ comp: 'card', c: c, cw: Math.min(AW, c.ideal), score: Math.min(c.rh, 56) / 56 - (sp ? .05 : 0) }); return; }
       var cw = Math.max(c.min, Math.min(c.ideal, AW - G - 420)), R = AW - cw - G, t = { ds: 0 };
       if (ok && R >= 150) { t = tray(R, AH * .62); if (AH - t.h - G < 170) t = tray(R, AH); }
@@ -1030,9 +1030,9 @@ html.yw .ylay .sc .lbl small{display:none;}
     if (P0.comp === 'card') {
       // real dice: the card, and over the room at its left whose card is being filled in
       var cw0 = P0.cw, left = AW - cw0 - G;
-      if (left >= 300) { L.card = [X0 + left + G, Y0, cw0, c.h]; L.tray = [X0, Y0, left, 56]; slot(X0, Y0 + 56 + G, left, AH - 56 - G, 'left'); }
-      else { L.card = [X0 + (AW - cw0) / 2, Y0, cw0, c.h]; }
-      if (AH - c.h - G >= 150) slot(L.card[0], Y0 + c.h + G, cw0, AH - c.h - G, 'under');
+      if (left >= 300) { L.card = [X0 + left + G, Y0 + 62, cw0, c.h]; L.tray = [X0 + left + G, Y0, cw0, 56]; slot(X0, Y0, left, AH, 'left'); }
+      else { L.card = [X0 + (AW - cw0) / 2, Y0 + 62, cw0, c.h]; L.tray = [L.card[0], Y0, cw0, 56]; }
+      if (AH - 62 - c.h - G >= 150) slot(L.card[0], Y0 + 62 + c.h + G, cw0, AH - 62 - c.h - G, 'under');
     } else if (P0.comp === 'col') {
       var t = P0.t, R = P0.R, rx = X0 + P0.cw + G, tw = R > 1300 ? Math.max(t.w, 1300) : R, low = AH - t.h - G < 170;
       L.card = [X0, Y0, P0.cw, c.h];
