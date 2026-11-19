@@ -126,7 +126,8 @@ Underlying principles for everything:
   time, the high-score board with this game's row climbing, past games, drawn key caps); Horse Race (`html.hr-big`,
   `bigPlan`/`layoutBig` in horserace.html: the track as the hero, the program as a racing form, a tote board of $2
   payouts, races so far, the session, and the rail stood up at the right as the betting station; `deviceShape` keeps a
-  window shaped like a phone or tablet on the device layout); Arvela (`deskPlan` in ui.js, two players: Figures and the
+  window shaped like a phone or tablet on the device layout); at a desk the turf is painted once per size and laid down each frame (`drawSurf`), and the course
+  oval draws only its runners over a cached track (`ovalStatic`); Arvela (`deskPlan` in ui.js, two players: Figures and the
   hand sized together, the bars stood on end as pillars with the Guide, its power and the Relics by name, cards from 150px
   wide saying their power, the last events beside the hand, the face-off's `.big` with whole cards from 330px).
   **Spades** (on `Cards.desk`; `paintDesk`, `paintSheet`, `handRows`, `paintSide` in spades-ai.html): the partnership
