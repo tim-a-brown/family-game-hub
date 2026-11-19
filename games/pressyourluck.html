@@ -722,6 +722,50 @@ body.pyl-on{
   .qo button{min-height:42px;padding:6px 8px;gap:6px;font-size:15px;}
   .qo button b{width:22px;height:22px;font-size:12px;}
 }
+
+/* ── The desk (a window larger than a phone's or a tablet's; deskFit in the script) ──
+   Only while html.pyl-big is set: the room at the left, the Big Board, the podiums and SPIN at the right. */
+html.pyl-big #app.pyl{max-width:none;padding:2px var(--dg,16px) 0;}
+html.pyl-big .pyls.land{gap:var(--dg,16px);}
+html.pyl-big .pyls{gap:var(--dg,16px);}
+.pyr{display:none;}
+html.pyl-big .pyr{display:flex;flex-direction:column;gap:12px;width:var(--rw);height:var(--rh);flex:none;min-height:0;overflow:hidden;font-size:calc(16px * var(--pu,1));}
+html.pyl-big .pyls.land .side{width:var(--sw);}
+html.pyl-big .pyls .pod .pn{font-size:calc(16px * var(--pu,1));}
+html.pyl-big .pyls .pod .pb{font-size:calc(34px * var(--pu,1));}
+html.pyl-big .pyls .pod .ps{font-size:calc(14px * var(--pu,1));}
+html.pyl-big .pyls .pod .pw svg{width:calc(22px * var(--pu,1));height:calc(18px * var(--pu,1));}
+html.pyl-big .pyls.land .side{justify-content:center;gap:calc(28px * var(--pu,1));}
+html.pyl-big .ctl{--dome:calc(150px * var(--pu,1));}
+html.pyl-big .hint{font-size:calc(17px * var(--pu,1));}
+html.pyl-big .passb span{font-size:calc(23px * var(--pu,1));} html.pyl-big .passb small{font-size:calc(14px * var(--pu,1));}
+html.pyl-big .buzzers{--bz:calc(118px * var(--pu,1));}
+.pyr .pn{flex:0 1 auto;min-height:0;overflow:hidden;padding:.8em .9em .85em;border-radius:18px;background:rgba(14,10,48,.62);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),0 14px 30px -18px rgba(0,0,0,.8);color:#fff;font-family:var(--font);}
+.pyr .pn.sc{flex:0 0 auto;}
+.pyr h4{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:0 0 .45em;font-size:1.04em;font-weight:800;color:#fff;}
+.pyr h4 .k{font-size:.8em;font-weight:700;color:rgba(255,255,255,.6);}
+.pyr .nt{margin:.3em 0 0;font-size:.86em;line-height:1.35;color:rgba(255,255,255,.62);}
+.pyr .tb{display:grid;grid-template-columns:minmax(0,1.1fr) repeat(3,minmax(0,1fr));column-gap:8px;font-size:.9em;}
+.pyr .tb > span{padding:.36em 0;border-bottom:1px solid rgba(255,255,255,.1);min-width:0;}
+.pyr .tb .th{font-weight:750;padding-top:0;}
+.pyr .tb .th.nm{text-align:right;color:#fff;overflow-wrap:anywhere;}
+.pyr .tb .th.nm::before{content:"";display:inline-block;width:.55em;height:.55em;border-radius:50%;background:var(--pc);margin-right:5px;vertical-align:.08em;}
+.pyr .tb .rl{color:rgba(255,255,255,.7);font-weight:650;}
+.pyr .tb .v{text-align:right;font-weight:750;font-variant-numeric:tabular-nums;}
+.pyr .tb .v.z{color:rgba(255,255,255,.45);font-weight:600;}
+.pyr .tb .now{color:#ffe14d;}
+.pyr .tb .tot{font-weight:800;font-size:1.06em;border-bottom:0;}
+.pyr .tb .v.tot.lead{color:#ffd23d;}
+.pyr .tb .v.bad{color:#ff7a8a;}
+.pyr .row{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.6fr) auto;gap:10px;align-items:baseline;padding:.42em 0;border-top:1px solid rgba(255,255,255,.1);font-size:.9em;}
+.pyr h4 + .row{border-top:0;}
+.pyr .row .who{font-weight:750;overflow-wrap:anywhere;}
+.pyr .row .who::before{content:"";display:inline-block;width:.55em;height:.55em;border-radius:50%;background:var(--pc);margin-right:6px;vertical-align:.08em;}
+.pyr .row .sy{color:rgba(255,255,255,.82);}
+.pyr .row .bk{font-weight:800;font-variant-numeric:tabular-nums;color:#ffe14d;}
+.pyr .row.bad .sy{color:#ff8a98;font-weight:700;}
+.pyr .row.bad .bk{color:#ff8a98;}
 </style>
 </head>
 <body>
@@ -913,7 +957,7 @@ body.pyl-on{
   }
   function showSetup() {
     if (NET && NET.mode) NET.leave(false);
-    stopAll(); S = null; shell = null; FORCE = []; netReset();
+    stopAll(); if (DK.on) deskOff(); S = null; shell = null; FORCE = []; netReset();
     document.body.classList.remove('pyl-on'); app.classList.remove('pyl');
     // A setup saved when a Family game could seat two people: the computer that took the third podium now has that seat
     try {
@@ -1042,8 +1086,112 @@ body.pyl-on{
     var p = el('div', { style: { position: 'fixed', bottom: '0', height: 'env(safe-area-inset-bottom,0px)', width: '1px', visibility: 'hidden' } });
     document.body.appendChild(p); var h = p.offsetHeight; p.remove(); return h;
   }
+  // ── The desk: a window larger than a phone's or a tablet's (CLAUDE.md, Large windows) ─────────────────────
+  // The Big Board is the hero, sized from the window as it always was; the podiums and the SPIN button stand at the
+  // right; the room at the left holds the scores round by round and every stop of the board this round (who, what
+  // the light landed on, the bank after). A phone or a tablet never gets here (deviceShape), and deskOff takes every
+  // class, style and panel away again.
+  var DK = { on: false };
+  function deviceShape(w, h) { var lo = Math.min(w, h), hi = Math.max(w, h); return (lo <= 480 && hi <= 1000) || (lo >= 620 && lo <= 840 && hi >= 900 && hi <= 1200); }
+  function deskWanted() { var w = window.innerWidth, h = window.innerHeight; return !!shell && w > 480 && h > 540 && !deviceShape(w, h); }
+  function deskOff() {
+    if (!DK.on) return; DK.on = false;
+    document.documentElement.classList.remove('pyl-big');
+    if (shell && shell.room) { shell.room.remove(); shell.room = null; }
+    if (shell) ['--rw', '--rh', '--pu'].forEach(function (k) { shell.stage.style.removeProperty(k); });
+  }
   function fit() {
     if (!shell) return;
+    if (deskWanted()) { if (deskFit()) return; } else deskOff();
+    fit0();
+  }
+  function deskFit() {
+    var top = shell.stage.getBoundingClientRect().top, H = window.innerHeight - top - 16, Wf = window.innerWidth;
+    var g = Math.round(Math.max(12, Math.min(24, Wf / 110))), W = Wf - 2 * g;
+    var pu = Math.round(Math.max(1, Math.min(1.45, Math.min(Wf / 1500, H / 900))) * 100) / 100;
+    var land = W > H * 1.05, bw, bh, sw = 0, rw = 0, rh = 0;
+    if (land) {
+      sw = Math.round(Math.max(320, Math.min(480, W * 0.2)));
+      rw = Math.round(Math.max(300, Math.min(500, W * 0.18)));
+      bw = W - sw - rw - 2 * g; bh = H;
+      if (bw < 560) { rw = 0; bw = W - sw - g; }
+      if (bh > bw * 0.95) bh = bw * 0.95;
+      if (bh < bw * 0.7) bw = bh / 0.7;
+      rh = bh;
+    } else {
+      bw = W; var reserve = Math.round(372 * Math.min(pu, 1.2));
+      bh = Math.min(H - reserve, bw * 1.1);
+      if (bh < bw * 0.8) { bw = Math.min(W, bh / 0.8); }
+      rh = H - bh - reserve - g;
+      if (rh < 200) rh = 0;
+      if (bh < 360) return false;
+    }
+    bw = Math.floor(bw); bh = Math.floor(bh);
+    DK.on = true; document.documentElement.classList.add('pyl-big');
+    var pad = Math.round(Math.max(10, Math.min(26, bw * 0.03))), gap = Math.max(4, Math.round(bw * 0.012));
+    var r = shell.stage.style;
+    r.setProperty('--bw', bw + 'px'); r.setProperty('--bh', bh + 'px'); r.setProperty('--sw', sw + 'px');
+    r.setProperty('--pad', pad + 'px'); r.setProperty('--gap', gap + 'px'); r.setProperty('--pu', pu);
+    r.setProperty('--rw', (land ? rw : bw) + 'px'); r.setProperty('--rh', rh + 'px'); r.setProperty('--dg', g + 'px');
+    shell.stage.classList.toggle('land', land); shell.stage.classList.remove('short');
+    if (rw || (!land && rh)) {
+      if (!shell.room) shell.room = el('aside', { class: 'pyr', 'aria-label': 'The show so far' });
+      if (land) { if (shell.stage.firstChild !== shell.room) shell.stage.insertBefore(shell.room, shell.stage.firstChild); }
+      else if (shell.room.parentNode !== shell.stage || shell.stage.lastChild !== shell.room) shell.stage.appendChild(shell.room);
+      paintRoom();
+    } else if (shell.room) { shell.room.remove(); shell.room = null; }
+    drawBulbs(shell.bulbs, bw, bh, pad / 2, pad * 1.15, Math.max(1.8, pad * 0.2));
+    requestAnimationFrame(function () {
+      if (!shell) return;
+      var sw2 = shell.screen.clientWidth, sh2 = shell.screen.clientHeight, sp = pad * 0.95;
+      drawBulbs(shell.sbulbs, sw2, sh2, sp / 2, sp * 1.2, Math.max(1.5, sp * 0.17));
+      if (shell.pan) { var pb = shell.pan.querySelector('.bulbs'); if (pb) drawBulbs(pb, bw, bh, pad / 2, pad * 1.15, Math.max(1.8, pad * 0.2)); }
+    });
+    return true;
+  }
+  // ── The room: the scores round by round, and every stop of the board this round, from the game's own log ──
+  var rmRaf = 0;
+  function paintRoom() { if (!DK.on || !shell || !shell.room || rmRaf) return; rmRaf = requestAnimationFrame(function () { rmRaf = 0; paintRoom0(); }); }
+  function paintRoom0() {
+    if (!DK.on || !shell || !shell.room || !S) return;
+    var box = shell.room, P = S.players, h = '';
+    // Scores
+    h += '<section class="pn sc"><h4><span>Scores</span></h4><div class="tb"><span class="th"></span>';
+    P.forEach(function (p, i) { h += '<span class="th nm" style="--pc:' + pc(i) + '">' + esc(p.name) + '</span>'; });
+    (S.rows || []).forEach(function (rw) { h += '<span class="rl">' + esc(rw.label) + '</span>'; rw.sc.forEach(function (v) { h += '<span class="v' + (v ? '' : ' z') + (v < 0 ? ' neg' : '') + '">' + (v ? money(v) : '–') + '</span>'; }); });
+    var inRound = S.round > 0 && (S.phase === 'board' || S.phase === 'quiz') && (S.rows || []).length < S.round;
+    if (inRound) { h += '<span class="rl now">' + NAMES[S.round] + '</span>'; P.forEach(function (p) { var v = p.bank - (p.rStart || 0); h += '<span class="v now' + (v ? '' : ' z') + '">' + (v ? money(v) : '–') + '</span>'; }); }
+    var hi = Math.max.apply(null, P.map(function (p) { return p.bank; }));
+    h += '<span class="rl tot">Total</span>';
+    P.forEach(function (p) { h += '<span class="v tot' + (hi > 0 && p.bank === hi ? ' lead' : '') + '">' + money(p.bank) + '</span>'; });
+    h += '<span class="rl">Whammies</span>';
+    P.forEach(function (p) { h += '<span class="v wc' + (p.wh ? ' bad' : ' z') + '">' + (p.out ? 'Out' : p.wh + ' of 4') + '</span>'; });
+    h += '</div></section>';
+    // Every stop this round, newest first
+    var key = S.phase === 'bonus' ? 'b' : String(S.round), st = (S.log && S.log.st) || [], pz = (S.log && S.log.prizes) || [], k = 0, rows = [];
+    st.forEach(function (e) {
+      var f = e.split('.'), isPz = f[4] === 'p' && f[0] !== 'b';
+      var prize = isPz ? pz[k++] : null;
+      if (f[0] !== key) return;
+      var who = +f[1], v = +f[5], plus = f[6] === '1', bank = +f[7], say, cls = '';
+      if (f[4] === 'c') say = money(v) + (plus ? ' and one more spin' : '');
+      else if (f[4] === 'p') say = (prize ? prize.n + ', worth ' + money(prize.v) : 'A prize worth ' + money(v)) + (plus ? ', and one more spin' : '');
+      else if (f[4] === 'w') { say = 'A Whammy took the bank'; cls = ' bad'; }
+      else if (f[4] === 'd') say = 'Double your money';
+      else say = 'Moved on the board';
+      rows.push('<div class="row' + cls + '"><span class="who" style="--pc:' + pc(f[0] === 'b' && S.bonus ? S.bonus.p : who) + '">' + esc((P[f[0] === 'b' && S.bonus ? S.bonus.p : who] || {}).name || '') + '</span><span class="sy">' + esc(say) + '</span><span class="bk">' + money(bank) + '</span></div>');
+    });
+    h += '<section class="pn stp"><h4><span>' + (S.phase === 'bonus' ? 'Bonus round stops' : 'Stops this round') + '</span><span class="k">Bank after</span></h4>';
+    h += rows.length ? rows.reverse().join('') : '<p class="nt">' + (S.phase === 'quiz' ? 'The questions come first. Every right answer earns spins for the board.' : 'Each time the board stops, it lands here with what it was worth.') + '</p>';
+    h += '</section>';
+    box.innerHTML = h;
+    // (whole rows only: the oldest stops go first, then the note)
+    var rs = box.querySelectorAll('.stp .row'), n = rs.length;
+    function over() { return box.scrollHeight > box.clientHeight + 1 || Array.prototype.some.call(box.querySelectorAll('.pn'), function (x) { return x.scrollHeight > x.clientHeight + 1; }); }
+    while (n > 0 && over()) rs[--n].remove();
+    if (over()) { var stp = box.querySelector('.stp'); if (stp) stp.remove(); }
+  }
+  function fit0() {
     var W = app.clientWidth - 20, top = shell.stage.getBoundingClientRect().top, H = window.innerHeight - top - Math.max(18, 12 + safeBottom());
     var land = W >= 700 && W > H * 1.12, bw, bh, sw = 0;
     if (land) {
@@ -1130,6 +1278,7 @@ body.pyl-on{
       d.root.setAttribute('aria-label', p.name + ': ' + money(p.bank) + ', ' + plural(sp, 'spin') + ', ' + plural(p.wh, 'Whammy'));
       if (gain === i) { d.root.classList.remove('gain'); void d.root.offsetWidth; d.root.classList.add('gain'); }
     });
+    paintRoom();
   }
   function renderScreen(msg) {
     if (!shell || GUEST()) return;   // (a guest's screen is the host's, copied)
