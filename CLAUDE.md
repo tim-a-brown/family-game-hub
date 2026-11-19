@@ -669,6 +669,83 @@ Underlying principles for everything:
   foot, never the lit one. A resize keeps the run and the cards picked. The scratchpad's `big/jokerrun/`: `shots.js`
   (scenes blind, play, sel, shop at any window with the scan), `resize.js` (17 windows mid-blind), and
   `big/spanishone/proof.js` with `GAME=jokerrun` (the devices before and after).
+  **Yahtzee at a desk** (`html.yz-dk`; `deskPlan`, `deskPaint`, `deskSync`, `racePanel`, `turnsPanel`, `bestPanel`,
+  `trimList` in yahtzee.html; `deviceShape` keeps a window shaped like a phone or a tablet on the device layout, and
+  a window under 480 wide or 540 tall is never a desk). The score pad is the hero and every player's column is on
+  it: its rows (`--rh`, 23 to 84px), its type (`--ys`, 0.8 to 1.9) and its label column (`--lw`) are sized from the
+  window's height, the type stepping down before the card would be too wide (`card(h, split, maxW)`), and a player's
+  name in its head never breaks inside a word (the head's type steps down, `--thf`). In a low window the pad's two
+  sections stand side by side as two tables (`DK.split`, `.sc2`), as on a real pad folded open. The dice tray takes
+  the room beside the card with dice to 190px (`--dds`), five in a row or three over two where that makes them
+  larger (`tray`, `.k3`), the felt's height from the dice (`--fh`). `deskPlan` weighs two compositions by the row
+  height and the dice they allow: `col` (the card at the left, the tray at the right of it, the room under the tray,
+  or beside it in a low window, and under the card) and `stack` (the tray across the top, the card under it, the
+  room under the card: tall windows). Real dice (`mode: 'card'`) is the card alone with whose card is being filled
+  at the top of the room. The room, in glass panels placed in the boxes the plan leaves (`slots`): The race (every
+  player's running total round by round with the upper bonus where it was earned and extra Yahtzees, the round now
+  in gold; alone, your total against your best earlier game's, dashed, from the history: `runTotals`, `bestPace`);
+  Turns so far (each scored box with the five dice it was scored with, newest first: alone in up to three columns,
+  several players under a heading a round, and in a wide panel as a sheet with a row a round and a column a player,
+  `ytab`); Best scores (people's best totals on this device from `GameHistory`, with the date). A list gives up
+  whole rows from its foot (`trimList`). Every box is fixed-positioned from the plan, so the page never scrolls; a
+  new window size lays the table out again from the state, gliding when the composition changes (`Kit.glide`). Test
+  hook `__yahtzee.desk()`. The scratchpad's `big/dice/` has the scripts: `h.js` (scenes, screenshots and an audit),
+  `ys.js` (Yahtzee's scenes: solo, two, four, eight, real dice, a finished game), `proof.js` with `cmp.sh` (the
+  device proof), `rz.js` (resize), `demo.js`.
+  **Farkle at a desk** (`html.fk-dk`; `deskPlan`, `deskPaint`, `deskSync`, `sheetPanel`, `chartPanel` in
+  farkle.html, and `chartHtml`, the scoring chart's table, shared with the menu's sheet; `deviceShape` keeps phones
+  and tablets on their layouts). The felt is sized from the window and the dice from the felt (`--fds`, 56 to
+  130px), the cup with them (`zoom: --cz` on the cup alone), the ledge's set-aside dice and their points, the stamp
+  and the felt's message too; the felt's height is the table's less the ledge (`DK.zh`, set on `.zone`).
+  Compositions: `wide` (the scores at the left, the table, the turn at the right) and `tall` (the table across the
+  top, the scores at the left and the turn at the right under it). At the left: the players' scores as the game's
+  own cards (two to a row with four or more players where the column is wide enough), the final-round note, and The
+  score sheet, a row a round with what each player banked (a penalty in red) and the totals under them, the oldest
+  rounds giving way first; with five or six players a column's head is the player's color, as on the score cards
+  over it. At the right: who is rolling and why, This turn, Roll and Bank stacked, the rule line, and What scores,
+  the game's own scoring chart (the chart moves under the sheet where the right column is short, and gives up its
+  last rows, then itself). The page never scrolls; a new window size draws the table again from the state, mid-roll
+  too, and glides when the composition changes. Test hooks `__farkle.desk()`, `__farkle.render()`; scenes in the
+  scratchpad's `big/dice/fs.js`.
+  **Left Right Center at a desk** (`html.lr-dk`; `deskPlan`, `deskBoxes`, `deskPaint`, `deskSync`, `rollsPanel`,
+  `racePanel`, `winsPanel` in lrc.html; `deviceShape` keeps phones and tablets on their layouts). The oval is sized
+  from the window and everything on it grows with the table's unit `--lu` (1 to 2.3, from the oval's size): the
+  seats, their stacks and chips (the stack's spacing and the chip's place through `LU()` in `fillStack` and
+  `topChipRect`, the seats' inset round the rail in `calc(50% - 46px * var(--lu,1))`, identical on a device), the
+  name plates (whole names, never cut), the dice (to 110px) and the pot. Compositions: `wide` (the room at the left
+  when it has a column of 320 or more, the oval, the station at the right: the turn, Roll, Auto-roll and the pace,
+  the round and chips; with no column for the room it lies under the station) and `tall` (the oval across the top,
+  the station at the right under it, the room at its left). The room: Chips round by round (every player's chips
+  from `S.rounds` as a line a player, the name and count at its end); Rolls so far (every roll newest first from
+  `S.rl`: the dice as the game's own L, R, C and dot faces, who rolled, and where the chips went in a sentence:
+  "Passed one to Jamie and one to the pot."); Pots won before (who has won how often on this device, from the
+  history). A list gives up whole rows. Mid-roll a resize moves the oval and seats without redrawing (`deskSync`
+  with `busy`), so the flying chips land where they should. A window that cannot hold the oval over a station (560
+  by 620) keeps the phone's layout, which scrolls as it did. The scratchpad's `big/dice/ls.js` has the scenes (three
+  and ten players playing fast, a fixed mid-game for the device proof).
+  **Shell Game at a desk** (`html.sg-dk`; `deskPlan`, `deskPaint`, `deskRoom`, `deskSync`, `runsPanel`, `missPanel`,
+  `bestPanel` in shellgame.html; `layout()` sizes the cups from the plan's felt, to 400px wide; `deviceShape` keeps
+  phones and tablets on their layouts). Compositions: `wide` (a column at the left with the show's marquee
+  scoreboard, what just happened and the room; the table at the right with Shuffle under it at the right, where you
+  act) and `tall` (the table across the top, the button under it at the right, the column at its left). The room:
+  This run, or The runs with two to four players (every pick in order as a numbered square, green found and red
+  missed, the level being played ringed in gold, and the levels cleared: every player's run in view, as the rule
+  about boards nobody hides asks); Where the ball was (each miss as a row of small cups, the one picked ringed red
+  and the ball under the one that had it, with the sentence: "You picked the left cup. The ball was under the right
+  cup."); the best runs at this table for the chances being played, from the history. Panels give up whole rows,
+  then whole panels from the foot. Leaving a desk puts the scoreboard, the table, the status and the button back in
+  their device order. Test hook `__shell.desk()`; scenes in the scratchpad's `big/dice/ss.js`.
+  **Plinko at a desk** (`html.pk-dk` with `pk-w` or `pk-t`; `pkDesk`, `deskClass`, `paintRoom` in plinko.html;
+  `deviceShape` keeps phones and tablets on their layouts). The board, and the Big Wheel before it, lose the
+  tablet's caps (760 and 620 wide): in a wide window (`pk-w`) the board stands at the right as tall as the window,
+  the wheel between the column and its buttons (`layout`, `wheelLayout`), and the show's plate, the players' strip,
+  the hint and the room stand in a column at the left (at most 680 wide, against the board); in a tall window
+  (`pk-t`) the board or wheel is as wide as the window under the plate and the strip, with the room under it. The
+  room: Every chip so far (a row a player with their total and each chip's slot value as a plate, the $10,000 in
+  gold, $0 in red, the chips still to drop as empty plates; refreshed with the strip) and Best totals (the best
+  games on this device from the history). Whole rows only: the best totals give up their last rows, then the panel.
+  Test hooks `__plinko.paint()`, `__plinko.desk()`; scenes in the scratchpad's `big/dice/ps.js`. Not checked: the
+  Big Wheel's own picture at a desk (its three.js canvas does not screenshot in the headless browser here).
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
