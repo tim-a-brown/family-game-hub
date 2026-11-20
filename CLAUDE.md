@@ -1433,13 +1433,24 @@ Underlying principles for everything:
   `bestFit`, `smartOrder`; a rim green at his own position, amber near it, red out of it), then the game: every at-bat
   is a secret pitch against a guess, revealed together.
 - `engine.js` (`WaxEngine`, pure, runs in Node) reads `games/waxpack/mlb.json` (from `scripts/build-waxpack-mlb.py`,
-  Lahman data through 2025, with honors and league averages a year). A card plays the season before its year. Ratings
-  1 to 10 (Contact, Power, Speed, Eye; Stuff, Control, Stamina) are measured against that season's league and moved to
-  a timeless one (`NEUTRAL`); an unknown name gets a seeded scout's report (`scout`). The at-bat is `dist(H, P, ctx)`:
-  a right guess multiplies average 1.2, home run power 1.4, strikeouts 0.72; a wrong one 0.9, 0.82, 1.16. Errors by
-  position fit (`fit`, `ERR`: .012, .04, .11). The computer's duel is `cpuPitch`/`cpuLook` (Hard reads this game's
-  tendencies). Special cards are `SPECIAL` in `cards.js`, each played once from the team's hand (`usePlay`,
-  `playable`). Cards are drawn by decade, no maker's design copied; a small card keeps the last name (`fitCardNames`).
+  Lahman data through 2025). A card plays the season before its year, measured against its own league that year, and
+  gives a player a few whole values that print on a sleeve label (`table`, `valuesH`, `valuesP`): a modifier from -2 to
+  +2 (the top tenth +2, the bottom tenth -2; batters by on-base plus batting average, pitchers by ERA), a pitcher's 2 to
+  4 pitch cards from his strikeouts, and a card of die ranges (slugger, power, speedster, patient, contact; strikeout,
+  ground-ball, wild; the plain card for a season under 200 at-bats or 50 innings). **The game plays at a real table
+  without the app** (Tim, 2026-11-20: "this game should be able to be played without using the app on my phone"; the
+  app works the values out and prints them). The at-bat lives in `atBat` alone: the pitcher lays a pitch card face
+  down and the batter names one, both roll a d20 and add their modifiers, the batter wins by beating the pitcher's total
+  by `RULE.margin` (7), and the winner reads his own die on his own card (a batter's Guessed right row is extra-base
+  hits, his Guessed wrong row walks and singles; a pitcher's row ball four, ground out, fly out, strikeout: `RANGES`). An
+  out in play goes to a fielder by a d6 (`WHERE6`), and one out of position rolls a d20 for an error (`BOOT`: near 1, far
+  1 to 3). A walk only forces runners; a single moves every runner. Every team pitches three pitchers in fixed stints
+  (`stints`: 3/3/3, 2/2/1, 1/1/1; the last takes extra innings), its order set on the lineup's mound (`staffOrder`), a
+  pitcher 1 lower from his stint's third inning (`tired`). `node scripts/waxpack-sim.js [games]` calibrates the margin
+  and ranges against real seasons (`TUNE='{...}'`; AVG .254, OBP .314, K 21.9%, BB 8.2%, HR 2.7%, 4.96 runs a team per
+  9). The menu's Print the table cards prints the reference page, the pitch cards, each team's pitching card and a
+  sleeve label per league card (`printSheet`). A v1 save upgrades on load (`upgrade`). The computer's duel is
+  `cpuPitch`/`cpuLook` among the pitcher's own pitches; special cards are `SPECIAL` in `cards.js`.
 - Scanning is `scan.js` (`WaxScan`), Tesseract.js vendored in `games/waxpack/ocr/` and loaded only on the first scan,
   nothing sent anywhere: the photo read upright and turned a quarter each way, names matched fuzzily with nicknames,
   the year from the copyright line or the stat table; the person always picks from the top three or types the name.
