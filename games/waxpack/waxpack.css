@@ -22,6 +22,7 @@
 .wp-cbtn.cpu-pick{transform:translateY(-6px) scale(1.04);box-shadow:0 0 0 3px var(--lit),0 10px 24px rgba(0,0,0,.5);}
 .wp-cr{position:absolute;left:50%;bottom:-3px;transform:translate(-50%,40%);font-size:max(10px,calc(var(--cw) * .12));font-weight:800;padding:1px 6px;border-radius:7px;background:rgba(10,14,30,.85);color:#fff;white-space:nowrap;box-shadow:0 0 0 1px var(--gl-line);}
 .wp-empty .wc-slot{width:var(--cw);aspect-ratio:5/7;border-radius:calc(var(--cw) * .06);border:2px dashed var(--gl-line);display:grid;place-items:center;color:var(--text-3);}
+.wp-empty .wc-slot>span{display:grid;place-items:center;width:100%;height:100%;}
 .wp-empty .wc-slot .ico,.wp-empty .wc-slot svg{width:36%;height:auto;}
 .wp-fly{position:fixed;z-index:60;transition:transform .42s cubic-bezier(.3,.7,.3,1),opacity .42s;pointer-events:none;}
 .wp-fly .wc{--w:100%;width:100%;}
@@ -162,7 +163,7 @@ html[data-o=land] .wp-drf>.wp-dock{grid-area:d;align-self:end;}
   background:rgba(250,246,234,.95);color:#1b2a1b;box-shadow:0 2px 6px rgba(0,0,0,.45),inset 0 0 0 2px #2f8a3b;min-width:46px;}
 .wp-spot b{font-size:clamp(9px,2.7cqw,15px);font-weight:900;white-space:nowrap;}
 .wp-spot{padding:.2em .5em .3em;}
-.wp-spot .wp-sp{font-size:clamp(8px,2cqw,12px);font-weight:900;color:#555;}
+.wp-spot .wp-sp{font-size:clamp(9px,2cqw,12px);font-weight:900;color:#555;}
 .wp-spot.f-near{box-shadow:0 2px 6px rgba(0,0,0,.45),inset 0 0 0 2px #d79a12;}
 .wp-spot.f-far{box-shadow:0 2px 6px rgba(0,0,0,.45),inset 0 0 0 2px #d33a2c;}
 .wp-spot.sel,.wp-orow.sel,.wp-chip.sel{outline:3px solid var(--lit);outline-offset:1px;}
@@ -328,11 +329,17 @@ html[data-o=land] .wp-sb{grid-area:f;align-self:start;position:relative;z-index:
 
 /* a short phone held upright (an iPhone SE): the lineup scrolls as one page, the game draws in */
 @media (orientation:portrait) and (max-height:700px){
-  .wp-lin{height:auto;min-height:calc(100dvh - var(--bar));grid-template-rows:auto auto auto auto;}
-  .wp-lin .wp-lfield{min-height:250px;}
-  .wp-lin .wp-ldock{position:sticky;bottom:0;padding:8px 0 max(var(--safe-b),6px);background:linear-gradient(180deg,transparent,var(--page-bg,#0b0f1e) 30%);z-index:3;}
-  .wp-orow{grid-template-columns:1.1em 1fr auto;}
+  .wp-lin{--gap:6px;grid-template-rows:auto minmax(150px,1fr) auto auto;}
+  .wp-lin .wp-sub{display:none;}
+  .wp-lin .wp-ttl h2{font-size:1.15rem;}
+  .wp-lin .wp-ldock{flex-direction:row;}
+  .wp-lin .wp-ldock>.wp-go{flex:1;font-size:1rem;}
+  .wp-lin .wp-ldock .wp-row2>.btn{padding-left:12px;padding-right:12px;}
+  .wp-lin .wp-lcol{gap:4px;}
+  .wp-order{gap:3px 6px;}
+  .wp-orow{grid-template-columns:1.1em 1fr auto;padding:3px 7px;}
   .wp-orow .r{display:none;}
+  .wp-chip{padding:3px 7px;}
   .wp-ply{--gap:6px;grid-template-rows:auto minmax(96px,1fr) auto auto auto auto;}
   .wp-line th,.wp-line td{padding:2px 1px;}
   .mu{padding:4px;gap:6px;}
@@ -381,6 +388,7 @@ html[data-o=land] .wp-sb{grid-area:f;align-self:start;position:relative;z-index:
 .wp-st .a{font-weight:900;font-variant-numeric:tabular-nums;}
 .wp-st.sel{outline:3px solid var(--lit);outline-offset:1px;}
 .s-C{top:96%;}
+@container (max-width:360px){ .wp-mound{left:2%;top:auto;bottom:2%;transform:none;} }
 /* the batter's and pitcher's numbers */
 .mu-nums{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:2px;}
 .wp-num{display:inline-flex;align-items:baseline;gap:4px;padding:1px 7px 2px;border-radius:8px;background:color-mix(in srgb,var(--nc) 30%,rgba(10,14,30,.6));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--nc) 70%,transparent);font-size:.68rem;color:var(--text-2);white-space:nowrap;}
@@ -606,3 +614,143 @@ html[data-o=land] .wp-sb{grid-area:f;align-self:start;position:relative;z-index:
 .rl-ch .rl-mk{margin-left:auto;align-self:center;padding:1px 8px;border-radius:8px;background:var(--lit);color:#1b1406;font-size:.68rem;font-weight:900;white-space:nowrap;animation:wppop .4s var(--spring,ease);}
 /* a short screen held sideways: a player with a power keeps the matchup's height by leaving out his line of the day */
 @media (orientation:landscape) and (max-height:500px){ .mu.haspw .mu-line{display:none;} }
+
+/* ── A box of cards: the wax pack torn open, the top cards fanned and turned, the rest slid into the stack ─── */
+.wp-boxt .wx-mini{border-style:solid;border-color:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5em;padding:.6em;text-align:center;
+  background:repeating-linear-gradient(115deg,rgba(255,255,255,.18) 0 .3em,transparent .3em 1.1em),linear-gradient(160deg,#c8102e,#8e0b20 55%,#1d3e8a);color:#fff;box-shadow:0 .3em .9em rgba(0,0,0,.45);font-size:calc(var(--cw) / 10);}
+.wp-boxt .wx-mini b{font-family:'Wax Block',var(--display);font-weight:700;font-size:1.5em;letter-spacing:.04em;line-height:1;text-shadow:0 .08em 0 rgba(0,0,0,.35);}
+.wp-boxt .wx-mini span{font-family:var(--font);font-weight:700;font-size:max(10px,.95em);line-height:1.2;color:#fff3c4;}
+.wp-cbtn.dealt{animation:wxin .42s var(--d,0ms) cubic-bezier(.2,.8,.3,1.15) both;}
+@keyframes wxin{from{opacity:0;transform:translateY(-40px) rotate(-8deg) scale(.6);}}
+.wp-boxov{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(14px,3vh,30px);background:rgba(6,8,20,.78);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);transition:opacity .3s;cursor:pointer;--pw:clamp(110px,min(26vw,26vh),260px);}
+.wp-boxov.out{opacity:0;}
+.wx-stage{position:relative;width:min(94vw,calc(var(--pw) * 3.6));height:calc(var(--pw) * 1.55);perspective:900px;}
+.wp-wax{position:absolute;left:50%;top:50%;width:var(--pw);height:calc(var(--pw) * 1.38);margin:calc(var(--pw) * -.69) 0 0 calc(var(--pw) * -.5);border-radius:6px;
+  background:repeating-linear-gradient(115deg,rgba(255,255,255,.2) 0 4px,transparent 4px 14px),radial-gradient(120% 80% at 30% 20%,rgba(255,255,255,.35),transparent 60%),linear-gradient(160deg,#c8102e,#8e0b20 55%,#1d3e8a);
+  box-shadow:0 18px 40px rgba(0,0,0,.55),inset 0 0 0 2px rgba(255,255,255,.12);transition:transform .5s cubic-bezier(.3,.7,.3,1),opacity .4s;z-index:2;}
+.wx-tear{position:absolute;left:0;right:0;top:0;height:14%;border-radius:6px 6px 0 0;background:linear-gradient(160deg,#d8203e,#a00c24);border-bottom:2px dashed rgba(255,255,255,.55);transition:transform .45s cubic-bezier(.3,.6,.4,1),opacity .45s;transform-origin:85% 100%;}
+.wx-body{position:absolute;inset:16% 8% 8%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.4em;text-align:center;color:#fff;font-size:calc(var(--pw) / 11);}
+.wx-body b{font-family:'Wax Block',var(--display);font-weight:700;font-size:2.1em;line-height:.95;letter-spacing:.03em;text-shadow:0 .08em 0 rgba(0,0,0,.4);}
+.wx-body span{font-family:'Wax Cond',var(--font);font-weight:600;font-size:.95em;letter-spacing:.08em;color:#fff3c4;}
+.wx-body i{font-family:'Wax Cond',var(--font);font-style:normal;font-weight:500;font-size:max(9px,.72em);letter-spacing:.08em;opacity:.8;}
+.wp-wax.shake{animation:wxshake .45s ease;}
+@keyframes wxshake{20%{transform:rotate(-4deg);}45%{transform:rotate(4deg);}70%{transform:rotate(-2deg);}}
+.wp-wax.torn .wx-tear{transform:translate(30%,-90%) rotate(28deg);opacity:0;}
+.wp-boxov.fanned .wp-wax{transform:translateY(55%) scale(.82);opacity:0;}
+.wx-fan{position:absolute;inset:0;}
+.wx-c{position:absolute;left:50%;top:50%;width:calc(var(--pw) * .82);aspect-ratio:5/7;margin:calc(var(--pw) * -.574) 0 0 calc(var(--pw) * -.41);transition:transform .55s cubic-bezier(.2,.8,.3,1.1);transform:translateY(20%) scale(.7);z-index:1;}
+.wp-boxov.fanned .wx-c{transform:translateX(calc(var(--x) * var(--pw) * .56)) translateY(calc(var(--y) * var(--pw) * .06)) rotate(calc(var(--x) * 7deg));transition-delay:calc(var(--i) * 50ms);}
+.wx-in{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.3,.7,.3,1);transform:rotateY(180deg);}
+.wx-c.up .wx-in{transform:none;}
+.wx-back,.wx-in>.wc{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;}
+.wx-in>.wc{--w:calc(var(--pw) * .82);width:100%;}
+.wx-back{border-radius:5%;transform:rotateY(180deg);background:repeating-linear-gradient(45deg,#b98a5a 0 3px,#a87a4c 3px 6px);box-shadow:inset 0 0 0 calc(var(--pw) * .03) #e9dcc0,0 .4em 1em rgba(0,0,0,.5);}
+.wx-c.pw .wx-in>.wc{box-shadow:0 0 0 3px var(--lit),0 0 26px color-mix(in srgb,var(--lit) 60%,transparent);}
+.wx-msg{margin:0;max-width:min(90vw,520px);padding:0 20px;text-align:center;font-weight:700;font-size:clamp(1rem,1.6vh,1.3rem);min-height:2.6em;}
+@media (prefers-reduced-motion:reduce){.wx-c,.wx-in,.wp-wax,.wx-tear{transition:none;}.wp-cbtn.dealt{animation:none;}}
+
+/* ── The desk: a window larger than a phone's or a tablet's (ui.js, deskPlan). Every rule hangs off .dk or
+   html.wp-dk, which a phone and a tablet never get. ───────────────────────────────────────────────────────── */
+html.wp-dk .wp-ply.dk{--gap:14px;grid-template-rows:minmax(0,1fr);grid-template-columns:var(--rw) minmax(0,1fr) var(--sw);grid-template-areas:"r f s";padding-left:14px;padding-right:14px;}
+html.wp-dk .wp-ply.dk-t{grid-template-columns:minmax(0,1fr) var(--sw);grid-template-rows:var(--fh) minmax(0,1fr);grid-template-areas:"f s" "r s";}
+html.wp-dk .wp-ply.dk-k{grid-template-columns:minmax(0,1fr);grid-template-rows:var(--fh) auto minmax(0,1fr);grid-template-areas:"f" "s" "r";}
+html.wp-dk .wp-ply.dk>.wp-field{grid-area:f;}
+.wp-room{grid-area:r;min-height:0;min-width:0;overflow:hidden;display:flex;flex-direction:column;gap:12px;font-size:calc(14px * var(--dkf,1));}
+.wp-stn{grid-area:s;min-height:0;min-width:0;display:flex;flex-direction:column;gap:10px;}
+html.wp-dk .wp-ply.dk .wp-sb{margin:0;position:static;flex:none;grid-area:auto;}
+html.wp-dk .wp-ply.dk .wp-line th,html.wp-dk .wp-ply.dk .wp-line td{font-size:1em;padding-top:.35em;padding-bottom:.35em;}
+html.wp-dk .wp-ply.dk .wp-line td.tm{padding-left:1.3em;padding-right:.4em;}
+html.wp-dk .wp-ply.dk .wp-line td.tm i{left:.45em;}
+html.wp-dk .wp-ply.dk .wp-line th{font-size:.82em;}
+html.wp-dk .wp-ply.dk .wp-line td.r{font-size:1.15em;}
+html.wp-dk .wp-ply.dk .wp-line .tm{max-width:9em;}
+html.wp-dk .wp-ply.dk .wp-line td.tm span{font-size:1em;}
+html.wp-dk .wp-ply.dk .wp-outs{font-size:.82em;}
+html.wp-dk .wp-ply.dk .wp-outs i{width:.8em;height:.8em;}
+/* the station: the matchup's cards, one over the other or side by side, sized by deskFit (--mcw) */
+html.wp-dk .wp-ply.dk .wp-mu{flex:1 1 auto;min-height:0;overflow:hidden;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(0,1fr);align-content:stretch;}
+html.wp-dk .wp-ply.dk .wp-mu.row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);}
+html.wp-dk .wp-ply.dk-k .wp-mu{flex:none;}
+html.wp-dk .wp-ply.dk .mu{gap:14px;padding:10px;align-items:center;}
+html.wp-dk .wp-ply.dk-k .wp-mu.row .mu{flex-direction:column;align-items:stretch;}
+html.wp-dk .wp-ply.dk-k .wp-mu.row .mu .mu-card{align-self:center;}
+html.wp-dk .wp-ply.dk .mu .mu-card{--w:var(--mcw,78px);}
+html.wp-dk .wp-ply.dk .mu-lbl{font-size:.8rem;}
+html.wp-dk .wp-ply.dk .mu-nm{font-size:1.15rem;}
+html.wp-dk .wp-ply.dk .mu-line{font-size:.85rem;white-space:normal;}
+html.wp-dk .wp-ply.dk .wp-num{font-size:.8rem;}html.wp-dk .wp-ply.dk .wp-num b{font-size:1.1rem;}
+html.wp-dk .wp-ply.dk .mu-mark{font-size:.76rem;}
+html.wp-dk .wp-ply.dk .mu{overflow:hidden;min-height:0;}
+html.wp-dk .wp-ply.dk .mu.tight .mu-line,html.wp-dk .wp-ply.dk .mu.tight .mu-mark:not(.pw){display:none;}
+html.wp-dk .wp-ply.dk .mu.tight .mu-nm{font-size:1rem;}
+html.wp-dk .wp-ply.dk .mu-info{gap:4px;}
+.dk-lab{flex:1 0 100%;margin-top:2px;display:none;}
+html.wp-dk .wp-ply.dk .wp-mu.lab .mu{flex-wrap:wrap;align-content:center;}
+html.wp-dk .wp-ply.dk .wp-mu.lab .dk-lab{display:flex;}
+.dk-lab .wp-rg{margin-top:0;}
+.dk-lab .rg-r{height:38px;padding-left:0;padding-right:0;}
+.dk-lab .rg-r span{font-size:.7rem;letter-spacing:-.02em;}
+html.wp-dk .wp-ply.dk.rolling .dk-lab{display:none;}
+html.wp-dk .wp-ply.dk .mu.nolab .dk-lab,html.wp-dk .wp-ply.dk .wp-mu.row .dk-lab{display:none;}
+html.wp-dk .wp-ply.dk .wp-duel{flex:none;min-height:min(300px,40vh);}
+html.wp-dk .wp-ply.dk-k .wp-duel{min-height:0;}
+html.wp-dk .wp-ply.dk .wp-ann{flex:none;min-height:3.4em;}
+html.wp-dk .wp-ply.dk .wp-ann p{font-size:1rem;}
+html.wp-dk .wp-ply.dk .wp-pb i{width:54px;height:54px;}
+html.wp-dk .wp-ply.dk .wp-pb b{font-size:1rem;}
+/* the room's panels: the lineups with today's lines and the pitchers, then the play-by-play */
+.dk-lus{display:grid;grid-template-columns:1fr;gap:12px;flex:none;}
+html.wp-dk .wp-ply.dk-t .wp-room,html.wp-dk .wp-ply.dk-k .wp-room{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,.9fr);grid-template-rows:auto minmax(0,1fr);align-items:start;}
+html.wp-dk .wp-ply.dk-t .wp-sb,html.wp-dk .wp-ply.dk-k .wp-sb{grid-column:1 / -1;}
+html.wp-dk .wp-ply.dk-t .dk-lus,html.wp-dk .wp-ply.dk-k .dk-lus{grid-column:1 / span 2;grid-template-columns:1fr 1fr;}
+html.wp-dk .wp-ply.dk-t .dk-pbp,html.wp-dk .wp-ply.dk-k .dk-pbp{height:100%;}
+html.wp-dk .wp-ply.dk .wp-room.nar{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr);}
+html.wp-dk .wp-ply.dk .wp-room.nar .dk-pbp{grid-column:1 / -1;}
+.dk-pn{min-width:0;padding:.6em .75em .7em;border-radius:14px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);overflow:hidden;}
+.dk-pn h3{display:flex;align-items:center;gap:.5em;margin:0 0 .4em;font-size:1em;font-weight:800;}
+.dk-pn h3 i{width:.6em;height:.6em;border-radius:50%;background:var(--tc);flex:none;}
+.dk-pn h3 em{margin-left:auto;font-style:normal;font-size:.8em;font-weight:700;color:var(--text-3);}
+.dk-lu.up h3 em{color:var(--lit);}
+.dk-tb{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:.9em;}
+.dk-tb td,.dk-tb th{padding:.22em .3em;text-align:right;white-space:nowrap;}
+.dk-tb th{font-size:.8em;color:var(--text-3);font-weight:700;}
+.dk-tb .n{text-align:left;color:var(--text-3);width:1.6em;}
+.dk-tb .nm{text-align:left;width:100%;white-space:normal;font-weight:700;}
+.dk-tb .ps{color:var(--text-3);font-weight:800;font-size:.85em;}
+.dk-tb .td{color:var(--text-2);font-size:.88em;}
+.dk-tb tr+tr td{border-top:1px solid var(--gl-line);}
+.dk-tb tr.now td{background:color-mix(in srgb,var(--lit) 14%,transparent);color:var(--text);}
+.dk-tb tr.now td.nm{color:var(--lit);}
+.dk-pt{margin-top:.5em;}
+.dk-pbp{display:flex;flex-direction:column;min-height:0;flex:1 1 auto;}
+.dk-pbp ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;}
+.dk-pbp li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:.2em .6em;align-items:baseline;padding:.4em 0;border-top:1px solid var(--gl-line);font-size:.9em;line-height:1.3;}
+.dk-pbp li:first-child{border-top:0;}
+.dk-pbp .when{font-size:.78em;font-weight:800;color:color-mix(in srgb,var(--tc) 60%,#fff);white-space:nowrap;}
+.dk-pbp .what{color:var(--text-2);}
+.dk-pbp li.run .what{color:var(--text);}
+.dk-pbp li b{color:var(--lit);font-variant-numeric:tabular-nums;}
+.dk-pbp li.none{grid-template-columns:1fr;}
+/* the other screens at a desk: the cards step up with the window */
+html.wp-dk .wp-ttl h2{font-size:calc(1.35rem * var(--dkc,1));}
+html.wp-dk .wp-sub{font-size:calc(.85rem * var(--dkc,1));}
+
+/* the lineup at a desk: every batter's card in the order, the diamond's tags a step up */
+html.wp-dk[data-o=land] .wp-lin.dk{grid-template-columns:minmax(0,1.15fr) minmax(360px,1fr);}
+html.wp-dk .wp-lin.dk .wp-lcol{overflow:hidden;}
+html.wp-dk .wp-lin.dk .wp-order{gap:6px 10px;}
+html.wp-dk .wp-lin.dk .wp-orow{grid-template-columns:1.3em auto minmax(0,1fr) auto auto;gap:10px;padding:6px 12px 6px 8px;height:100%;}
+html.wp-dk .wp-lin.dk .wp-order li{min-height:0;}
+html.wp-dk .wp-lin.dk .wp-orow .wc{--w:var(--ocw,60px);}
+html.wp-dk .wp-lin.dk .wp-order.thin .wp-orow .wc{display:none;}
+html.wp-dk .wp-lin.dk .oi{display:flex;flex-direction:column;gap:2px;min-width:0;}
+html.wp-dk .wp-lin.dk .oi b{white-space:normal;font-size:calc(.95rem * var(--dkc,1));}
+html.wp-dk .wp-lin.dk .oi .oc{font-size:.78rem;color:var(--text-3);}
+html.wp-dk .wp-lin.dk .wp-orow .p{font-size:calc(.75rem * var(--dkc,1));}
+html.wp-dk .wp-lin.dk .wp-orow .r{font-size:calc(.8rem * var(--dkc,1));}
+html.wp-dk .wp-lin.dk .wp-spot b{font-size:clamp(9px,2.4cqw,24px);}
+html.wp-dk .wp-lin.dk .wp-spot .wp-sp{font-size:clamp(9px,1.8cqw,17px);}
+html.wp-dk .wp-lin.dk .wp-st{font-size:clamp(9px,2.1cqw,20px);}
+html.wp-dk[data-o=port] .wp-lin.dk{grid-template-rows:auto minmax(0,1fr) minmax(0,1fr) auto;}
+/* the largest windows: what you read and press in the station steps up gently with the window (--dkc, 1 to 1.35) */
+html.wp-dk .wp-ply.dk .wp-duel,html.wp-dk .wp-ply.dk .wp-hand,html.wp-dk .wp-ply.dk .mu-info,html.wp-dk .wp-ply.dk .wp-ann{zoom:var(--dkc,1);}

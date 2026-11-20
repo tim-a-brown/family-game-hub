@@ -1449,6 +1449,44 @@ Underlying principles for everything:
   coin-flip draft (`startDraft`, `cpuPick`: the computer drafts by need), lineups on a drawn diamond (`arrange`,
   `bestFit`, `smartOrder`; a rim green at his own position, amber near it, red out of it), then the game: every at-bat
   is a secret pitch against a guess, revealed together.
+- **A box of cards** (Tim, 2026-11-20: "an option for wax pack to randomly generate a lot of baseball cards in case a user
+  doesn't have physical baseball cards at the moment"): on the stack, a wax-pack tile beside the empty slot and the
+  button under the grid ("No cards at hand? Open a box", or "Fill the stack from a box of cards") deal a box
+  (`openBox`, `dealBox`, `boxPlan`, `boxDraw` in ui.js): real players on real card-years from 1950 on (a card shows the
+  season before its year, a regular's season of 300 at-bats or 100 innings, or a closer's 15 saves), about 3 in 10 drawn
+  from star seasons (`starSeason`) so the milestone powers turn up, an All-Star season sometimes an All-Star card. A box
+  holds what two teams need, counted against what the stack already has: 7 pitchers (8 for 15 cards each), two players
+  whose main position that season is each of C, SS, 2B, CF, 3B, 1B, LF and RF, 1 to 3 odd cards (a Team card is one of
+  the box's players' teams), then hitters to the draft's count plus 4. The draw is seeded from `Math.random`, so a demo
+  page deals the same box. The moment (`packShow`): a wax pack shakes, its top tears off, the first five players fan out
+  and turn face up (a power lit gold, and named), then the cards drop into the grid one after another (`dealIn`); a tap
+  skips it, `waxpack_fast` skips it altogether. **Dealt cards stay out of your league** (`c.dealt`, `S.dealt`): they play
+  in this game only, so the league keeps the cards you logged; a dealt card's sheet says so and has "Keep this card in
+  your league" (`keepCard`, which marks it `box`). The history's `detail.dealt` counts the dealt cards in the two teams,
+  shown in the view as Cards from a box. Test hooks `__wax.box()`, `__wax.boxing()`, `quick({box: 1})` and
+  `quick({empty: 1})`.
+- **At a desk** (a window larger than a phone's or a tablet's: `deskWin` with Horse Race's `deviceShape`, 540 tall at
+  least and 900 wide, or 700 wide and 1100 tall; `html.wp-dk`, and every desk rule in waxpack.css hangs off it, so a
+  phone and a tablet are drawn exactly as before). The play screen (`deskPlan`, `deskArrange`, `deskLeave`,
+  `deskFit`, `muFit`, `paintRoom`, `fitRoom`): the ballpark sized from the window, the room with what is otherwise a
+  tap away, and the station where you act, in one of three compositions chosen by the ballpark's scale: `w` the room
+  at the left (300 to 560 wide), the ballpark, the station at the right (360 to 640), the announcer standing in the
+  room under the line score; `t` the ballpark over the room with the station the window's height at the right (nearly
+  square windows like 2100 by 1860 and 1000 by 1000); `k` a narrow tall window, the ballpark, the station and the room
+  one under another. The room: the line score, both lineups with each batter's line today (`todayFull`), the batter
+  up lit, each team's three pitchers with their innings, IP, H, R and K, the one on the mound lit, and the
+  play-by-play newest first (`g.pbp`, every at-bat, steal and walk on purpose, the last 80; `pbp`); it gives up whole
+  plays, then the pitchers' tables, then the fielding team's lineup. The station: the matchup's two cards, one over
+  the other or side by side, whichever is larger (`--mcw`, to 210px), each with his own label beside it (the
+  rows his die is read on, `dk-lab`, put away while the dice roll and where a matchup is too tight, `nolab`, then
+  `tight`), the duel with a reserved height so the cards never jump, the hand. The same nodes move between layouts,
+  so a resize mid-roll keeps the roll (`deskCheck` from the resize handler, inside `Kit.glide`). The lineup at a desk
+  carries every batter's card in the order with his whole name, card and power (`deskLineup`, `--ocw`, one or two
+  columns, whichever gives larger cards), the diamond's tags a step up; the stack's and the draft's cards go to 210px.
+  The setup and the results card are the kit's desk. The scratchpad's `big/waxdesk/` has the scripts: `h.js` with
+  `sc.js` (scenes setup, stack0, stack, box, draft, lineup, play, roll, rollp, mid, over at any window, a picture and
+  a scan; `ROOT=base` serves the starting files), `cmp.sh` (the device proof, `proof.txt`), `rz.js` (one game dragged
+  through window sizes), `dbg.js`.
 - `engine.js` (`WaxEngine`, pure, runs in Node) reads `games/waxpack/mlb.json` (from `scripts/build-waxpack-mlb.py`,
   Lahman data through 2025). A card plays the season before its year, measured against its own league that year, and
   gives a player a few whole values that print on a sleeve label (`table`, `valuesH`, `valuesP`): a modifier from -2 to
@@ -1537,7 +1575,7 @@ Underlying principles for everything:
   History: `Kit.record('sandlot')` with `detail.wp`, drawn by `hist/specialty.js`. Test hooks `window.__wax` (`quick`,
   `auto`, `rig`, `first`, `finishDraft`, `choose`). Scripts: the scratchpad's `big/waxpack/` (`h.js`, `sc.js`, `pp.js`,
   `scanui.js`), `big/waxpack2/`, `big/waxrun/` and
-  `waxpack/ocrrun.js`. Not done: online, a desk layout, and the demo runs 118 s.
+  `waxpack/ocrrun.js`. Not done: online, and the draft at 320 by 568 with a full box scrolls (34 cards can't be read smaller).
 
 ## Demos (2026-11-16; Tim: "add demo button and develop interactive animated demos to all games possible to walk first time players through animated versions of the game accessible with a small icon on the game menu")
 
