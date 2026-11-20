@@ -1,0 +1,83 @@
+/* WaxPhoto (photo.js): a cleaned card photo shown as the card itself, the camera with its card-shaped frame, and the
+   hologram marker. The card's corners come from the photo (--wph-r); the shimmer moves by transform and opacity only. */
+
+/* ── The card ───────────────────────────────────────────────────────────── */
+.wph { position: relative; width: 100%; border-radius: var(--wph-r, 1.2% / .86%); overflow: hidden; isolation: isolate;
+  background: #d9d4c8; box-shadow: 0 1px 1.5px rgba(0,0,0,.35), 0 6px 18px rgba(0,0,0,.28); -webkit-user-select: none; user-select: none; }
+.wph-img { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+/* the cut edge of card stock: a hairline of paper catching the light, a touch darker at the foot */
+.wph-edge { position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  box-shadow: inset 0 0 0 .5px rgba(255,255,255,.38), inset 0 -1px 0 rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.22); }
+.wph-holo { position: absolute; inset: 0; overflow: hidden; pointer-events: none; mix-blend-mode: color-dodge;
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+.wph-sheen { position: absolute; left: -60%; top: -40%; width: 220%; height: 180%; opacity: .6; will-change: transform, opacity;
+  background: repeating-linear-gradient(115deg,
+    rgba(255,60,60,.0) 0%, rgba(255,80,80,.55) 4%, rgba(255,210,70,.55) 8%, rgba(110,255,120,.55) 12%,
+    rgba(70,200,255,.55) 16%, rgba(150,90,255,.55) 20%, rgba(255,80,200,.0) 24%); }
+.wph-glint { position: absolute; left: -15%; top: -15%; width: 130%; height: 130%; will-change: transform; opacity: .7;
+  background: radial-gradient(closest-side at 50% 50%, rgba(255,255,255,.55), rgba(255,255,255,0) 70%); }
+@media (prefers-reduced-motion: reduce) { .wph-sheen, .wph-glint { will-change: auto; } }
+
+/* ── Marking the hologram ───────────────────────────────────────────────── */
+.wph-ed { position: fixed; inset: 0; z-index: 9000; display: flex; flex-direction: column; align-items: center; gap: 14px;
+  padding: max(env(safe-area-inset-top), 18px) 17px max(calc(env(safe-area-inset-bottom) + 10px), 18px);
+  background: var(--sheet-solid, #0d1424); color: var(--text, #f3f5fb); font-family: var(--font, system-ui, sans-serif); }
+.wph-ed-say { margin: 0; max-width: 34em; text-align: center; font-size: 15px; line-height: 1.35; color: var(--text-2, rgba(243,245,251,.82)); }
+.wph-ed-stage { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+.wph-ed-card { position: relative; max-width: 100%; max-height: 100%; border-radius: 10px; overflow: hidden; touch-action: none; }
+.wph-ed-card img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.wph-ed-grid { position: absolute; inset: 0; display: grid; touch-action: none; cursor: crosshair; }
+.wph-ed-grid i { box-shadow: inset 0 0 0 .5px rgba(255,255,255,.18); transition: background-color .12s; }
+.wph-ed-grid i.on { background: linear-gradient(135deg, rgba(255,90,140,.45), rgba(255,220,90,.45), rgba(90,220,255,.45)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.6); }
+.wph-ed-bar { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+/* ── Buttons: the kit's .btn where it is loaded; this is the look without it (zero weight, so the kit wins) ── */
+:where(.wph-btn) { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 18px; border: 0;
+  border-radius: 16px; font: 600 15px/1.15 var(--font, system-ui, sans-serif); color: var(--text, #f3f5fb); background: rgba(255,255,255,.1);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.16); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+:where(.wph-btn.gold) { color: var(--gold-ink, #2a1c00); background: linear-gradient(180deg, var(--gold-hi, #ffe486), var(--gold-lo, #f6b93b)); box-shadow: none; }
+:where(.wph-btn.ghost) { background: none; box-shadow: none; color: var(--text-2, rgba(243,245,251,.75)); }
+.wph-btn .ico { width: 20px; height: 20px; flex: none; }
+
+/* ── The camera ─────────────────────────────────────────────────────────── */
+.wph-cap { position: fixed; inset: 0; z-index: 9000; background: #000; overflow: hidden; color: #fff; font-family: var(--font, system-ui, sans-serif); }
+.wph-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.wph-frame { position: absolute; border-radius: 3.5% / 2.5%; box-shadow: 0 0 0 200vmax rgba(0,0,0,.45); transition: width .3s, height .3s, left .3s, top .3s; }
+.wph-frame.side { border-radius: 2.5% / 3.5%; }
+.wph-fs { position: absolute; background: rgba(255,255,255,.85); border-radius: 3px; transition: background-color .15s, box-shadow .15s; }
+.wph-fs.t, .wph-fs.b { left: 6%; right: 6%; height: 4px; } .wph-fs.t { top: -2px; } .wph-fs.b { bottom: -2px; }
+.wph-fs.l, .wph-fs.r { top: 6%; bottom: 6%; width: 4px; } .wph-fs.l { left: -2px; } .wph-fs.r { right: -2px; }
+.wph-fs.ok { background: #46e07a; box-shadow: 0 0 10px rgba(70,224,122,.8); }
+.wph-cap.all .wph-frame { box-shadow: 0 0 0 200vmax rgba(0,0,0,.45), 0 0 0 3px #46e07a; }
+.wph-say, .wph-warn { position: absolute; left: 17px; right: 17px; margin: 0 auto; max-width: 30em; text-align: center; }
+.wph-say { top: max(calc(env(safe-area-inset-top) + 14px), 18px); padding: 10px 52px; font-size: 16px; line-height: 1.3; font-weight: 600; text-shadow: 0 1px 3px rgba(0,0,0,.7); }
+.wph-warn { top: max(calc(env(safe-area-inset-top) + 64px), 66px); font-size: 15px; line-height: 1.3; color: #ffe08a; text-shadow: 0 1px 3px rgba(0,0,0,.8); min-height: 1.3em; }
+.wph-warn:empty { visibility: hidden; }
+.wph-x { position: absolute; top: max(calc(env(safe-area-inset-top) + 8px), 18px); right: 17px; width: 44px; min-height: 44px; padding: 0; border-radius: 22px; }
+/* the foot: Turn the frame over the row of your photos, the shutter and Skip */
+.wph-cbar { position: absolute; left: 17px; right: 17px; bottom: max(calc(env(safe-area-inset-bottom) + 10px), 18px);
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-areas: "turn turn turn" "lib shut skip"; align-items: center; gap: 12px 10px; }
+.wph-turn { grid-area: turn; justify-self: center; }
+.wph-lib { grid-area: lib; justify-self: start; } .wph-skip { grid-area: skip; justify-self: end; }
+.wph-lib, .wph-skip { max-width: 100%; text-align: center; white-space: normal; }
+.wph-shut { grid-area: shut; display: flex; align-items: center; justify-content: center; width: 76px; height: 76px; padding: 0; border: 0; border-radius: 50%;
+  background: none; box-shadow: inset 0 0 0 4px #fff; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.wph-shut-in { width: 60px; height: 60px; border-radius: 50%; background: #fff; transition: transform .12s, background-color .15s; }
+.wph-shut:active .wph-shut-in { transform: scale(.9); }
+.wph-cap.all .wph-shut-in { background: #46e07a; }
+.wph-thumbs { position: absolute; left: 17px; bottom: max(calc(env(safe-area-inset-bottom) + 76px), 84px); display: flex; gap: 6px; }
+.wph-thumbs img { width: 44px; height: 60px; object-fit: cover; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,.6); }
+.wph-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+.wph-flash.go { animation: wph-flash .35s ease-out; }
+@keyframes wph-flash { from { opacity: .85; } to { opacity: 0; } }
+.wph-cap.nocam { background: var(--sheet-solid, #0d1424); }
+.wph-cap.nocam .wph-video, .wph-cap.nocam .wph-frame, .wph-cap.nocam .wph-shut, .wph-cap.nocam .wph-lib, .wph-cap.nocam .wph-turn { display: none; }
+.wph-fb { position: absolute; left: 17px; right: 17px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 12px; max-width: 360px; margin: 0 auto; }
+@media (max-height: 520px) and (orientation: landscape) {
+  .wph-say { padding: 8px 52px 8px 17px; font-size: 15px; text-align: left; margin: 0; right: 230px; } .wph-warn { top: 52px; right: 230px; margin: 0; text-align: left; }
+  .wph-x { right: max(calc(env(safe-area-inset-right) + 10px), 17px); }
+  .wph-cbar { left: auto; width: 190px; top: 72px; right: max(calc(env(safe-area-inset-right) + 10px), 17px);
+    grid-template-columns: 1fr; grid-template-areas: "turn" "lib" "shut" "skip"; justify-items: center; align-content: center; }
+  .wph-lib, .wph-skip { justify-self: center; }
+  .wph-thumbs { bottom: 18px; }
+}
