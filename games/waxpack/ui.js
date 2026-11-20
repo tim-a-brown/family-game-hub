@@ -459,16 +459,32 @@
       im.onerror = function () { res(null); }; im.src = url;
     });
   }
+  // the camera with the card-shaped frame, then the straightened, cleaned card (photo.js); the plain picker where it can't run
+  function captureCard(cb) {
+    if (!window.WaxPhoto) return pickImage(function (f) { cb({ file: f }); });
+    WaxPhoto.capture({ sides: ['front', 'back'], optional: ['back'], clean: true }).then(function (r) {
+      if (!r || !r.front) return;
+      var key = 'ph' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      WaxPhoto.record(r.front).then(function (rec) {
+        C.photoPut(key, rec.url); C.photoPut(key + ':m', JSON.stringify(rec));
+        cb({ key: key, url: rec.url, file: r.front.blob || r.front.raw, back: r.back && (r.back.blob || r.back.raw) });
+      });
+    }).catch(function () { pickImage(function (f) { cb({ file: f }); }); });
+  }
   function takePhoto(done) {
-    pickImage(function (f) { shrink(f, 640).then(function (u) { if (!u) return; var key = 'ph' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); C.photoPut(key, u).then(function () { done(key); }); }); });
+    captureCard(function (c) {
+      if (c.key) return done(c.key);
+      shrink(c.file, 640).then(function (u) { if (!u) return; var key = 'ph' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); C.photoPut(key, u).then(function () { done(key); }); });
+    });
   }
   function scanFlow() {
-    pickImage(function (file) {
+    captureCard(function (cap) { var file = cap.file;
       var body = el('div', { class: 'wp-scan' }), pic = el('div', { class: 'wp-scanpic' }), msg = el('p', { class: 'wp-scanmsg', text: 'Reading the card…' }), bar = el('div', { class: 'wp-scanbar' }, [el('i')]);
       body.appendChild(pic); body.appendChild(msg); body.appendChild(bar);
       var sh = Kit.sheet({ title: 'Reading the card', node: body, actions: [{ label: 'Type the name instead', onClick: function () { setTimeout(function () { entrySheet(); }, 250); } }] });
-      var key = null;
-      shrink(file, 640).then(function (u) { if (!u) return; pic.style.backgroundImage = 'url("' + u + '")'; key = 'ph' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); C.photoPut(key, u); });
+      var key = cap.key || null;
+      if (key) pic.style.backgroundImage = 'url("' + cap.url + '")';
+      else shrink(file, 640).then(function (u) { if (!u) return; pic.style.backgroundImage = 'url("' + u + '")'; key = 'ph' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); C.photoPut(key, u); });
       var t0 = Date.now();
       db().then(function () {
         return WaxScan.read(file, { E: E, onStep: function (st, p) {

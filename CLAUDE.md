@@ -1468,6 +1468,17 @@ Underlying principles for everything:
   numbers or logos, faces small or shaded (`art/index.js`); `artFor` picks by role and hand, then a cap near the team's
   color, then the player's id, so a player always has the same picture. Briefs `scripts/waxpack-art/briefs.py`, packed
   by `pack.py`; fonts Oswald, Barlow Condensed and Yellowtail (`fonts/waxpack-*`, `fonts/waxpack-LICENSE.txt`).
+- **Card photos** (`WaxPhoto` in `games/waxpack/photo.js`, `photo.css`; Tim, 2026-11-20: photos of real cards "authentic
+  and clean", never repainted; square-cut and rounded corners told apart; cardboard backs in any ink, red and green
+  too; holograms kept). `WaxPhoto.capture` is the camera behind a card-shaped frame (each side lit green as its edge is
+  found, the shot taken once the card is still, a glare warning, front then an optional back, the file picker where the
+  camera isn't allowed); `WaxPhoto.clean` finds the four edges and straightens the card to 750 by 1050, calls a corner
+  `round` only when three agree, balances a front from its own white border, gives a cardboard back no white balance
+  (brightness evened, each ink lifted with its hue kept), and leaves hologram cells' pixels as they were; `record`,
+  `show` (a rainbow sheen over the hologram that follows the finger or the tilt) and `editHolo`. `captureCard` in ui.js
+  stores the cleaned front under its key in `waxpack_photos` and its corners and hologram under `key + ':m'`, and the
+  scan reads the straightened front. Weak spots: a dark card edge on a dark table, a gray card's soft shadow on light
+  paper, cards still in a toploader. Scripts: the scratchpad's `big/waxphoto/` (`run.js`, `ui.js`, `api.js`).
 - The announcer is `games/talk/waxpack.js`, fed from the database's honors. History: `Kit.record('sandlot')` with
   `detail.wp`, drawn by `hist/specialty.js`. Test hooks `window.__wax` (`quick`, `auto`, `rig`, `first`,
   `finishDraft`, `choose`). Scripts: the scratchpad's `big/waxpack/` (`h.js`, `sc.js`, `pp.js`, `scanui.js`) and

@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v943-2026-11-20-waxpack-cards';
+const CACHE_VERSION = 'v944-2026-11-20-waxpack-photos';
 // Preview channels (familygames-da3e5--name-xyz.web.app) and local testing: pages and code always from the network
 const PREVIEW = self.location.hostname.includes('--') || /^(localhost|127\.0\.0\.1)$/.test(self.location.hostname);
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
@@ -394,6 +394,8 @@ const PRECACHE_URLS = [
   '/games/waxpack/ui.js',
   '/games/waxpack/cardface.js',
   '/games/waxpack/cardface.css',
+  '/games/waxpack/photo.js',
+  '/games/waxpack/photo.css',
   '/games/waxpack/art/index.js',
   '/games/axisallies-score.html',
   '/games/marblesolitaire.html',
