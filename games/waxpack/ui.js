@@ -103,8 +103,11 @@
   function fitCardNames(root) {
     (root || app).querySelectorAll('.wc-ln,.wc-fn,.wc-tm').forEach(function (n) { n.style.transform = ''; n.style.width = ''; n.style.maxWidth = ''; var w = n.parentNode.clientWidth - (n.nextElementSibling && n.nextElementSibling.classList.contains('wc-pos') ? 0 : 0), sw = n.scrollWidth, cw = n.clientWidth; if (sw > cw + 1 && cw > 0) { n.style.transform = 'scaleX(' + (cw / sw).toFixed(3) + ')'; n.style.transformOrigin = 'left center'; n.style.width = sw + 'px'; n.style.maxWidth = 'none'; } });
   }
-  function cardFace(c, o) { o = o || {}; var d = C.el({ kind: c.kind, name: c.kid ? 'Sandlot kid' : c.name, pos: c.role === 'p' ? 'P' : (o.at || (c.pos && c.pos[0]) || ''), year: c.year, team: c.team, role: c.role, rk: c.rk, as: c.as, rb: c.rb, kid: c.kid }, { photo: C.photoNow(c.ph) });
-    if (c.ph && !C.photoNow(c.ph)) C.photoGet(c.ph).then(function (u) { if (u && d.isConnected) { var n = C.el({}, { photo: u }); d.className = n.className; d.innerHTML = n.innerHTML; } });
+  // the drawn card (cardface.js): one of six period designs by year, the player's own photo when he has one
+  function cardFace(c, o) { o = o || {};
+    var cc = Object.assign({}, c, { name: c.kid ? 'Sandlot kid' : c.name, pos: c.role === 'p' ? ['P'] : (o.at ? [o.at] : c.pos) });
+    var d = WaxCard.face(cc, { photo: C.photoNow(c.ph) || undefined, pos: c.role === 'p' ? 'P' : (o.at || (c.pos && c.pos[0]) || '') }); d.classList.add('wc');
+    if (c.ph && !C.photoNow(c.ph)) C.photoGet(c.ph).then(function (u) { if (u && d.isConnected) { var m = WaxCard.face(cc, { photo: u, pos: c.role === 'p' ? 'P' : (o.at || '') }); m.className = d.className; m.dataset.id = c.id; d.replaceWith(m); } });
     d.dataset.id = c.id; return d; }
 
   // ── Saving ───────────────────────────────────────────────────────────────
@@ -337,7 +340,7 @@
     var res = el('div', { class: 'wp-res' });
     var odd = el('div', { class: 'wp-odd' });
     ['team', 'checklist', 'leaders', 'highlight'].forEach(function (k) {
-      odd.appendChild(el('button', { type: 'button', class: 'wp-oddb', onclick: function () { oddCard(k); } }, [C.el({ kind: k, year: 0 }), el('span', { text: C.SPECIAL[k].name })]));
+      odd.appendChild(el('button', { type: 'button', class: 'wp-oddb', onclick: function () { oddCard(k); } }, [(function () { var f = WaxCard.face({ kind: k, year: 0 }); f.classList.add('wc'); return f; })(), el('span', { text: C.SPECIAL[k].name })]));
     });
     var scanB = el('button', { type: 'button', class: 'btn btn-soft wp-scanb', html: Kit.icon('camera') + '<span>Scan the card instead</span>', onclick: function () { sh.close(); scanFlow(); } });
     body.appendChild(q); body.appendChild(res);
@@ -434,7 +437,7 @@
   function oddSheet(k) {
     var sp = C.SPECIAL[k], tc = '', y = lastYear || 1988;
     var body = el('div', { class: 'wp-unkb' });
-    body.appendChild(el('div', { class: 'wp-yrtop' }, [el('div', { class: 'wp-yrprev' }, [C.el({ kind: k, year: y })]), el('div', { class: 'wp-yrfacts' }, [el('p', { class: 'wp-play', html: '<b>' + esc(sp.play) + '</b>' }), el('p', { class: 'wp-sln', text: sp.say })])]));
+    body.appendChild(el('div', { class: 'wp-yrtop' }, [el('div', { class: 'wp-yrprev' }, [(function () { var f = WaxCard.face({ kind: k, year: y }); f.classList.add('wc'); return f; })()]), el('div', { class: 'wp-yrfacts' }, [el('p', { class: 'wp-play', html: '<b>' + esc(sp.play) + '</b>' }), el('p', { class: 'wp-sln', text: sp.say })])]));
     Kit.sheet({ title: sp.name, node: body, actions: [{ label: 'Add to the stack', primary: true, onClick: function () { addToStack(makeCard({ kind: k, year: y, tc: tc })); } }, { label: 'Cancel' }] });
   }
 

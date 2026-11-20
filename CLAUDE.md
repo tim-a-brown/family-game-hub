@@ -1456,6 +1456,18 @@ Underlying principles for everything:
   the year from the copyright line or the stat table; the person always picks from the top three or types the name.
   A photo of one card filling the frame reads well; small scans and dark backs don't. The OCR files and `mlb.json`
   are not precached.
+- **The drawn cards** (Tim, 2026-11-20: "draw the art of the baseball cards to look like realistic baseball cards from
+  the late 80s and early 90s ... and generate images for the players on the cards"): `games/waxpack/cardface.js`
+  (`WaxCard.face`, `WaxCard.back`, `artFor`, `styleFor`) and `cardface.css`, loaded after waxpack.css (the game's own
+  `.wc` sizes the card through `--w`; `.wc.wxc` in waxpack.css). Six original designs chosen by the card's year
+  (vintage before 1980, then corner, stripe, frame, script and gloss, `BY_YEAR`), team colors as plain colors by team
+  code (`TEAM`), no maker's layout, logo or wordmark and no league or team logo. Sized in container units of the card;
+  under 130px a card keeps its picture, last name and position (RC, AS, RB tabs), under 76px the tabs go; the back
+  needs 280px for its stat table. The person's own photo goes into the frame (`photo`). The pictures are
+  `games/waxpack/art/<k>.webp` and `-s.webp`: 47 photographs of anonymous ballplayers in plain uniforms, no letters,
+  numbers or logos, faces small or shaded (`art/index.js`); `artFor` picks by role and hand, then a cap near the team's
+  color, then the player's id, so a player always has the same picture. Briefs `scripts/waxpack-art/briefs.py`, packed
+  by `pack.py`; fonts Oswald, Barlow Condensed and Yellowtail (`fonts/waxpack-*`, `fonts/waxpack-LICENSE.txt`).
 - The announcer is `games/talk/waxpack.js`, fed from the database's honors. History: `Kit.record('sandlot')` with
   `detail.wp`, drawn by `hist/specialty.js`. Test hooks `window.__wax` (`quick`, `auto`, `rig`, `first`,
   `finishDraft`, `choose`). Scripts: the scratchpad's `big/waxpack/` (`h.js`, `sc.js`, `pp.js`, `scanui.js`) and
