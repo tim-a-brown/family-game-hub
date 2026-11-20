@@ -1059,7 +1059,7 @@ Underlying principles for everything:
   sets that section wiggling, one section at a time, with Done in its heading where the pencil was; the tile lifts under
   the finger and a drag saves the section's order exactly as the sheet does (`saveCatOrder`: every game in the section
   in `gn_game_order`, games a filter leaves out keeping their spots; Favorites keeps `saveFavOrder` and `fav_games`).
-  While it wiggles each tile's star steps aside for a round mark at its top left (`.wig-x`, a painted dark glass disc):
+  While it wiggles each tile keeps its star at the top left and has a round mark at its top right (`.wig-x`, a painted dark glass disc; Tim, 2026-11-20: "keep the favorite icon in the top left but move the hide icon to the top right"; a list row, whose star stands at its right, has the mark at its top left):
   in a category it hides the game (`gn_games_off`, as the sheet's switch), and the section's hidden games stand in
   their places, dimmed under a veil with their marks lit gold, so a tap brings one back and they can be dragged like any
   other; in Favorites it takes the game out of Favorites, the tile shrinking away, with Undo on a glass pill at the foot
@@ -1067,8 +1067,9 @@ Underlying principles for everything:
   into place (`stopWiggle`, `glideRender`, which keeps the section in view). List view's rows work the same way. Hidden
   games are drawn at rest too, as `.g.hid` with `display: none`, so nothing is rebuilt under the finger when the wiggle
   starts; anything that counts or measures a section's tiles leaves `.hid` out (`deskLay`, `markWraps`). A redraw that
-  arrives mid-drag waits for the tile to be let go (`dragOn`, `pendRender`), and one while wiggling draws the section
-  wiggling again. The pencil took the list and
+  arrives while a section wiggles waits until arranging ends (`render`'s `force`, `pendRender`; only the wiggle's own
+  `glideRender` draws meanwhile): on Tim's iPhone the sync echoing a hide rebuilt the tiles under a held finger, and no
+  tile would lift again. The pencil took the list and
   tiles button's place (Tim, 2026-11-17: "relegate the list view option to the app menu and put the added pencil in its
   place. Period. Tile view is default for everyone"): Show games as a list is in the profile menu under Home screen
   (`toggleView`, `gn_home_view`), and every device went to tiles once (`gn_tiles_once`, which syncs, so a list chosen
