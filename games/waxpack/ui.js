@@ -70,6 +70,7 @@
   // ── Making a card from the database ──────────────────────────────────────
   function makeCard(o) {   // o: {pid | name, year, kind, role, rk, as, rb, err, ph, lid, scout role, team code}
     var c = { id: 'c' + (++S.cn), lid: o.lid || null, kind: o.kind || 'player', year: o.year || 0, ph: o.ph || '', rk: !!o.rk, as: !!o.as, rb: !!o.rb, err: !!o.err };
+    if (S.vals === 'shoe') c.vm = 'shoe';   // Shoebox rules: the values are read off the card back (E.SHOE)
     if (c.kind !== 'player') { c.name = C.SPECIAL[c.kind].name; c.tc = o.tc || ''; c.team = o.tc ? E.nick(o.tc) : ''; return c; }
     var pl = o.pid ? E.byId(o.pid) : null;
     if (pl) {
@@ -90,6 +91,7 @@
   }
   function kid(i, role) {
     var c = { id: 'c' + (++S.cn), kind: 'player', kid: true, name: 'Sandlot kid ' + i, role: role || 'h', pos: [], team: 'Sandlot', year: 0 };
+    if (S.vals === 'shoe') c.vm = 'shoe';
     c.r = Object.assign({}, role === 'p' ? E.ARM : E.KID); if (role === 'p') c.pos = ['P'];
     E.table(c);
     return c;
@@ -120,11 +122,14 @@
     if (S.phase !== 'over') Kit.resume.set(lab);
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
-  function load() { try { var s = JSON.parse(localStorage.getItem(SAVE)); return s && (s.v === 1 || s.v === 2) ? s : null; } catch (e) { return null; } }
+  function load() { try { var s = JSON.parse(localStorage.getItem(SAVE)); return s && (s.v === 1 || s.v === 2 || s.v === 3) ? s : null; } catch (e) { return null; } }
   // A game saved before the d20 at-bat (v 1) plays on under it: every card gets its table numbers, and each team's
   // starter and bullpen become its three stints, the pitcher on the mound keeping the stint of this inning
+  // A game saved before the milestone powers and the Shoebox rules (v 2) plays on with League labels; its cards work
+  // out their powers the first time they are read (E.table)
   function upgrade(s) {
-    if (s.v === 2) return s;
+    if (s.v === 3) return s;
+    if (s.v === 2) { s.vals = s.vals || 'league'; s.v = 3; return s; }
     var keep = S; S = s;
     Object.keys(s.C).forEach(function (id) { var c = s.C[id]; if (c.kind === 'player' && c.r) { delete c.r.bat; delete c.r.arm; E.table(c); } });
     if (s.T) s.T.forEach(function (T, t) {
@@ -138,7 +143,7 @@
       for (var k = 0; k < 3; k++) if (!arms[k]) { var kd = kid(90 + k, 'p'); s.C[kd.id] = kd; arms[k] = kd.id; }
       T.arms = arms; T.pen = pen; T.sp = arms[0];
     });
-    s.v = 2; S = keep;
+    s.v = 3; s.vals = 'league'; S = keep;
     return s;
   }
   var undoStack = [];
@@ -149,12 +154,28 @@
   }
 
   // ── Rules ────────────────────────────────────────────────────────────────
+  // The Shoebox chart and the milestone powers, made from the engine's own numbers (E.shoeLines, E.powerLines), so
+  // How to play and the printed page say exactly what the app does
+  function shoeRules() {
+    var L = E.shoeLines(), li = function (a) { return '<li><b>' + a[0] + '</b>: ' + a[1] + '</li>'; };
+    return '<ul><li>Use the last season on the back of the card, the season before the card’s year.</li>' + '<li>' + L.short + '</li></ul>' +
+      '<p><b>Bat, from the batting average</b></p><ul>' + L.bat.map(function (a) { return li([a[0], 'Bat ' + a[1]]); }).join('') + '</ul>' +
+      '<p><b>The batter’s card, the first one that fits</b></p><ul>' + L.hit.map(li).join('') + '</ul>' +
+      '<p><b>Arm, from the ERA</b></p><ul>' + L.arm.map(function (a) { return li([a[0], 'Arm ' + a[1]]); }).join('') + '</ul>' +
+      '<p><b>Pitch cards</b></p><ul>' + L.pc.map(li).join('') + '</ul>' +
+      '<p><b>The pitcher’s card, the first one that fits</b></p><ul>' + L.pit.map(li).join('') + '</ul>';
+  }
+  function powerRules() {
+    return '<ul><li>A player gets one power at most, from the last season on the back of his card. A batter who earns two keeps the first of Feared slugger, Base stealer and Run producer, and a pitcher the first of Closer, Strikeout artist, 20-game winner and Workhorse.</li>' +
+      E.powerLines().map(function (l) { return '<li><b>' + l[0] + '</b> (' + l[1] + '): ' + l[2] + '</li>'; }).join('') + '</ul>';
+  }
   var RULES =
     '<p class="goal">Grab a stack of old baseball cards, pick teams from it, and play a game of baseball with them. The cards stay on the table. The app is the umpire, the scoreboard and the announcer.</p>' +
     '<h3>The stack</h3><ul><li>Spread 25 to 50 cards face up: any brand, any year, stars and commons mixed.</li>' +
     '<li>Tell the app who is on each card. Type a few letters of the name, or take a photo of the card and the app reads it. Then pick the year printed on the card.</li>' +
     '<li>The app knows every big leaguer through 2025. It reads each player’s season on the card against his own league that year, so cards from any decade can play each other, and gives him a few whole numbers you could print on a label for his sleeve (the menu’s Print the table cards).</li>' +
     '<li>A player the app can’t find plays at 0, on the plain card.</li></ul>' +
+    '<h3>Player values</h3><ul><li>The setup’s Player values says where each player’s numbers come from. With <b>League labels</b>, the app measures his season against his own league that year, and the menu prints a label for his sleeve. With <b>Shoebox rules</b>, everyone reads the numbers straight off the back of the card with the chart in Shoebox rules below, so a game needs no labels and no app.</li></ul>' +
     '<h3>The draft</h3><ul><li>A coin flip decides who picks first. Then you take turns picking cards from the spread, the way kids pick teams at recess. Slide each card you pick to your side of the table.</li>' +
     '<li>Every team pitches exactly three pitchers, so a team that has three can’t take a fourth. The team that picks second bats last, as the home team.</li></ul>' +
     '<h3>Your lineup</h3><ul><li>Nine hitters: eight in the field and a designated hitter.</li>' +
@@ -170,6 +191,8 @@
     '<li>In pass and play, the pitcher picks with the screen covered, then hands the device to the batter.</li></ul>' +
     '<h3>Running the bases</h3><ul>' + E.runLines().map(function (l) { return '<li><b>' + l[0] + '</b>: ' + l[1] + '</li>'; }).join('') +
     '<li>Where a line gives numbers, roll a d6. The speedster card is the only thing that makes a runner faster.</li></ul>' +
+    '<h3>Milestone powers</h3>' + powerRules() +
+    '<h3>Shoebox rules</h3>' + shoeRules() +
     '<h3>The odd cards</h3><ul><li>Cards that aren’t players are plays you hold and use once:</li>' +
     '<li><b>Team card</b>: +2 on your hitters’ rolls for the rest of the half-inning. <b>Checklist</b>: see the pitch before you name one. <b>League Leaders</b>: the batter wins the at-bat, and a walk counts as a single. <b>Highlight card</b>: the batter’s guess doesn’t count, so a batter who wins rolls his Guessed wrong row.</li>' +
     '<li>A player’s <b>All-Star card</b> rolls his d20 twice and keeps the higher one. A <b>Record Breaker</b> moves his hit up one: a single to a double, a double to a triple, a triple to a home run. An <b>error card</b> makes the other team boot the next ball in play. A <b>second copy</b> of a player puts him on fire, +3 for an at-bat. A <b>rookie card</b> is +1 in his first at-bat.</li></ul>' +
@@ -199,11 +222,12 @@
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', when: function (m) { return m === 'cpu'; },
           choices: [['easy', 'Easy', 'Throws and looks for pitches at random, and drafts loosely.'], ['normal', 'Normal', 'Plays the matchups: it throws what its pitcher does best and looks for it too.'], ['hard', 'Hard', 'Plays the matchups and remembers what you’ve been doing this game.']] },
         { id: 'inn', label: 'Innings', value: 5, choices: [[3, '3\nQuick', 'About 12 minutes.'], [5, '5\nStandard', 'About 20 minutes.'], [9, '9\nFull game', 'About 35 minutes, the way the big leagues play.']] },
-        { id: 'size', label: 'Cards each', value: 12, choices: [[10, '10\nNo bench', 'Nine hitters and a pitcher. Every pick plays.'], [12, '12\nTwo extras', 'Room for a reliever or a pinch hitter, or an odd card.'], [15, '15\nFull bench', 'A bench, a bullpen and a hand of odd cards. Needs a bigger stack.']] }
+        { id: 'size', label: 'Cards each', value: 12, choices: [[10, '10\nNo bench', 'Nine hitters and a pitcher. Every pick plays.'], [12, '12\nTwo extras', 'Room for a reliever or a pinch hitter, or an odd card.'], [15, '15\nFull bench', 'A bench, a bullpen and a hand of odd cards. Needs a bigger stack.']] },
+        { id: 'vals', label: 'Player values', value: 'league', choices: [['league', 'League labels', 'The app measures each player against his own league that year, so cards from any decade play fair. Print a label for each card’s sleeve from the menu.'], ['shoe', 'Shoebox rules', 'Every value is read straight off the back of the card with one printed chart, so a game needs no labels and no app.']] }
       ],
       players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       onStart: function (cfg) {
-        S = { v: 2, mode: cfg.mode, level: cfg.options.level || 'normal', inn: +cfg.options.inn || 5, size: +cfg.options.size || 12, seed: (Math.random() * 1e9) >>> 0,
+        S = { v: 3, mode: cfg.mode, level: cfg.options.level || 'normal', inn: +cfg.options.inn || 5, size: +cfg.options.size || 12, vals: cfg.options.vals === 'shoe' ? 'shoe' : 'league', seed: (Math.random() * 1e9) >>> 0,
           phase: 'stack', C: {}, cn: 0, stack: [], T: cfg.players.map(function (p, i) { return { name: p.name, cpu: !!p.cpu, color: p.color || Kit.color(i), cards: [] }; }) };
         S.started = Date.now(); Kit.gameStart(); undoStack = [];
         save(); db().then(function () { importOld(); render(); }).catch(function () { render(); });
@@ -396,7 +420,7 @@
     function paint() {
       var c = card();
       prev.innerHTML = ''; prev.appendChild(cardFace(c));
-      facts.innerHTML = ''; facts.appendChild(ratingsEl(c, true));
+      facts.innerHTML = ''; facts.appendChild(valuesEl(c)); facts.appendChild(ratingsEl(c, true));
       var s = c.line, ln = s ? (c.role === 'p' ? s.w + ' and ' + s.l + ', ' + (s.ipo ? (s.er * 27 / s.ipo).toFixed(2) : '0.00') + ' ERA, ' + s.so + ' strikeouts' : avg3(s.h / Math.max(1, s.ab)) + ', ' + s.hr + ' home runs, ' + s.rbi + ' runs batted in') : '';
       facts.appendChild(el('p', { class: 'wp-sln', text: s ? 'His ' + s.y + ' season for the ' + c.team + ': ' + ln + '.' : '' }));
       strip.innerHTML = '';
@@ -429,7 +453,7 @@
     function paint() {
       var c = makeCardPeek({ name: name, role: role, pos: pos });
       prev.innerHTML = ''; prev.appendChild(cardFace(c));
-      var f = body.querySelector('.wp-yrfacts'); f.innerHTML = ''; f.appendChild(ratingsEl(c, true));
+      var f = body.querySelector('.wp-yrfacts'); f.innerHTML = ''; f.appendChild(valuesEl(c)); f.appendChild(ratingsEl(c, true));
       roles.innerHTML = ''; [['h', 'Hitter'], ['p', 'Pitcher']].forEach(function (r) { roles.appendChild(el('button', { type: 'button', class: 'wp-flag' + (role === r[0] ? ' on' : ''), text: r[1], onclick: function () { role = r[0]; paint(); } })); });
       poss.innerHTML = ''; poss.hidden = role === 'p';
       SPOTS.slice(0, 8).forEach(function (p) { poss.appendChild(el('button', { type: 'button', class: 'wp-flag sm' + (pos === p ? ' on' : ''), text: p, 'aria-label': POSN[p], onclick: function () { pos = pos === p ? '' : p; paint(); } })); });
@@ -522,9 +546,18 @@
     if (c.scout && labels) d.appendChild(el('p', { class: 'wp-sln', text: 'A scout’s report: no record-book numbers for this card.' }));
     return d;
   }
+  // The values the game plays with, as the sleeve label prints them: Bat or Arm, the card, a pitcher's pitch cards, and
+  // his milestone power with what it does
+  function valuesEl(c) {
+    var r = rr(c), p = c.role === 'p', d = el('div', { class: 'wp-vals' });
+    var row = el('div', { class: 'mu-nums' }, [numChip(p ? 'Arm' : 'Bat', p ? r.arm : r.bat, 'var(--gold-hi,#f5c84b)'), el('span', { class: 'mu-mark', text: E.CNAME[r.card] }), p ? el('span', { class: 'mu-mark', text: r.np + ' pitch cards' }) : null]);
+    d.appendChild(row);
+    if (r.pw) d.appendChild(el('p', { class: 'wp-pw' }, [el('b', { text: E.PNAME2[r.pw] }), el('span', { text: E.powerLabel(r.pw) })]));
+    return d;
+  }
   function cardSheet(c, removable) {
     var body = el('div', { class: 'wp-unkb' });
-    body.appendChild(el('div', { class: 'wp-yrtop' }, [el('div', { class: 'wp-yrprev' }, [cardFace(c)]), el('div', { class: 'wp-yrfacts' }, [c.kind === 'player' ? ratingsEl(c, true) : el('p', { class: 'wp-play', html: '<b>' + esc(C.SPECIAL[c.kind].play) + '</b><br>' + esc(C.SPECIAL[c.kind].say) })])]));
+    body.appendChild(el('div', { class: 'wp-yrtop' }, [el('div', { class: 'wp-yrprev' }, [cardFace(c)]), el('div', { class: 'wp-yrfacts' }, [c.kind === 'player' ? valuesEl(c) : null, c.kind === 'player' ? ratingsEl(c, true) : el('p', { class: 'wp-play', html: '<b>' + esc(C.SPECIAL[c.kind].play) + '</b><br>' + esc(C.SPECIAL[c.kind].say) })])]));
     if (c.kind === 'player' && c.pid) body.appendChild(el('p', { class: 'wp-sln', text: bio(c) }));
     var acts = removable ? [{ label: 'Take it out of the stack', danger: true, onClick: function () { snap(); S.stack = S.stack.filter(function (x) { return x !== c.id; }); delete S.C[c.id]; save(); renderStack(); } }, { label: 'Done' }] : [{ label: 'Done' }];
     Kit.sheet({ title: c.kind === 'player' ? c.name : C.SPECIAL[c.kind].name, node: body, actions: acts });
@@ -890,8 +923,9 @@
   function pst(id) { return S.g.ps[id] || (S.g.ps[id] = { bf: 0, outs: 0, h: 0, r: 0, bb: 0, k: 0, hr: 0, pc: 0 }); }
   // whose stint an inning is, and the card the pitcher on the mound is on in it
   function stintArm(t, inn) { var so = E.stintOf(inn, S.inn); return S.T[t].arms[so.i]; }
-  // a pitcher's fatigue in an inning: 0, or −1 in his stint's third inning and another −1 each inning after
-  function tiredIn(inn) { return E.tired(E.stintOf(inn, S.inn).k); }
+  // a pitcher's fatigue in an inning: 0, or −1 in his stint's third inning and another −1 each inning after; a
+  // workhorse never tires (id: the pitcher)
+  function tiredIn(inn, id) { return E.tiredFor(E.stintOf(inn, S.inn).k, id ? rr(S.C[id]) : null); }
   // the right arm on the mound for this half-inning: a new stint brings the next pitcher in
   function syncPitcher() {
     var t = ft(), want = stintArm(t, S.g.inn);
@@ -912,9 +946,91 @@
     if (!g.firstAB[b]) { g.firstAB[b] = 1; announce(history(bc)); if (bc.rk) g.ab.fx.rk = 1; g.seenRk[b] = 1; }
     else announce(todayLine(b));
     save(); paintPlay();
+    // the computer's base stealer goes, or its pitcher walks a feared slugger on purpose, before the pitch
+    if (cpuPre()) return;
+    pitchStep();
+  }
+  function pitchStep() {
+    var g = S.g, F = S.T[ft()], B = S.T[bt()], p = g.ab.p, bc = S.C[g.ab.b];
+    paintPlay();
     // the pitcher's side picks first
     if (F.cpu) { g.ab.pitch = E.cpuPitch(S.C[p].r, bc.r, S.level, g.looks[bt()], rand); g.ab.step = 'look'; save(); paintPlay(); if (B.cpu) later(cpuLookNow, 700); }
     else if (!B.cpu) { coverFor(ft(), 'pitch'); }
+  }
+  // ── The milestone powers before a pitch: the base stealer and the walk on purpose ─────────────────────────
+  function stealer(id) { var c = S.C[id]; return !!(c && !c.kid && rr(c).pw === 'steal'); }
+  function stealOpt() { var g = S.g; return g && g.ab && !g.ab.stole ? E.stealOption(g.bases, stealer) : null; }
+  function canWalk() { var g = S.g, ab = g && g.ab; return !!(ab && !ab.busy && ab.step === 'pitch' && rr(S.C[ab.b]).pw === 'slug'); }
+  // the computer's own choices (E.cpuSteal, E.cpuWalk); true when one is under way (it carries the at-bat on itself)
+  function cpuPre() {
+    var g = S.g, t = bt(), f = ft(), base = { bases: g.bases, outs: g.outs, inn: g.inn, inns: S.inn, level: S.level };
+    var opt = S.T[t].cpu ? stealOpt() : null;
+    // while the computer makes its move, nobody picks a pitch (ab.pre holds the at-bat)
+    if (opt && E.cpuSteal(Object.assign({}, base, { lead: g.R[t] - g.R[f] }), opt, rand)) { g.ab.busy = g.ab.pre = 1; paintPlay(); later(function () { doSteal(opt, function () { if (!cpuPre()) pitchStep(); }); }, 900); return true; }
+    if (S.T[f].cpu && canWalk()) {
+      var T = S.T[t], nx = S.C[T.order[(g.bat[t] + 1) % 9]];
+      if (E.cpuWalk(Object.assign({}, base, { lead: g.R[f] - g.R[t] }), rr(nx).pw === 'slug')) { g.ab.busy = g.ab.pre = 1; paintPlay(); later(walkOnPurpose, 900); return true; }
+    }
+    return false;
+  }
+  var BASEW = ['first', 'second', 'third', 'home'];
+  // A steal: the runner's d20 against the number on his label (E.steal), shown on the duel's panel, then the runner
+  // moves or is out. A third out ends the half-inning with the batter still to bat: he leads off the next one.
+  function doSteal(opt, next) {
+    var g = S.g, ab = g.ab, t = bt(); if (!ab || ab.busy && !ab.pre) return;
+    snap();
+    ab.busy = 1; ab.pre = 0; ab.stole = 1;
+    var r = E.steal({ bases: g.bases, outs: g.outs }, opt.i, rand, RIG && RIG.steal), c = S.C[r.id];
+    if (RIG && RIG.steal) RIG.steal = 0;
+    var hs = hst(r.id); if (r.ok) hs.sb = (hs.sb || 0) + 1; else hs.cs = (hs.cs || 0) + 1;
+    g.sb = g.sb || [0, 0]; g.cs = g.cs || [0, 0]; if (r.ok) g.sb[t]++; else g.cs[t]++;
+    g.bases = r.bases; g.outs = r.outs;
+    g.hx.push(r.ok ? 'SB' : 'CS');
+    var line = c.name + (r.ok ? ' steals ' : ' is caught stealing ') + BASEW[r.to] + '.';
+    if (r.ok) g.hl.push(c.name + ' stole ' + BASEW[r.to] + ' in the ' + ord(g.inn) + '.');
+    save();
+    // the panel: the runner's die, what it needs, where it landed
+    V.hand.innerHTML = '';
+    var die = d20El(r.d), msg = el('p', { class: 'rl-say', text: c.name + ' is running for ' + BASEW[r.to] + '. He needs ' + E.POW.steal.safe + ' or higher on his d20.' });
+    var pan = el('div', { class: 'wp-stl', style: { '--tc': S.T[t].color } }, [el('div', { class: 'stl-h' }, [el('b', { text: E.PNAME2.steal }), el('span', { text: 'Safe on ' + E.POW.steal.safe + ' or higher' })]), die, msg]);
+    V.duel.innerHTML = ''; V.duel.appendChild(pan);
+    Kit.sfx('whoosh'); Kit.haptic('light');
+    later(function () { die.classList.add('rolling'); spin(die, 20); Kit.sfx('roll'); }, 250);
+    later(function () {
+      die.classList.remove('rolling'); die.classList.add('landed', r.ok ? 'ok' : 'no'); die.querySelector('b').textContent = String(r.d);
+      msg.textContent = line; announce(say(r.ok ? 'steal' : 'caught', { name: c.name, last: last(c.name), base: BASEW[r.to], pit: S.C[ab.p].name }) || line);
+      paintRunners(); paintBoard();
+      if (r.ok) { Kit.sfx('good'); Kit.haptic('success'); Kit.callout('Stolen base'); } else { Kit.sfx('bad'); Kit.haptic('heavy'); }
+    }, 1350);
+    later(function () {
+      if (g.outs >= 3) return endHalf();
+      ab.busy = 0; save(); paintPlay(); if (next) next();
+    }, 3000);
+  }
+  // A walk on purpose: the batter takes first, and the runners move only when forced (E.advance's walk)
+  function walkOnPurpose() {
+    var g = S.g, ab = g.ab, t = bt(), f = ft(); if (!ab || ab.busy && !ab.pre) return;
+    snap();
+    ab.busy = 1; ab.pre = 0; ab.step = 'ibb';
+    var bc = S.C[ab.b], pc = S.C[ab.p];
+    var res = E.advance({ bases: g.bases, outs: g.outs, batter: ab.b }, 'BB', rand);
+    var hs = hst(ab.b), ps = pst(ab.p);
+    hs.bb++; hs.ibb = (hs.ibb || 0) + 1; ps.bb++; ps.bf++; ps.pc += 4; g.halfBF++;
+    hs.rbi += res.rbi; res.scored.forEach(function (id) { hst(id).r++; }); ps.r += res.scored.length;
+    g.R[t] += res.scored.length; var li = g.line[t]; li[li.length - 1] += res.scored.length;
+    g.bases = res.bases; g.bat[t]++;
+    g.ibb = g.ibb || [0, 0]; g.ibb[f]++;
+    g.hx.push('IBB' + (res.scored.length ? '+' + res.scored.length : ''));
+    ab.o = 'BB'; ab.res = res;
+    var line = (S.T[f].name === 'You' ? 'You walk ' : S.T[f].name + ' walks ') + bc.name + ' on purpose.';
+    save();
+    V.hand.innerHTML = ''; V.duel.innerHTML = '';
+    V.duel.appendChild(el('div', { class: 'wp-stl ibb', style: { '--tc': S.T[f].color } }, [el('div', { class: 'stl-h' }, [el('b', { text: E.PNAME2.slug }), el('span', { text: 'Walked on purpose' })]), el('p', { class: 'rl-say', text: line })]));
+    announce(say('ibb', { name: bc.name, last: last(bc.name), pit: pc.name }) || line);
+    Kit.sfx('tick'); Kit.haptic('light');
+    later(function () { paintRunners(res.scored); paintBoard(); if (res.scored.length) Kit.sfx('good'); }, 500);
+    if (g.half === 1 && g.inn >= S.inn && g.R[S.home] > g.R[1 - S.home]) { g.hl.push(bc.name + ' was walked on purpose with the bases loaded, and the winning run walked home.'); return later(function () { endGame(true, ab); }, 1800); }
+    later(function () { g.ab = null; newAB(); }, 2200);
   }
   function cpuLookNow() { var g = S.g; if (!g.ab || g.ab.look) return; g.ab.look = E.cpuLook(S.C[g.ab.p].r, S.C[g.ab.b].r, S.level, g.seen[ft()], rand); reveal(); }
   // pass and play: the pitcher picks with the screen covered
@@ -957,12 +1073,38 @@
     if (g.fx.rally === g.inn * 2 + g.half) plusB.push({ k: 'rally', v: 2 });
     if (fx.rk) plusB.push({ k: 'rk', v: 1 });
     if (fx.fire) plusB.push({ k: 'fire', v: 3 });
-    var rc = { bat: hr.bat, arm: pr.arm, fat: E.tired(so.k), guess: guess, plusB: plusB, bcard: hr.card, pcard: pr.card, sure: !!fx.sure, rb: !!fx.rb, two: !!fx.as };
-    if (RIG) { if (RIG.bd) rc.bd = RIG.bd; if (RIG.pd) rc.pd = RIG.pd; }
+    // the milestone powers: the run producer, the closer and the 20-game winner add to the roll (E.powerMods)
+    var pm = E.powerMods(hr, pr, { bases: g.bases, inn: g.inn, inns: S.inn, lead: g.R[f] - g.R[t] });
+    var rc = { bat: hr.bat, arm: pr.arm, fat: E.tiredFor(so.k, pr), guess: guess, plusB: plusB.concat(pm.b), plusP: pm.p, bcard: hr.card, pcard: pr.card, sure: !!fx.sure, rb: !!fx.rb, two: !!fx.as, slug: hr.pw === 'slug' };
+    if (RIG) { if (RIG.bd) rc.bd = RIG.bd; if (RIG.pd) rc.pd = RIG.pd; if (RIG.bd2) rc.bd2 = RIG.bd2; }
     var x = E.atBat(rc, rand);
-    if (RIG && RIG.o) { var ro = { GB: 'G', FB: 'F', PU: 'F', LD: 'F' }[RIG.o] || RIG.o; x.o = ro; }
     ab.roll = x; ab.rc = rc;
+    // the strikeout artist: once in each stint, a batter who won the at-bat rolls again (the computer by E.cpuReroll,
+    // a person by the buttons on the roll)
+    var kk = f + ':' + so.i;
+    g.kart = g.kart || {};
+    if (pr.pw === 'kart' && x.win && !g.kart[kk]) {
+      if (S.T[f].cpu) { if (E.cpuReroll(x, { bases: g.bases, level: S.level })) { g.kart[kk] = 1; ab.roll0 = x; ab.roll = E.reroll(rc, x, rand); } }
+      else { ab.ask = kk; save(); return rollShow(ab, null, { head: true }); }
+    }
+    resolve(ab);
+  }
+  // A person's answer for the strikeout artist: make the batter roll again, or let the roll stand
+  function kartChoose(yes) {
+    var g = S.g, ab = g.ab; if (!ab || !ab.ask) return;
+    var kk = ab.ask; ab.ask = 0;
+    Kit.sfx('tap'); Kit.haptic('light');
+    var box = V.duel.querySelector('.rl-ask'); if (box) box.remove();
+    var rl = V.duel.querySelector('.wp-rl'); if (rl) rl.classList.remove('asking');
+    if (yes) { g.kart[kk] = 1; ab.roll0 = ab.roll; ab.roll = E.reroll(ab.rc, ab.roll, rand); }
+    resolve(ab, true);
+  }
+  // the rest of the at-bat once the roll stands: the fielder, the runners, the numbers, then the show
+  function resolve(ab, resumed) {
+    var g = S.g, t = bt(), f = ft(), bc = S.C[ab.b], pc = S.C[ab.p], x = ab.roll;
+    if (RIG && RIG.o) { var ro = { GB: 'G', FB: 'F', PU: 'F', LD: 'F' }[RIG.o] || RIG.o; x.o = ro; }
     if (x.bd === 20) g.n20 = (g.n20 || 0) + 1;
+    if (x.why === 'slug') g.slugHR = (g.slugHR || 0) + 1;
     // a ground out or a fly out goes to a fielder (a d6), and a fielder out of position may boot it (a d20)
     var o = x.o, fld = null, fit = 'home', F = S.T[f];
     if (o === 'G' || o === 'F') {
@@ -1009,13 +1151,15 @@
     if (res.scored.length) g.plays.push({ i: g.inn, h: g.half, t: txt, r: res.scored.length });
     ab.hi = moments(ab, bc, pc, res);
     save();
-    rollShow(ab, function () { ab.shown = 1; animatePlay(ab, function () { afterPlay(ab); }); });
+    rollShow(ab, function () { ab.shown = 1; animatePlay(ab, function () { afterPlay(ab); }); }, { tail: !!resumed });
   }
   // One sentence that says what the guess did when it decided the at-bat, or what a card played did. Nothing when
   // the dice alone decided it: the totals, the margin and the lit card on the screen say that.
   var PWORD = { H: 'the heat', B: 'the breaking ball', J: 'the junk', C: 'the changeup' }, PWITH = { H: 'heat', B: 'a breaking ball', J: 'junk', C: 'a changeup' };
   function rollSay(ab, bc, pc) {
     var x = ab.roll, B = bc.kid ? 'The kid' : last(bc.name), P = pc.kid ? 'the kid' : last(pc.name);
+    if (ab.roll0) return cap(nameOf(pc)) + ' made ' + nameOf(bc) + ' roll again, and ' + (x.win ? 'he won the at-bat again.' : 'this time ' + (pc.kid ? 'the kid' : last(pc.name)) + ' won it.');
+    if (x.why === 'slug') return bc.name + ' is a feared slugger, and a ' + x.bd + ' that wins the at-bat is a home run' + (ab.guess ? '.' : ', even on a wrong guess.');
     if (x.why === 'sure') return 'The League Leaders card wins the at-bat for ' + B + ', so he rolls on his own card.';
     if (x.why === 'rb') return 'The Record Breaker card turns the ' + E.BNAME[x.face].toLowerCase() + ' into ' + ({ D: 'a double', T: 'a triple', HR: 'a home run' })[x.o] + '.';
     if (x.bdice.length > 1) return B + '’s All-Star card rolled his die twice, a ' + x.bdice[0] + ' and a ' + x.bdice[1] + ', and the higher one counts.';
@@ -1065,12 +1209,14 @@
     later(function () { g.ab = null; newAB(); }, ab.hi.length ? 2300 : 1500);
   }
   function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  // a player's whole name, or the sandlot kid's
+  function nameOf(c) { return c.kid ? 'the sandlot kid' : c.name; }
   // The end of a half-inning: when the pitcher who just finished it will be tired in his next inning, his Tired chip
   // comes up where everyone can see it, before the sides change
   function endHalf() {
     var g = S.g, f = ft(), id = g.pit[f];
     var over = g.half === 0 ? g.inn >= S.inn && g.R[S.home] > g.R[1 - S.home] : g.inn >= S.inn && g.R[0] !== g.R[1];
-    var t0 = tiredIn(g.inn), t1 = tiredIn(g.inn + 1), stays = stintArm(f, g.inn + 1) === id;
+    var t0 = tiredIn(g.inn, id), t1 = tiredIn(g.inn + 1, id), stays = stintArm(f, g.inn + 1) === id;
     g.outs = 0; g.bases = [null, null, null]; g.halfK = 0; g.halfBF = 0; g.ab = null;
     if (!over && stays && t1 < t0) {
       var c = S.C[id];
@@ -1232,7 +1378,7 @@
   function paintRunners(scoredNow) {
     var g = S.g, rn = V.svg.querySelector('.rn'), want = {};
     g.bases.forEach(function (id, i) { if (id) want[id] = BASE[i]; });
-    if (g.ab && g.ab.step !== 'reveal') want[g.ab.b] = { x: HOME.x - 22, y: HOME.y - 2, bat: 1 };
+    if (g.ab && g.ab.step !== 'reveal' && g.ab.step !== 'ibb') want[g.ab.b] = { x: HOME.x - 22, y: HOME.y - 2, bat: 1 };
     Object.keys(V.tok).forEach(function (id) {
       if (want[id]) return; var t = V.tok[id]; delete V.tok[id];
       if (scoredNow && scoredNow.indexOf(id) >= 0) { place(t, HOME); setTimeout(function () { t.classList.add('gone'); }, ms(520)); setTimeout(function () { t.remove(); }, ms(1000)); }
@@ -1260,14 +1406,16 @@
       if (cls === 'b') {
         nums.appendChild(numChip('Bat', r.bat, S.T[t].color));
         nums.appendChild(el('span', { class: 'mu-mark', text: E.CNAME[r.card] }));
+        if (r.pw) nums.appendChild(el('span', { class: 'mu-mark pw', text: E.PNAME2[r.pw] }));
       } else {
         nums.appendChild(numChip('Arm', r.arm, S.T[t].color));
-        var fat = tiredIn(g.inn); if (fat) nums.appendChild(numChip('Tired', fat, '#ff9f2e'));
+        var fat = tiredIn(g.inn, id); if (fat) nums.appendChild(numChip('Tired', fat, '#ff9f2e'));
         nums.appendChild(el('span', { class: 'mu-mark', text: E.CNAME[r.card] }));
+        if (r.pw) nums.appendChild(el('span', { class: 'mu-mark pw', text: E.PNAME2[r.pw] }));
       }
       var info = el('div', { class: 'mu-info' }, [el('span', { class: 'mu-lbl', text: label }), el('b', { class: 'mu-nm', text: c.kid ? 'Sandlot kid' : c.name }),
         el('span', { class: 'mu-line', text: cls === 'b' ? todayShort(id) : pitchShort(id) }), nums]);
-      return el('button', { type: 'button', class: 'mu ' + cls, style: { '--tc': S.T[t].color }, onclick: function () { cardSheet(c, false); } }, [face, info]);
+      return el('button', { type: 'button', class: 'mu ' + cls + (r.pw ? ' haspw' : ''), style: { '--tc': S.T[t].color }, onclick: function () { cardSheet(c, false); } }, [face, info]);
     }
     V.mu.appendChild(side(b, 'b', 'At bat')); V.mu.appendChild(side(p, 'p', 'Pitching'));
     requestAnimationFrame(function () { fitCardNames(V.mu); });
@@ -1298,6 +1446,7 @@
     if (S.phase === 'over') { V.duel.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: 'See the results', onclick: function () { showWin(); } })); return; }
     if (!ab) { V.duel.appendChild(el('p', { class: 'wp-wait', text: ' ' })); return; }
     var F = S.T[ft()], B = S.T[bt()];
+    if (ab.pre || ab.step === 'ibb') { V.duel.appendChild(el('p', { class: 'wp-wait', text: ab.step === 'ibb' ? ' ' : (ab.pre && S.T[bt()].cpu && stealOpt() ? B.name : F.name) + ' is thinking…' })); return; }
     if (ab.step === 'reveal') { if (ab.roll) V.duel.appendChild(rollEl(ab, !ab.shown)); return; }
     var picking = ab.step === 'pitch' ? F : B, human = !picking.cpu;
     var who = ab.step === 'pitch' ? F.name + ', pick your pitch' : B.name + ', what are you looking for?';
@@ -1340,40 +1489,58 @@
     return el('span', { class: 'wp-d20', html: '<svg viewBox="0 0 60 60" aria-hidden="true"><polygon class="o" points="30,2 54,16 54,44 30,58 6,44 6,16"/>' +
       '<polygon class="f" points="30,14 47,43 13,43"/><path class="e" d="M30 2 L30 14 M54 16 L47 43 M54 44 L47 43 M30 58 L47 43 M30 58 L13 43 M6 44 L13 43 M6 16 L13 43 M6 16 L30 14 M54 16 L30 14 M13 43 L47 43"/></svg><b>' + v + '</b>' });
   }
-  var MODL = { bat: 'Bat', arm: 'Arm', tired: 'Tired', rally: 'Team card', rk: 'Rookie card', fire: 'On fire' };
+  var MODL = { bat: 'Bat', arm: 'Arm', tired: 'Tired', rally: 'Team card', rk: 'Rookie card', fire: 'On fire', rbi: 'Run producer', close: 'Closer', w20: '20-game winner' };
   function chipsOf(mods, color) {
     var c = el('div', { class: 'rl-chips' });
     mods.forEach(function (m) { if (m.k !== 'bat' && m.k !== 'arm' && !m.v) return; c.appendChild(el('span', { class: 'rl-c' + (m.k === 'bat' || m.k === 'arm' ? '' : m.k === 'tired' ? ' tired' : ' play'), style: m.k === 'bat' || m.k === 'arm' ? { '--nc': color } : null }, [el('span', { text: MODL[m.k] || m.k }), el('b', { text: sgn(m.v) })])); });
     return c;
   }
-  // the roll panel: live, its pieces come in one at a time (rollShow); otherwise it is drawn as it ended
+  // the roll panel: live, its pieces come in one at a time (rollShow); otherwise it is drawn as it ended. When the
+  // strikeout artist made the batter roll again, a live panel starts from the first roll (ab.roll0)
   function rollEl(ab, live) {
-    var x = ab.roll, bc = S.C[ab.b], pc = S.C[ab.p], d = el('div', { class: 'wp-rl' + (live ? ' live' : '') + (x.win ? ' bwin' : ' pwin') });
+    var x = ab.roll, x0 = live && ab.roll0 ? ab.roll0 : x, bc = S.C[ab.b], pc = S.C[ab.p], d = el('div', { class: 'wp-rl' + (live ? ' live' : '') + (x0.win ? ' bwin' : ' pwin') });
     function side(cls, c, mods, dice, tot, color) {
       return el('div', { class: 'rl-side ' + cls, style: { '--tc': color } }, [
         el('span', { class: 'rl-who', text: c.kid ? 'Sandlot kid' : last(c.name) }), chipsOf(mods, color),
-        el('div', { class: 'rl-roll' }, dice.map(function (v, i) { var e = d20El(v); if (dice.length > 1 && i > 0 && v !== x.bd) e.classList.add('lost'); else if (dice.length > 1 && i === 0 && v !== x.bd) e.classList.add('lost'); if (v === 20 && cls === 'b') e.classList.add('n20'); return e; }).concat([el('b', { class: 'rl-tot', text: String(tot) })]))]);
+        el('div', { class: 'rl-roll' }, dice.map(function (v, i) { var e = d20El(v); if (dice.length > 1 && v !== x0.bd) e.classList.add('lost'); if (v === 20 && cls === 'b') e.classList.add('n20'); return e; }).concat([el('b', { class: 'rl-tot', text: String(tot) })]))]);
     }
-    var B = side('b', bc, x.modsB, x.bdice, x.bt, S.T[bt()].color), P = side('p', pc, x.modsP, [x.pd], x.pt, S.T[ft()].color);
+    var B = side('b', bc, x0.modsB, x0.bdice, x0.bt, S.T[bt()].color), P = side('p', pc, x0.modsP, [x0.pd], x0.pt, S.T[ft()].color);
     var mid = el('div', { class: 'rl-mid' + (ab.guess ? ' right' : ' wrong') }, [
       el('div', { class: 'rl-guess' }, [el('i', { html: PICON[ab.look] }), el('span', { class: 'mk', html: Kit.icon(ab.guess ? 'check' : 'close') }), el('i', { html: PICON[ab.pitch] })]),
       el('span', { class: 'rl-nl', text: 'Beat by' }),
-      el('div', { class: 'rl-need' }, [el('b', { text: String(x.need) })]),
-      el('span', { class: 'rl-by', text: x.bt - x.pt > 0 ? 'Won by ' + (x.bt - x.pt) : x.bt === x.pt ? 'Tied' : 'Lost by ' + (x.pt - x.bt) })]);
+      el('div', { class: 'rl-need' }, [el('b', { text: String(x0.need) })]),
+      el('span', { class: 'rl-by', text: byText(x0) })]);
     d.appendChild(el('div', { class: 'rl-duel' }, [B, mid, P]));
-    // the winner's card: a batter's two rows (the guess lights one), a pitcher's one
-    var wc = x.win ? bc : pc, rows = x.win ? ['right', 'wrong'] : ['p'];
-    var card = el('div', { class: 'rl-card ' + (x.win ? 'b' : 'p'), style: { '--tc': S.T[x.win ? bt() : ft()].color } }, [
+    var card = cardPart(ab, live);
+    d.appendChild(card);
+    if (!live && ab.res && ab.res.roll) { var rd = d6El(ab.res.roll.d); rd.classList.add('run', 'in'); card.querySelector('.rl-ch').appendChild(rd); }
+    if (!live && x.why === 'slug') card.querySelector('.rl-ch').appendChild(slugMark());
+    d.appendChild(el('p', { class: 'rl-say', text: live ? '' : ab.ask ? '' : rollLine(ab) }));
+    if (!live && ab.ask) { d.classList.add('asking'); d.appendChild(askBox(ab)); }
+    requestAnimationFrame(function () { fitFaces(d); });
+    return d;
+  }
+  // the feared slugger's 19 or 20: whatever the card's range says, it's a home run
+  function slugMark() { return el('span', { class: 'rl-mk', text: 'Home run' }); }
+  function byText(x) { return x.bt - x.pt > 0 ? 'Won by ' + (x.bt - x.pt) : x.bt === x.pt ? 'Tied' : 'Lost by ' + (x.pt - x.bt); }
+  // the winner's card: a batter's two rows (the guess lights one), a pitcher's one
+  function cardPart(ab, live) {
+    var x = ab.roll, bc = S.C[ab.b], pc = S.C[ab.p], wc = x.win ? bc : pc, rows = x.win ? ['right', 'wrong'] : ['p'];
+    return el('div', { class: 'rl-card ' + (x.win ? 'b' : 'p'), style: { '--tc': S.T[x.win ? bt() : ft()].color } }, [
       el('div', { class: 'rl-ch' }, [el('b', { text: wc.kid ? 'Sandlot kid' : last(wc.name) }), el('span', { text: E.CNAME[x.card] })]),
       el('div', { class: 'rl-rows' }, rows.map(function (rw) {
         var on = rw === x.row;
         return el('div', { class: 'rl-row' + (on && !live ? ' on' : '') + (on ? ' this' : ''), 'data-row': rw }, [rw === 'p' ? null : el('span', { class: 'rl-rl', text: rw === 'right' ? 'Guessed right' : 'Guessed wrong' }), rangesEl(x.card, rw === 'p' ? null : rw, on && !live ? x.die : 0)]);
       }))]);
-    d.appendChild(card);
-    if (!live && ab.res && ab.res.roll) { var rd = d6El(ab.res.roll.d); rd.classList.add('run', 'in'); card.querySelector('.rl-ch').appendChild(rd); }
-    d.appendChild(el('p', { class: 'rl-say', text: live ? '' : rollLine(ab) }));
-    requestAnimationFrame(function () { fitFaces(d); });
-    return d;
+  }
+  // the strikeout artist's choice, on the roll, for a person: the batter won, so make him roll again or let it stand
+  function askBox(ab) {
+    var bc = S.C[ab.b], pc = S.C[ab.p], T = S.T[ft()];
+    return el('div', { class: 'rl-ask', style: { '--tc': T.color } }, [
+      el('p', { text: pc.name + ' is a strikeout artist. Once in his stint, he can make ' + nameOf(bc) + ' roll his d20 again, and the new roll stands.' }),
+      el('div', { class: 'rl-askb' }, [
+        el('button', { type: 'button', class: 'btn btn-primary', text: 'Make him roll again', onclick: function () { kartChoose(true); } }),
+        el('button', { type: 'button', class: 'btn btn-soft', text: 'Let it stand', onclick: function () { kartChoose(false); } })])]);
   }
   function rollLine(ab, noRun) {
     var run = !noRun && ab.res && ab.res.roll ? ' ' + runSay(ab, true) : '';
@@ -1401,13 +1568,20 @@
   // The roll, one piece at a time: the guess is shown and the margin set, the chips come in, both d20s tumble and
   // land with their totals, the winner's side lights, his card slides up with the row he reads lit, and his own die's
   // number lands on its range. A ground out or fly out to a fielder out of position rolls a d20 once more for the error.
-  function rollShow(ab, done) {
-    V.root.classList.add('rolling'); V.hand.innerHTML = '';
-    paintMatchup();
-    V.duel.innerHTML = ''; var d = rollEl(ab, true); V.duel.appendChild(d);
-    var x = ab.roll, q = function (s) { return d.querySelector(s); }, qa = function (s) { return d.querySelectorAll(s); };
+  // o.head: stop once the throw is decided and ask the strikeout artist's question (askBox); o.tail: carry on from
+  // there on the panel already drawn (a second roll first, when he asked for one)
+  function rollShow(ab, done, o) {
+    o = o || {};
+    var d = o.tail ? V.duel.querySelector('.wp-rl') : null;
+    if (!d) {
+      o.tail = false; V.root.classList.add('rolling'); V.hand.innerHTML = '';
+      paintMatchup();
+      V.duel.innerHTML = ''; d = rollEl(ab, true); V.duel.appendChild(d);
+    }
+    var x = ab.roll, x0 = ab.roll0 || x, q = function (s) { return d.querySelector(s); }, qa = function (s) { return d.querySelectorAll(s); };
     var guess = q('.rl-guess'), need = q('.rl-need'), chips = qa('.rl-c'), dice = qa('.rl-roll .wp-d20'), tots = qa('.rl-tot'), by = q('.rl-by'), card = q('.rl-card');
     var t = 80;
+    if (!o.tail) {
     later(function () { guess.classList.add('in'); Kit.sfx('flip'); Kit.haptic(ab.guess ? 'medium' : 'light'); }, t);
     t += 420;
     later(function () { need.classList.add('in'); Kit.sfx('tick'); }, t);
@@ -1417,19 +1591,42 @@
     later(function () { dice.forEach(function (e) { e.classList.add('rolling'); spin(e, 20); }); Kit.sfx('roll'); Kit.haptic('light'); }, t);
     t += 900;
     later(function () {
-      var vals = x.bdice.concat([x.pd]);
+      var vals = x0.bdice.concat([x0.pd]);
       dice.forEach(function (e, i) { e.classList.remove('rolling'); e.classList.add('landed'); e.querySelector('b').textContent = String(vals[i]); });
       tots.forEach(function (e) { e.classList.add('in'); });
       Kit.haptic('medium');
-      if (x.bd === 20) { Kit.callout('Natural 20'); Kit.sfx('sparkle'); }
+      if (x0.bd === 20) { Kit.callout('Natural 20'); Kit.sfx('sparkle'); }
     }, t);
     t += 520;
     later(function () {
       by.classList.add('in'); d.classList.add('decided');
-      var mu = V.mu.querySelector(x.win ? '.mu.b' : '.mu.p'); if (mu) mu.classList.add('won');
-      Kit.sfx(x.win ? 'good' : 'tick');
+      var mu = V.mu.querySelector(x0.win ? '.mu.b' : '.mu.p'); if (mu) mu.classList.add('won');
+      Kit.sfx(x0.win ? 'good' : 'tick');
     }, t);
     t += 520;
+    }
+    if (o.head) { later(function () { if (S.g.ab === ab && ab.ask) { d.classList.add('asking'); d.appendChild(askBox(ab)); Kit.sfx('pop'); Kit.haptic('medium'); } }, t); return; }
+    // the strikeout artist's second roll: the batter's die tumbles again, lands, and the throw is decided again
+    if (ab.roll0) {
+      var bdice = qa('.rl-side.b .wp-d20'), btot = q('.rl-side.b .rl-tot');
+      later(function () {
+        q('.rl-say').textContent = cap(nameOf(S.C[ab.p])) + ' makes ' + nameOf(S.C[ab.b]) + ' roll again.';
+        d.classList.remove('decided'); by.classList.remove('in');
+        bdice.forEach(function (e) { e.classList.remove('landed', 'n20', 'lost'); e.classList.add('rolling'); spin(e, 20); });
+        Kit.sfx('roll'); Kit.haptic('medium');
+        var mu = V.mu.querySelector('.mu.b'); if (mu) mu.classList.remove('won');
+      }, t + 200);
+      t += 1300;
+      later(function () {
+        bdice.forEach(function (e, i) { e.classList.remove('rolling'); e.classList.add('landed'); e.querySelector('b').textContent = String(x.bdice[i]); if (x.bdice.length > 1 && x.bdice[i] !== x.bd) e.classList.add('lost'); });
+        btot.textContent = String(x.bt); by.textContent = byText(x); by.classList.add('in');
+        d.classList.toggle('bwin', x.win); d.classList.toggle('pwin', !x.win); d.classList.add('decided');
+        var mu = V.mu.querySelector(x.win ? '.mu.b' : '.mu.p'); if (mu) mu.classList.add('won');
+        Kit.sfx(x.win ? 'good' : 'bad'); Kit.haptic(x.win ? 'medium' : 'success');
+        var nc = cardPart(ab, true); card.replaceWith(nc); card = nc; fitFaces(d);
+      }, t);
+      t += 700;
+    }
     // the winner's card comes up; for a batter the guess lights his row, and the caption says which die it is
     later(function () { card.classList.add('in'); var rw = d.querySelector('.rl-row.this'); if (rw) rw.classList.add('on'); if (x.win) { d.querySelector('.rl-say').textContent = ab.say; Kit.sfx(ab.guess ? 'sparkle' : 'tick'); } }, t);
     t += x.win ? 1200 : 450;
@@ -1442,6 +1639,7 @@
     t += 520;
     later(function () {
       var row = d.querySelector('.rl-row.this'), r = row.querySelector('.rg-r[data-lo="' + x.range[0] + '"]'); if (r) r.classList.add('lit');
+      if (x.why === 'slug') { q('.rl-ch').appendChild(slugMark()); Kit.callout('Feared slugger'); Kit.sfx('sparkle'); }
       d.querySelector('.rl-say').textContent = ab.boot ? (S.C[ab.fld].kid ? 'The kid' : last(S.C[ab.fld].name)) + ' is out of position at ' + POSN[ab.where].toLowerCase() + ', so ' + (ab.boot.need === 1 ? 'a 1' : 'a 1, 2 or 3') + ' on the die is an error.' : rollLine(ab, true);
       Kit.haptic('light'); Kit.sfx(E.RANK[x.o] >= E.RANK.S ? 'good' : 'tick');
     }, t);
@@ -1488,7 +1686,7 @@
   }
   function paintHand() {
     var g = S.g, ab = g.ab; V.hand.innerHTML = '';
-    if (S.phase !== 'play' || !ab || ab.step === 'reveal' || ab.cover) return;
+    if (S.phase !== 'play' || !ab || ab.step === 'reveal' || ab.step === 'ibb' || ab.busy || ab.cover) return;
     // the human whose decision it is: their hand and their manager moves
     var t = ab.step === 'pitch' ? ft() : bt(); if (S.T[t].cpu) return;
     var T = S.T[t];
@@ -1499,11 +1697,15 @@
         Kit.confirm(C.SPECIAL[h.k].say, { ok: 'Play it' }).then(function (ok) { if (ok) usePlay(t, h); });
       } }, [el('span', { class: 'k', text: C.SPECIAL[h.k].name }), el('b', { text: C.SPECIAL[h.k].play + (who ? ': ' + last(who.name) : '') })]));
     });
+    // the milestone powers before a pitch: steal with a base stealer, walk a feared slugger on purpose
+    var so = t === bt() && ab.step === 'look' ? stealOpt() : null;
+    if (so) V.hand.appendChild(el('button', { type: 'button', class: 'wp-hc pw', onclick: function () { doSteal(so); } }, [el('span', { class: 'k', text: E.PNAME2.steal }), el('b', { text: 'Steal ' + BASEW[so.i + 1] + ': ' + last(S.C[so.id].name) })]));
+    if (t === ft() && canWalk()) V.hand.appendChild(el('button', { type: 'button', class: 'wp-hc pw', onclick: function () { walkOnPurpose(); } }, [el('span', { class: 'k', text: E.PNAME2.slug }), el('b', { text: 'Walk ' + last(S.C[ab.b].name) + ' on purpose' })]));
     if (t === bt() && T.bench.length && ab.step === 'look') V.hand.appendChild(el('button', { type: 'button', class: 'wp-hc mv', onclick: function () { benchSheet(); } }, [el('span', { class: 'k', text: 'Manager' }), el('b', { text: 'Pinch hit' })]));
   }
   function benchSheet() {
     var T = S.T[bt()], box = el('div', { class: 'wp-res' }), sh, now = S.C[S.g.ab.b];
-    T.bench.forEach(function (id) { var c = S.C[id], r = rr(c); box.appendChild(el('button', { type: 'button', class: 'wp-hit', onclick: function () { sh.close(); pinchHit(id); } }, [el('b', { text: c.name }), el('span', { text: (POSN[c.pos[0]] || 'Utility') + ', Bat ' + sgn(r.bat) + ', ' + E.CNAME[r.card].toLowerCase() }), el('i', { text: c.year ? String(c.year) : '' })])); });
+    T.bench.forEach(function (id) { var c = S.C[id], r = rr(c); box.appendChild(el('button', { type: 'button', class: 'wp-hit', onclick: function () { sh.close(); pinchHit(id); } }, [el('b', { text: c.name }), el('span', { text: (POSN[c.pos[0]] || 'Utility') + ', Bat ' + sgn(r.bat) + ', ' + E.CNAME[r.card].toLowerCase() + (r.pw ? ', ' + E.PNAME2[r.pw].toLowerCase() : '') }), el('i', { text: c.year ? String(c.year) : '' })])); });
     sh = Kit.sheet({ title: 'Bat for ' + now.name + ' (Bat ' + sgn(rr(now).bat) + ')', node: box, actions: [{ label: 'Cancel' }] });
   }
 
@@ -1605,7 +1807,8 @@
       return { n: T.name, c: T.color, l: g.line[t].join(','), r: g.R[t], h: g.H[t], e: g.E[t], b: bats, p: arms };
     }
     var hx = []; // half-inning by half-inning from the plays
-    var detail = { wp: 2, home: S.home, inn: S.inn, wo: g.wo ? 1 : 0, tm: [tm(0), tm(1)], plays: g.plays.slice(-12), duel: g.duels.slice(0, 2), nh: g.nohit || '', n20: g.n20 || 0 };
+    var detail = { wp: 2, home: S.home, inn: S.inn, wo: g.wo ? 1 : 0, tm: [tm(0), tm(1)], plays: g.plays.slice(-12), duel: g.duels.slice(0, 2), nh: g.nohit || '', n20: g.n20 || 0,
+      sb: g.sb ? g.sb[0] + g.sb[1] : 0, cs: g.cs ? g.cs[0] + g.cs[1] : 0, ibb: g.ibb ? g.ibb[0] + g.ibb[1] : 0, vals: S.vals === 'shoe' ? 1 : 0 };
     var hl = g.hl.slice(0, 10);
     hl.push('Batters guessed the pitch ' + g.duels[0] + ' times and were fooled ' + g.duels[1] + ' times.');
     Kit.record(HKEY, {
@@ -1696,9 +1899,10 @@
   function labelHtml(c) {
     var r = rr(c), yr = c.year ? String(c.year) : '', team = c.team || '';
     var head = '<div class="pl-h"><b>' + esc(c.kid ? 'Sandlot kid' : c.name) + '</b><span>' + esc([yr, team].filter(Boolean).join(' ')) + '</span></div>';
-    if (c.role === 'p') return '<div class="pl">' + head + '<div class="pl-n"><span>Arm <b>' + sgn(r.arm) + '</b></span><span>Pitch cards <b>' + r.np + '</b></span><span class="t">' + E.CNAME[r.card] + '</span></div>' + printRow(r.card) + '</div>';
+    var pw = r.pw ? '<div class="pl-p"><b>' + E.PNAME2[r.pw] + '</b> ' + esc(E.powerLabel(r.pw)) + '</div>' : '';
+    if (c.role === 'p') return '<div class="pl">' + head + '<div class="pl-n"><span>Arm <b>' + sgn(r.arm) + '</b></span><span>Pitch cards <b>' + r.np + '</b></span><span class="t">' + E.CNAME[r.card] + '</span></div>' + printRow(r.card) + pw + '</div>';
     return '<div class="pl">' + head + '<div class="pl-n"><span>Bat <b>' + sgn(r.bat) + '</b></span><span class="t">' + E.CNAME[r.card] + '</span></div>' +
-      '<div class="pl-r"><em>Guessed right</em>' + printRow(r.card, 'right') + '</div><div class="pl-r"><em>Guessed wrong</em>' + printRow(r.card, 'wrong') + '</div></div>';
+      '<div class="pl-r"><em>Guessed right</em>' + printRow(r.card, 'right') + '</div><div class="pl-r"><em>Guessed wrong</em>' + printRow(r.card, 'wrong') + '</div>' + pw + '</div>';
   }
   function printSheet(noPrint) {
     return db().then(function () {
@@ -1715,7 +1919,8 @@
         '<h2>Every at-bat</h2><ol>' +
         '<li>The pitcher lays one of his pitch cards face down. His label says how many he holds.</li>' +
         '<li>The batter names the pitch he’s looking for.</li>' +
-        '<li>Both roll a d20. The batter adds his Bat, the pitcher adds his Arm.</li>' +
+        '<li>Before the pitch, a base stealer on base may steal, and the pitcher may walk a feared slugger on purpose (the next page has the milestone powers).</li>' +
+        '<li>Both roll a d20. The batter adds his Bat, the pitcher adds his Arm, and a milestone power may add 1 or 2.</li>' +
         '<li>If the batter’s total beats the pitcher’s by <b>' + E.RULE.margin + ' or more</b>, the batter wins the at-bat. Otherwise the pitcher wins it.</li>' +
         '<li>Turn the pitch card over. The winner reads his own die (the number he rolled, not his total) on his own label: a batter who named the pitch reads his Guessed right row, a batter who didn’t reads his Guessed wrong row, and a pitcher reads his one row.</li></ol>' +
         '<h2>Outs in play</h2><p>A ground out or a fly out goes to a fielder. Roll the d6:</p>' +
@@ -1723,10 +1928,22 @@
         '<tr><th>Ground out</th>' + E.WHERE6.G.map(function (p) { return '<td>' + p + '</td>'; }).join('') + '</tr>' +
         '<tr><th>Fly out</th>' + E.WHERE6.F.map(function (p) { return '<td>' + p + '</td>'; }).join('') + '</tr></table>' +
         '<p>A fielder playing a position he didn’t play rolls a d20: at a nearby position (another outfield spot, across second base, the other corner) a 1 is an error; anywhere else a 1, 2 or 3 is an error.</p>' +
-        '<h2>Pitchers</h2><p>Each team pitches three pitchers, each for a fixed stint: in a ' + inn + '-inning game the first pitches ' + stTxt[0] + ', the second ' + stTxt[1] + ' and the third ' + stTxt[2] + ', and the third also pitches any extra innings. A pitcher in the third inning of his stint is −1, and another −1 for each inning after that.</p>' +
+        '<h2>Pitchers</h2><p>Each team pitches three pitchers, each for a fixed stint: in a ' + inn + '-inning game the first pitches ' + stTxt[0] + ', the second ' + stTxt[1] + ' and the third ' + stTxt[2] + ', and the third also pitches any extra innings. A pitcher in the third inning of his stint is −1, and another −1 for each inning after that. A workhorse never tires.</p>' +
         '<h2>Running the bases</h2><p>Where a line gives numbers, roll the d6. A speedster is a player whose label says Speedster.</p>' +
         '<table class="pr-t pr-run">' + E.runLines().map(function (l) { return '<tr><th>' + l[0] + '</th><td>' + l[1] + '</td></tr>'; }).join('') + '</table>' +
         '<h2>Odd cards, each played once</h2><ul>' + Object.keys(C.SPECIAL).map(function (k) { return '<li><b>' + esc(C.SPECIAL[k].name) + '</b>: ' + esc(C.SPECIAL[k].say) + '</li>'; }).join('') + '<li><b>Rookie card</b>: +1 in his first at-bat.</li></ul></section>';
+      // the Shoebox chart and the milestone powers: every value read off the back of a card, on one page
+      var SL = E.shoeLines(), tr2 = function (a, b) { return '<tr><th>' + a + '</th><td>' + b + '</td></tr>'; };
+      h += '<section class="pr-page pr-shoe"><h1>Reading a card back</h1>' +
+        '<p class="pr-lead">With Shoebox rules, every player’s numbers come from the last season on the back of his card, the season before the card’s year. The milestone powers come from the same season in every game.</p>' +
+        '<div class="pr-2"><div><h2>Batters</h2><table class="pr-t pr-k"><tr><th>Batting average</th><th>Bat</th></tr>' + SL.bat.map(function (a) { return '<tr><td>' + a[0] + '</td><td>' + a[1] + '</td></tr>'; }).join('') + '</table>' +
+        '<p>The batter’s card is the first one that fits:</p><table class="pr-t pr-run">' + SL.hit.map(function (a) { return tr2(a[0], a[1]); }).join('') + '</table></div>' +
+        '<div><h2>Pitchers</h2><table class="pr-t pr-k"><tr><th>ERA</th><th>Arm</th></tr>' + SL.arm.map(function (a) { return '<tr><td>' + a[0] + '</td><td>' + a[1] + '</td></tr>'; }).join('') + '</table>' +
+        '<table class="pr-t pr-run">' + SL.pc.map(function (a) { return tr2(a[0], a[1]); }).join('') + '</table>' +
+        '<p>The pitcher’s card is the first one that fits:</p><table class="pr-t pr-run">' + SL.pit.map(function (a) { return tr2(a[0], a[1]); }).join('') + '</table></div></div>' +
+        '<p>' + SL.short + '</p>' +
+        '<h2>Milestone powers, in every game</h2><p>A player gets one power at most. A batter who earns two keeps the first of Feared slugger, Base stealer and Run producer, and a pitcher the first of Closer, Strikeout artist, 20-game winner and Workhorse.</p>' +
+        '<table class="pr-t pr-run">' + E.powerLines().map(function (l) { return '<tr><th>' + l[0] + '<br><span>' + l[1] + '</span></th><td>' + l[2] + '</td></tr>'; }).join('') + '</table></section>';
       // the pitch cards (two sets) and each team's pitching card
       h += '<section class="pr-page"><h2>Pitch cards</h2><p class="pr-lead">Cut these out: one set for each team. A pitcher uses as many as his label says, starting from Heat.</p><div class="pr-pc">' +
         [0, 1].map(function () { return E.PITCHES4.map(function (k) { return '<div class="pc"><i>' + PICON[k] + '</i><b>' + E.PNAME[k] + '</b></div>'; }).join(''); }).join('') + '</div>';
@@ -1754,7 +1971,7 @@
     quick: function (o) {
       o = o || {};
       return db().then(function () {
-        S = { v: 2, mode: o.mode || 'cpu', level: o.level || 'normal', inn: o.inn || 5, size: o.size || 12, seed: o.seed || 7, phase: 'stack', C: {}, cn: 0, stack: [],
+        S = { v: 3, mode: o.mode || 'cpu', level: o.level || 'normal', inn: o.inn || 5, size: o.size || 12, vals: o.vals === 'shoe' ? 'shoe' : 'league', seed: o.seed || 7, phase: 'stack', C: {}, cn: 0, stack: [],
           T: [{ name: o.a || 'You', cpu: false, color: Kit.color(0), cards: [] }, { name: o.b || 'Sprocket', cpu: o.mode !== 'local', color: Kit.color(1), cards: [] }] };
         S.started = Date.now();
         R = E.rng(o.seed || 7);
@@ -1773,11 +1990,13 @@
     },
     choose: choose, ab: function () { return S && S.g && S.g.ab; }, fast: function (v) { FAST = v; },
     // tests: a human's picks made at random, so a whole game plays itself
-    auto: function (on) { clearInterval(AUTO); if (on) AUTO = setInterval(function () { var ab = S && S.g && S.g.ab; if (!ab || ab.busy || ab.cover) return; var t = ab.step === 'pitch' ? ft() : ab.step === 'look' ? bt() : -1; if (t >= 0 && !S.T[t].cpu) choose(E.PITCHES[Math.floor(Math.random() * 3)]); }, 60); },
+    auto: function (on) { clearInterval(AUTO); if (on) AUTO = setInterval(function () { var ab = S && S.g && S.g.ab; if (ab && ab.ask && V.duel.querySelector('.rl-ask')) return kartChoose(Math.random() < .5); if (!ab || ab.busy || ab.cover) return; var t = ab.step === 'pitch' ? ft() : ab.step === 'look' ? bt() : -1; if (t >= 0 && !S.T[t].cpu) choose(E.PITCHES[Math.floor(Math.random() * 3)]); }, 60); },
     set: function (fn) { fn(S); save(); render(); },
     first: function (t) { FIRST = t; }, rig: function (r) { RIG = r; },
     finishDraft: function () { if (!S || S.phase !== 'draft') return; clearTimers(); while (!draftDone()) cpuPickNow(); save(); renderDraft(); },
     busy: function () { return !!(S && S.g && S.g.ab && S.g.ab.busy); },
+    // tests: a fresh at-bat from the state as it stands (set() first to put runners on or give a card a power)
+    newAB: function () { clearTimers(); if (S && S.g) { S.g.ab = null; newAB(); } },
     printSheet: printSheet
   };
   function cpuPickNow() { var t = S.draft.turn, left = draftLeftFor(t); var T = S.T[t]; var pitchers = armsOf(t);

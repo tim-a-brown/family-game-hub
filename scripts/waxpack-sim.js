@@ -4,7 +4,10 @@
 // a .330 hitter against a .220 one, an ace fresh and tired, and the order of a team's three pitchers.
 //   node scripts/waxpack-sim.js [games] [seed]      TUNE='{"margin":5,"dp":2,...}' tries other numbers (engine tune(),
 //   RULE, VAL, RUN and ranges); ENGINE=<path> runs another copy of engine.js (an older one, to compare). The runners
-//   move by the printed rule (E.advance) with each card's own speedster card.
+//   move by the printed rule (E.advance) with each card's own speedster card. The milestone powers play too, with the
+//   computer's own choices (E.cpuSteal, E.cpuWalk, E.cpuReroll; LEVEL=easy|normal|hard, normal by default).
+//   SHOE=1 sets every card's values by the Shoebox rules (E.SHOE) instead of the league labels; NOPOW=1 plays
+//   without the powers, to compare.
 'use strict';
 var E = require(process.env.ENGINE || '../games/waxpack/engine.js'), fs = require('fs'), path = require('path');
 E.load(JSON.parse(fs.readFileSync(path.join(__dirname, '../games/waxpack/mlb.json'), 'utf8')));
@@ -22,7 +25,8 @@ E.db().list.forEach(function (pl) {
   });
 });
 function any(a) { return a[Math.floor(R() * a.length)]; }
-function card(x, role) { var c = { kind: 'player', role: role, line: x.s, r: role === 'p' ? E.rateP(x.s) : E.rateH(x.s), name: E.name(x.pl), pos: role === 'p' ? ['P'] : E.positionsNear(x.pl, x.s.y) }; return E.table(c); }
+var SHOE = !!process.env.SHOE, NOPOW = !!process.env.NOPOW, LEVEL = process.env.LEVEL || 'normal';
+function card(x, role) { var c = { kind: 'player', role: role, line: x.s, vm: SHOE ? 'shoe' : undefined, r: role === 'p' ? E.rateP(x.s) : E.rateH(x.s), name: E.name(x.pl), pos: role === 'p' ? ['P'] : E.positionsNear(x.pl, x.s.y) }; E.table(c); if (NOPOW) c.r.pw = ''; return c; }
 var SPOT = ['C', 'SS', 'CF', '2B', '3B', '1B', 'RF', 'LF', 'DH'];
 function fitScore(c, at) { if (at === 'DH') return 1.2; var f = E.fit(c.pos, at); return f === 'home' ? 3 : f === 'near' ? 1.5 : 0; }
 function team(o) {
@@ -37,21 +41,49 @@ function team(o) {
 }
 // a runner's id in the sim is his team's letter and his place in the nine; the speedster card is the one speed edge
 function fastOf(tm, id) { var c = tm[id.charAt(0) === 'b' ? 1 : 0].nine[+id.slice(1)]; return c.r.card === 'speed'; }
-function blank() { return { pa: 0, ab: 0, h: 0, d: 0, t: 0, hr: 0, bb: 0, k: 0, e: 0, r: 0, g: 0, dp: 0, sf: 0, hi: 0, guess: 0, bwin: 0, byInn: [] }; }
+function blank() { return { pa: 0, ab: 0, h: 0, d: 0, t: 0, hr: 0, bb: 0, k: 0, e: 0, r: 0, g: 0, dp: 0, sf: 0, hi: 0, guess: 0, bwin: 0, byInn: [], sb: 0, cs: 0, ibb: 0, re: 0, reSaved: 0, slugHR: 0, pmod: 0 }; }
+// a card's power by a runner's id (the batting team's letter and his place in the nine)
+function cardOf(tm, id) { return tm[id.charAt(0) === 'b' ? 1 : 0].nine[+id.slice(1)]; }
 var T = blank();
 function game(A, B, st) {
-  var tm = [A, B], runs = [0, 0], bat = [0, 0], inn = 1, seen = [{ H: 0, B: 0, J: 0, C: 0, n: 0 }, { H: 0, B: 0, J: 0, C: 0, n: 0 }], looks = [{ H: 0, B: 0, J: 0, C: 0, n: 0 }, { H: 0, B: 0, J: 0, C: 0, n: 0 }];
+  var tm = [A, B], runs = [0, 0], bat = [0, 0], inn = 1, kartUsed = {}, seen = [{ H: 0, B: 0, J: 0, C: 0, n: 0 }, { H: 0, B: 0, J: 0, C: 0, n: 0 }], looks = [{ H: 0, B: 0, J: 0, C: 0, n: 0 }, { H: 0, B: 0, J: 0, C: 0, n: 0 }];
   for (;;) {
     for (var half = 0; half < 2; half++) {
       if (half === 1 && inn >= 9 && runs[1] > runs[0]) return runs;
       var b = half, f = 1 - b, F = tm[f], Bt = tm[b], so = E.stintOf(inn, 9), P = F.arms[so.i];
       var outs = 0, bases = [null, null, null], before = runs[b]; st.hi++;
       while (outs < 3) {
-        var hi = Bt.order[bat[b] % 9], H = Bt.nine[hi]; bat[b]++;
+        var hi = Bt.order[bat[b] % 9], H = Bt.nine[hi], lead = runs[f] - runs[b], cst = { bases: bases, outs: outs, inn: inn, inns: 9, level: LEVEL };
+        // a base stealer on first or second, before the pitch
+        var opt = E.stealOption(bases, function (id) { return cardOf(tm, id).r.pw === 'steal'; });
+        if (opt && E.cpuSteal(Object.assign({}, cst, { lead: -lead }), opt, R)) {
+          var sl = E.steal({ bases: bases, outs: outs }, opt.i, R);
+          bases = sl.bases; outs = sl.outs; if (sl.ok) st.sb++; else st.cs++;
+          if (outs >= 3) break;
+          cst.bases = bases; cst.outs = outs;
+        }
+        // a feared slugger may be walked on purpose
+        if (H.r.pw === 'slug') {
+          var nx = Bt.nine[Bt.order[(bat[b] + 1) % 9]];
+          if (E.cpuWalk(Object.assign({}, cst, { lead: lead }), nx.r.pw === 'slug')) {
+            var rw = E.advance({ bases: bases, outs: outs, batter: (b ? 'b' : 'a') + hi }, 'BB', R);
+            bat[b]++; st.pa++; st.bb++; st.ibb++; bases = rw.bases; runs[b] += rw.scored.length;
+            if (half === 1 && inn >= 9 && runs[1] > runs[0]) break;
+            continue;
+          }
+        }
+        bat[b]++;
         var pitch = E.cpuPitch(P.r, H.r, 'normal', looks[b], R), look = E.cpuLook(P.r, H.r, process.env.LOOK || 'easy', seen[f], R);   // a person guessing: one of his pitch cards at random
         seen[f][pitch]++; seen[f].n++; looks[b][look]++; looks[b].n++;
         var right = pitch === look; if (right) st.guess++;
-        var x = E.atBat({ bat: H.r.bat, arm: P.r.arm, fat: E.tired(so.k), guess: right, bcard: H.r.card, pcard: P.r.card }, R), o = x.o;
+        var pm = E.powerMods(H.r, P.r, { bases: bases, inn: inn, inns: 9, lead: lead });
+        st.pmod += pm.b.length + pm.p.length;
+        var abc = { bat: H.r.bat, arm: P.r.arm, fat: E.tiredFor(so.k, P.r), guess: right, bcard: H.r.card, pcard: P.r.card, plusB: pm.b, plusP: pm.p, slug: H.r.pw === 'slug' };
+        var x = E.atBat(abc, R);
+        // the strikeout artist, once a stint
+        if (P.r.pw === 'kart' && x.win && !kartUsed[f + ':' + so.i] && E.cpuReroll(x, { bases: bases, level: LEVEL })) { kartUsed[f + ':' + so.i] = 1; x = E.reroll(abc, x, R); st.re++; if (!x.win) st.reSaved++; }
+        if (x.why === 'slug') st.slugHR++;
+        var o = x.o;
         if (x.win) st.bwin++;
         var pos = null;
         if (o === 'G' || o === 'F') {
@@ -76,10 +108,12 @@ var out = [];
 function line(s) { out.push(s); console.log(s); }
 for (var g = 0; g < N; g++) { var r = game(team(), team(), T); T.r += r[0] + r[1]; T.g++; }
 var avg = T.h / T.ab, obp = (T.h + T.bb) / T.pa, slg = (T.h + T.d + 2 * T.t + 3 * T.hr) / T.ab;
-line('League, ' + N + ' nine-inning games of random cards from 1951 to ' + E.db().upto + ' (the batter must win by ' + E.RULE.margin + '):');
+line((SHOE ? 'Shoebox rules. ' : '') + 'League, ' + N + ' nine-inning games of random cards from 1951 to ' + E.db().upto + ' (the batter must win by ' + E.RULE.margin + '):');
 line('  AVG ' + avg.toFixed(3) + '  OBP ' + obp.toFixed(3) + '  SLG ' + slg.toFixed(3) + '  K ' + (100 * T.k / T.pa).toFixed(1) + '%  BB ' + (100 * T.bb / T.pa).toFixed(1) + '%  HR ' + (100 * T.hr / T.pa).toFixed(1) + '%  2B ' + (100 * T.d / T.pa).toFixed(1) + '%  3B ' + (100 * T.t / T.pa).toFixed(2) + '%  E ' + (100 * T.e / T.pa).toFixed(1) + '%');
 line('  Extra-base hits ' + (100 * (T.d + T.t + T.hr) / T.h).toFixed(0) + '% of hits (' + (100 * (T.d + T.t + T.hr) / T.pa).toFixed(1) + '% of plate appearances); runs a team a game ' + (T.r / T.g / 2).toFixed(2) + ', a team per 9 innings ' + (T.r / T.hi * 9).toFixed(2) + '; the batter won ' + (100 * T.bwin / T.pa).toFixed(1) + '% of the rolls; batters named the pitch ' + (100 * T.guess / T.pa).toFixed(1) + '% of the time');
 line('  A team a game: double plays grounded into ' + (T.dp / T.g / 2).toFixed(2) + ' (real about 0.8), sacrifice flies ' + (T.sf / T.g / 2).toFixed(2) + ' (real about 0.3); the base-running die ' + (E.RUN ? JSON.stringify(E.RUN) : '(the old chances)'));
+line('  A team a game: stolen bases ' + (T.sb / T.g / 2).toFixed(2) + ', caught stealing ' + (T.cs / T.g / 2).toFixed(2) + ' (' + (T.sb + T.cs ? (100 * T.sb / (T.sb + T.cs)).toFixed(0) : '0') + '% safe, on a d20 of ' + E.POW.steal.safe + ' or more), walked on purpose ' + (T.ibb / T.g / 2).toFixed(2) + ', strikeout artists\' second rolls ' + (T.re / T.g / 2).toFixed(2) + ' (' + T.reSaved + ' turned the at-bat), the slugger\'s 19 or 20 home runs ' + (T.slugHR / T.g / 2).toFixed(3) + ', at-bats with a power\'s +1 or +2 ' + (T.pmod / T.g / 2).toFixed(2));
+line('  Powers among the cards: ' + (function () { var h = {}, n = 0; HIT.forEach(function (x) { var c = card(x, 'h'); n++; if (c.r.pw) h[c.r.pw] = (h[c.r.pw] || 0) + 1; }); var hp = {}, m = 0; STA.concat(REL).forEach(function (x) { var c = card(x, 'p'); m++; if (c.r.pw) hp[c.r.pw] = (hp[c.r.pw] || 0) + 1; }); return Object.keys(h).map(function (k) { return E.PNAME2[k] + ' ' + (100 * h[k] / n).toFixed(1) + '%'; }).concat(Object.keys(hp).map(function (k) { return E.PNAME2[k] + ' ' + (100 * hp[k] / m).toFixed(1) + '%'; })).join(', '); })() + (SHOE ? ' (Shoebox rules)' : NOPOW ? ' (no powers)' : ''));
 line('  Runs by inning (both teams, a game): ' + T.byInn.slice(1, 10).map(function (v) { return (v / T.g).toFixed(2); }).join(' '));
 
 // What a matchup gives, worked out exactly: every pair of d20s, at a given chance of naming the pitch

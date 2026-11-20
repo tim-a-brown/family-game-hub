@@ -553,7 +553,8 @@
       out.push(ui.section('How it ended', [ui.picture(svg, { max: 420 }), E.t ? el('p', { class: 'sx-play', text: '“' + E.t + '”' }) : null], { icon: 'flag' }));
     }
     // Wax Pack's duel: how often the batters guessed the pitch
-    if (d.wp && d.duel) out.push(ui.stats([['Pitches guessed', d.duel[0] + ' of ' + (d.duel[0] + d.duel[1]), 'by the batters'], d.n20 ? ['Natural 20s', String(d.n20), 'rolled by batters'] : null, d.nh ? ['No-hitter', d.nh] : null]));
+    if (d.wp && d.duel) out.push(ui.stats([['Pitches guessed', d.duel[0] + ' of ' + (d.duel[0] + d.duel[1]), 'by the batters'], d.n20 ? ['Natural 20s', String(d.n20), 'rolled by batters'] : null, d.nh ? ['No-hitter', d.nh] : null,
+      d.sb || d.cs ? ['Stolen bases', d.sb + ' of ' + (d.sb + d.cs), 'tries'] : null, d.ibb ? ['Walked on purpose', String(d.ibb), d.ibb === 1 ? 'feared slugger' : 'feared sluggers'] : null]));
     out.push(ui.section('Scoreboard', sbNode(d), { icon: 'trophy' }));
     // every half-inning: the result of each play, and how the runs scored
     if (ck && d.hx && d.hx.length) {

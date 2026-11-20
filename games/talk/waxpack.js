@@ -156,5 +156,33 @@ window.TALK_WAXPACK = {
   pinchHR: ['A pinch-hit home run! {name} came off the bench and hit it out!'],
   noHit: ['{pit} has a no-hitter! Not one hit allowed!', 'No hits! {pit} threw a no-hitter!'],
   change: ['{pit} comes in to pitch.', 'A pitching change. Here comes {pit}.', 'The manager goes to the bullpen for {pit}.'],
-  tired: ['{pit} is tiring.', 'That arm is getting heavy for {pit}.', '{pit} is laboring out there.']
+  tired: ['{pit} is tiring.', 'That arm is getting heavy for {pit}.', '{pit} is laboring out there.'],
+  // The milestone powers: a base stealer goes ({base} is the base he's running for), a feared slugger is walked on purpose
+  steal: [
+    'He’s going! {name} steals {base}!', '{last} takes off, and he’s in safe at {base}.', 'There goes {last}! A stolen base.',
+    '{name} swipes {base}. They never had a chance.', 'Safe! {last} slides into {base} ahead of the throw.', '{last} was running on the windup. He has {base}.',
+    'A big jump, and {name} steals {base} standing up.', 'Stolen base for {last}. That’s what he does.', '{last} goes, and the throw is too late. Safe at {base}.',
+    '{name} is in scoring position now. He stole {base}.', 'The catcher had no shot at {last}. Safe at {base}.', 'Off and running, {last} takes {base}.',
+    'Another stolen base for {name}.', '{last} reads the pitcher perfectly and steals {base}.', '{last} owns {base} now. A clean steal.',
+    'Head first into {base}, and {last} is safe!', '{name} gets a great jump and takes {base}.', 'You can’t hold {last} on. He steals {base}.',
+    '{last} dares them to throw him out, and they can’t. Safe at {base}.', 'Speed kills. {name} steals {base}.'
+  ],
+  caught: [
+    'He’s out! {name} is caught stealing {base}.', 'The throw beats {last} to {base}. He’s out.', 'Caught stealing! {pit} and his catcher get {last}.',
+    '{last} goes, and they nail him at {base}.', 'A perfect throw cuts down {name} at {base}.', '{last} gambled at {base} and lost.',
+    'Out at {base}! {name} didn’t get the jump he wanted.', 'The tag is down in time. {last} is caught stealing.', '{name} is thrown out trying to steal {base}.',
+    '{pit} had him timed. {last} is out at {base}.', 'Not this time. {last} is caught at {base}.', 'A strike to {base}, and {name} is out by a step.',
+    '{last} took off too early. Caught stealing.', 'They were waiting for {last} at {base}. He’s out.', 'The catcher guns down {name}.',
+    '{last} runs into an out at {base}.', 'Caught! {name} won’t steal {base} today.', 'A bang-bang play at {base}, and {last} is out.',
+    '{pit} throws over in time to cut down {last}.', 'Thrown out! {name} was a step slow to {base}.'
+  ],
+  ibb: [
+    'They won’t pitch to {name}. He takes first on an intentional walk.', '{pit} walks {name} on purpose.', 'Four wide ones. {name} gets the intentional walk.',
+    'Nobody wants to face {last} here. He’s walked on purpose.', 'The catcher stands up. {name} is walked intentionally.', 'That’s respect. {last} gets a free pass.',
+    '{pit} wants no part of {name}. Intentional walk.', 'They put {last} on first and take their chances with the next man.', 'An intentional walk to {name}. That’s how feared he is.',
+    '{last} trots to first. They walked him on purpose.', 'The manager holds up four fingers. {name} walks.', 'Smart baseball, maybe. {name} is walked to set up the force.',
+    'Nobody’s letting {last} beat them. He’s walked on purpose.', '{name} takes his base without a swing. An intentional walk.', '{pit} pitches around {last} on purpose.',
+    'A free pass for {name}. The pitcher isn’t taking any chances.', 'They walk {last} to get to the next hitter.', 'The bench calls for the intentional walk on {name}.',
+    '{last} has hurt them before. They put him on.', 'First base is open, so {name} gets it for free.'
+  ]
 };

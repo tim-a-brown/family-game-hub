@@ -1455,11 +1455,37 @@ Underlying principles for everything:
   advance's `roll` is shown as a d6 beside the winner's card with what it needs, then what it did (`runSay`, `d6El`).
   Every team pitches three pitchers in fixed stints
   (`stints`: 3/3/3, 2/2/1, 1/1/1; the last takes extra innings), its order set on the lineup's mound (`staffOrder`), a
-  pitcher 1 lower from his stint's third inning (`tired`). `node scripts/waxpack-sim.js [games]` calibrates the margin
-  and ranges against real seasons (`TUNE='{...}'`, `RUN`'s faces too; AVG .255, OBP .314, SLG .403, K 21.9%, BB 8.2%,
-  HR 2.7%, 2B 4.6%, 4.58 runs a team per 9 innings, 0.94 double plays and 0.23 sacrifice flies a team a game). The menu's Print the table cards prints the reference page, the pitch cards, each team's pitching card and a
-  sleeve label per league card (`printSheet`). A v1 save upgrades on load (`upgrade`). The computer's duel is
-  `cpuPitch`/`cpuLook` among the pitcher's own pitches; special cards are `SPECIAL` in `cards.js`.
+  pitcher 1 lower from his stint's third inning (`tired`, `tiredFor`). `node scripts/waxpack-sim.js [games]` calibrates the margin
+  and ranges against real seasons (`TUNE='{...}'`, `RUN`'s faces too, `SHOE=1` the Shoebox rules, `NOPOW=1` no powers;
+  with the powers AVG .252, OBP .314, SLG .407, K 21.9%, BB 8.5%, HR 3.0%, 2B 4.7%, 4.58 runs a team per 9 innings,
+  0.88 double plays and 0.23 sacrifice flies a team a game; the slugger card's home runs start at 15 so the feared
+  slugger's extra ones keep that near 3). **Milestone powers** (Tim, 2026-11-20, so the game plays from a shoebox of
+  real cards): each player has one power at most, read off the last season on his card back (`POW`, `powerOf`, the
+  stronger kept: slugger, stealer, producer; closer, strikeout artist, 20-game winner, workhorse) and kept in `r.pw`
+  by `table`. Feared slugger (30 HR): a winning natural 19 or 20 is a home run on either row (`atBat`'s `slug`), and
+  the pitcher may walk him on purpose (`walkOnPurpose`, the computer by `cpuWalk`); Base stealer (30 SB): before a
+  pitch, the lead runner on first or second with the next base open steals on a d20 of 7 or more (`stealOption`,
+  `steal`, `doSteal`, `cpuSteal`; the rule said 9, which the sim put at 61% safe, so 7 for 70%); Run producer (100
+  RBI), Closer (20 SV, the game's last inning or later, ahead by 1 to 3) and 20-game winner (20 W, tied or behind)
+  add +1, +2, +1 (`powerMods`, chips on the roll); Strikeout artist (200 SO): once a stint a batter who won rolls his
+  d20 again and the new roll stands (`reroll`; a person answers on the roll, `askBox`, `kartChoose`, the at-bat split
+  into `reveal` and `resolve`; the computer by `cpuReroll`); Workhorse (230 IP) never tires. A person gets each choice
+  in the hand row when it applies (Steal second, Walk him on purpose). With powers the sim has 0.33 stolen bases and
+  0.14 caught stealing a team a game (only about 6% of cards are base stealers) and 0.14 walks on purpose. The power's
+  name and its line (`powerLabel`) are on the sleeve label, the card's sheet (`valuesEl`), and at the plate.
+  **Player values** is a setup option (`S.vals`, saved as v 3; a v 2 save loads as League labels): League labels as
+  above, or **Shoebox rules** (`c.vm = 'shoe'`, `SHOE`, `shoeH`, `shoeP`), every value read off the card back with
+  one chart: Bat from AVG (.300, .280, .250, .225), Arm from ERA (under 2.50, 3.25, 4.50, 5.50), the batter's card
+  the first that fits (30 HR slugger; HR plus 3B 20 or 2B 40 power; 15 SB or 8 3B speedster; at least as many BB as
+  SO and 30 BB patient), pitch cards and the pitcher's card from SO and BB against IP (4 strikeouts every 5 innings
+  for 4 cards, 1 every 2 for 3; as many as innings for the strikeout card, a walk every 2 innings wild). The cutoffs
+  put every season since 1950 with 200 at-bats or 50 innings at 11/22/37/17/13% for Bat and 9/20/44/19/8% for Arm.
+  The chart's words are `shoeLines()` and the powers' `powerLines()`, so How to play (`shoeRules`, `powerRules`) and
+  the printed page can't drift; with the Shoebox rules the sim has 4.69 runs a team per 9 innings and HR 3.3%. The
+  menu's Print the table cards prints the reference page, a page Reading a card back (the Shoebox chart and the
+  powers), the pitch cards, each team's pitching card and a sleeve label per league card (`printSheet`). A v1 save
+  upgrades on load (`upgrade`). The computer's duel is `cpuPitch`/`cpuLook` among the pitcher's own pitches; special
+  cards are `SPECIAL` in `cards.js`. Test hook `__wax.newAB()` starts a fresh at-bat from a state set with `set()`.
 - Scanning is `scan.js` (`WaxScan`), Tesseract.js vendored in `games/waxpack/ocr/` and loaded only on the first scan,
   nothing sent anywhere: the photo read upright and turned a quarter each way, names matched fuzzily with nicknames,
   the year from the copyright line or the stat table; the person always picks from the top three or types the name.
