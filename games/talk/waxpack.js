@@ -1,7 +1,8 @@
 // What Wax Pack's announcer says, read by games/waxpack/ui.js through Talk.line (games/talk/talk.js). The real history
 // comes from the player database (games/waxpack/mlb.json): his season on the card, his career, his All-Star teams,
 // awards, World Series rings and the Hall of Fame. Slots: {name} the player, {last} his last name, {team} his team that
-// season, {sy} the season on the card, {y} the card's year, and the numbers each line names.
+// season, {sy} the season on the card, {y} the card's year, and the numbers each line names. Honors, All-Star teams and
+// career totals are only ever those up to the season on the card (ui.js history()): a 1988 card knows nothing of 1990.
 window.TALK_WAXPACK = {
   // A hitter steps in: his season on the card
   hitSeason: [
@@ -54,16 +55,11 @@ window.TALK_WAXPACK = {
     'A Hall of Famer, {name} was inducted in {hof}.',
     'You’re looking at a Hall of Famer. {name} went into Cooperstown in {hof}.'
   ],
-  hofLater: [
-    'Nobody knew it in {y}, but {name} would go into the Hall of Fame in {hof}.',
-    'This card is from {y}. {name} was inducted into the Hall of Fame in {hof}.',
-    'Hang on to this one. {name} went into the Hall of Fame in {hof}.'
-  ],
   allStar: [
-    '{name} made {n} All-Star teams in his career.',
-    'An All-Star {n} times, {name}.',
-    '{name} was picked for the All-Star game {n} times.',
-    '{n} All-Star teams for {name}.'
+    '{name} had made {n} All-Star teams by {sy}.',
+    'By {sy}, {name} had been an All-Star {n} times.',
+    '{name} had been picked for the All-Star game {n} times by {sy}.',
+    '{n} All-Star teams so far for {name}.'
   ],
   mvp: [
     '{name} won the Most Valuable Player award in {mvp}.',
@@ -85,14 +81,14 @@ window.TALK_WAXPACK = {
     '{name} was on the {wsteam} team that won it all in {ws}.'
   ],
   careerHr: [
-    '{name} hit {chr} home runs in a career that ran from {y0} to {y1}.',
-    'Over {nys} seasons in the big leagues, {name} hit {chr} home runs.',
-    '{name} played from {y0} to {y1} and finished with {chits} hits.'
+    '{name} had hit {chr} home runs from {y0} through {y1}.',
+    'In {nys} seasons in the big leagues up to this card, {name} hit {chr} home runs.',
+    '{name} had {chits} hits from {y0} through {y1}.'
   ],
   careerK: [
-    '{name} struck out {cso} batters in {nys} seasons.',
-    'Over a career from {y0} to {y1}, {name} won {cw} games.',
-    '{name} pitched in the big leagues from {y0} to {y1}.'
+    '{name} had struck out {cso} batters in {nys} seasons up to this card.',
+    'From {y0} through {y1}, {name} won {cw} games.',
+    '{name} had been pitching in the big leagues since {y0}.'
   ],
   rookie: [
     'This is {name}’s rookie card. He’s got something to prove.',
