@@ -9,13 +9,11 @@
 // league (NEUTRAL), so a .300 hitter of 1968 is worth more than a .300 hitter of 1999, and the cards of any decade can
 // play one another.
 //
-// The at-bat (dist): the pitcher's pitch (H heat, B breaking ball, J junk) against what the batter looks for. A batter
-// who guesses right squares the ball up; a wrong guess helps the pitcher. Each pitch also leans on a rating: heat on the
-// pitcher's Stuff and the hitter's Power, the breaking ball on Stuff and Contact, junk on Control and the hitter's Eye.
+// The at-bat (atBat): two d20s and a margin to beat, then the winner's own die read on his card; see "The at-bat" below.
 (function (root) {
   var NEUTRAL = { avg: .260, hr: .025, bb: .085, so: .16, era: 4.10, k9: 6.2, bb9: 3.3, sb: .059 };
   var PITCHES = ['H', 'B', 'J'];
-  var PNAME = { H: 'Heat', B: 'Breaking ball', J: 'Junk' };
+  var PNAME = { H: 'Heat', B: 'Breaking ball', J: 'Junk', C: 'Changeup' };
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function lerp1(v, lo, hi) { return clamp(1 + 9 * (v - lo) / (hi - lo), 1, 10); }
   function rng(seed) {   // mulberry32: a saved game replays the same rolls
@@ -149,7 +147,7 @@
       stf: Math.round(lerp1(.6 * Math.log(k9R) / Math.LN2 - .4 * Math.log(eraR) / Math.LN2, -.75, .75)),
       ctl: Math.round(lerp1(-Math.log(bbR) / Math.LN2, -.8, .8)),
       sta: Math.round(clamp(start ? 2 + (ipg - 4) * 2.3 : 1 + ipg * 1.6, 1, 10)),
-      era: clamp(NEUTRAL.era * eraR, 1.4, 9), k9: clamp(NEUTRAL.k9 * k9R, 2, 13), bb9: clamp(NEUTRAL.bb9 * bbR, 1, 7), start: start
+      era: clamp(NEUTRAL.era * eraR, 1.4, 9), k9: clamp(NEUTRAL.k9 * k9R, 2, 13), bb9: clamp(NEUTRAL.bb9 * bbR, 1, 7), start: start, ipg: Math.round(ipg * 10) / 10
     };
   }
   // A card nobody can find (a minor leaguer, a blank back, a name the app doesn't know): a scout's report. The same
@@ -165,52 +163,137 @@
     return { con: con, pow: pow, spd: spd, eye: eye, avg: .205 + con * .0095, hr: .004 + pow * .0042, bb: .05 + eye * .0075, so: .25 - con * .011, sp: (spd - 1) / 9, scout: true };
   }
   var KID = { con: 3, pow: 2, spd: 4, eye: 3, avg: .225, hr: .009, bb: .065, so: .2, sp: .35, kid: true };
-  var ARM = { stf: 2, ctl: 3, sta: 3, era: 6.4, k9: 4.2, bb9: 4.6, start: false, kid: true };   // a fielder on the mound
+  var ARM = { stf: 2, ctl: 3, sta: 3, era: 6.4, k9: 4.2, bb9: 4.6, start: false, kid: true };   // a sandlot kid on the mound
 
-  // ── The at-bat ────────────────────────────────────────────────────────────
-  var ORDER = ['K', 'GB', 'FB', 'LD', 'PU', 'E', 'BB', 'HBP', 'S', 'D', 'T', 'HR'];
-  // H: a hitter's rates, P: a pitcher's; c: {pitch, look, guess (true right, false wrong, null none), tired 0..1,
-  //   rally, hot, sure (a guaranteed hit), slug (record breaker: three times the power), err (the next ball in play
-  //   is an error), glove (the error rate where the ball goes)}
-  function dist(H, P, c) {
-    c = c || {};
-    var era = P.era * (1 + (c.tired || 0) * .55), q = clamp(era / NEUTRAL.era, .35, 2.6);
-    var k9 = P.k9 * (1 - (c.tired || 0) * .3), bb9 = P.bb9 * (1 + (c.tired || 0) * .45);
-    var p = c.pitch || 'H', pw = clamp((H.hr - .004) / .06, 0, 1), cn = clamp((H.avg - .2) / .12, 0, 1);
-    var stf = clamp((P.stf || 5) / 10, .1, 1), ctl = clamp((P.ctl || 5) / 10, .1, 1), eyeV = clamp((H.eye || 5) / 10, .1, 1);
-    // log5 against the timeless league, then the pitch
-    var kRate = H.so * (k9 / NEUTRAL.k9) * .95, bbRate = H.bb * Math.pow(bb9 / NEUTRAL.bb9, .9);
-    var avg = (function (b, pp, l) { var x = b * pp / l, y = (1 - b) * (1 - pp) / (1 - l); return x / (x + y); })(H.avg, clamp(NEUTRAL.avg * Math.pow(q, .45), .15, .4), NEUTRAL.avg);
-    var hrM = Math.pow(q, .6);
-    if (p === 'H') { kRate *= .82 + .42 * stf; hrM *= .8 + .55 * pw; bbRate *= .9; }
-    else if (p === 'B') { kRate *= .9 + .3 * stf; avg *= 1.06 - .12 * stf + .06 * cn; hrM *= .92; }
-    else { bbRate *= 1.35 - .5 * ctl + .3 * eyeV; avg *= 1.02; hrM *= .86 + .2 * (1 - ctl); kRate *= .85; }
-    if (c.guess === true) { avg *= 1.2; hrM *= 1.4; kRate *= .72; }
-    else if (c.guess === false) { avg *= .9; hrM *= .82; kRate *= 1.16; }
-    if (c.rally) avg += .035;
-    if (c.hot) { avg += .03; hrM *= 1.8; }
-    if (c.slug) hrM *= 3;
-    var bb = clamp(bbRate, .02, .3), hbp = .009, ab = 1 - bb - hbp;
-    var h = clamp(avg, .1, .55) * ab;
-    var hrShare = Math.min(.6, (H.hr / Math.max(.12, H.avg)) * hrM);
-    var hr = h * hrShare, t3 = h * (.008 + .035 * (H.sp || 0)), d2 = h * (.18 + .07 * pw), s1 = Math.max(0, h - hr - t3 - d2);
-    var e = c.glove || .014;
-    var k = Math.min(clamp(kRate, .03, .45), ab - h - e - .08);
-    var outs = Math.max(.05, ab - h - k - e);
-    var fb = .3 + .12 * pw, ld = .13, pu = .08, gb = 1 - fb - ld - pu;
-    var d = { K: k, GB: outs * gb, FB: outs * fb, LD: outs * ld, PU: outs * pu, E: e, BB: bb, HBP: hbp, S: s1, D: d2, T: t3, HR: hr };
-    if (c.sure) { var hs = d.S + d.D + d.T + d.HR; ['K', 'GB', 'FB', 'LD', 'PU', 'E', 'BB', 'HBP'].forEach(function (x) { d[x] = 0; }); if (!hs) d.S = 1; }
-    if (c.err) { var inPlay = d.GB + d.FB + d.LD + d.PU; d.E += inPlay; d.GB = d.FB = d.LD = d.PU = 0; }
-    return d;
+  // ── The at-bat: one throw of two d20s, a margin to beat, and the winner's own die read on his card ─────────
+  // Everything here plays at a table with two d20s, the pitch cards and a label in each card's sleeve (the menu's Print
+  // the table cards). The pitcher lays one of his pitch cards face down and the batter names one; both flip. Both roll a
+  // d20 and add their modifiers; the batter wins the at-bat when his total beats the pitcher's by the margin or more,
+  // and otherwise the pitcher wins it. The winner reads his own die (the number rolled, not the total) on his own card:
+  // a batter on his Guessed right row (doubles, triples and home runs) when he named the pitch, or his Guessed wrong row
+  // (singles, doubles, and a patient hitter's walks) when he didn't; a pitcher on his row of ball four, ground outs, fly
+  // outs and strikeouts. So fewer pitch cards make extra-base hits likelier, and more of them hold power down.
+  // A pitcher is 1 lower in the third inning of his stint, and another 1 lower for each inning after.
+  // A player's values are worked out once from the season on his card, against his own league that year (the rates
+  // rateH and rateP have already moved to the timeless league), so a 1968 pitcher and a 2000 hitter are each judged
+  // against their own season; the values are few and whole, so they print on a small card for a real table.
+  // scripts/waxpack-sim.js plays thousands of games with real cards to set the margin and the ranges.
+  var RULE = { margin: 7, tire: 3 };   // tire: the inning of a stint (from 1) that costs 1
+  // Each row is ranges of the die, 1 to 20: [first, last, what happened]. The winner's die is high more often than
+  // low (he won the throw), so the best outcome of each row is at its top.
+  var RANGES = {
+    slugger: { wrong: [[1, 10, 'BB'], [11, 20, 'S']], right: [[1, 12, 'D'], [13, 20, 'HR']] },
+    power: { wrong: [[1, 10, 'BB'], [11, 20, 'S']], right: [[1, 15, 'D'], [16, 20, 'HR']] },
+    speed: { wrong: [[1, 10, 'BB'], [11, 18, 'S'], [19, 20, 'D']], right: [[1, 15, 'D'], [16, 18, 'T'], [19, 20, 'HR']] },
+    patient: { wrong: [[1, 12, 'BB'], [13, 20, 'S']], right: [[1, 18, 'D'], [19, 20, 'HR']] },
+    contact: { wrong: [[1, 10, 'BB'], [11, 20, 'S']], right: [[1, 19, 'D'], [20, 20, 'HR']] },
+    strikeout: [[1, 3, 'BB'], [4, 8, 'G'], [9, 13, 'F'], [14, 20, 'K']],
+    groundball: [[1, 3, 'BB'], [4, 12, 'G'], [13, 16, 'F'], [17, 20, 'K']],
+    wild: [[1, 6, 'BB'], [7, 11, 'G'], [12, 16, 'F'], [17, 20, 'K']],
+    plain: [[1, 3, 'BB'], [4, 9, 'G'], [10, 16, 'F'], [17, 20, 'K']]
+  };
+  var CNAME = { slugger: 'Slugger', power: 'Power hitter', speed: 'Speedster', patient: 'Patient hitter', contact: 'Contact hitter', strikeout: 'Strikeout pitcher', groundball: 'Ground-ball pitcher', wild: 'Wild pitcher', plain: 'Plain card' };
+  var BNAME = { K: 'Strikeout', G: 'Ground out', F: 'Fly out', BB: 'Walk', S: 'Single', D: 'Double', T: 'Triple', HR: 'Home run', E: 'Error' };
+    var RANK = { K: 0, G: 1, F: 1, O: 1, E: 1, BB: 2, S: 3, D: 4, T: 5, HR: 6 };
+
+  // The values. Modifier: −2 to +2 against his own league that year: the top tenth +2, clearly above +1, about
+  // average 0, clearly below −1, the bottom tenth −2 (the cuts are the tenths and the thirds of every regular's and
+  // every pitcher's season since 1950); a batter by getting on base and hitting safely (on-base average plus batting
+  // average), a pitcher by ERA. Pitch cards: 2 to 4 from his strikeouts a game against his league. Card: from his
+  // real numbers. A season under 200 at-bats or 50 innings is too short to read: 0 and the plain card (a hitter's
+  // plain card is the contact card).
+  var VAL = { bat: [.538, .574, .627, .669], arm: [-.241, -.064, .194, .392], k4: 6.6, k3: 5.0, kCard: 7.4, wild: 3.9, slug: .046, pow: .033, spd: .8, eye: .8, shortAB: 200, shortIP: 150 };
+  function step(x, cuts) { var v = -2; for (var i = 0; i < cuts.length; i++) if (x >= cuts[i]) v++; return v; }
+  function valuesH(r, s) {
+    if (r.kid) return { mod: -2, card: 'contact', kid: 1 };
+    if (!s || s.ab < VAL.shortAB) return { mod: 0, card: 'contact', short: 1 };
+    var card = r.hr >= VAL.slug ? 'slugger' : r.hr >= VAL.pow ? 'power' : r.sp >= VAL.spd ? 'speed' : r.bb >= .09 && r.bb >= r.so * VAL.eye ? 'patient' : 'contact';
+    return { mod: step(r.bb + (1 - r.bb - .008) * r.avg + r.avg, VAL.bat), card: card };
   }
-  function pick(d, u) {
-    var tot = 0, k; for (k in d) tot += d[k];
-    var x = u * tot, acc = 0;
-    for (var i = 0; i < ORDER.length; i++) { acc += d[ORDER[i]]; if (x < acc) return ORDER[i]; }
-    return 'HR';
+  function valuesP(r, s) {
+    if (r.kid) return { mod: -2, card: 'plain', np: 2, kid: 1 };
+    var np = r.k9 >= VAL.k4 ? 4 : r.k9 >= VAL.k3 ? 3 : 2;
+    if (!s || s.ipo < VAL.shortIP) return { mod: 0, card: 'plain', np: np, short: 1 };
+    var card = r.k9 >= VAL.kCard ? 'strikeout' : r.bb9 >= VAL.wild ? 'wild' : 'groundball';
+    return { mod: step(-Math.log(r.era / NEUTRAL.era) / Math.LN2, VAL.arm), card: card, np: np };
   }
+  var PITCHES4 = ['H', 'B', 'J', 'C'];
+  // c: a card in the game ({role, line: the season on its back, kid, r: its rates}); writes the values into c.r:
+  // bat or arm (the modifier), card (its ranges), and a pitcher's pitches
+  function table(c) {
+    if (!c || !c.r || c.kind && c.kind !== 'player') return c;
+    if (c.r.vv === 3) return c;
+    var r = c.r, kid = c.kid || r.kid;
+    if (c.role === 'p') { var p = valuesP(Object.assign({}, r, { kid: kid }), c.scout ? null : c.line); r.arm = p.mod; r.card = p.card; r.np = p.np; r.pitches = PITCHES4.slice(0, p.np); r.short = p.short || 0; }
+    else { var h = valuesH(Object.assign({}, r, { kid: kid }), c.scout ? null : c.line); r.bat = h.mod; r.card = h.card; r.short = h.short || 0; }
+    r.vv = 3;
+    return c;
+  }
+  // a card's ranges: a pitcher's one row, or a batter's row for the guess ('right' or 'wrong'); and what a die reads
+  function ranges(card, row) { var f = RANGES[card] || RANGES.plain; return Array.isArray(f) ? f : f[row || 'wrong']; }
+  function readDie(card, row, die) { var rg = ranges(card, row); for (var i = 0; i < rg.length; i++) if (die >= rg[i][0] && die <= rg[i][1]) return rg[i][2]; return rg[rg.length - 1][2]; }
+  function d20(r) { return 1 + Math.floor(r() * 20); }
+  function d6(r) { return 1 + Math.floor(r() * 6); }
+  // a pitcher's fatigue in the k-th inning of his stint (k from 0): 0, 0, −1, −2, −3 at most
+  function tired(k) { return -Math.min(3, Math.max(0, k + 2 - RULE.tire)); }
+
+  // A team's three pitchers share the innings: 9 is 3, 3, 3; 5 is 2, 2, 1; 3 is 1, 1, 1. Extra innings belong to the
+  // last of them. stintOf(inning, innings) = {i: which pitcher (0 to 2), k: his innings before this one in the stint}.
+  function stints(inn) { var a = Math.ceil(inn / 3), c = Math.floor(inn / 3); return [a, inn - a - c, c]; }
+  function stintOf(inn, n) {
+    var s = stints(n), at = 0;
+    for (var i = 0; i < 3; i++) { if (inn <= at + s[i]) return { i: i, k: inn - at - 1 }; at += s[i]; }
+    return { i: 2, k: inn - (n - s[2]) - 1 };
+  }
+  // The order of a team's three pitchers (Best fit, and the computer's): each stint scored by the pitcher's modifier
+  // with his fatigue inning by inning, the late innings counting a little more (a run in the 8th decides more games
+  // than a run in the 2nd). arms: their values ({arm}); returns the order as indexes into arms.
+  function staffOrder(arms, inn) {
+    var st = stints(inn), perms = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]], best = null;
+    perms.forEach(function (p) {
+      var v = 0;
+      p.forEach(function (ai, si) { var a = arms[ai] || { arm: -2 }; for (var k = 0; k < st[si]; k++) v += (a.arm + tired(k)) * (1 + .08 * si); });
+      if (!best || v > best.v + 1e-9) best = { v: v, p: p };
+    });
+    return best.p;
+  }
+
+  // The at-bat's rule lives here alone: what the page shows (steps) and what happened (o). The page and the sim both
+  // call atBat, so a new way to roll is a change to this function and the ranges it reads.
+  // c: {bat, arm, fat (the pitcher's fatigue, 0 or less), guess (true when the batter named the pitch), plusB / plusP:
+  //   [{k, v}] cards in play for each side, bcard, pcard (card names), sure (League Leaders: the batter wins and a walk
+  //   is a single), rb (Record Breaker: a hit goes up one), two (All-Star: the batter rolls twice and keeps the
+  //   higher), bd, pd (fixed dice, for demos and tests)}; r: the dice.
+  // Returns {bd, pd, bdice, bt, pt, need, win, row ('right', 'wrong' or 'p'), die (the winner's die), range, face
+  //   (what the card says), o (what happened: K G F BB S D T HR), why, modsB, modsP, steps}
+  function atBat(c, r) {
+    var modsB = [{ k: 'bat', v: c.bat | 0 }].concat(c.plusB || []), modsP = [{ k: 'arm', v: c.arm | 0 }];
+    if (c.fat) modsP.push({ k: 'tired', v: c.fat });
+    (c.plusP || []).forEach(function (m) { modsP.push(m); });
+    var sb = 0, sp = 0; modsB.forEach(function (m) { sb += m.v; }); modsP.forEach(function (m) { sp += m.v; });
+    var bdice = [c.bd || d20(r)]; if (c.two) bdice.push(d20(r));
+    var bd = Math.max.apply(null, bdice), pd = c.pd || d20(r);
+    var bt = bd + sb, pt = pd + sp, need = RULE.margin, beat = bt - pt >= need;
+    var win = !!(c.sure || beat), row = win ? (c.guess ? 'right' : 'wrong') : 'p';
+    var die = win ? bd : pd, card = win ? c.bcard : c.pcard, rg = ranges(card, row), range = null;
+    rg.forEach(function (x) { if (die >= x[0] && die <= x[1]) range = x; });
+    var face = range[2], o = face, why = '';
+    if (c.sure && !beat) why = 'sure';
+    if (c.sure && o === 'BB') { o = 'S'; why = 'sure'; }
+    if (c.rb && RANK[o] >= RANK.S) { var up = { S: 'D', D: 'T', T: 'HR', HR: 'HR' }[o]; if (up !== o) { o = up; why = 'rb'; } }
+    var x = { bd: bd, pd: pd, bdice: bdice, sb: sb, sp: sp, bt: bt, pt: pt, need: need, win: win, row: row, die: die, range: range, card: card, face: face, o: o, why: why, modsB: modsB, modsP: modsP };
+    x.steps = [{ k: 'mods' }, { k: 'dice' }, { k: 'margin', need: need, by: bt - pt }, { k: 'row', row: row }, { k: 'read', side: win ? 'b' : 'p', card: card, die: die, range: range }];
+    if (why) x.steps.push({ k: 'mark', why: why, from: face, to: o });
+    return x;
+  }
+  // A ground out or a fly out goes to a fielder: a d6 says which. A fielder out of position rolls a d20: at a near
+  // position he boots it on a 1, at a far one on a 1, 2 or 3.
+  var WHERE6 = { G: ['1B', '2B', '2B', 'SS', 'SS', '3B'], F: ['LF', 'LF', 'CF', 'CF', 'RF', 'RF'] };
+  var BOOT = { home: 0, near: 1, far: 3 };
+  function whereOf(kind, f) { return WHERE6[kind][f - 1]; }
+  function tune(o) { for (var k in o) { if (k in RULE) RULE[k] = o[k]; if (k in VAL) VAL[k] = o[k]; if (k === 'ranges') for (var f in o.ranges) RANGES[f] = o.ranges[f]; } }
   function pitchCount(o, r) {
-    var base = { K: 4.8, BB: 5.7, HBP: 3.2 }[o];
+    var base = { K: 4.8, BB: 5.7 }[o];
     return Math.max(1, Math.round((base == null ? 3.4 : base) + (r() - .5) * 3));
   }
   // Move runners for an outcome. st = {bases:[id|null x3], outs, batter}; sp(id) -> speed 0..1.
@@ -295,18 +378,24 @@
   // stays hard to read itself.
   function pitchWeights(P, H) {
     var stf = (P.stf || 5) / 10, ctl = (P.ctl || 5) / 10, pow = (H.pow || 5) / 10, con = (H.con || 5) / 10, eye = (H.eye || 5) / 10;
-    return { H: .6 + 1.2 * stf - .7 * pow, B: .6 + .7 * stf + .3 * ctl - .5 * con, J: .5 + 1.1 * ctl - .6 * eye };
+    var w = { H: .6 + 1.2 * stf - .7 * pow, B: .6 + .7 * stf + .3 * ctl - .5 * con, J: .5 + 1.1 * ctl - .6 * eye, C: .5 + .8 * ctl - .4 * pow };
+    var has = P.pitches || PITCHES, out = {}; has.forEach(function (k) { out[k] = w[k]; });
+    return out;
   }
+  // the pitches a pitcher holds (his pitch cards): the batter guesses among these
+  function pitchesOf(P) { return (P && P.pitches) || PITCHES; }
   function cpuPitch(P, H, level, seen, r) {
-    if (level === 'easy') return PITCHES[Math.floor(r() * 3)];
+    var has = pitchesOf(P);
+    if (level === 'easy') return has[Math.floor(r() * has.length)];
     var w = pitchWeights(P, H);
-    if (level === 'hard' && seen && seen.n >= 4) PITCHES.forEach(function (k) { w[k] *= 1.35 - (seen[k] || 0) / seen.n; });   // away from what the batter keeps looking for
+    if (level === 'hard' && seen && seen.n >= 4) has.forEach(function (k) { w[k] *= 1.35 - (seen[k] || 0) / seen.n; });   // away from what the batter keeps looking for
     return weighted(w, r, level === 'hard' ? 1.4 : 1);
   }
   function cpuLook(P, H, level, seen, r) {
-    if (level === 'easy') return PITCHES[Math.floor(r() * 3)];
+    var has = pitchesOf(P);
+    if (level === 'easy') return has[Math.floor(r() * has.length)];
     var w = pitchWeights(P, H);
-    if (level === 'hard' && seen && seen.n >= 3) PITCHES.forEach(function (k) { w[k] *= .65 + (seen[k] || 0) / seen.n * 1.2; });   // toward what this pitcher has been throwing
+    if (level === 'hard' && seen && seen.n >= 3) has.forEach(function (k) { w[k] *= .65 + (seen[k] || 0) / seen.n * 1.2; });   // toward what this pitcher has been throwing
     return weighted(w, r, level === 'hard' ? 1.6 : 1.1);
   }
   function weighted(w, r, sharp) {
@@ -315,10 +404,13 @@
     var x = r() * t; for (k in v) { x -= v[k]; if (x <= 0) return k; } return 'H';
   }
 
-  var E = { NEUTRAL: NEUTRAL, PITCHES: PITCHES, PNAME: PNAME, ORDER: ORDER, FIELD: FIELD, ERR: ERR, KID: KID, ARM: ARM,
+  var E = { NEUTRAL: NEUTRAL, PITCHES: PITCHES, PITCHES4: PITCHES4, PNAME: PNAME, FIELD: FIELD, ERR: ERR, KID: KID, ARM: ARM,
+    RULE: RULE, RANGES: RANGES, ranges: ranges, readDie: readDie, CNAME: CNAME, BNAME: BNAME, RANK: RANK, VAL: VAL, BOOT: BOOT, WHERE6: WHERE6, whereOf: whereOf,
+    valuesH: valuesH, valuesP: valuesP, table: table, tired: tired, stints: stints, stintOf: stintOf, staffOrder: staffOrder,
+    atBat: atBat, d20: d20, d6: d6, tune: tune,
     clamp: clamp, rng: rng, hash: hash, skey: skey, load: load, db: function () { return DB; }, seasons: seasons, honors: honors,
     teamName: teamName, nick: nick, lgOf: lgOf, byId: byId, name: name, find: find, roleOf: roleOf, cardSeason: cardSeason,
-    positionsNear: positionsNear, rateH: rateH, rateP: rateP, scout: scout, dist: dist, pick: pick, pitchCount: pitchCount,
-    advance: advance, fit: fit, where: where, cpuPitch: cpuPitch, cpuLook: cpuLook, pitchWeights: pitchWeights };
+    positionsNear: positionsNear, rateH: rateH, rateP: rateP, scout: scout, pitchCount: pitchCount,
+    advance: advance, fit: fit, where: where, pitchesOf: pitchesOf, cpuPitch: cpuPitch, cpuLook: cpuLook, pitchWeights: pitchWeights };
   if (typeof module !== 'undefined' && module.exports) module.exports = E; else root.WaxEngine = E;
 })(this);

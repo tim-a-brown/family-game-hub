@@ -6,14 +6,14 @@
 (function (root) {
   // Special cards: what each is, and the one-time play it gives the team that drafts it
   var SPECIAL = {
-    team:      { name: 'Team card', play: 'Rally', when: 'bat', say: 'Your hitters get a lift for the rest of this half-inning.' },
+    team:      { name: 'Team card', play: 'Rally', when: 'bat', say: 'Your hitters are +2 on their rolls for the rest of this half-inning.' },
     checklist: { name: 'Checklist', play: 'Peek', when: 'atbat', say: 'See the pitcher’s pitch before you choose what to look for.' },
-    leaders:   { name: 'League Leaders', play: 'Sure hit', when: 'atbat', say: 'This at-bat is a hit.' },
-    highlight: { name: 'Highlight card', play: 'Clutch pitch', when: 'pitch', say: 'The batter can’t guess this pitch right.' },
-    as:        { name: 'All-Star card', play: 'All-Star swing', when: 'atbat', say: 'This at-bat swings twice, and the better swing counts.' },
-    rb:        { name: 'Record Breaker', play: 'Swing for the record', when: 'atbat', say: 'This batter has three times his home run power for one at-bat.' },
+    leaders:   { name: 'League Leaders', play: 'Sure hit', when: 'atbat', say: 'This batter wins the at-bat, and a walk counts as a single.' },
+    highlight: { name: 'Highlight card', play: 'Clutch pitch', when: 'pitch', say: 'The batter’s guess doesn’t count, so if he wins the roll he rolls his Guessed wrong row.' },
+    as:        { name: 'All-Star card', play: 'All-Star swing', when: 'atbat', say: 'This batter rolls his d20 twice and keeps the higher one.' },
+    rb:        { name: 'Record Breaker', play: 'Swing for the record', when: 'atbat', say: 'His hit goes up one: a single to a double, a double to a triple, a triple to a home run.' },
     err:       { name: 'Error card', play: 'Error', when: 'bat', say: 'The other team makes an error on the next ball put in play.' },
-    dup:       { name: 'Second copy', play: 'On fire', when: 'own', say: 'He’s on fire for one at-bat: his guess counts as right, and his power goes up.' }
+    dup:       { name: 'Second copy', play: 'On fire', when: 'own', say: 'He’s on fire: +3 on his roll for one at-bat.' }
   };
   // Famous printing mistakes a shoebox might hold, told by the announcer when one is logged
   var FAMOUS_ERR = [

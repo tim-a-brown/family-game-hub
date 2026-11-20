@@ -101,8 +101,8 @@ html[data-o=land] .wp-stk>.wp-dock{grid-area:d;align-self:end;}
 .wp-yrprev .wc{--w:min(118px,30vw);}
 .wp-yrfacts{flex:1;min-width:0;}
 .wp-sln{margin:8px 0 0;font-size:.82rem;color:var(--text-2);line-height:1.35;}
-.wp-play{margin:0;font-size:.9rem;line-height:1.4;color:var(--text-2);}
-.wp-play b{color:var(--text);font-size:1.05rem;}
+p.wp-play{margin:0;font-size:.9rem;line-height:1.4;color:var(--text-2);}
+p.wp-play b{color:var(--text);font-size:1.05rem;}
 .wp-yrs{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:none;}
 .wp-y{flex:none;padding:8px 11px;border-radius:11px;border:0;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);color:var(--text-2);font-weight:800;font-variant-numeric:tabular-nums;cursor:pointer;}
 .wp-y.on{background:var(--lit);color:#2a1d00;box-shadow:none;}
@@ -361,3 +361,209 @@ html[data-o=land] .wp-sb{grid-area:f;align-self:start;position:relative;z-index:
 .wp-field{view-transition-name:wp-field;}.wp-sb{view-transition-name:wp-sb;}.wp-mu{view-transition-name:wp-mu;}.wp-ann{view-transition-name:wp-ann;}
 .wp-duel{view-transition-name:wp-duel;}.wp-hand{view-transition-name:wp-hand;}.wp-gbox{view-transition-name:wp-grid;}.wp-lfield{view-transition-name:wp-dia;}
 .wp-lcol{view-transition-name:wp-lcol;}.wp-dock{view-transition-name:wp-dock;}.wp-head{view-transition-name:wp-head;}.wp-dteams{view-transition-name:wp-teams;}
+
+/* ── The at-bat: two d20s, a margin, the winner's d6 ──────────────────────────────────── */
+.wp-arms{display:flex;align-items:center;gap:6px;margin:4px 0 0;font-size:.82rem;color:var(--text-2);}
+.wp-arms .ico,.wp-arms svg{width:15px;height:15px;flex:none;}
+.wp-arms.short{color:#ffc46b;}
+.wp-dpit{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:.72rem;color:var(--text-3);}
+.wp-dpit i{display:flex;gap:3px;}
+.wp-dpit em{width:8px;height:8px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--gl-line);}
+.wp-dpit em.on{background:var(--tc);box-shadow:none;}
+.wp-dpit b{font-variant-numeric:tabular-nums;color:var(--text-2);}
+.wp-dpit.full b{color:var(--text);}
+.wp-cbtn.shut{opacity:.32;filter:grayscale(.6);}
+/* the mound on the lineup diamond: three pitchers and their innings */
+.wp-mound{position:absolute;left:50%;top:79%;transform:translate(-50%,-50%);display:flex;flex-direction:column;gap:2px;padding:3px;border-radius:9px;background:rgba(20,40,24,.82);box-shadow:0 2px 8px rgba(0,0,0,.45);}
+.wp-st{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.45em;padding:.18em .5em;border:0;border-radius:6px;background:rgba(250,246,234,.95);color:#1b2a1b;cursor:pointer;font-size:clamp(9px,2.3cqw,14px);min-width:0;}
+.wp-st .i{font-weight:900;color:#5b6b5b;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.wp-st b{font-weight:900;white-space:nowrap;text-align:left;}
+.wp-st .a{font-weight:900;font-variant-numeric:tabular-nums;}
+.wp-st.sel{outline:3px solid var(--lit);outline-offset:1px;}
+.s-C{top:96%;}
+/* the batter's and pitcher's numbers */
+.mu-nums{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:2px;}
+.wp-num{display:inline-flex;align-items:baseline;gap:4px;padding:1px 7px 2px;border-radius:8px;background:color-mix(in srgb,var(--nc) 30%,rgba(10,14,30,.6));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--nc) 70%,transparent);font-size:.68rem;color:var(--text-2);white-space:nowrap;}
+.wp-num b{font-size:.95rem;color:#fff;font-variant-numeric:tabular-nums;}
+.wp-num.pop{animation:wppop .5s var(--spring,ease);}
+.mu-mark{font-size:.66rem;font-weight:800;color:var(--text-2);padding:1px 6px;border-radius:7px;background:rgba(255,255,255,.07);white-space:nowrap;}
+.mu.won{box-shadow:inset 0 0 0 2px var(--lit),0 0 16px color-mix(in srgb,var(--lit) 35%,transparent);}
+/* the pitching card beside the mound */
+.wp-staff{position:absolute;left:6px;bottom:6px;z-index:2;display:grid;grid-template-columns:auto auto auto;gap:1px 6px;padding:4px 7px 5px;border-radius:9px;background:rgba(10,14,30,.78);box-shadow:inset 0 0 0 1px var(--gl-line);font-size:.68rem;color:var(--text-2);pointer-events:none;}
+.wp-sth{grid-column:1 / -1;font-size:.64rem;font-weight:800;color:color-mix(in srgb,var(--tc) 55%,#fff);}
+.wp-str{display:contents;}
+.wp-str>*{white-space:nowrap;font-variant-numeric:tabular-nums;}
+.wp-str .i{color:var(--text-3);}
+.wp-str .a{text-align:right;}
+.wp-str.on>*{color:var(--lit);font-weight:800;}
+.wp-str.done>*{opacity:.45;}
+/* the pitch buttons: only the pitcher's pitch cards, and how often each has come up this game */
+.wp-pitches.n2{grid-template-columns:repeat(2,1fr);}.wp-pitches.n4{grid-template-columns:repeat(4,1fr);}
+.wp-pitches.n4 .wp-pb b{font-size:.74rem;white-space:normal;text-align:center;line-height:1.1;}
+.wp-pb .tal{display:flex;gap:3px;min-height:5px;}
+.wp-pb .tal em{width:5px;height:5px;border-radius:50%;background:color-mix(in srgb,var(--text) 55%,transparent);}
+/* the roll */
+.wp-rl{display:flex;flex-direction:column;gap:6px;}
+.rl-duel{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:stretch;gap:6px;}
+.rl-side{display:flex;flex-direction:column;gap:3px;padding:5px 7px;border-radius:12px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);min-width:0;transition:box-shadow .3s,background .3s,opacity .3s;}
+.rl-side.p{align-items:flex-end;}
+.rl-who{font-size:.72rem;font-weight:800;color:color-mix(in srgb,var(--tc) 55%,#fff);white-space:nowrap;}
+.rl-chips{display:flex;flex-wrap:wrap;gap:3px;}
+.rl-side.p .rl-chips{justify-content:flex-end;}
+.rl-c{display:inline-flex;align-items:baseline;gap:3px;padding:1px 6px;border-radius:8px;background:color-mix(in srgb,var(--nc,#888) 30%,rgba(10,14,30,.6));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--nc,#888) 70%,transparent);font-size:.64rem;color:var(--text-2);white-space:nowrap;}
+.rl-c b{font-size:.86rem;color:#fff;font-variant-numeric:tabular-nums;}
+.rl-c.play{--nc:var(--lit);}.rl-c.tired{--nc:#ff9f2e;}
+.rl-roll{display:flex;align-items:center;gap:6px;}
+.rl-side.p .rl-roll{flex-direction:row-reverse;}
+.rl-tot{font-family:var(--display);font-size:1.5rem;font-variant-numeric:tabular-nums;line-height:1;}
+.rl-mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:64px;}
+.rl-guess{display:flex;align-items:center;gap:3px;}
+.rl-guess i{width:20px;height:20px;color:#9fd3ff;display:block;}
+.rl-guess i svg{width:100%;height:100%;display:block;}
+.rl-guess .mk{display:grid;place-items:center;width:16px;height:16px;border-radius:50%;}
+.rl-guess .mk svg{width:10px;height:10px;}
+.rl-mid.right .mk{background:#2f9a4a;color:#fff;}.rl-mid.wrong .mk{background:#b8382c;color:#fff;}
+.rl-nl{font-size:.62rem;font-weight:800;color:var(--text-3);white-space:nowrap;}
+.rl-need{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:#f6f0dc;color:#2b2414;box-shadow:0 1px 4px rgba(0,0,0,.45);}
+.rl-need b{font-family:var(--display);font-size:1.2rem;}
+.rl-by{font-size:.68rem;font-weight:800;white-space:nowrap;color:var(--text-2);}
+.wp-rl.decided.bwin .rl-side.b,.wp-rl.decided.pwin .rl-side.p,.wp-rl:not(.live).bwin .rl-side.b,.wp-rl:not(.live).pwin .rl-side.p{background:color-mix(in srgb,var(--lit) 14%,transparent);box-shadow:inset 0 0 0 1.5px var(--lit);}
+.wp-rl.decided.bwin .rl-side.p,.wp-rl.decided.pwin .rl-side.b,.wp-rl:not(.live).bwin .rl-side.p,.wp-rl:not(.live).pwin .rl-side.b{opacity:.6;}
+.wp-rl.bwin .rl-by{color:var(--lit);}
+.wp-rl.live .rl-c,.wp-rl.live .rl-guess,.wp-rl.live .rl-need,.wp-rl.live .rl-tot,.wp-rl.live .rl-by,.wp-rl.live .rl-card{opacity:0;transform:translateY(6px) scale(.85);transition:opacity .22s,transform .32s var(--spring,ease);}
+.wp-rl.live .in{opacity:1 !important;transform:none !important;}
+/* the dice */
+.wp-d20{position:relative;width:42px;height:42px;display:grid;place-items:center;flex:none;}
+.wp-d20 svg{position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 3px 4px rgba(0,0,0,.5));}
+.wp-d20 .o{fill:#e7e2f5;stroke:#5a4f8c;stroke-width:2;stroke-linejoin:round;}
+.wp-d20 .f{fill:#fffdf6;}
+.wp-d20 .e{fill:none;stroke:#8a80b8;stroke-width:1.2;}
+.wp-d20 b{position:relative;top:3px;font-family:var(--display);font-size:14px;color:#2a2050;font-variant-numeric:tabular-nums;}
+.rl-side.p .wp-d20 .o{fill:#e2ecf5;stroke:#4f6a8c;}
+.wp-d20.n20 .o{fill:#ffe9a3;stroke:#a87a1c;}
+.wp-d20.lost{opacity:.4;transform:scale(.8);}
+.wp-d20.rolling,.wp-d6.rolling{animation:wpd20 .3s linear infinite;}
+.wp-d20.landed,.wp-d6.landed{animation:wpland .45s var(--spring,ease);}
+.wp-d20.boot{width:32px;height:32px;}.wp-d20.boot b{font-size:11px;}
+.wp-d20.boot .o{fill:#f5e1dc;stroke:#8c4f4f;}
+.wp-rl.live .wp-d20.boot:not(.in){opacity:0;}
+.wp-d6{width:30px;height:30px;flex:none;display:block;}
+.wp-d6 svg{width:100%;height:100%;display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));}
+.wp-d6 rect{fill:#fffdf6;stroke:#b9b2a0;stroke-width:1.5;}
+.wp-d6 circle{fill:#2b2414;}
+@keyframes wpd20{0%{transform:rotate(0) translateY(0);}25%{transform:rotate(90deg) translateY(-6px);}50%{transform:rotate(180deg);}75%{transform:rotate(270deg) translateY(-3px);}100%{transform:rotate(360deg);}}
+@keyframes wpland{0%{transform:scale(1.25);}60%{transform:scale(.94);}}
+/* the winner's card: its d6 rows (a batter's two, the guess lighting one), the face rolled lit */
+.rl-card{display:flex;flex-direction:column;gap:3px;padding:5px 7px 6px;border-radius:12px;background:#f6f0dc;color:#2b2414;box-shadow:0 2px 8px rgba(0,0,0,.45),inset 0 3px 0 var(--tc);}
+.rl-ch{display:flex;align-items:baseline;gap:7px;}
+.rl-ch b{font-size:.8rem;font-weight:900;}
+.rl-ch span{font-size:.68rem;font-weight:800;color:#6b5f42;}
+.rl-cf{display:flex;align-items:center;gap:7px;}
+.rl-rows{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
+.rl-row{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:5px;opacity:.45;transition:opacity .3s;}
+.rl-row.on{opacity:1;}
+.rl-card.p .rl-row{grid-template-columns:minmax(0,1fr);opacity:1;}
+.rl-rl{font-size:.6rem;font-weight:900;color:#6b5f42;width:4.4em;line-height:1.05;}
+.rl-row.on .rl-rl{color:#1b1406;}
+.wp-fc{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:2px;min-width:0;}
+.fc-f{position:relative;min-width:0;display:flex;align-items:flex-end;justify-content:center;height:26px;padding:0 1px 3px;border-radius:5px;background:rgba(43,36,20,.08);transition:background .25s,box-shadow .25s;}
+.fc-f i{position:absolute;left:3px;top:1px;font-style:normal;font-size:9.5px;font-weight:800;color:#8a7d5a;}
+.fc-f span{display:block;max-width:100%;overflow:hidden;white-space:nowrap;font-size:.64rem;font-weight:900;}
+.fc-f.f-HR,.fc-f.f-T{background:rgba(255,190,40,.35);}.fc-f.f-D{background:rgba(63,191,102,.26);}.fc-f.f-S{background:rgba(63,191,102,.13);}
+.fc-f.f-BB{background:rgba(63,120,191,.18);}.fc-f.f-K{background:rgba(184,56,44,.18);}
+.fc-f.lit{background:var(--lit);box-shadow:0 0 12px color-mix(in srgb,var(--lit) 70%,transparent);}
+.fc-f.lit span,.fc-f.lit i{color:#1b1406;}
+.rl-say{margin:0;min-height:1.3em;font-size:.8rem;line-height:1.3;color:var(--text);}
+@media (orientation:portrait) and (max-height:700px){
+  .wp-d20{width:34px;height:34px;}.wp-d20 b{font-size:12px;}
+  .rl-tot{font-size:1.2rem;}
+  .rl-need{width:30px;height:30px;}.rl-need b{font-size:1rem;}
+  .fc-f{height:22px;}
+  .rl-say{font-size:.72rem;}
+  .wp-rl{gap:4px;}
+  .rl-side{padding:3px 5px;}
+  .wp-staff{font-size:.62rem;padding:3px 5px;}
+}
+@media (min-width:700px) and (min-height:700px){
+  .wp-d20{width:56px;height:56px;}.wp-d20 b{font-size:18px;}
+  .wp-d6{width:38px;height:38px;}
+  .rl-c{font-size:.76rem;padding:2px 8px;}.rl-c b{font-size:1rem;}
+  .rl-tot{font-size:2rem;}
+  .rl-need{width:46px;height:46px;}.rl-need b{font-size:1.5rem;}
+  .fc-f{height:34px;}.fc-f span{font-size:.8rem;}
+  .rl-rl{font-size:.7rem;}
+  .rl-say{font-size:.95rem;}
+  .wp-staff{font-size:.8rem;}
+  .wp-num{font-size:.78rem;}.wp-num b{font-size:1.1rem;}
+}
+/* a short screen: while the dice roll, the roll panel takes the matchup's place (its sides name both players) */
+@media (orientation:landscape) and (max-height:500px){
+  .wp-ply.rolling .wp-mu{display:none;}
+  .wp-d20{width:34px;height:34px;}.wp-d20 b{font-size:12px;}
+  .rl-tot{font-size:1.2rem;}
+  .rl-need{width:30px;height:30px;}.rl-need b{font-size:1rem;}
+  .fc-f{height:22px;}
+  .wp-rl{gap:4px;}
+  .rl-side{padding:3px 5px;}
+}
+@media (orientation:portrait) and (max-height:700px){
+  .wp-ply.rolling .wp-mu{display:none;}
+}
+/* a row of a player's card: the die's ranges, each as wide as its numbers, the die's pin over the one it reads */
+.wp-rg{position:relative;display:flex;gap:2px;min-width:0;margin-top:13px;}
+.rg-r{position:relative;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:30px;padding:2px 1px 3px;border-radius:5px;background:rgba(43,36,20,.08);transition:background .25s,box-shadow .25s;}
+.rg-r i{display:block;max-width:100%;overflow:hidden;white-space:nowrap;font-style:normal;font-size:9.5px;font-weight:800;color:#8a7d5a;font-variant-numeric:tabular-nums;}
+.rg-r span{display:block;max-width:100%;overflow:hidden;white-space:nowrap;font-size:.66rem;font-weight:900;color:#2b2414;}
+.rg-r.f-HR,.rg-r.f-T{background:rgba(255,190,40,.35);}.rg-r.f-D{background:rgba(63,191,102,.26);}.rg-r.f-S{background:rgba(63,191,102,.13);}
+.rg-r.f-BB{background:rgba(63,120,191,.18);}.rg-r.f-K{background:rgba(184,56,44,.2);}
+.rg-r.lit{background:var(--lit);box-shadow:0 0 12px color-mix(in srgb,var(--lit) 70%,transparent);}
+.rg-r.lit span,.rg-r.lit i{color:#1b1406;}
+.rg-pin{position:absolute;top:-14px;left:0;transform:translateX(-50%);opacity:0;transition:left .45s cubic-bezier(.3,.7,.3,1.15),opacity .2s;z-index:2;}
+.rg-pin.in{opacity:1;}
+.rg-pin b{position:relative;display:block;min-width:22px;padding:0 4px;border-radius:6px;background:#2a2050;color:#fff;font-size:.74rem;font-weight:900;text-align:center;font-variant-numeric:tabular-nums;box-shadow:0 2px 4px rgba(0,0,0,.4);}
+.rg-pin b::after{content:"";position:absolute;left:50%;bottom:-4px;margin-left:-4px;border:4px solid transparent;border-bottom:0;border-top-color:#2a2050;}
+.rl-card.b .rl-row{grid-template-columns:auto minmax(0,1fr);}
+@media (orientation:landscape) and (max-height:500px),(orientation:portrait) and (max-height:700px){ .rg-r{height:26px;} .wp-rg{margin-top:12px;} }
+@media (min-width:700px) and (min-height:700px){ .rg-r{height:40px;} .rg-r span{font-size:.82rem;} .rg-r i{font-size:.7rem;} .rg-pin b{font-size:.9rem;} .wp-rg{margin-top:16px;} .rg-pin{top:-17px;} }
+/* the printed sheet: shown only while printing */
+.wp-print{display:none;}
+@media print{
+  @page{size:letter;margin:.4in;}
+  html.wp-printing body::before,html.wp-printing body::after,html.wp-printing::before,html.wp-printing::after{display:none !important;}
+  html.wp-printing,html.wp-printing body{color-scheme:light !important;background:#fff !important;background-image:none !important;color:#111 !important;height:auto !important;overflow:visible !important;}
+  html.wp-printing body>*:not(.wp-print){display:none !important;}
+  html.wp-printing .wp-print{display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;font:11px/1.35 Georgia,'Times New Roman',serif;color:#111;}
+  .wp-print h1{font:800 20px/1.1 var(--display),sans-serif;margin:0 0 6px;}
+  .wp-print h2{font:800 13px/1.2 var(--display),sans-serif;margin:12px 0 4px;}
+  .wp-print p,.wp-print li{margin:0 0 4px;}
+  .wp-print ol,.wp-print ul{margin:0 0 4px;padding-left:18px;}
+  .pr-page{break-after:page;}
+  .pr-page:last-child{break-after:auto;}
+  .pr-lead{font-style:italic;}
+  .pr-t{border-collapse:collapse;margin:4px 0;}
+  .pr-t th,.pr-t td{border:1px solid #999;padding:2px 8px;text-align:center;}
+  .pr-pc{display:grid;grid-template-columns:repeat(4,1.6in);gap:.12in;}
+  .pr-pc .pc{height:2.2in;border:1.5px dashed #888;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#234;}
+  .pr-pc .pc i{width:.9in;height:.9in;display:block;}
+  .pr-pc .pc i svg{width:100%;height:100%;}
+  .pr-pc .pc circle[fill="#fff"]{fill:#fff;stroke:#333;stroke-width:1;}
+  .pr-pc .pc b{font:800 14px var(--display),sans-serif;}
+  .pr-st{display:flex;gap:.2in;}
+  .pr-st .ps{border:1px solid #888;border-radius:8px;padding:6px 10px;}
+  .pr-st td{padding:1px 8px 1px 0;}
+  .pr-lg{display:grid;grid-template-columns:repeat(3,2.45in);gap:.08in;}
+  .pl{break-inside:avoid;width:2.45in;box-sizing:border-box;border:1px dashed #888;border-radius:6px;padding:4px 6px 5px;font:9.5px/1.2 var(--font),sans-serif;}
+  .pl-h{display:flex;justify-content:space-between;gap:4px;align-items:baseline;}
+  .pl-h b{font-size:11px;}
+  .pl-h span{color:#555;}
+  .pl-n{display:flex;gap:8px;align-items:baseline;margin:2px 0 3px;}
+  .pl-n b{font-size:12px;}
+  .pl-n .t{margin-left:auto;font-weight:700;}
+  .pl-r em{display:block;font-style:normal;font-weight:700;font-size:8.5px;color:#444;}
+  .pr-row{display:flex;gap:1px;}
+  .pr-row span{min-width:0;border:1px solid #bbb;border-radius:3px;padding:1px 2px;font-size:8.5px;text-align:center;overflow:hidden;white-space:nowrap;}
+  .pr-row span i{display:block;font-style:normal;font-weight:700;}
+  .pr-row .f-HR,.pr-row .f-T{background:#ffe7a8;}.pr-row .f-D{background:#d7f0dc;}.pr-row .f-K{background:#f6d6d2;}.pr-row .f-BB{background:#d9e5f5;}
+}
+.rl-ch .wp-d20.boot{margin-left:auto;align-self:center;}
+.mu-nums{min-width:0;}.mu-mark{white-space:normal;min-width:0;line-height:1.15;}
