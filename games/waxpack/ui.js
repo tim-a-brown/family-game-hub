@@ -97,6 +97,8 @@
   // The numbers the table plays with: "+2" and "−1" with a real minus sign
   function sgn(v) { v = v | 0; return v > 0 ? '+' + v : v < 0 ? '\u2212' + (-v) : '0'; }
   function rr(c) { return E.table(c).r || {}; }
+  // the speedster card is the one edge a runner has (the base-running rule, E.advance); a sandlot kid is never one
+  function fastRunner(id) { var c = S.C[id]; return !!(c && !c.kid && rr(c).card === 'speed'); }
   // what a hitter's card is worth beyond his modifier, for the computer's picks and Best fit
   var CW = { slugger: 2, power: 1, speed: .6, patient: .4, contact: 0 };
   // a printed name too long for its plate is set condensed, as card makers did, never cut
@@ -163,10 +165,11 @@
     '<h3>Every at-bat</h3><ul><li>The pitcher lays one of his pitch cards face down: Heat, Breaking ball, Junk or Changeup. A pitcher who strikes out a lot holds more of them, so he is harder to read.</li>' +
     '<li>The batter names the pitch he’s looking for.</li>' +
     '<li>Both roll a d20 and add their numbers: the batter his Bat, the pitcher his Arm. The batter wins the at-bat if his total beats the pitcher’s by ' + E.RULE.margin + ' or more.</li>' +
-    '<li>The winner reads his own die, the number he rolled, on his own card. A batter who named the pitch squared it up, so he reads his Guessed right row: doubles, triples and home runs. A batter who guessed wrong only got a piece of it, so he reads his Guessed wrong row: walks and singles, and doubles for a speedster. A pitcher’s row has ball four, ground outs, fly outs and strikeouts.</li>' +
-    '<li>A walk moves a runner up only when he’s forced. A single moves every runner at least one base, and a runner on second usually scores.</li>' +
+    '<li>The winner reads his own die, the number he rolled, on his own card. A batter who named the pitch squared it up, so he reads his Guessed right row: a single when he only just won, otherwise doubles, triples and home runs. A batter who guessed wrong only got a piece of it, so he reads his Guessed wrong row: walks and singles, and doubles for a speedster. A pitcher’s row has ball four, ground outs, fly outs and strikeouts.</li>' +
     '<li>A ground out or a fly out goes to a fielder, by a d6: on the ground 1 first base, 2 and 3 second base, 4 and 5 shortstop, 6 third base; in the air 1 and 2 left field, 3 and 4 center field, 5 and 6 right field. A fielder out of position rolls a d20: at a nearby position a 1 is an error, anywhere else a 1, 2 or 3.</li>' +
     '<li>In pass and play, the pitcher picks with the screen covered, then hands the device to the batter.</li></ul>' +
+    '<h3>Running the bases</h3><ul>' + E.runLines().map(function (l) { return '<li><b>' + l[0] + '</b>: ' + l[1] + '</li>'; }).join('') +
+    '<li>Where a line gives numbers, roll a d6. The speedster card is the only thing that makes a runner faster.</li></ul>' +
     '<h3>The odd cards</h3><ul><li>Cards that aren’t players are plays you hold and use once:</li>' +
     '<li><b>Team card</b>: +2 on your hitters’ rolls for the rest of the half-inning. <b>Checklist</b>: see the pitch before you name one. <b>League Leaders</b>: the batter wins the at-bat, and a walk counts as a single. <b>Highlight card</b>: the batter’s guess doesn’t count, so a batter who wins rolls his Guessed wrong row.</li>' +
     '<li>A player’s <b>All-Star card</b> rolls his d20 twice and keeps the higher one. A <b>Record Breaker</b> moves his hit up one: a single to a double, a double to a triple, a triple to a home run. An <b>error card</b> makes the other team boot the next ball in play. A <b>second copy</b> of a player puts him on fire, +3 for an at-bat. A <b>rookie card</b> is +1 in his first at-bat.</li></ul>' +
@@ -549,20 +552,25 @@
       else if (s && s.sb >= 40) out.push(say('speed', v));
       else out.push(say('hitSeason', v));
     } else out.push(s && s.sv >= 20 ? say('closer', v) : say('pitchSeason', v));
+    // honors, All-Star teams and career totals stop at the season on the card: a 1988 card knows nothing of 1990
+    var upto = c.sy || (c.year ? c.year - 1 : 9999), hv = function (k) { return (h[k] || []).filter(function (y) { return y <= upto; }); };
+    var HF = hv('H'), MV = hv('M'), CY = hv('C'), WS = hv('W'), AS = hv('A'), RY = hv('R');
     var extra = [];
-    if (h.H) extra.push(h.H[0] > (c.year || 0) && c.year ? say('hofLater', Object.assign(v, { hof: h.H[0] })) : say('hof', Object.assign(v, { hof: h.H[0] })));
-    if (h.M) extra.push(say('mvp', Object.assign(v, { mvp: h.M.join(' and ') })));
-    if (h.C) extra.push(say('cy', Object.assign(v, { cy: h.C.join(' and ') })));
-    if (h.W) { var wy = h.W[0], st = E.seasons(pl, c.role).concat(E.seasons(pl, c.role === 'p' ? 'h' : 'p')).filter(function (x) { return x.y === wy; })[0]; extra.push(say('ring', Object.assign(v, { ws: wy, wsteam: st ? E.nick(st.t) : c.team }))); }
-    if (h.A && h.A.length >= 2) extra.push(say('allStar', Object.assign(v, { n: h.A.length })));
-    if (h.R) extra.push(say('roy', Object.assign(v, { roy: h.R[0] })));
+    if (HF.length) extra.push(say('hof', Object.assign(v, { hof: HF[0] })));
+    if (MV.length) extra.push(say('mvp', Object.assign(v, { mvp: MV.join(' and ') })));
+    if (CY.length) extra.push(say('cy', Object.assign(v, { cy: CY.join(' and ') })));
+    if (WS.length) { var wy = WS[0], st = E.seasons(pl, c.role).concat(E.seasons(pl, c.role === 'p' ? 'h' : 'p')).filter(function (x) { return x.y === wy; })[0]; extra.push(say('ring', Object.assign(v, { ws: wy, wsteam: st ? E.nick(st.t) : c.team }))); }
+    if (AS.length >= 2) extra.push(say('allStar', Object.assign(v, { n: AS.length })));
+    if (RY.length) extra.push(say('roy', Object.assign(v, { roy: RY[0] })));
     var lc = c.lid && league().cards[c.lid];
     if (lc && lc.h && lc.h.g >= 2 && c.role === 'h') extra.push(say('league', Object.assign(v, { lhr: lc.h.hr, lg: lc.h.g, lavg: avg3(lc.h.h / Math.max(1, lc.h.ab)), lh: lc.h.h })));
     if (lc && lc.p && lc.p.g >= 2 && c.role === 'p') extra.push(say('leagueP', Object.assign(v, { lk: lc.p.k, lg: lc.p.g })));
     if (!extra.length) {
-      var L = E.seasons(pl, c.role), tot = { hr: 0, h: 0, so: 0, w: 0 }; L.forEach(function (x) { tot.hr += x.hr || 0; tot.h += x.h || 0; tot.so += x.so || 0; tot.w += x.w || 0; });
-      extra.push(c.role === 'h' ? say('careerHr', Object.assign(v, { chr: tot.hr, chits: tot.h, y0: pl.y0, y1: pl.y1, nys: L.length })) : say('careerK', Object.assign(v, { cso: tot.so, cw: tot.w, y0: pl.y0, y1: pl.y1, nys: L.length })));
+      var L = E.seasons(pl, c.role).filter(function (x) { return x.y <= upto; }), tot = { hr: 0, h: 0, so: 0, w: 0 }; L.forEach(function (x) { tot.hr += x.hr || 0; tot.h += x.h || 0; tot.so += x.so || 0; tot.w += x.w || 0; });
+      var y0 = L.length ? L[0].y : pl.y0, y1 = L.length ? L[L.length - 1].y : upto, ny = {}; L.forEach(function (x) { ny[x.y] = 1; }); var nys = Object.keys(ny).length;
+      if (nys >= 2) extra.push(c.role === 'h' ? say('careerHr', Object.assign(v, { chr: tot.hr, chits: tot.h, y0: y0, y1: y1, nys: nys })) : say('careerK', Object.assign(v, { cso: tot.so, cw: tot.w, y0: y0, y1: y1, nys: nys })));
     }
+    if (!extra.length) return out.filter(Boolean).join(' ');
     out.push(extra[Math.floor(R() * extra.length)]);
     return out.filter(Boolean).join(' ');
   }
@@ -967,11 +975,13 @@
       else if (need) { var bf = RIG && RIG.boot ? RIG.boot : d20(); ab.boot = { face: bf, need: need }; o = bf <= need ? 'E' : kind; }
       else o = kind;
     }
+    var runDie = RIG && RIG.run;
     RIG = null;
     if (o === 'E') g.fx.err = -1;
     ab.fld = fld; ab.fit = fit; ab.o = o;
     var runners0 = g.bases.slice(), outs0 = g.outs;
-    var res = E.advance({ bases: g.bases, outs: g.outs, batter: ab.b }, o, rand, function (id) { return (S.C[id].r.sp != null ? S.C[id].r.sp : .4); });
+    // the runners move by the printed rule (E.advance): a d6 where the rule says so, and the speedster card
+    var res = E.advance({ bases: g.bases, outs: g.outs, batter: ab.b, where: ab.where, die: runDie }, o, rand, fastRunner);
     ab.res = res; ab.from = runners0; ab.outs0 = outs0;
     // the numbers
     var hs = hst(ab.b), ps = pst(ab.p), pcN = E.pitchCount(o, rand);
@@ -1360,15 +1370,34 @@
         return el('div', { class: 'rl-row' + (on && !live ? ' on' : '') + (on ? ' this' : ''), 'data-row': rw }, [rw === 'p' ? null : el('span', { class: 'rl-rl', text: rw === 'right' ? 'Guessed right' : 'Guessed wrong' }), rangesEl(x.card, rw === 'p' ? null : rw, on && !live ? x.die : 0)]);
       }))]);
     d.appendChild(card);
+    if (!live && ab.res && ab.res.roll) { var rd = d6El(ab.res.roll.d); rd.classList.add('run', 'in'); card.querySelector('.rl-ch').appendChild(rd); }
     d.appendChild(el('p', { class: 'rl-say', text: live ? '' : rollLine(ab) }));
     requestAnimationFrame(function () { fitFaces(d); });
     return d;
   }
-  function rollLine(ab) {
-    if (ab.boot) { var f = S.C[ab.fld], nm = f.kid ? 'The kid' : last(f.name); return ab.o === 'E' ? nm + ' is out of position at ' + POSN[ab.where].toLowerCase() + ' and boots it on a ' + ab.boot.face + '.' : nm + ' is out of position at ' + POSN[ab.where].toLowerCase() + ', but he fields it cleanly on a ' + ab.boot.face + '.'; }
+  function rollLine(ab, noRun) {
+    var run = !noRun && ab.res && ab.res.roll ? ' ' + runSay(ab, true) : '';
+    if (ab.boot) { var f = S.C[ab.fld], nm = f.kid ? 'The kid' : last(f.name); return (ab.o === 'E' ? nm + ' is out of position at ' + POSN[ab.where].toLowerCase() + ' and boots it on a ' + ab.boot.face + '.' : nm + ' is out of position at ' + POSN[ab.where].toLowerCase() + ', but he fields it cleanly on a ' + ab.boot.face + '.') + run; }
     if (ab.ecard) return 'The Error card makes the fielder boot it.';
-    return ab.say || '';
+    return run ? run.slice(1) : ab.say || '';
   }
+  // The base-running d6 (E.advance's roll), said before it lands (what it needs) and after (what it did), with the
+  // runner's name: the same numbers the printed reference page gives for a table
+  function runSay(ab, landed) {
+    var rl = ab.res && ab.res.roll; if (!rl) return '';
+    var who = S.C[rl.who], nm = who && !who.kid ? last(who.name) : 'the kid', Nm = nm.charAt(0).toUpperCase() + nm.slice(1);
+    var on1 = S.C[ab.from && ab.from[0]], r1 = on1 && !on1.kid ? last(on1.name) : 'the runner';
+    var need = E.faces(rl.need[0], rl.need[1]), a = 'A ' + rl.d + ', so ';
+    if (rl.k === 'dp') return !landed ? 'With ' + r1 + ' on first and fewer than two outs, ' + need + ' on the d6 is a double play.' : rl.ok ? a + 'it’s a double play.' : a + 'only ' + nm + ' is out, and ' + r1 + ' moves up to second.';
+    if (rl.k === 'tag') return !landed ? Nm + ' tags up at third, and ' + need + ' on the d6 scores him.' : rl.ok ? a + nm + ' scores on the sacrifice fly.' : a + nm + ' holds at third.';
+    if (rl.k === 's13') return !landed ? Nm + ' is running from first, and ' + need + ' on the d6 takes him to third.' : rl.ok ? a + nm + ' goes first to third.' : a + nm + ' stops at second.';
+    if (rl.k === 'd1h') return !landed ? Nm + ' is running from first, and ' + need + ' on the d6 sends him home.' : rl.ok ? a + nm + ' scores all the way from first.' : a + nm + ' holds at third.';
+    return '';
+  }
+  // a six-sided die with its pips, for the base-running roll
+  var PIP6 = { 1: [[15, 15]], 2: [[9, 9], [21, 21]], 3: [[8, 8], [15, 15], [22, 22]], 4: [[9, 9], [21, 9], [9, 21], [21, 21]], 5: [[8, 8], [22, 8], [15, 15], [8, 22], [22, 22]], 6: [[9, 8], [21, 8], [9, 15], [21, 15], [9, 22], [21, 22]] };
+  function d6Svg(v) { return '<svg viewBox="0 0 30 30" aria-hidden="true"><rect x="1.5" y="1.5" width="27" height="27" rx="6"/>' + (PIP6[v] || []).map(function (p) { return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="2.6"/>'; }).join('') + '</svg>'; }
+  function d6El(v) { var e = el('span', { class: 'wp-d6', html: d6Svg(v) }); e.setAttribute('role', 'img'); e.setAttribute('aria-label', 'A ' + v + ' on the d6'); return e; }
   // The roll, one piece at a time: the guess is shown and the margin set, the chips come in, both d20s tumble and
   // land with their totals, the winner's side lights, his card slides up with the row he reads lit, and his own die's
   // number lands on its range. A ground out or fly out to a fielder out of position rolls a d20 once more for the error.
@@ -1413,7 +1442,7 @@
     t += 520;
     later(function () {
       var row = d.querySelector('.rl-row.this'), r = row.querySelector('.rg-r[data-lo="' + x.range[0] + '"]'); if (r) r.classList.add('lit');
-      d.querySelector('.rl-say').textContent = ab.boot ? (S.C[ab.fld].kid ? 'The kid' : last(S.C[ab.fld].name)) + ' is out of position at ' + POSN[ab.where].toLowerCase() + ', so ' + (ab.boot.need === 1 ? 'a 1' : 'a 1, 2 or 3') + ' on the die is an error.' : rollLine(ab);
+      d.querySelector('.rl-say').textContent = ab.boot ? (S.C[ab.fld].kid ? 'The kid' : last(S.C[ab.fld].name)) + ' is out of position at ' + POSN[ab.where].toLowerCase() + ', so ' + (ab.boot.need === 1 ? 'a 1' : 'a 1, 2 or 3') + ' on the die is an error.' : rollLine(ab, true);
       Kit.haptic('light'); Kit.sfx(E.RANK[x.o] >= E.RANK.S ? 'good' : 'tick');
     }, t);
     t += 750;
@@ -1421,10 +1450,29 @@
       var bd = d20El(ab.boot.face); bd.classList.add('boot'); q('.rl-ch').appendChild(bd);
       later(function () { bd.classList.add('in', 'rolling'); spin(bd, 20); Kit.sfx('roll'); }, t);
       t += 800;
-      later(function () { bd.classList.remove('rolling'); bd.classList.add('landed'); bd.querySelector('b').textContent = String(ab.boot.face); d.querySelector('.rl-say').textContent = rollLine(ab); if (ab.o === 'E') { Kit.sfx('bad'); Kit.haptic('heavy'); } }, t);
+      later(function () { bd.classList.remove('rolling'); bd.classList.add('landed'); bd.querySelector('b').textContent = String(ab.boot.face); d.querySelector('.rl-say').textContent = rollLine(ab, true); if (ab.o === 'E') { Kit.sfx('bad'); Kit.haptic('heavy'); } }, t);
       t += 1300;
     }
+    // the base-running d6, where the printed rule rolls one (a double play, a tag from third, first to third on a
+    // single, first to home on a double): the caption says what it needs, the die tumbles and lands, and says what it did
+    var rl = ab.res && ab.res.roll;
+    if (rl) {
+      var rd = d6El(rl.d); rd.classList.add('run'); q('.rl-ch').appendChild(rd);
+      later(function () { d.querySelector('.rl-say').textContent = runSay(ab, false); rd.classList.add('in', 'rolling'); spin6(rd); Kit.sfx('roll'); Kit.haptic('light'); }, t);
+      t += 1500;
+      later(function () {
+        rd.classList.remove('rolling'); rd.classList.add('landed'); rd.innerHTML = d6Svg(rl.d);
+        d.querySelector('.rl-say').textContent = runSay(ab, true);
+        var good = rl.k === 'dp' ? !rl.ok : rl.ok;   // good for the batting side
+        if (rl.k === 'dp' && rl.ok) { Kit.sfx('bad'); Kit.haptic('heavy'); } else { Kit.sfx(good ? 'good' : 'tick'); Kit.haptic('medium'); }
+      }, t);
+      t += 1500;
+    }
     later(done, t);
+  }
+  function spin6(e) {
+    var k = 0;
+    (function tick() { if (!e.classList.contains('rolling') || k++ > 30) return; e.innerHTML = d6Svg(1 + Math.floor(Math.random() * 6)); setTimeout(tick, FAST ? 5 : 80); })();
   }
   // a die tumbling shows numbers flicking past until it lands
   function spin(e, n) {
@@ -1663,7 +1711,7 @@
       S = keep;
       var st = E.stints(inn), stTxt = st.map(function (n, i) { var a = 1; for (var k = 0; k < i; k++) a += st[k]; return a === a + n - 1 ? 'inning ' + a : 'innings ' + a + '–' + (a + n - 1); });
       var h = '<section class="pr-page pr-ref"><h1>Wax Pack at the table</h1>' +
-        '<p class="pr-lead">You need two d20s (one for each side), a d6 for where an out goes, the pitch cards below, and a label in each card’s sleeve.</p>' +
+        '<p class="pr-lead">You need two d20s (one for each side), a d6 for where an out goes and for the runners, the pitch cards below, and a label in each card’s sleeve.</p>' +
         '<h2>Every at-bat</h2><ol>' +
         '<li>The pitcher lays one of his pitch cards face down. His label says how many he holds.</li>' +
         '<li>The batter names the pitch he’s looking for.</li>' +
@@ -1676,7 +1724,8 @@
         '<tr><th>Fly out</th>' + E.WHERE6.F.map(function (p) { return '<td>' + p + '</td>'; }).join('') + '</tr></table>' +
         '<p>A fielder playing a position he didn’t play rolls a d20: at a nearby position (another outfield spot, across second base, the other corner) a 1 is an error; anywhere else a 1, 2 or 3 is an error.</p>' +
         '<h2>Pitchers</h2><p>Each team pitches three pitchers, each for a fixed stint: in a ' + inn + '-inning game the first pitches ' + stTxt[0] + ', the second ' + stTxt[1] + ' and the third ' + stTxt[2] + ', and the third also pitches any extra innings. A pitcher in the third inning of his stint is −1, and another −1 for each inning after that.</p>' +
-        '<h2>Running the bases</h2><p>On a walk, runners move up only when forced. On a single, every runner moves up at least one base and a runner on second scores; a fast runner on first takes third. On a double, every runner scores from second or third and a runner on first goes to third. On a triple or a home run, everyone scores. With fewer than two outs, a runner on third scores on a fly out.</p>' +
+        '<h2>Running the bases</h2><p>Where a line gives numbers, roll the d6. A speedster is a player whose label says Speedster.</p>' +
+        '<table class="pr-t pr-run">' + E.runLines().map(function (l) { return '<tr><th>' + l[0] + '</th><td>' + l[1] + '</td></tr>'; }).join('') + '</table>' +
         '<h2>Odd cards, each played once</h2><ul>' + Object.keys(C.SPECIAL).map(function (k) { return '<li><b>' + esc(C.SPECIAL[k].name) + '</b>: ' + esc(C.SPECIAL[k].say) + '</li>'; }).join('') + '<li><b>Rookie card</b>: +1 in his first at-bat.</li></ul></section>';
       // the pitch cards (two sets) and each team's pitching card
       h += '<section class="pr-page"><h2>Pitch cards</h2><p class="pr-lead">Cut these out: one set for each team. A pitcher uses as many as his label says, starting from Heat.</p><div class="pr-pc">' +

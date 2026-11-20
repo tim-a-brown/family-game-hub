@@ -170,7 +170,7 @@
   // the table cards). The pitcher lays one of his pitch cards face down and the batter names one; both flip. Both roll a
   // d20 and add their modifiers; the batter wins the at-bat when his total beats the pitcher's by the margin or more,
   // and otherwise the pitcher wins it. The winner reads his own die (the number rolled, not the total) on his own card:
-  // a batter on his Guessed right row (doubles, triples and home runs) when he named the pitch, or his Guessed wrong row
+  // a batter on his Guessed right row (a single on a narrow win, then doubles, triples and home runs) when he named the pitch, or his Guessed wrong row
   // (singles, doubles, and a patient hitter's walks) when he didn't; a pitcher on his row of ball four, ground outs, fly
   // outs and strikeouts. So fewer pitch cards make extra-base hits likelier, and more of them hold power down.
   // A pitcher is 1 lower in the third inning of his stint, and another 1 lower for each inning after.
@@ -180,13 +180,15 @@
   // scripts/waxpack-sim.js plays thousands of games with real cards to set the margin and the ranges.
   var RULE = { margin: 7, tire: 3 };   // tire: the inning of a stint (from 1) that costs 1
   // Each row is ranges of the die, 1 to 20: [first, last, what happened]. The winner's die is high more often than
-  // low (he won the throw), so the best outcome of each row is at its top.
+  // low (he won the throw), so the best outcome of each row is at its top. A batter who named the pitch but only just
+  // won the throw (a die of 11 or less) squared it up for a single: the doubles in his row start at 12, which keeps
+  // doubles near the real 4.6 in 100 plate appearances.
   var RANGES = {
-    slugger: { wrong: [[1, 10, 'BB'], [11, 20, 'S']], right: [[1, 12, 'D'], [13, 20, 'HR']] },
-    power: { wrong: [[1, 10, 'BB'], [11, 20, 'S']], right: [[1, 15, 'D'], [16, 20, 'HR']] },
-    speed: { wrong: [[1, 10, 'BB'], [11, 18, 'S'], [19, 20, 'D']], right: [[1, 15, 'D'], [16, 18, 'T'], [19, 20, 'HR']] },
-    patient: { wrong: [[1, 12, 'BB'], [13, 20, 'S']], right: [[1, 18, 'D'], [19, 20, 'HR']] },
-    contact: { wrong: [[1, 10, 'BB'], [11, 20, 'S']], right: [[1, 19, 'D'], [20, 20, 'HR']] },
+    slugger: { wrong: [[1, 10, 'BB'], [11, 20, 'S']], right: [[1, 11, 'S'], [12, 12, 'D'], [13, 20, 'HR']] },
+    power: { wrong: [[1, 10, 'BB'], [11, 20, 'S']], right: [[1, 11, 'S'], [12, 15, 'D'], [16, 20, 'HR']] },
+    speed: { wrong: [[1, 10, 'BB'], [11, 18, 'S'], [19, 20, 'D']], right: [[1, 11, 'S'], [12, 15, 'D'], [16, 18, 'T'], [19, 20, 'HR']] },
+    patient: { wrong: [[1, 12, 'BB'], [13, 20, 'S']], right: [[1, 11, 'S'], [12, 18, 'D'], [19, 20, 'HR']] },
+    contact: { wrong: [[1, 10, 'BB'], [11, 20, 'S']], right: [[1, 11, 'S'], [12, 19, 'D'], [20, 20, 'HR']] },
     strikeout: [[1, 3, 'BB'], [4, 8, 'G'], [9, 13, 'F'], [14, 20, 'K']],
     groundball: [[1, 3, 'BB'], [4, 12, 'G'], [13, 16, 'F'], [17, 20, 'K']],
     wild: [[1, 6, 'BB'], [7, 11, 'G'], [12, 16, 'F'], [17, 20, 'K']],
@@ -291,63 +293,98 @@
   var WHERE6 = { G: ['1B', '2B', '2B', 'SS', 'SS', '3B'], F: ['LF', 'LF', 'CF', 'CF', 'RF', 'RF'] };
   var BOOT = { home: 0, near: 1, far: 3 };
   function whereOf(kind, f) { return WHERE6[kind][f - 1]; }
-  function tune(o) { for (var k in o) { if (k in RULE) RULE[k] = o[k]; if (k in VAL) VAL[k] = o[k]; if (k === 'ranges') for (var f in o.ranges) RANGES[f] = o.ranges[f]; } }
+  function tune(o) { for (var k in o) { if (k in RULE) RULE[k] = o[k]; if (k in VAL) VAL[k] = o[k]; if (k in RUN) RUN[k] = o[k]; if (k === 'ranges') for (var f in o.ranges) RANGES[f] = o.ranges[f]; } }
   function pitchCount(o, r) {
     var base = { K: 4.8, BB: 5.7 }[o];
     return Math.max(1, Math.round((base == null ? 3.4 : base) + (r() - .5) * 3));
   }
-  // Move runners for an outcome. st = {bases:[id|null x3], outs, batter}; sp(id) -> speed 0..1.
-  // Returns {bases, outs, scored:[ids], rbi, tag} and never changes st.
-  function advance(st, o, r, sp) {
-    var b = st.bases.slice(), outs = st.outs, scored = [], bat = st.batter, tag = '', rbi = true;
+  // ── Running the bases ───────────────────────────────────────────────────────
+  // One rule for the app and the table: the printed reference page (printSheet in ui.js) says exactly this, a line a
+  // case, and advance() does exactly what it says. Chance is one d6, rolled only where a line says so, and the
+  // speedster card (his card, 'speed') is the one edge a runner has. RUN holds the faces a roll needs; the sim sets them.
+  //   Walk or hit by pitch: the batter takes first; a runner moves up only when he is forced.
+  //   Single: runners on second and third score; a runner on first goes to second, or to third on a d6 of s13 or
+  //     more (a speedster always).
+  //   Double: runners on second and third score; a runner on first goes to third, or scores on a d6 of d1h or more
+  //     (a speedster always).
+  //   Triple or home run: every runner scores.
+  //   Ground out: with a runner on first and fewer than two outs, a d6 of dp or less (dpFast with a speedster
+  //     batting) is a double play, the runner from first out as well. Runners on first and second move up a base,
+  //     and a runner on third scores only when the bases were loaded.
+  //   Fly out: with fewer than two outs a runner on third tags and scores on a d6 of tag or more (tagFast for a
+  //     speedster); on a fly to center a runner on second then takes third when it is open.
+  //   Error: the batter is safe at first and every runner moves up one base.
+  //   No run scores on a play that makes the third out.
+  var RUN = { s13: 5, d1h: 5, dp: 3, dpFast: 2, tag: 3, tagFast: 2 };
+  // st = {bases: [id|null x3], outs, batter, where (the fielder of an out in play), die (a fixed d6, for tests)}; fast(id): his
+  // card is the speedster's. Returns {bases, outs, scored: [ids], rbi, tag ('dp', 'sf', or a home run's kind), roll}
+  // and never changes st. roll, when a d6 was rolled: {k: 's13' | 'd1h' | 'dp' | 'tag', d: the face, need: the faces
+  // that make it as [lo, hi], ok: whether it happened, who: the runner (the batter, for a double play)}.
+  function advance(st, o, r, fast) {
+    var b = st.bases.slice(), outs = st.outs, scored = [], bat = st.batter, tag = '', rbi = true, roll = null;
+    fast = fast || function () { return false; };
     function score(id) { if (id) scored.push(id); }
-    function force() { if (b[0]) { if (b[1]) { if (b[2]) score(b[2]); b[2] = b[1]; } b[1] = b[0]; } b[0] = bat; }
-    var two = outs === 2;
+    function die(k, who, lo, hi) { var d = st.die || d6(r); roll = { k: k, d: d, need: [lo, hi], ok: d >= lo && d <= hi, who: who }; return roll.ok; }
+    function up() { score(b[2]); b[2] = b[1]; b[1] = b[0]; b[0] = null; }   // every runner moves up one base
     switch (o) {
-      case 'BB': case 'HBP': force(); break;
-      case 'E': rbi = false; score(b[2]); b[2] = b[1]; b[1] = b[0]; b[0] = bat; break;
+      case 'BB': case 'HBP':
+        if (b[0]) { if (b[1]) { if (b[2]) score(b[2]); b[2] = b[1]; } b[1] = b[0]; }
+        b[0] = bat; break;
+      case 'E': rbi = false; up(); b[0] = bat; break;
       case 'S':
-        score(b[2]); b[2] = null;
-        if (b[1]) { if (r() < (two ? .88 : .64) + .2 * sp(b[1])) score(b[1]); else b[2] = b[1]; b[1] = null; }
-        if (b[0]) { if (!b[2] && r() < (two ? .42 : .28) + .22 * sp(b[0])) b[2] = b[0]; else b[1] = b[0]; }
+        score(b[2]); score(b[1]); b[2] = b[1] = null;
+        if (b[0]) { if (fast(b[0]) || die('s13', b[0], RUN.s13, 6)) b[2] = b[0]; else b[1] = b[0]; }
         b[0] = bat; break;
       case 'D':
         score(b[2]); score(b[1]); b[2] = b[1] = null;
-        if (b[0]) { if (r() < (two ? .65 : .42) + .3 * sp(b[0])) score(b[0]); else b[2] = b[0]; }
+        if (b[0]) { if (fast(b[0]) || die('d1h', b[0], RUN.d1h, 6)) score(b[0]); else b[2] = b[0]; }
         b[0] = null; b[1] = bat; break;
       case 'T': score(b[2]); score(b[1]); score(b[0]); b = [null, null, bat]; break;
       case 'HR': score(b[2]); score(b[1]); score(b[0]); score(bat); b = [null, null, null]; tag = ['solo', 'two-run', 'three-run', 'slam'][scored.length - 1]; break;
       case 'K': outs++; break;
       case 'GB':
-        if (two) { outs++; break; }
-        if (b[0] && r() < .38 - .22 * sp(bat)) {
-          outs += 2; tag = 'dp'; rbi = false; b[0] = null;
-          if (outs < 3) { score(b[2]); b[2] = b[1]; b[1] = null; } else b = [null, null, null];
-          break;
+        var loaded = !!(b[0] && b[1] && b[2]);
+        if (b[0] && outs < 2 && die('dp', bat, 1, fast(bat) ? RUN.dpFast : RUN.dp)) { outs += 2; tag = 'dp'; rbi = false; b[0] = null; }
+        else outs++;
+        if (outs < 3) {
+          if (loaded) up();   // forced home
+          else { if (b[1] && !b[2]) { b[2] = b[1]; b[1] = null; } if (b[0] && !b[1]) { b[1] = b[0]; b[0] = null; } }
         }
-        if (b[0] && b[1] && b[2]) { if (r() < .3) { outs++; tag = 'home'; b[2] = b[1]; b[1] = b[0]; b[0] = bat; break; } }
-        else if (b[0] && r() < .45) {
-          outs++; tag = 'fc';
-          if (b[2] && !b[1] && r() < .5) { score(b[2]); b[2] = null; }
-          if (b[1]) { b[2] = b[2] || b[1]; b[1] = null; }
-          b[0] = bat; break;
-        }
-        outs++;
-        if (b[2] && (b[1] && b[0] || r() < .6)) { score(b[2]); b[2] = null; }
-        if (b[1] && !b[2]) { b[2] = b[1]; b[1] = null; }
-        if (b[0] && !b[1]) { b[1] = b[0]; b[0] = null; }
         break;
       case 'FB':
         outs++;
         if (outs < 3) {
-          if (b[2] && r() < .72 + .2 * sp(b[2])) { score(b[2]); b[2] = null; tag = 'sf'; }
-          if (b[1] && !b[2] && r() < .45) { b[2] = b[1]; b[1] = null; }
+          if (b[2] && die('tag', b[2], fast(b[2]) ? RUN.tagFast : RUN.tag, 6)) { score(b[2]); b[2] = null; tag = 'sf'; }
+          if (st.where === 'CF' && b[1] && !b[2]) { b[2] = b[1]; b[1] = null; }
         }
         break;
-      default: outs++;   // LD, PU
+      default: outs++;   // LD, PU: nobody moves
     }
-    if (outs >= 3) { outs = 3; if (o === 'GB' || o === 'K' || o === 'PU' || o === 'LD' || o === 'FB') scored = []; }
-    return { bases: b, outs: outs, scored: scored, rbi: rbi ? scored.length : 0, tag: tag };
+    if (outs >= 3) { outs = 3; scored = []; }
+    return { bases: b, outs: outs, scored: scored, rbi: rbi ? scored.length : 0, tag: tag, roll: roll };
+  }
+
+  // The faces of the d6 a roll needs, said the way a person says them: "a 5 or 6", "a 1, 2 or 3", "3 to 6"
+  function faces(lo, hi) {
+    if (lo === hi) return 'a ' + lo;
+    if (hi - lo === 1) return 'a ' + lo + ' or ' + hi;
+    if (hi - lo === 2) return 'a ' + lo + ', ' + (lo + 1) + ' or ' + hi;
+    return lo + ' to ' + hi;
+  }
+  // The rule as it is printed (the reference page) and told (How to play): [the case, what happens], one line a case.
+  // Made from RUN, so the words never drift from what advance() does.
+  function runLines() {
+    return [
+      ['Walk or hit by pitch', 'The batter takes first. A runner moves up only when he’s forced.'],
+      ['Single', 'Runners on second and third score. A runner on first goes to second, or to third on ' + faces(RUN.s13, 6) + '. A speedster on first always takes third.'],
+      ['Double', 'Runners on second and third score. A runner on first goes to third, or scores on ' + faces(RUN.d1h, 6) + '. A speedster on first always scores.'],
+      ['Triple or home run', 'Every runner scores.'],
+      ['Strikeout', 'Nobody moves.'],
+      ['Ground out', 'With a runner on first and fewer than two outs, ' + faces(1, RUN.dp) + ' is a double play (' + faces(1, RUN.dpFast) + ' with a speedster batting). Runners on first and second move up. A runner on third scores only if the bases were loaded.'],
+      ['Fly out', 'With fewer than two outs, a runner on third tags and scores on ' + faces(RUN.tag, 6) + ' (' + faces(RUN.tagFast, 6) + ' for a speedster). On a fly to center, a runner on second then takes third if it’s open.'],
+      ['Error', 'The batter is safe at first, and every runner moves up one base.'],
+      ['Third out', 'No run scores on a play that makes the third out.']
+    ];
   }
 
   // ── Fielding ─────────────────────────────────────────────────────────────
@@ -411,6 +448,6 @@
     clamp: clamp, rng: rng, hash: hash, skey: skey, load: load, db: function () { return DB; }, seasons: seasons, honors: honors,
     teamName: teamName, nick: nick, lgOf: lgOf, byId: byId, name: name, find: find, roleOf: roleOf, cardSeason: cardSeason,
     positionsNear: positionsNear, rateH: rateH, rateP: rateP, scout: scout, pitchCount: pitchCount,
-    advance: advance, fit: fit, where: where, pitchesOf: pitchesOf, cpuPitch: cpuPitch, cpuLook: cpuLook, pitchWeights: pitchWeights };
+    advance: advance, RUN: RUN, faces: faces, runLines: runLines, fit: fit, where: where, pitchesOf: pitchesOf, cpuPitch: cpuPitch, cpuLook: cpuLook, pitchWeights: pitchWeights };
   if (typeof module !== 'undefined' && module.exports) module.exports = E; else root.WaxEngine = E;
 })(this);

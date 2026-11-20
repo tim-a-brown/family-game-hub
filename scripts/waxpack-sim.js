@@ -2,9 +2,11 @@
 // Wax Pack's at-bat measured: thousands of 9-inning games between teams of real cards from many decades, played by the
 // engine's own at-bat (games/waxpack/engine.js atBat), so the league comes out near real baseball. Then the checks:
 // a .330 hitter against a .220 one, an ace fresh and tired, and the order of a team's three pitchers.
-//   node scripts/waxpack-sim.js [games] [seed]      TUNE='{"margin":5,...}' tries other numbers (engine tune())
+//   node scripts/waxpack-sim.js [games] [seed]      TUNE='{"margin":5,"dp":2,...}' tries other numbers (engine tune(),
+//   RULE, VAL, RUN and ranges); ENGINE=<path> runs another copy of engine.js (an older one, to compare). The runners
+//   move by the printed rule (E.advance) with each card's own speedster card.
 'use strict';
-var E = require('../games/waxpack/engine.js'), fs = require('fs'), path = require('path');
+var E = require(process.env.ENGINE || '../games/waxpack/engine.js'), fs = require('fs'), path = require('path');
 E.load(JSON.parse(fs.readFileSync(path.join(__dirname, '../games/waxpack/mlb.json'), 'utf8')));
 var N = +process.argv[2] || 4000, R = E.rng(+process.argv[3] || 11);
 if (process.env.TUNE) E.tune(JSON.parse(process.env.TUNE));
@@ -33,7 +35,9 @@ function team(o) {
   if (!o.keep) { var ord = E.staffOrder(arms.map(function (a) { return a.r; }), 9); arms = ord.map(function (i) { return arms[i]; }); }
   return { nine: nine, at: at, order: order, arms: arms };
 }
-function blank() { return { pa: 0, ab: 0, h: 0, d: 0, t: 0, hr: 0, bb: 0, k: 0, e: 0, r: 0, g: 0, guess: 0, bwin: 0, byInn: [] }; }
+// a runner's id in the sim is his team's letter and his place in the nine; the speedster card is the one speed edge
+function fastOf(tm, id) { var c = tm[id.charAt(0) === 'b' ? 1 : 0].nine[+id.slice(1)]; return c.r.card === 'speed'; }
+function blank() { return { pa: 0, ab: 0, h: 0, d: 0, t: 0, hr: 0, bb: 0, k: 0, e: 0, r: 0, g: 0, dp: 0, sf: 0, hi: 0, guess: 0, bwin: 0, byInn: [] }; }
 var T = blank();
 function game(A, B, st) {
   var tm = [A, B], runs = [0, 0], bat = [0, 0], inn = 1, seen = [{ H: 0, B: 0, J: 0, C: 0, n: 0 }, { H: 0, B: 0, J: 0, C: 0, n: 0 }], looks = [{ H: 0, B: 0, J: 0, C: 0, n: 0 }, { H: 0, B: 0, J: 0, C: 0, n: 0 }];
@@ -41,7 +45,7 @@ function game(A, B, st) {
     for (var half = 0; half < 2; half++) {
       if (half === 1 && inn >= 9 && runs[1] > runs[0]) return runs;
       var b = half, f = 1 - b, F = tm[f], Bt = tm[b], so = E.stintOf(inn, 9), P = F.arms[so.i];
-      var outs = 0, bases = [null, null, null], before = runs[b];
+      var outs = 0, bases = [null, null, null], before = runs[b]; st.hi++;
       while (outs < 3) {
         var hi = Bt.order[bat[b] % 9], H = Bt.nine[hi]; bat[b]++;
         var pitch = E.cpuPitch(P.r, H.r, 'normal', looks[b], R), look = E.cpuLook(P.r, H.r, process.env.LOOK || 'easy', seen[f], R);   // a person guessing: one of his pitch cards at random
@@ -49,12 +53,14 @@ function game(A, B, st) {
         var right = pitch === look; if (right) st.guess++;
         var x = E.atBat({ bat: H.r.bat, arm: P.r.arm, fat: E.tired(so.k), guess: right, bcard: H.r.card, pcard: P.r.card }, R), o = x.o;
         if (x.win) st.bwin++;
+        var pos = null;
         if (o === 'G' || o === 'F') {
-          var pos = E.whereOf(o, E.d6(R)), id = null, fit; for (var k in F.at) if (F.at[k] === pos) id = k;
+          var id = null, fit; pos = E.whereOf(o, E.d6(R)); for (var k in F.at) if (F.at[k] === pos) id = k;
           fit = id != null ? E.fit(F.nine[id].pos, pos) : 'far';
           o = E.BOOT[fit] && E.d20(R) <= E.BOOT[fit] ? 'E' : o === 'G' ? 'GB' : 'FB';
         }
-        var res = E.advance({ bases: bases, outs: outs, batter: hi + 1 }, o, R, function () { return .4; });
+        var res = E.advance({ bases: bases, outs: outs, batter: (b ? 'b' : 'a') + hi, where: pos }, o, R, function (id) { return E.RUN ? fastOf(tm, id) : .4; });
+        if (res.tag === 'dp') st.dp++; if (res.tag === 'sf') st.sf++;
         st.pa++; if (o !== 'BB' && res.tag !== 'sf') st.ab++;
         if (/^(S|D|T|HR)$/.test(o)) st.h++; if (o === 'D') st.d++; if (o === 'T') st.t++; if (o === 'HR') st.hr++; if (o === 'BB') st.bb++; if (o === 'K') st.k++; if (o === 'E') st.e++;
         bases = res.bases; outs = res.outs; runs[b] += res.scored.length;
@@ -72,7 +78,8 @@ for (var g = 0; g < N; g++) { var r = game(team(), team(), T); T.r += r[0] + r[1
 var avg = T.h / T.ab, obp = (T.h + T.bb) / T.pa, slg = (T.h + T.d + 2 * T.t + 3 * T.hr) / T.ab;
 line('League, ' + N + ' nine-inning games of random cards from 1951 to ' + E.db().upto + ' (the batter must win by ' + E.RULE.margin + '):');
 line('  AVG ' + avg.toFixed(3) + '  OBP ' + obp.toFixed(3) + '  SLG ' + slg.toFixed(3) + '  K ' + (100 * T.k / T.pa).toFixed(1) + '%  BB ' + (100 * T.bb / T.pa).toFixed(1) + '%  HR ' + (100 * T.hr / T.pa).toFixed(1) + '%  2B ' + (100 * T.d / T.pa).toFixed(1) + '%  3B ' + (100 * T.t / T.pa).toFixed(2) + '%  E ' + (100 * T.e / T.pa).toFixed(1) + '%');
-line('  Extra-base hits ' + (100 * (T.d + T.t + T.hr) / T.h).toFixed(0) + '% of hits (' + (100 * (T.d + T.t + T.hr) / T.pa).toFixed(1) + '% of plate appearances); runs a team a game ' + (T.r / T.g / 2).toFixed(2) + '; the batter won ' + (100 * T.bwin / T.pa).toFixed(1) + '% of the rolls; batters named the pitch ' + (100 * T.guess / T.pa).toFixed(1) + '% of the time');
+line('  Extra-base hits ' + (100 * (T.d + T.t + T.hr) / T.h).toFixed(0) + '% of hits (' + (100 * (T.d + T.t + T.hr) / T.pa).toFixed(1) + '% of plate appearances); runs a team a game ' + (T.r / T.g / 2).toFixed(2) + ', a team per 9 innings ' + (T.r / T.hi * 9).toFixed(2) + '; the batter won ' + (100 * T.bwin / T.pa).toFixed(1) + '% of the rolls; batters named the pitch ' + (100 * T.guess / T.pa).toFixed(1) + '% of the time');
+line('  A team a game: double plays grounded into ' + (T.dp / T.g / 2).toFixed(2) + ' (real about 0.8), sacrifice flies ' + (T.sf / T.g / 2).toFixed(2) + ' (real about 0.3); the base-running die ' + (E.RUN ? JSON.stringify(E.RUN) : '(the old chances)'));
 line('  Runs by inning (both teams, a game): ' + T.byInn.slice(1, 10).map(function (v) { return (v / T.g).toFixed(2); }).join(' '));
 
 // What a matchup gives, worked out exactly: every pair of d20s, at a given chance of naming the pitch

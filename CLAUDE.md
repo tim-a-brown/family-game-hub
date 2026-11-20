@@ -1441,14 +1441,23 @@ Underlying principles for everything:
   without the app** (Tim, 2026-11-20: "this game should be able to be played without using the app on my phone"; the
   app works the values out and prints them). The at-bat lives in `atBat` alone: the pitcher lays a pitch card face
   down and the batter names one, both roll a d20 and add their modifiers, the batter wins by beating the pitcher's total
-  by `RULE.margin` (7), and the winner reads his own die on his own card (a batter's Guessed right row is extra-base
-  hits, his Guessed wrong row walks and singles; a pitcher's row ball four, ground out, fly out, strikeout: `RANGES`). An
-  out in play goes to a fielder by a d6 (`WHERE6`), and one out of position rolls a d20 for an error (`BOOT`: near 1, far
-  1 to 3). A walk only forces runners; a single moves every runner. Every team pitches three pitchers in fixed stints
+  by `RULE.margin` (7), and the winner reads his own die on his own card (a batter's Guessed right row is a single on a
+  narrow win, 1 to 11, then extra-base hits, his Guessed wrong row walks and singles; a pitcher's row ball four, ground
+  out, fly out, strikeout: `RANGES`). An out in play goes to a fielder by a d6 (`WHERE6`), and one out of position rolls
+  a d20 for an error (`BOOT`: near 1, far 1 to 3). **Base running is one printed rule** (Tim, 2026-11-20: "tighten up
+  the base running so runs come out right"): `advance` in engine.js does exactly what the reference page says, a line a
+  case, from `runLines()` (made from `RUN`, so the words never drift), and How to play reads the same lines. Chance is a
+  d6 only where a line says so (first to third on a single on a 5 or 6, first to home on a double on a 5 or 6, a double
+  play on a ground ball with a runner on first and fewer than two outs on 1 to 3, a tag from third on a fly with fewer
+  than two outs on 3 to 6), the speedster card is the only speed edge (always first to third and first to home, a
+  double play on 1 or 2 only, a tag on 2 to 6), a fly to center moves a runner from second to third, a runner on third
+  scores on a ground out only with the bases loaded, and no run scores on the play that makes the third out. The
+  advance's `roll` is shown as a d6 beside the winner's card with what it needs, then what it did (`runSay`, `d6El`).
+  Every team pitches three pitchers in fixed stints
   (`stints`: 3/3/3, 2/2/1, 1/1/1; the last takes extra innings), its order set on the lineup's mound (`staffOrder`), a
   pitcher 1 lower from his stint's third inning (`tired`). `node scripts/waxpack-sim.js [games]` calibrates the margin
-  and ranges against real seasons (`TUNE='{...}'`; AVG .254, OBP .314, K 21.9%, BB 8.2%, HR 2.7%, 4.96 runs a team per
-  9). The menu's Print the table cards prints the reference page, the pitch cards, each team's pitching card and a
+  and ranges against real seasons (`TUNE='{...}'`, `RUN`'s faces too; AVG .255, OBP .314, SLG .403, K 21.9%, BB 8.2%,
+  HR 2.7%, 2B 4.6%, 4.58 runs a team per 9 innings, 0.94 double plays and 0.23 sacrifice flies a team a game). The menu's Print the table cards prints the reference page, the pitch cards, each team's pitching card and a
   sleeve label per league card (`printSheet`). A v1 save upgrades on load (`upgrade`). The computer's duel is
   `cpuPitch`/`cpuLook` among the pitcher's own pitches; special cards are `SPECIAL` in `cards.js`.
 - Scanning is `scan.js` (`WaxScan`), Tesseract.js vendored in `games/waxpack/ocr/` and loaded only on the first scan,
@@ -1479,9 +1488,12 @@ Underlying principles for everything:
   stores the cleaned front under its key in `waxpack_photos` and its corners and hologram under `key + ':m'`, and the
   scan reads the straightened front. Weak spots: a dark card edge on a dark table, a gray card's soft shadow on light
   paper, cards still in a toploader. Scripts: the scratchpad's `big/waxphoto/` (`run.js`, `ui.js`, `api.js`).
-- The announcer is `games/talk/waxpack.js`, fed from the database's honors. History: `Kit.record('sandlot')` with
-  `detail.wp`, drawn by `hist/specialty.js`. Test hooks `window.__wax` (`quick`, `auto`, `rig`, `first`,
-  `finishDraft`, `choose`). Scripts: the scratchpad's `big/waxpack/` (`h.js`, `sc.js`, `pp.js`, `scanui.js`) and
+- The announcer is `games/talk/waxpack.js`, fed from the database's honors. **Honors, All-Star counts and career
+  totals stop at the card's season** (`history()` in ui.js and the card back's `bio`, Tim, 2026-11-20: the announcer
+  named a 1988 card's Rickey Henderson "the Most Valuable Player in 1990"): no Hall of Fame, award or ring after it.
+  History: `Kit.record('sandlot')` with `detail.wp`, drawn by `hist/specialty.js`. Test hooks `window.__wax` (`quick`,
+  `auto`, `rig`, `first`, `finishDraft`, `choose`). Scripts: the scratchpad's `big/waxpack/` (`h.js`, `sc.js`, `pp.js`,
+  `scanui.js`), `big/waxpack2/`, `big/waxrun/` and
   `waxpack/ocrrun.js`. Not done: online, a desk layout, and the demo runs 118 s.
 
 ## Demos (2026-11-16; Tim: "add demo button and develop interactive animated demos to all games possible to walk first time players through animated versions of the game accessible with a small icon on the game menu")
