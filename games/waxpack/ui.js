@@ -246,7 +246,7 @@
     else if (S.phase === 'lineup') renderLineup();
     else if (S.phase === 'play' || S.phase === 'over') renderPlay();
   }
-  function relayout() { if (!S) return; deskCheck(); if (S.phase === 'stack' || S.phase === 'draft') { fitGrid(); requestAnimationFrame(function () { fitCardNames(); }); } if (S.phase === 'play' || S.phase === 'over') fitPlay(); if (S.phase === 'lineup') fitLineup(); }
+  function relayout() { if (!S) return; deskCheck(); if (S.phase === 'stack' || S.phase === 'draft') { fitGrid(); requestAnimationFrame(function () { fitCardNames(); }); } if ((S.phase === 'play' || S.phase === 'over') && V && V.sb && V.sb.isConnected) { paintBoard(); fitPlay(); } if (S.phase === 'lineup') fitLineup(); }
 
   // the desk comes and goes with the window's size; the play screen moves its own nodes (deskArrange, deskLeave)
   function deskCheck() {
@@ -257,6 +257,8 @@
     DK.on = on;
     if (ply) Kit.glide(function () { if (on) deskArrange(); else deskLeave(); paintPlay(); fitPlay(); });
     else if (S.phase === 'lineup') renderLineup();
+    else if (S.phase === 'stack') renderStack();
+    else if (S.phase === 'draft') { var d = app.querySelector('.wp-drf'); if (d) d.classList.toggle('dk', on); }
   }
   // A grid of cards as large as the box allows, with no scrolling: try every column count, keep the largest card
   function gridFit(box, n, gap, minW) {
@@ -272,10 +274,67 @@
   }
   function fitGrid() {
     var g = app.querySelector('.wp-grid'); if (!g) return;
-    var dr = S && S.phase === 'draft', n = g.children.length, f = gridFit(g.parentNode, n, dr ? 16 : 8, 40);
+    var dr = S && S.phase === 'draft', n = g.children.length;
+    g.classList.remove('lst'); g.parentNode.classList.remove('lst'); g.style.removeProperty('--rh');
+    var mk0 = app.querySelector('.wp-smk'); if (mk0) mk0.hidden = false;
+    var f = gridFit(g.parentNode, n, dr ? 16 : 8, 40);
+    // a draft too big for its screen (a full box on a small phone) lists the cards as name tiles in place of
+    // pictures: the last name and what the card plays, a tap shows the card large and a second tap takes it
+    if (dr && f.scroll && listFit(g, n)) return;
+    if (dr) fitPiles();
     g.style.rowGap = (dr ? 16 : 8) + 'px';
     g.style.setProperty('--cw', Math.min(DK.on ? 210 : 180, f.w) + 'px'); g.style.gridTemplateColumns = 'repeat(' + f.cols + ', var(--cw))';
     g.parentNode.classList.toggle('scroll', !!f.scroll);
+    // an upright desk lays the makeup between the cards and the buttons only where the cards keep their size
+    var mk = !dr && app.querySelector('.wp-smk');
+    if (mk) {
+      fitMakeup();
+      if (document.documentElement.getAttribute('data-o') === 'port' && !mk.hidden) {
+        mk.hidden = false;
+        var wIn = Math.min(210, f.w); mk.hidden = true; var f0 = gridFit(g.parentNode, n, 8, 40), wOut = Math.min(210, f0.w);
+        if (wOut > wIn + 2) { g.style.setProperty('--cw', wOut + 'px'); g.style.gridTemplateColumns = 'repeat(' + f0.cols + ', var(--cw))'; } else mk.hidden = false;
+      }
+      if (!mk.hidden) fitMakeup();
+    }
+  }
+
+  function listFit(g, n) {
+    var box = g.parentNode; g.classList.add('lst'); box.classList.add('lst');
+    var W = box.clientWidth, H = box.clientHeight - (parseFloat(getComputedStyle(box).paddingBottom) || 0) - 2, gap = 4, cols = Math.max(2, Math.floor((W + gap) / (84 + gap))), rows = Math.ceil(n / cols);
+    var rh = Math.floor((H - gap * (rows - 1)) / rows);
+    if (rh < 22) { g.classList.remove('lst'); box.classList.remove('lst'); return false; }
+    box.classList.remove('scroll');
+    g.style.rowGap = gap + 'px'; g.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))'; g.style.setProperty('--rh', Math.min(46, rh) + 'px');
+    // a long name steps down to 9px before anything is cut: read every name, then write
+    var bs = [].slice.call(g.querySelectorAll('.wp-ct b')); bs.forEach(function (b) { b.style.fontSize = ''; });
+    [10, 9].forEach(function (px) { bs.filter(function (b) { return b.scrollWidth > b.clientWidth + 1; }).forEach(function (b) { b.style.fontSize = px + 'px'; }); });
+    return true;
+  }
+  // at a desk held sideways each team's picks lie as cards in its half of the column, sized so a full team fits
+  function fitPiles() {
+    var on = DK.on && document.documentElement.getAttribute('data-o') === 'land';
+    [].forEach.call(app.querySelectorAll('.wp-dteam'), function (tm) {
+      var pl = tm.querySelector('.wp-dpile'); if (!pl) return;
+      pl.style.removeProperty('--pw'); if (!on) return;
+      var W = pl.clientWidth, H = pl.clientHeight, n = S.size, gap = 6, best = 0;
+      for (var c = 1; c <= n; c++) { var r = Math.ceil(n / c), w = Math.min((W - gap * (c - 1)) / c, ((H - gap * (r - 1)) / r) / 1.4); if (w > best) best = w; }
+      pl.style.setProperty('--pw', Math.floor(Math.min(150, best)) + 'px');
+    });
+  }
+  var ODDSHORT = { highlight: 'Highlight', leaders: 'Leaders', rb: 'Record card' };
+  // the card picked up from the list: shown large over the teams, with the button that takes it
+  function draftPeek(id, from) {
+    var old = app.querySelector('.wp-peek'); if (old) old.remove();
+    [].forEach.call(app.querySelectorAll('.wp-grid .wp-cbtn.on'), function (b) { b.classList.remove('on'); });
+    if (!id) return;
+    var c = S.C[id], r = c.kind === 'player' ? rr(c) : null;
+    from.classList.add('on'); Kit.sfx('tap'); Kit.haptic('light');
+    var pk = el('div', { class: 'wp-peek', role: 'group', 'aria-label': c.name }, [
+      el('button', { type: 'button', class: 'wp-pkc', 'aria-label': 'Read ' + c.name + '’s card', onclick: function () { cardSheet(c, false); } }, [cardFace(c)]),
+      el('div', { class: 'wp-pki' }, [el('b', { text: c.name }), el('span', { text: c.kind === 'player' ? quick(c) + ', ' + E.CNAME[r.card].toLowerCase() : C.SPECIAL[c.kind].play }), r && r.pw ? el('em', { text: E.PNAME2[r.pw] }) : null]),
+      el('button', { type: 'button', class: 'btn btn-primary', text: 'Take ' + (c.kind === 'player' ? last(c.name) : 'it'), onclick: function () { draftPeek(null); pick(id, from); } })]);
+    app.querySelector('.wp-drf').appendChild(pk);
+    requestAnimationFrame(function () { fitCardNames(pk); });
   }
 
   // ── The stack ────────────────────────────────────────────────────────────
@@ -315,8 +374,66 @@
       startDraft();
     } });
     dock.appendChild(go);
-    app.appendChild(el('div', { class: 'wp-scr wp-stk' }, [head, gridBox, dock]));
+    app.appendChild(el('div', { class: 'wp-scr wp-stk' + (DK.on ? ' dk' : '') }, [head, gridBox, DK.on ? stackMakeup() : null, dock]));
     requestAnimationFrame(function () { fitGrid(); requestAnimationFrame(function () { fitCardNames(); }); });
+  }
+  // At a desk, what the stack holds against what two teams need, the way the draft will go, and your league:
+  // the stack's makeup (C.f. boxPlan, which fills the same needs from a box)
+  function stackMakeup() {
+    var have = { P: 0 }, odd = 0, extra = 0, kids = 0;
+    S.stack.forEach(function (id) { var c = S.C[id]; if (c.kind !== 'player') odd++; else if (c.role === 'p') have.P++; else { var p = c.pos && c.pos[0]; if (BOXPOS.indexOf(p) >= 0) have[p] = (have[p] || 0) + 1; else extra++; } });
+    BOXPOS.forEach(function (p) { extra += Math.max(0, (have[p] || 0) - 2); });
+    var dh = Math.max(0, S.size - 3 - 8) * 2;
+    var rows = [['P', 'Pitchers', 6, have.P]].concat(['C', '1B', '2B', 'SS', '3B', 'LF', 'CF', 'RF'].map(function (p) { return [p, POSN[p], 2, have[p] || 0]; })).concat(dh ? [['DH', 'Designated hitters', dh, extra]] : []);
+    var box = el('section', { class: 'wp-smk' });
+    box.appendChild(el('h3', { text: 'What two teams need' }));
+    var tb = el('div', { class: 'smk-rows' }), short = [];
+    rows.forEach(function (r) {
+      var miss = Math.max(0, r[2] - r[3]), more = r[3] - r[2];
+      if (miss) short.push(miss + ' ' + WHO[r[0]][miss === 1 ? 0 : 1]);
+      var pips = el('i', { class: 'smk-pips' }); for (var k = 0; k < r[2]; k++) pips.appendChild(el('em', { class: k < r[3] ? 'on' : '' }));
+      tb.appendChild(el('div', { class: 'smk-r' + (miss ? ' short' : '') }, [el('b', { class: 'smk-p', text: r[0] }), el('span', { class: 'smk-n', text: r[1] }), pips,
+        el('span', { class: 'smk-c', text: miss ? miss + ' short' : more > 0 ? more + ' to spare' : 'Covered' })]));
+    });
+    box.appendChild(tb);
+    box.appendChild(el('p', { class: 'smk-say' + (short.length ? ' short' : ''), text: !S.stack.length ? 'Each team drafts ' + S.size + ' cards: three pitchers and a hitter for every spot in the order.' : short.length ? 'The stack is short ' + listSay(short) + '. Sandlot kids fill any spot nobody can.' : 'The stack has everything two teams need.' }));
+    if (odd) box.appendChild(el('p', { class: 'smk-odd', 'data-give': '3', text: odd === 1 ? 'There is 1 odd card. A team that drafts it plays it from its hand during the game.' : 'There are ' + odd + ' odd cards. A team that drafts one plays it from its hand during the game.' }));
+    box.appendChild(el('div', { class: 'smk-x', 'data-give': '2' }, [el('h4', { text: 'How the draft goes' }), el('p', { text: 'A coin flip decides who picks first. The teams take turns until each has ' + S.size + ' cards, and the team that picks last bats last as the home team.' })]));
+    var Lg = league(), ids = Object.keys(Lg.cards);
+    if (ids.length) {
+      var lx = el('div', { class: 'smk-x', 'data-give': '1' }, [el('h4', { text: 'Your league' }), el('p', { text: ids.length + (ids.length === 1 ? ' card logged' : ' cards logged') + ', ' + (Lg.games || 0) + (Lg.games === 1 ? ' game played.' : ' games played.') })]);
+      var hrK = ids.filter(function (k) { var h = Lg.cards[k].h; return h && h.hr; }).sort(function (a, b) { return Lg.cards[b].h.hr - Lg.cards[a].h.hr; })[0];
+      var kK = ids.filter(function (k) { var q = Lg.cards[k].p; return q && q.k; }).sort(function (a, b) { return Lg.cards[b].p.k - Lg.cards[a].p.k; })[0];
+      var ld = el('div', { class: 'smk-ld' });
+      if (hrK) ld.appendChild(el('div', {}, [el('span', { text: 'Home runs' }), el('b', { text: Lg.cards[hrK].n + ', ' + Lg.cards[hrK].h.hr })]));
+      if (kK) ld.appendChild(el('div', {}, [el('span', { text: 'Strikeouts' }), el('b', { text: Lg.cards[kK].n + ', ' + Lg.cards[kK].p.k })]));
+      if (ld.children.length) lx.appendChild(ld);
+      box.appendChild(lx);
+    }
+    return box;
+  }
+  var WHO = { P: ['pitcher', 'pitchers'], C: ['catcher', 'catchers'], '1B': ['first baseman', 'first basemen'], '2B': ['second baseman', 'second basemen'], '3B': ['third baseman', 'third basemen'], SS: ['shortstop', 'shortstops'], LF: ['left fielder', 'left fielders'], CF: ['center fielder', 'center fielders'], RF: ['right fielder', 'right fielders'], DH: ['hitter', 'hitters'] };
+  function listSay(a) { return a.length < 2 ? a[0] : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+  // the makeup gives up the league, then the draft's note, then itself where it would cost the cards their size
+  function fitMakeup() {
+    var m = app.querySelector('.wp-smk'); if (!m) return;
+    function over() { return m.scrollHeight > m.clientHeight + 1 || [].some.call(m.querySelectorAll('.smk-c,.smk-n'), function (x) { return x.scrollWidth > x.clientWidth + 1; }); }
+    m.classList.remove('two', 'three'); m.style.removeProperty('--f');
+    [].forEach.call(m.querySelectorAll('[data-give]'), function (x) { x.hidden = false; });
+    // a tall panel sets its words larger, as large as the panel holds them (to twice the size)
+    if (!over() && document.documentElement.getAttribute('data-o') === 'land') {
+      var f0 = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dkc')) || 1, f = f0;
+      while (f < f0 * 2) { m.style.setProperty('--f', (f + .05).toFixed(2)); if (over()) break; f += .05; }
+      m.style.setProperty('--f', f.toFixed(2));
+      return true;
+    }
+    ['1', '2', '3'].forEach(function (k) { [].forEach.call(m.querySelectorAll('[data-give="' + k + '"]'), function (x) { if (over()) x.hidden = true; }); });
+    // a short panel lays the needs out in two columns, then three without the pips, then leaves the panel out
+    if (over()) m.classList.add('two');
+    if (over()) { m.classList.remove('two'); m.classList.add('three'); }
+    var say = m.querySelector('.smk-say'); if (over() && say) say.hidden = true;
+    if (over()) { m.hidden = true; return false; }
+    return true;
   }
   function addToStack(c, quiet) {
     snap();
@@ -771,13 +888,16 @@
       grid.appendChild(el('button', { type: 'button', class: 'wp-cbtn' + (shut ? ' shut' : ''), 'aria-label': 'Take ' + c.name, 'aria-disabled': shut ? 'true' : null, onclick: function (e) {
         if (!myPick()) return Kit.toast(S.T[S.draft.turn].name + ' is picking');
         if (!canTake(S.draft.turn, c)) return Kit.toast(S.T[S.draft.turn].name + ' already ' + (S.T[S.draft.turn].name === 'You' ? 'have' : 'has') + ' three pitchers');
-        pick(id, e.currentTarget); } }, [cardFace(c), c.kind === 'player' ? el('span', { class: 'wp-cr', text: quick(c) }) : null]));
+        var b = e.currentTarget;
+        if (grid.classList.contains('lst') && !b.classList.contains('on')) return draftPeek(id, b);
+        draftPeek(null); pick(id, b); } }, [cardFace(c), c.kind === 'player' ? el('span', { class: 'wp-cr', text: quick(c) }) : null,
+        el('span', { class: 'wp-ct', style: { '--tc': c.kind === 'player' ? 'var(--gold-hi)' : '#9fb4ff' } }, [el('b', { text: c.kind === 'player' ? (c.kid ? 'Kid' : last(c.name)) : ODDSHORT[c.kind] || c.name }), el('i', { text: c.kind === 'player' ? quick(c) : C.SPECIAL[c.kind].play })])]));
     });
     gridBox.appendChild(grid);
     var cap = el('div', { class: 'wp-cap' }, [el('p', { text: draftDone() ? 'Both teams are picked. Slide each card to its team’s side of the table.' : myPick() ? T.name + ', take a card.' : vb(T.name, 'is', 'are') + ' choosing…' })]);
     var dock = el('div', { class: 'wp-dock' }, [cap]);
     if (draftDone()) dock.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block wp-go', text: 'Set the lineups', onclick: function () { toLineup(); } }));
-    app.appendChild(el('div', { class: 'wp-scr wp-drf' }, [teams, gridBox, dock]));
+    app.appendChild(el('div', { class: 'wp-scr wp-drf' + (DK.on ? ' dk' : '') }, [teams, gridBox, dock]));
     requestAnimationFrame(function () { fitGrid(); requestAnimationFrame(function () { fitCardNames(); }); });
     if (D.flip) { D.flip = false; save(); coinFlip(); return; }
     if (!draftDone() && !myPick()) later(cpuPick, 900);
@@ -973,7 +1093,7 @@
     var o = app.querySelector('.wp-lin.dk .wp-order'), col = o && o.parentNode; if (!o) return;
     var ex = col.querySelector('.wp-extra'), H = col.clientHeight - (ex ? ex.offsetHeight + 6 : 0), W = col.clientWidth;
     var best = null;
-    [1, 2].forEach(function (k) { var rows = Math.ceil(9 / k), rh = (H - (rows - 1) * 6) / rows, cw = Math.min(150, (rh - 12) / 1.4, (W / k) * .26); if (!best || cw > best.cw) best = { k: k, cw: cw }; });
+    [1, 2].forEach(function (k) { var rows = Math.ceil(9 / k), rh = (H - (rows - 1) * 6) / rows, cw = Math.min(210, (rh - 12) / 1.4, (W / k) * .26); if (!best || cw > best.cw) best = { k: k, cw: cw }; });
     o.style.gridTemplateColumns = 'repeat(' + best.k + ', minmax(0,1fr))'; o.style.setProperty('--ocw', Math.max(30, Math.floor(best.cw)) + 'px');
     o.classList.toggle('thin', best.cw < 44);
     requestAnimationFrame(function () { fitCardNames(o); });
@@ -1464,6 +1584,7 @@
   function announce(t) { if (!t) return; ANN = t; var a = app.querySelector('.wp-ann p'); if (a) { a.textContent = t; a.parentNode.classList.remove('new'); void a.offsetWidth; a.parentNode.classList.add('new'); } }
   function renderPlay() {
     app.innerHTML = '';
+    if (V && V.ro) V.ro.disconnect();
     V = {};
     var sb = el('div', { class: 'wp-sb' }), field = el('div', { class: 'wp-field' });
     field.innerHTML = fieldSVG(false);
@@ -1473,6 +1594,8 @@
     V = { root: root, sb: sb, field: field, svg: field.querySelector('svg'), mu: mu, ann: ann, duel: duel, hand: hand, tok: {},
       room: el('div', { class: 'wp-room' }), stn: el('div', { class: 'wp-stn' }) };
     if (DK.on) deskArrange();
+    // the room is filled again whenever its box changes (a roll growing the station in a narrow window)
+    if (window.ResizeObserver) { var rh0 = 0; V.ro = new ResizeObserver(function () { var h = V.room.clientHeight; if (!DK.on || !V.room.isConnected || Math.abs(h - rh0) < 2) return; rh0 = h; paintRoom(); fitRoom(); }); V.ro.observe(V.room); }
     paintPlay(); fitPlay(); requestAnimationFrame(fitPlay);
   }
   // The ballpark drawn as large as its box allows: the field from the fence to home plate fills the room left by
@@ -1522,7 +1645,11 @@
     var sW = Math.min((W - rw - sw - 2 * gap) / 470, h / 392);
     var colW = W - sw - gap, fhT = Math.min(colW * .834, h * .62, h - need - gap), sT = Math.min(colW / 470, fhT / 392);
     if (sT > sW * 1.05 && fhT >= 300) return { k: 't', rw: rw, sw: sw, fh: Math.round(fhT), nar: colW < 1100 ? 1 : 0 };
-    return { k: 'w', rw: rw, sw: sw, fh: 0 };
+    // a short wide window: the ballpark is held by its height, so the width it can't use goes to the station,
+    // where the matchup's cards take it
+    var fw = Math.ceil(h * 470 / 392 * 1.04), spare = W - rw - sw - 2 * gap - fw;
+    if (spare > 0) sw = Math.round(Math.min(Math.max(sw, w * .42), sw + spare));
+    return { k: 'w', rw: rw, sw: sw, fh: 0, short: h < 700 ? 1 : 0 };
   }
   function deskArrange() {
     var r = V.root, P = deskPlan();
@@ -1617,24 +1744,30 @@
     if (!over()) return;
     [].slice.call(R.querySelectorAll('.dk-lu:not(.up) .dk-pt, .dk-lu.up .dk-pt')).forEach(function (n) { if (over()) n.remove(); });
     while (over() && lis.length > 1) lis.pop().remove();
-    if (over()) { var fld = R.querySelector('.dk-lu:not(.up)'); if (fld && R.querySelector('.dk-lu.up')) fld.remove(); }
+    // the team in the field's lineup goes (after the game, when nobody bats, the home team's)
+    if (over()) { var lus = R.querySelectorAll('.dk-lu'), fld = R.querySelector('.dk-lu:not(.up)'); if (lus.length > 1) (R.querySelector('.dk-lu.up') ? fld : lus[lus.length - 1]).remove(); }
     if (over()) { var pb = R.querySelector('.dk-pbp'); if (pb) pb.remove(); }
   }
 
-  function paintBoard() {
-    var g = S.g, n = Math.max(S.inn, g.line[0].length, g.line[1].length), from = Math.max(0, n - 9), tb = el('table', { class: 'wp-line' });
+  // the line score shows nine innings, or as many as fit a narrow screen around the inning being played
+  function paintBoard(cols) {
+    cols = cols || 9;
+    var g = S.g, n = Math.max(S.inn, g.line[0].length, g.line[1].length), from = Math.max(0, Math.min(n - cols, g.inn - cols)), tb = el('table', { class: 'wp-line' });
+    if (cols === 9) from = Math.max(0, n - 9);
+    var to = Math.min(n, from + cols);
     var hr = el('tr', {}, [el('th', { class: 'tm' })]);
-    for (var i = from; i < n; i++) hr.appendChild(el('th', { class: i + 1 === g.inn ? 'now' : '', text: String(i + 1) }));
+    for (var i = from; i < to; i++) hr.appendChild(el('th', { class: i + 1 === g.inn ? 'now' : '', text: String(i + 1) }));
     ['R', 'H', 'E'].forEach(function (x) { hr.appendChild(el('th', { class: 'rhe', text: x })); });
     tb.appendChild(hr);
     [1 - S.home, S.home].forEach(function (t) {
       var tr = el('tr', { class: bt() === t && S.phase === 'play' ? 'up' : '', style: { '--tc': S.T[t].color } }, [el('td', { class: 'tm' }, [el('i'), el('span', { text: S.T[t].name })])]);
-      for (var k = from; k < n; k++) { var v = g.line[t][k]; tr.appendChild(el('td', { class: k + 1 === g.inn && bt() === t ? 'now' : '', text: v == null ? (t === S.home && S.phase === 'over' && k === n - 1 && g.line[t].length < n ? 'X' : '') : String(v) })); }
+      for (var k = from; k < to; k++) { var v = g.line[t][k]; tr.appendChild(el('td', { class: k + 1 === g.inn && bt() === t ? 'now' : '', text: v == null ? (t === S.home && S.phase === 'over' && k === n - 1 && g.line[t].length < n ? 'X' : '') : String(v) })); }
       [g.R[t], g.H[t], g.E[t]].forEach(function (v, j) { tr.appendChild(el('td', { class: 'rhe' + (j === 0 ? ' r' : ''), text: String(v) })); });
       tb.appendChild(tr);
     });
     var outs = el('div', { class: 'wp-outs', 'aria-label': g.outs + ' out' + (g.outs === 1 ? '' : 's') }, [el('span', { text: (g.half ? 'Bottom ' : 'Top ') + ord(g.inn) })].concat([0, 1, 2].map(function (k) { return el('i', { class: k < g.outs ? 'on' : '' }); })));
     V.sb.innerHTML = ''; V.sb.appendChild(tb); V.sb.appendChild(outs);
+    if (to - from > 4 && V.sb.isConnected && V.sb.scrollWidth > V.sb.clientWidth + 1) paintBoard(to - from - 1);
   }
   function svgEl(tag, a) { var n = document.createElementNS('http://www.w3.org/2000/svg', tag); for (var k in a) n.setAttribute(k, a[k]); return n; }
   function paintField() {

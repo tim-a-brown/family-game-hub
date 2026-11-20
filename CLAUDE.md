@@ -1470,23 +1470,50 @@ Underlying principles for everything:
   phone and a tablet are drawn exactly as before). The play screen (`deskPlan`, `deskArrange`, `deskLeave`,
   `deskFit`, `muFit`, `paintRoom`, `fitRoom`): the ballpark sized from the window, the room with what is otherwise a
   tap away, and the station where you act, in one of three compositions chosen by the ballpark's scale: `w` the room
-  at the left (300 to 560 wide), the ballpark, the station at the right (360 to 640), the announcer standing in the
-  room under the line score; `t` the ballpark over the room with the station the window's height at the right (nearly
+  at the left (300 to 560 wide), the ballpark, the station at the right (360 to 640, and in a short wide window the
+  width the ballpark can't use, since its height holds it: 1600 by 560 has matchup cards of 124px where they were 60
+  to 75), the announcer standing in the room under the line score; `t` the ballpark over the room with the station the window's height at the right (nearly
   square windows like 2100 by 1860 and 1000 by 1000); `k` a narrow tall window, the ballpark, the station and the room
   one under another. The room: the line score, both lineups with each batter's line today (`todayFull`), the batter
   up lit, each team's three pitchers with their innings, IP, H, R and K, the one on the mound lit, and the
   play-by-play newest first (`g.pbp`, every at-bat, steal and walk on purpose, the last 80; `pbp`); it gives up whole
-  plays, then the pitchers' tables, then the fielding team's lineup. The station: the matchup's two cards, one over
+  plays, then the pitchers' tables, then the fielding team's lineup (after the game, the home team's), and it is filled
+  again whenever its box changes size (`V.ro`: a roll growing the station in a narrow window). The station: the matchup's two cards, one over
   the other or side by side, whichever is larger (`--mcw`, to 210px), each with his own label beside it (the
   rows his die is read on, `dk-lab`, put away while the dice roll and where a matchup is too tight, `nolab`, then
   `tight`), the duel with a reserved height so the cards never jump, the hand. The same nodes move between layouts,
   so a resize mid-roll keeps the roll (`deskCheck` from the resize handler, inside `Kit.glide`). The lineup at a desk
   carries every batter's card in the order with his whole name, card and power (`deskLineup`, `--ocw`, one or two
-  columns, whichever gives larger cards), the diamond's tags a step up; the stack's and the draft's cards go to 210px.
-  The setup and the results card are the kit's desk. The scratchpad's `big/waxdesk/` has the scripts: `h.js` with
-  `sc.js` (scenes setup, stack0, stack, box, draft, lineup, play, roll, rollp, mid, over at any window, a picture and
-  a scan; `ROOT=base` serves the starting files), `cmp.sh` (the device proof, `proof.txt`), `rz.js` (one game dragged
-  through window sizes), `dbg.js`.
+  columns, whichever gives larger cards, to 210px), the diamond's tags a step up; the stack's and the draft's cards go
+  to 210px. **The stack at a desk** (`stackMakeup`, `fitMakeup`, `.wp-smk`) holds what the stack has against what two
+  teams need, between the head and the buttons: a row each for the pitchers (six), the eight positions by each
+  player's main position that season (two each) and the designated hitters, as pips filled for each card with the
+  rows still short in amber and "1 short", "Covered" or "2 to spare" (the needs `boxPlan` fills from a box); a
+  sentence naming what is short ("The stack is short 1 pitcher and 1 third baseman."), the odd cards, how the draft
+  goes, and your league (cards logged, games played, its home run and strikeout leaders). A tall panel sets its words
+  larger as far as it holds them (`--f`, to twice the kit's step); a short one gives up the league, the draft's note
+  and the odd cards, then lays the needs in two columns, then three without the pips, then leaves the panel out. In a
+  window taller than wide the panel stands between the cards and the buttons only where the cards keep their size.
+  **The draft at a desk held sideways** gives each team half the column with its picks as cards, sized so a full
+  team fits (`fitPiles`, `--pw`, to 150px). The setup and the results card are the kit's desk; in the kit's desk setup
+  How to play is one panel 2040 by 1510 at 2100 by 1860 whose four columns run about 85px past its foot, the last
+  lines of three columns and the source note cut there (the kit's, shared by every game, not changed here). The
+  scratchpad's `big/wax3/` has the scripts (`big/waxdesk/` the first pass's): `h.js` with `sc.js` (scenes setup,
+  stack0, stack, box, draft, lineup, play, roll, rollp, mid, over at any window, a picture and a scan that skips what
+  lies in a scrolling box; `ROOT=base` serves the starting files from `base/`), `x.js` (fb the file picker and the
+  scan, cam the camera with `FAKECAM=<y4m>`, rules, sheet, sheetb, hist, tired, steal, walk, kart), `drf.js` (the
+  draft from a full box), `proof.sh` with `cmp.sh` (the device proof, `proof.txt`; `proofn` is base against base),
+  `rzp.js <stack|stack0|draft|dbox|lineup|play>` (one page dragged through every window), `rz.js`, `full.js` (a whole
+  game by `auto`), `print.js` (Print the table cards as a Letter PDF), `dbg.js`.
+- **A small phone** (2026-11-20): a draft whose cards would need scrolling (a full box on a 320 by 568 phone: 28 to 34
+  cards) lists them as name tiles instead (`listFit`, `.wp-grid.lst`, `--rh`): the last name over what the card plays
+  ("SS Bat +2", "Arm 0", an odd card's play), 11px stepping to 9px for a long name, a pitcher or hitter edged gold and
+  an odd card blue. A first tap lifts the tile and shows the card large over the teams with what it is and a Take
+  button (`draftPeek`, `.wp-peek`; a tap on the card reads its sheet); a second tap on the tile, or Take, picks it. The
+  line score shows as many innings as fit around the one being played (`paintBoard(cols)`: six of nine at 320 wide,
+  so Top 1st stays on the screen). A drawn card's small print never goes under 9px (`max(9px, …)` on the team line,
+  the script first name and the RC, AS and RB tabs in cardface.css, which only changes cards 130 to about 190px
+  wide).
 - `engine.js` (`WaxEngine`, pure, runs in Node) reads `games/waxpack/mlb.json` (from `scripts/build-waxpack-mlb.py`,
   Lahman data through 2025). A card plays the season before its year, measured against its own league that year, and
   gives a player a few whole values that print on a sleeve label (`table`, `valuesH`, `valuesP`): a modifier from -2 to
@@ -1575,7 +1602,7 @@ Underlying principles for everything:
   History: `Kit.record('sandlot')` with `detail.wp`, drawn by `hist/specialty.js`. Test hooks `window.__wax` (`quick`,
   `auto`, `rig`, `first`, `finishDraft`, `choose`). Scripts: the scratchpad's `big/waxpack/` (`h.js`, `sc.js`, `pp.js`,
   `scanui.js`), `big/waxpack2/`, `big/waxrun/` and
-  `waxpack/ocrrun.js`. Not done: online, and the draft at 320 by 568 with a full box scrolls (34 cards can't be read smaller).
+  `waxpack/ocrrun.js`. Not done: online.
 
 ## Demos (2026-11-16; Tim: "add demo button and develop interactive animated demos to all games possible to walk first time players through animated versions of the game accessible with a small icon on the game menu")
 

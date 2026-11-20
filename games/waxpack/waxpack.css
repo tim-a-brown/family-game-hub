@@ -121,6 +121,7 @@ p.wp-play b{color:var(--text);font-size:1.05rem;}
 .wp-scan{display:flex;flex-direction:column;gap:10px;}
 .wp-scanpic{height:min(40vh,300px);border-radius:14px;background:#111 center/contain no-repeat;}
 .wp-scanpic.sm{height:120px;}
+@media (max-height:520px){.wp-scanpic{height:min(34vh,300px);}.wp-scanpic.sm{height:76px;}}
 .wp-scanmsg{margin:0;font-size:.95rem;text-align:center;color:var(--text-2);}
 .wp-scanbar{height:6px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden;}
 .wp-scanbar i{display:block;height:100%;width:8%;background:var(--lit);transition:width .3s;}
@@ -146,6 +147,28 @@ html[data-o=land] .wp-drf{grid-template-columns:minmax(0,1fr) minmax(250px,32%);
 html[data-o=land] .wp-drf>.wp-dteams{grid-area:t;grid-template-columns:1fr;}
 html[data-o=land] .wp-drf>.wp-gbox{grid-area:g;}
 html[data-o=land] .wp-drf>.wp-dock{grid-area:d;align-self:end;}
+/* a draft too big for a small phone: the cards as name tiles, a tap shows the card large over the teams (listFit) */
+.wp-ct{display:none;}
+.wp-grid.lst{width:100%;justify-content:stretch;}
+.wp-drf .wp-gbox.lst{padding-bottom:0;}
+.wp-grid.lst>.wp-cbtn{height:var(--rh,30px);border-radius:9px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);text-align:left;min-width:0;}
+.wp-grid.lst>.wp-cbtn>.wc,.wp-grid.lst>.wp-cbtn>.wp-cr{display:none;}
+.wp-grid.lst .wp-ct{display:flex;flex-direction:column;justify-content:center;height:100%;padding:0 6px 0 9px;box-sizing:border-box;border-left:3px solid var(--tc);border-radius:9px;min-width:0;line-height:1.1;}
+.wp-ct b{font-size:11px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:clip;}
+.wp-ct i{font-style:normal;font-size:9.5px;font-weight:700;color:var(--text-2);white-space:nowrap;}
+.wp-grid.lst>.wp-cbtn.on{background:color-mix(in srgb,var(--lit) 20%,transparent);box-shadow:inset 0 0 0 2px var(--lit);}
+.wp-grid.lst>.wp-cbtn.cpu-pick{transform:none;box-shadow:inset 0 0 0 2px var(--lit);}
+.wp-drf>.wp-peek{grid-row:1;grid-column:1;z-index:3;display:flex;align-items:center;gap:10px;min-width:0;padding:6px 8px;border-radius:14px;background:var(--sheet-solid,#141a30);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--lit) 70%,transparent),0 8px 24px rgba(0,0,0,.45);animation:wppk .22s var(--spring,ease) both;}
+.wp-drf:has(>.wp-peek)>.wp-dteams{grid-row:1;grid-column:1;}
+html[data-o=land] .wp-drf>.wp-peek{grid-area:t;}
+.wp-pkc{flex:none;padding:0;border:0;background:none;cursor:pointer;}
+.wp-pkc .wc{--w:60px;}
+.wp-pki{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.wp-pki b{font-size:.92rem;line-height:1.15;}
+.wp-pki span{font-size:.75rem;color:var(--text-2);line-height:1.2;}
+.wp-pki em{font-style:normal;font-size:.72rem;font-weight:800;color:var(--lit);}
+.wp-peek>.btn{flex:none;min-height:40px;padding:0 12px;}
+@keyframes wppk{from{opacity:0;transform:translateY(-6px) scale(.97);}}
 .wp-coinov{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:rgba(6,8,20,.72);backdrop-filter:blur(4px);transition:opacity .35s;perspective:600px;}
 .wp-coinov.out{opacity:0;}
 .wp-coin{width:110px;height:110px;position:relative;transform-style:preserve-3d;transition:transform 1.5s cubic-bezier(.2,.7,.25,1);}
@@ -754,3 +777,49 @@ html.wp-dk .wp-lin.dk .wp-st{font-size:clamp(9px,2.1cqw,20px);}
 html.wp-dk[data-o=port] .wp-lin.dk{grid-template-rows:auto minmax(0,1fr) minmax(0,1fr) auto;}
 /* the largest windows: what you read and press in the station steps up gently with the window (--dkc, 1 to 1.35) */
 html.wp-dk .wp-ply.dk .wp-duel,html.wp-dk .wp-ply.dk .wp-hand,html.wp-dk .wp-ply.dk .mu-info,html.wp-dk .wp-ply.dk .wp-ann{zoom:var(--dkc,1);}
+/* the stack at a desk: what it holds against what two teams need, between the head and the buttons (stackMakeup) */
+html.wp-dk[data-o=land] .wp-stk.dk{grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"g h" "g m" "g d";row-gap:16px;}
+html.wp-dk[data-o=port] .wp-stk.dk{grid-template-rows:auto minmax(0,1fr) auto auto;}
+.wp-stk.dk>.wp-smk{grid-area:m;}
+html.wp-dk[data-o=port] .wp-stk.dk>.wp-smk{grid-area:auto;}
+.wp-smk[hidden],.wp-smk [hidden]{display:none !important;}
+.wp-smk{--f:var(--dkc,1);min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:calc(10px * var(--f));padding:calc(14px * var(--f)) calc(16px * var(--f));border-radius:18px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);font-size:calc(.92rem * var(--f));}
+.wp-smk h3{margin:0;font-size:1.1em;font-weight:800;}
+.wp-smk h4{margin:0 0 .2em;font-size:.86em;font-weight:800;color:var(--text-3);}
+.smk-rows{display:grid;grid-auto-rows:minmax(2.1em,auto);align-content:start;}
+html.wp-dk[data-o=port] .smk-rows{grid-template-columns:repeat(auto-fill,minmax(19em,1fr));column-gap:1.4em;}
+.smk-r{display:grid;grid-template-columns:2.4em minmax(0,1fr) auto 5.6em;align-items:center;gap:.6em;border-top:1px solid var(--gl-line);}
+.smk-rows>.smk-r:first-child{border-top:0;}
+html.wp-dk[data-o=port] .smk-r{border-top:0;border-bottom:1px solid var(--gl-line);}
+.smk-p{justify-self:start;min-width:2.1em;padding:.12em .3em;border-radius:6px;text-align:center;font-size:.78em;font-weight:800;background:rgba(255,255,255,.1);color:var(--text);}
+.smk-n{font-weight:700;color:var(--text);}
+.smk-pips{display:flex;gap:.28em;}
+.smk-pips em{width:.62em;height:.62em;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--text-3);}
+.smk-pips em.on{background:#5ec26a;box-shadow:none;}
+.smk-c{justify-self:end;font-size:.82em;font-weight:700;color:var(--text-3);white-space:nowrap;}
+.smk-r.short .smk-p{background:color-mix(in srgb,#ffc46b 26%,transparent);color:#ffd99a;}
+.smk-r.short .smk-c{color:#ffc46b;}
+.smk-r.short .smk-pips em:not(.on){box-shadow:inset 0 0 0 1.5px #ffc46b;}
+.smk-say{margin:0;font-weight:700;line-height:1.35;color:var(--text);}
+.smk-say.short{color:#ffd99a;}
+.smk-odd,.smk-x p{margin:0;line-height:1.4;color:var(--text-2);}
+.smk-x{padding-top:calc(10px * var(--f));border-top:1px solid var(--gl-line);}
+.smk-ld{display:grid;gap:.25em;margin-top:.45em;}
+.smk-ld div{display:flex;justify-content:space-between;gap:1em;}
+.smk-ld span{color:var(--text-3);font-size:.88em;}
+.smk-ld b{text-align:right;}
+.wp-smk.two .smk-rows{grid-template-columns:1fr 1fr;column-gap:1.2em;grid-auto-rows:minmax(1.9em,auto);}
+.wp-smk.two .smk-r{grid-template-columns:2.4em minmax(0,1fr) auto;border-top:0;border-bottom:1px solid var(--gl-line);}
+.wp-smk.two .smk-n{display:none;}
+.wp-smk.two .smk-c{justify-self:end;}
+.wp-smk.three .smk-rows{grid-template-columns:repeat(3,1fr);column-gap:1em;grid-auto-rows:minmax(1.8em,auto);}
+.wp-smk.three .smk-r{grid-template-columns:2.4em minmax(0,1fr);border-top:0;}
+.wp-smk.three .smk-n,.wp-smk.three .smk-pips{display:none;}
+/* the draft at a desk held sideways: each team's half of the column holds its picks as cards (fitPiles) */
+html.wp-dk[data-o=land] .wp-drf.dk{grid-template-rows:minmax(0,1fr) auto;}
+html.wp-dk[data-o=land] .wp-drf.dk>.wp-dteams{grid-template-rows:minmax(0,1fr) minmax(0,1fr);min-height:0;}
+html.wp-dk[data-o=land] .wp-drf.dk .wp-dteam{display:flex;flex-direction:column;min-height:0;padding:10px 12px;}
+html.wp-dk[data-o=land] .wp-drf.dk .wp-dtn b{font-size:calc(1rem * var(--dkc,1));}
+html.wp-dk[data-o=land] .wp-drf.dk .wp-dpile{flex:1 1 auto;min-height:0;flex-wrap:wrap;align-content:flex-start;gap:6px;margin-top:10px;padding-left:0;}
+html.wp-dk[data-o=land] .wp-drf.dk .wp-dpile .wc.mini{--w:var(--pw,30px);margin-right:0;}
+.wp-smk.three .smk-c{justify-self:start;}

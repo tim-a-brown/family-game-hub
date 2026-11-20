@@ -528,7 +528,7 @@
     var innN = Math.max(nums(T0.l).length, nums(T1.l).length);
     out.push(ui.stats([['Hits', T0.h + ' – ' + T1.h, short(T0.n, 10) + ' first'], ['Home runs', hrs[aw] + ' – ' + hrs[d.home]], ['Errors', T0.e + ' – ' + T1.e],
       star && star.h ? ['Star bat', star.h + ' for ' + star.ab, star.n + (star.hr ? ', ' + star.hr + ' HR' : '') + (star.rbi ? ', ' + star.rbi + ' RBI' : '')] : null,
-      innN > (d.inn || 9) ? ['Extra innings', innN] : null]));
+      innN > (d.inn || 9) ? ['Extra innings', String(innN - (d.inn || 9)), 'The game went ' + innN + ' innings'] : null]));
     // how it ended: the diamond at the last play
     if (d.end) {
       var E = d.end, b = String(E.b || '000'), W = 320, H = 190, cx = 160, hy = 168, s = 62;
