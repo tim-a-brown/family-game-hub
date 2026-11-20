@@ -498,14 +498,40 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
 .sec.favs .sec-h h2{color:var(--yellow);}
 .sec.favs .sec-h .ico{color:var(--yellow);fill:var(--yellow);}
 .sec.favs + .sec{margin-top:28px;}
-/* Arranging favorites: the tiles wiggle; drag one to a new spot; Done (or a tap outside) ends it */
-.sec.favs .wig-done{display:none;margin-left:auto;border:0;border-radius:999px;padding:6px 14px;background:var(--yellow-fill,var(--yellow));color:#2b1a00;font-weight:900;font-size:.85rem;cursor:pointer;}
-.sec.favs.wiggle .wig-done{display:inline-block;}
-.sec.favs.wiggle .list > .g{animation:wig .26s ease-in-out infinite alternate;animation-delay:var(--wd,0ms);touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:grab;}
-.sec.favs.wiggle .list > .g.lift{animation:none;touch-action:none;z-index:5;transform:scale(1.08);box-shadow:0 12px 28px rgba(0,0,0,.5);cursor:grabbing;}
-.sec.favs .list > .g{-webkit-touch-callout:none;}
+/* Arranging a section (Favorites or any category but Consoles): the tiles wiggle; drag one to a new spot; Done (or a tap
+   outside, Escape, or eight idle seconds) ends it. Each tile wears a mark at its top left: hide the game (a category) or
+   take it out of Favorites. A category's hidden games stand in their places while it wiggles, dimmed under a veil, their
+   marks lit gold, and fold away when it stops. Only transform, opacity and filter move; the mark's glass is painted. */
+.sec.arr .wig-done{display:none;margin-left:auto;border:0;border-radius:999px;padding:6px 14px;background:var(--yellow-fill,var(--yellow));color:#2b1a00;font-weight:900;font-size:.85rem;cursor:pointer;}
+.sec.arr.wiggle .wig-done{display:inline-block;}
+.sec.wiggle > .sec-h .sec-ed,.sec.wiggle > .sec-h .sec-x{display:none;}
+.sec.wiggle .list > .g{animation:wig .26s ease-in-out infinite alternate;animation-delay:var(--wd,0ms);touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:grab;}
+.sec.wiggle .list > .g.lift{animation:none;touch-action:none;z-index:7;transform:scale(1.08);box-shadow:0 12px 28px rgba(0,0,0,.5);cursor:grabbing;}
+.sec.arr .list > .g{-webkit-touch-callout:none;}
 @keyframes wig{from{transform:rotate(-1.6deg)}to{transform:rotate(1.6deg)}}
-@media (prefers-reduced-motion:reduce){.sec.favs.wiggle .list > .g{animation:none;outline:2px dashed rgba(255,200,61,.6);outline-offset:-2px;}}
+.sec:not(.wiggle):not(.folding) > .list > .g.hid{display:none;}
+.sec.wiggle > .list > .g.hid{animation:wig .26s ease-in-out infinite alternate,hidIn .26s ease-out backwards;animation-delay:var(--wd,0ms),0ms;}
+@keyframes hidIn{from{opacity:0;scale:.6}}
+.sec.wiggle .list > .g > .go{transition:opacity .25s ease,filter .25s ease;}
+.sec.wiggle > .list > .g.hid > .go,.sec.folding > .list > .g.hid > .go{opacity:.6;filter:saturate(.15);}
+.sec.wiggle > .list > .g.hid::after,.sec.folding > .list > .g.hid::after{content:"";position:absolute;inset:0;z-index:5;border-radius:inherit;background:rgba(10,10,28,.6);pointer-events:none;}
+/* (the star steps aside while a section wiggles: the mark takes its corner) */
+.sec.wiggle > .list > .g > .fav,.sec.folding > .list > .g.hid > .fav{visibility:hidden;}
+.wig-x{display:none;}
+.sec.wiggle .list > .g > .wig-x{display:grid;place-items:center;position:absolute;z-index:6;top:0;left:0;width:36px;height:36px;padding:0;margin:0;border:0;background:none;color:#fff;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+.wig-x::before{content:"";position:absolute;inset:6px;border-radius:50%;background:rgba(16,15,36,.9);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3),0 3px 8px rgba(0,0,0,.55);}
+.wig-x .ico{position:relative;width:14px;height:14px;stroke-width:2.4;}
+.wig-x:active::before{scale:.9;}
+.sec.wiggle .list > .g.hid > .wig-x{color:var(--gold-ink,#2b1a00);}
+.sec.wiggle .list > .g.hid > .wig-x::before{background:linear-gradient(180deg,var(--gold-hi,#ffe27a),var(--gold-lo,#f0b429));box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 0 12px var(--litg,rgba(255,200,61,.5)),0 3px 8px rgba(0,0,0,.5);}
+/* (a row in the list view: the mark sits on its icon's top left corner) */
+.sec.wiggle .list > .g.gr:not(.tl) > .wig-x{top:-2px;left:-2px;}
+.wig-undo{position:fixed;z-index:60;left:50%;bottom:max(calc(env(safe-area-inset-bottom,0px) + 10px),18px);display:flex;align-items:center;gap:10px;max-width:calc(100vw - 34px);min-height:44px;padding:0 6px 0 16px;border-radius:16px;
+  background:rgba(22,21,46,.96);box-shadow:inset 0 1px 0 rgba(255,211,77,.45),inset 0 0 0 1px rgba(255,255,255,.14),0 14px 30px rgba(0,0,0,.55);color:var(--text);font-weight:650;font-size:.9rem;
+  opacity:0;transform:translate(-50%,12px);transition:opacity .22s ease,transform .26s var(--spring,ease);}
+.wig-undo.show{opacity:1;transform:translate(-50%,0);}
+.wig-undo button{flex:none;min-height:34px;padding:0 14px;border:0;border-radius:11px;background:linear-gradient(180deg,var(--gold-hi,#ffe27a),var(--gold-lo,#f0b429));color:var(--gold-ink,#2b1a00);font:inherit;font-weight:750;cursor:pointer;}
+@media (prefers-reduced-motion:reduce){.sec.wiggle .list > .g{animation:none;outline:2px dashed rgba(255,200,61,.6);outline-offset:-2px;}}
 
 /* Keep playing: a shelf of little game boxes (your saved games, the last one played first; it scrolls sideways and
    never gets taller), and under it a short stack of bars for online games (the latest move on top) */
@@ -1149,7 +1175,7 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
 /* Favorites: a section like the others, its bar gold, each game keeping its own category's color */
 :root:not(.ng-x) .sec.favs{margin-top:22px;padding:0;border-radius:0;background:none;box-shadow:none;}
 :root:not(.ng-x) .sec.favs + .sec{margin-top:22px;}
-:root:not(.ng-x) .sec.favs .wig-done{border-radius:12px;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--gold-ink);font-weight:750;}
+:root:not(.ng-x) .sec.arr .wig-done{border-radius:12px;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--gold-ink);font-weight:750;}
 
 /* the games: one row each, many columns of rows where there is room */
 :root:not(.ng-x) .list.rows{grid-template-columns:minmax(0,1fr);gap:7px;}
@@ -1242,7 +1268,7 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
 :root:not(.ng-x) .g.gr:not(.tl) .tx small{min-width:0;}
 /* (and when a row still needs more room at this width, every row takes that height: markWraps sets --row-h) */
 :root:not(.ng-x) #list .g.gr:not(.tl){min-height:var(--row-h,0px);}
-:root:not(.ng-x) .sec.favs.wiggle .list > .g.lift{box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.6),0 16px 30px rgba(0,0,0,.55);}
+:root:not(.ng-x) .sec.wiggle .list > .g.lift{box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.6),0 16px 30px rgba(0,0,0,.55);}
 
 /* friends' open tables: a gold-ringed glass banner */
 :root:not(.ng-x) .otb{border-radius:20px;background:linear-gradient(160deg,rgba(255,211,77,.13),var(--gl) 62%);
@@ -2101,12 +2127,14 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     return b;
   }
 
-  function section(title, ic, games, extra, favs) {
+  // (hid: the section's games hidden from the home screen, which stand in their places, dimmed, only while it wiggles)
+  function section(title, ic, games, extra, favs, hid) {
     var sc = GAME_CATS.filter(function (x) { return x.id === ic; })[0];
     var gl = glassOn();
-    var s = el('section', { class: 'sec sec-' + ic + (favs ? ' favs' : ''), style: sc ? { '--sc': 'hsl(' + sc.hue + ' ' + sc.sat + '% 46%)', '--h': 'hsl(' + sc.hue + ' ' + sc.sat + '% 58%)' } : null });
+    hid = hid || [];
+    var s = el('section', { class: 'sec sec-' + ic + (favs ? ' favs' : ''), 'data-sid': favs ? 'fav' : ic, style: sc ? { '--sc': 'hsl(' + sc.hue + ' ' + sc.sat + '% 46%)', '--h': 'hsl(' + sc.hue + ' ' + sc.sat + '% 58%)' } : null });
     var h = el('div', { class: 'sec-h' }, [el('span', { html: Kit.icon(ic) }), el('h2', { text: title }), el('span', { class: 'n', text: gl ? games.length + (games.length === 1 ? ' game' : ' games') : String(games.length) })]);
-    if (extra) h.appendChild(extra);
+    if (extra) { extra.classList.add('sec-x'); h.appendChild(extra); }
     // a quiet pencil at the heading's end: which of this section's games show, or the whole section (Tim, 2026-11-16:
     // "add a discreet edit option to each section to allow hiding games within the section or the section altogether")
     if ((sc || favs) && Kit.homeSheet) h.appendChild(el('button', { type: 'button', class: 'sec-ed', 'aria-label': (favs ? 'Arrange your favorites' : 'Show, hide or arrange ' + title + ' games'), html: Kit.icon('pencil'), onclick: function () { Kit.sfx('tap'); Kit.haptic('light'); Kit.homeSheet(favs ? 'fav' : ic); } }));
@@ -2116,43 +2144,102 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     // Favorites keep the order you arranged them in; other sections are A to Z
     var bySys = ic === 'console' && !favs && consoleSort() === 'sys';
     // (a section in an order of its own, arranged in the Home screen sheet, keeps it: Kit.sortCat)
-    (favs ? games.slice().sort(function (a, b) { return favIndex(a) - favIndex(b); }) : bySys ? games.slice().sort(consoleOrder) : Kit.sortCat ? Kit.sortCat(ic, games) : games.slice().sort(function (a, b) { return a.name.localeCompare(b.name); })).forEach(function (g, i, all) {
+    (favs ? games.slice().sort(function (a, b) { return favIndex(a) - favIndex(b); }) : bySys ? games.slice().sort(consoleOrder) : Kit.sortCat ? Kit.sortCat(ic, games.concat(hid)) : games.slice().sort(function (a, b) { return a.name.localeCompare(b.name); })).forEach(function (g, i, all) {
       // by console: each console's games under its own logo
       if (bySys && (!i || all[i - 1].sys !== g.sys)) list.appendChild(el('div', { class: 'cs-div' }, [el('img', { src: 'img/consoles/' + g.sys + '.svg', alt: '' }), el('span', { text: CONSOLE_NAME[g.sys] || '' })]));
-      list.appendChild(row(g, favs));
+      var r = row(g, favs);
+      if (hid.indexOf(g) >= 0) r.classList.add('hid');
+      list.appendChild(r);
     });
     s.appendChild(list);
-    if (favs) arrangeable(s, h, list);
+    if (canArrange(favs ? 'fav' : ic)) arrangeable(s, h, list, favs ? 'fav' : ic);
     return s;
   }
-  // ── Favorites: press and hold a tile to make them wiggle, then drag to rearrange (like a phone's home screen) ──
-  var wiggling = false, wigIdle = 0;
+  // ── Arranging a section: press and hold a tile in any section (Favorites or a category) and that section's tiles
+  // wiggle, as on a phone's home screen; drag one to a new spot. Each tile wears a mark at its top left: in a category it
+  // hides the game (gn_games_off, the sheet's switch) and the section's hidden games stand in their places, dimmed, with
+  // their marks lit, so a tap brings one back; in Favorites it takes the game out of Favorites (with Undo). Done, a tap
+  // outside, Escape or eight idle seconds end it, and the hidden games fold away. One section at a time. (Tim,
+  // 2026-11-20: "make each section ... work like favorites does ... but also add the option to hide a game from an icon
+  // on its tile while it's wiggling".) Consoles keep their own Edit: their cartridges stay out of gn_game_order.
+  var wiggling = false, wigId = null, wigIdle = 0, wigDirty = false, dragOn = false, pendRender = false;
+  function canArrange(id) { return id === 'fav' || (id && id !== 'console' && GAME_CATS.some(function (c) { return c.id === id; })); }
+  function wigSec() { return wigId ? document.querySelector('#list > .sec.wiggle') : null; }
   // Eight seconds of wiggling with nothing lifted or dragged: arranging ends by itself
-  function idleWiggle() { clearTimeout(wigIdle); if (wiggling) wigIdle = setTimeout(function () { if (wiggling && !document.querySelector('.sec.favs .g.lift')) stopWiggle(); else idleWiggle(); }, 8000); }
-  function arrangeable(sec, head, list) {
+  function idleWiggle() { clearTimeout(wigIdle); if (wiggling) wigIdle = setTimeout(function () { if (wiggling && !dragOn) stopWiggle(); else idleWiggle(); }, 8000); }
+  // a tile's centre where the grid lays it, without the wiggle's tilt or a glide in flight (page coordinates)
+  function slotOf(k) {
+    var p = k.offsetParent, pr = p ? p.getBoundingClientRect() : { left: -scrollX, top: -scrollY };
+    return { x: pr.left + (p ? p.clientLeft : 0) + k.offsetLeft + k.offsetWidth / 2 + scrollX, y: pr.top + (p ? p.clientTop : 0) + k.offsetTop + k.offsetHeight / 2 + scrollY };
+  }
+  // what moved glides there from where it was: every tile keyed by its section and game
+  function tileRects() {
+    var m = {};
+    document.querySelectorAll('#list > .sec[data-sid] > .list > .g').forEach(function (k) { if (k.offsetParent) m[k.parentNode.parentNode.dataset.sid + ':' + k.dataset.id] = k.getBoundingClientRect(); });
+    return m;
+  }
+  function glideFrom(before) {
+    document.querySelectorAll('#list > .sec[data-sid] > .list > .g').forEach(function (k) {
+      var r0 = before[k.parentNode.parentNode.dataset.sid + ':' + k.dataset.id]; if (!r0 || !k.animate || !k.offsetParent) return;
+      var r1 = k.getBoundingClientRect(), dx = r0.left - r1.left, dy = r0.top - r1.top;
+      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) k.animate([{ translate: dx + 'px ' + dy + 'px' }, { translate: '0px 0px' }], { duration: 320, easing: 'cubic-bezier(.2,.9,.25,1)' });
+    });
+  }
+  // draw the page again with every tile gliding from where it was, the section you are looking at staying where it is
+  function glideRender(pre) {
+    var before = tileRects();
+    var at = [].filter.call(document.querySelectorAll('#list > .sec'), function (s) { return s.getBoundingClientRect().bottom > 0; })[0], sid = at && at.dataset.sid, y0 = at ? at.getBoundingClientRect().top : 0;
+    if (pre) pre();
+    render();
+    var now = sid && document.querySelector('#list > .sec[data-sid="' + sid + '"]');
+    if (now && scrollY > 0) { var dy = now.getBoundingClientRect().top - y0; if (Math.abs(dy) > 1) scrollBy(0, dy); }
+    glideFrom(before);
+  }
+  function offIds() { try { var a = JSON.parse(get('gn_games_off', '[]')); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  // (a game a parent turned off is theirs to bring back, not the home screen's)
+  function pcLocked(g) { try { var p = JSON.parse(get('fgh_pc', 'null')); return !!(p && p.parents && Object.keys(p.parents).length && ((p.games || []).indexOf(g.id) >= 0 || (p.cats || []).indexOf(g.cat) >= 0)); } catch (e) { return false; } }
+  function markSay(t, sid, name) {
+    var hid = t.classList.contains('hid');
+    return sid === 'fav' ? 'Take ' + name + ' out of Favorites' : hid ? 'Show ' + name + ' on the home screen' : 'Hide ' + name + ' from the home screen';
+  }
+  function arrangeable(sec, head, list, sid) {
     var done = el('button', { type: 'button', class: 'wig-done', text: 'Done', onclick: function (e) { e.stopPropagation(); stopWiggle(); } });
     head.appendChild(done);
-    if (wiggling) sec.classList.add('wiggle');
+    sec.classList.add('arr');
+    if (wiggling && wigId === sid) sec.classList.add('wiggle');
     Array.prototype.forEach.call(list.children, function (t, i) {
+      if (!t.classList.contains('g')) return;
       t.style.setProperty('--wd', (-(i * 97) % 300) + 'ms');   // each tile wiggles a little out of step
+      var g = findGame(t.dataset.id), name = g ? g.name : '';
+      // the mark at the tile's top left: hide (or show again) in a category, out of Favorites in Favorites
+      var mk = el('button', { type: 'button', class: 'wig-x' + (sid === 'fav' ? ' out' : ''), 'aria-label': markSay(t, sid, name), html: Kit.icon(sid === 'fav' ? 'minus' : 'eyeoff') });
+      mk.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+      mk.addEventListener('click', function (e) { e.stopPropagation(); e.preventDefault(); if (g && sec.classList.contains('wiggle')) markTap(t, mk, sid, g); });
+      t.appendChild(mk);
       var timer = 0, x0 = 0, y0 = 0, drag = null;
       t.addEventListener('pointerdown', function (e) {
-        if (e.button > 0 || e.target.closest('.fav')) return;
+        if (e.button > 0 || e.target.closest('.fav, .wig-x')) return;
         x0 = e.clientX; y0 = e.clientY;
         var pid = e.pointerId;
         // Wiggling: a short hold picks the tile up; a swipe before then scrolls the page instead (nothing moves)
         if (sec.classList.contains('wiggle')) { drag = { id: pid, on: false }; timer = setTimeout(function () { timer = 0; if (drag && !drag.on) { lift(pid); Kit.haptic('light'); } }, 200); return; }
-        // Held still: everything starts wiggling and this tile lifts under your finger, ready to drag (no letting go first)
-        timer = setTimeout(function () { timer = 0; t._held = true; startWiggle(sec); Kit.haptic('medium'); drag = { id: pid, on: false }; lift(pid); }, 480);
+        // Held still: the section starts wiggling and this tile lifts under your finger, ready to drag (no letting go
+        // first). Its hidden games come into their places, so the tile may move: it stays under the finger.
+        timer = setTimeout(function () { timer = 0; t._held = true; var r0 = t.getBoundingClientRect(); startWiggle(sec, sid); Kit.haptic('medium'); drag = { id: pid, on: false }; lift(pid, r0); }, 480);
       });
-      function lift(pid) {
-        // the grid's spots (their centres, page coordinates), fixed for this drag: tiles sliding between them
-        // can't confuse where you are, and centres don't move with the wiggle or the lift's zoom
-        drag.slots = Array.prototype.map.call(list.children, function (k) { var b = k.getBoundingClientRect(); return { x: b.left + b.width / 2 + scrollX, y: b.top + b.height / 2 + scrollY }; });
-        var c0 = drag.slots[Array.prototype.indexOf.call(list.children, t)];
+      function lift(pid, r0) {
+        // the grid's spots (their centres), fixed for this drag: tiles sliding between them can't confuse where you are
+        drag.slots = Array.prototype.map.call(list.children, slotOf);
+        var c0 = r0 ? { x: r0.left + r0.width / 2 + scrollX, y: r0.top + r0.height / 2 + scrollY } : drag.slots[Array.prototype.indexOf.call(list.children, t)];
         drag.gx = x0 + scrollX - c0.x; drag.gy = y0 + scrollY - c0.y;   // where you grabbed it, from its centre
-        drag.on = true; t.classList.add('lift'); try { t.setPointerCapture(pid); } catch (x) {}
+        drag.on = true; dragOn = true; t.classList.add('lift'); try { t.setPointerCapture(pid); } catch (x) {}
+        place(x0 + scrollX, y0 + scrollY);
         clearTimeout(wigIdle);
+      }
+      // keep the tile under the finger: offset from the centre of the spot it now sits in
+      function place(px, py) {
+        var home = drag.slots[Array.prototype.indexOf.call(list.children, t)];
+        t.style.translate = (px - drag.gx - home.x) + 'px ' + (py - drag.gy - home.y) + 'px';
       }
       // a finger on a lifted tile drags it, never the page (before that, a swipe scrolls)
       t.addEventListener('touchmove', function (e) { if (drag && drag.on) e.preventDefault(); }, { passive: false });
@@ -2176,9 +2263,7 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
           });
           Kit.haptic('light');
         }
-        // keep the tile under the finger: offset from the centre of the spot it now sits in
-        var home = drag.slots[Array.prototype.indexOf.call(list.children, t)];
-        t.style.translate = (px - drag.gx - home.x) + 'px ' + (py - drag.gy - home.y) + 'px';
+        place(px, py);
       });
       function end() {
         if (timer) { clearTimeout(timer); timer = 0; }
@@ -2187,27 +2272,90 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
         if (!was) return;
         t._held = true;
         t.style.transition = 'translate .2s ease'; t.style.translate = '';
-        setTimeout(function () { t.style.transition = ''; t.classList.remove('lift'); }, 220);
-        saveFavOrder(list); Kit.sfx('tap'); idleWiggle();
+        setTimeout(function () {
+          t.style.transition = ''; t.classList.remove('lift'); dragOn = false;
+          if (pendRender) { pendRender = false; render(true); }   // (a sync that came in mid-drag draws now)
+        }, 220);
+        if (sid === 'fav') saveFavOrder(list); else saveCatOrder(sid, list);
+        Kit.sfx('tap'); idleWiggle();
       }
       t.addEventListener('pointerup', end); t.addEventListener('pointercancel', end);
       t.addEventListener('contextmenu', function (e) { if (sec.classList.contains('wiggle') || t._held) e.preventDefault(); });
       // while arranging (or right after a hold), a tap doesn't open the game
-      t.addEventListener('click', function (e) { if (t._held || sec.classList.contains('wiggle')) { if (!e.target.closest('.fav')) { e.stopPropagation(); e.preventDefault(); } t._held = false; } }, true);
+      t.addEventListener('click', function (e) { if (t._held || sec.classList.contains('wiggle')) { if (!e.target.closest('.fav, .wig-x')) { e.stopPropagation(); e.preventDefault(); } t._held = false; } }, true);
     });
   }
-  function startWiggle(sec) {
-    if (wiggling) return; wiggling = true; sec.classList.add('wiggle'); Kit.sfx('pop'); idleWiggle();
+  function markTap(t, mk, sid, g) {
+    idleWiggle();
+    if (sid === 'fav') { favOut(t, g); return; }
+    // hidden in place: the tile dims and its mark lights; a tap on a lit mark brings it back
+    var off = offIds(), k = off.indexOf(g.id), hide = k < 0;
+    if (hide) off.push(g.id); else off.splice(k, 1);
+    set('gn_games_off', JSON.stringify(off));
+    t.classList.toggle('hid', hide); mk.setAttribute('aria-label', markSay(t, sid, g.name));
+    if (mk.animate) mk.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.3)' }, { transform: 'scale(1)' }], { duration: 260, easing: 'ease-out' });
+    Kit.sfx(hide ? 'tap' : 'pop'); Kit.haptic(hide ? 'light' : 'medium');
+    wigDirty = true;
+  }
+  // out of Favorites: the tile shrinks away, the rest close up, and Undo puts it back where it was
+  function favOut(t, g) {
+    var keys = [g.play, g.score, g.id].filter(Boolean).map(function (k) { return 'games/' + k + '.html'; });
+    var f = favList(), at = -1, href = null;
+    f.forEach(function (h, i) { if (at < 0 && keys.indexOf(h) >= 0) { at = i; href = h; } });
+    if (at < 0) return;
+    Kit.sfx('tap'); Kit.haptic('light');
+    var go = function () {
+      var f2 = favList().filter(function (h) { return keys.indexOf(h) < 0; });
+      saveFavs(f2); glideRender();
+      favUndo(g.name + ' is out of Favorites', function () {
+        var f3 = favList(); if (f3.some(function (h) { return keys.indexOf(h) >= 0; })) return;
+        f3.splice(Math.min(at, f3.length), 0, href); saveFavs(f3); Kit.sfx('pop'); Kit.haptic('medium'); glideRender();
+      });
+    };
+    if (t.animate) t.animate([{ opacity: 1, scale: '1' }, { opacity: 0, scale: '.6' }], { duration: 200, easing: 'ease-in', fill: 'forwards' }).onfinish = go; else go();
+  }
+  function saveFavs(f) {
+    set('fav_games', JSON.stringify(f)); set('fav_games_updated_at', String(Date.now()));
+    try { if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite('fav_games'); } catch (e) {}
+  }
+  // Undo, a glass pill at the foot of the screen for a few seconds (clear of the rounded corners)
+  var wigUndoEl = null, undoT2 = 0;
+  function favUndo(text, fn) {
+    if (wigUndoEl) wigUndoEl.remove();
+    clearTimeout(undoT2);
+    var u = wigUndoEl = el('div', { class: 'wig-undo', role: 'status' }, [el('span', { text: text }), el('button', { type: 'button', text: 'Undo', onclick: function () { clearTimeout(undoT2); gone(); fn(); } })]);
+    function gone() { if (wigUndoEl === u) wigUndoEl = null; u.classList.remove('show'); setTimeout(function () { u.remove(); }, 260); }
+    document.body.appendChild(u);
+    requestAnimationFrame(function () { u.classList.add('show'); });
+    undoT2 = setTimeout(gone, 5000);
+  }
+  function startWiggle(sec, sid) {
+    if (wiggling && wigId === sid) return;
+    if (wiggling) stopWiggle();
+    var before = sec.querySelector(':scope > .list > .g.hid') ? tileRects() : null;
+    wiggling = true; wigId = sid; wigDirty = false; sec.classList.add('wiggle'); Kit.sfx('pop'); idleWiggle();
+    // the section's hidden games come into their places (fitted like every other name), the rest gliding aside
+    if (before) { markWraps(); glideFrom(before); }
     setTimeout(function () { document.addEventListener('pointerdown', outside, true); document.addEventListener('pointerup', outsideUp, true); document.addEventListener('keydown', esc); }, 0);
   }
   function stopWiggle() {
-    wiggling = false; clearTimeout(wigIdle); outAt = null; document.removeEventListener('pointerdown', outside, true); document.removeEventListener('pointerup', outsideUp, true); document.removeEventListener('keydown', esc);
-    document.querySelectorAll('.sec.favs.wiggle').forEach(function (x) { x.classList.remove('wiggle'); });
+    if (!wiggling) return;
+    var sec = wigSec(), dirty = wigDirty;
+    wiggling = false; wigId = null; wigDirty = false; clearTimeout(wigIdle); outAt = null;
+    document.removeEventListener('pointerdown', outside, true); document.removeEventListener('pointerup', outsideUp, true); document.removeEventListener('keydown', esc);
     Kit.sfx('tap');
+    if (!sec) return;
+    // the hidden games fold away (shrinking and fading), then the rest glide into place
+    var hid = [].slice.call(sec.querySelectorAll(':scope > .list > .g.hid'));
+    if (hid.length) sec.classList.add('folding');
+    sec.classList.remove('wiggle');
+    if (!hid.length) { if (dirty) glideRender(); return; }
+    hid.forEach(function (k) { if (k.animate) k.animate([{ opacity: getComputedStyle(k).opacity, scale: '1' }, { opacity: 0, scale: '.6' }], { duration: 200, easing: 'ease-in', fill: 'forwards' }); });
+    setTimeout(function () { glideRender(function () { sec.classList.remove('folding'); }); }, 210);
   }
-  // a tap outside the favorites ends arranging; a swipe there just scrolls (they keep wiggling)
+  // a tap outside the wiggling section ends arranging; a swipe there just scrolls (they keep wiggling)
   var outAt = null;
-  function outside(e) { outAt = e.target.closest('.sec.favs') ? null : { x: e.clientX, y: e.clientY }; }
+  function outside(e) { outAt = e.target.closest('.sec.wiggle, .wig-undo') ? null : { x: e.clientX, y: e.clientY }; }
   function outsideUp(e) { var o = outAt; outAt = null; if (o && Math.abs(e.clientX - o.x) < 10 && Math.abs(e.clientY - o.y) < 10) stopWiggle(); }
   window.addEventListener('scroll', function () { if (wiggling) { outAt = null; idleWiggle(); } }, { passive: true });   // (scrolling keeps them wiggling)
   function esc(e) { if (e.key === 'Escape') stopWiggle(); }
@@ -2222,6 +2370,16 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     slots.forEach(function (i, k) { f[i] = hrefs[k]; });
     set('fav_games', JSON.stringify(f)); set('fav_games_updated_at', String(Date.now()));
     try { if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite('fav_games'); } catch (e) {}
+  }
+  // A section's games in their new order, saved as the Home screen sheet saves it (gn_game_order {section: [every game
+  // in the section]}, so Kit.sortCat, the sheet and its A to Z mark agree); games a filter leaves out keep their spots
+  function saveCatOrder(sid, list) {
+    var full = (Kit.sortCat ? Kit.sortCat(sid, GAMES.filter(function (g) { return g.cat === sid && !g.hidden && !g.cart; })) : []).map(function (g) { return g.id; });
+    var shown = Array.prototype.map.call(list.children, function (t) { return t.dataset.id; }).filter(function (id) { return full.indexOf(id) >= 0; }), slots = [];
+    full.forEach(function (id, i) { if (shown.indexOf(id) >= 0) slots.push(i); });
+    slots.forEach(function (i, k) { full[i] = shown[k]; });
+    var o = {}; try { o = JSON.parse(get('gn_game_order', '{}')) || {}; if (typeof o !== 'object' || Array.isArray(o)) o = {}; } catch (e) { o = {}; }
+    o[sid] = full; set('gn_game_order', JSON.stringify(o));
   }
   // Arcade: the high scores cabinet (every arcade game's top 50 on one screen)
   function secExtra(id) { return id === 'casino' ? bankBadge() : id === 'arcade' ? hiLink() : id === 'puzzle' && window.Daily ? dailyLink() : id === 'console' ? consoleLink() : null; }
@@ -2783,6 +2941,7 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
   // the screen when they would come out exactly the same, so nothing is laid out, painted or fitted again
   var listSig = '';
   function render(soft) {
+    if (dragOn) { pendRender = true; return; }   // (never under a finger mid-drag: it draws when the tile is let go)
     dailyBy = null;
     renderChips();
     renderRail();
@@ -2791,20 +2950,24 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     var all = !state.cats.length, on = function (id) { return all || state.cats.indexOf(id) >= 0; };
     var favs = vis.filter(isFav);
     if (favs.length && (all ? !state.q : on('fav'))) box.appendChild(section('Favorites', 'star', favs, null, true));
+    var offs = offIds();
     Kit.cats().forEach(function (c) {
       if (!on(c.id)) return;
       var gs = vis.filter(function (g) { return g.cat === c.id; });
+      var hid = c.id === 'console' || !offs.length ? [] : GAMES.filter(function (g) { return g.cat === c.id && !g.hidden && !g.cart && offs.indexOf(g.id) >= 0 && !pcLocked(g) && fitsWho(g) && fitsQ(g); });
       // Consoles stays even with everything hidden, so its Edit button can bring things back
-      if (gs.length || (c.id === 'console' && !state.q && (!Kit.catOn || Kit.catOn('console')))) box.appendChild(section(c.name, c.id, gs, secExtra(c.id)));
+      if (gs.length || (c.id === 'console' && !state.q && (!Kit.catOn || Kit.catOn('console')))) box.appendChild(section(c.name, c.id, gs, secExtra(c.id), false, hid));
     });
     $('empty').classList.toggle('show', !vis.length);
     // (the icons number their gradients afresh each time they are drawn: the numbers are left out of the comparison)
     var sig = [].map.call(box.childNodes, function (n) { return n.outerHTML; }).join('').replace(/\b(g[ic])\d+\b/g, '$1');
-    if (soft && !wiggling && sig === listSig && list.firstChild) return;
+    if (soft && sig === listSig && list.firstChild) return;
     listSig = sig;
     list.innerHTML = ''; list.appendChild(box);
     deskLay();   // (a large window: the sections' columns, before the names are fitted)
     markWraps();
+    // (the section that was wiggling has gone, its last game hidden by a filter or taken out: arranging ends)
+    if (wiggling && !wigSec()) stopWiggle();
   }
   // Tiles whose name runs to two lines: the icon steps down and in so the name stays on the shade, clear of the art.
   // (Also fits over-wide names.)
@@ -2887,7 +3050,7 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     var root = document.documentElement, tools = document.querySelector('#list .sec-tools');
     root.style.removeProperty('--row-h'); if (tools) tools.style.removeProperty('--row-h');
     function even(rows, on) { var rh = 0; rows.forEach(function (g) { if (g.offsetHeight > rh) rh = g.offsetHeight; }); if (rh && rows.some(function (g) { return g.offsetHeight !== rh; })) on.style.setProperty('--row-h', rh + 'px'); }
-    var rows = [].slice.call(document.querySelectorAll('#list .g.gr:not(.tl)'));
+    var rows = [].slice.call(document.querySelectorAll('#list .g.gr:not(.tl):not(.hid)'));
     even(rows.filter(function (g) { return !g.closest('.sec-tools'); }), root);
     if (tools) even(rows.filter(function (g) { return g.closest('.sec-tools'); }), tools);
     if (two) {
@@ -2941,7 +3104,7 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     hs.forEach(function (h) { if (h) h.style.width = ''; });
     var left = cols, tall = 0;
     secs.forEach(function (s, i) {
-      var n = s.querySelectorAll(':scope > .list > .g').length;
+      var n = s.querySelectorAll(':scope > .list > .g:not(.hid)').length;
       var minS = Math.min(cols, Math.max(2, Math.ceil((hw[i] + g) / (tw + g))));
       var sp = s.classList.contains('sec-console') || n >= cols ? cols : Math.max(n, minS);
       if (sp > left) {

@@ -1052,7 +1052,23 @@ Underlying principles for everything:
   2026-11-17: "each icon section should still maintain its own A-Z button"; `.k-ord-az`, `.done`; in a sheet for one section or Favorites it
   stands in the sheet's top right corner across from the title, `.k-ord-azslot`, so a long list never pushes it out of
   view) and puts it back. Every redraw glides (`paintOrd` keys each row `s:`/`g:`/`f:` and slides it from where it was), so a game
-  just starred flies from its section into Favorites. The pencil took the list and
+  just starred flies from its section into Favorites. **Arranging on the home screen itself** (Tim, 2026-11-20: "make
+  each section ... work like favorites does, in that tapping and holding sets the section to wiggle and rearrange with a
+  drag of the icon, but also add the option to hide a game from an icon on its tile while it's wiggling"): a hold on any
+  tile in Favorites or a category (not Consoles, whose cartridges keep their own Edit and stay out of `gn_game_order`)
+  sets that section wiggling, one section at a time, with Done in its heading where the pencil was; the tile lifts under
+  the finger and a drag saves the section's order exactly as the sheet does (`saveCatOrder`: every game in the section
+  in `gn_game_order`, games a filter leaves out keeping their spots; Favorites keeps `saveFavOrder` and `fav_games`).
+  While it wiggles each tile's star steps aside for a round mark at its top left (`.wig-x`, a painted dark glass disc):
+  in a category it hides the game (`gn_games_off`, as the sheet's switch), and the section's hidden games stand in
+  their places, dimmed under a veil with their marks lit gold, so a tap brings one back and they can be dragged like any
+  other; in Favorites it takes the game out of Favorites, the tile shrinking away, with Undo on a glass pill at the foot
+  (`favUndo`). Done, a tap outside, Escape or eight idle seconds end it: the hidden games fold away and the rest glide
+  into place (`stopWiggle`, `glideRender`, which keeps the section in view). List view's rows work the same way. Hidden
+  games are drawn at rest too, as `.g.hid` with `display: none`, so nothing is rebuilt under the finger when the wiggle
+  starts; anything that counts or measures a section's tiles leaves `.hid` out (`deskLay`, `markWraps`). A redraw that
+  arrives mid-drag waits for the tile to be let go (`dragOn`, `pendRender`), and one while wiggling draws the section
+  wiggling again. The pencil took the list and
   tiles button's place (Tim, 2026-11-17: "relegate the list view option to the app menu and put the added pencil in its
   place. Period. Tile view is default for everyone"): Show games as a list is in the profile menu under Home screen
   (`toggleView`, `gn_home_view`), and every device went to tiles once (`gn_tiles_once`, which syncs, so a list chosen
