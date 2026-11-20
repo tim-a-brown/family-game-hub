@@ -1,0 +1,207 @@
+/* Wax Pack's drawn cards (cardface.js): a front and a back in the look of a late-1980s or early-1990s baseball card.
+   Original designs only. Everything inside a card is sized in container units of the card (1cqw is a hundredth of its
+   width; the card is 140cqw tall), so the same element reads at any size. Fonts: fonts/waxpack-LICENSE.txt. */
+@font-face { font-family: 'Wax Block'; src: url('../../fonts/waxpack-oswald-700.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Wax Script'; src: url('../../fonts/waxpack-yellowtail.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'Wax Cond'; src: url('../../fonts/waxpack-barlow-condensed-500.woff2') format('woff2'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Wax Cond'; src: url('../../fonts/waxpack-barlow-condensed-600.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Wax Cond'; src: url('../../fonts/waxpack-barlow-condensed-800i.woff2') format('woff2'); font-weight: 800; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Wax Slab'; src: url('../../fonts/alfa-slab-one.woff2') format('woff2'); font-display: swap; }
+
+.wxc, .wxb {
+  --t1: #0c2340; --t2: #c4ced4; --i1: #fff; --i2: #141414;
+  --blk: 'Wax Block', 'Oswald', 'Arial Narrow', sans-serif;
+  --scr: 'Wax Script', 'Brush Script MT', cursive;
+  --cond: 'Wax Cond', 'Arial Narrow', sans-serif;
+  --slab: 'Wax Slab', 'Rockwell', serif;
+  position: relative; display: block; box-sizing: border-box; width: 100%; aspect-ratio: 5 / 7;
+  container: wxc / inline-size; overflow: hidden; isolation: isolate;
+  border-radius: clamp(3px, 3.5%, 12px);   /* never in cqw here: on the card itself they would be read against the page */
+  box-shadow: 0 0 0 .5px rgba(0, 0, 0, .35), 0 1px 2px rgba(0, 0, 0, .25), 0 4px 10px -4px rgba(0, 0, 0, .35);
+  -webkit-user-select: none; user-select: none; color: #111; line-height: 1;
+}
+.wxc *, .wxb * { box-sizing: border-box; }
+
+/* The picture window */
+.wxc-ph { position: absolute; overflow: hidden; background: #6b7a6a linear-gradient(180deg, #8ea0b0, #5d6b55); }
+.wxc-ph img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 28%; filter: saturate(.94) contrast(1.03); }
+.wxc-ph.own img { object-position: 50% 50%; filter: none; }
+.wxc-ph.none { background: repeating-linear-gradient(135deg, #cfc8b6 0 4cqw, #c4bca8 4cqw 8cqw); }
+
+/* The nameplate, the position, the marks */
+.wxc-np { position: absolute; display: flex; flex-direction: column; justify-content: center; overflow: visible; z-index: 3; }
+.wxc-fn, .wxc-ln, .wxc-tm { display: inline-block; white-space: nowrap; transform-origin: left center; align-self: flex-start; }
+.wxc-ln { font-family: var(--blk); font-weight: 700; letter-spacing: .01em; text-transform: uppercase; }
+.wxc-fn { font-family: var(--scr); }
+.wxc-tm { font-family: var(--cond); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.wxc-pos { position: absolute; z-index: 4; display: grid; place-items: center; font-family: var(--blk); font-weight: 700; white-space: nowrap; }
+.wxc-mk { position: absolute; z-index: 5; font-family: var(--blk); font-weight: 700; white-space: nowrap; letter-spacing: .04em; }
+.wxc-deco { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+
+/* Gloss and print grain over everything, and the card stock's soft edge */
+.wxc-fx { position: absolute; inset: 0; z-index: 9; pointer-events: none; border-radius: inherit;
+  background:
+    linear-gradient(118deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, .13) 44%, rgba(255, 255, 255, 0) 58%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .45 0 0 0 0 .4 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 100% 100%, 120px 120px; mix-blend-mode: multiply; opacity: .55;
+  box-shadow: inset 0 0 0 .6cqw rgba(255, 255, 255, .22), inset 0 0 1.6cqw rgba(60, 40, 20, .28); }
+
+/* ── vintage: cream stock, a rounded photo, a team disc (before 1980) ── */
+.wxc-vintage { background: #ece2c6; }
+.wxc-vintage .wxc-ph { left: 6.5cqw; right: 6.5cqw; top: 6.5cqw; bottom: 29cqw; border-radius: 4cqw; box-shadow: 0 0 0 .5cqw #2b2219; }
+.wxc-vintage .wxc-ph img { filter: sepia(.18) saturate(.82) contrast(1.02); }
+.wxc-vintage .wxc-np { left: 7cqw; right: 26cqw; bottom: 4.5cqw; height: 22cqw; }
+.wxc-vintage .wxc-fn { font-family: var(--cond); font-weight: 600; text-transform: uppercase; font-size: 7cqw; color: var(--t1); letter-spacing: .04em; }
+.wxc-vintage .wxc-ln { font-size: 13cqw; color: #1d1813; }
+.wxc-vintage .wxc-tm { font-size: 5.6cqw; color: #6b5c45; margin-top: .6cqw; }
+.wxc-vintage .wxc-pos { right: 6cqw; bottom: 7cqw; width: 18cqw; height: 18cqw; border-radius: 50%; background: var(--t1); color: var(--i1); font-size: 8cqw; box-shadow: 0 0 0 1cqw #ece2c6, 0 0 0 1.5cqw var(--t2); }
+.wxc-vintage .wxc-mk { left: 9cqw; top: 9cqw; padding: 1.2cqw 2.6cqw; background: #f6efd9; color: var(--t1); border: .6cqw solid var(--t1); border-radius: 1.4cqw; font-size: 5.4cqw; }
+
+/* ── corner: white border, a team-colored banner across the lower corner, the first name in script ── */
+.wxc-corner { background: #fbfaf6; }
+.wxc-corner .wxc-ph { left: 5.5cqw; right: 5.5cqw; top: 5.5cqw; bottom: 27cqw; box-shadow: 0 0 0 .5cqw #1b1b1b; }
+.wxc-corner .wxc-deco { background: linear-gradient(135deg, transparent 0 0, transparent calc(100% - 46cqw), var(--t1) calc(100% - 46cqw), var(--t1) calc(100% - 40cqw), var(--t2) calc(100% - 40cqw), var(--t2) calc(100% - 37.5cqw), transparent calc(100% - 37.5cqw)); z-index: 2; }
+.wxc-corner .wxc-deco { background: none; }
+.wxc-corner .wxc-deco::before { content: ''; position: absolute; left: 0; bottom: 0; width: 24cqw; height: 40cqw; background: var(--t1); clip-path: polygon(0 0, 100% 100%, 0 100%); }
+.wxc-corner .wxc-deco::after { content: ''; position: absolute; left: 0; bottom: 0; width: 29cqw; height: 46cqw; background: var(--t2); clip-path: polygon(0 0, 9% 0, 100% 94%, 100% 100%); }
+.wxc-corner .wxc-deco { z-index: 2; }
+.wxc-corner .wxc-np { left: 30cqw; right: 5cqw; bottom: 3cqw; height: 22cqw; align-items: flex-start; }
+.wxc-corner .wxc-fn { font-size: 9.5cqw; color: var(--t1); margin-bottom: -1.2cqw; }
+.wxc-corner .wxc-ln { font-size: 12cqw; color: #141414; }
+.wxc-corner .wxc-tm { font-size: 5cqw; color: #555; margin-top: .6cqw; }
+.wxc-corner .wxc-pos { left: 3cqw; bottom: 4cqw; width: 17cqw; height: 12cqw; color: var(--i1); font-size: 8.5cqw; transform: rotate(-45deg); transform-origin: 50% 50%; }
+.wxc-corner .wxc-pos { transform: none; left: 1cqw; bottom: 2cqw; width: 15cqw; height: 11cqw; font-size: 7.6cqw; }
+.wxc-corner .wxc-mk { right: 5.5cqw; top: 5.5cqw; padding: 1.6cqw 3cqw; background: var(--t1); color: var(--i1); font-size: 5.4cqw; border-bottom-left-radius: 2.4cqw; }
+
+/* ── stripe: a team-colored border with a diagonal band, a block nameplate ── */
+.wxc-stripe { background: var(--t1); }
+.wxc-stripe .wxc-deco { background: repeating-linear-gradient(118deg, rgba(255, 255, 255, 0) 0 2.2cqw, rgba(255, 255, 255, .08) 2.2cqw 4.4cqw); }
+.wxc-stripe .wxc-deco::after { content: ''; position: absolute; left: -20%; right: -20%; top: 62%; height: 22cqw; background: var(--t2); transform: rotate(-24deg); box-shadow: 0 -1.4cqw 0 #fff, 0 1.4cqw 0 #fff; }
+.wxc-stripe .wxc-ph { left: 6cqw; right: 6cqw; top: 6cqw; bottom: 30cqw; box-shadow: 0 0 0 1cqw #fff, 0 0 0 1.5cqw rgba(0, 0, 0, .4); z-index: 1; }
+.wxc-stripe .wxc-np { left: 6cqw; right: 6cqw; bottom: 4.5cqw; height: 21cqw; padding: 0 3cqw; background: #141414; box-shadow: 0 0 0 .8cqw #fff; justify-content: center; }
+.wxc-stripe .wxc-fn { display: none; }
+.wxc-stripe .wxc-ln { font-family: var(--slab); font-weight: 400; font-size: 11cqw; color: #fff; letter-spacing: .02em; }
+.wxc-stripe .wxc-tm { font-size: 5.4cqw; color: var(--t2); margin-top: 1cqw; }
+.wxc-stripe .wxc-pos { left: 3.5cqw; top: 3.5cqw; min-width: 13cqw; height: 11cqw; padding: 0 2cqw; background: #fff; color: var(--t1); font-size: 7.4cqw; box-shadow: .8cqw .8cqw 0 rgba(0, 0, 0, .35); }
+.wxc-stripe .wxc-mk { right: 3.5cqw; top: 3.5cqw; padding: 1.6cqw 2.6cqw; background: var(--t2); color: var(--i2); font-size: 5.4cqw; transform: rotate(4deg); box-shadow: .8cqw .8cqw 0 rgba(0, 0, 0, .35); }
+
+/* ── frame: a gray stock border, a photo framed in two lines, a block plate with the position at its end ── */
+.wxc-frame { background: #b8b6ae radial-gradient(120% 80% at 30% 20%, #cfccc3, #a9a69c); }
+.wxc-frame .wxc-deco { background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .03) 0 .6cqw, rgba(255, 255, 255, .03) .6cqw 1.2cqw); }
+.wxc-frame .wxc-ph { left: 7cqw; right: 7cqw; top: 7cqw; bottom: 30cqw; box-shadow: 0 0 0 1cqw #f4f2ea, 0 0 0 2.2cqw var(--t1), 0 1.8cqw 2cqw rgba(0, 0, 0, .3); }
+.wxc-frame .wxc-np { left: 4.5cqw; right: 22cqw; bottom: 5cqw; height: 18cqw; padding: 0 3cqw; background: var(--t1); border-radius: 1cqw 0 0 1cqw; }
+.wxc-frame .wxc-fn { display: none; }
+.wxc-frame .wxc-ln { font-family: var(--slab); font-weight: 400; font-size: 9.6cqw; color: var(--i1); }
+.wxc-frame .wxc-tm { font-size: 5cqw; color: var(--i1); opacity: .85; margin-top: .8cqw; }
+.wxc-frame .wxc-pos { right: 4.5cqw; bottom: 5cqw; width: 17.5cqw; height: 18cqw; background: var(--t2); color: var(--i2); font-size: 8cqw; border-radius: 0 1cqw 1cqw 0; box-shadow: inset .8cqw 0 0 rgba(0, 0, 0, .25); }
+.wxc-frame .wxc-mk { left: 50%; top: 3cqw; transform: translateX(-50%); padding: 1.4cqw 3.4cqw; background: #f4f2ea; color: var(--t1); font-size: 5.2cqw; border: .6cqw solid var(--t1); border-radius: 6cqw; }
+
+/* ── script: white border, a thick team-colored frame, the name in script over a swash ── */
+.wxc-script { background: #fdfcf8; }
+.wxc-script .wxc-ph { left: 7cqw; right: 7cqw; top: 7cqw; bottom: 34cqw; box-shadow: 0 0 0 .7cqw var(--t2), 0 0 0 3cqw var(--t1); }
+.wxc-script .wxc-deco::after { content: ''; position: absolute; left: 10cqw; right: 26cqw; bottom: 9.5cqw; height: 2.2cqw; border-radius: 2cqw; background: var(--t2); transform: skewX(-25deg); }
+.wxc-script .wxc-np { left: 7cqw; right: 24cqw; bottom: 2.5cqw; height: 26cqw; }
+.wxc-script .wxc-fn { font-size: 8cqw; color: #333; margin-bottom: -.4cqw; }
+.wxc-script .wxc-ln { font-family: var(--scr); font-weight: 400; text-transform: none; font-size: 15cqw; color: var(--t1); letter-spacing: 0; padding-right: 2cqw; }
+.wxc-script .wxc-tm { font-size: 4.8cqw; color: #666; margin-top: 2.2cqw; }
+.wxc-script .wxc-pos { right: 5cqw; bottom: 7cqw; width: 16cqw; height: 16cqw; background: var(--t1); color: var(--i1); font-size: 7.2cqw; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.wxc-script .wxc-mk { left: 4cqw; top: 4cqw; padding: 1.4cqw 2.6cqw; background: var(--t2); color: var(--i2); font-size: 5.2cqw; transform: rotate(-6deg); box-shadow: 0 0 0 .6cqw #fff; }
+
+/* ── gloss: the photo to a thin dark edge, a gradient nameplate and a foil rule (the 1990s) ── */
+.wxc-gloss { background: #0d0f12; }
+.wxc-gloss .wxc-ph { inset: 2.6cqw; border-radius: 1.6cqw; }
+.wxc-gloss .wxc-deco { z-index: 2; inset: 2.6cqw; border-radius: 1.6cqw; background: linear-gradient(0deg, color-mix(in srgb, var(--t1) 92%, #000) 0, color-mix(in srgb, var(--t1) 70%, transparent) 20cqw, transparent 42cqw); }
+.wxc-gloss .wxc-deco::after { content: ''; position: absolute; left: 5cqw; right: 22cqw; bottom: 22cqw; height: 1cqw;
+  background: linear-gradient(90deg, #8a6b1f, #f3dc8a 30%, #b9922f 55%, #fff1b8 75%, #8a6b1f); }
+.wxc-gloss .wxc-np { left: 7cqw; right: 22cqw; bottom: 5cqw; height: 18cqw; justify-content: flex-end; }
+.wxc-gloss .wxc-fn { font-family: var(--cond); font-weight: 600; font-size: 5.6cqw; text-transform: uppercase; color: rgba(255, 255, 255, .85); letter-spacing: .08em; }
+.wxc-gloss .wxc-ln { font-family: var(--cond); font-weight: 800; font-style: italic; font-size: 12.5cqw; color: #fff; letter-spacing: .01em; text-shadow: 0 .4cqw 1cqw rgba(0, 0, 0, .5); }
+.wxc-gloss .wxc-tm { font-size: 4.6cqw; color: var(--t2); margin-top: .4cqw; }
+.wxc-gloss .wxc-pos { right: 6cqw; bottom: 7cqw; width: 14cqw; height: 14cqw; border-radius: 2cqw; background: linear-gradient(160deg, #f3dc8a, #a7832a); color: #1b1406; font-size: 6.6cqw; box-shadow: 0 .6cqw 1.4cqw rgba(0, 0, 0, .45); }
+.wxc-gloss .wxc-mk { left: 5cqw; top: 5cqw; padding: 1.4cqw 2.6cqw; background: linear-gradient(160deg, #f3dc8a, #a7832a); color: #1b1406; font-size: 5.2cqw; border-radius: 1.2cqw; }
+.wxc-gloss .wxc-fx { opacity: .4; background:
+    linear-gradient(118deg, rgba(255, 255, 255, 0) 26%, rgba(255, 255, 255, .2) 42%, rgba(255, 255, 255, 0) 56%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .4 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 100% 100%, 120px 120px; mix-blend-mode: screen; }
+
+/* The marks */
+.wxc-mk.rk { }
+.wxc-mk.as::before { content: '\2605\00a0'; }
+.wxc-mk.rb { letter-spacing: .02em; }
+
+/* A special card (Team card, Checklist, Leaders ...): its kind is its name */
+.wxc-sp .wxc-ln { letter-spacing: .02em; }
+.wxc-chk { position: absolute; inset: 0; background: #f8f3e3; padding: 9cqw 8cqw; display: flex; flex-direction: column; justify-content: space-between; }
+.wxc-chk i { display: block; height: 3cqw; margin-left: 9cqw; position: relative; width: var(--l); background: rgba(40, 40, 40, .32); border-radius: .6cqw; }
+.wxc-chk i::before { content: ''; position: absolute; left: -9cqw; top: -2cqw; width: 6cqw; height: 6cqw; border: .7cqw solid #333; }
+.wxc-chk i.on::after { content: ''; position: absolute; left: -8.2cqw; top: -2.8cqw; width: 3cqw; height: 5.5cqw; border: solid var(--t1); border-width: 0 1.2cqw 1.2cqw 0; transform: rotate(40deg); }
+
+/* The person's own photo of the whole card */
+.wxc-whole > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+/* ── Small cards: a hand card (about 90px) keeps the picture, the last name and the position; nothing under 9px ── */
+@container wxc (max-width: 130px) {
+  .wxc .wxc-ph { inset: 5cqw 5cqw 30cqw 5cqw; border-radius: 2cqw; }
+  .wxc-gloss .wxc-ph { inset: 3cqw; }
+  .wxc-deco::before, .wxc-deco::after { display: none; }
+  .wxc-gloss .wxc-deco { inset: 3cqw; background: linear-gradient(0deg, var(--t1) 0, var(--t1) 24cqw, transparent 46cqw); }
+  .wxc .wxc-fn, .wxc .wxc-tm { display: none; }
+  .wxc .wxc-np { left: 5cqw; right: 5cqw; bottom: 3cqw; height: 25cqw; padding: 0 1cqw; background: none; box-shadow: none; border-radius: 0; align-items: flex-start; }
+  .wxc .wxc-ln { font-family: var(--blk); font-weight: 700; font-style: normal; text-transform: uppercase; font-size: max(9px, 15cqw); letter-spacing: 0; color: #141414; text-shadow: none; padding: 0; }
+  .wxc-stripe .wxc-ln, .wxc-gloss .wxc-ln { color: #fff; }
+  .wxc-frame .wxc-np { background: var(--t1); }
+  .wxc-frame .wxc-ln { color: var(--i1); }
+  .wxc .wxc-pos { left: auto; right: 2cqw; top: 2cqw; bottom: auto; width: auto; min-width: max(16px, 22cqw); height: max(13px, 18cqw); padding: 0 max(2px, 3cqw); border-radius: max(2px, 3cqw);
+    font-size: max(9px, 12cqw); background: var(--t1); color: var(--i1); clip-path: none; transform: none; box-shadow: 0 0 0 max(1px, 1.4cqw) #fff; }
+  .wxc-stripe .wxc-pos { background: #fff; color: var(--t1); box-shadow: 0 0 0 max(1px, 1.4cqw) var(--t1); }
+  .wxc .wxc-mk { left: 2cqw; top: 2cqw; right: auto; bottom: auto; transform: none; padding: max(1px, 1.4cqw) max(2px, 3cqw); font-size: max(9px, 11cqw); border: 0; border-radius: max(2px, 3cqw); background: #f3dc8a; color: #1b1406; box-shadow: 0 0 0 max(1px, 1.4cqw) #fff; letter-spacing: 0; }
+  .wxc .wxc-mk { font-size: 0; }
+  .wxc .wxc-mk.rk::after { content: 'RC'; font-size: max(9px, 11cqw); }
+  .wxc .wxc-mk.as::before { content: none; }
+  .wxc .wxc-mk.as::after { content: 'AS'; font-size: max(9px, 11cqw); }
+  .wxc .wxc-mk.rb::after { content: 'RB'; font-size: max(9px, 11cqw); }
+  .wxc-fx { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2), inset 0 0 3px rgba(60, 40, 20, .3); }
+}
+/* A lineup chip (about 60px): the marks go too */
+@container wxc (max-width: 76px) {
+  .wxc .wxc-mk { display: none; }
+  .wxc .wxc-ph { inset: 4cqw 4cqw 30cqw 4cqw; }
+  .wxc .wxc-np { left: 3cqw; right: 3cqw; }
+}
+
+/* ── The back: gray-tan cardboard, his name, the facts, his seasons, a line from his honors ── */
+.wxb { background: #c9bda0 radial-gradient(130% 90% at 30% 10%, #d6cbb0, #b9ab8b); color: #2a2318; font-family: var(--cond); font-weight: 500;
+  display: flex; flex-direction: column; padding: 0; }
+/* (the card's own padding and gap would be read against the page, not the card: its pieces carry the spacing) */
+.wxb > :not(.wxc-fx) { margin: 2cqw 4cqw 0; }
+.wxb > :first-child { margin-top: 4cqw; }
+.wxb > .wxb-ft { margin-bottom: 4cqw; }
+.wxb::before { content: ''; position: absolute; inset: 2cqw; border: .6cqw solid color-mix(in srgb, var(--t1) 75%, #2a2318); border-radius: 1.4cqw; pointer-events: none; }
+.wxb-hd { display: flex; align-items: center; gap: 2.6cqw; position: relative; z-index: 1; min-height: 15cqw; padding: 0 1cqw; }
+.wxb-no { flex: none; display: grid; place-items: center; width: 13cqw; height: 13cqw; border-radius: 50%; background: var(--t1); color: var(--i1); font-family: var(--blk); font-weight: 700; font-size: max(9px, 5.4cqw); }
+.wxb-nm { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .8cqw; }
+.wxb-name { display: inline-block; align-self: flex-start; white-space: nowrap; transform-origin: left center; font-family: var(--blk); font-weight: 700; font-size: max(9px, 8.4cqw); color: #1d170f; }
+.wxb-sub { display: flex; justify-content: space-between; gap: 2cqw; font-weight: 600; font-size: max(9px, 4.8cqw); text-transform: uppercase; letter-spacing: .05em; color: color-mix(in srgb, var(--t1) 80%, #2a2318); }
+.wxb-facts { position: relative; z-index: 1; display: flex; gap: 2cqw; padding: 1.4cqw 2cqw; background: rgba(255, 255, 255, .28); border-radius: 1cqw; }
+.wxb-facts:empty { display: none; }
+.wxb-f { flex: 1; display: flex; flex-direction: column; gap: .4cqw; }
+.wxb-f i { font-style: normal; font-size: max(9px, 3.8cqw); text-transform: uppercase; letter-spacing: .06em; opacity: .75; }
+.wxb-f b { font-weight: 600; font-size: max(9px, 4.8cqw); }
+.wxb-tw { position: relative; z-index: 1; flex: 0 1 auto; min-height: 0; background: #efe7d2; border-radius: 1cqw; padding: 1cqw 1.2cqw; box-shadow: inset 0 0 0 .4cqw rgba(0, 0, 0, .15); overflow: hidden; }
+.wxb-tw.none { flex: 1;  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .08) 0 .3cqw, transparent .3cqw 5cqw), #efe7d2; }
+.wxb-st { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; table-layout: auto; }
+.wxb-st th, .wxb-st td { padding: 0 .45cqw; text-align: right; white-space: nowrap; font-size: min(3.9cqw, calc(64cqw / var(--rows, 10))); line-height: 1.32; }
+.wxb-st.p th, .wxb-st.p td { font-size: min(3.25cqw, calc(64cqw / var(--rows, 10))); padding: 0 .3cqw; }
+.wxb-st th { font-weight: 600; color: #fff; background: color-mix(in srgb, var(--t1) 85%, #000); }
+.wxb-st th:nth-child(-n+2), .wxb-st td:nth-child(-n+2) { text-align: left; }
+.wxb-st tbody tr:nth-child(even) td { background: rgba(0, 0, 0, .055); }
+.wxb-st tr.grp td { font-style: italic; }
+.wxb-st tr.tot td { font-weight: 600; border-top: .4cqw solid #2a2318; }
+.wxb-bio { position: relative; z-index: 1; flex: 1 0 auto; margin: 0; padding-top: 2cqw !important; border-top: .5cqw solid color-mix(in srgb, var(--t1) 70%, #2a2318); font-size: max(9px, 4.4cqw); line-height: 1.22; font-weight: 500; padding: 0 1cqw; }
+.wxb-ft { position: relative; z-index: 1; display: flex; justify-content: space-between; font-size: max(9px, 3.6cqw); text-transform: uppercase; letter-spacing: .08em; opacity: .7; padding: 0 1cqw; }
+.wxb .wxc-fx { opacity: .45; }
+@container wxc (max-width: 279px) {   /* the table would read under 9px */
+  .wxb-facts, .wxb-ft { display: none; }
+  .wxb-tw { display: none; }
+  .wxb-bio { font-size: max(9px, 7cqw); }
+}
