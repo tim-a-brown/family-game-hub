@@ -2008,6 +2008,8 @@
   }
   Kit.init({
     id: SYS_ID,
+    // (Keep playing's picture is the console's own screen, as the save states have it; none while the game isn't up)
+    snapGrab: function () { return started && cur && !resumeEl ? snap() : false; },
     exitFirst: true,
     menu: [
       { exit: true, icon: 'swap', label: 'Change cartridge', when: playing, onClick: toShelf },

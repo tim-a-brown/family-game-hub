@@ -1077,6 +1077,41 @@ Underlying principles for everything:
   (Tim, the same day: "what happens for long user names?"; it wrapped to four lines and pushed the screen down):
   `fitHi` in index.html tries the whole name, the first name, "Hi" for the time of day, a household's name without
   "The" and "Family", then a step smaller, and only then cuts the name short with an ellipsis (user-typed text).
+- **Keep playing shows each game's table as you left it** (Tim, 2026-11-21, from a mockup he approved; then "let's get
+  creative with the hard cases - i don't want logo cards", and of the foot "should always be one line for the game name,
+  one line for the 'where you are'"). A Keep playing card in the tile look (`shelfBox`, `.sbox.snap`) has a picture of the
+  game's play area in place of its art, the game's icon small at the top left in a thin white ring (`.kbadge`; a
+  cartridge for a console game), how long ago at the top right over a soft shade; a picture over a week old is grayed
+  (`.old .shot`). Every card's glass foot is two lines, the name and where you are: `placeOf` takes the one fact of the
+  label that says where you are (a round, a hand, a level, a guess), `fitFoot` eases each line down (the name to 80%,
+  where you are to 84%), then says where you are shorter (`placeCuts`: "Round 12/13", then "Round 12", never "…"), and a
+  name still too long takes two lines with every card in that row a line taller (`.shelf.n3`), so the feet stay one
+  height. List view keeps its rows without pictures. **The picture** is `gn_snap_<resume id>` (anything but letters and
+  digits as _): `{v: 1, ts, d: a data: URL, WebP (JPEG where the browser can't make WebP) of 450 by 297, cx, cy}`, about
+  5 to 17 KB, cropped to the card's shape round the play surface. It follows the PIN as a saved game does and never
+  reloads a page (`gn_snap_` in `ST_NORELOAD`). kit.js makes it ("Keep playing's picture of the table"): a few seconds
+  after `Kit.resume.set` (at most once every 15 s), as the page is put away, and on opening a game that has none
+  (`snapFirst`); never in the setup, under a pass-and-play cover, in a demo, or once the game is over. The renderer is
+  vendor/modern-screenshot (MIT, loaded only then), run in slices of 6 ms in idle time (`snapYield`), on only what meets
+  the crop (`snapKeep`: the rest stays as empty boxes of its own size), with about 120 style properties
+  (`SNAP_PROPS`), the styles a child would inherit anyway and starting values trimmed (`snapTrim`), the page's pictures
+  made small (`snapImg`, `snapShrink`), the fonts read once (`snapS.fontCss`) and the encoding in a worker
+  (`snapWorker`). A canvas is copied in a frame callback right after the game's own (`snapCanvases`, which wraps
+  `requestAnimationFrame` for a few frames for a WebGL canvas that comes out empty). Per game, `Kit.init` takes `snap`
+  (the play surface: a selector, element or function; the default is the largest table-like element, `snapTarget`),
+  `snapY` (where a band across a tall surface sits, 0 the top to 1 the foot; 0.08, and 0.5 for a `.ctable`), `snapDraw`
+  (draw a frame now: Slots' machine, which draws only when something moves) and `snapGrab` (the page's own picture: the
+  consoles give the emulator's screen). `Kit.resume.set` keeps `s`, when the game first showed in Keep playing, and a
+  picture older than that is never shown (`snapOf`); `Kit.resume.clear`, Keep playing's delete (with Undo) and a game
+  ended on another device (`snapTidy`) take the picture away. **A game with no picture** (begun before pictures, or on a
+  device without them) gets one from the home screen in its idle time (`snapFill`): its page opens in a frame nobody
+  sees with `?ksnap=<id>`, which sync.js makes a sandbox (it reads the device, keeps nothing it writes but `gn_snap_`,
+  makes no sound, never reaches the cloud), Kit takes the picture there (`snapFrame`) and posts back, and a touch or a
+  scroll puts the frame away to be tried again later; a console cartridge's picture is made from its saved place's
+  screen in IndexedDB, with no emulator. The scratchpad's `kpsnap/` has the scripts: `play.js <size> [games]` (real
+  games played and their pictures), `home.js <sizes>` (the cards measured: one foot height, nothing cut), `paths.js`
+  (sync, delete, Undo, finish, the demo), `fill.js` (the hidden frames), `console.js` (a homebrew NES cartridge),
+  `prof.js <page> <size> <cpu>` (each step's time and the long tasks), `perf.js <base|wt>` (layers and scrolling at 4x).
 - **What keeps the home screen smooth** (Tim, 2026-11-16: "lagginess, scrolling up and down on the iPad mini in
   landscape"; measured with the CPU slowed 4x at 1024x768). Scrolling: **no `backdrop-filter` on anything repeated per
   tile or card**. A tile's glass band and a Keep playing card's name panel are painted glass, with the art clipped at the

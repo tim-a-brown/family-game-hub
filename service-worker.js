@@ -484,6 +484,7 @@ const PRECACHE_URLS = [
   '/games/pinball/thumbs/jungle.webp',
   '/games/pinball/thumbs/neon.webp',
   '/games/pinball/thumbs/midway.webp',
+  '/vendor/modern-screenshot/modern-screenshot.js',
   '/vendor/three/three.module.min.js',
   '/vendor/three/addons/postprocessing/EffectComposer.js',
   '/vendor/three/addons/postprocessing/RenderPass.js',

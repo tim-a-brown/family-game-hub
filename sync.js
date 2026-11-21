@@ -68,9 +68,42 @@
   };
   if(navigator.sendBeacon) navigator.sendBeacon = function(u){ D.blocked.push('beacon ' + String(u).split('?')[0]); return true; };
 })();
+// ── A picture for Keep playing (games/<page>.html?ksnap=<id>, opened by the home screen in a hidden frame): the page
+// reads the device as it is, so it opens on the game in progress, but nothing it writes is kept except its picture
+// (gn_snap_*), and it never reaches the cloud (it counts as a demo below: no boot, no cloud). Kit takes the picture.
+(function(){
+  if(window.__KIT_DEMO || !/\/games\//.test(location.pathname) || !/[?&]ksnap=[^&]/.test(location.search)) return;
+  var D = window.__KIT_SNAP = { writes: [], blocked: [] };
+  var ls; try{ ls = window.localStorage; }catch(e){ return; }
+  var SP = Storage.prototype, get = SP.getItem, set = SP.setItem, del = SP.removeItem, key = SP.key, clr = SP.clear;
+  var lenD = Object.getOwnPropertyDescriptor(SP, 'length');
+  var mem = Object.create(null), GONE = {}, THRU = /^gn_snap_/;
+  function keys(){
+    var out = [], n = lenD && lenD.get ? lenD.get.call(ls) : 0;
+    for(var i = 0; i < n; i++){ var k = key.call(ls, i); if(k != null && !(k in mem)) out.push(k); }
+    for(var m in mem) if(mem[m] !== GONE) out.push(m);
+    return out;
+  }
+  // (this tab's sessionStorage is the home screen's too: what the frame writes there stays in the frame)
+  var ss; try{ ss = window.sessionStorage; }catch(e){}
+  var smem = Object.create(null);
+  SP.getItem = function(k){ k = String(k); if(this === ss) return k in smem ? (smem[k] === GONE ? null : smem[k]) : get.call(ss, k); if(this !== ls) return get.apply(this, arguments); return k in mem ? (mem[k] === GONE ? null : mem[k]) : get.call(ls, k); };
+  SP.setItem = function(k, v){ k = String(k); if(this === ss){ smem[k] = String(v); return; } if(this !== ls) return set.apply(this, arguments); if(THRU.test(k)) return set.call(ls, k, v); D.writes.push(k); mem[k] = String(v); };
+  SP.removeItem = function(k){ k = String(k); if(this === ss){ smem[k] = GONE; return; } if(this !== ls) return del.apply(this, arguments); D.writes.push(k); mem[k] = GONE; };
+  SP.key = function(i){ if(this !== ls) return key.apply(this, arguments); var a = keys(); return i >= 0 && i < a.length ? a[i] : null; };
+  SP.clear = function(){ if(this !== ls) return clr.apply(this, arguments); keys().forEach(function(k){ mem[k] = GONE; }); };
+  try{ Object.defineProperty(SP, 'length', { configurable: true, enumerable: true, get: function(){ return this === ls ? keys().length : lenD.get.call(this); } }); }catch(e){}
+  var f0 = window.fetch;
+  if(f0) window.fetch = function(u, o){
+    var url = String(u && u.url ? u.url : u), m = String((o && o.method) || (u && u.method) || 'GET').toUpperCase(), away = url.indexOf('http') === 0 && url.indexOf(location.origin) !== 0;
+    if(/firestore\.googleapis\.com|identitytoolkit|securetoken/.test(url) || (away && m !== 'GET' && m !== 'HEAD')){ D.blocked.push('fetch ' + m + ' ' + url.split('?')[0]); return Promise.reject(new TypeError('Not while taking a picture')); }
+    return f0.apply(this, arguments);
+  };
+  if(navigator.sendBeacon) navigator.sendBeacon = function(u){ D.blocked.push('beacon ' + String(u).split('?')[0]); return true; };
+})();
 (function(){
   'use strict';
-  var DEMO = !!window.__KIT_DEMO;
+  var DEMO = !!(window.__KIT_DEMO || window.__KIT_SNAP), SBX = window.__KIT_DEMO || window.__KIT_SNAP;
   // This file reads and writes the device's storage directly; everything else goes through Storage.prototype, which
   // is wrapped below (stWatch) so saves made by games are noticed and sent to the PIN's cloud copy
   var LS = (function(){
@@ -225,7 +258,7 @@
     return loadFirebase().then(function(fb){ return isGoogle() ? googleReady().then(function(){ return fb; }) : fb; });
   }
   function loadFirebase(){
-    if(DEMO){ window.__KIT_DEMO.blocked.push('cloud'); return Promise.reject(new Error('Not during a demo')); }   // (a demo never reaches the cloud)
+    if(DEMO){ SBX.blocked.push('cloud'); return Promise.reject(new Error('Not during a demo')); }   // (a demo never reaches the cloud)
     if(_fb) return Promise.resolve(_fb);
     if(_fbP) return _fbP;   // one load at a time: a second caller waits for the first
     var V = '10.12.2';
@@ -511,7 +544,7 @@
   // each game file's saved-game keys (the home screen's Keep playing deletes these; sync uses them to tell which device
   // played a game last: stTie)
   var ST_SAVES = {"2048":["2048_state"],"asteroids":["asteroids_state"],"baccarat":["baccarat_state"],"backgammon":["backgammon_state"],"battleship":["battleship_state"],"bingo":["bingo_state"],"blackjack":["blackjack_state"],"boggle":["boggle_state"],"breakout":["breakout_state"],"checkers":["checkers_state"],"chess":["chess_state"],"chinesecheckers":["chinesecheckers_state"],"codebreaker":["codebreaker_state"],"connectfour":["c4_state"],"conversation":["conversation_state"],"craps":["cr_state"],"cribbage":["cribbage_state"],"crossword":["crossword_state"],"cubehopper":["cubehopper_state"],"dealornodeal":["dond_state"],"dice-roller":["diceroller_state"],"dotsboxes":["dotsboxes_state"],"euchre-ai":["euchre_state"],"farkle":["farkle_state"],"fivecrownss-ai":["fivecrowns_state"],"flip7-ai":["flip7_state"],"freecell":["freecell_state"],"gin-rummy-ai":["gin_state"],"hangman":["hangman_state"],"hearts-ai":["hearts_state"],"horserace":["horserace_state"],"hotdogstand":["hotdogstand_state"],"oregon":["oregon_state"],"drugwars":["drugwars_state"],"jokerrun":["jokerrun_state"],"lorcana":["lorcana_state"],"lrc":["lrc_state"],"madlibs":["madlibs_state"],"mahjong":["mahjong_state"],"mahjong4":["mj4_state"],"mancala":["mancala_state"],"marbles":["marbles_state"],"mathpuzzles":["mathpuzzles_state"],"memorymatch":["memorymatch_state"],"minesweeper":["minesweeper_state"],"minigolf":["mg_state"],"othello":["othello_state"],"pacman":["pacman_state"],"paddleball":["paddleball_state"],"paigow":["paigow_state"],"peggle":["peggle_state"],"phase10-ai":["phase10_state"],"plinko":["plinko_state"],"poker":["poker_vp","poker_he_cash","poker_he_tourn","poker_om_cash","poker_om_tourn","poker_circ","poker_circ_om","poker_circ_mx","poker_last"],"pokersquares":["pokersquares_state"],"pyramid":["pyramid_state"],"riddlestories":["riddlestories_state"],"rook-ai":["rook_state"],"roulette":["rl_state"],"scorecard":["scorecard_state"],"shellgame":["shellgame_state"],"slidepuzzle":["slidepuzzle_state"],"slots":["slots_state"],"snake":["snake_state"],"solitaire":["solitaire_state"],"spades-ai":["spades_state"],"spellingbee":["spellingbee_state"],"sudoku":["sdk_state","sudoku_state"],"tetris":["tetris_state"],"threecardpoker":["threecardpoker_state"],"tictactoe":["tictactoe_state"],"trivia":["trivia_state"],"wheeloffortune":["wof_state"],"wizard-ai":["wizard_state"],"wordle":["wordle_state"],"wordscramble":["wordscramble_state"],"wordsearch":["wordsearch_state"],"wouldyourather":["wyr_state"],"yahtzee":["yahtzee_state"],"hearts":["pad_ht"],"flip7":["pad_f7"],"rook":["pad_rk"],"spades":["pad_sp"],"euchre":["pad_eu"],"five-crowns":["pad_fc"],"gin-rummy":["pad_rm"],"phase10":["pad_p10"],"wizard":["pad_wz","wizard_pad_bids"],"carmen":["carmen_case"],"ciphers":["ciphers_state"],"donkeykong":["dk_state"],"go":["go_state"],"invaders":["invaders_state"],"galaga":["galaga_state"],"goblindefenders":["goblin_run"],"junglehunt":["junglehunt_state"],"logicgrid":["logicgrid_state"],"lorcana-play":["lorcana_play_state"],"marblesolitaire":["marblesolitaire_state"],"mazes":["mazes_state"],"mysteries":["mysteries_state"],"pressyourluck":["pyl_state"],"riddles":["riddles_state"],"sandlot":["sandlot_state"],"waxpack":["waxpack_state"],"scrabble":["scrabble_state"],"truthlies":["truthlies_state"]};
-  var ST_NORELOAD = /^(gn_resume|gn_name_counts|frequent_players|gn_hiscores_sel)$/;
+  var ST_NORELOAD = /^(gn_resume|gn_name_counts|frequent_players|gn_hiscores_sel|gn_snap_.+)$/;   // (gn_snap_: Keep playing's picture of a game, which a page never reloads for)
   function stKey(k){ return !!k && k.length <= 120 && /^[A-Za-z0-9_]+$/.test(k) && !ST_SKIP.test(k) && !PREF_RE.test(k) && !DEVICE_RE.test(k) && !ST_DEVICE.test(k); }
   function stLoad(){
     var o = lsJSON(ST) || {}; o.at = o.at || {}; o.sig = o.sig || {}; o.sent = o.sent || {}; o.ts = Number(o.ts) || 0;
@@ -2789,7 +2822,7 @@
   };
   // a demo: nothing goes to linked players, the inbox or the cloud (each call is noted for the demo's own check)
   if(DEMO) ['linkSend', 'linkMark', 'linkPublish', 'linkPublishSoon', 'linkPoll', 'linkBackfill', 'bankRemote', 'inboxAdd', 'inboxRead', 'syncNow', 'forceOverwriteCloud', 'forceOverwriteLocal', 'setLabel'].forEach(function(f){
-    window.FGHSync[f] = function(){ window.__KIT_DEMO.blocked.push(f); return f === 'bankRemote' ? false : f === 'syncNow' ? Promise.resolve() : undefined; };
+    window.FGHSync[f] = function(){ SBX.blocked.push(f); return f === 'bankRemote' ? false : f === 'syncNow' ? Promise.resolve() : undefined; };
   });
 
   if(document.readyState === 'loading'){

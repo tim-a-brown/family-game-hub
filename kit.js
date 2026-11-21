@@ -456,7 +456,7 @@
 
   // ── Sound: tiny synthesized effects, no files to download ─────────────────
   var actx = null;
-  function soundOn() { return lsGet('gn_sound', '1') === '1' && !timerLocked; }   // (quiet while the game timer has locked play)
+  function soundOn() { return lsGet('gn_sound', '1') === '1' && !timerLocked && !window.__KIT_SNAP; }   // (quiet while the game timer has locked play)
   function ctx() {
     if (!actx) { var C = window.AudioContext || window.webkitAudioContext; if (!C) return null; actx = new C(); }
     if (actx.state === 'suspended') actx.resume();
@@ -1018,16 +1018,439 @@
     set: function (label, o) {
       if (!game) return;
       var id = (o && o.id) || game.id, all = {}; try { all = JSON.parse(lsGet('gn_resume', '{}')) || {}; } catch (e) {}
+      var was = all[id] && !all[id].x ? all[id] : null;
       all[id] = { ts: Date.now(), label: label || 'In progress', file: (o && o.file) || pageKey() };
       if (o && o.keys) all[id].keys = o.keys;   // saved-game keys, so home can delete it
+      // s: when this game in progress first showed in Keep playing; a picture of the table older than that belongs to
+      // a game before it and is never shown (snap)
+      if (!was) { all[id].s = Date.now(); snapDrop(id); } else if (was.s) all[id].s = was.s;
       lsSet('gn_resume', JSON.stringify(all));
+      snapNote(id);
     },
     clear: function (o) {
       if (!game) return;
       var id = (o && o.id) || game.id, all = {}; try { all = JSON.parse(lsGet('gn_resume', '{}')) || {}; } catch (e) {}
       if (all[id] && !all[id].x) { all[id] = { ts: Date.now(), x: 1 }; lsSet('gn_resume', JSON.stringify(all)); }   // (kept as gone, so your other devices drop it too)
+      snapDrop(id);
     }
   };
+
+  // ── Keep playing's picture of the table (gn_snap_<id>) ─────────────────────
+  // A game in progress keeps a small picture of its play area as it was when last played, which its Keep playing card
+  // on the home screen shows in place of the game's art. gn_snap_<id> (the resume id, anything but letters and digits
+  // as _) is {v: 1, ts, d: a data: URL (WebP, or JPEG where the browser can't make WebP) of 450 by 297 or so, cropped to
+  // the card's shape round the play surface, cx, cy: where the surface's middle is on it (0 to 1)}. It follows the PIN
+  // like a saved game (sync.js, and never reloads a page: ST_NORELOAD). Taken a few seconds after the game's place
+  // changes (Kit.resume.set), at most once every 15 s, again as the page is put away, and on opening a game that has
+  // none; the work runs in idle time, in slices of a few milliseconds (snapYield). The renderer (vendor/modern-screenshot)
+  // loads only then. Kit.init's snap: a selector, an element or a function giving the play surface (the default is the
+  // largest table-like element on the screen: snapTarget); snapGrab: a function giving a canvas, an image or a data URL
+  // to use instead (the console's own screenshot, a game drawn in WebGL).
+  var SNAP_MODE = !!window.__KIT_SNAP;   // (a page opened by the home screen only to take its picture: ?ksnap=<id>)
+  var SNAP_W = 450, SNAP_AR = 1 / 0.66;   // (the card's picture is 1 : .66; 450 wide is 3x the phone's card, 2x a desk's)
+  var snapS = { id: null, dirty: false, last: 0, t: 0, busy: false, lib: null, fails: 0 };
+  function snapKey(id) { return 'gn_snap_' + String(id).replace(/[^A-Za-z0-9]/g, '_'); }
+  function snapOn() { return !!game && !!LS && !DEMO && !EDIT_DEFAULTS && !IN_SHEET && !!window.Promise && !!doc.createElement('canvas').getContext; }
+  function snapDrop(id) { if (SNAP_MODE || DEMO) return; snapS.dirty = false; try { if (LS.getItem(snapKey(id)) != null) LS.removeItem(snapKey(id)); } catch (e) {} }
+  function snapNote(id) {
+    if (!snapOn() || SNAP_MODE) return;
+    snapS.id = id; snapS.dirty = true;
+    // (a few seconds after things settle, and no sooner than 15 s after the last picture)
+    clearTimeout(snapS.t);
+    snapS.t = setTimeout(snapIdle, Math.max(2500, snapS.last + 15000 - Date.now()));
+  }
+  function snapIdle() {
+    if (!snapS.dirty) return;
+    var go = function () { snapTake().catch(function () {}); };
+    if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 4000 }); else setTimeout(go, 50);
+  }
+  // (a slice of the work at most this long before the page gets the main thread back)
+  var snapT0 = 0;
+  function snapPause() {
+    return new Promise(function (res) {
+      var mc = new MessageChannel(); mc.port1.onmessage = function () { snapT0 = performance.now(); res(); }; mc.port2.postMessage(0);
+    });
+  }
+  function snapYield() { if (performance.now() - snapT0 >= 6) return snapPause(); }
+  function snapLib() {
+    if (!snapS.lib) snapS.lib = window.modernScreenshot ? Promise.resolve(window.modernScreenshot) : loadJs(KIT_BASE + 'vendor/modern-screenshot/modern-screenshot.js').then(function () { return window.modernScreenshot; });
+    snapS.lib.catch(function () { snapS.lib = null; });
+    return snapS.lib;
+  }
+  // what is never part of the picture: the game bar, sheets, menus, notes, the Kit keyboard, a demo's strip, the
+  // turn-your-device cover and the like (a page's own, data-snap="off")
+  var SNAP_OFF = '.gbar,.k-scrim,.k-toast,.k-osk,.k-confetti,.k-ho,.k-lock,.k-mo,.k-mob,.k-note,.k-peek,.k-rotate,.k-orient,.k-banner,.k-turnbar,[data-snap="off"],[class^="kd-"],[class*=" kd-"]';
+  // (only what a picture this small shows is copied from each element's style: some 120 of the browser's 400 or so
+  // properties, which is most of the renderer's work)
+  var SNAP_PROPS = ('display position top right bottom left z-index float clear box-sizing width height min-width min-height max-width max-height ' +
+    'margin-top margin-right margin-bottom margin-left padding-top padding-right padding-bottom padding-left ' +
+    'border-top-width border-right-width border-bottom-width border-left-width border-top-style border-right-style border-bottom-style border-left-style ' +
+    'border-top-color border-right-color border-bottom-color border-left-color border-top-left-radius border-top-right-radius border-bottom-left-radius border-bottom-right-radius ' +
+    'border-image-source border-image-slice border-image-width border-image-outset border-image-repeat outline-style outline-width outline-color outline-offset ' +
+    'background-color background-image background-size background-position-x background-position-y background-repeat background-clip background-origin background-blend-mode ' +
+    'color opacity visibility overflow-x overflow-y overflow-clip-margin clip-path mask-image -webkit-mask-image mask-size -webkit-mask-size mask-position -webkit-mask-position mask-repeat -webkit-mask-repeat ' +
+    'transform transform-origin transform-style translate rotate scale perspective perspective-origin backface-visibility filter mix-blend-mode isolation box-shadow ' +
+    'font-family font-size font-weight font-style font-stretch font-variant-numeric font-variant-caps font-feature-settings font-variation-settings font-optical-sizing line-height letter-spacing word-spacing ' +
+    'text-align text-align-last text-transform text-decoration-line text-decoration-color text-decoration-style text-decoration-thickness text-shadow text-overflow text-indent ' +
+    'white-space white-space-collapse text-wrap-mode word-break overflow-wrap hyphens vertical-align direction writing-mode text-orientation -webkit-text-stroke-width -webkit-text-stroke-color -webkit-text-fill-color -webkit-line-clamp -webkit-box-orient ' +
+    'flex-direction flex-wrap flex-grow flex-shrink flex-basis order align-items align-self align-content justify-content justify-items justify-self row-gap column-gap ' +
+    'grid-template-columns grid-template-rows grid-template-areas grid-auto-flow grid-auto-columns grid-auto-rows grid-column-start grid-column-end grid-row-start grid-row-end ' +
+    'object-fit object-position aspect-ratio image-rendering list-style-type list-style-position border-collapse border-spacing table-layout caption-side ' +
+    'fill fill-opacity stroke stroke-width stroke-opacity stroke-linecap stroke-linejoin stroke-dasharray stroke-dashoffset stop-color stop-opacity paint-order ' +
+    'columns column-count column-width content-visibility contain').split(' ');
+  var SNAP_TABLE ='.felt-in,.felt,.ctable,.table,.board,canvas,.stage,.k-main,main,#app,#game,#stage,#table,#board';
+  function snapVis(e) { var r = e.getBoundingClientRect(); if (r.width < 8 || r.height < 8) return null; var cs = getComputedStyle(e); if (cs.visibility === 'hidden' || +cs.opacity === 0) return null; return r; }
+  function snapView() { var top = gbarEl ? Math.max(0, gbarEl.getBoundingClientRect().bottom) : 0; return { x: 0, y: top, w: innerWidth, h: innerHeight - top }; }
+  function inter(r, v) { var x = Math.max(r.left, v.x), y = Math.max(r.top, v.y), x2 = Math.min(r.right, v.x + v.w), y2 = Math.min(r.bottom, v.y + v.h); return x2 > x && y2 > y ? { x: x, y: y, w: x2 - x, h: y2 - y } : null; }
+  function snapTarget() {
+    var o = opts.snap;
+    if (typeof o === 'function') { try { o = o(); } catch (e) { o = null; } }
+    if (typeof o === 'string') o = doc.querySelector(o);
+    if (o && o.nodeType === 1 && snapVis(o)) return o;
+    var v = snapView(), va = v.w * v.h, best = null, ba = 0, cont = null, ca = 0;
+    [].forEach.call(doc.querySelectorAll(SNAP_TABLE), function (e) {
+      if (e.closest(SNAP_OFF)) return;
+      var r = snapVis(e); if (!r) return; var i = inter(r, v); if (!i) return;
+      var a = i.w * i.h, tab = !e.matches('.stage,.k-main,main,#app,#game,#stage');
+      if (tab && a > ba) { best = e; ba = a; }
+      if (!tab && a > ca) { cont = e; ca = a; }
+    });
+    return ba >= va * 0.3 ? best : cont && ca >= va * 0.3 ? cont : best || cont || doc.body;
+  }
+  // the crop: the card's shape laid over the play surface's middle, as large as the surface (on the screen) allows
+  function snapCrop(t) {
+    var v = snapView(), r = inter(t.getBoundingClientRect(), v) || v, w = r.w, h = r.h;
+    if (w / h > SNAP_AR) w = h * SNAP_AR; else h = w / SNAP_AR;
+    // (a surface taller than the card is seen through a band nearer its top, where a phone's table has what is in play:
+    // the dice tray over the score card, the trick over your hand; opts.snapY moves it, 0 the top to 1 the foot)
+    var fy = opts.snapY != null ? opts.snapY : t.matches('.ctable') ? 0.5 : 0.08;   // (a card table's middle: the trick and the seats round it)
+    var cx = r.x + r.w / 2, cy = r.h > h * 1.15 ? r.y + h / 2 + (r.h - h) * fy : r.y + r.h / 2;
+    var x = Math.min(Math.max(cx - w / 2, v.x), v.x + v.w - w), y = Math.min(Math.max(cy - h / 2, v.y), v.y + v.h - h);
+    return { x: x, y: y, w: w, h: h, cx: (cx - x) / w, cy: (cy - y) / h };
+  }
+  // A canvas drawn with WebGL keeps its picture only until the frame is shown. Each canvas on the table is copied (small)
+  // in a frame callback asked for from idle time, which runs after the game's own in that frame, so the drawing is still
+  // there; one that comes out empty (a game that draws in a callback asked for later in the frame, or only now and then)
+  // is copied again right after the game's own frame callbacks for a few frames (the page's requestAnimationFrame
+  // wrapped meanwhile), and a page can draw one at once for it (Kit.init's snapDraw).
+  // What the renderer writes on each element is cut to what changes the drawing: on each child of an element, an
+  // inherited property with the value it would inherit anyway, and any other property at its starting value for that
+  // kind of element (read once from the blank frame). The drawing is a third the size and loads that much sooner.
+  var SNAP_INH = {}, SNAP_KEEPV = { width: 1, height: 1, display: 1, position: 1, 'box-sizing': 1 };
+  ('color font-family font-size font-weight font-style font-stretch font-variant-numeric font-variant-caps font-feature-settings font-variation-settings font-optical-sizing font-kerning ' +
+    'line-height letter-spacing word-spacing text-align text-align-last text-transform text-indent text-shadow white-space white-space-collapse text-wrap-mode word-break overflow-wrap hyphens ' +
+    'direction writing-mode text-orientation visibility -webkit-text-stroke-width -webkit-text-stroke-color -webkit-text-fill-color list-style-type list-style-position border-collapse border-spacing caption-side ' +
+    'fill fill-opacity stroke stroke-width stroke-opacity stroke-linecap stroke-linejoin stroke-dasharray stroke-dashoffset paint-order image-rendering').split(' ').forEach(function (k) { SNAP_INH[k] = 1; });
+  function snapInit(tag, ns) {
+    var D = snapS.init || (snapS.init = {}), key = (ns ? 's:' : '') + tag; if (D[key]) return D[key];
+    var out = {}, f = snapS.sb, w = f && f.contentWindow;
+    try {
+      var d = w.document, e = ns ? d.createElementNS(ns, tag) : d.createElement(tag), host = ns ? d.createElementNS(ns, 'svg') : d.body;
+      if (ns) { d.body.appendChild(host); host.appendChild(e); } else host.appendChild(e);
+      var cs = w.getComputedStyle(e); SNAP_PROPS.forEach(function (k) { if (!SNAP_INH[k] && !SNAP_KEEPV[k]) out[k] = cs.getPropertyValue(k); });
+      (ns ? host : e).remove();
+    } catch (x) {}
+    return (D[key] = out);
+  }
+  function snapTrim(n) {
+    var ps = n.style, init = snapInit(n.localName, n.namespaceURI === 'http://www.w3.org/1999/xhtml' ? null : n.namespaceURI), drop = [];
+    for (var i = 0; i < ps.length; i++) { var k = ps[i]; if (init[k] != null && init[k] === ps.getPropertyValue(k) && !ps.getPropertyPriority(k)) drop.push(k); }
+    for (var c = n.firstElementChild; c; c = c.nextElementSibling) {
+      var cs = c.style, cd = [];
+      for (var j = 0; j < cs.length; j++) { var q = cs[j]; if (SNAP_INH[q] && cs.getPropertyValue(q) === ps.getPropertyValue(q) && !cs.getPropertyPriority(q)) cd.push(q); }
+      cd.forEach(function (q) { cs.removeProperty(q); });
+    }
+    drop.forEach(function (k) { ps.removeProperty(k); });
+  }
+  // a picture on the page, made small for the drawing (no larger than 160 across): a card's face or a felt drawn at a
+  // fraction of its size makes the drawing a tenth as heavy. Kept for the page's life; a drawing (svg) goes as it is.
+  // (a picture already written into the page as a data: URL, a card's face or a felt, is made small the same way)
+  function snapShrink(d, px) {
+    var C = snapS.imgs || (snapS.imgs = new Map()), key = px + '@' + d;
+    if (C.has(key)) return C.get(key);
+    var p = new Promise(function (res) {
+      var im = new Image(); im.onload = function () {
+        var k = Math.min(1, px / Math.max(im.naturalWidth, im.naturalHeight)), w = Math.max(1, Math.round(im.naturalWidth * k)), h = Math.max(1, Math.round(im.naturalHeight * k));
+        if (k > 0.8) return res(d);
+        var cv = doc.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(im, 0, 0, w, h);
+        var o = cv.toDataURL('image/webp', 0.82); if (o.indexOf('data:image/webp') !== 0) o = cv.toDataURL('image/png');
+        res(o.length < d.length ? o : d);
+      }; im.onerror = function () { res(d); }; im.src = d;
+    });
+    C.set(key, p); return p;
+  }
+  var SNAP_BIGDATA = /url\("(data:image\/(?:webp|png|jpeg|gif|avif);base64,[^"]{6000,})"\)/g;
+  function snapShrinkEl(n) {
+    // (no smaller than the element is drawn in the picture, with a little to spare; a copied canvas is already that size)
+    var bg = n.style.backgroundImage, jobs = [], px = Math.ceil(Math.max(parseFloat(n.style.width) || 0, parseFloat(n.style.height) || 0) * (snapS.sc || 1) * 1.5);
+    if (px < 24 || n.hasAttribute('data-ksnap')) return null;
+    if (bg && bg.indexOf('data:image/') >= 0) {
+      var m, found = []; SNAP_BIGDATA.lastIndex = 0; while ((m = SNAP_BIGDATA.exec(bg))) found.push(m[1]);
+      if (found.length) jobs.push(Promise.all(found.map(function (f) { return snapShrink(f, px); })).then(function (out) { var v = n.style.backgroundImage; found.forEach(function (f, i) { v = v.split(f).join(out[i]); }); n.style.backgroundImage = v; }));
+    }
+    var src = n.localName === 'img' ? n.getAttribute('src') || '' : '';
+    if (src.length > 6000 && /^data:image\/(webp|png|jpeg|gif|avif);base64,/.test(src)) jobs.push(snapShrink(src, px).then(function (o) { n.setAttribute('src', o); }));
+    return jobs.length ? Promise.all(jobs) : null;
+  }
+  function snapImg(url) {
+    if (!/^(https?:|blob:)/.test(url) || /\.svg(\?|#|$)/i.test(url) || !window.createImageBitmap) return Promise.resolve(false);
+    var C = snapS.imgs || (snapS.imgs = new Map());
+    if (C.has(url)) return C.get(url);
+    var p = fetch(url).then(function (r) { if (!r.ok) throw new Error(r.status); return r.blob(); }).then(function (bl) {
+      if (/svg/.test(bl.type)) return false;
+      return createImageBitmap(bl).then(function (bm) {
+        var k = Math.min(1, 200 / Math.max(bm.width, bm.height)), w = Math.max(1, Math.round(bm.width * k)), h = Math.max(1, Math.round(bm.height * k));
+        var cv = doc.createElement('canvas'); cv.width = w; cv.height = h; var x = cv.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(bm, 0, 0, w, h); if (bm.close) bm.close();
+        var d = cv.toDataURL('image/webp', 0.82); return d.indexOf('data:image/webp') === 0 ? d : cv.toDataURL('image/png');
+      });
+    }).catch(function () { return false; });
+    C.set(url, p);
+    return p;
+  }
+  function snapCanvases(host, sc, keep, crop) {
+    var cvs = [].filter.call(host.querySelectorAll('canvas'), function (c) { return keep.has(c) && c.width && c.height && snapVis(c) && !c.closest(SNAP_OFF); });
+    if (!cvs.length) return Promise.resolve([]);
+    // (each copy is the canvas's box at the picture's scale, but only the part inside the crop is drawn in it: the rest
+    // stays clear, which costs nothing to keep)
+    var out = cvs.map(function (c) {
+      var r = c.getBoundingClientRect(), i = inter(r, crop) || { x: r.left, y: r.top, w: 1, h: 1 };
+      var fx = c.width / r.width, fy = c.height / r.height;
+      return { c: c, w: Math.max(1, Math.round(r.width * sc)), h: Math.max(1, Math.round(r.height * sc)), k: null, lit: false,
+        s: [(i.x - r.left) * fx, (i.y - r.top) * fy, i.w * fx, i.h * fy], d: [(i.x - r.left) * sc, (i.y - r.top) * sc, i.w * sc, i.h * sc] };
+    });
+    var probe = doc.createElement('canvas'); probe.width = probe.height = 24;
+    var px = probe.getContext('2d', { willReadFrequently: true });
+    function copy(q) {
+      var k = q.k || doc.createElement('canvas'); k.width = q.w; k.height = q.h;
+      var x = k.getContext('2d'); try { x.drawImage(q.c, q.s[0], q.s[1], q.s[2], q.s[3], q.d[0], q.d[1], q.d[2], q.d[3]); } catch (e) { return; }
+      q.k = k; q.lit = false;
+      var p; try { px.clearRect(0, 0, 24, 24); px.drawImage(k, q.d[0], q.d[1], q.d[2], q.d[3], 0, 0, 24, 24); p = px.getImageData(0, 0, 24, 24).data; } catch (e) { return; }
+      for (var i = 3; i < p.length; i += 4) if (p[i] > 8 && (p[i - 1] > 6 || p[i - 2] > 6 || p[i - 3] > 6)) { q.lit = true; break; }
+    }
+    function dark() { return out.filter(function (q) { return !q.lit; }); }
+    return new Promise(function (res) {
+      requestAnimationFrame(function () {
+        out.forEach(copy);
+        if (!dark().length) return res(out);
+        if (opts.snapDraw) { try { opts.snapDraw(); dark().forEach(copy); } catch (e) {} if (!dark().length) return res(out); }
+        var raf0 = window.requestAnimationFrame, n = 0, done = false;
+        var end = function () { if (done) return; done = true; if (window.requestAnimationFrame === wrap) window.requestAnimationFrame = raf0; res(out); };
+        var wrap = function (cb) { return raf0.call(window, function (t) { var r = cb(t); if (!done) { dark().forEach(copy); if (!dark().length) end(); } return r; }); };
+        window.requestAnimationFrame = wrap;
+        (function tick() { raf0.call(window, function () { if (++n >= 30) end(); else if (!done) tick(); }); })();
+      });
+    });
+  }
+  function snapTake() {
+    if (snapS.busy || !snapOn()) return Promise.resolve(false);
+    var id = snapS.id || (game && game.id);
+    if (!id || doc.visibilityState === 'hidden' && !snapS.hide) return Promise.resolve(false);
+    // (never the setup, a pass-and-play cover hiding a hand, or a game already over)
+    if (root.classList.contains('k-in-setup') || doc.querySelector('.k-ho') || !SNAP_MODE && !snapLive(id)) { snapS.dirty = false; return Promise.resolve(false); }
+    snapS.busy = true; snapS.dirty = false; snapS.last = Date.now();
+    var p = opts.snapGrab ? snapOwn(id) : snapDom(id);
+    return p.then(function (ok) { snapS.busy = false; if (!ok) snapS.fails++; return ok; }, function (e) { snapS.busy = false; snapS.fails++; console.warn('[snap]', e && (e.stack || e.message) || e); return false; });
+  }
+  function snapLive(id) { try { var a = JSON.parse(lsGet('gn_resume', '{}')) || {}; return !!a[id] && !a[id].x; } catch (e) { return false; } }
+  // the game's own picture (Kit.init's snapGrab): a canvas, an image or a data URL, laid into the card's shape
+  function snapOwn(id) {
+    return Promise.resolve().then(function () { return opts.snapGrab(); }).then(function (src) {
+      if (src === false) return false;
+      if (!src) return snapDom(id);
+      if (typeof src === 'string') return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { res(im); }; im.onerror = rej; im.src = src; });
+      return src;
+    }).then(function (src) {
+      if (src === true || src === false) return src;
+      var sw = src.naturalWidth || src.width, sh = src.naturalHeight || src.height; if (!sw || !sh) return false;
+      var w = sw, h = sh; if (w / h > SNAP_AR) w = h * SNAP_AR; else h = w / SNAP_AR;
+      return snapSave(id, function (x, W, H) { x.imageSmoothingQuality = 'high'; x.drawImage(src, (sw - w) / 2, (sh - h) / 2, w, h, 0, 0, W, H); }, 0.5, 0.5);
+    });
+  }
+  function snapDom(id) {
+    var t = snapTarget(), c = snapCrop(t), sc = snapS.sc = SNAP_W / c.w;
+    // (the smallest element that holds the whole crop is the one drawn)
+    // (on a page that doesn't scroll, the whole page, so layers laid over one another (a 3D machine over its room) all
+    // come; only what meets the crop is drawn, snapKeep. A page scrolled away from its top: the smallest element that
+    // holds the crop, never a canvas or a picture alone)
+    var host = scrollY < 1 && scrollX < 1 ? doc.body : t;
+    while (host !== doc.body && host.parentElement) { var hr = host.getBoundingClientRect(); if (!/^(CANVAS|IMG|VIDEO|svg)$/i.test(host.tagName) && hr.left <= c.x + 1 && hr.top <= c.y + 1 && hr.right >= c.x + c.w - 1 && hr.bottom >= c.y + c.h - 1) break; host = host.parentElement; }
+    var hr0 = host.getBoundingClientRect(), bg = getComputedStyle(doc.body).backgroundColor;
+    if (!bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') bg = getComputedStyle(root).backgroundColor;
+    if (!bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') bg = '#12131f';
+    var cvs = [], dw = 0, dh = 0;
+    return snapLib().then(function (MS) {
+      if (!MS) return false;
+      var keep = null;
+      snapLog('start');
+      return snapKeep(host, c).then(function (k) { keep = k; snapLog('kept ' + k.size); return snapCanvases(host, sc, keep, c); }).then(function (list) {
+        snapLog('canvases ' + list.map(function (q) { return q.c.className + ':' + q.w + 'x' + q.h + ':' + (q.lit ? 'lit' : 'dark'); }).join(' '));
+        cvs = list;
+        // (the renderer copies a canvas with toDataURL: each gives the copy made in the frame instead)
+        cvs.forEach(function (q) { if (!q.k) return; var u = null; q.c.toDataURL = function () { if (!u) { u = q.k.toDataURL('image/webp', 0.8); if (u.indexOf('data:image/webp') !== 0) u = q.k.toDataURL(); } return u; }; });
+        return MS.createContext(host, {
+          scale: sc, backgroundColor: null, timeout: 4000, autoDestruct: true, debug: !!window.__ksnapDebug, includeStyleProperties: SNAP_PROPS,
+          // (the page's fonts as the first picture found them, kept for the next ones: looking through every stylesheet
+          // again is the slowest part of the renderer)
+          font: snapS.fontCss ? { cssText: snapS.fontCss } : undefined,
+          onCreateForeignObjectSvg: function (svg) { if (snapS.fontCss) return; var st = svg.querySelector('style'), m = st && st.textContent.match(/@font-face\s*{[^}]*}/g); if (m) snapS.fontCss = m.join('\n'); },
+          fetchFn: snapImg,
+          // (an element outside the crop stays as an empty box of its own size, so everything else lies where it does)
+          filter: function (n) { return n.nodeType === 1 ? keep.has(n) || keep.has(n.parentElement) : keep.has(n.parentElement); },
+          onCloneEachNode: function (n) {
+            if (n.nodeType === 1 && n.matches && n.matches(SNAP_OFF)) { n.style.setProperty('visibility', 'hidden', 'important'); while (n.firstChild) n.removeChild(n.firstChild); }
+            else if (n.nodeType === 1) { snapTrim(n); var sh = snapShrinkEl(n); if (sh) return sh.then(snapYield); }
+            return snapYield();
+          },
+          features: { restoreScrollPosition: true, copyScrollbar: false }
+        });
+      }).then(function (cx) {
+        // (the renderer's blank frame for reading default styles, loaded before the work starts: made on the way, it
+        // would still be loading when the work gives the page the thread back)
+        // (one for the page's life, with what it has read kept for the next picture)
+        var f = snapS.sb;
+        if (!f || !f.isConnected) {
+          f = snapS.sb = doc.createElement('iframe'); f.setAttribute('aria-hidden', 'true'); f.tabIndex = -1;
+          f.style.cssText = 'position:fixed;visibility:hidden;width:0;height:0;border:0;left:0;top:0;pointer-events:none';
+          doc.body.appendChild(f);
+          var fd = f.contentDocument; fd.open(); fd.write('<!DOCTYPE html><meta charset="UTF-8"><title></title><body></body>'); fd.close();
+          snapS.dcs = new Map();
+        }
+        cx.sandbox = f; cx.defaultComputedStyles = snapS.dcs;
+        return snapPause().then(function () { return cx; });
+      }).then(function (cx) {
+        snapT0 = performance.now();
+        // (the page as a drawing: made in slices, then turned into a picture the browser decodes on its own time, and
+        // only the crop of it drawn, at the picture's size)
+        snapLog('clone');
+        return MS.domToForeignObjectSvg(cx).then(function (svg) {
+          snapLog('svg');
+          var w = dw = cx.width, h = dh = cx.height;
+          svg.setAttribute('width', Math.ceil(w * sc)); svg.setAttribute('height', Math.ceil(h * sc));
+          cx.sandbox = undefined; cx.defaultComputedStyles = new Map(); try { MS.destroyContext(cx); } catch (e) {}
+          snapLog('destroyed');
+          var x = new XMLSerializer().serializeToString(svg).replace(/[\u0000-\u0008\v\f\u000E-\u001F\uD800-\uDFFF\uFFFE\uFFFF]/gu, '');
+          snapLog('serialized ' + x.length); if (window.__ksnapDebug) window.__ksnapSvg = x;
+          return snapPause().then(function () {
+            return new Promise(function (res, rej) {
+              var im = new Image(); im.decoding = 'async';
+              im.onload = function () { res(im); }; im.onerror = function () { rej(new Error('picture did not load')); };
+              im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(x);
+            });
+          });
+        }, function (e) { cx.sandbox = undefined; cx.defaultComputedStyles = new Map(); try { MS.destroyContext(cx); } catch (e2) {} throw e; });
+      }).then(function (im) {
+        snapLog('loaded');
+        cvs.forEach(function (q) { try { delete q.c.toDataURL; } catch (e) {} });
+        // (Safari draws a page's pictures inside such a drawing only once it has drawn it once: a first draw, a moment)
+        var warm = /^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent) ? new Promise(function (r) { var k = doc.createElement('canvas'); k.width = k.height = 8; try { k.getContext('2d').drawImage(im, 0, 0, 8, 8); } catch (e) {} setTimeout(r, 250); }) : (im.decode ? im.decode().catch(function () {}) : null);
+        return Promise.resolve(warm).then(function () {
+          snapLog('decoded');
+          return snapSave(id, function (x, W, H) {
+            x.fillStyle = bg; x.fillRect(0, 0, W, H);
+            // (the drawing's own size, as the browser took it, maps the crop)
+            var kx = (im.naturalWidth || dw * sc) / (dw * sc), ky = (im.naturalHeight || dh * sc) / (dh * sc); snapLog('natural ' + im.naturalWidth + 'x' + im.naturalHeight + ' of ' + Math.ceil(dw * sc) + 'x' + Math.ceil(dh * sc));
+            x.drawImage(im, (c.x - hr0.left) * sc * kx, (c.y - hr0.top) * sc * ky, c.w * sc * kx, c.h * sc * ky, 0, 0, W, H);
+          }, c.cx, c.cy);
+        });
+      });
+    }).catch(function (e) { cvs.forEach(function (q) { try { delete q.c.toDataURL; } catch (e2) {} }); throw e; });
+  }
+  // only what lies in the crop is drawn: every element under the host whose box meets the crop, and the elements that
+  // hold it (read in slices, so a page of thousands of elements never holds the thread)
+  function snapKeep(host, c) {
+    var all = host.getElementsByTagName('*'), keep = new Set([host]), i = 0, x2 = c.x + c.w + 2, y2 = c.y + c.h + 2, x1 = c.x - 2, y1 = c.y - 2;
+    snapT0 = performance.now();
+    return new Promise(function (res) {
+      (function run() {
+        for (; i < all.length; i++) {
+          if ((i & 31) === 0 && performance.now() - snapT0 > 6) { snapYield().then(run); return; }
+          var e = all[i]; if (keep.has(e)) continue;
+          // (the game bar and the like keep their place in the page, empty, so the table lies where it does on the
+          // screen; what is in them is left out)
+          var off = e.closest(SNAP_OFF); if (off && off !== e) continue;
+          // (inside a drawing: all of it or none, as its kept outermost svg says; its gradients have no box)
+          if (e.ownerSVGElement) { if (keep.has(e.ownerSVGElement)) keep.add(e); continue; }
+          var r = e.getBoundingClientRect();
+          if (r.right < x1 || r.left > x2 || r.bottom < y1 || r.top > y2 || (!r.width && !r.height)) continue;
+          for (var a = e; a && a !== host && !keep.has(a); a = a.parentElement) keep.add(a);
+        }
+        res(keep);
+      })();
+    });
+  }
+  // (the picture made into a small WebP, or a JPEG where the browser can't make WebP (Safari), encoded off the main
+  // thread by toBlob, and kept)
+  function snapLog(w) { if (window.__ksnapDebug) (window.__ksnapLog = window.__ksnapLog || []).push([w, Math.round(performance.now())]); }
+  // (encoded in a worker where the browser can: the encoding never touches the page's thread)
+  function snapWorker(k) {
+    if (!window.Worker || !window.OffscreenCanvas || !window.createImageBitmap || snapS.noWk) return Promise.resolve(null);
+    if (!snapS.wk) {
+      try {
+        var src = 'onmessage=function(e){var b=e.data.b,c=new OffscreenCanvas(b.width,b.height);c.getContext("2d").drawImage(b,0,0);b.close&&b.close();' +
+          'c.convertToBlob({type:"image/webp",quality:.7}).then(function(x){return x.type==="image/webp"?x:c.convertToBlob({type:"image/jpeg",quality:.72});})' +
+          '.then(function(x){postMessage({i:e.data.i,d:new FileReaderSync().readAsDataURL(x)});},function(){postMessage({i:e.data.i,d:null});});};';
+        snapS.wk = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' }))); snapS.wq = {}; snapS.wn = 0;
+        snapS.wk.onmessage = function (e) { var f = snapS.wq[e.data.i]; delete snapS.wq[e.data.i]; if (f) f(e.data.d); };
+        snapS.wk.onerror = function () { snapS.noWk = true; Object.keys(snapS.wq).forEach(function (i) { snapS.wq[i](null); }); snapS.wq = {}; };
+      } catch (e) { snapS.noWk = true; return Promise.resolve(null); }
+    }
+    return createImageBitmap(k).then(function (bmp) {
+      return new Promise(function (res) {
+        var i = ++snapS.wn; snapS.wq[i] = res;
+        setTimeout(function () { if (snapS.wq[i]) { delete snapS.wq[i]; res(null); } }, 5000);
+        snapS.wk.postMessage({ i: i, b: bmp }, [bmp]);
+      });
+    });
+  }
+  function snapBlob(k, type, q) { return new Promise(function (res) { if (!k.toBlob) return res(null); k.toBlob(function (b) { res(b); }, type, q); }); }
+  function snapSave(id, draw, cx, cy) {
+    var W = SNAP_W, H = Math.round(SNAP_W / SNAP_AR), k = doc.createElement('canvas'); k.width = W; k.height = H;
+    var x = k.getContext('2d'); draw(x, W, H); snapLog('drawn');
+    return snapWorker(k).catch(function () { return null; }).then(function (d) {
+      if (d) return d;
+      return snapBlob(k, 'image/webp', 0.7).then(function (b) {
+        return b && b.type === 'image/webp' ? b : snapBlob(k, 'image/jpeg', 0.72);
+      }).then(function (b) {
+        if (!b) return k.toDataURL('image/jpeg', 0.72);
+        return new Promise(function (res) { var r = new FileReader(); r.onload = function () { res(r.result); }; r.onerror = function () { res(null); }; r.readAsDataURL(b); });
+      });
+    }).then(function (d) {
+      snapLog('encoded');
+      if (!d || !SNAP_MODE && !snapLive(id)) return false;   // (the game ended while the picture was being made)
+      var v = JSON.stringify({ v: 1, ts: Date.now(), d: d, cx: Math.round(cx * 1000) / 1000, cy: Math.round(cy * 1000) / 1000 });
+      try { LS.setItem(snapKey(id), v); } catch (e) { return false; }
+      return true;
+    });
+  }
+  if (!SNAP_MODE) doc.addEventListener('visibilitychange', function () {
+    // (put away: the picture as you left it, if the game has moved since the last one; best effort)
+    if (doc.visibilityState === 'hidden' && snapS.dirty && snapOn()) { clearTimeout(snapS.t); snapS.hide = true; snapTake().then(function () { snapS.hide = false; }); }
+  });
+  // a game opened that has no picture yet (begun before pictures, or on a device without them) takes one once it is up
+  function snapFirst() {
+    if (!snapOn() || SNAP_MODE || !game) return;
+    setTimeout(function () {
+      if (snapS.id) return;   // (it has already said where it is)
+      var id = game.id; if (!snapLive(id) || lsGet(snapKey(id), null)) return;
+      snapS.id = id; snapS.dirty = true; snapIdle();
+    }, 3500);
+  }
+  // A page the home screen opened in a hidden frame for its picture alone (?ksnap=<id>; sync.js has made it a sandbox
+  // in which only gn_snap_ writes reach the device): once it is up and settled, the picture, then a word to the home
+  // screen. Nothing it does is kept, it makes no sound and never reaches the cloud.
+  function snapFrame() {
+    var id = (/[?&]ksnap=([^&]+)/.exec(location.search) || [])[1]; if (!id) return;
+    id = decodeURIComponent(id);
+    var tell = function (ok) { try { parent.postMessage({ ksnap: id, ok: !!ok }, location.origin); } catch (e) {} };
+    var tries = 0;
+    (function wait() {
+      setTimeout(function () {
+        // (a page still showing its setup has nothing to show yet: once more, then it gives up)
+        if (root.classList.contains('k-in-setup') && ++tries < 2) return wait();
+        snapS.id = id; snapTake().then(tell, function () { tell(false); });
+      }, tries ? 1500 : 2200);
+    })();
+  }
 
   // ── Online games waiting on your move ─────────────────────────────────────
   // Signed in with a PIN only. A few small one-off queries (no listening): the tables carrying this account's tag (a
@@ -2089,13 +2512,14 @@
     opts = o || {};
     if (!IN_SHEET) startFitLock();
     game = findGameSafe(opts.id || pageKey());
-    if (game && !IN_SHEET && !DEMO) setTimeout(turnWatch, 0);
+    if (game && !IN_SHEET && !DEMO && !SNAP_MODE) setTimeout(turnWatch, 0);
+    if (game && !IN_SHEET && !DEMO) { if (SNAP_MODE) snapFrame(); else snapFirst(); }
     if (opts.orient && !IN_SHEET) orientGate(opts.orient, opts.orientTablets);
     var accent = opts.color || (game && game.color) || '#ffc83d';
     root.style.setProperty('--accent', accent);
     root.style.setProperty('--accent-ink', inkFor(accent));
     if (game) { doc.title = game.name; applyTheme(game.id); catHue(game.id); }
-    if (game && spotifyOn() && spotifyPick(game.id)) spotifyLoad().then(function (Sp) { Sp.gameStart(game.id); }, function () {});
+    if (game && !SNAP_MODE && spotifyOn() && spotifyPick(game.id)) spotifyLoad().then(function (Sp) { Sp.gameStart(game.id); }, function () {});
     // Faint silhouette of the game's mark in the middle of the table
     if (game && window.GameIcon && GameIcon.mark && opts.mark !== false) {
       var mk = GameIcon.mark(game.id);
@@ -6667,6 +7091,7 @@
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, joker: joker, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     defaults: { sheet: defaultsSheet, get: setupSaved }, setupPage: function (g) { return g && g.play && SETUP_PAGES.indexOf(g.play) >= 0 ? g.play : null; }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, sortCat: sortCat, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, playing: playing, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },
     initials: { of: iniOf, set: iniSet }, player: function () { return curPlayers.length === 1 ? curPlayers[0] : ''; }, players: function () { return curPlayers.slice(); },
+    snap: { now: function () { snapS.id = snapS.id || (game && game.id); snapS.dirty = true; return snapTake(); }, target: function () { return snapTarget(); }, crop: function () { return snapCrop(snapTarget()); } },
     tour: tour, demo: demo, demoScript: demoScript, hasDemo: hasDemo, demoSeen: demoSeen, demoHref: demoHref, inDemo: function () { return DEMO; }, links: { link: linkSheet, profile: profileSheet, review: reviewSheet, fromUrl: linkFromUrl, request: requestSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
     orientOk: function () { return orientOk; },
     orient: function (want, tablets) { orientGate(want, tablets); },
