@@ -1054,7 +1054,7 @@
   function snapDrop(id) { if (SNAP_MODE || DEMO) return; snapS.dirty = false; try { if (LS.getItem(snapKey(id)) != null) LS.removeItem(snapKey(id)); } catch (e) {} }
   function snapNote(id) {
     if (!snapOn() || SNAP_MODE) return;
-    snapS.id = id; snapS.dirty = true;
+    snapS.id = id; snapS.dirty = true; snapS.wait = 0;
     // (a few seconds after things settle, and no sooner than 15 s after the last picture)
     clearTimeout(snapS.t);
     snapS.t = setTimeout(snapIdle, Math.max(2500, snapS.last + 15000 - Date.now()));
@@ -1079,7 +1079,50 @@
   }
   // what is never part of the picture: the game bar, sheets, menus, notes, the Kit keyboard, a demo's strip, the
   // turn-your-device cover and the like (a page's own, data-snap="off")
-  var SNAP_OFF = '.gbar,.k-scrim,.k-toast,.k-osk,.k-confetti,.k-ho,.k-lock,.k-mo,.k-mob,.k-note,.k-peek,.k-rotate,.k-orient,.k-banner,.k-turnbar,[data-snap="off"],[class^="kd-"],[class*=" kd-"]';
+  var SNAP_OFF = '.gbar,.k-scrim,.k-toast,.k-osk,.k-confetti,.k-ho,.k-lock,.k-mo,.k-mob,.k-note,.k-peek,.k-rotate,.k-orient,.k-banner,.k-turnbar,[data-snap="off"],[data-ksh],[class^="kd-"],[class*=" kd-"]';
+  // While a sheet, a menu, a reader or any other cover is up, no picture: the card would show the cover, not the table.
+  // Every kit sheet is a .k-scrim (and the turn-your-device cover: a game held the wrong way up keeps the picture it
+  // had); a game's own overlay that is a dialog says so (aria-modal), or data-snap-busy, or the game says it is busy
+  // (Kit.init's snapBusy). The picture waits and is tried again a few seconds later.
+  var SNAP_BUSY = '.k-scrim,.k-ho,.k-lock,.k-orient,.k-rotate,[aria-modal="true"],dialog[open],[data-snap-busy]';
+  function snapBusy() {
+    if (opts.snapBusy) { try { if (opts.snapBusy()) return true; } catch (e) {} }
+    return [].some.call(doc.querySelectorAll(SNAP_BUSY), function (e) {
+      var r = e.getBoundingClientRect(); if (r.width < 40 || r.height < 40) return false;
+      var cs = getComputedStyle(e); return cs.display !== 'none' && cs.visibility !== 'hidden' && +cs.opacity > 0.05;
+    });
+  }
+  // A game's own pause card over its table (Paused, Welcome back: put away, an arcade game pauses itself, so the
+  // picture taken then would be of the card) is left out of the picture, so the table shows as it stands: the cover
+  // round a Resume, Continue or Keep playing button that lies over the table (positioned, over a quarter of the screen or
+  // most of the element it lies on)
+  function snapCovers() {
+    var out = [], va = innerWidth * innerHeight;
+    [].forEach.call(doc.querySelectorAll('button'), function (b) {
+      if (!/^\s*(resume|continue|keep playing)\b/i.test(b.textContent || '') || b.closest(SNAP_OFF) || !snapVis(b)) return;
+      for (var e = b.parentElement; e && e !== doc.body; e = e.parentElement) {
+        var cs = getComputedStyle(e); if (cs.position !== 'absolute' && cs.position !== 'fixed') continue;
+        var r = e.getBoundingClientRect(), pr = e.parentElement.getBoundingClientRect();
+        if (r.width * r.height < va * 0.25 && r.width * r.height < pr.width * pr.height * 0.6) continue;   // (over most of the screen, or of what it lies on)
+        // (never what holds the table itself)
+        if (!e.querySelector('canvas,.felt-in,.ctable,.board,svg:not(button svg)') && out.indexOf(e) < 0) out.push(e);
+        break;
+      }
+    });
+    return out;
+  }
+  // What a pass-and-play table must never show in its picture: a person's hand face up (the picture follows the PIN to
+  // every device, and the next person may be the one who looks). Kit.init's snapHide gives the hand's elements (a
+  // selector, an element, a list, or a function giving one) while more than one person plays; each is left as an empty
+  // box of its own size for the picture alone.
+  function snapHideOn() {
+    var o = opts.snapHide; if (typeof o === 'function') { try { o = o(); } catch (e) { o = null; } }
+    snapS.hsel = typeof o === 'string' ? o : null;   // (looked for again as the page is copied: a hand drawn anew meanwhile)
+    var l = !o ? [] : typeof o === 'string' ? doc.querySelectorAll(o) : o.nodeType ? [o] : o;
+    var out = [].filter.call(l, function (e) { return e && e.nodeType === 1; }).concat(snapCovers());
+    out.forEach(function (e) { e.setAttribute('data-ksh', ''); });
+    return out;
+  }
   // (only what a picture this small shows is copied from each element's style: some 120 of the browser's 400 or so
   // properties, which is most of the renderer's work)
   var SNAP_PROPS = ('display position top right bottom left z-index float clear box-sizing width height min-width min-height max-width max-height ' +
@@ -1097,8 +1140,9 @@
     'grid-template-columns grid-template-rows grid-template-areas grid-auto-flow grid-auto-columns grid-auto-rows grid-column-start grid-column-end grid-row-start grid-row-end ' +
     'object-fit object-position aspect-ratio image-rendering list-style-type list-style-position border-collapse border-spacing table-layout caption-side ' +
     'fill fill-opacity stroke stroke-width stroke-opacity stroke-linecap stroke-linejoin stroke-dasharray stroke-dashoffset stop-color stop-opacity paint-order ' +
+    'vector-effect text-anchor dominant-baseline shape-rendering stroke-miterlimit fill-rule clip-rule ' +
     'columns column-count column-width content-visibility contain').split(' ');
-  var SNAP_TABLE ='.felt-in,.felt,.ctable,.table,.board,canvas,.stage,.k-main,main,#app,#game,#stage,#table,#board';
+  var SNAP_TABLE ='.felt-in,.felt,.ctable,.table,.board,.wood,.frame,.goban,.bboard,.mboard,canvas,svg,.stage,.k-main,main,#app,#game,#stage,#table,#board';
   function snapVis(e) { var r = e.getBoundingClientRect(); if (r.width < 8 || r.height < 8) return null; var cs = getComputedStyle(e); if (cs.visibility === 'hidden' || +cs.opacity === 0) return null; return r; }
   function snapView() { var top = gbarEl ? Math.max(0, gbarEl.getBoundingClientRect().bottom) : 0; return { x: 0, y: top, w: innerWidth, h: innerHeight - top }; }
   function inter(r, v) { var x = Math.max(r.left, v.x), y = Math.max(r.top, v.y), x2 = Math.min(r.right, v.x + v.w), y2 = Math.min(r.bottom, v.y + v.h); return x2 > x && y2 > y ? { x: x, y: y, w: x2 - x, h: y2 - y } : null; }
@@ -1115,7 +1159,8 @@
       if (tab && a > ba) { best = e; ba = a; }
       if (!tab && a > ca) { cont = e; ca = a; }
     });
-    return ba >= va * 0.3 ? best : cont && ca >= va * 0.3 ? cont : best || cont || doc.body;
+    // (a board held sideways on a phone is a fifth of the screen or so, beside its panels: still the picture)
+    return ba >= va * 0.15 ? best : cont && ca >= va * 0.3 ? cont : best || cont || doc.body;
   }
   // the crop: the card's shape laid over the play surface's middle, as large as the surface (on the screen) allows
   function snapCrop(t) {
@@ -1123,8 +1168,40 @@
     if (w / h > SNAP_AR) w = h * SNAP_AR; else h = w / SNAP_AR;
     // (a surface taller than the card is seen through a band nearer its top, where a phone's table has what is in play:
     // the dice tray over the score card, the trick over your hand; opts.snapY moves it, 0 the top to 1 the foot)
-    var fy = opts.snapY != null ? opts.snapY : t.matches('.ctable') ? 0.5 : 0.08;   // (a card table's middle: the trick and the seats round it)
+    var fy = opts.snapY; if (typeof fy === 'function') { try { fy = fy(t); } catch (e) { fy = null; } } if (fy == null || isNaN(fy = +fy)) fy = t.matches('.ctable') || r.w / r.h > 0.8 ? 0.5 : 0.08;   // (a card table, or a board about as tall as wide: its middle)
     var cx = r.x + r.w / 2, cy = r.h > h * 1.15 ? r.y + h / 2 + (r.h - h) * fy : r.y + r.h / 2;
+    // (a large table is seen close up round what is in play, not as a field of felt with small cards on it: Kit.init's
+    // snapW, the widest the crop may be (in CSS pixels, or a function of the surface), and snapAt, where its middle is
+    // (an element or a selector). A card table is seen round its trick, about four and a half cards across, or seven and
+    // a half (the seats round it) while it is empty.)
+    var cap = opts.snapW, at = opts.snapAt;
+    if (typeof cap === 'function') { try { cap = cap(t); } catch (e) { cap = null; } }
+    if (typeof at === 'function') { try { at = at(t); } catch (e) { at = null; } }
+    if (typeof at === 'string') at = doc.querySelector(at);
+    if (cap == null && !at && t.matches('.ctable')) {
+      var tr = t.querySelector('.ctrick'), pc = tr && (tr.querySelector('.pcard') || t.querySelector('.pcard'));
+      var inTrick = tr && [].some.call(tr.querySelectorAll('.pcard'), function (c) { return c.offsetWidth > 20 && +getComputedStyle(c).opacity > 0.3; });
+      var cw = pc ? parseFloat(getComputedStyle(pc).getPropertyValue('--cw')) || pc.offsetWidth : 0;
+      if (tr && cw > 20) { at = tr; cap = Math.max(cw * (inTrick ? 4.6 : 7.5), r.w * 0.45); }
+      // (no trick, and a hand that may be seen (one person, or a hand being played to the computer): the trick's place
+      // and the hand under it, so the picture is of the cards the player holds rather than empty felt)
+      var hd = !inTrick && tr && (t.querySelector('.chand') || doc.querySelector('.chand'));
+      if (hd && !hd.closest('[data-ksh]') && hd.querySelector('.pcard')) {
+        var hr = hd.getBoundingClientRect(), tq = tr.getBoundingClientRect();
+        if (hr.height > 20 && hr.top > tq.top) { var hb = { l: Math.min(hr.left, tq.left), t: tq.top, r: Math.max(hr.right, tq.left), b: hr.bottom }; cap = Math.max(hb.r - hb.l, (hb.b - hb.t) * SNAP_AR, 260); r = inter({ left: Math.min(r.x, hr.left), top: Math.min(r.y, hr.top), right: Math.max(r.x + r.w, hr.right), bottom: Math.max(r.y + r.h, hr.bottom) }, v) || r; at = { getBoundingClientRect: function () { return { left: hb.l, top: hb.t, width: hb.r - hb.l, height: hb.b - hb.t }; } }; }
+      }
+    }
+    // (snapFit: the pieces in play (a selector or a function giving a list), the crop fitted round them with room to
+    // spare, never under two fifths of the surface: a short line of dominoes on a large felt)
+    var fit = opts.snapFit; if (typeof fit === 'function') { try { fit = fit(t); } catch (e) { fit = null; } }
+    if (typeof fit === 'string') fit = t.querySelectorAll(fit);
+    if (fit && fit.length && !at) {
+      var bb = null; [].forEach.call(fit, function (e) { var q = e.getBoundingClientRect(); if (!q.width || !q.height) return; bb = bb ? { l: Math.min(bb.l, q.left), t: Math.min(bb.t, q.top), r: Math.max(bb.r, q.right), b: Math.max(bb.b, q.bottom) } : { l: q.left, t: q.top, r: q.right, b: q.bottom }; });
+      if (bb) { var fw = Math.max((bb.r - bb.l) * 1.5, (bb.b - bb.t) * 1.5 * SNAP_AR, 260, r.w * 0.4); if (cap == null || fw < cap) cap = fw; at = { getBoundingClientRect: function () { return { left: bb.l, top: bb.t, width: bb.r - bb.l, height: bb.b - bb.t }; } }; }
+    }
+    if (cap > 0 && w > cap) { w = Math.max(cap, Math.min(w, 260)); h = w / SNAP_AR; }
+    if (at && at.getBoundingClientRect) { var ar = at.getBoundingClientRect(); if (ar.width || ar.height || ar.left || ar.top) { cx = ar.left + ar.width / 2; cy = ar.top + ar.height / 2; } }
+    if (w < r.w || h < r.h) { cx = Math.min(Math.max(cx, r.x + w / 2), r.x + r.w - w / 2); cy = Math.min(Math.max(cy, r.y + h / 2), r.y + r.h - h / 2); }
     var x = Math.min(Math.max(cx - w / 2, v.x), v.x + v.w - w), y = Math.min(Math.max(cy - h / 2, v.y), v.y + v.h - h);
     return { x: x, y: y, w: w, h: h, cx: (cx - x) / w, cy: (cy - y) / h };
   }
@@ -1140,7 +1217,7 @@
   ('color font-family font-size font-weight font-style font-stretch font-variant-numeric font-variant-caps font-feature-settings font-variation-settings font-optical-sizing font-kerning ' +
     'line-height letter-spacing word-spacing text-align text-align-last text-transform text-indent text-shadow white-space white-space-collapse text-wrap-mode word-break overflow-wrap hyphens ' +
     'direction writing-mode text-orientation visibility -webkit-text-stroke-width -webkit-text-stroke-color -webkit-text-fill-color list-style-type list-style-position border-collapse border-spacing caption-side ' +
-    'fill fill-opacity stroke stroke-width stroke-opacity stroke-linecap stroke-linejoin stroke-dasharray stroke-dashoffset paint-order image-rendering').split(' ').forEach(function (k) { SNAP_INH[k] = 1; });
+    'fill fill-opacity stroke stroke-width stroke-opacity stroke-linecap stroke-linejoin stroke-dasharray stroke-dashoffset paint-order image-rendering text-anchor dominant-baseline shape-rendering stroke-miterlimit fill-rule clip-rule').split(' ').forEach(function (k) { SNAP_INH[k] = 1; });
   function snapInit(tag, ns) {
     var D = snapS.init || (snapS.init = {}), key = (ns ? 's:' : '') + tag; if (D[key]) return D[key];
     var out = {}, f = snapS.sb, w = f && f.contentWindow;
@@ -1230,7 +1307,11 @@
     function dark() { return out.filter(function (q) { return !q.lit; }); }
     return new Promise(function (res) {
       requestAnimationFrame(function () {
+        // (Kit.init's snapClean: a game that paints its own pause card onto its canvas draws a frame without it for the
+        // copy, and gives back what puts the card back)
+        var undo = null; if (opts.snapClean) { try { undo = opts.snapClean(); } catch (e) {} }
         out.forEach(copy);
+        if (typeof undo === 'function') { try { undo(); } catch (e) {} }
         if (!dark().length) return res(out);
         if (opts.snapDraw) { try { opts.snapDraw(); dark().forEach(copy); } catch (e) {} if (!dark().length) return res(out); }
         var raf0 = window.requestAnimationFrame, n = 0, done = false;
@@ -1246,10 +1327,29 @@
     var id = snapS.id || (game && game.id);
     if (!id || doc.visibilityState === 'hidden' && !snapS.hide) return Promise.resolve(false);
     // (never the setup, a pass-and-play cover hiding a hand, or a game already over)
-    if (root.classList.contains('k-in-setup') || doc.querySelector('.k-ho') || !SNAP_MODE && !snapLive(id)) { snapS.dirty = false; return Promise.resolve(false); }
-    snapS.busy = true; snapS.dirty = false; snapS.last = Date.now();
+    if (root.classList.contains('k-in-setup') || !SNAP_MODE && !snapLive(id)) { snapS.dirty = false; return Promise.resolve(false); }
+    // (a cover up: tried again once it may be down; put away, there is no later)
+    if (snapBusy()) {
+      snapS.dirty = true; snapS.id = id;
+      if (!snapS.hide && (snapS.wait = (snapS.wait || 0) + 1) <= 40) { clearTimeout(snapS.t); snapS.t = setTimeout(snapIdle, 3000); }
+      return Promise.resolve(false);
+    }
+    // (a piece still moving on the table (a card flying, a tile sliding into place) would be drawn where it is in its
+    // flight: a moment later, a few times at most)
+    if (!snapS.hide && (snapS.mv || 0) < 5 && snapMoving()) { snapS.mv = (snapS.mv || 0) + 1; snapS.dirty = true; snapS.id = id; clearTimeout(snapS.t); snapS.t = setTimeout(snapIdle, 900); return Promise.resolve(false); }
+    snapS.mv = 0; snapS.wait = 0; snapS.busy = true; snapS.dirty = false; snapS.last = Date.now();
+    var hid = snapS.hid = snapHideOn(), un = function () { hid.forEach(function (e) { e.removeAttribute('data-ksh'); }); snapS.hsel = null; };
     var p = opts.snapGrab ? snapOwn(id) : snapDom(id);
-    return p.then(function (ok) { snapS.busy = false; if (!ok) snapS.fails++; return ok; }, function (e) { snapS.busy = false; snapS.fails++; console.warn('[snap]', e && (e.stack || e.message) || e); return false; });
+    return p.then(function (ok) { un(); snapS.busy = false; if (!ok) snapS.fails++; return ok; }, function (e) { un(); snapS.busy = false; snapS.fails++; console.warn('[snap]', e && (e.stack || e.message) || e); return false; });
+  }
+  function snapMoving() {
+    if (!doc.getAnimations) return false;
+    var t = snapTarget();
+    return doc.getAnimations().some(function (a) {
+      if (a.playState !== 'running') return false;
+      var tm = a.effect && a.effect.getComputedTiming ? a.effect.getComputedTiming() : null; if (!tm || !isFinite(tm.endTime)) return false;
+      var el = a.effect.target; return !!el && el.nodeType === 1 && t.contains(el) && !el.closest(SNAP_OFF);
+    });
   }
   function snapLive(id) { try { var a = JSON.parse(lsGet('gn_resume', '{}')) || {}; return !!a[id] && !a[id].x; } catch (e) { return false; } }
   // the game's own picture (Kit.init's snapGrab): a canvas, an image or a data URL, laid into the card's shape
@@ -1268,12 +1368,11 @@
   }
   function snapDom(id) {
     var t = snapTarget(), c = snapCrop(t), sc = snapS.sc = SNAP_W / c.w;
-    // (the smallest element that holds the whole crop is the one drawn)
-    // (on a page that doesn't scroll, the whole page, so layers laid over one another (a 3D machine over its room) all
-    // come; only what meets the crop is drawn, snapKeep. A page scrolled away from its top: the smallest element that
-    // holds the crop, never a canvas or a picture alone)
-    var host = scrollY < 1 && scrollX < 1 ? doc.body : t;
-    while (host !== doc.body && host.parentElement) { var hr = host.getBoundingClientRect(); if (!/^(CANVAS|IMG|VIDEO|svg)$/i.test(host.tagName) && hr.left <= c.x + 1 && hr.top <= c.y + 1 && hr.right >= c.x + c.w - 1 && hr.bottom >= c.y + c.h - 1) break; host = host.parentElement; }
+    // (the whole page is drawn, so layers laid over one another (a 3D machine over its room) all come; only what meets
+    // the crop is drawn, snapKeep. The page is laid out from its top in the drawing, and the body's own box, which moves
+    // up as the page is scrolled, says where the crop lies in it: an element drawn on its own was placed in the drawing
+    // by its offsets, a scrolled phone page's crop then fell on nothing)
+    var host = doc.body;
     var hr0 = host.getBoundingClientRect(), bg = getComputedStyle(doc.body).backgroundColor;
     if (!bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') bg = getComputedStyle(root).backgroundColor;
     if (!bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') bg = '#12131f';
@@ -1294,8 +1393,13 @@
           font: snapS.fontCss ? { cssText: snapS.fontCss } : undefined,
           onCreateForeignObjectSvg: function (svg) { if (snapS.fontCss) return; var st = svg.querySelector('style'), m = st && st.textContent.match(/@font-face\s*{[^}]*}/g); if (m) snapS.fontCss = m.join('\n'); },
           fetchFn: snapImg,
-          // (an element outside the crop stays as an empty box of its own size, so everything else lies where it does)
-          filter: function (n) { return n.nodeType === 1 ? keep.has(n) || keep.has(n.parentElement) : keep.has(n.parentElement); },
+          // (an element outside the crop stays as an empty box of its own size, so everything else lies where it does;
+          // nothing inside what is never in the picture comes, not even as a box: a hand's cards are boxes with faces)
+          filter: function (n) {
+            var pa = n.parentElement;
+            if (n.nodeType === 1 && snapS.hsel && !n.hasAttribute('data-ksh') && n.matches(snapS.hsel)) { n.setAttribute('data-ksh', ''); (snapS.hid || []).push(n); }
+            return n.nodeType === 1 && keep.has(n) && !(pa && pa.closest('[data-ksh]')) || keep.has(pa) && !(pa && pa.matches(SNAP_OFF));
+          },
           onCloneEachNode: function (n) {
             if (n.nodeType === 1 && n.matches && n.matches(SNAP_OFF)) { n.style.setProperty('visibility', 'hidden', 'important'); while (n.firstChild) n.removeChild(n.firstChild); }
             else if (n.nodeType === 1) { snapTrim(n); var sh = snapShrinkEl(n); if (sh) return sh.then(snapYield); }
@@ -1371,7 +1475,10 @@
           // (inside a drawing: all of it or none, as its kept outermost svg says; its gradients have no box)
           if (e.ownerSVGElement) { if (keep.has(e.ownerSVGElement)) keep.add(e); continue; }
           var r = e.getBoundingClientRect();
-          if (r.right < x1 || r.left > x2 || r.bottom < y1 || r.top > y2 || (!r.width && !r.height)) continue;
+          // (an element with no box of its own (display: contents) is kept, so its children keep their boxes in the
+          // layout: Ciphers' columns on a phone)
+          if (!r.width && !r.height) { if (keep.has(e.parentElement) && getComputedStyle(e).display === 'contents') keep.add(e); continue; }
+          if (r.right < x1 || r.left > x2 || r.bottom < y1 || r.top > y2) continue;
           for (var a = e; a && a !== host && !keep.has(a); a = a.parentElement) keep.add(a);
         }
         res(keep);
@@ -1417,6 +1524,8 @@
     }).then(function (d) {
       snapLog('encoded');
       if (!d || !SNAP_MODE && !snapLive(id)) return false;   // (the game ended while the picture was being made)
+      // (a cover that came up while the picture was being made may be in it: tried again once it is down)
+      if (snapBusy()) { snapS.dirty = true; snapS.id = id; if (!snapS.hide) { clearTimeout(snapS.t); snapS.t = setTimeout(snapIdle, 3000); } return false; }
       var v = JSON.stringify({ v: 1, ts: Date.now(), d: d, cx: Math.round(cx * 1000) / 1000, cy: Math.round(cy * 1000) / 1000 });
       try { LS.setItem(snapKey(id), v); } catch (e) { return false; }
       return true;
@@ -1446,7 +1555,7 @@
     (function wait() {
       setTimeout(function () {
         // (a page still showing its setup has nothing to show yet: once more, then it gives up)
-        if (root.classList.contains('k-in-setup') && ++tries < 2) return wait();
+        if ((root.classList.contains('k-in-setup') || snapBusy()) && ++tries < 3) return wait();
         snapS.id = id; snapTake().then(tell, function () { tell(false); });
       }, tries ? 1500 : 2200);
     })();
@@ -7091,7 +7200,7 @@
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, joker: joker, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     defaults: { sheet: defaultsSheet, get: setupSaved }, setupPage: function (g) { return g && g.play && SETUP_PAGES.indexOf(g.play) >= 0 ? g.play : null; }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, sortCat: sortCat, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, playing: playing, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },
     initials: { of: iniOf, set: iniSet }, player: function () { return curPlayers.length === 1 ? curPlayers[0] : ''; }, players: function () { return curPlayers.slice(); },
-    snap: { now: function () { snapS.id = snapS.id || (game && game.id); snapS.dirty = true; return snapTake(); }, target: function () { return snapTarget(); }, crop: function () { return snapCrop(snapTarget()); } },
+    snap: { now: function () { snapS.id = snapS.id || (game && game.id); snapS.dirty = true; return snapTake(); }, target: function () { return snapTarget(); }, crop: function () { return snapCrop(snapTarget()); }, hide: function () { var l = snapHideOn(); l.forEach(function (e) { e.removeAttribute('data-ksh'); }); return l; }, busy: function () { return snapBusy(); } },
     tour: tour, demo: demo, demoScript: demoScript, hasDemo: hasDemo, demoSeen: demoSeen, demoHref: demoHref, inDemo: function () { return DEMO; }, links: { link: linkSheet, profile: profileSheet, review: reviewSheet, fromUrl: linkFromUrl, request: requestSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
     orientOk: function () { return orientOk; },
     orient: function (want, tablets) { orientGate(want, tablets); },

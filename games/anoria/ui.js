@@ -6007,6 +6007,9 @@
     id: KEY, color: '#d39b62', mark: false, rules: RULES, guide: () => { if (window.AnoriaGuide) window.AnoriaGuide.open(); else rulesScreen(); },
     demo: () => { if (window.AnoriaGuide && !(G && G.demo)) window.AnoriaGuide.quickStart(); },   // (Watch a demo: the quick start is Arvela's demo)
     theme: { felt: ['#1b1a19', '#151413', '#121211'], wood: ['#242321', '#1b1a19'], back: ['#171615', '#8f5f33'] },
+    // (Keep playing's picture: never while a card is read beside the table, and never a person's hand in pass and play)
+    snapBusy: () => !!document.querySelector('.an-side'), snapHide: () => (G && G.mode === 'local' ? '.an-hand' : null),
+    snap: () => document.querySelector('.an-mats') || document.querySelector('.an-felt'), snapY: 0.5,   // (the table: both mats and the Domains on them, round the Crossroads)
     onNew: () => { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } if (G && G.demo) demo.end(); else showSetup(); }, undo: undo,   // (NET hook)
     menu: (window.TurnNet ? TurnNet.menu() : []).concat([   // (NET hook: Play online, Leave the online game)
       { icon: 'book', label: 'Library', sub: 'Every card, and the ones you have', onClick: () => tool('library') },

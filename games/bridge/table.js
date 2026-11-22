@@ -24,6 +24,7 @@
 
   Kit.init({
     id: 'bridge',
+    snapHide: function () { return S && !onePerson() ? '.bx-hand' : null; },   // (Keep playing's picture: a person's hand never shows in pass and play)
     onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } clearSave(); showSetup(); },
     undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
     menu: TurnNet.menu().concat([

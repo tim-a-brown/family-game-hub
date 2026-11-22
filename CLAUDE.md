@@ -1091,16 +1091,29 @@ Underlying principles for everything:
   5 to 17 KB, cropped to the card's shape round the play surface. It follows the PIN as a saved game does and never
   reloads a page (`gn_snap_` in `ST_NORELOAD`). kit.js makes it ("Keep playing's picture of the table"): a few seconds
   after `Kit.resume.set` (at most once every 15 s), as the page is put away, and on opening a game that has none
-  (`snapFirst`); never in the setup, under a pass-and-play cover, in a demo, or once the game is over. The renderer is
+  (`snapFirst`); never in the setup, in a demo, or once the game is over. **Never while anything covers the table**
+  (Tim, 2026-11-22: Lorcana's card reader was in a picture): a kit sheet (`.k-scrim`), the pass-and-play cover, the lock
+  screen, the turn-your-device cover, any dialog (`aria-modal`, `dialog[open]`), `data-snap-busy`, or what the game says
+  with `snapBusy` (Arvela's side panel); the picture waits and is tried again every 3 s, and one that a cover came
+  up over while it was being made is not kept (`snapBusy`, `SNAP_BUSY`). A piece still moving on the table waits a
+  moment too (`snapMoving`). A game's own pause card (the cover round a Resume, Continue or Keep playing button: an arcade game pauses itself as the page is put away) is
+  left out so the table shows (`snapCovers`); one painted on the canvas is drawn away by `snapClean` (Goblin
+  Defenders). **A person's hand never shows in pass and play** (Tim, the same day): `snapHide` gives a game's hand while
+  more than one person plays (`.chand`, `.hand`, `.so-hand`, a Scrabble rack, Battleship's own ships, Lorcana's and
+  Arvela's hands; each page's `Kit.init`), left as an empty box in the picture. The renderer is
   vendor/modern-screenshot (MIT, loaded only then), run in slices of 6 ms in idle time (`snapYield`), on only what meets
   the crop (`snapKeep`: the rest stays as empty boxes of its own size), with about 120 style properties
   (`SNAP_PROPS`), the styles a child would inherit anyway and starting values trimmed (`snapTrim`), the page's pictures
   made small (`snapImg`, `snapShrink`), the fonts read once (`snapS.fontCss`) and the encoding in a worker
   (`snapWorker`). A canvas is copied in a frame callback right after the game's own (`snapCanvases`, which wraps
   `requestAnimationFrame` for a few frames for a WebGL canvas that comes out empty). Per game, `Kit.init` takes `snap`
-  (the play surface: a selector, element or function; the default is the largest table-like element, `snapTarget`),
-  `snapY` (where a band across a tall surface sits, 0 the top to 1 the foot; 0.08, and 0.5 for a `.ctable`), `snapDraw`
-  (draw a frame now: Slots' machine, which draws only when something moves) and `snapGrab` (the page's own picture: the
+  (the play surface: a selector, element or function; the default is the largest table-like element, a felt, board,
+  wood frame or canvas, a seventh of the screen or more, `snapTarget`; Wordle's guesses, Sudoku's grid, Scrabble's board),
+  `snapY` (where a band across a tall surface sits, 0 the top to 1 the foot, or a function; 0.08, and 0.5 for a
+  `.ctable` or a board about as tall as wide), `snapW` and `snapAt` (the widest the crop may be and where its middle is,
+  so a large table is seen close up: a `.ctable` is framed round its `.ctrick`, four and a half cards across, seven and
+  a half while the trick is empty), `snapFit` (the pieces in play, the crop fitted round them: Dominoes' line), `snapDraw`
+  (draw a frame now: Slots' machine and the Mystic 8 Ball, which draw only when something moves) and `snapGrab` (the page's own picture: the
   consoles give the emulator's screen). `Kit.resume.set` keeps `s`, when the game first showed in Keep playing, and a
   picture older than that is never shown (`snapOf`); `Kit.resume.clear`, Keep playing's delete (with Undo) and a game
   ended on another device (`snapTidy`) take the picture away. **A game with no picture** (begun before pictures, or on a
@@ -1108,9 +1121,13 @@ Underlying principles for everything:
   sees with `?ksnap=<id>`, which sync.js makes a sandbox (it reads the device, keeps nothing it writes but `gn_snap_`,
   makes no sound, never reaches the cloud), Kit takes the picture there (`snapFrame`) and posts back, and a touch or a
   scroll puts the frame away to be tried again later; a console cartridge's picture is made from its saved place's
-  screen in IndexedDB, with no emulator. The scratchpad's `kpsnap/` has the scripts: `play.js <size> [games]` (real
+  screen in IndexedDB, with no emulator, and one whose save has no screen shows its cartridge until it is opened. The
+  scratchpad's `kpsnap/` has the scripts: `play.js <size> [games]` (real
   games played and their pictures), `home.js <sizes>` (the cards measured: one foot height, nothing cut), `paths.js`
   (sync, delete, Undo, finish, the demo), `fill.js` (the hidden frames), `console.js` (a homebrew NES cartridge),
+  `pnp.js <size> <page:n,...>` (a pass-and-play game of people, the page beside its picture: no hand), `audit.js <size> @games.txt` (every catalog game started and its
+  picture, with how much of it is one flat color; `asheet.js` the contact sheet), `busy.js` (a sheet, a reader, a scan:
+  no picture until it closes), `webgl.js` (the canvas games), `arvela.js` (Arvela mid-turn),
   `prof.js <page> <size> <cpu>` (each step's time and the long tasks), `perf.js <base|wt>` (layers and scrolling at 4x).
 - **What keeps the home screen smooth** (Tim, 2026-11-16: "lagginess, scrolling up and down on the iPad mini in
   landscape"; measured with the CPU slowed 4x at 1024x768). Scrolling: **no `backdrop-filter` on anything repeated per
