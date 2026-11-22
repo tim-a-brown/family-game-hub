@@ -202,6 +202,8 @@
 
   Kit.init({
     id: 'sandlot', mark: false,
+    // (pass and play: what one person holds or writes never shows in Keep playing's picture)
+    snapHide: function () { return S && S.T && S.T.every(function (t) { return !t.cpu; }) ? '.wp-hand' : null; },
     rules: RULES,
     onNew: function () { clearTimers(); clearSave(); undoStack = []; showSetup(); },
     undo: function () { undo(); },

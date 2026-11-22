@@ -1091,16 +1091,32 @@ Underlying principles for everything:
   5 to 17 KB, cropped to the card's shape round the play surface. It follows the PIN as a saved game does and never
   reloads a page (`gn_snap_` in `ST_NORELOAD`). kit.js makes it ("Keep playing's picture of the table"): a few seconds
   after `Kit.resume.set` (at most once every 15 s), as the page is put away, and on opening a game that has none
-  (`snapFirst`); never in the setup, in a demo, or once the game is over. **Never while anything covers the table**
-  (Tim, 2026-11-22: Lorcana's card reader was in a picture): a kit sheet (`.k-scrim`), the pass-and-play cover, the lock
-  screen, the turn-your-device cover, any dialog (`aria-modal`, `dialog[open]`), `data-snap-busy`, or what the game says
-  with `snapBusy` (Arvela's side panel); the picture waits and is tried again every 3 s, and one that a cover came
-  up over while it was being made is not kept (`snapBusy`, `SNAP_BUSY`). A piece still moving on the table waits a
-  moment too (`snapMoving`). A game's own pause card (the cover round a Resume, Continue or Keep playing button: an arcade game pauses itself as the page is put away) is
+  (`snapFirst`); never in the setup, in a demo, or once the game is over. **A cover over the table is left out of the picture** (Tim, 2026-11-22:
+  Lorcana's card reader was in a picture, then "fix the issues first"): a kit sheet or menu (`.k-scrim`), a card
+  reader, a battle dialog, the computer's move being shown (`aria-modal`, `dialog[open]`, or what the game names with
+  `snapCover`: Arvela's side panel) is drawn as an empty box of its own size, so the table shows as it stands under it
+  (`SNAP_COVER`, `snapCoverEls`; one that comes up while the page is copied is left out too). **The hand-over cover, the
+  lock screen and a results card still mean no picture** (`SNAP_BUSY`, with `data-snap-busy` and Kit.init's
+  `snapBusy`): behind a hand-over lies the next person's hand or a secret a game may not mark, so the picture waits and
+  is tried again every 3 s. **Held the wrong way** (the turn-your-device cover, `SNAP_TURN`: Goblin Defenders and
+  Centipede upright) the game's largest canvas is the picture while it still holds the table (`snapTurnCanvas`: lit and
+  not one flat color); both games clear or resize theirs, so they keep the picture they had. **Nothing moving or
+  loading** (Euchre's cards caught mid-deal came out blank): a finite animation that moves, turns, grows or fades anything
+  that meets the crop (a card flying into the hand, a plaque coming up; not a color stepping, a countdown's digits), an
+  `<img>` there not loaded, or a card face's picture from its style
+  (`[data-c]`, loaded and decoded once, `snapBgWait`) keeps the picture waiting, every second at first and then every
+  3 s, as long as it takes (`snapMoving`); a kind of motion still there every time, five tries or more, is the table's own
+  life and no longer waited for (`snapS.amb`: Press Your Luck's board, the computers playing on); something that starts moving while the page is being copied (`snapWatch`,
+  checked between slices) has it made again. A game's own pause card (the cover round a Resume, Continue or Keep playing button: an arcade game pauses itself as the page is put away) is
   left out so the table shows (`snapCovers`); one painted on the canvas is drawn away by `snapClean` (Goblin
-  Defenders). **A person's hand never shows in pass and play** (Tim, the same day): `snapHide` gives a game's hand while
+  Defenders). **What the drawing can't show as the screen does** is drawn flat in the picture alone: Kit.init's
+  `snapFlat` gives `[{el, css}]` and each element's copy takes that style (Cipher Cases' number and letter wheels, a 3D
+  drum that came out on the wrong digits: the face in the window alone, flat). Masks keep their `mask-composite` (an
+  Arvela card's frame line had become a tan wash over the hand). **A person's hand never shows in pass and play** (Tim, the same day): `snapHide` gives a game's hand while
   more than one person plays (`.chand`, `.hand`, `.so-hand`, a Scrabble rack, Battleship's own ships, Lorcana's and
-  Arvela's hands; each page's `Kit.init`), left as an empty box in the picture. The renderer is
+  Arvela's hands; each page's `Kit.init`), left as an empty box in the picture; the secret in other pass-and-play games too: Dominoes' and Mexican Train's
+  tiles, Apples to Apples' hand, Mind Meld's paper, Marbles' cards, Wax Pack's pitches, a Cipher code behind its shield
+  (Codebreaker) and Hangman's word being written. The renderer is
   vendor/modern-screenshot (MIT, loaded only then), run in slices of 6 ms in idle time (`snapYield`), on only what meets
   the crop (`snapKeep`: the rest stays as empty boxes of its own size), with about 120 style properties
   (`SNAP_PROPS`), the styles a child would inherit anyway and starting values trimmed (`snapTrim`), the page's pictures
@@ -1121,13 +1137,18 @@ Underlying principles for everything:
   sees with `?ksnap=<id>`, which sync.js makes a sandbox (it reads the device, keeps nothing it writes but `gn_snap_`,
   makes no sound, never reaches the cloud), Kit takes the picture there (`snapFrame`) and posts back, and a touch or a
   scroll puts the frame away to be tried again later; a console cartridge's picture is made from its saved place's
-  screen in IndexedDB, with no emulator, and one whose save has no screen shows its cartridge until it is opened. The
+  screen in IndexedDB, with no emulator. Every save keeps a screen (a save made when the emulator can't give one, the
+  page put away, takes the last screen it gave, `lastPic` in console.js), so only a save from before saves had pictures
+  shows its cartridge until the game is next opened: starting the emulator in the hidden frame was measured (the
+  scratchpad's `emucost.js`, NES, the smallest core, CPU 4x slower: 6 long tasks, the longest 650 to 750 ms, about 3 s of
+  the main thread and a 134 MB WebAssembly heap) and would freeze the home screen it shares a thread with. The
   scratchpad's `kpsnap/` has the scripts: `play.js <size> [games]` (real
   games played and their pictures), `home.js <sizes>` (the cards measured: one foot height, nothing cut), `paths.js`
   (sync, delete, Undo, finish, the demo), `fill.js` (the hidden frames), `console.js` (a homebrew NES cartridge),
   `pnp.js <size> <page:n,...>` (a pass-and-play game of people, the page beside its picture: no hand), `audit.js <size> @games.txt` (every catalog game started and its
-  picture, with how much of it is one flat color; `asheet.js` the contact sheet), `busy.js` (a sheet, a reader, a scan:
-  no picture until it closes), `webgl.js` (the canvas games), `arvela.js` (Arvela mid-turn),
+  picture, with how much of it is one flat color; `asheet.js` the contact sheet), `busy2.js` (a menu, a reader, a scan, a
+  dialog: the table without it; the hand-over: none; a game turned upright: the picture it had), `deal.js <size> <pages>`
+  (a picture asked for every 250 ms through the deal), `ciph.js` (the wheels), `emucost.js` (an emulator's start), `webgl.js` (the canvas games), `arvela.js` (Arvela mid-turn),
   `prof.js <page> <size> <cpu>` (each step's time and the long tasks), `perf.js <base|wt>` (layers and scrolling at 4x).
 - **What keeps the home screen smooth** (Tim, 2026-11-16: "lagginess, scrolling up and down on the iPad mini in
   landscape"; measured with the CPU slowed 4x at 1024x768). Scrolling: **no `backdrop-filter` on anything repeated per

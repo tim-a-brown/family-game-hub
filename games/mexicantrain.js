@@ -1401,7 +1401,8 @@
 
   window.MTUI = {
     init: init, start: start, resume: resume, active: active, stop: stop, undo: undo, clearSave: clearSave, rules: rules,
-    net: netAPI, isNet: function () { return !!NET; }
+    net: netAPI, isNet: function () { return !!NET; },
+    people: function () { return S && !NET ? humans() : 0; }
   };
   // test hooks
   window.__mt = {

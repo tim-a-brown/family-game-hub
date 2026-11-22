@@ -1071,7 +1071,14 @@
       var mc = new MessageChannel(); mc.port1.onmessage = function () { snapT0 = performance.now(); res(); }; mc.port2.postMessage(0);
     });
   }
-  function snapYield() { if (performance.now() - snapT0 >= 6) return snapPause(); }
+  function snapYield() { if (performance.now() - snapT0 >= 6) { snapWatch(); return snapPause(); } }
+  // (while the page is being copied, a moment later: something that began to move meanwhile (a deal, a plaque coming up)
+  // may be half in the copy, which is then made again)
+  function snapWatch() {
+    if (!snapS.busy || snapS.hide || snapS.moved) return;
+    var t = performance.now(); if (t - (snapS.mvt || 0) < 120) return; snapS.mvt = t;
+    try { if (snapMoving()) snapS.moved = true; } catch (e) {}
+  }
   function snapLib() {
     if (!snapS.lib) snapS.lib = window.modernScreenshot ? Promise.resolve(window.modernScreenshot) : loadJs(KIT_BASE + 'vendor/modern-screenshot/modern-screenshot.js').then(function () { return window.modernScreenshot; });
     snapS.lib.catch(function () { snapS.lib = null; });
@@ -1080,16 +1087,34 @@
   // what is never part of the picture: the game bar, sheets, menus, notes, the Kit keyboard, a demo's strip, the
   // turn-your-device cover and the like (a page's own, data-snap="off")
   var SNAP_OFF = '.gbar,.k-scrim,.k-toast,.k-osk,.k-confetti,.k-ho,.k-lock,.k-mo,.k-mob,.k-note,.k-peek,.k-rotate,.k-orient,.k-banner,.k-turnbar,[data-snap="off"],[data-ksh],[class^="kd-"],[class*=" kd-"]';
-  // While a sheet, a menu, a reader or any other cover is up, no picture: the card would show the cover, not the table.
-  // Every kit sheet is a .k-scrim (and the turn-your-device cover: a game held the wrong way up keeps the picture it
-  // had); a game's own overlay that is a dialog says so (aria-modal), or data-snap-busy, or the game says it is busy
-  // (Kit.init's snapBusy). The picture waits and is tried again a few seconds later.
-  var SNAP_BUSY = '.k-scrim,.k-ho,.k-lock,.k-orient,.k-rotate,[aria-modal="true"],dialog[open],[data-snap-busy]';
+  // Two kinds of cover. The hand-over cover and the lock screen are up while what lies behind them may be a person's hand
+  // or a secret (a code being set, a word being written) that a game doesn't mark for snapHide, so while one is up there
+  // is no picture: it waits and is tried again a few seconds later. So does a results card (the game is ending), a game
+  // that says data-snap-busy, or Kit.init's snapBusy.
+  var SNAP_BUSY = '.k-ho,.k-lock,.k-win,[data-snap-busy]';
+  // Anything else laid over the table (a kit sheet or menu, a card reader, a battle dialog, the computer's move being
+  // shown: a .k-scrim, aria-modal, dialog[open], or Kit.init's snapCover) is left out of the picture, so the table
+  // shows as it stands under it; snapHide still hides a person's hand in pass and play.
+  var SNAP_COVER = '.k-scrim,[aria-modal="true"],dialog[open]';
+  // The turn-your-device cover: a game held the wrong way (Goblin Defenders, Centipede upright) gets its picture from
+  // its canvas while that still holds the table as it was last seen, or keeps the picture it had.
+  var SNAP_TURN = '.k-orient,.k-rotate';
+  function snapUp(e) {
+    var r = e.getBoundingClientRect(); if (r.width < 40 || r.height < 40) return false;
+    var cs = getComputedStyle(e); return cs.display !== 'none' && cs.visibility !== 'hidden' && +cs.opacity > 0.05;
+  }
   function snapBusy() {
     if (opts.snapBusy) { try { if (opts.snapBusy()) return true; } catch (e) {} }
-    return [].some.call(doc.querySelectorAll(SNAP_BUSY), function (e) {
-      var r = e.getBoundingClientRect(); if (r.width < 40 || r.height < 40) return false;
-      var cs = getComputedStyle(e); return cs.display !== 'none' && cs.visibility !== 'hidden' && +cs.opacity > 0.05;
+    return [].some.call(doc.querySelectorAll(SNAP_BUSY), snapUp);
+  }
+  function snapTurned() { return [].some.call(doc.querySelectorAll(SNAP_TURN), snapUp); }
+  // the covers up now (never one that holds the play surface the game names)
+  function snapCoverEls() {
+    var sel = SNAP_COVER + (typeof opts.snapCover === 'string' ? ',' + opts.snapCover : ''), own = opts.snap;
+    if (typeof own === 'function') { try { own = own(); } catch (e) { own = null; } }
+    if (typeof own === 'string') own = doc.querySelector(own);
+    return [].filter.call(doc.querySelectorAll(sel), function (e) {
+      return !e.matches(SNAP_BUSY) && !e.closest('.gbar') && snapUp(e) && !(own && own.nodeType === 1 && e.contains(own));
     });
   }
   // A game's own pause card over its table (Paused, Welcome back: put away, an arcade game pauses itself, so the
@@ -1119,9 +1144,21 @@
     var o = opts.snapHide; if (typeof o === 'function') { try { o = o(); } catch (e) { o = null; } }
     snapS.hsel = typeof o === 'string' ? o : null;   // (looked for again as the page is copied: a hand drawn anew meanwhile)
     var l = !o ? [] : typeof o === 'string' ? doc.querySelectorAll(o) : o.nodeType ? [o] : o;
-    var out = [].filter.call(l, function (e) { return e && e.nodeType === 1; }).concat(snapCovers());
+    var out = [].filter.call(l, function (e) { return e && e.nodeType === 1; }).concat(snapCovers(), snapCoverEls());
     out.forEach(function (e) { e.setAttribute('data-ksh', ''); });
     return out;
+  }
+  // What the drawing can't show as the screen does (a 3D drum of digits seen through foreignObject comes out on the wrong
+  // face) is drawn flat in the picture alone: Kit.init's snapFlat gives [{el, css}], and each element's copy takes that
+  // style ("transform:none;display:none" and the like) while the page itself is left as it is.
+  function snapFlatOn() {
+    snapS.flat = null; if (!opts.snapFlat) return [];
+    var l = []; try { l = opts.snapFlat() || []; } catch (e) { l = []; }
+    snapS.flat = l.map(function (x) { return x.css || ''; });
+    return l.map(function (x, i) { x.el.setAttribute('data-ksf', i); return x.el; });
+  }
+  function snapFlatEl(n, css) {
+    (css || '').split(';').forEach(function (d) { var i = d.indexOf(':'); if (i > 0) n.style.setProperty(d.slice(0, i).trim(), d.slice(i + 1).trim(), 'important'); });
   }
   // (only what a picture this small shows is copied from each element's style: some 120 of the browser's 400 or so
   // properties, which is most of the renderer's work)
@@ -1131,7 +1168,7 @@
     'border-top-color border-right-color border-bottom-color border-left-color border-top-left-radius border-top-right-radius border-bottom-left-radius border-bottom-right-radius ' +
     'border-image-source border-image-slice border-image-width border-image-outset border-image-repeat outline-style outline-width outline-color outline-offset ' +
     'background-color background-image background-size background-position-x background-position-y background-repeat background-clip background-origin background-blend-mode ' +
-    'color opacity visibility overflow-x overflow-y overflow-clip-margin clip-path mask-image -webkit-mask-image mask-size -webkit-mask-size mask-position -webkit-mask-position mask-repeat -webkit-mask-repeat ' +
+    'color opacity visibility overflow-x overflow-y overflow-clip-margin clip-path mask-image -webkit-mask-image mask-size -webkit-mask-size mask-position -webkit-mask-position mask-repeat -webkit-mask-repeat mask-composite -webkit-mask-composite mask-clip -webkit-mask-clip mask-origin -webkit-mask-origin mask-mode ' +
     'transform transform-origin transform-style translate rotate scale perspective perspective-origin backface-visibility filter mix-blend-mode isolation box-shadow ' +
     'font-family font-size font-weight font-style font-stretch font-variant-numeric font-variant-caps font-feature-settings font-variation-settings font-optical-sizing line-height letter-spacing word-spacing ' +
     'text-align text-align-last text-transform text-decoration-line text-decoration-color text-decoration-style text-decoration-thickness text-shadow text-overflow text-indent ' +
@@ -1153,7 +1190,7 @@
     if (o && o.nodeType === 1 && snapVis(o)) return o;
     var v = snapView(), va = v.w * v.h, best = null, ba = 0, cont = null, ca = 0;
     [].forEach.call(doc.querySelectorAll(SNAP_TABLE), function (e) {
-      if (e.closest(SNAP_OFF)) return;
+      if (e.closest(SNAP_OFF) || e.closest(SNAP_COVER)) return;
       var r = snapVis(e); if (!r) return; var i = inter(r, v); if (!i) return;
       var a = i.w * i.h, tab = !e.matches('.stage,.k-main,main,#app,#game,#stage');
       if (tab && a > ba) { best = e; ba = a; }
@@ -1334,22 +1371,92 @@
       if (!snapS.hide && (snapS.wait = (snapS.wait || 0) + 1) <= 40) { clearTimeout(snapS.t); snapS.t = setTimeout(snapIdle, 3000); }
       return Promise.resolve(false);
     }
-    // (a piece still moving on the table (a card flying, a tile sliding into place) would be drawn where it is in its
-    // flight: a moment later, a few times at most)
-    if (!snapS.hide && (snapS.mv || 0) < 5 && snapMoving()) { snapS.mv = (snapS.mv || 0) + 1; snapS.dirty = true; snapS.id = id; clearTimeout(snapS.t); snapS.t = setTimeout(snapIdle, 900); return Promise.resolve(false); }
-    snapS.mv = 0; snapS.wait = 0; snapS.busy = true; snapS.dirty = false; snapS.last = Date.now();
-    var hid = snapS.hid = snapHideOn(), un = function () { hid.forEach(function (e) { e.removeAttribute('data-ksh'); }); snapS.hsel = null; };
+    // (held the wrong way: the game's canvas, if it still holds the table; otherwise the picture it had stays)
+    if (snapTurned()) {
+      var tc = snapTurnCanvas(); snapS.dirty = false;
+      if (!tc) return Promise.resolve(false);
+      snapS.busy = true; snapS.moved = false; snapS.last = Date.now();
+      return snapCanvasPic(id, tc).then(function (ok) { snapS.busy = false; return ok; }, function () { snapS.busy = false; return false; });
+    }
+    // (a piece still moving where the picture falls (a card flying into the hand, a tile sliding into place, a card
+    // turning face up) would be drawn where it is in its flight, or face down; a card whose picture is still loading would
+    // be blank: a moment later, as often as it takes, every second at first and then every few seconds)
+    if (!snapS.hide && snapMoving()) { (snapS.seen || []).forEach(function (k) { snapS.amb[k] = (snapS.amb[k] || 0) + 1; }); snapS.mv = (snapS.mv || 0) + 1; snapS.dirty = true; snapS.id = id; clearTimeout(snapS.t); snapS.t = setTimeout(snapIdle, snapS.mv < 12 ? 900 : 3000); return Promise.resolve(false); }
+    snapS.mv = 0; snapS.wait = 0; snapS.moved = false; snapS.mvt = 0; snapS.busy = true; snapS.dirty = false; snapS.last = Date.now();
+    var hid = snapS.hid = snapHideOn(), fl = snapFlatOn(), un = function () { hid.forEach(function (e) { e.removeAttribute('data-ksh'); }); fl.forEach(function (e) { e.removeAttribute('data-ksf'); }); snapS.hsel = null; snapS.flat = null; };
     var p = opts.snapGrab ? snapOwn(id) : snapDom(id);
-    return p.then(function (ok) { un(); snapS.busy = false; if (!ok) snapS.fails++; return ok; }, function (e) { un(); snapS.busy = false; snapS.fails++; console.warn('[snap]', e && (e.stack || e.message) || e); return false; });
+    return p.then(function (ok) { un(); snapS.busy = false; if (!ok) snapS.fails++; else snapS.amb = {}; return ok; }, function (e) { un(); snapS.busy = false; snapS.fails++; console.warn('[snap]', e && (e.stack || e.message) || e); return false; });
   }
+  var SNAP_MOVE = /^(transform|translate|rotate|scale|opacity|left|top|right|bottom|width|height|clipPath|visibility|display|offset[A-Z].*|inset|margin.*)$/;
   function snapMoving() {
-    if (!doc.getAnimations) return false;
-    var t = snapTarget();
-    return doc.getAnimations().some(function (a) {
+    var c = snapCrop(snapTarget()), box = { left: c.x, top: c.y, right: c.x + c.w, bottom: c.y + c.h };
+    var meets = function (el) { var q = el.getBoundingClientRect(); return q.width > 0 && q.right > box.left && q.left < box.right && q.bottom > box.top && q.top < box.bottom; };
+    var out = function (el) { return el.closest(SNAP_OFF) || el.closest(SNAP_COVER); };
+    // (only what moves, turns, grows or fades counts, not a color stepping (a countdown's digits); and something that is
+    // still moving every time the picture has been tried, five times or more, is the table's own life (a show's board
+    // shuffling its lights, the computers playing on), not a move to wait out: snapS.amb counts each kind by its name)
+    var amb = snapS.amb || (snapS.amb = {}), seen = snapS.seen = [];
+    if (doc.getAnimations && doc.getAnimations().filter(function (a) {
       if (a.playState !== 'running') return false;
       var tm = a.effect && a.effect.getComputedTiming ? a.effect.getComputedTiming() : null; if (!tm || !isFinite(tm.endTime)) return false;
-      var el = a.effect.target; return !!el && el.nodeType === 1 && t.contains(el) && !el.closest(SNAP_OFF);
+      var el = a.effect.target; if (el && el.nodeType !== 1) el = el.parentElement;
+      if (!el || out(el) || !meets(el)) return false;
+      var kf = {}; try { kf = (a.effect.getKeyframes() || [])[0] || {}; } catch (e) {}
+      if (!Object.keys(kf).some(function (k) { return SNAP_MOVE.test(k); })) return false;
+      var cn = el.getAttribute('class') || '', k = (a.animationName || a.transitionProperty || a.id || 'a') + '@' + el.tagName + '.' + cn.split(/\s+/)[0];
+      if ((amb[k] || 0) >= 5) return false;
+      if (seen.indexOf(k) < 0) seen.push(k);
+      return true;
+    }).length) return true;
+    // (a picture in the crop not loaded and decoded yet: an <img>, or a card's face drawn from a picture in its style)
+    return [].some.call(doc.querySelectorAll('img'), function (i) {
+      return !(i.complete && i.naturalWidth) && i.getAttribute('src') && i.loading !== 'lazy' && !out(i) && meets(i) && snapVis(i);
+    }) || snapBgWait(box, out);
+  }
+  // card faces and the like drawn from a picture in their style (Kit.card's court figures): each picture is loaded and
+  // decoded once (snapS.bg); one still on its way keeps the picture waiting
+  function snapBgWait(box, out) {
+    var bg = snapS.bg || (snapS.bg = {}), wait = false;
+    [].forEach.call(doc.querySelectorAll('[data-c]'), function (e) {
+      if (wait || out(e)) return;
+      var q = e.getBoundingClientRect(); if (!q.width || q.right <= box.left || q.left >= box.right || q.bottom <= box.top || q.top >= box.bottom) return;
+      [e, e.querySelector('em')].forEach(function (x) {
+        if (!x) return; var re = /url\(["']?([^"')]+)["']?\)/g, u, bi = getComputedStyle(x).backgroundImage || '';
+        while ((u = re.exec(bi))) (function (k) {
+          if (bg[k] === 1) return;
+          if (!bg[k]) { var im = new Image(); bg[k] = 2; im.onload = function () { (im.decode ? im.decode() : Promise.resolve()).then(function () { bg[k] = 1; }, function () { bg[k] = 1; }); }; im.onerror = function () { bg[k] = 1; }; im.src = k; }
+          wait = true;
+        })(u[1]);
+      });
     });
+    return wait;
+  }
+  function snapTurnCanvas() {
+    var best = null, ba = 0;
+    [].forEach.call(doc.querySelectorAll('canvas'), function (c) {
+      if (!c.width || !c.height || c.closest(SNAP_OFF)) return;
+      var a = c.width * c.height; if (a > ba) { best = c; ba = a; }
+    });
+    if (!best || ba < 40000) return null;
+    try {
+      var k = doc.createElement('canvas'); k.width = k.height = 24; var x = k.getContext('2d', { willReadFrequently: true });
+      x.drawImage(best, 0, 0, 24, 24); var d = x.getImageData(0, 0, 24, 24).data, lit = 0, seen = {}, kinds = 0;
+      for (var i = 0; i < d.length; i += 4) {
+        if (d[i + 3] > 40 && d[i] + d[i + 1] + d[i + 2] > 60) lit++;
+        var q = (d[i] >> 5) + '.' + (d[i + 1] >> 5) + '.' + (d[i + 2] >> 5); if (!seen[q]) { seen[q] = 1; kinds++; }
+      }
+      return lit >= 576 * 0.15 && kinds >= 6 ? best : null;
+    } catch (e) { return null; }
+  }
+  // a canvas laid into the card's shape round its middle (the game's own clean-up first: a painted pause card)
+  function snapCanvasPic(id, c) {
+    var undo = null; if (opts.snapClean) { try { undo = opts.snapClean(); } catch (e) {} }
+    var sw = c.width, sh = c.height, w = sw, h = sh; if (w / h > SNAP_AR) w = h * SNAP_AR; else h = w / SNAP_AR;
+    var k = doc.createElement('canvas'); k.width = Math.round(w); k.height = Math.round(h);
+    try { k.getContext('2d').drawImage(c, (sw - w) / 2, (sh - h) / 2, w, h, 0, 0, k.width, k.height); } catch (e) { k = null; }
+    if (typeof undo === 'function') { try { undo(); } catch (e) {} }
+    if (!k) return Promise.resolve(false);
+    return snapSave(id, function (x, W, H) { x.imageSmoothingQuality = 'high'; x.drawImage(k, 0, 0, W, H); }, 0.5, 0.5);
   }
   function snapLive(id) { try { var a = JSON.parse(lsGet('gn_resume', '{}')) || {}; return !!a[id] && !a[id].x; } catch (e) { return false; } }
   // the game's own picture (Kit.init's snapGrab): a canvas, an image or a data URL, laid into the card's shape
@@ -1397,12 +1504,16 @@
           // nothing inside what is never in the picture comes, not even as a box: a hand's cards are boxes with faces)
           filter: function (n) {
             var pa = n.parentElement;
-            if (n.nodeType === 1 && snapS.hsel && !n.hasAttribute('data-ksh') && n.matches(snapS.hsel)) { n.setAttribute('data-ksh', ''); (snapS.hid || []).push(n); }
+            if (n.nodeType === 1 && !n.hasAttribute('data-ksh') && (snapS.hsel && n.matches(snapS.hsel) || pa === doc.body && n.matches(SNAP_COVER))) { n.setAttribute('data-ksh', ''); (snapS.hid || []).push(n); }
             return n.nodeType === 1 && keep.has(n) && !(pa && pa.closest('[data-ksh]')) || keep.has(pa) && !(pa && pa.matches(SNAP_OFF));
           },
           onCloneEachNode: function (n) {
             if (n.nodeType === 1 && n.matches && n.matches(SNAP_OFF)) { n.style.setProperty('visibility', 'hidden', 'important'); while (n.firstChild) n.removeChild(n.firstChild); }
-            else if (n.nodeType === 1) { snapTrim(n); var sh = snapShrinkEl(n); if (sh) return sh.then(snapYield); }
+            else if (n.nodeType === 1) {
+              snapTrim(n);
+              var fi = n.getAttribute('data-ksf'); if (fi != null) { n.removeAttribute('data-ksf'); snapFlatEl(n, (snapS.flat || [])[+fi]); }
+              var sh = snapShrinkEl(n); if (sh) return sh.then(snapYield);
+            }
             return snapYield();
           },
           features: { restoreScrollPosition: true, copyScrollbar: false }
@@ -1526,6 +1637,8 @@
       if (!d || !SNAP_MODE && !snapLive(id)) return false;   // (the game ended while the picture was being made)
       // (a cover that came up while the picture was being made may be in it: tried again once it is down)
       if (snapBusy()) { snapS.dirty = true; snapS.id = id; if (!snapS.hide) { clearTimeout(snapS.t); snapS.t = setTimeout(snapIdle, 3000); } return false; }
+      // (a deal or a move that began while the page was being copied may be half in it: a moment later)
+      if (!snapS.hide && (snapS.moved || snapMoving())) { snapS.dirty = true; snapS.id = id; clearTimeout(snapS.t); snapS.t = setTimeout(snapIdle, 900); return false; }
       var v = JSON.stringify({ v: 1, ts: Date.now(), d: d, cx: Math.round(cx * 1000) / 1000, cy: Math.round(cy * 1000) / 1000 });
       try { LS.setItem(snapKey(id), v); } catch (e) { return false; }
       return true;
@@ -7200,7 +7313,7 @@
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, joker: joker, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     defaults: { sheet: defaultsSheet, get: setupSaved }, setupPage: function (g) { return g && g.play && SETUP_PAGES.indexOf(g.play) >= 0 ? g.play : null; }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, sortCat: sortCat, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, playing: playing, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },
     initials: { of: iniOf, set: iniSet }, player: function () { return curPlayers.length === 1 ? curPlayers[0] : ''; }, players: function () { return curPlayers.slice(); },
-    snap: { now: function () { snapS.id = snapS.id || (game && game.id); snapS.dirty = true; return snapTake(); }, target: function () { return snapTarget(); }, crop: function () { return snapCrop(snapTarget()); }, hide: function () { var l = snapHideOn(); l.forEach(function (e) { e.removeAttribute('data-ksh'); }); return l; }, busy: function () { return snapBusy(); } },
+    snap: { now: function () { snapS.id = snapS.id || (game && game.id); snapS.dirty = true; return snapTake(); }, target: function () { return snapTarget(); }, crop: function () { return snapCrop(snapTarget()); }, hide: function () { var l = snapHideOn(); l.forEach(function (e) { e.removeAttribute('data-ksh'); }); return l; }, busy: function () { return snapBusy(); }, moving: function () { return snapMoving(); } },
     tour: tour, demo: demo, demoScript: demoScript, hasDemo: hasDemo, demoSeen: demoSeen, demoHref: demoHref, inDemo: function () { return DEMO; }, links: { link: linkSheet, profile: profileSheet, review: reviewSheet, fromUrl: linkFromUrl, request: requestSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
     orientOk: function () { return orientOk; },
     orient: function (want, tablets) { orientGate(want, tablets); },

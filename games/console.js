@@ -888,18 +888,22 @@
         E.gameManager.screenshot().then(function (png) {
           var url = URL.createObjectURL(new Blob([png], { type: 'image/png' })), im = new Image();
           // (the picture's own shape, up to 320 wide: it's shown big when you come back)
-          im.onload = function () { var w = Math.min(320, im.width || 320), h = Math.round(w * (im.height || 240) / (im.width || 320)), cv = document.createElement('canvas'); cv.width = w; cv.height = h; var x = cv.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(im, 0, 0, w, h); URL.revokeObjectURL(url); ok(cv.toDataURL('image/jpeg', .82)); };
+          im.onload = function () { var w = Math.min(320, im.width || 320), h = Math.round(w * (im.height || 240) / (im.width || 320)), cv = document.createElement('canvas'); cv.width = w; cv.height = h; var x = cv.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(im, 0, 0, w, h); URL.revokeObjectURL(url); var d = cv.toDataURL('image/jpeg', .82); if (cur) lastPic = { id: cur.id, d: d }; ok(d); };
           im.onerror = function () { ok(null); }; im.src = url;
         }, function () { ok(null); });
       } catch (e) { ok(null); }
     });
   }
+  // (the last screen the emulator gave for this game: a save made when it can't give one now (the page put away, a
+  // frame not drawn yet) still has its picture, for the load sheet and Keep playing)
+  var lastPic = null;
   function saveState(slot, pic) {
     var E = emu(); if (!E || !started || !cur) return Promise.resolve(false);
     var data; try { data = E.gameManager.getState(); } catch (e) { return Promise.resolve(false); }
     if (slot === 'auto') keepPlaying();
     var played = playMs;
-    return (pic ? Promise.resolve(pic) : snap()).then(function (img) { return putState({ key: cur.id + ':' + slot, id: cur.id, slot: slot, at: Date.now(), img: img, data: data, played: played }); }).then(function () { return true; });
+    var id0 = cur.id;
+    return (pic ? Promise.resolve(pic) : snap()).then(function (img) { if (!img && lastPic && lastPic.id === id0) img = lastPic.d; return putState({ key: cur.id + ':' + slot, id: cur.id, slot: slot, at: Date.now(), img: img, data: data, played: played }); }).then(function () { return true; });
   }
   // how long this game has been played, carried in its saves (counted while it runs on screen)
   var playMs = 0;
