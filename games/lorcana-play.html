@@ -1305,6 +1305,43 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .lz-hf .hf-chips{flex:1;min-width:0;padding:2px 0;}
 .lz-hf .fchip .hf-n{font-weight:900;opacity:.6;margin-left:3px;}
 .lz-hf .fchip:disabled{opacity:.4;cursor:default;}
+/* Who this character can challenge (chalList): a row a target over the buttons, scrolling inside when there are many */
+.ct-list.more{-webkit-mask-image:linear-gradient(#000 calc(100% - 22px),transparent);mask-image:linear-gradient(#000 calc(100% - 22px),transparent);}   /* more rows below: they fade out */
+.ct-list.more.end{-webkit-mask-image:none;mask-image:none;}
+.ct-list{width:100%;display:flex;flex-direction:column;gap:6px;margin:0 0 8px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;}
+.ct-row{flex:none;display:flex;align-items:center;gap:10px;min-height:54px;box-sizing:border-box;width:100%;padding:4px 10px 4px 6px;border-radius:14px;text-align:left;font:inherit;color:#fff3cf;cursor:pointer;
+  background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.04));border:1px solid rgba(246,225,168,.28);box-shadow:inset 0 1px 0 rgba(255,255,255,.1);transition:transform .12s,background .12s;}
+.ct-row:active{transform:translateY(1px);background:rgba(246,225,168,.14);}
+@media (hover:hover){.ct-row:hover{background:rgba(246,225,168,.12);border-color:rgba(246,225,168,.5);}}
+.ct-row.win{border-color:rgba(157,240,184,.5);}
+.ct-row.lose{border-color:rgba(255,140,140,.45);}
+.ct-art{flex:none;position:relative;width:44px;height:44px;display:grid;place-items:center;}
+.ct-art .mini{display:block;width:31px;height:44px;border-radius:4px;background-size:cover;background-position:center 18%;box-shadow:0 1px 4px rgba(0,0,0,.45);}
+.ct-art.ex .mini{transform:rotate(90deg);}   /* lying sideways, as it does on the table */
+.ct-tx{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px;}
+.ct-tx b{font-weight:900;color:#ffe9a8;}
+.ct-tx small.good b{color:inherit;}
+.ct-tx small{display:flex;align-items:center;gap:6px;font-size:.8rem;font-weight:700;line-height:1.15;color:rgba(255,243,207,.82);}
+.ct-tx small.good{color:#9df0b8;}
+.ct-tx small.bad{color:#ffaaaa;}
+.ct-pips{flex:none;display:inline-flex;gap:2px;}
+.ct-pips i{width:6px;height:8px;border-radius:2px;background:rgba(255,255,255,.22);}
+.ct-pips i.on{background:#ff6b6b;}
+.ct-tx small.good .ct-pips i.on{background:#7fe0a0;}
+.ct-go{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:rgba(246,225,168,.14);color:#ffe9a8;}
+.ct-go svg{width:18px;height:18px;}
+/* While a challenger is dragged onto a target: a dashed line from where it lay to the target, and what would happen */
+.ghost.on-tgt{opacity:.5;}
+.chal-ln{position:fixed;inset:0;z-index:299;pointer-events:none;overflow:visible;}
+.chal-ln line{stroke:#ff8a8a;stroke-width:3;stroke-dasharray:9 7;stroke-linecap:round;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6));animation:chalDash .6s linear infinite;}
+.chal-ln circle{fill:#ff8a8a;}
+.chal-ln.win line{stroke:#9df0b8;}.chal-ln.win circle{fill:#9df0b8;}
+@keyframes chalDash{to{stroke-dashoffset:-16;}}
+@media (prefers-reduced-motion:reduce){.chal-ln line{animation:none;}}
+.chal-tag{position:fixed;z-index:301;pointer-events:none;max-width:min(300px,calc(100vw - 24px));padding:8px 12px;border-radius:14px;font-weight:800;font-size:.86rem;line-height:1.25;color:#fff3cf;
+  background:rgba(22,20,44,.82);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(246,225,168,.35);box-shadow:inset 0 1px 0 rgba(246,225,168,.35),0 8px 22px rgba(0,0,0,.5);}
+.chal-tag .good{color:#9df0b8;}
+.chal-tag .bad{color:#ffaaaa;}
 .lz-acts.hold .acts-row{position:relative;}
 .lz-acts.hold .why-in{position:absolute;inset:0;margin:0;display:grid;place-items:center;padding:0 12px;}
 .act{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:70px;padding:8px 6px 7px;border:0;border-radius:14px;cursor:pointer;
@@ -7084,6 +7121,18 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
       t: killT ? 'Banishes ' + esc(nm(t)) : dA ? esc(nm(t)) + ' ' + sv('w', 'Willpower', lT + '→' + (lT - dA), -1) : esc(nm(t)) + ' unhurt',
       a: killA ? esc(nm(a)) + ' banished too' : dD ? esc(nm(a)) + ' ' + sv('w', 'Willpower', lA + '→' + (lA - dD), -1) : esc(nm(a)) + ' unhurt' };
   }
+  // The same outcome in plain words, one sentence for each side ("Gustav the Giant takes 3 damage",
+  // "Grand Councilwoman is banished"), with the willpower each has left before and the damage it takes (for pips)
+  function chalSay(a, t) {
+    var oc = chalOutcome(a, t), dA = oc.dA, dD = oc.dD;
+    var lT = Math.max(0, WP(t) - C(t).dmg), lA = Math.max(0, WP(a) - C(a).dmg), killT = dA > 0 && dA >= lT, killA = dD > 0 && dD >= lA;
+    if (chalBanishes(a, t)) { dA = dD = 0; killT = true; killA = false; }
+    var nT = DD(t).n, nA = DD(a).n; if (nA === nT) nA = 'Your ' + nA;
+    function say(n, d, k) { return k ? n + ' is banished' : d ? n + ' takes ' + d + ' damage' : n + ' takes no damage'; }
+    var sT = say(nT, dA, killT), sA = say(nA, dD, killA);
+    return { killT: killT, killA: killA, dT: dA, dA: dD, lT: lT, lA: lA, t: sT, a: sA, why: oc.why,
+      line: sT + ', and ' + (sA.indexOf('Your ') === 0 ? 'your' + sA.slice(4) : sA) + '.' };
+  }
   function challengeScore(a, t) {
     var loc = isLoc(t), oc = chalOutcome(a, t), dA = oc.dA, dD = oc.dD;
     var killT = dA > 0 && C(t).dmg + dA >= WP(t), killA = dD > 0 && C(a).dmg + dD >= WP(a);
@@ -9819,7 +9868,7 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
     if (e.cancelable) e.preventDefault();
     drag.g.style.left = e.clientX + 'px'; drag.g.style.top = e.clientY + 'px';
     var t = dropAt(e.clientX, e.clientY);
-    if (t !== drag.hover) { if (drag.hover) drag.hover.node.classList.remove('hover-drop'); drag.hover = t; if (t) t.node.classList.add('hover-drop'); }
+    if (t !== drag.hover) { if (drag.hover) drag.hover.node.classList.remove('hover-drop'); drag.hover = t; if (t) t.node.classList.add('hover-drop'); chalHover(drag, t); }
   }
   function onCancel() { if (drag && drag.on) cleanDrag(drag); drag = null; unlisten(); }
   function onUp(e) {
@@ -9841,7 +9890,7 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
       if (canInk(pi, u)) out.push({ node: $('.lp-strip.bot .inkz', lp), go: function () { runAction({ k: 'ink', u: u }); } });
     } else if (ctx === 'board' && C(u).o === pi) {
       if (canQuest(u)) out.push({ node: $('.lp-strip.bot .lore', lp), go: function () { runAction({ k: 'quest', u: u }); } });
-      if (canChallenger(u)) defenders(u).forEach(function (t) { var n = slotNode(t); if (n) out.push({ node: n, slot: 1, go: function () { runAction({ k: 'chal', u: u, t: t }); } }); });
+      if (canChallenger(u)) defenders(u).forEach(function (t) { var n = slotNode(t); if (n) out.push({ node: n, slot: 1, chal: t, go: function () { runAction({ k: 'chal', u: u, t: t }); } }); });
       S.P[pi].board.forEach(function (l) { if (canMove(u, l)) { var n = slotNode(l); if (n) out.push({ node: n, slot: 1, go: function () { runAction({ k: 'move', u: u, t: l }); } }); } });
     }
     return out.sort(function (a, b) { return (b.slot || 0) - (a.slot || 0); });
@@ -9867,8 +9916,31 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
     Kit.haptic('light');
     return true;
   }
+  // Hovering a challenger over a card it can challenge: a dashed line from where the challenger lies to the target, and a
+  // glass tag by the target saying what would happen ("Gustav the Giant takes 3 damage, and Grand Councilwoman is banished.")
+  function chalHover(d, t) {
+    if (d.cl) { d.cl.remove(); d.cl = null; } if (d.ct) { d.ct.remove(); d.ct = null; }
+    if (d.g) d.g.classList.toggle('on-tgt', !!(t && t.chal));   // see-through over the target, so the target shows under it
+    if (!t || !t.chal || !S.cards[t.chal] || !S.cards[d.u]) return;
+    var p = chalSay(d.u, t.chal), a = d.s.getBoundingClientRect(), b = t.node.getBoundingClientRect();
+    var ax = a.left + a.width / 2, ay = a.top + a.height / 2, bx = b.left + b.width / 2, by = b.top + b.height / 2;
+    var ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('class', 'chal-ln' + (p.killT && !p.killA ? ' win' : '')); svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('width', innerWidth); svg.setAttribute('height', innerHeight);
+    svg.innerHTML = '<line x1="' + ax + '" y1="' + ay + '" x2="' + bx + '" y2="' + by + '"/><circle cx="' + bx + '" cy="' + by + '" r="5"/>';
+    document.body.appendChild(svg); d.cl = svg;
+    var nA = p.a.indexOf('Your ') === 0 ? 'your' + p.a.slice(4) : p.a;
+    var tag = el('div', { class: 'chal-tag', role: 'status', html: '<span class="' + (p.killT ? 'good' : '') + '">' + esc(p.t) + '</span>, and <span class="' + (p.killA ? 'bad' : '') + '">' + esc(nA) + '</span>.' });
+    document.body.appendChild(tag); d.ct = tag;
+    // beside the target, on the side away from the challenger (above a target in the top half), kept on the screen
+    var tw = tag.offsetWidth, th = tag.offsetHeight, m = 10, x = Math.max(12, Math.min(innerWidth - tw - 12, bx - tw / 2));
+    var y = by < ay ? b.top - th - m : b.bottom + m;
+    if (y < 8) y = b.bottom + m; if (y + th > innerHeight - 8) y = Math.max(8, b.top - th - m);
+    tag.style.left = Math.round(x) + 'px'; tag.style.top = Math.round(y) + 'px';
+  }
   function cleanDrag(d) {
     if (d.g) d.g.remove();
+    if (d.cl) d.cl.remove(); if (d.ct) d.ct.remove(); d.cl = d.ct = null;
     d.s.classList.remove('drag-src');
     (d.drops || []).forEach(function (t) { t.node.classList.remove('tgt-ok', 'drop-ok', 'hover-drop'); });
     var lp = $('.lp'); if (lp) lp.classList.toggle('picking', !!ui.pick);
@@ -10463,7 +10535,7 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
     if (!ov || !ov.isConnected || !phoneZoom() || !S || ui.screen !== 'game' || ov.classList.contains('lz-min') || ov.classList.contains('reveal')) return;
     // sized once, when the view opens (for the wordiest card in the row); swiping never resizes it after that
     if (ui.fitDone) return; ui.fitDone = true;
-    var over = ov.scrollHeight - ov.clientHeight;
+    var over = ov.scrollHeight - ov.clientHeight, ctMax0 = 0;
     // swiping through several cards: size for the one with the most to read, so the size is set once when it opens
     var inf = $('.lz-in > .lz-info', ov);
     if (ov._fitList && inf && inf.offsetWidth) {
@@ -10475,15 +10547,21 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
         probe.remove(); ui.fitKey = key; ui.fitExtra = Math.max(0, hmax - hcur);
       }
       over += ui.fitExtra || 0;
+      // and for the one with the most challenge targets listed over its buttons (chalList)
+      var ctN = function (x) { return S.cards[x] && isChar(x) && C(x).o === S.cur && canAct() && canChallenger(x) ? defenders(x).length : 0; };
+      var ctMax = 0; ov._fitList.forEach(function (x) { ctMax = Math.max(ctMax, chalListH(ctN(x))); }); ctMax0 = ctMax;
+      over += Math.max(0, ctMax - chalListH(ctN(ov._fitU)));
     }
     if (over <= 2) return;
     var c = $('.lz-fc.focus', ov) || $('.lz-card', ov); if (!c) return;
-    var cu = c.classList.contains('loc') ? c.offsetWidth : c.offsetHeight, nu = Math.max(LZ_FIT_MIN, Math.floor(cu - over - 6));
+    var cu = c.classList.contains('loc') ? c.offsetWidth : c.offsetHeight, nu = Math.max($('.ct-list', ov) || ctMax0 ? LZ_FIT_MIN_CT : LZ_FIT_MIN, Math.floor(cu - over - 6));
     if (nu >= cu - 1) return;
     ui.fitCu = nu; ov.classList.add('lz-fit'); ov.style.setProperty('--cufit', nu + 'px');
     if (lastFlow && lastFlow.ov === ov && lastFlow.remeasure) lastFlow.remeasure();
   }
-  var LZ_FIT_MIN = 304;   // the smallest the card gets: big enough to read and to reach (the details may scroll a little)
+  // the smallest the card gets: big enough to read and to reach (the details may scroll a little); a little smaller when
+  // the challenge targets are listed over the buttons (chalList)
+  var LZ_FIT_MIN = 304, LZ_FIT_MIN_CT = 214;
   // A long thumbnail strip: the little cards overlap like a fanned hand to fit the width (a really long one still
   // scrolls, keeping the card you're on in the middle)
   function stripFit(st) {
@@ -11086,7 +11164,7 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
   }
   function openZoom(u, dir) {
     if (ui.cp && !ui.cp.fin) { Kit.sfx('tap'); ui.cp.show(); return; }
-    var d = DD(u), z = zoneOf(u), acts = [], whys = [];
+    var d = DD(u), z = zoneOf(u), acts = [], whys = [], chalRows = null;
     var info = headHTML(d) + defMeta(d, u) + statusHTML(u, z) +
       '<div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, z && z.z === 'board' ? u : null) + '</div>';
     var c = C(u), pi = S.cur, my = canAct() && c.o === pi;
@@ -11151,7 +11229,10 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
           : oo.board.some(isChar) ? { note: 'No exerted characters', tip: 'Only exerted characters can be challenged. ' + oo.name + '’s are all ready.' }
           : { note: 'Nothing to challenge', tip: oo.name + ' has no characters in play.' };
         if (noTgt) acts.push({ label: 'Challenge', off: noTgt });
-        else add('Challenge' + (cTax ? ' · pay ' + cTax + ' ink' : ''), canChallenger(u) && ds.length > 0, '', function () { humanChallenge(u); });
+        // One target: the button names it and challenges it. Several: each target is a row of its own over the buttons
+        // (chalRows, below), saying what the challenge would do, and a tap on a row challenges that card
+        else if (ds.length === 1) add('Challenge ' + DD(ds[0]).n + (cTax ? ' · pay ' + cTax + ' ink' : ''), canChallenger(u), '', function () { runAction({ k: 'chal', u: u, t: ds[0] }); });
+        if (ds.length) chalRows = { u: u, ds: ds };
         if (cTax && inkReady(pi) < cTax && !c.ex && c.dry) acts.push({ label: 'Challenge', off: { ink: cTax, have: inkReady(pi), tip: 'Needs ' + cTax + ' ink to challenge.' } });
         if (S.P[pi].board.some(isLoc)) add('Move to a location', S.P[pi].board.some(function (l) { return canMove(u, l); }), '', function () { humanMove(u); });
         if (d.K.boost) add('Boost · ' + d.K.boost + ' ink', canBoost(u), '', function () { runAction({ k: 'boost', u: u }); });
@@ -11202,6 +11283,41 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
     }
     if (nav && nav.ctx === 'hand' && S.P[nav.handPi].hand.length > 1) handBar(zov, u, nav.handPi);
     if (z && z.z === 'board' && bmine && S.P[z.pi].board.length > 1) boardBar(zov, u, z.pi);
+    if (chalRows && zov) chalList(zov, chalRows.u, chalRows.ds);
+  }
+  // ── Who this character can challenge: a row for each card, its picture, its name and what the challenge would do to
+  // it and to yours (willpower as pips, the damage lit; a card banished on your side in red, theirs in the good color).
+  // A tap on a row challenges that card. The rows sit over the buttons and scroll inside their panel when there are many ──
+  var CT_ROW = 54, CT_GAP = 6;
+  function ctCap() { return phoneZoom() ? 1.45 : 4.5; }   // rows in view before the panel scrolls
+  function chalListH(n) { if (!n) return 0; var c = Math.min(n, ctCap()); return Math.ceil(c * CT_ROW + (Math.ceil(c) - 1) * CT_GAP) + 8; }
+  function ctPips(left, dmg, kill) {
+    if (!left || left > 10) return '';
+    var on = kill ? left : Math.min(dmg, left), h = '';
+    for (var i = 0; i < left; i++) h += '<i class="' + (i >= left - on ? 'on' : '') + '"></i>';
+    return '<span class="ct-pips" aria-hidden="true">' + h + '</span>';
+  }
+  function chalList(ov, u, ds) {
+    var acts = $('.lz-in > .lz-acts', ov), host = acts || $('.lz-in', ov); if (!host) return;
+    var box = el('div', { class: 'ct-list', role: 'group', 'aria-label': DD(u).n + ' can challenge' });
+    box.style.maxHeight = chalListH(ds.length) - 8 + 'px';
+    ds.forEach(function (t) {
+      var p = chalSay(u, t), dt = DD(t);
+      box.appendChild(el('button', { type: 'button', class: 'ct-row' + (p.killT ? ' win' : '') + (p.killA ? ' lose' : ''), 'aria-label': 'Challenge ' + dt.full + '. ' + p.line,
+        html: '<span class="ct-art' + (C(t).ex ? ' ex' : '') + '">' + miniArt(dt) + '</span>' +
+          '<span class="ct-tx">' +
+          '<small class="' + (p.killT ? 'good' : '') + '">' + ctPips(p.lT, p.dT, p.killT) + '<span><b>' + esc(dt.n) + '</b>' + esc(p.t.slice(dt.n.length)) + '</span></small>' +
+          '<small class="' + (p.killA ? 'bad' : '') + '">' + ctPips(p.lA, p.dA, p.killA) + '<span>' + esc(p.a) + '</span></small></span>' +
+          '<i class="ct-go" aria-hidden="true">' + ACT_SWORDS + '</i>',
+        onclick: function (e) { e.stopPropagation(); Kit.sfx('tap'); Kit.haptic('light'); closeZoom(); runAction({ k: 'chal', u: u, t: t }); } }));
+    });
+    if (ds.length > 1) {
+      var atEnd = function () { box.classList.toggle('end', box.scrollTop + box.clientHeight >= box.scrollHeight - 2); };
+      box.classList.add('more'); box.addEventListener('scroll', atEnd, { passive: true }); requestAnimationFrame(atEnd);
+      if (window.ResizeObserver) new ResizeObserver(atEnd).observe(box);
+    }
+    if (acts) acts.insertBefore(box, acts.firstChild);
+    else { var inf = $('.lz-in > .lz-info', ov); host.insertBefore(box, inf || null); }
   }
   // ── Your cards in play: quick filters for what can still act this turn (chips under the strip, like the hand's) ──
   var BF = [['all', 'All'], ['quest', 'Can quest'], ['chal', 'Can challenge'], ['abil', 'Abilities'], ['move', 'Can move']];
