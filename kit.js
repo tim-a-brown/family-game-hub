@@ -1151,9 +1151,27 @@
   // What the drawing can't show as the screen does (a 3D drum of digits seen through foreignObject comes out on the wrong
   // face) is drawn flat in the picture alone: Kit.init's snapFlat gives [{el, css}], and each element's copy takes that
   // style ("transform:none;display:none" and the like) while the page itself is left as it is.
+  // (a card's face turned away from you, backface-visibility hidden, is drawn anyway by the renderer, mirrored and over
+  // the side that faces you: Conversation Starters' card showed its back, so every such face turned away is left out)
+  function snapAway() {
+    var root = snapTarget(), out = [];
+    if (!root || !root.querySelectorAll) return out;
+    Array.prototype.forEach.call(root.querySelectorAll('*'), function (e) {
+      var cs = getComputedStyle(e); if (cs.backfaceVisibility !== 'hidden') return;
+      var m = new DOMMatrix(), n = e, guard = 0;
+      while (n && n.nodeType === 1 && guard++ < 12) {
+        var t = getComputedStyle(n).transform; if (t && t !== 'none') { try { m = new DOMMatrix(t).multiply(m); } catch (x) {} }
+        var pa = n.parentElement; if (!pa || getComputedStyle(pa).transformStyle !== 'preserve-3d') break; n = pa;
+      }
+      if (m.m33 < 0) out.push({ el: e, css: 'opacity:0' });
+    });
+    return out;
+  }
   function snapFlatOn() {
-    snapS.flat = null; if (!opts.snapFlat) return [];
-    var l = []; try { l = opts.snapFlat() || []; } catch (e) { l = []; }
+    snapS.flat = null;
+    var l = []; if (opts.snapFlat) { try { l = opts.snapFlat() || []; } catch (e) { l = []; } }
+    try { l = l.concat(snapAway()); } catch (e) {}
+    if (!l.length) return [];
     snapS.flat = l.map(function (x) { return x.css || ''; });
     return l.map(function (x, i) { x.el.setAttribute('data-ksf', i); return x.el; });
   }

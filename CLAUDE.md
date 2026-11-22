@@ -1111,7 +1111,7 @@ Underlying principles for everything:
   left out so the table shows (`snapCovers`); one painted on the canvas is drawn away by `snapClean` (Goblin
   Defenders). **What the drawing can't show as the screen does** is drawn flat in the picture alone: Kit.init's
   `snapFlat` gives `[{el, css}]` and each element's copy takes that style (Cipher Cases' number and letter wheels, a 3D
-  drum that came out on the wrong digits: the face in the window alone, flat). Masks keep their `mask-composite` (an
+  drum that came out on the wrong digits: the face in the window alone, flat). A face turned away from you (`backface-visibility: hidden` under a 3D turn: Conversation Starters' card showed its mirrored back over the question) is left out of the picture by itself (`snapAway`). Masks keep their `mask-composite` (an
   Arvela card's frame line had become a tan wash over the hand). **A person's hand never shows in pass and play** (Tim, the same day): `snapHide` gives a game's hand while
   more than one person plays (`.chand`, `.hand`, `.so-hand`, a Scrabble rack, Battleship's own ships, Lorcana's and
   Arvela's hands; each page's `Kit.init`), left as an empty box in the picture; the secret in other pass-and-play games too: Dominoes' and Mexican Train's
