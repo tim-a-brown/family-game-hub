@@ -139,6 +139,11 @@ var GameIcon = (function () {
       [[15.2, 12], [19.6, 12], [13, 7.8]].forEach(function (q) { s += circ(q[0], q[1], 2.5, W, ' stroke="' + K + '" stroke-width="1.1"'); });
       return s;
     },
+    boku: function () {   // a line of black marbles across the hexagon, and under it two white ones trapped between two black
+      var s = path('M6 2.2h12l5.4 9.8L18 21.8H6L.6 12z', 'none', ' stroke="' + K + '" stroke-opacity=".28" stroke-width="1.3" stroke-linejoin="round"') + line('M4 7.6h16', '#ffd75a', 1.4);
+      [4.6, 9.5, 14.4, 19.3].forEach(function (x) { s += circ(x, 7.6, 2.5, K); });
+      return s + circ(4.6, 16.4, 2.5, K) + circ(9.5, 16.4, 2.4, W, ' stroke="' + K + '" stroke-width="1.1"') + circ(14.4, 16.4, 2.4, W, ' stroke="' + K + '" stroke-width="1.1"') + circ(19.3, 16.4, 2.5, K);
+    },
     twixt: function () {   // three red pegs joined by two links, a black peg's link across the way
       return line('M4.5 19.5 8.5 11.5 16.5 7.5', '#c42a20', 2.6) + line('M13.5 18 18.5 14 21 20', K, 2.4) +
         circ(4.5, 19.5, 2.6, R) + circ(8.5, 11.5, 2.6, R) + circ(16.5, 7.5, 2.6, R) + circ(13.5, 18, 2.4, K) + circ(18.5, 14, 2.4, K) + circ(21, 20, 2.4, K);

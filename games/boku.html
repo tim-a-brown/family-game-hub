@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Boku</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
+<script src="boku-core.js"></script>
+<style>
+.bk-col{max-width:540px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
+.bk-credit{margin:-6px 0 2px;text-align:center;font-size:.78rem;font-weight:600;color:var(--text-3);}
+
+/* A player's plate: their marble, their name and whose turn, and the tray of the other color's marbles they have taken */
+.pbar{display:flex;align-items:center;gap:10px;min-height:52px;padding:6px 12px 6px 10px;border-radius:16px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);transition:box-shadow .2s,background .2s;}
+.pbar.on{background:color-mix(in srgb,var(--lit) 11%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--lit) 65%,transparent),0 0 18px color-mix(in srgb,var(--lit) 18%,transparent);}
+.pbar .who{flex:1;min-width:0;display:flex;flex-direction:column;}
+.pbar .nm{font-weight:800;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;}
+.pbar .nm .ico{width:15px;height:15px;color:var(--text-3);flex:none;}
+.pbar .sub{font-size:.72rem;font-weight:700;color:var(--text-3);white-space:nowrap;}
+.pbar.on .sub{color:var(--lit-ink);}
+.tok{--d:28px;width:var(--d);height:var(--d);border-radius:50%;flex:none;}
+.think i{display:inline-block;width:5px;height:5px;margin:0 1px;border-radius:50%;background:currentColor;animation:th 1s infinite;}
+.think i:nth-child(2){animation-delay:.15s}.think i:nth-child(3){animation-delay:.3s}
+@keyframes th{50%{opacity:.2;transform:translateY(-2px);}}
+/* the tray: a maple channel holding the marbles this player has taken, the count beside them */
+.tray{--s:17px;display:flex;align-items:center;gap:3px;padding:4px 7px;border-radius:999px;flex:none;min-width:calc(var(--s) * 2 + 14px);min-height:calc(var(--s) + 8px);
+  background:linear-gradient(180deg,#5b3a1c,#8a5c30);box-shadow:inset 0 2px 4px rgba(0,0,0,.7),inset 0 -1px 0 rgba(255,255,255,.14),0 1px 0 rgba(255,255,255,.06);}
+.tray .tok{--d:var(--s);}
+.tray .tok.new{animation:slotpop .5s var(--spring);}
+.tray .tn{font-weight:800;font-size:calc(var(--s) * .72);color:#ffe9c4;font-variant-numeric:tabular-nums;margin-left:2px;min-width:1ch;}
+.tray .tn.z{opacity:.55;}
+@keyframes slotpop{0%{transform:scale(.3);}60%{transform:scale(1.25);}100%{transform:scale(1);}}
+
+/* Marbles: white milk glass and black smoked glass */
+.mwh,.tok.w{background:radial-gradient(circle at 34% 28%,#fff 0,#fbf8f2 20%,#e4ddd0 58%,#a89f8f 100%);box-shadow:inset 0 -2px 3px rgba(0,0,0,.18),0 2px 3px rgba(0,0,0,.55);}
+.mbl,.tok.b{background:radial-gradient(circle at 34% 28%,#a7b0bf 0,#4a5160 15%,#1b1e25 46%,#050608 100%);box-shadow:inset 0 -2px 3px rgba(255,255,255,.1),0 2px 3px rgba(0,0,0,.55);}
+
+/* The board: a hexagon of honey maple round an indigo lacquer field of 80 holes, each with a brass lip */
+.frame{position:relative;aspect-ratio:1080/1010;width:100%;touch-action:manipulation;user-select:none;-webkit-user-select:none;view-transition-name:bk-board;}
+.frame>svg.bsv{position:absolute;inset:0;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 14px 22px rgba(0,0,0,.5));}
+.frame .lay{position:absolute;inset:0;}
+.frame svg.fx{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:4;}
+.mb{position:absolute;width:8.1%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);z-index:2;}
+.mb::after{content:"";position:absolute;left:20%;top:13%;width:30%;height:22%;border-radius:50%;background:radial-gradient(ellipse,rgba(255,255,255,.85),rgba(255,255,255,0) 70%);transform:rotate(-28deg);pointer-events:none;}
+.mb.mbl::after{opacity:.5;}
+.mb.lastm::before{content:"";position:absolute;left:40%;top:40%;width:20%;height:20%;border-radius:50%;background:var(--lit);box-shadow:0 0 0 1.5px rgba(0,0,0,.3);}
+.mb.drop{animation:drop .42s cubic-bezier(.3,.7,.35,1.2) both;}
+@keyframes drop{0%{transform:translate(-50%,-90%) scale(1.45);opacity:0;}55%{transform:translate(-50%,-50%) scale(.92,1.06);opacity:1;}80%{transform:translate(-50%,-50%) scale(1.04,.96);}100%{transform:translate(-50%,-50%) scale(1);}}
+.mb.ghost{opacity:.5;z-index:3;pointer-events:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--lit) 80%,transparent),0 0 18px var(--litg);}
+.mb.ghost.touch{animation:gpulse 1.2s ease-in-out infinite;}
+@keyframes gpulse{50%{opacity:.72;}}
+.mb.pend{z-index:3;box-shadow:0 0 0 3px var(--lit),0 0 18px var(--litg),0 3px 4px rgba(0,0,0,.5);}
+/* the marbles a placement would trap: ringed red; while you choose, they pulse and take a tap */
+.mb.trap{box-shadow:0 0 0 3px #ff6a4a,0 0 14px rgba(255,100,70,.6),0 3px 4px rgba(0,0,0,.5);z-index:3;}
+.mb.pick{animation:pick 1s ease-in-out infinite;cursor:pointer;}
+@keyframes pick{50%{box-shadow:0 0 0 5px #ff5232,0 0 26px 5px rgba(255,80,50,.75),0 3px 4px rgba(0,0,0,.5);}}
+.mb.win{z-index:3;animation:winl 1.4s ease-in-out infinite;}
+@keyframes winl{0%,100%{box-shadow:0 0 0 3px var(--lit),0 0 20px 4px var(--litg);}50%{box-shadow:0 0 0 5px #fff3c4,0 0 34px 10px var(--litg);}}
+.mb.taken{z-index:6;}
+.dh{position:absolute;width:8.1%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;}
+.fly{position:fixed;border-radius:50%;z-index:60;pointer-events:none;}
+/* a hole the side to move may not use (a marble was just taken from it): a red ring crossed through */
+.blk{position:absolute;width:8.2%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;z-index:1;pointer-events:none;
+  box-shadow:inset 0 0 0 3px rgba(255,95,70,.9),0 0 12px rgba(255,80,50,.45);background:rgba(120,20,10,.35);animation:blkin .5s var(--spring) both;}
+.blk::before,.blk::after{content:"";position:absolute;left:18%;right:18%;top:calc(50% - 1.5px);height:3px;border-radius:2px;background:rgba(255,110,90,.95);transform:rotate(45deg);}
+.blk::after{transform:rotate(-45deg);}
+@keyframes blkin{from{transform:translate(-50%,-50%) scale(.3);opacity:0;}}
+/* where a player would make five next: a dashed ring in that player's color */
+.thr{position:absolute;width:7.2%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;z-index:1;pointer-events:none;border:2.5px dashed;animation:thr 1.6s ease-in-out infinite;}
+.thr.w{border-color:rgba(255,250,236,.9);}
+.thr.b{border-color:#0b0d12;box-shadow:0 0 0 1.5px rgba(255,255,255,.35);}
+@keyframes thr{50%{transform:translate(-50%,-50%) scale(.86);}}
+
+.turn{margin:2px 0 0;min-height:34px;}
+.acts{display:flex;gap:10px;justify-content:center;margin-top:2px;}
+.acts .btn{flex:1;max-width:180px;}
+
+/* A layout for each shape (<html data-o>, set by the script, so a turn of the device glides inside Kit.glide) */
+::view-transition-group(*){animation-duration:.45s;animation-timing-function:cubic-bezier(.22,1,.36,1);}
+.bk-col>.turn{view-transition-name:bk-turn;}
+.bk-col>.acts{view-transition-name:bk-acts;}
+.bk-col>.pbar.top{view-transition-name:bk-top;}
+.bk-col>.pbar.bot{view-transition-name:bk-bot;}
+/* Phone upright: the board as wide as the screen, the parts spread evenly down the height */
+html[data-o=port] #app.stage.ipl{min-height:calc(100dvh - var(--bar));display:flex;flex-direction:column;justify-content:stretch;
+  padding-left:8px;padding-right:8px;padding-bottom:calc(var(--safe-b) + 18px);}
+html[data-o=port] .bk-col{width:100%;gap:10px;flex:1 1 auto;justify-content:space-evenly;}
+html[data-o=port] .bk-col>.frame{width:min(100%,calc((100dvh - var(--bar) - 250px) * 1.069));align-self:center;}
+/* a tall phone: the board is held by the width, so the plates take the height left over */
+@media (max-width:699px) and (min-height:740px){
+  html[data-o=port] .pbar{padding:12px 16px;min-height:72px;gap:14px;}
+  html[data-o=port] .pbar>.tok{--d:46px;}
+  html[data-o=port] .pbar .nm{font-size:1.12rem;}
+  html[data-o=port] .pbar .sub{font-size:.8rem;}
+  html[data-o=port] .tray{--s:26px;gap:4px;padding:5px 9px;}
+  html[data-o=port] .turn{font-size:1.05rem;}
+}
+@media (max-height:600px){ html[data-o=port] .bk-col{gap:6px;} html[data-o=port] .pbar{min-height:46px;} html[data-o=port] .bk-col>.frame{width:min(100%,calc((100dvh - var(--bar) - 214px) * 1.069));} html[data-o=port] .turn{min-height:24px;font-size:.92rem;} html[data-o=port] .acts .btn{min-height:40px;} }
+@media (min-width:700px){
+  html[data-o=port] #app.stage.ipl{max-width:none;padding-left:16px;padding-right:16px;}
+  html[data-o=port] .bk-col{max-width:760px;gap:12px;}
+  html[data-o=port] .bk-col>.frame{width:min(100%,calc((100dvh - var(--bar) - 290px) * 1.069));}
+  html[data-o=port] .pbar{min-height:64px;padding:8px 16px 8px 12px;}
+  html[data-o=port] .pbar .nm{font-size:1.1rem;}
+  html[data-o=port] .pbar .sub{font-size:.85rem;}
+  html[data-o=port] .pbar>.tok{--d:36px;}
+  html[data-o=port] .tray{--s:26px;gap:5px;padding:5px 9px;}
+}
+/* Sideways: the players, whose turn and the buttons at the left to look at; the board, where the taps go, at the right */
+html[data-o=land] #app.stage.ipl{max-width:none;padding:2px max(18px,env(safe-area-inset-right)) calc(var(--safe-b) + 8px) max(18px,env(safe-area-inset-left));}
+html[data-o=land] .bk-col{--lc:250px;--cg:clamp(16px,3vw,40px);--bh:calc(100dvh - var(--bar) - 12px - var(--safe-b));--bw:min(calc(var(--bh) * 1.069),calc(100vw - 40px - var(--lc) - var(--cg)));
+  max-width:none;height:calc(var(--bw) * .935);display:grid;grid-template-columns:minmax(var(--lc),340px) var(--bw);
+  grid-template-rows:max-content max-content minmax(0,1fr) max-content max-content max-content;
+  grid-template-areas:"t b" "s b" ". b" "a b" "r b" "p b";column-gap:var(--cg);row-gap:10px;justify-content:center;align-content:center;}
+html[data-o=land] .bk-col>.frame{grid-area:b;width:var(--bw);}
+html[data-o=land] .bk-col>.pbar.top{grid-area:t;}
+html[data-o=land] .bk-col>.pbar.bot{grid-area:p;}
+html[data-o=land] .bk-col>.turn{grid-area:s;justify-self:start;}
+html[data-o=land] .bk-col>.acts{grid-area:a;justify-content:flex-start;}
+html[data-o=land] .bk-col>.bk-room{display:none;}
+@media (min-height:600px){
+  html[data-o=land] .bk-col{--lc:300px;}
+  html[data-o=land] .pbar{min-height:62px;}
+  html[data-o=land] .pbar>.tok{--d:34px;}
+  html[data-o=land] .tray{--s:24px;gap:4px;}
+}
+@media (max-height:420px){ html[data-o=land] .bk-col{row-gap:6px;--lc:230px;} html[data-o=land] .turn{min-height:26px;} html[data-o=land] .pbar{min-height:46px;} }
+.bk-room{display:none;}
+
+/* ── The desk: a window larger than a phone's or a tablet's (html.bk-dk, set by deskPlan) ── */
+html.bk-dk #app.stage.ipl{max-width:none;padding:0;min-height:0;}
+html.bk-dk .bk-col{justify-content:normal;position:fixed;left:var(--x0);top:var(--y0);width:var(--aw);height:var(--ah);max-width:none;margin:0;display:grid;gap:var(--g);
+  grid-template-columns:var(--cols);grid-template-rows:max-content max-content max-content max-content minmax(0,1fr);grid-template-areas:var(--areas);}
+html.bk-dk .bk-col>.frame{grid-area:b;width:var(--bw);align-self:center;justify-self:center;}
+html.bk-dk .bk-col>.pbar.top{grid-area:t;}
+html.bk-dk .bk-col>.pbar.bot{grid-area:p;}
+html.bk-dk .bk-col>.turn{grid-area:s;justify-self:start;font-size:calc(1rem * var(--dk));}
+html.bk-dk .bk-col>.acts{grid-area:a;justify-content:flex-start;}
+html.bk-dk .bk-col>.bk-room{grid-area:r;display:flex;flex-direction:column;gap:var(--g);min-height:0;overflow:hidden;view-transition-name:bk-room;}
+html.bk-dk .bk-room.row{flex-direction:row;flex-wrap:wrap;align-items:flex-start;align-content:flex-start;}
+html.bk-dk .bk-room.row>.pn{flex:1 1 calc(250px * var(--dk));min-width:0;}
+html.bk-dk .pbar{min-height:calc(60px * var(--dk));padding:calc(8px * var(--dk)) calc(14px * var(--dk));flex-wrap:wrap;row-gap:6px;}
+html.bk-dk .pbar .nm{font-size:calc(1.05rem * var(--dk));}
+html.bk-dk .pbar .who{min-width:7.5em;}
+html.bk-dk .pbar .sub{font-size:calc(.82rem * var(--dk));}
+html.bk-dk .pbar>.tok{--d:calc(34px * var(--dk));}
+html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
+.pn{background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);border-radius:18px;padding:calc(12px * var(--dk,1)) calc(14px * var(--dk,1));min-height:0;display:flex;flex-direction:column;font-size:calc(.9rem * var(--dk,1));flex:none;}
+.pn h3{margin:0 0 8px;font-size:calc(.82rem * var(--dk,1));font-weight:800;color:var(--text-3);}
+.pn .rows{display:flex;flex-direction:column;gap:2px;min-height:0;overflow:hidden;}
+.pn .ln{font-weight:700;line-height:1.35;}
+.pn .ln+.ln{margin-top:6px;}
+.pn .none{color:var(--text-3);font-weight:600;}
+.mvr{display:grid;grid-template-columns:2.4em 1.1em 1fr auto;align-items:center;gap:8px;padding:3px 4px;border-radius:8px;font-variant-numeric:tabular-nums;}
+.mvr .no{color:var(--text-3);font-weight:700;text-align:right;}
+.mvr .tok{--d:1em;}
+.mvr .nt{font-weight:700;white-space:nowrap;}
+.mvr .tg{font-size:.8em;font-weight:800;padding:1px 8px;border-radius:999px;white-space:nowrap;}
+.mvr .tg.x{background:rgba(255,122,89,.18);color:#ffb39f;}
+.mvr .tg.f{background:color-mix(in srgb,var(--lit) 22%,transparent);color:var(--lit-ink);}
+.mvr .tg.t{background:rgba(255,255,255,.1);color:var(--text-2);}
+.mvr.now{background:color-mix(in srgb,var(--lit) 10%,transparent);}
+.tkr{display:flex;align-items:center;gap:10px;padding:4px 0;}
+.tkr+.tkr{border-top:1px solid var(--gl-line);}
+.tkr .nmx{flex:1;min-width:0;font-weight:700;}
+.tkr .mbs{display:flex;flex-wrap:wrap;gap:calc(4px * var(--dk,1));}
+.tkr .mbs .tok{--d:calc(22px * var(--dk,1));}
+.tkr .ct{font-weight:800;font-variant-numeric:tabular-nums;}
+.thl{display:flex;align-items:center;gap:10px;}
+.thl+.thl{margin-top:6px;}
+.thl .tok{--d:calc(18px * var(--dk,1));}
+.thl .hs{display:flex;flex-wrap:wrap;gap:4px;}
+.thl .h{font-weight:800;padding:1px 8px;border-radius:999px;background:color-mix(in srgb,var(--lit) 18%,transparent);color:var(--lit-ink);}
+.pgr{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:4px 2px;border-top:1px solid var(--gl-line);}
+.pgr:first-child{border-top:0;}
+.pgr .w{font-weight:800;}
+.pgr .sc{font-weight:700;color:var(--text-3);}
+.pgr .dt{grid-column:1/-1;font-size:.82em;color:var(--text-3);font-weight:600;}
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app'), Core = window.BokuCore;
+  var SAVE = 'boku_state', KEY = 'boku', WHITE = 1, BLACK = 2;
+  var SKILL = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  var DEMO = Kit.inDemo && Kit.inDemo();
+  var CREDIT = 'Boku was designed by Rob Nelson.';
+
+  var R = document.documentElement;
+  function shape() { return window.innerWidth > window.innerHeight ? 'land' : 'port'; }
+  R.setAttribute('data-o', shape());
+
+  // ── State ────────────────────────────────────────────────────────────────
+  // S = the core's state and {mode, level, cover, players: [{name, cpu, side}], hist: [undo snapshots], started, busy}
+  var S = null, NET = null, LEFT = null, WINO = null, NETREC = {}, SHOWN = 0;
+  function save() {
+    if (NET) return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S && !S.over) Kit.resume.set(S.n ? 'Move ' + (S.n + 1) : 'Ready');
+  }
+  function clearSave() { if (NET) return; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function pl(side) { return S.players[0].side === side ? S.players[0] : S.players[1]; }
+  function vsCpu() { return S.players.some(function (p) { return p.cpu; }); }
+  function colorName(side) { return side === WHITE ? 'White' : 'Black'; }
+  function isMe(p) { return NET ? NET.seat >= 0 && S.players[NET.seat] === p : !p.cpu; }
+  function nameOf(p) { return NET && isMe(p) ? 'You' : p.name; }
+  function humanTurn() { return S && !S.over && !S.busy && !HOLD && (NET ? !LEFT && NET.myTurn() : !pl(S.turn).cpu); }
+  function poss(n) { return n === 'You' ? 'your' : Kit.poss(n); }
+  function tc(side) { return side === WHITE ? 'w' : 'b'; }
+
+  Kit.init({
+    id: 'boku', mark: false, snap: '.frame', snapY: 0.5,
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } cancelThink(); clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Boku: past games' }); } }]),
+    rules:
+      '<p class="goal">Be the first to get <b>five of your marbles in a straight line</b>.</p>' +
+      '<h3>Your turn</h3><ul><li><b>White goes first.</b> On your turn you put one marble into any empty hole on the board of 80 holes.</li>' +
+      '<li>Five or more of your marbles in a row, along any of the board’s three directions, win the game at once.</li>' +
+      '<li>Tap a hole and your marble shows there faintly, with the lines it would make; tap it again to put it down. With a mouse, a click puts it down.</li>' +
+      '<li>A dashed ring marks a hole where a player would make five next turn. Block it, or take one of the marbles in that line.</li></ul>' +
+      '<h3>Taking a marble</h3><ul><li>When your new marble traps <b>exactly two</b> of the other player’s marbles in a straight line between itself and another of yours, you may take one of the two away. Tap the one you want; it goes into your tray.</li>' +
+      '<li>You take one marble a turn at most, even when your marble traps pairs in two lines at once, and you don’t have to take one.</li>' +
+      '<li>One marble or three in a row can’t be taken. Putting your marble between two of the other player’s is safe: only the player who puts a marble down takes.</li>' +
+      '<li>On their very next turn, the other player can’t put a marble back into the hole you just emptied. It is marked with a red cross until then.</li>' +
+      '<li>A marble that makes five wins at once, and takes nothing.</li></ul>' +
+      '<h3>The end</h3><ul><li>If the board fills with no five in a row, the game is a draw.</li><li>If the only empty hole is the one a player can’t use, that player passes.</li></ul>' +
+      '<h3>Online</h3><ul><li><b>Play online</b> opens a table, and the other player joins on their own device. Each new game at the table swaps colors.</li></ul>' +
+      '<h3>Tips</h3><ul><li>Two marbles side by side with an empty hole at one end and the other player’s marble at the other can be taken. Keep threes, or cover the open end.</li>' +
+      '<li>Four in a line with both ends open can’t be stopped by a block alone, so stop a three before it gets there.</li></ul>' +
+      '<p class="credit">' + CREDIT + '</p>'
+  });
+
+  function showSetup() {
+    S = null; deskOff();
+    app.classList.remove('ipl');
+    Kit.setup(app, {
+      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: '2p', kind: 'local' }]),
+      options: [
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Blocks a line of four, but otherwise often plays a weaker hole than it could.'], ['normal', 'Normal', 'Looks a few moves ahead for lines and for marbles to take.'], ['hard', 'Hard', 'Looks six to eight moves ahead and sets up two ways to win at once.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'side', label: 'You play', value: 'w', choices: [['w', 'White\nGoes first', 'White always goes first, so you start.'], ['b', 'Black', 'The computer plays White and goes first.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'cover', label: 'Hand over between turns', value: 'off', choices: [['off', 'Off', 'Nothing in Boku is hidden, so the device just goes across the table.'], ['on', 'On', 'A cover names whose turn it is before each move.']], when: function (m) { return m === '2p'; } }
+      ],
+      players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
+      onStart: function (cfg) {
+        var cpu = cfg.mode === 'cpu', hs = cpu && cfg.options.side === 'b' ? BLACK : WHITE;
+        S = { mode: cfg.mode, level: cfg.options.level || 'normal', cover: cfg.options.cover === 'on' && !cpu,
+          players: cfg.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, side: i === 0 ? hs : 3 - hs }; }) };
+        newGame();
+      }
+    });
+    var hero = app.querySelector('.setup-hero');
+    if (hero && !app.querySelector('.bk-credit')) {
+      var cr = el('p', { class: 'bk-credit', text: CREDIT });
+      hero.parentNode.insertBefore(cr, hero.nextSibling);
+      // the credit stays unless it would make the setup scroll
+      requestAnimationFrame(function () { var se = document.scrollingElement; if (se && se.scrollHeight > window.innerHeight + 1 && cr.isConnected) cr.style.display = 'none'; });
+    }
+  }
+  function freshFields(st) {
+    var g = Core.newGame(); for (var k in g) st[k] = g[k];
+    st.hist = []; st.started = Date.now(); st.busy = false;
+  }
+  function newGame(swap) {
+    cancelThink();
+    if (swap && !vsCpu()) S.players.forEach(function (p) { p.side = 3 - p.side; });
+    freshFields(S);
+    GH = -1; PEND = null; Kit.gameStart(); save(); build(); Kit.sfx('deal');
+    afterTurn();
+  }
+
+  // ── Moves ────────────────────────────────────────────────────────────────
+  var GH = -1, PEND = null, HOLD = false, WINANIM = false;
+  function snapshot(byCpu) { return { b: S.b.slice(), turn: S.turn, caps: S.caps.slice(), n: S.n, mlN: S.ml.length, blk: S.blk, cxN: S.cx.length, dbl: S.dbl.slice(), pass: S.pass.slice(), cpu: !!byCpu }; }
+  function playMove(str, byCpu) {
+    if (!S || S.over) return false;
+    if (!Core.check(S, str)) return false;
+    var side = S.turn, prevB = S.b.slice();
+    S.hist.push(snapshot(byCpu));
+    var res = Core.play(S, str);
+    GH = -1; PEND = null;
+    var t = animate(res, side, prevB);
+    paintMarks(); paintStatus(); paintRoom();
+    feedback(res, side, t);
+    save();
+    if (S.over) { setTimeout(finish, t + (S.draw ? 500 : 1300)); return true; }
+    setTimeout(afterTurn, t + 80);
+    return true;
+  }
+  function afterTurn() {
+    if (!S || S.over || NET) return;
+    var p = pl(S.turn);
+    if (p.cpu) { maybeCpu(); return; }
+    if (S.cover && S.n > 0 && !DEMO) {
+      HOLD = true; paintMarks(); paintStatus();
+      Kit.handoff({ name: p.name, color: S.turn === WHITE ? '#efe9dc' : '#2b2d33', msg: 'You play ' + colorName(S.turn) + '.', hint: 'Hold for a moment to take your turn', hold: 700 }).then(function () { HOLD = false; paintMarks(); paintStatus(); });
+      return;
+    }
+    paintMarks(); paintStatus();
+  }
+  // What a move earns where it happens: a marble drops in with a click; a capture sends the marble rolling into the
+  // taker's tray with a moment on the table; two ways to win at once are called out; a long line gets a soft chime
+  function feedback(res, side, t) {
+    var who = pl(side), them = pl(3 - side), me = isMe(who);
+    if (res.pass) { Kit.toast(nameOf(pl(side)) + ' had no hole to use and passed.'); return; }
+    Kit.sfx('chip'); Kit.haptic('light');
+    if (res.five) return;
+    if (res.x >= 0) {
+      setTimeout(function () {
+        Kit.sfx('pop'); Kit.haptic(me ? 'success' : 'medium');
+        Kit.moment({ title: 'A capture', line: nameOf(who) + ' took one of ' + poss(nameOf(them)) + ' marbles from ' + Core.NAMES[res.x] + '. ' + nameOf(them) + ' can’t put a marble back there next turn.',
+          pts: S.caps[side] === 1 ? '1 taken' : S.caps[side] + ' taken', chip: Core.NAMES[res.x], color: '#c8862f', at: frameEl, ms: 2800 });
+      }, t - 200);
+    }
+    if (res.threats >= 2) setTimeout(function () { Kit.sfx('good'); Kit.callout(me && !NET ? 'Two ways to win!' : nameOf(who) + ' has two ways to win'); }, t + (res.x >= 0 ? 600 : 100));
+    else if (res.threats === 1 && res.x < 0) setTimeout(function () { Kit.sfx('tick'); }, t);
+  }
+  function undo() {
+    if (!S || !S.b) return;
+    if (S.over) return Kit.toast('The game is over');
+    if (PEND) { unPend(); GH = -1; paintMarks(); paintStatus(); return; }
+    var cpu = vsCpu();
+    if (!S.hist.some(function (h) { return !h.cpu; })) return Kit.toast('Nothing to undo');
+    cancelThink(); S.busy = false;
+    var snap;
+    while (S.hist.length) { snap = S.hist.pop(); if (!cpu || !snap.cpu) break; }
+    S.b = snap.b; S.turn = snap.turn; S.caps = snap.caps; S.n = snap.n; S.ml.length = snap.mlN; S.blk = snap.blk; S.cx.length = snap.cxN; S.dbl = snap.dbl; S.pass = snap.pass;
+    GH = -1; PEND = null; Kit.sfx('whoosh'); save(); build(); afterTurn();
+  }
+
+  // ── The computer ─────────────────────────────────────────────────────────
+  var worker = null, workerOk = true, reqId = 0, pending = null;
+  function getWorker() {
+    if (worker || !workerOk) return worker;
+    try {
+      var url = new URL('boku-core.js', location.href).href;
+      var src = 'importScripts(' + JSON.stringify(url) + ');onmessage=function(e){var d=e.data;postMessage({id:d.id,res:BokuCore.search(d.b,d.side,d.blk,d.caps,d.o)});};';
+      worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+      worker.onmessage = function (e) { if (pending && e.data.id === pending.id) { var p = pending; pending = null; p.cb(e.data.res); } };
+      worker.onerror = function () { workerOk = false; worker = null; if (pending) { var p = pending; pending = null; p.cb(Core.search(p.b, p.side, p.blk, p.caps, p.o)); } };
+    } catch (e) { workerOk = false; worker = null; }
+    return worker;
+  }
+  function think(st, o, cb) {
+    var id = ++reqId, w = getWorker(), q = { id: id, b: st.b.slice(), side: st.turn, blk: st.blk, caps: st.caps.slice(), o: o };
+    pending = { id: id, cb: cb, b: q.b, side: q.side, blk: q.blk, caps: q.caps, o: o };
+    if (w) w.postMessage(q);
+    else setTimeout(function () { if (pending && pending.id === id) { pending = null; cb(Core.search(q.b, q.side, q.blk, q.caps, o)); } }, 30);
+  }
+  function cancelThink() { pending = null; }
+  function maybeCpu() {
+    if (NET || !S || S.over || !pl(S.turn).cpu || S.busy) return;
+    S.busy = true; paintStatus(); paintMarks();
+    var t0 = Date.now(), myN = S.n, L = Object.assign({}, Core.LEVELS[S.level] || Core.LEVELS.normal);
+    think(S, L, function (res) {
+      if (!S || S.n !== myN) return;
+      setTimeout(function () {
+        if (!S || S.n !== myN) return;
+        S.busy = false;
+        if (res && res.move) playMove(res.move, true);
+      }, Math.max(0, 650 - (Date.now() - t0)));
+    });
+  }
+
+  // ── The board ────────────────────────────────────────────────────────────
+  // Board units: 1080 across by 1010 down; a hole at x = 540 + 100 × (its column), y = 505 + 86.6 × (its row)
+  var VW = 1080, VH = 1010, frameEl, layEl, fxEl, topBar, botBar, turnEl, actsEl, roomEl, MB = {}, lastTrays = {};
+  function px(c) { var C = Core.CELLS[c]; return { x: 540 + C.x * 100, y: 505 + C.r * 86.6 }; }
+  function pos(node, x, y) { node.style.left = x / VW * 100 + '%'; node.style.top = y / VH * 100 + '%'; }
+  // the board's outline round the holes: a hexagon with sides of 5 and 6 holes, pushed out by m
+  function outline(m) {
+    var k = m / Math.cos(Math.PI / 6), V = [[-2, -5, -.5, -.866], [2, -5, .5, -.866], [4.5, 0, 1, 0], [2, 5, .5, .866], [-2, 5, -.5, .866], [-4.5, 0, -1, 0]];
+    return V.map(function (v) { return (540 + v[0] * 100 + v[2] * k).toFixed(1) + ',' + (505 + v[1] * 86.6 + v[3] * k).toFixed(1); }).join(' ');
+  }
+  function boardSvg() {
+    var s = '<svg class="bsv" viewBox="0 0 ' + VW + ' ' + VH + '" aria-hidden="true"><defs>' +
+      '<linearGradient id="bkw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9a462"/><stop offset=".55" stop-color="#b47a3c"/><stop offset="1" stop-color="#7d4f22"/></linearGradient>' +
+      '<pattern id="bkg" width="22" height="1010" patternUnits="userSpaceOnUse" patternTransform="rotate(-6)"><path d="M4 0v1010M13 0v1010M18 0v1010" stroke="rgba(90,50,15,.16)" stroke-width="1.4"/></pattern>' +
+      '<radialGradient id="bkf" cx=".5" cy=".4" r=".65"><stop offset="0" stop-color="#2c3f6e"/><stop offset=".7" stop-color="#1c2a4d"/><stop offset="1" stop-color="#121b33"/></radialGradient>' +
+      '<radialGradient id="bkh" cx=".5" cy=".36" r=".62"><stop offset="0" stop-color="#05080f"/><stop offset=".7" stop-color="#0d1426"/><stop offset="1" stop-color="#2a3a63"/></radialGradient>' +
+      '</defs>';
+    s += '<polygon points="' + outline(64) + '" fill="url(#bkw)" stroke="url(#bkw)" stroke-width="30" stroke-linejoin="round"/>';
+    s += '<polygon points="' + outline(64) + '" fill="url(#bkg)"/>';
+    s += '<polygon points="' + outline(76) + '" fill="none" stroke="rgba(255,240,210,.28)" stroke-width="3" stroke-linejoin="round"/>';
+    s += '<polygon points="' + outline(48) + '" fill="url(#bkf)" stroke="#3b2510" stroke-width="7" stroke-linejoin="round"/>';
+    s += '<polygon points="' + outline(40) + '" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2" stroke-linejoin="round"/>';
+    for (var c = 0; c < Core.N; c++) {
+      var p = px(c);
+      s += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="39" fill="none" stroke="#b9925a" stroke-opacity=".55" stroke-width="3"/>';
+      s += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="36" fill="url(#bkh)"/>';
+    }
+    return s + '</svg>';
+  }
+  function marble(side, c) {
+    var n = el('div', { class: 'mb ' + (side === WHITE ? 'mwh' : 'mbl'), 'data-c': c });
+    var p = px(c); pos(n, p.x, p.y);
+    return n;
+  }
+  function build() {
+    if (!S || !S.b) return;
+    app.innerHTML = ''; app.classList.add('ipl');
+    var col = el('div', { class: 'bk-col' });
+    topBar = el('div', { class: 'pbar top' }); botBar = el('div', { class: 'pbar bot' });
+    frameEl = el('div', { class: 'frame', role: 'grid', 'aria-label': 'Boku board', html: boardSvg() });
+    layEl = el('div', { class: 'lay' }); frameEl.appendChild(layEl);
+    fxEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); fxEl.setAttribute('class', 'fx'); fxEl.setAttribute('viewBox', '0 0 ' + VW + ' ' + VH); frameEl.appendChild(fxEl);
+    MB = {};
+    for (var c = 0; c < Core.N; c++) if (S.b[c]) { var m = marble(S.b[c], c); MB[c] = m; layEl.appendChild(m); }
+    var lastC = lastPlaced(); if (lastC >= 0 && MB[lastC]) MB[lastC].classList.add('lastm');
+    if (S.over && S.line) S.line.forEach(function (h) { if (MB[h]) MB[h].classList.add('win'); });
+    hookInput(frameEl);
+    col.appendChild(topBar); col.appendChild(frameEl); col.appendChild(botBar);
+    turnEl = el('div', { class: 'turn' }); col.appendChild(turnEl);
+    actsEl = el('div', { class: 'acts' }); col.appendChild(actsEl);
+    roomEl = el('div', { class: 'bk-room' }); col.appendChild(roomEl);
+    app.appendChild(col);
+    lastTrays = {};
+    deskApply();
+    paintMarks(); paintStatus(); paintRoom();
+  }
+  function lastPlaced() { for (var i = S.ml.length - 1; i >= 0; i--) { var m = Core.parse(S.ml[i]); if (m && !m.pass) return S.b[m.c] ? m.c : -1; } return -1; }
+  // The marble drops into its hole; a taken marble lifts out and rolls into the taker's tray; a winning five lights
+  // one marble after another along its line. Returns how long it takes.
+  function animate(res, side, prevB) {
+    if (res.pass) return 200;
+    Object.keys(MB).forEach(function (k) { MB[k].classList.remove('lastm'); });
+    var n = MB[res.c];
+    if (!n) { n = marble(side, res.c); MB[res.c] = n; layEl.appendChild(n); }
+    n.classList.remove('pend', 'ghost', 'touch');
+    n.classList.add('lastm');
+    if (!n.dataset.placed) { n.classList.remove('drop'); void n.offsetWidth; n.classList.add('drop'); }
+    delete n.dataset.placed;
+    setTimeout(function () { n.classList.remove('drop'); }, 500);
+    if (res.x >= 0 && MB[res.x]) {
+      var g = MB[res.x]; delete MB[res.x];
+      var tray = pl(side) === pl(bottomSide()) ? botBar : topBar;
+      setTimeout(function () { flyToTray(g, tray, 3 - side); }, 380);
+      return 1100;
+    }
+    if (res.five) {
+      res.five.forEach(function (h, i) { setTimeout(function () { if (MB[h]) { MB[h].classList.add('win'); Kit.sfx('tick', .6); } }, 380 + i * 120); });
+      WINANIM = true; setTimeout(function () { WINANIM = false; drawWinLine(res.five); }, 380);
+      return 420 + res.five.length * 120;
+    }
+    return 420;
+  }
+  function drawWinLine(line) {
+    if (!fxEl) return;
+    while (fxEl.firstChild) fxEl.removeChild(fxEl.firstChild);
+    var a = px(line[0]), z = px(line[line.length - 1]);
+    var l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    l.setAttribute('x1', a.x); l.setAttribute('y1', a.y); l.setAttribute('x2', z.x); l.setAttribute('y2', z.y);
+    l.setAttribute('stroke', '#ffd75a'); l.setAttribute('stroke-width', '14'); l.setAttribute('stroke-linecap', 'round'); l.setAttribute('opacity', '.55');
+    var len = Math.hypot(z.x - a.x, z.y - a.y); l.style.strokeDasharray = len; l.style.strokeDashoffset = len; l.style.transition = 'stroke-dashoffset .7s ease-out';
+    fxEl.appendChild(l); requestAnimationFrame(function () { requestAnimationFrame(function () { l.style.strokeDashoffset = 0; }); });
+  }
+  function flyToTray(n, tray, color) {
+    var r = n.getBoundingClientRect();
+    n.remove();
+    paintStatus();
+    var toks = tray ? tray.querySelectorAll('.tok') : [], slot = toks[toks.length - 1];
+    if (!slot || !slot.animate) return;
+    slot.style.visibility = 'hidden';
+    var t = slot.getBoundingClientRect(), f = el('div', { class: 'fly ' + (color === WHITE ? 'mwh' : 'mbl') });
+    f.style.left = r.left + 'px'; f.style.top = r.top + 'px'; f.style.width = r.width + 'px'; f.style.height = r.height + 'px';
+    document.body.appendChild(f);
+    var dx = t.left + t.width / 2 - (r.left + r.width / 2), dy = t.top + t.height / 2 - (r.top + r.height / 2), sc = t.width / r.width;
+    var a = f.animate([
+      { transform: 'translate(0,0) scale(1) rotate(0)' },
+      { transform: 'translate(0,-' + (r.height * .5) + 'px) scale(1.2) rotate(40deg)', offset: .18 },
+      { transform: 'translate(' + dx * .5 + 'px,' + (dy * .5 - 40) + 'px) scale(' + (1 + sc) / 2 + ') rotate(260deg)', offset: .55 },
+      { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sc + ') rotate(520deg)' }
+    ], { duration: 700, easing: 'cubic-bezier(.4,.1,.3,1)', fill: 'forwards' });
+    function done() { if (f.isConnected) f.remove(); slot.style.visibility = ''; }
+    a.onfinish = function () { done(); Kit.sfx('tap'); };
+    setTimeout(done, 1000);
+  }
+
+  // ── Marks on the board: the ghost, the lines it would make, the marbles it would trap, threats, the blocked hole ──
+  function clearFx() { layEl.querySelectorAll('.ghost,.blk,.thr').forEach(function (n) { n.remove(); }); while (fxEl.firstChild) fxEl.removeChild(fxEl.firstChild); }
+  function svgLine(a, z, color, w, op, dash) {
+    var l = document.createElementNS('http://www.w3.org/2000/svg', 'line'), p = px(a), q = px(z);
+    l.setAttribute('x1', p.x); l.setAttribute('y1', p.y); l.setAttribute('x2', q.x); l.setAttribute('y2', q.y);
+    l.setAttribute('stroke', color); l.setAttribute('stroke-width', w); l.setAttribute('stroke-linecap', 'round'); l.setAttribute('opacity', op);
+    if (dash) l.setAttribute('stroke-dasharray', dash);
+    fxEl.appendChild(l);
+  }
+  // the lines of 3 or more a marble of side's at c would be part of (with b[c] as side's)
+  function linesAt(b, c, side) {
+    var out = [];
+    for (var d = 0; d < 3; d++) {
+      var run = [c], x = Core.nb(c, d);
+      while (x >= 0 && b[x] === side) { run.push(x); x = Core.nb(x, d); }
+      x = Core.nb(c, d + 3);
+      while (x >= 0 && b[x] === side) { run.unshift(x); x = Core.nb(x, d + 3); }
+      if (run.length >= 3) out.push(run);
+    }
+    return out;
+  }
+  function paintMarks() {
+    if (!layEl || !S) return;
+    clearFx();
+    Object.keys(MB).forEach(function (k) { MB[k].classList.remove('trap', 'pick', 'pend'); });
+    var me = humanTurn();
+    if (!me) { GH = -1; if (PEND) { var pn = MB[PEND.c]; if (pn && pn.dataset.placed) { pn.remove(); delete MB[PEND.c]; } PEND = null; } }
+    if (S.over) { if (S.line && S.line.length && !WINANIM) drawWinLineStatic(S.line); paintActs(); return; }
+    // threats: where each player would make five (the side to move can't use the blocked hole)
+    [WHITE, BLACK].forEach(function (sd) {
+      Core.winCells(S.b, sd, sd === S.turn ? S.blk : -1).forEach(function (h) {
+        if (h === GH || (PEND && PEND.c === h)) return;
+        var t = el('span', { class: 'thr ' + tc(sd) }); var p = px(h); pos(t, p.x, p.y); layEl.appendChild(t);
+      });
+    });
+    if (S.blk >= 0) { var bk = el('span', { class: 'blk', 'aria-label': 'The hole ' + Core.NAMES[S.blk] + ' can’t be used this turn' }), q = px(S.blk); pos(bk, q.x, q.y); layEl.appendChild(bk); }
+    var c = PEND ? PEND.c : GH;
+    if (c >= 0) {
+      var side = S.turn, b = S.b.slice(); b[c] = side;
+      if (!PEND) { var g = marble(side, c); g.classList.add('ghost'); if (TOUCH) g.classList.add('touch'); layEl.appendChild(g); }
+      var lines = linesAt(b, c, side);
+      lines.forEach(function (run) { svgLine(run[0], run[run.length - 1], run.length >= 5 ? '#ffd75a' : 'rgba(255,215,90,.8)', run.length >= 5 ? 16 : 9, run.length >= 5 ? .8 : .55); });
+      var five = lines.some(function (r) { return r.length >= 5; });
+      if (!five) Core.sandwiches(S.b, c, side).forEach(function (w) {
+        var end = Core.nb(w.p[1], w.d);
+        svgLine(c, end, 'rgba(255,106,74,.85)', 5, .8, '10 10');
+        w.p.forEach(function (h) { if (MB[h]) { MB[h].classList.add('trap'); if (PEND) MB[h].classList.add('pick'); } });
+      });
+    }
+    if (PEND && MB[PEND.c]) MB[PEND.c].classList.add('pend');
+    paintActs();
+  }
+  function drawWinLineStatic(line) { var a = line[0], z = line[line.length - 1]; svgLine(a, z, '#ffd75a', 14, .55); }
+  function paintActs() {
+    if (!actsEl) return;
+    actsEl.innerHTML = '';
+    if (NET) { if (S.over || LEFT) actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: LEFT ? 'Back to the lobby' : 'Play again', onclick: netAgain })); }
+    else if (S.over) { actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Play again', onclick: function () { newGame(true); } })); return; }
+    if (PEND) { actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Take none', onclick: function () { commit(PEND.c, -1); } })); actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('undo') + '<span>Back</span>', onclick: function () { unPend(); } })); return; }
+    if (GH >= 0 && humanTurn()) actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm bk-place', text: 'Place on ' + Core.NAMES[GH], onclick: function () { place(GH); } }));
+    if (!NET) actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('undo') + '<span>Undo</span>', onclick: undo }));
+  }
+
+  // ── Input: tap a hole (a ghost shows), tap it again to put the marble down; a mouse click puts it down at once ──
+  var TOUCH = false, SUPPRESS = 0;
+  function cellAt(x, y) {
+    var r = frameEl.getBoundingClientRect(), ux = (x - r.left) / r.width * VW, uy = (y - r.top) / r.height * VH, best = -1, bd = 1e9;
+    for (var c = 0; c < Core.N; c++) { var p = px(c), d = (p.x - ux) * (p.x - ux) + (p.y - uy) * (p.y - uy); if (d < bd) { bd = d; best = c; } }
+    return bd < 58 * 58 ? best : -1;
+  }
+  function usable(c) { return c >= 0 && !S.b[c] && c !== S.blk; }
+  function place(c) {
+    if (!humanTurn() || !usable(c)) return;
+    var side = S.turn, b = S.b.slice(); b[c] = side;
+    var five = Core.makesFive(S.b, c, side), opts = five ? [] : Core.takeable(S.b, c, side);
+    if (!opts.length) return commit(c, -1);
+    // a choice to make: the marble goes down, and the marbles it traps wait for a tap
+    PEND = { c: c, opts: opts }; GH = -1;
+    var n = marble(side, c); n.classList.add('drop'); n.dataset.placed = '1'; MB[c] = n; layEl.appendChild(n);
+    Kit.sfx('chip'); Kit.haptic('light');
+    paintMarks(); paintStatus();
+  }
+  function unPend() {
+    if (!PEND) return;
+    var n = MB[PEND.c]; if (n && n.dataset.placed) { n.remove(); delete MB[PEND.c]; }
+    GH = PEND.c; PEND = null; paintMarks(); paintStatus();
+  }
+  function commit(c, x) {
+    var str = Core.encode(c, x);
+    if (PEND && MB[PEND.c] && NET) { MB[PEND.c].remove(); delete MB[PEND.c]; }
+    PEND = null;
+    if (NET) return netMove(str);
+    playMove(str);
+  }
+  function hookInput(f) {
+    f.addEventListener('pointerdown', function (e) { TOUCH = e.pointerType !== 'mouse'; });
+    f.addEventListener('pointermove', function (e) {
+      if (e.pointerType !== 'mouse' || !S || !humanTurn() || PEND) return;
+      var c = cellAt(e.clientX, e.clientY); c = usable(c) ? c : -1;
+      if (c !== GH) { TOUCH = false; GH = c; paintMarks(); paintStatus(); }
+    });
+    f.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse' && GH >= 0 && !TOUCH && !PEND) { GH = -1; paintMarks(); paintStatus(); } });
+    f.addEventListener('click', function (e) {
+      if (Date.now() < SUPPRESS || !S) return;
+      if (!humanTurn()) { if (!S.over && NET && !NET.myTurn()) Kit.toast('It’s ' + Kit.poss(pl(S.turn).name) + ' turn'); return; }
+      var c = cellAt(e.clientX, e.clientY);
+      if (PEND) {
+        if (PEND.opts.indexOf(c) >= 0) { Kit.haptic('medium'); return commit(PEND.c, c); }
+        if (c === PEND.c) return unPend();
+        Kit.haptic('error'); Kit.toast('Tap one of the ringed marbles to take it, or tap Take none.');
+        return;
+      }
+      if (c < 0) { if (GH >= 0) { GH = -1; paintMarks(); paintStatus(); } return; }
+      if (c === S.blk && !S.b[c]) { Kit.haptic('error'); Kit.toast('A marble was just taken from ' + Core.NAMES[c] + ', so ' + nameOf(pl(S.turn)) + ' can’t use that hole this turn.'); return; }
+      if (S.b[c]) { if (GH >= 0) { GH = -1; paintMarks(); paintStatus(); } return; }
+      if (!TOUCH || c === GH) { place(c); return; }
+      GH = c; Kit.sfx('tick', .5); Kit.haptic('light'); paintMarks(); paintStatus();
+    });
+  }
+
+  // ── The plates, the turn, the room ───────────────────────────────────────
+  function bottomSide() {
+    if (NET) return NET.seat >= 0 ? S.players[NET.seat].side : WHITE;
+    var hum = S.players.filter(function (p) { return !p.cpu; });
+    return vsCpu() && hum.length === 1 ? hum[0].side : WHITE;
+  }
+  function bar(node, side) {
+    if (!node) return;
+    var p = pl(side), on = !S.over && S.turn === side;
+    node.className = 'pbar ' + (node === topBar ? 'top' : 'bot') + (on ? ' on' : '');
+    var sub = on && p.cpu && S.busy ? '<span class="think">Thinking <i></i><i></i><i></i></span>' : on ? (NET && isMe(p) ? 'Your turn as ' + colorName(side) : colorName(side) + ' to play') : colorName(side);
+    if (S.over && S.winner === side) sub = 'Won the game';
+    var k = S.caps[side], tray = el('div', { class: 'tray', role: 'img', 'aria-label': nameOf(p) + ' has taken ' + k + (k === 1 ? ' marble' : ' marbles') });
+    var show = Math.min(k, 4);
+    for (var i = 0; i < show; i++) tray.appendChild(el('span', { class: 'tok ' + tc(3 - side) + (lastTrays[side] != null && i >= Math.min(lastTrays[side], 4) && k > lastTrays[side] ? ' new' : '') }));
+    if (!k) tray.appendChild(el('span', { class: 'tok ' + tc(3 - side), style: 'opacity:.18' }));
+    tray.appendChild(el('span', { class: 'tn' + (k ? '' : ' z'), text: String(k) }));
+    lastTrays[side] = k;
+    node.innerHTML = '';
+    node.appendChild(el('span', { class: 'tok ' + tc(side) }));
+    node.appendChild(el('div', { class: 'who' }, [el('span', { class: 'nm', html: (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(nameOf(p)) + '</span>' }), el('span', { class: 'sub', html: sub })]));
+    node.appendChild(tray);
+  }
+  function paintStatus() {
+    if (!turnEl || !S) return;
+    var bs = bottomSide(); bar(topBar, 3 - bs); bar(botBar, bs);
+    var p = pl(S.turn);
+    turnEl.innerHTML = '';
+    if (NET && LEFT) { turnEl.appendChild(el('span', { text: LEFT.text || 'The other player left' })); return; }
+    if (S.over) { turnEl.appendChild(el('span', { text: S.draw ? 'The board is full with no five in a row: a draw' : (NET && isMe(pl(S.winner)) ? 'You win with ' : pl(S.winner).name + ' wins with ') + (S.line.length >= 6 ? S.line.length + ' in a row' : 'five in a row') })); return; }
+    turnEl.appendChild(el('span', { class: 'dot' }));
+    var txt, mine = NET ? isMe(p) : !p.cpu, who = NET && isMe(p) ? 'Your' : Kit.poss(p.name);
+    if (NET && !mine) txt = 'Waiting for ' + p.name;
+    else if (!NET && p.cpu) txt = p.name + ' is thinking…';
+    else if (HOLD) txt = 'Pass the device to ' + p.name;
+    else if (PEND) txt = 'Tap a ringed marble to take it, or keep them all';
+    else if (GH >= 0) txt = Core.makesFive(S.b, GH, S.turn) ? 'Tap the marble again: that’s five in a row!' : 'Tap the marble again to put it on ' + Core.NAMES[GH];
+    else txt = who + ' turn: tap a hole';
+    turnEl.appendChild(el('span', { text: txt }));
+    paintActs();
+  }
+  // a move in words with the players' names: "Tim put a marble on H7 and took Jamie's marble on H6."
+  function said(L) {
+    var m = Core.parse(L.s), who = nameOf(pl(L.side)), them = nameOf(pl(3 - L.side));
+    if (m.pass) return who + ' had no hole to use and passed.';
+    return who + ' put a marble on ' + Core.NAMES[m.c] + (m.x >= 0 ? ' and took ' + poss(them) + ' marble on ' + Core.NAMES[m.x] : '') + '.';
+  }
+  function moveList() {
+    var g = Core.newGame(), list = [];
+    S.ml.forEach(function (st) { var side = g.turn, r = Core.play(g, st); if (r) list.push({ s: st, side: side, n: g.n, r: r }); });
+    return list;
+  }
+  // At a desk, the room beside the board: the last move in words, what each player has taken (as marbles), the
+  // threats on the board by hole, the moves so far and past games. Each panel is as tall as what it holds.
+  function paintRoom() {
+    if (!roomEl || !R.classList.contains('bk-dk') || !S) return;
+    roomEl.innerHTML = '';
+    var list = moveList(), L = list[list.length - 1];
+    var lp = el('section', { class: 'pn lastp' }, [el('h3', { text: 'Last move' })]);
+    var line = L ? said(L) : nameOf(pl(WHITE)) + ' plays White and puts the first marble down.';
+    if (L && L.r.five) line = nameOf(pl(L.side)) + ' put a marble on ' + Core.NAMES[L.r.c] + ' and made ' + (L.r.five.length >= 6 ? L.r.five.length : 'five') + ' in a row.';
+    lp.appendChild(el('div', { class: 'ln', text: line }));
+    if (S.blk >= 0 && !S.over) lp.appendChild(el('div', { class: 'ln none', text: nameOf(pl(S.turn)) + ' can’t use ' + Core.NAMES[S.blk] + ' this turn.' }));
+    roomEl.appendChild(lp);
+    // threats
+    var th = el('section', { class: 'pn thp' }, [el('h3', { text: 'Threats on the board' })]), anyT = false;
+    [WHITE, BLACK].forEach(function (sd) {
+      var w = S.over ? [] : Core.winCells(S.b, sd, sd === S.turn ? S.blk : -1);
+      if (!w.length) return;
+      anyT = true;
+      th.appendChild(el('div', { class: 'thl' }, [el('span', { class: 'tok ' + tc(sd) }), el('span', { text: nameOf(pl(sd)) + ' makes five on' }), el('span', { class: 'hs' }, w.map(function (h) { return el('span', { class: 'h', text: Core.NAMES[h] }); }))]));
+    });
+    if (!anyT) th.appendChild(el('div', { class: 'ln none', text: S.over ? 'The game is over.' : 'Nobody has four in a line with the fifth hole open yet.' }));
+    roomEl.appendChild(th);
+    // taken
+    var tk = el('section', { class: 'pn tkp' }, [el('h3', { text: 'Marbles taken' })]);
+    [WHITE, BLACK].forEach(function (sd) {
+      var k = S.caps[sd], mbs = el('span', { class: 'mbs' });
+      for (var i = 0; i < Math.min(k, 10); i++) mbs.appendChild(el('span', { class: 'tok ' + tc(3 - sd) }));
+      tk.appendChild(el('div', { class: 'tkr' }, [el('span', { class: 'nmx', text: nameOf(pl(sd)) }), k ? mbs : el('span', { class: 'none', text: 'None yet' }), k ? el('span', { class: 'ct', text: String(k) }) : null]));
+    });
+    roomEl.appendChild(tk);
+    if (list.length) {
+      var mv = el('section', { class: 'pn mvp' }, [el('h3', { text: 'Moves so far' })]), rows = el('div', { class: 'rows' });
+      list.slice().reverse().slice(0, 60).forEach(function (x, i) {
+        var m = Core.parse(x.s);
+        rows.appendChild(el('div', { class: 'mvr' + (i === 0 ? ' now' : '') }, [el('span', { class: 'no', text: x.n + '' }), el('span', { class: 'tok ' + tc(x.side) }),
+          el('span', { class: 'nt', text: m.pass ? 'Passed' : Core.NAMES[m.c] }),
+          x.r.five ? el('span', { class: 'tg f', text: 'Five' }) : m.x >= 0 ? el('span', { class: 'tg x', text: 'Took ' + Core.NAMES[m.x] }) : x.r.threats >= 2 ? el('span', { class: 'tg t', text: 'Two threats' }) : x.r.threats ? el('span', { class: 'tg t', text: 'Four' }) : el('span')]));
+      });
+      mv.appendChild(rows); roomEl.appendChild(mv);
+    }
+    var past = []; try { past = GameHistory.load(KEY).slice(0, 8); } catch (e) {}
+    if (past.length) {
+      var pg = el('section', { class: 'pn pgp' }, [el('h3', { text: 'Past games' })]), pr = el('div', { class: 'rows' });
+      past.forEach(function (e) {
+        var d = e.dt || e.detail || {};
+        pr.appendChild(el('div', { class: 'pgr' }, [el('span', { class: 'w', text: e.winner ? e.winner.replace(/ \((Black|White)\)$/, '') + ' won' : 'A draw' }),
+          el('span', { class: 'sc', text: d.n ? d.n + ' moves' : '' }), el('span', { class: 'dt', text: Kit.fmtDate ? Kit.fmtDate(e._date || e.started) : '' })]));
+      });
+      pg.appendChild(pr); roomEl.appendChild(pg);
+    }
+    fitRoom();
+  }
+  // Too little room: whole rows go (the oldest past games down to two, the oldest moves down to three, then the past
+  // games, then the panel of marbles taken), never a cut row. The moves panel takes what is left, never more.
+  function fitRoom() {
+    if (!roomEl) return;
+    var mv = roomEl.querySelector('.mvp .rows'), pg = roomEl.querySelector('.pgp .rows'), guard = 0;
+    function over() { return roomEl.scrollHeight > roomEl.clientHeight + 1 || [].some.call(roomEl.children, function (c) { return c.offsetTop + c.offsetHeight > roomEl.offsetTop + roomEl.clientHeight + 1; }); }
+    while (over() && guard++ < 300) {
+      if (pg && pg.children.length > 2) pg.removeChild(pg.lastChild);
+      else if (mv && mv.children.length > 3) mv.removeChild(mv.lastChild);
+      else if (pg && pg.parentNode.isConnected) { pg.parentNode.remove(); pg = null; }
+      else if (mv && mv.children.length > 1) mv.removeChild(mv.lastChild);
+      else if (mv && mv.parentNode.isConnected) { mv.parentNode.remove(); mv = null; }
+      else break;
+    }
+  }
+
+  // ── The desk (a window larger than a phone's or a tablet's) ──────────────
+  function deviceShape(w, h) { var lo = Math.min(w, h), hi = Math.max(w, h); return (lo <= 480 && hi <= 1000) || (lo >= 620 && lo <= 840 && hi >= 900 && hi <= 1200); }
+  var DK = null, RATIO = VH / VW;
+  function deskPlan() {
+    var W = window.innerWidth, H = window.innerHeight;
+    if (!S || deviceShape(W, H) || W < 640 || H < 500) return null;
+    var gb = document.querySelector('.gbar'), top = (gb ? Math.round(gb.getBoundingClientRect().bottom) : 56) + 6;
+    var g = Math.round(Math.max(14, Math.min(28, W / 90))), x0 = g, y0 = top, aw = W - 2 * g, ah = H - top - g;
+    var dk = Math.max(1, Math.min(1.5, W / 1700, H / 1100));
+    var side = Math.round(Math.max(300, Math.min(440, 300 * dk)));
+    var CAP = 1500, bwWide = Math.min(CAP, ah / RATIO, aw - side - g), bwTall = Math.min(CAP, aw, (ah - 330 * dk - g) / RATIO);
+    if (aw / ah > 1.25 || bwTall < 300) {
+      var bw = Math.floor(bwWide), spare = aw - side - g - bw;
+      if (spare >= side * .9 + g) {
+        var rw = Math.min(spare - g, Math.round(side * 1.4));
+        return { k: 'w2', dk: dk, x0: x0, y0: y0, aw: aw, ah: ah, g: g, bw: bw, cols: side + 'px ' + rw + 'px ' + bw + 'px', areas: '"t r b" "p r b" "s r b" "a r b" ". r b"' };
+      }
+      return { k: 'w1', dk: dk, x0: x0, y0: y0, aw: aw, ah: ah, g: g, bw: bw, cols: Math.max(side, aw - bw - g) + 'px ' + bw + 'px', areas: '"t b" "p b" "s b" "a b" "r b"' };
+    }
+    var bt = Math.floor(bwTall);
+    return { k: 't', dk: dk, x0: x0, y0: y0, aw: aw, ah: ah, g: g, bw: bt, cols: side + 'px ' + (aw - side - g) + 'px', areas: '"b b" "t r" "p r" "s r" "a r" ". r"', rowsT: true };
+  }
+  function deskApply() {
+    var P = deskPlan(), was = DK ? DK.k : null;
+    DK = P;
+    if (!P) { deskOff(); return; }
+    R.classList.add('bk-dk');
+    var col = app.querySelector('.bk-col'); if (!col) return;
+    col.style.setProperty('--x0', P.x0 + 'px'); col.style.setProperty('--y0', P.y0 + 'px'); col.style.setProperty('--aw', P.aw + 'px'); col.style.setProperty('--ah', P.ah + 'px');
+    col.style.setProperty('--g', P.g + 'px'); col.style.setProperty('--bw', P.bw + 'px'); col.style.setProperty('--cols', P.cols); col.style.setProperty('--areas', P.areas);
+    col.style.setProperty('--dk', P.dk.toFixed(3));
+    col.style.gridTemplateRows = P.rowsT ? (Math.round(P.bw * RATIO) + 'px max-content max-content max-content max-content minmax(0,1fr)') : '';
+    col.style.gridTemplateAreas = P.k === 't' ? P.areas : '';
+    if (roomEl) roomEl.classList.toggle('row', P.k === 't');
+    if (was !== P.k) setTimeout(paintRoom, 0);
+  }
+  function deskOff() {
+    R.classList.remove('bk-dk');
+    var col = app.querySelector('.bk-col');
+    if (col) { ['--x0', '--y0', '--aw', '--ah', '--g', '--bw', '--cols', '--areas', '--dk'].forEach(function (k) { col.style.removeProperty(k); }); col.style.gridTemplateRows = ''; col.style.gridTemplateAreas = ''; }
+    DK = null;
+  }
+  var rzT = 0;
+  window.addEventListener('resize', function () {
+    clearTimeout(rzT);
+    rzT = setTimeout(function () {
+      var o = shape(), was = DK ? DK.k : null, P = S && S.b ? deskPlan() : null;
+      if (R.getAttribute('data-o') !== o || was !== (P ? P.k : null)) Kit.glide(function () { R.setAttribute('data-o', o); deskApply(); paintRoom(); });
+      else { deskApply(); paintRoom(); }
+    }, 60);
+  });
+
+  // ── The end ──────────────────────────────────────────────────────────────
+  function highlights(w, l) {
+    var hl = [];
+    if (S.draw) hl.push('The board filled with no five in a row, so the game was a draw.');
+    else {
+      hl.push(w.name + ' made ' + (S.line.length >= 6 ? S.line.length : 'five') + ' in a row from ' + Core.NAMES[S.line[0]] + ' to ' + Core.NAMES[S.line[S.line.length - 1]] + '.');
+      if (S.line.length >= 6) hl.push(w.name + ' won with ' + S.line.length + ' marbles in one line.');
+    }
+    S.players.forEach(function (p) { var k = S.caps[p.side]; if (k) hl.push(p.name + ' took ' + (k === 1 ? 'one of the other player’s marbles' : k + ' of the other player’s marbles') + '.'); });
+    S.players.forEach(function (p) { var k = S.dbl[p.side]; if (k) hl.push(p.name + ' set up two ways to win at once' + (k > 1 ? ' ' + k + ' times' : '') + '.'); });
+    hl.push('The game took ' + S.n + (S.n === 1 ? ' move' : ' moves') + '.');
+    if (vsCpu()) hl.push('The computer played at ' + SKILL[S.level] + '.');
+    return hl;
+  }
+  function detail() {
+    return { mv: S.ml.join(','), grid: Core.grid(S.b), caps: [S.caps[1], S.caps[2]], sides: S.players.map(function (p) { return tc(p.side); }).join(''),
+      line: (S.line || []).map(function (h) { return Core.NAMES[h]; }).join(' '), cx: S.cx.join(','), dbl: [S.dbl[1], S.dbl[2]], n: S.n, end: S.draw ? 'full' : 'five' };
+  }
+  function endMoment(w) {
+    var who = nameOf(w);
+    if (S.line.length >= 6) return { big: true, title: S.line.length + ' in a row', line: who + ' lined up ' + S.line.length + ' marbles in one line and wins.', icon: 'trophy', pts: String(S.line.length) };
+    if (S.caps[w.side] >= 3) return { big: true, title: 'Five in a row', line: who + ' made five in a row after taking ' + S.caps[w.side] + ' marbles along the way.', icon: 'trophy', pts: '5' };
+    if (S.dbl[w.side]) return { big: true, title: 'Five in a row', line: who + ' set up two ways to win, and one of them could not be stopped.', icon: 'trophy', pts: '5' };
+    return { big: true, title: 'Five in a row', line: who + ' put five marbles in a straight line and wins.', icon: 'trophy', pts: '5' };
+  }
+  function finish() {
+    S.over = true; clearSave(); paintStatus(); paintMarks();
+    var w = S.draw ? null : pl(S.winner), l = w ? pl(3 - S.winner) : null;
+    Kit.record(KEY, {
+      started: S.started, mode: vsCpu() ? 'vs Computer (' + SKILL[S.level] + ')' : 'Pass & play',
+      players: S.players.map(function (p) { return { name: p.name + ' (' + colorName(p.side) + ')', score: S.caps[p.side], cpu: p.cpu }; }),
+      winner: w ? w.name + ' (' + colorName(w.side) + ')' : null, highlights: highlights(w, l), detail: detail()
+    });
+    paintRoom();
+    if (w) { Kit.sfx('sparkle'); Kit.haptic('success'); Kit.moment(endMoment(w)); }
+    else Kit.sfx('whoosh');
+    setTimeout(function () {
+      var lose = w && w.cpu;
+      Kit.win({
+        icon: !w ? 'users' : lose ? 'bot' : 'trophy',
+        title: !w ? 'A draw' : lose ? w.name + ' wins this one' : w.name === 'You' ? 'You win!' : w.name + ' wins!',
+        sub: (!w ? 'The board filled with no five in a row' : 'Five in a row') + ' · ' + S.n + (S.n === 1 ? ' move' : ' moves'),
+        rank: (w ? [w, l] : S.players).map(function (p) { return { name: p.name, score: S.caps[p.side] + ' taken', color: p.side === BLACK ? '#2a2a30' : '#f1efe9' }; }),
+        lose: !!lose, again: function () { newGame(true); }, look: true,
+        setup: function () { cancelThink(); clearSave(); showSetup(); }
+      });
+    }, w ? 2600 : 900);
+  }
+
+  // ── Online (turnnet.js) ──────────────────────────────────────────────────
+  // Seat 0 plays the color chosen in the setup in the first game; each new game at the table swaps colors.
+  function netSeatOf(st, side) { return st.players[0].side === side ? 0 : 1; }
+  function netOpts() {
+    var o = { side: 'w' }; try { var g = JSON.parse(localStorage.getItem('gn_setup_boku')); if (g && g.options && g.options.side === 'b') o.side = 'b'; } catch (e) {}
+    return o;
+  }
+  function netStart(players, opts, last) {
+    var s0 = last && last.players ? 3 - last.players[0].side : opts && opts.side === 'b' ? BLACK : WHITE;
+    var st = Core.newGame();
+    st.mode = 'online'; st.level = 'normal'; st.players = players.map(function (p, i) { return { name: p.name, cpu: false, side: i === 0 ? s0 : 3 - s0 }; });
+    st.wins = last && last.wins ? last.wins.slice() : [0, 0]; st.started = Date.now();
+    return st;
+  }
+  function netApply(st, str) {
+    if (st.over) return null;
+    var side = st.turn, r = Core.play(st, str);
+    if (!r) return null;
+    if (st.over && st.winner) st.wins[netSeatOf(st, st.winner)]++;
+    return { state: st, mv: { s: str, side: side, n: st.n } };
+  }
+  function netMove(str) { if (!S || S.over || LEFT || !NET.myTurn()) return; S.busy = true; GH = -1; paintMarks(); NET.act(function (st) { return netApply(st, str); }); setTimeout(function () { if (S) { S.busy = false; } }, 4000); }
+  function netAgain() { if (!NET) return; if (LEFT) { TurnNet.leave(); TurnNet.open(); } else NET.again(); }
+  function netShow(net, info) {
+    NET = net; cancelThink();
+    if (WINO && (info.again || info.fresh)) { WINO.close(); WINO = null; }
+    var prev = S, next = JSON.parse(JSON.stringify(net.state));
+    next.busy = false; next.hist = [];
+    LEFT = net.status === 'over' && !next.over && net.result && net.result.left != null ? net.result : null;
+    var tok = ++SHOWN, mv = info.mv && info.mv.s && !info.fresh && !info.again ? info.mv : null;
+    if (mv && prev && prev.b && frameEl && frameEl.isConnected && !info.again && next.n > prev.n) {
+      var cp = Core.clone(prev), r = Core.play(cp, mv.s);
+      if (r && cp.n === next.n) {
+        S = next; GH = -1; PEND = null;
+        var t = animate(r, mv.side, prev.b);
+        paintMarks(); paintStatus(); paintRoom(); feedback(r, mv.side, t);
+        if (S.over || LEFT) setTimeout(function () { if (tok === SHOWN) netEnd(); }, t + 900);
+        else if (!info.mine && net.myTurn()) setTimeout(function () { if (tok === SHOWN) Kit.haptic('light'); }, t);
+        return;
+      }
+    }
+    S = next; GH = -1; PEND = null; build();
+    if (info.again) { Kit.sfx('deal'); Kit.callout(pl(WHITE) === S.players[net.seat] ? 'You start' : pl(WHITE).name + ' starts'); }
+    if (S.over || LEFT) setTimeout(function () { if (tok === SHOWN) netEnd(); }, 200);
+  }
+  function netEnd() {
+    if (!NET || !S) return;
+    var me = NET.seat, left = LEFT, wi = left ? (left.win && left.win.length ? left.win[0] : -1) : S.winner ? netSeatOf(S, S.winner) : -1, w = wi >= 0 ? S.players[wi] : null;
+    var key = NET.code + ':' + S.started, done = NETREC[key];
+    try { done = done || (JSON.parse(localStorage.getItem('boku_net_rec')) || []).indexOf(key) >= 0; } catch (e) {}
+    if (!done && !left && S.over) {
+      NETREC[key] = 1;
+      try { var rl = JSON.parse(localStorage.getItem('boku_net_rec')) || []; rl.push(key); localStorage.setItem('boku_net_rec', JSON.stringify(rl.slice(-30))); } catch (e) {}
+      var hl = highlights(w, w ? S.players[1 - wi] : null); hl.push('Played online at table ' + NET.code + '.');
+      Kit.record(KEY, { started: S.started, mode: 'Online', players: S.players.map(function (p) { return { name: p.name + ' (' + colorName(p.side) + ')', score: S.caps[p.side], cpu: false }; }),
+        winner: w ? w.name + ' (' + colorName(w.side) + ')' : null, highlights: hl, detail: detail() });
+      paintRoom();
+    }
+    if (w && !left) { Kit.sfx('sparkle'); Kit.moment(endMoment(w)); }
+    if (WINO) WINO.close();
+    setTimeout(function () {
+      WINO = Kit.win({
+        icon: w && wi === me ? 'trophy' : 'users',
+        title: left ? left.text : !w ? 'A draw' : wi === me ? 'You win!' : w.name + ' wins',
+        sub: left ? '' : (!w ? 'The board filled with no five in a row' : 'Five in a row') + ' · ' + S.n + (S.n === 1 ? ' move' : ' moves'),
+        rank: left ? null : S.players.map(function (p) { return { name: p.name, score: S.caps[p.side] + ' taken', color: p.side === BLACK ? '#2a2a30' : '#f1efe9' }; }),
+        notes: left ? null : [S.players[0].name + ' has won ' + S.wins[0] + ' and ' + S.players[1].name + ' has won ' + S.wins[1] + '.'], notesTitle: 'Games at this table',
+        lose: !!w && wi !== me, againLabel: left ? 'Back to the lobby' : 'Play again',
+        again: function () { WINO = null; netAgain(); },
+        look: { label: 'Look at the board', onClick: function () { WINO = null; } }
+      });
+    }, left ? 100 : 2400);
+  }
+  function netLeave() {
+    NET = null; LEFT = null; SHOWN++; if (WINO) { WINO.close(); WINO = null; }
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.b && sv.players && !sv.over) { S = sv; S.busy = false; build(); afterTurn(); }
+    else showSetup();
+  }
+
+  // ── Test and demo hooks ──────────────────────────────────────────────────
+  window.__boku = {
+    core: Core, state: function () { return S; }, get ghost() { return GH; }, get pend() { return PEND; },
+    // a fresh game for these players: {mode: '2p' | 'cpu', level, players: [{name, cpu, side}]}
+    start: function (cfg) { cancelThink(); S = { mode: cfg.mode || '2p', level: cfg.level || 'normal', cover: false, players: cfg.players }; newGame(); },
+    // set a position: rows like Core.grid's (11 strings, top row first), whose turn, marbles taken [white, black], blocked hole
+    set: function (rows, turn, caps, blk) {
+      cancelThink(); S.busy = false; S.b = Core.fromGrid(rows); S.turn = turn || 1; S.caps = [0, caps ? caps[0] : 0, caps ? caps[1] : 0]; S.blk = blk ? Core.idx(blk) : -1;
+      S.hist = []; S.ml = []; S.cx = []; S.dbl = [0, 0, 0]; S.pass = [0, 0, 0]; S.line = []; S.n = 0; S.over = false; S.draw = false; S.winner = 0; GH = -1; PEND = null; save(); build(); afterTurn();
+    },
+    // play moves in order ('F5', 'F5 xG6') as whoever's turn it is
+    play: function (str) { return playMove(str); },
+    ghostAt: function (name) { GH = Core.idx(name); TOUCH = true; paintMarks(); paintStatus(); },
+    marble: function (name) { return MB[Core.idx(name)] || null; },
+    // a hole as an element (for the demo's finger and ring): a box the size of a marble over it, taking no taps
+    hole: function (name) { return function () { if (!layEl) return null; var h = Core.idx(name), d = layEl.querySelector('.dh[data-c="' + h + '"]'); if (!d) { d = el('span', { class: 'dh', 'data-c': h }); var q = px(h); pos(d, q.x, q.y); layEl.appendChild(d); } return d; }; },
+    at: function (name) { var r = frameEl.getBoundingClientRect(), q = px(Core.idx(name)); return { x: r.left + q.x / VW * r.width, y: r.top + q.y / VH * r.height }; },
+    desk: function () { return DK; }
+  };
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.b && saved.players && !saved.over) { S = saved; S.busy = false; build(); afterTurn(); }
+  else showSetup();
+
+  TurnNet.setup({
+    game: 'boku', title: 'Boku', min: 2, max: 2,
+    opts: netOpts, start: netStart,
+    turn: function (st) { return st.over ? [] : [netSeatOf(st, st.turn)]; },
+    over: function (st) { if (!st.over) return null; if (!st.winner) return { win: [], text: 'A draw' }; var w = netSeatOf(st, st.winner); return { win: [w], text: st.players[w].name + ' wins with five in a row' }; },
+    show: netShow, leave: netLeave
+  });
+})();
+</script>
+</body>
+</html>

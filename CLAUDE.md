@@ -1788,6 +1788,55 @@ Underlying principles for everything:
   one every description of the game gives (each palindromic run of length 2 or more, all nested and overlapping runs
   counted); whether the 5 by 5 game is "Entropy" and the 7 by 7 "Hyle7" in every edition is as Wikipedia has it.
 
+## Boku (2026-11-23; included with Rob Nelson's written permission, credited)
+
+- **Credit the designer**: "Boku was designed by Rob Nelson." stands under the title in the setup (`.bk-credit`, hidden
+  only where it would make the setup scroll) and at the foot of How to play; the condition of the permission. The board
+  and marbles are our own drawing (a honey maple hexagon round an indigo lacquer field with brass-lipped holes, milk
+  glass and smoked glass marbles); never the commercial box art, logo or trade dress.
+- `games/boku.html` (catalog id `boku`, Board), the rules and the computer in `games/boku-core.js` (`BokuCore`, plain
+  JSON; the page, the computer's Web Worker, the TurnNet table and Node), history `hist/boku.js` (hist-view.js loads the
+  core first: the final board with the winning line, a replay with each capture's emptied hole crossed, the marbles
+  taken over the game), demo `games/demos/boku.js`. `node scripts/boku-sim.js [games] [hardGames]` plays the skills
+  against each other and checks every move against a plain reading of the rules written there (its own board from
+  coordinates, its own sandwich test, its own scan of every line for five): the hole just emptied by a capture refused
+  for one turn, every capture the plain reading allows accepted and every other refused, no capture with a winning
+  move, the end exactly at five or a full board, and the marbles adding up.
+- The rules (Rob Nelson's, as the Mind Sports Olympiad plays them): 80 holes in rows of 5, 6, 7, 8, 9, 10, 9, 8, 7, 6,
+  5; White first; one marble a turn into any empty hole; five or more in a straight line win at once. A marble that
+  traps exactly two of the other color between itself and another of the mover's own may take one of the two; one or
+  three trapped take nothing; placing between two of the other color is safe. The other player can't use the emptied
+  hole on their very next turn (`blk` in the state, a red crossed ring on the board). A winning placement takes nothing.
+  A full board with no five is a draw. **Choices made where the sources we could read are silent** (Wikipedia's "may
+  remove", the official rules site boku.bandoodle.co.uk was not reachable): taking is optional; one marble a turn
+  however many lines are trapped (the player chooses from all of them); a player whose only empty hole is the blocked
+  one passes (`play` passes for them at once). Holes are named by row from the bottom (A to K) and place from the left.
+  Moves are 'F5' or 'F5 xG6' (took G6), and 'pass'.
+- Computer (`search`, `LEVELS`): alpha-beta over the holes within two steps of a marble, best first by a quick guess,
+  each window of five weighed by how full it is with one color only (`V`), pairs the other side could trap and take
+  counted against their owner (`capturable`), marbles taken a little; when the other side has a four only the moves
+  that stop it are searched (a block, or a capture that breaks the line, with the emptied hole counted), so a line that
+  can't be stopped is seen as lost. Easy one move deep with a lot of noise (it still blocks a four), Normal 3 deep,
+  Hard deepens to 8 in 1.8 s (beam 12). Measured (`boku-sim.js 400 60`, Hard capped at depth 4 there): Easy beat
+  Normal in 6 of 400; Hard beat Normal in 48 of 60.
+- The table: a tap on a hole shows a ghost marble with the lines of three or more it would make (gold) and the pairs it
+  would trap ringed red on a dashed line; a second tap (or Place on F5 in the buttons) puts it down; a mouse click puts
+  it down at once, hovering shows the ghost. A placement that traps pairs puts the marble down and rings the marbles
+  it may take, pulsing: a tap takes one, Take none keeps them, Back lifts the marble. Dashed rings in each color mark
+  the holes where that player would make five. Marbles drop in with a click; a taken marble rolls into the taker's tray
+  on their plate (`flyToTray`). Moments: A capture (`Kit.moment`), Two ways to win (a callout, `dbl` in the state), the
+  winning line lighting marble by marble with a gold line drawn through it, a big end moment (six in a row, a win after
+  taking three, a win from a double threat). Pass and play can hand over with `Kit.handoff` (off by default: nothing is
+  hidden). Layouts as Abalone's: upright the plates over and under the board; sideways the plates, turn and buttons at
+  the left and the board at the right. **At a desk** (`deskPlan`, Abalone's compositions `w1`, `w2`, `t`; `bk-dk`): the
+  board from the window to 1500px, the room: Last move in words (and the hole the next player can't use), Threats on
+  the board (each player's five-holes by name), Marbles taken (as marbles), the moves newest first with Took, Four, Two
+  threats and Five, past games; every panel as tall as what it holds, whole rows given up (`fitRoom`). Saved in
+  `boku_state` (sync.js's `ST_SAVES` needs `"boku":["boku_state"]`); online records once a device in `boku_net_rec`;
+  each new game at a table swaps colors. Test hook `window.__boku` (`start`, `set(rows, turn, caps, blk)`, `play`,
+  `ghostAt`, `marble`, `hole`, `at`, `desk`, `pend`). The scratchpad's `newgames/boku/` has the scripts (`pos.js` the
+  positions, `shots.js`, `touch.js` the demo with real touch or `--auto`, `online.js`).
+
 ## Wax Pack (2026-11-19; Tim: the Sandlot redesign, named "wax pack", the pitch duel "sure i'll try it", scanning "to log a player's deck")
 
 - Catalog id stays `sandlot` (favorites and `gh_sandlot` history carry over); the page is `games/waxpack.html` with
