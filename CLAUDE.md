@@ -1542,6 +1542,26 @@ Underlying principles for everything:
 - Test hook `window.__tunnel`: `get`, `auto(on, missEvery, curve)`, `sim(seconds, untilPhase)` (full speed, no
   drawing), `hold`, `level`, `pts`, `lives`, `diff`, `tune`, `miss`, `point`, `curve`, `quality(q, lock)`, `perf`.
 
+## Xiangqi (2026-11-23; Chinese chess, under Board)
+
+- `games/xiangqi.html`, the rules and the computer in `games/xiangqi-core.js` (`XiangqiCore`: plain JSON state, the same
+  code in the page, at the TurnNet table, in Node and in the computer's Worker, built from `XiangqiCore.factory`), history
+  `hist/xiangqi.js`, demo `games/demos/xiangqi.js`, the carved characters `fonts/xiangqi-kai.woff2` (LXGW WenKai TC,
+  subset to the 18 characters used). Rules from Wikipedia's article: flying General, stalemate loses, a threefold
+  repetition ends the game (`repetition`: the side that checked every move of it loses; otherwise one that chased the
+  same piece every move loses, `chases` with piece ids `id` that follow each piece; anything else a draw), the material
+  draw when neither side has a Chariot, Horse, Cannon or Soldier, 60 moves each without a capture a draw, and a draw by
+  agreement. Moves are written in WXF (`wxf`: C2=5, H8+7, +R-1 for the front of two on a file).
+- The board marks a chosen Horse's or Elephant's blocked points with a crossed ring and rings the blocking piece
+  (`blocked`), a move that would let the Generals face or leave the General in check (`why`) with a red cross and the
+  Generals' file drawn, and a Cannon's screen in gold (`screen`); the letters K A E H R C P on the pieces are on until a
+  first game is recorded (`xiangqi_letters`, the setup's Piece letters, the menu's toggle). Pass and play has an
+  optional hand-over cover between people (`S.pass`). A large window (`deskWin`, `fitDesk`, `paintRoom`; `xq-dw` three
+  columns, `xq-ds` the players under the board) sizes the board from the window with the moves, the pieces taken and
+  past games at the left. Online is TurnNet (seat 0 Red first, rematches swap; a draw offer stands until the other
+  player moves). Hooks `window.__xq` (`start`, `set`, `tap`, `play`, `netSet`). `node scripts/xiangqi-sim.js [games]`
+  checks perft, every position of robot games against a second rule checker, and the repetition rules on set positions.
+
 ## Wax Pack (2026-11-19; Tim: the Sandlot redesign, named "wax pack", the pitch duel "sure i'll try it", scanning "to log a player's deck")
 
 - Catalog id stays `sandlot` (favorites and `gh_sandlot` history carry over); the page is `games/waxpack.html` with

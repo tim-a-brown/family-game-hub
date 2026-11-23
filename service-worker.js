@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v956-2026-11-23-lines-of-action';
+const CACHE_VERSION = 'v957-2026-11-23-xiangqi';
 // Preview channels (familygames-da3e5--name-xyz.web.app) and local testing: pages and code always from the network
 const PREVIEW = self.location.hostname.includes('--') || /^(localhost|127\.0\.0\.1)$/.test(self.location.hostname);
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
@@ -160,6 +160,7 @@ const PRECACHE_URLS = [
   '/games/demos/checkers.js',
   '/games/demos/yahtzee.js',
   '/games/demos/chess.js',
+  '/games/demos/xiangqi.js',
   '/games/demos/spanishone.js',
   '/spin.js',
   '/games.js',
@@ -177,6 +178,7 @@ const PRECACHE_URLS = [
   '/fonts/schibsted-800.woff2',
   '/fonts/doto-900.woff2',
   '/fonts/cinzel-700.woff2',
+  '/fonts/xiangqi-kai.woff2',
   '/fonts/arvela-geist.woff2',
   '/fonts/arvela-titling.woff2',
   '/fonts/arvela-jost.woff2',
@@ -285,6 +287,9 @@ const PRECACHE_URLS = [
   '/games/scrabble.html',
   '/data/scrabble-words.js',
   '/games/chess.html',
+  '/games/xiangqi.html',
+  '/games/xiangqi-core.js',
+  '/hist/xiangqi.js',
   '/games/connectfour.html',
   '/games/conversation.html',
   '/games/craps.html',

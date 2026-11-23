@@ -78,6 +78,7 @@ var GAMES = [
       { icon: 'phone', title: 'Play on this device', desc: 'Against the computer or pass and play', file: 'chess.html' },
       { icon: 'users', title: 'Play online', desc: 'Two devices, each signed in with its own PIN', file: 'chess.html?online=1' }
     ] },
+  { id: 'xiangqi',     name: 'Xiangqi',      color: '#b4232a', cat: 'board', min: 1, max: 2, tag: 'Chinese chess: cannons, horses and the river', play: 'xiangqi', demo: 1 },
   { id: 'checkers',    name: 'Checkers',     color: '#dc2626', cat: 'board', min: 1, max: 2, tag: 'Jump, king, and clear the board', play: 'checkers', demo: 1 },
   { id: 'connectfour', name: 'Connect Four', color: '#2563eb', cat: 'board', min: 1, max: 2, tag: 'Four in a row wins', play: 'connectfour', demo: 1 },
   { id: 'tictactoe',   name: 'Tic-Tac-Toe',  color: '#06b6d4', cat: 'board', min: 1, max: 3, tag: 'Classic, Ultimate, and 3-player', play: 'tictactoe', demo: 1 },
