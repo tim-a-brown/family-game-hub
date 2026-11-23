@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v958-2026-11-23-shogi';
+const CACHE_VERSION = 'v959-2026-11-23-abalone';
 // Preview channels (familygames-da3e5--name-xyz.web.app) and local testing: pages and code always from the network
 const PREVIEW = self.location.hostname.includes('--') || /^(localhost|127\.0\.0\.1)$/.test(self.location.hostname);
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
@@ -148,6 +148,7 @@ const PRECACHE_URLS = [
   '/games/demos/crazy8s.js',
   '/games/demos/gin-rummy-ai.js',
   '/games/demos/canasta.js',
+  '/games/demos/abalone.js',
   '/games/demos/othello.js',
   '/games/demos/lines-of-action.js',
   '/games/demos/shogi.js',
@@ -368,6 +369,8 @@ const PRECACHE_URLS = [
   '/games/memorymatch.html',
   '/games/minesweeper.html',
   '/games/minigolf.html',
+  '/games/abalone.html',
+  '/games/abalone-core.js',
   '/games/othello.html',
   '/games/lines-of-action.html',
   '/games/shogi.html',
@@ -526,6 +529,7 @@ const PRECACHE_URLS = [
   '/hist/board.js',
   '/hist/board2.js',
   '/hist/loa.js',
+  '/hist/abalone.js',
   '/hist/cards.js',
   '/hist/bridge.js',
   '/hist/specialty.js',
