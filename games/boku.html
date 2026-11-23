@@ -18,7 +18,7 @@
 .bk-col{max-width:540px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
 .bk-credit{margin:-6px 0 2px;text-align:center;font-size:.78rem;font-weight:600;color:var(--text-3);}
 
-/* A player's plate: their marble, their name and whose turn, and the tray of the other color's marbles they have taken */
+/* A player's plate: their marble, their name and whose turn, and the bowl of their own marbles still to place */
 .pbar{display:flex;align-items:center;gap:10px;min-height:52px;padding:6px 12px 6px 10px;border-radius:16px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);transition:box-shadow .2s,background .2s;}
 .pbar.on{background:color-mix(in srgb,var(--lit) 11%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--lit) 65%,transparent),0 0 18px color-mix(in srgb,var(--lit) 18%,transparent);}
 .pbar .who{flex:1;min-width:0;display:flex;flex-direction:column;}
@@ -30,7 +30,7 @@
 .think i{display:inline-block;width:5px;height:5px;margin:0 1px;border-radius:50%;background:currentColor;animation:th 1s infinite;}
 .think i:nth-child(2){animation-delay:.15s}.think i:nth-child(3){animation-delay:.3s}
 @keyframes th{50%{opacity:.2;transform:translateY(-2px);}}
-/* the tray: a maple channel holding the marbles this player has taken, the count beside them */
+/* the bowl: a maple channel holding this player's marbles still to place, the count beside them */
 .tray{--s:17px;display:flex;align-items:center;gap:3px;padding:4px 7px;border-radius:999px;flex:none;min-width:calc(var(--s) * 2 + 14px);min-height:calc(var(--s) + 8px);
   background:linear-gradient(180deg,#5b3a1c,#8a5c30);box-shadow:inset 0 2px 4px rgba(0,0,0,.7),inset 0 -1px 0 rgba(255,255,255,.14),0 1px 0 rgba(255,255,255,.06);}
 .tray .tok{--d:var(--s);}
@@ -193,7 +193,7 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
 (function () {
   'use strict';
   var el = Kit.el, app = document.getElementById('app'), Core = window.BokuCore;
-  var SAVE = 'boku_state', KEY = 'boku', WHITE = 1, BLACK = 2;
+  var SAVE = 'boku_state', KEY = 'boku', BLACK = 1, WHITE = 2;
   var SKILL = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
   var DEMO = Kit.inDemo && Kit.inDemo();
   var CREDIT = 'Boku was designed by Rob Nelson.';
@@ -213,7 +213,7 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
   function clearSave() { if (NET) return; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
   function pl(side) { return S.players[0].side === side ? S.players[0] : S.players[1]; }
   function vsCpu() { return S.players.some(function (p) { return p.cpu; }); }
-  function colorName(side) { return side === WHITE ? 'White' : 'Black'; }
+  function colorName(side) { return side === BLACK ? 'Black' : 'White'; }
   function isMe(p) { return NET ? NET.seat >= 0 && S.players[NET.seat] === p : !p.cpu; }
   function nameOf(p) { return NET && isMe(p) ? 'You' : p.name; }
   function humanTurn() { return S && !S.over && !S.busy && !HOLD && (NET ? !LEFT && NET.myTurn() : !pl(S.turn).cpu); }
@@ -227,16 +227,16 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
     menu: TurnNet.menu().concat([{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Boku: past games' }); } }]),
     rules:
       '<p class="goal">Be the first to get <b>five of your marbles in a straight line</b>.</p>' +
-      '<h3>Your turn</h3><ul><li><b>White goes first.</b> On your turn you put one marble into any empty hole on the board of 80 holes.</li>' +
+      '<h3>Your turn</h3><ul><li>Each player has 36 marbles, and <b>Black goes first</b>. On your turn you put one of your marbles into any empty hole on the board of 80 holes.</li>' +
       '<li>Five or more of your marbles in a row, along any of the board’s three directions, win the game at once.</li>' +
       '<li>Tap a hole and your marble shows there faintly, with the lines it would make; tap it again to put it down. With a mouse, a click puts it down.</li>' +
       '<li>A dashed ring marks a hole where a player would make five next turn. Block it, or take one of the marbles in that line.</li></ul>' +
-      '<h3>Taking a marble</h3><ul><li>When your new marble traps <b>exactly two</b> of the other player’s marbles in a straight line between itself and another of yours, you may take one of the two away. Tap the one you want; it goes into your tray.</li>' +
-      '<li>You take one marble a turn at most, even when your marble traps pairs in two lines at once, and you don’t have to take one.</li>' +
+      '<h3>Taking a marble</h3><ul><li>When your new marble traps <b>exactly two</b> of the other player’s marbles in a straight line between itself and another of yours, you have to take one of the two away, whichever you choose. Tap the one you want. It goes back to its owner, who can place it again later.</li>' +
+      '<li>You take one marble a turn, even when your marble traps pairs in two lines at once: then you choose any one of the trapped marbles.</li>' +
       '<li>One marble or three in a row can’t be taken. Putting your marble between two of the other player’s is safe: only the player who puts a marble down takes.</li>' +
-      '<li>On their very next turn, the other player can’t put a marble back into the hole you just emptied. It is marked with a red cross until then.</li>' +
+      '<li>On their very next turn, the other player can’t put a marble back into the hole you just emptied. A red cross marks it until then.</li>' +
       '<li>A marble that makes five wins at once, and takes nothing.</li></ul>' +
-      '<h3>The end</h3><ul><li>If the board fills with no five in a row, the game is a draw.</li><li>If the only empty hole is the one a player can’t use, that player passes.</li></ul>' +
+      '<h3>The end</h3><ul><li>A player with no marbles left to place when their turn comes ends the game in a draw. Each plate shows how many marbles that player has left.</li></ul>' +
       '<h3>Online</h3><ul><li><b>Play online</b> opens a table, and the other player joins on their own device. Each new game at the table swaps colors.</li></ul>' +
       '<h3>Tips</h3><ul><li>Two marbles side by side with an empty hole at one end and the other player’s marble at the other can be taken. Keep threes, or cover the open end.</li>' +
       '<li>Four in a line with both ends open can’t be stopped by a block alone, so stop a three before it gets there.</li></ul>' +
@@ -250,12 +250,12 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
       modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: '2p', kind: 'local' }]),
       options: [
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Blocks a line of four, but otherwise often plays a weaker hole than it could.'], ['normal', 'Normal', 'Looks a few moves ahead for lines and for marbles to take.'], ['hard', 'Hard', 'Looks six to eight moves ahead and sets up two ways to win at once.']], when: function (m) { return m === 'cpu'; } },
-        { id: 'side', label: 'You play', value: 'w', choices: [['w', 'White\nGoes first', 'White always goes first, so you start.'], ['b', 'Black', 'The computer plays White and goes first.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'side', label: 'You play', value: 'b', choices: [['b', 'Black\nGoes first', 'Black always goes first, so you start.'], ['w', 'White', 'The computer plays Black and goes first.']], when: function (m) { return m === 'cpu'; } },
         { id: 'cover', label: 'Hand over between turns', value: 'off', choices: [['off', 'Off', 'Nothing in Boku is hidden, so the device just goes across the table.'], ['on', 'On', 'A cover names whose turn it is before each move.']], when: function (m) { return m === '2p'; } }
       ],
       players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       onStart: function (cfg) {
-        var cpu = cfg.mode === 'cpu', hs = cpu && cfg.options.side === 'b' ? BLACK : WHITE;
+        var cpu = cfg.mode === 'cpu', hs = cpu && cfg.options.side === 'w' ? WHITE : BLACK;
         S = { mode: cfg.mode, level: cfg.options.level || 'normal', cover: cfg.options.cover === 'on' && !cpu,
           players: cfg.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, side: i === 0 ? hs : 3 - hs }; }) };
         newGame();
@@ -283,7 +283,7 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
 
   // ── Moves ────────────────────────────────────────────────────────────────
   var GH = -1, PEND = null, HOLD = false, WINANIM = false;
-  function snapshot(byCpu) { return { b: S.b.slice(), turn: S.turn, caps: S.caps.slice(), n: S.n, mlN: S.ml.length, blk: S.blk, cxN: S.cx.length, dbl: S.dbl.slice(), pass: S.pass.slice(), cpu: !!byCpu }; }
+  function snapshot(byCpu) { return { b: S.b.slice(), turn: S.turn, caps: S.caps.slice(), n: S.n, mlN: S.ml.length, blk: S.blk, cxN: S.cx.length, dbl: S.dbl.slice(), sup: S.sup.slice(), cpu: !!byCpu }; }
   function playMove(str, byCpu) {
     if (!S || S.over) return false;
     if (!Core.check(S, str)) return false;
@@ -310,17 +310,16 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
     }
     paintMarks(); paintStatus();
   }
-  // What a move earns where it happens: a marble drops in with a click; a capture sends the marble rolling into the
-  // taker's tray with a moment on the table; two ways to win at once are called out; a long line gets a soft chime
+  // What a move earns where it happens: a marble drops in with a click; a capture sends the marble rolling back into
+  // its owner's bowl with a moment on the table; two ways to win at once are called out; a four gets a soft tick
   function feedback(res, side, t) {
     var who = pl(side), them = pl(3 - side), me = isMe(who);
-    if (res.pass) { Kit.toast(nameOf(pl(side)) + ' had no hole to use and passed.'); return; }
     Kit.sfx('chip'); Kit.haptic('light');
     if (res.five) return;
     if (res.x >= 0) {
       setTimeout(function () {
         Kit.sfx('pop'); Kit.haptic(me ? 'success' : 'medium');
-        Kit.moment({ title: 'A capture', line: nameOf(who) + ' took one of ' + poss(nameOf(them)) + ' marbles from ' + Core.NAMES[res.x] + '. ' + nameOf(them) + ' can’t put a marble back there next turn.',
+        Kit.moment({ title: 'A capture', line: nameOf(who) + ' took one of ' + poss(nameOf(them)) + ' marbles from ' + Core.NAMES[res.x] + ' and handed it back. ' + nameOf(them) + ' can’t put a marble back there next turn.',
           pts: S.caps[side] === 1 ? '1 taken' : S.caps[side] + ' taken', chip: Core.NAMES[res.x], color: '#c8862f', at: frameEl, ms: 2800 });
       }, t - 200);
     }
@@ -336,7 +335,7 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
     cancelThink(); S.busy = false;
     var snap;
     while (S.hist.length) { snap = S.hist.pop(); if (!cpu || !snap.cpu) break; }
-    S.b = snap.b; S.turn = snap.turn; S.caps = snap.caps; S.n = snap.n; S.ml.length = snap.mlN; S.blk = snap.blk; S.cx.length = snap.cxN; S.dbl = snap.dbl; S.pass = snap.pass;
+    S.b = snap.b; S.turn = snap.turn; S.caps = snap.caps; S.n = snap.n; S.ml.length = snap.mlN; S.blk = snap.blk; S.cx.length = snap.cxN; S.dbl = snap.dbl; S.sup = snap.sup;
     GH = -1; PEND = null; Kit.sfx('whoosh'); save(); build(); afterTurn();
   }
 
@@ -430,11 +429,10 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
     deskApply();
     paintMarks(); paintStatus(); paintRoom();
   }
-  function lastPlaced() { for (var i = S.ml.length - 1; i >= 0; i--) { var m = Core.parse(S.ml[i]); if (m && !m.pass) return S.b[m.c] ? m.c : -1; } return -1; }
-  // The marble drops into its hole; a taken marble lifts out and rolls into the taker's tray; a winning five lights
+  function lastPlaced() { for (var i = S.ml.length - 1; i >= 0; i--) { var m = Core.parse(S.ml[i]); if (m) return S.b[m.c] ? m.c : -1; } return -1; }
+  // The marble drops into its hole; a taken marble lifts out and rolls back into its owner's bowl; a winning five lights
   // one marble after another along its line. Returns how long it takes.
   function animate(res, side, prevB) {
-    if (res.pass) return 200;
     Object.keys(MB).forEach(function (k) { MB[k].classList.remove('lastm'); });
     var n = MB[res.c];
     if (!n) { n = marble(side, res.c); MB[res.c] = n; layEl.appendChild(n); }
@@ -445,7 +443,7 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
     setTimeout(function () { n.classList.remove('drop'); }, 500);
     if (res.x >= 0 && MB[res.x]) {
       var g = MB[res.x]; delete MB[res.x];
-      var tray = pl(side) === pl(bottomSide()) ? botBar : topBar;
+      var tray = pl(3 - side) === pl(bottomSide()) ? botBar : topBar;
       setTimeout(function () { flyToTray(g, tray, 3 - side); }, 380);
       return 1100;
     }
@@ -546,7 +544,7 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
     actsEl.innerHTML = '';
     if (NET) { if (S.over || LEFT) actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: LEFT ? 'Back to the lobby' : 'Play again', onclick: netAgain })); }
     else if (S.over) { actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Play again', onclick: function () { newGame(true); } })); return; }
-    if (PEND) { actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Take none', onclick: function () { commit(PEND.c, -1); } })); actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('undo') + '<span>Back</span>', onclick: function () { unPend(); } })); return; }
+    if (PEND) { actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('undo') + '<span>Back</span>', onclick: function () { unPend(); } })); return; }
     if (GH >= 0 && humanTurn()) actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm bk-place', text: 'Place on ' + Core.NAMES[GH], onclick: function () { place(GH); } }));
     if (!NET) actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('undo') + '<span>Undo</span>', onclick: undo }));
   }
@@ -597,7 +595,7 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
       if (PEND) {
         if (PEND.opts.indexOf(c) >= 0) { Kit.haptic('medium'); return commit(PEND.c, c); }
         if (c === PEND.c) return unPend();
-        Kit.haptic('error'); Kit.toast('Tap one of the ringed marbles to take it, or tap Take none.');
+        Kit.haptic('error'); Kit.toast('Tap one of the ringed marbles to take it, or tap your new marble to pick it up again.');
         return;
       }
       if (c < 0) { if (GH >= 0) { GH = -1; paintMarks(); paintStatus(); } return; }
@@ -610,9 +608,9 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
 
   // ── The plates, the turn, the room ───────────────────────────────────────
   function bottomSide() {
-    if (NET) return NET.seat >= 0 ? S.players[NET.seat].side : WHITE;
+    if (NET) return NET.seat >= 0 ? S.players[NET.seat].side : BLACK;
     var hum = S.players.filter(function (p) { return !p.cpu; });
-    return vsCpu() && hum.length === 1 ? hum[0].side : WHITE;
+    return vsCpu() && hum.length === 1 ? hum[0].side : BLACK;
   }
   function bar(node, side) {
     if (!node) return;
@@ -620,10 +618,9 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
     node.className = 'pbar ' + (node === topBar ? 'top' : 'bot') + (on ? ' on' : '');
     var sub = on && p.cpu && S.busy ? '<span class="think">Thinking <i></i><i></i><i></i></span>' : on ? (NET && isMe(p) ? 'Your turn as ' + colorName(side) : colorName(side) + ' to play') : colorName(side);
     if (S.over && S.winner === side) sub = 'Won the game';
-    var k = S.caps[side], tray = el('div', { class: 'tray', role: 'img', 'aria-label': nameOf(p) + ' has taken ' + k + (k === 1 ? ' marble' : ' marbles') });
-    var show = Math.min(k, 4);
-    for (var i = 0; i < show; i++) tray.appendChild(el('span', { class: 'tok ' + tc(3 - side) + (lastTrays[side] != null && i >= Math.min(lastTrays[side], 4) && k > lastTrays[side] ? ' new' : '') }));
-    if (!k) tray.appendChild(el('span', { class: 'tok ' + tc(3 - side), style: 'opacity:.18' }));
+    // the bowl: this player's marbles still to place (a taken marble comes back here)
+    var k = S.sup[side], tray = el('div', { class: 'tray', role: 'img', 'aria-label': nameOf(p) + ' has ' + k + (k === 1 ? ' marble' : ' marbles') + ' left to place' });
+    tray.appendChild(el('span', { class: 'tok ' + tc(side) + (lastTrays[side] != null && k > lastTrays[side] ? ' new' : ''), style: k ? '' : 'opacity:.18' }));
     tray.appendChild(el('span', { class: 'tn' + (k ? '' : ' z'), text: String(k) }));
     lastTrays[side] = k;
     node.innerHTML = '';
@@ -637,13 +634,13 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
     var p = pl(S.turn);
     turnEl.innerHTML = '';
     if (NET && LEFT) { turnEl.appendChild(el('span', { text: LEFT.text || 'The other player left' })); return; }
-    if (S.over) { turnEl.appendChild(el('span', { text: S.draw ? 'The board is full with no five in a row: a draw' : (NET && isMe(pl(S.winner)) ? 'You win with ' : pl(S.winner).name + ' wins with ') + (S.line.length >= 6 ? S.line.length + ' in a row' : 'five in a row') })); return; }
+    if (S.over) { turnEl.appendChild(el('span', { text: S.draw ? (S.why === 'out' ? nameOf(pl(S.turn)) + ' has no marbles left, so the game is a draw' : 'The board is full with no five in a row: a draw') : (NET && isMe(pl(S.winner)) ? 'You win with ' : pl(S.winner).name + ' wins with ') + (S.line.length >= 6 ? S.line.length + ' in a row' : 'five in a row') })); return; }
     turnEl.appendChild(el('span', { class: 'dot' }));
     var txt, mine = NET ? isMe(p) : !p.cpu, who = NET && isMe(p) ? 'Your' : Kit.poss(p.name);
     if (NET && !mine) txt = 'Waiting for ' + p.name;
     else if (!NET && p.cpu) txt = p.name + ' is thinking…';
     else if (HOLD) txt = 'Pass the device to ' + p.name;
-    else if (PEND) txt = 'Tap a ringed marble to take it, or keep them all';
+    else if (PEND) txt = 'Tap a ringed marble to take it';
     else if (GH >= 0) txt = Core.makesFive(S.b, GH, S.turn) ? 'Tap the marble again: that’s five in a row!' : 'Tap the marble again to put it on ' + Core.NAMES[GH];
     else txt = who + ' turn: tap a hole';
     turnEl.appendChild(el('span', { text: txt }));
@@ -652,7 +649,6 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
   // a move in words with the players' names: "Tim put a marble on H7 and took Jamie's marble on H6."
   function said(L) {
     var m = Core.parse(L.s), who = nameOf(pl(L.side)), them = nameOf(pl(3 - L.side));
-    if (m.pass) return who + ' had no hole to use and passed.';
     return who + ' put a marble on ' + Core.NAMES[m.c] + (m.x >= 0 ? ' and took ' + poss(them) + ' marble on ' + Core.NAMES[m.x] : '') + '.';
   }
   function moveList() {
@@ -667,14 +663,14 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
     roomEl.innerHTML = '';
     var list = moveList(), L = list[list.length - 1];
     var lp = el('section', { class: 'pn lastp' }, [el('h3', { text: 'Last move' })]);
-    var line = L ? said(L) : nameOf(pl(WHITE)) + ' plays White and puts the first marble down.';
+    var line = L ? said(L) : nameOf(pl(BLACK)) + ' plays Black and puts the first marble down.';
     if (L && L.r.five) line = nameOf(pl(L.side)) + ' put a marble on ' + Core.NAMES[L.r.c] + ' and made ' + (L.r.five.length >= 6 ? L.r.five.length : 'five') + ' in a row.';
     lp.appendChild(el('div', { class: 'ln', text: line }));
     if (S.blk >= 0 && !S.over) lp.appendChild(el('div', { class: 'ln none', text: nameOf(pl(S.turn)) + ' can’t use ' + Core.NAMES[S.blk] + ' this turn.' }));
     roomEl.appendChild(lp);
     // threats
     var th = el('section', { class: 'pn thp' }, [el('h3', { text: 'Threats on the board' })]), anyT = false;
-    [WHITE, BLACK].forEach(function (sd) {
+    [BLACK, WHITE].forEach(function (sd) {
       var w = S.over ? [] : Core.winCells(S.b, sd, sd === S.turn ? S.blk : -1);
       if (!w.length) return;
       anyT = true;
@@ -684,7 +680,7 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
     roomEl.appendChild(th);
     // taken
     var tk = el('section', { class: 'pn tkp' }, [el('h3', { text: 'Marbles taken' })]);
-    [WHITE, BLACK].forEach(function (sd) {
+    [BLACK, WHITE].forEach(function (sd) {
       var k = S.caps[sd], mbs = el('span', { class: 'mbs' });
       for (var i = 0; i < Math.min(k, 10); i++) mbs.appendChild(el('span', { class: 'tok ' + tc(3 - sd) }));
       tk.appendChild(el('div', { class: 'tkr' }, [el('span', { class: 'nmx', text: nameOf(pl(sd)) }), k ? mbs : el('span', { class: 'none', text: 'None yet' }), k ? el('span', { class: 'ct', text: String(k) }) : null]));
@@ -695,7 +691,7 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
       list.slice().reverse().slice(0, 60).forEach(function (x, i) {
         var m = Core.parse(x.s);
         rows.appendChild(el('div', { class: 'mvr' + (i === 0 ? ' now' : '') }, [el('span', { class: 'no', text: x.n + '' }), el('span', { class: 'tok ' + tc(x.side) }),
-          el('span', { class: 'nt', text: m.pass ? 'Passed' : Core.NAMES[m.c] }),
+          el('span', { class: 'nt', text: Core.NAMES[m.c] }),
           x.r.five ? el('span', { class: 'tg f', text: 'Five' }) : m.x >= 0 ? el('span', { class: 'tg x', text: 'Took ' + Core.NAMES[m.x] }) : x.r.threats >= 2 ? el('span', { class: 'tg t', text: 'Two threats' }) : x.r.threats ? el('span', { class: 'tg t', text: 'Four' }) : el('span')]));
       });
       mv.appendChild(rows); roomEl.appendChild(mv);
@@ -783,7 +779,7 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
   // ── The end ──────────────────────────────────────────────────────────────
   function highlights(w, l) {
     var hl = [];
-    if (S.draw) hl.push('The board filled with no five in a row, so the game was a draw.');
+    if (S.draw) hl.push(S.why === 'out' ? pl(S.turn).name + ' had no marbles left to place, so the game was a draw.' : 'The board filled with no five in a row, so the game was a draw.');
     else {
       hl.push(w.name + ' made ' + (S.line.length >= 6 ? S.line.length : 'five') + ' in a row from ' + Core.NAMES[S.line[0]] + ' to ' + Core.NAMES[S.line[S.line.length - 1]] + '.');
       if (S.line.length >= 6) hl.push(w.name + ' won with ' + S.line.length + ' marbles in one line.');
@@ -796,7 +792,7 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
   }
   function detail() {
     return { mv: S.ml.join(','), grid: Core.grid(S.b), caps: [S.caps[1], S.caps[2]], sides: S.players.map(function (p) { return tc(p.side); }).join(''),
-      line: (S.line || []).map(function (h) { return Core.NAMES[h]; }).join(' '), cx: S.cx.join(','), dbl: [S.dbl[1], S.dbl[2]], n: S.n, end: S.draw ? 'full' : 'five' };
+      line: (S.line || []).map(function (h) { return Core.NAMES[h]; }).join(' '), cx: S.cx.join(','), dbl: [S.dbl[1], S.dbl[2]], n: S.n, end: S.why || 'five' };
   }
   function endMoment(w) {
     var who = nameOf(w);
@@ -821,7 +817,7 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
       Kit.win({
         icon: !w ? 'users' : lose ? 'bot' : 'trophy',
         title: !w ? 'A draw' : lose ? w.name + ' wins this one' : w.name === 'You' ? 'You win!' : w.name + ' wins!',
-        sub: (!w ? 'The board filled with no five in a row' : 'Five in a row') + ' · ' + S.n + (S.n === 1 ? ' move' : ' moves'),
+        sub: (!w ? (S.why === 'out' ? pl(S.turn).name + ' ran out of marbles' : 'The board filled with no five in a row') : 'Five in a row') + ' · ' + S.n + (S.n === 1 ? ' move' : ' moves'),
         rank: (w ? [w, l] : S.players).map(function (p) { return { name: p.name, score: S.caps[p.side] + ' taken', color: p.side === BLACK ? '#2a2a30' : '#f1efe9' }; }),
         lose: !!lose, again: function () { newGame(true); }, look: true,
         setup: function () { cancelThink(); clearSave(); showSetup(); }
@@ -833,11 +829,11 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
   // Seat 0 plays the color chosen in the setup in the first game; each new game at the table swaps colors.
   function netSeatOf(st, side) { return st.players[0].side === side ? 0 : 1; }
   function netOpts() {
-    var o = { side: 'w' }; try { var g = JSON.parse(localStorage.getItem('gn_setup_boku')); if (g && g.options && g.options.side === 'b') o.side = 'b'; } catch (e) {}
+    var o = { side: 'b' }; try { var g = JSON.parse(localStorage.getItem('gn_setup_boku')); if (g && g.options && g.options.side === 'w') o.side = 'w'; } catch (e) {}
     return o;
   }
   function netStart(players, opts, last) {
-    var s0 = last && last.players ? 3 - last.players[0].side : opts && opts.side === 'b' ? BLACK : WHITE;
+    var s0 = last && last.players ? 3 - last.players[0].side : opts && opts.side === 'w' ? WHITE : BLACK;
     var st = Core.newGame();
     st.mode = 'online'; st.level = 'normal'; st.players = players.map(function (p, i) { return { name: p.name, cpu: false, side: i === 0 ? s0 : 3 - s0 }; });
     st.wins = last && last.wins ? last.wins.slice() : [0, 0]; st.started = Date.now();
@@ -871,7 +867,7 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
       }
     }
     S = next; GH = -1; PEND = null; build();
-    if (info.again) { Kit.sfx('deal'); Kit.callout(pl(WHITE) === S.players[net.seat] ? 'You start' : pl(WHITE).name + ' starts'); }
+    if (info.again) { Kit.sfx('deal'); Kit.callout(pl(BLACK) === S.players[net.seat] ? 'You start' : pl(BLACK).name + ' starts'); }
     if (S.over || LEFT) setTimeout(function () { if (tok === SHOWN) netEnd(); }, 200);
   }
   function netEnd() {
@@ -893,7 +889,7 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
       WINO = Kit.win({
         icon: w && wi === me ? 'trophy' : 'users',
         title: left ? left.text : !w ? 'A draw' : wi === me ? 'You win!' : w.name + ' wins',
-        sub: left ? '' : (!w ? 'The board filled with no five in a row' : 'Five in a row') + ' · ' + S.n + (S.n === 1 ? ' move' : ' moves'),
+        sub: left ? '' : (!w ? (S.why === 'out' ? pl(S.turn).name + ' ran out of marbles' : 'The board filled with no five in a row') : 'Five in a row') + ' · ' + S.n + (S.n === 1 ? ' move' : ' moves'),
         rank: left ? null : S.players.map(function (p) { return { name: p.name, score: S.caps[p.side] + ' taken', color: p.side === BLACK ? '#2a2a30' : '#f1efe9' }; }),
         notes: left ? null : [S.players[0].name + ' has won ' + S.wins[0] + ' and ' + S.players[1].name + ' has won ' + S.wins[1] + '.'], notesTitle: 'Games at this table',
         lose: !!w && wi !== me, againLabel: left ? 'Back to the lobby' : 'Play again',
@@ -905,7 +901,7 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
   function netLeave() {
     NET = null; LEFT = null; SHOWN++; if (WINO) { WINO.close(); WINO = null; }
     var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
-    if (sv && sv.b && sv.players && !sv.over) { S = sv; S.busy = false; build(); afterTurn(); }
+    if (sv && sv.b && sv.sup && sv.players && !sv.over) { S = sv; S.busy = false; build(); afterTurn(); }
     else showSetup();
   }
 
@@ -914,10 +910,11 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
     core: Core, state: function () { return S; }, get ghost() { return GH; }, get pend() { return PEND; },
     // a fresh game for these players: {mode: '2p' | 'cpu', level, players: [{name, cpu, side}]}
     start: function (cfg) { cancelThink(); S = { mode: cfg.mode || '2p', level: cfg.level || 'normal', cover: false, players: cfg.players }; newGame(); },
-    // set a position: rows like Core.grid's (11 strings, top row first), whose turn, marbles taken [white, black], blocked hole
+    // set a position: rows like Core.grid's (11 strings, top row first), whose turn, marbles taken [black, white], blocked hole
+    // (each side's marbles left to place are 36 less what it has on the board)
     set: function (rows, turn, caps, blk) {
       cancelThink(); S.busy = false; S.b = Core.fromGrid(rows); S.turn = turn || 1; S.caps = [0, caps ? caps[0] : 0, caps ? caps[1] : 0]; S.blk = blk ? Core.idx(blk) : -1;
-      S.hist = []; S.ml = []; S.cx = []; S.dbl = [0, 0, 0]; S.pass = [0, 0, 0]; S.line = []; S.n = 0; S.over = false; S.draw = false; S.winner = 0; GH = -1; PEND = null; save(); build(); afterTurn();
+      S.hist = []; S.ml = []; S.cx = []; S.dbl = [0, 0, 0]; S.sup = [0, Core.MARBLES - Core.count(S.b, 1), Core.MARBLES - Core.count(S.b, 2)]; S.why = ''; S.line = []; S.n = 0; S.over = false; S.draw = false; S.winner = 0; GH = -1; PEND = null; save(); build(); afterTurn();
     },
     // play moves in order ('F5', 'F5 xG6') as whoever's turn it is
     play: function (str) { return playMove(str); },
@@ -929,7 +926,7 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
     desk: function () { return DK; }
   };
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
-  if (saved && saved.b && saved.players && !saved.over) { S = saved; S.busy = false; build(); afterTurn(); }
+  if (saved && saved.b && saved.sup && saved.players && !saved.over) { S = saved; S.busy = false; build(); afterTurn(); }
   else showSetup();
 
   TurnNet.setup({

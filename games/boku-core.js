@@ -4,19 +4,21 @@
 // search, and in Node (scripts/boku-sim.js plays thousands of games with it).
 // Boku was designed by Rob Nelson (included with his written permission).
 //
-// The rules (Rob Nelson's, as the Mind Sports Olympiad plays them):
-//   A hexagonal board of 80 holes in rows of 5, 6, 7, 8, 9, 10, 9, 8, 7, 6, 5. White moves first.
-//   On a turn a player puts one marble of their color into any empty hole.
-//   Five or more of a player's marbles in a straight line win at once.
+// The rules (Rob Nelson's official rules):
+//   A hexagonal board of 80 holes in rows of 5, 6, 7, 8, 9, 10, 9, 8, 7, 6, 5. Each player has 36 marbles.
+//   Black moves first. On a turn a player puts one marble of their color into any empty hole.
+//   Five or more of a player's marbles in a straight line, along any of the board's three directions, win at once.
 //   A capture: when the marble just placed traps exactly two of the other player's marbles in a straight line
-//   between itself and another of the player's own (you, them, them, you), the player may take away one of those
-//   two, whichever they choose. Only one marble is taken a turn, even when the placement traps pairs in more than
-//   one line (the player chooses from all of them). Taking one is a choice, not a duty.
+//   between itself and another of the player's own (you, them, them, you), the player has to take away one of those
+//   two, whichever they choose, and hands it back to its owner, who can place it again. Only one marble is taken a
+//   turn: when the placement traps pairs in more than one line (a double sandwich), the player chooses any one of
+//   the trapped marbles.
 //   The other player may not put a marble into the hole just emptied on their very next turn.
-//   A placement that makes five wins at once, and no capture is made with it.
+//   A placement that makes five wins at once, and no capture is made with it (the official rules don't say; this
+//   is our choice).
 //   Placing a marble between two of the other player's marbles is safe: only the player who places captures.
-//   If the board fills with no five in a row, the game is a draw. A player whose only empty hole is the one they
-//   may not use passes that turn (rare; how the rule sheet settles it isn't known here).
+//   A player with no marbles left to place when their turn comes ends the game in a draw (the official suggestion).
+//   With 72 marbles at most on 80 holes the board can never fill; a full board would be a draw too.
 //
 // Holes: 80, numbered row by row from the top of the screen (row K) down to row A, left to right. A hole's name is
 // its row letter (A at the bottom to K at the top) and its place in the row from the left: A1 to A5, F1 to F10, K1
@@ -24,15 +26,16 @@
 // Directions (0 to 5): E, NE, NW, W, SW, SE.
 //
 // State (all plain JSON):
-//   v, b [80] (0 empty, 1 White, 2 Black), turn (1 | 2), caps [_, taken by White, taken by Black], n (turns played),
-//   ml [move strings], blk (the hole the side to move may not use, or -1), over, winner (1 | 2 | 0), draw (true when
-//   the board filled), line [the winning line's holes], cx [move numbers that captured], dbl [_, w, b] (double
-//   threats made), pass [_, w, b]
-// A move string is a hole's name, with ' x' and the hole taken when it captures: 'F5', 'F5 xG6', or 'pass'.
+//   v, b [80] (0 empty, 1 Black, 2 White), turn (1 | 2), sup [_, Black's marbles left to place, White's],
+//   caps [_, taken by Black, taken by White], n (turns played), ml [move strings], blk (the hole the side to move may
+//   not use, or -1), over, winner (1 | 2 | 0), draw (true when a player ran out of marbles, or the board filled), why
+//   ('five' | 'out' | 'full'), line [the winning line's holes], cx [move numbers that captured], dbl [_, b, w]
+//   (double threats made)
+// A move string is a hole's name, with ' x' and the hole taken when it captures: 'F5', 'F5 xG6'.
 // ═══════════════════════════════════════════════════════════════════════════
 (function (root) {
   'use strict';
-  var N = 80, WHITE = 1, BLACK = 2;
+  var N = 80, BLACK = 1, WHITE = 2, MARBLES = 36;
   var DIRS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
   var CELLS = [], AT = {}, NB = new Int16Array(N * 6), ROW = [], NAMES = [], ROWS = [];
   (function () {
@@ -77,7 +80,7 @@
 
   function newGame() {
     var b = []; for (var i = 0; i < N; i++) b.push(0);
-    return { v: 1, b: b, turn: WHITE, caps: [0, 0, 0], n: 0, ml: [], blk: -1, over: false, winner: 0, draw: false, line: [], cx: [], dbl: [0, 0, 0], pass: [0, 0, 0] };
+    return { v: 2, b: b, turn: BLACK, sup: [0, MARBLES, MARBLES], caps: [0, 0, 0], n: 0, ml: [], blk: -1, over: false, winner: 0, draw: false, why: '', line: [], cx: [], dbl: [0, 0, 0] };
   }
 
   // the pairs a marble of side's placed at c would trap: [{d, p: [nearer, farther]}]
@@ -120,55 +123,51 @@
   // the holes the side to move may use
   function places(st) { var o = []; for (var i = 0; i < N; i++) if (!st.b[i] && i !== st.blk) o.push(i); return o; }
   function parse(str) {
-    if (str === 'pass') return { pass: true, c: -1, x: -1 };
     var m = /^([A-K]\d{1,2})(?: x([A-K]\d{1,2}))?$/.exec(String(str || ''));
     if (!m) return null;
     var c = idx(m[1]), x = m[2] ? idx(m[2]) : -1;
     if (c < 0 || (m[2] && x < 0)) return null;
-    return { c: c, x: x, pass: false };
+    return { c: c, x: x };
   }
   function encode(c, x) { return NAMES[c] + (x >= 0 ? ' x' + NAMES[x] : ''); }
   // is this move legal now? returns the parsed move or null
   function check(st, str) {
-    if (st.over) return null;
+    if (st.over || !st.sup[st.turn]) return null;
     var m = parse(str); if (!m) return null;
-    if (m.pass) return places(st).length === 0 && empties(st.b) > 0 ? m : null;
     if (st.b[m.c] || m.c === st.blk) return null;
-    if (m.x >= 0) {
-      if (makesFive(st.b, m.c, st.turn)) return null;   // a win takes no capture
-      if (takeable(st.b, m.c, st.turn).indexOf(m.x) < 0) return null;
-    }
+    if (makesFive(st.b, m.c, st.turn)) return m.x >= 0 ? null : m;   // a win takes no capture
+    var t = takeable(st.b, m.c, st.turn);
+    if (t.length ? t.indexOf(m.x) < 0 : m.x >= 0) return null;     // a trapped pair must give up one marble
     return m;
   }
-  // play a move string on the state; returns {c, x, five, threats, pass} or null if it isn't legal
+  // play a move string on the state; returns {c, x, five, threats, side, out} or null if it isn't legal
   function play(st, str) {
     var m = check(st, str); if (!m) return null;
-    var side = st.turn, o = other(side), res = { c: m.c, x: m.x, five: null, threats: 0, pass: m.pass, side: side };
-    st.n++; st.ml.push(m.pass ? 'pass' : encode(m.c, m.x));
-    if (m.pass) { st.pass[side]++; st.blk = -1; st.turn = o; return res; }
-    st.b[m.c] = side;
+    var side = st.turn, o = other(side), res = { c: m.c, x: m.x, five: null, threats: 0, side: side, out: false };
+    st.n++; st.ml.push(encode(m.c, m.x));
+    st.b[m.c] = side; st.sup[side]--;
     var run = runThrough(st.b, m.c, side);
-    if (run.length >= 5) { st.over = true; st.winner = side; st.line = run; st.blk = -1; res.five = run; return res; }
+    if (run.length >= 5) { st.over = true; st.winner = side; st.line = run; st.blk = -1; st.why = 'five'; res.five = run; return res; }
     st.blk = -1;
-    if (m.x >= 0) { st.b[m.x] = 0; st.caps[side]++; st.cx.push(st.n); st.blk = m.x; }
+    // a marble taken goes back to its owner, who can place it again
+    if (m.x >= 0) { st.b[m.x] = 0; st.caps[side]++; st.sup[o]++; st.cx.push(st.n); st.blk = m.x; }
     res.threats = winCells(st.b, side, -1).length;
     if (res.threats >= 2) st.dbl[side]++;
-    if (!empties(st.b)) { st.over = true; st.draw = true; st.winner = 0; return res; }
+    if (!empties(st.b)) { st.over = true; st.draw = true; st.winner = 0; st.why = 'full'; return res; }
     st.turn = o;
-    // (a player whose only empty hole is the one they may not use passes: done at once, so a turn always has a move)
-    if (!places(st).length) { st.n++; st.ml.push('pass'); st.pass[o]++; st.blk = -1; st.turn = side; }
+    // a player with no marbles left to place: the game is a draw (the official suggestion)
+    if (!st.sup[o]) { st.over = true; st.draw = true; st.winner = 0; st.why = 'out'; res.out = true; }
     return res;
   }
   function count(b, side) { var n = 0; for (var i = 0; i < N; i++) if (b[i] === side) n++; return n; }
   // the board as 11 strings of 'w', 'b' and '.', top row (K) first
-  function grid(b) { var rows = []; ROWS.forEach(function (row) { rows.push(row.map(function (i) { return b[i] === 1 ? 'w' : b[i] === 2 ? 'b' : '.'; }).join('')); }); return rows; }
-  function fromGrid(rows) { var b = []; rows.join('').split('').forEach(function (ch) { b.push(ch === 'w' ? 1 : ch === 'b' ? 2 : 0); }); return b; }
-  function colorName(s) { return s === WHITE ? 'White' : 'Black'; }
-  // a move as a person would say it: "White put a marble on F5 and took Black's marble on G6"
+  function grid(b) { var rows = []; ROWS.forEach(function (row) { rows.push(row.map(function (i) { return b[i] === BLACK ? 'b' : b[i] === WHITE ? 'w' : '.'; }).join('')); }); return rows; }
+  function fromGrid(rows) { var b = []; rows.join('').split('').forEach(function (ch) { b.push(ch === 'b' ? BLACK : ch === 'w' ? WHITE : 0); }); return b; }
+  function colorName(s) { return s === BLACK ? 'Black' : 'White'; }
+  // a move as a person would say it: "Black put a marble on F5 and took White’s marble on G6"
   function describe(str, side) {
     var m = parse(str); if (!m) return '';
     var who = colorName(side), them = colorName(other(side));
-    if (m.pass) return who + ' had no hole to use and passed';
     return who + ' put a marble on ' + NAMES[m.c] + (m.x >= 0 ? ' and took ' + them + '’s marble on ' + NAMES[m.x] : '');
   }
 
@@ -226,7 +225,9 @@
       out.push({ c: c, x: -1, g: g });
       b[c] = side; var five = runThrough(b, c, side).length >= 5; b[c] = 0;
       if (five) { out[out.length - 1].g += 1e5; return; }
-      takeable(b, c, side).forEach(function (x) { out.push({ c: c, x: x, g: g + 60 + guess(b, x, other(side)) * .5 }); });
+      var tk = takeable(b, c, side);
+      if (tk.length) out.pop();   // a trapped pair must give up a marble: no placement there without a capture
+      tk.forEach(function (x) { out.push({ c: c, x: x, g: g + 60 + guess(b, x, other(side)) * .5 }); });
     });
     out.sort(function (p, q) { return q.g - p.g; });
     return out;
@@ -282,7 +283,9 @@
       var th = winCells(b, other(side), -1).filter(function (c) { return c !== blk; });
       var any = th.length ? th[0] : -1;
       if (any < 0) for (var i = 0; i < N; i++) if (!b[i] && i !== blk) { any = i; break; }
-      return any < 0 ? { move: 'pass', score: 0, depth: 0, nodes: 1 } : { move: encode(any, -1), score: -WIN, depth: 0, nodes: 1 };
+      if (any < 0) return null;
+      var tk0 = makesFive(b, any, side) ? [] : takeable(b, any, side);
+      return { move: encode(any, tk0.length ? tk0[0] : -1), score: -WIN, depth: 0, nodes: 1 };
     }
     root = root.slice(0, Math.max(beam + 6, 20));
     var noise = o.noise || 0;
@@ -319,7 +322,7 @@
   };
 
   root.BokuCore = {
-    N: N, WHITE: WHITE, BLACK: BLACK, CELLS: CELLS, NB: NB, DIRS: DIRS, ROW: ROW, ROWS: ROWS, NAMES: NAMES, WINS: WINS, LEVELS: LEVELS,
+    N: N, WHITE: WHITE, BLACK: BLACK, MARBLES: MARBLES, CELLS: CELLS, NB: NB, DIRS: DIRS, ROW: ROW, ROWS: ROWS, NAMES: NAMES, WINS: WINS, LEVELS: LEVELS,
     idx: idx, nb: nb, other: other, newGame: newGame, sandwiches: sandwiches, takeable: takeable, runThrough: runThrough,
     makesFive: makesFive, winCells: winCells, places: places, parse: parse, encode: encode, check: check, play: play,
     count: count, empties: empties, grid: grid, fromGrid: fromGrid, describe: describe, colorName: colorName,
