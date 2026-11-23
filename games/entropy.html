@@ -70,7 +70,7 @@
 .tray.empty::after{content:'';width:30%;height:30%;border-radius:50%;border:2px dashed rgba(255,255,255,.18);}
 .counts{flex:1;min-width:0;display:flex;justify-content:space-between;align-items:flex-end;gap:2px;}
 .counts .st{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;flex:1;}
-.counts .stk{position:relative;width:min(26px,100%);height:calc(var(--bh,74px) * .52);}
+.counts .stk{position:relative;width:min(calc(var(--bh,74px) * .3),100%);height:calc(var(--bh,74px) * .52);}
 .counts .stk .disc{position:absolute;left:0;width:100%;height:auto;aspect-ratio:1/.42;border-radius:50%;box-shadow:inset 0 -1px 1px rgba(0,0,0,.4),0 1px 0 rgba(0,0,0,.4);}
 .counts .stk .disc::before,.counts .stk .disc svg{display:none;}
 .counts small{font-size:.72rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text-2);line-height:1;}
@@ -208,9 +208,7 @@
 .room .mvl li .tag{font-size:.8em;font-weight:800;padding:1px 8px;border-radius:999px;white-space:nowrap;background:color-mix(in srgb,var(--lit) 20%,transparent);color:var(--lit-ink);}
 .room .mvl li .tag.neg{background:rgba(255,122,89,.18);color:#ffb39f;}
 .room .mvl li.none{display:block;color:var(--text-3);}
-.room .g1{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;}
-.room .g1 .mb{display:grid;gap:1px;width:calc(7.5em * var(--dk,1));aspect-ratio:1;padding:3px;border-radius:7px;background:#2c343d;}
-.room .g1 .mb i{display:block;border-radius:50%;}
+.room .g1 .mb{display:block;width:100%;max-width:calc(260px * var(--dk,1));aspect-ratio:1;margin:0 auto;border-radius:8px;box-shadow:0 0 0 3px #4a2e1a,0 4px 10px rgba(0,0,0,.4);}
 .room .wins{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;}
 .room .wins li{display:flex;justify-content:space-between;gap:10px;}
 .room .wins li span{font-weight:700;overflow-wrap:anywhere;}
@@ -1000,6 +998,17 @@
     var on = {}; runs.forEach(function (r) { for (var k = r[1]; k < r[1] + r[2]; k++) on[k] = 1; });
     return el('span', { class: 'mini', html: ln.map(function (i, k) { return b[i] ? disc(b[i], on[k] ? 'on' : 'off') : '<span class="disc" style="background:rgba(0,0,0,.3);box-shadow:inset 0 1px 2px rgba(0,0,0,.5)"></span>'; }).join('') });
   }
+  // a finished board drawn small: the slate tray, round chips in their wells, the palindromes outlined in gold
+  function miniBoard(b, n) {
+    var s = '<svg viewBox="0 0 ' + n + ' ' + n + '" style="display:block;width:100%;height:100%" role="img" aria-label="The first game\u2019s final board"><rect width="' + n + '" height="' + n + '" rx=".18" fill="#36404a"/>';
+    for (var i = 0; i < n * n; i++) {
+      var x = i % n + 0.5, y = Math.floor(i / n) + 0.5;
+      s += '<circle cx="' + x + '" cy="' + y + '" r=".42" fill="rgba(0,0,0,.3)"/>';
+      if (b[i]) s += '<circle cx="' + x + '" cy="' + (y + 0.03) + '" r=".39" fill="rgba(0,0,0,.45)"/><circle cx="' + x + '" cy="' + y + '" r=".38" fill="' + CHEX[b[i]] + '"/><circle cx="' + (x - 0.12) + '" cy="' + (y - 0.13) + '" r=".1" fill="rgba(255,255,255,.35)"/>';
+    }
+    maximal(C.score(b, n).runs).forEach(function (r) { s += capsule(r, '').replace('class="run "', 'fill="none" stroke="#ffd75a" stroke-width=".06"'); });
+    return s + '</svg>';
+  }
   function paintRoom() {
     if (!roomEl || !app.classList.contains('en-desk') || !app.classList.contains('en-land')) { if (roomEl) roomEl.innerHTML = ''; return; }
     roomEl.innerHTML = '';
@@ -1027,9 +1036,8 @@
     mv.appendChild(list); roomEl.appendChild(mv);
     // the first game, while the second is played
     if (S.gm.length && !S.over) {
-      var g0 = S.gm[0], mb = el('div', { class: 'mb', style: { gridTemplateColumns: 'repeat(' + n + ',1fr)', gridTemplateRows: 'repeat(' + n + ',1fr)' } });
-      String(g0.b).split('').forEach(function (d) { mb.appendChild(el('i', { style: { background: CHEX[+d] } })); });
-      roomEl.appendChild(el('section', { class: 'pn g1', 'data-give': '1' }, [mb, el('div', null, [el('h4', { html: '<span>Game 1</span><b>' + g0.sc + '</b>' }), el('p', { class: 'say', text: (isMe(g0.o) ? 'You' : S.players[g0.o].name) + ' scored ' + g0.sc + ' points as Order. ' + (isMe(1 - g0.o) ? 'You need' : S.players[1 - g0.o].name + ' needs') + ' ' + (g0.sc + 1) + ' to win.' })])]));
+      var g0 = S.gm[0], mb = el('div', { class: 'mb', html: miniBoard(String(g0.b).split('').map(Number), n) });
+      roomEl.appendChild(el('section', { class: 'pn g1', 'data-give': '1' }, [el('h4', { html: '<span>Game 1</span><b>' + g0.sc + '</b>' }), mb, el('p', { class: 'say', text: (isMe(g0.o) ? 'You' : S.players[g0.o].name) + ' scored ' + g0.sc + ' points as Order. ' + (isMe(1 - g0.o) ? 'You need' : S.players[1 - g0.o].name + ' needs') + ' ' + (g0.sc + 1) + ' to win.' })]));
     }
     // past games on this device
     var past = []; try { past = (GameHistory.load(KEY) || []).slice(); } catch (x) {}
@@ -1045,7 +1053,14 @@
     // give up whole parts until it fits: the oldest moves down to six, past games, the first game, the lowest lines
     var over = function () { return roomEl.scrollHeight > roomEl.clientHeight + 1 || list.scrollHeight > list.clientHeight + 1; };
     while (over() && list.children.length > 6) list.removeChild(list.lastChild);
-    ['2', '1'].forEach(function (k) { if (over()) { var x = roomEl.querySelector('[data-give="' + k + '"]'); if (x) x.remove(); } });
+    if (over()) { var pgx = roomEl.querySelector('[data-give="2"]'); if (pgx) pgx.remove(); }
+    // the first game's board gets smaller before it goes (to 140px)
+    var mbx = roomEl.querySelector('.g1 .mb');
+    if (mbx && over()) {
+      var w0 = mbx.getBoundingClientRect().width;
+      while (over() && w0 > 140) { w0 = Math.max(140, w0 - 12); mbx.style.maxWidth = w0 + 'px'; }
+    }
+    if (over()) { var g1x = roomEl.querySelector('[data-give="1"]'); if (g1x) g1x.remove(); }
     while (over() && list.children.length > 2) list.removeChild(list.lastChild);
     var lis = Array.prototype.slice.call(ul.children).sort(function (a, c) { return (+a.dataset.p || 0) - (+c.dataset.p || 0); });
     while (over() && lis.length > 1) lis.shift().remove();
@@ -1108,6 +1123,9 @@
       }
       bsz = parseFloat(getComputedStyle(app).getPropertyValue('--cw')) || cw;
     }
+    // the bag and the tray never take more than about half the strip, so the stacks of chips keep their width
+    var bw = bagBox.getBoundingClientRect().width, bhNow = parseFloat(getComputedStyle(app).getPropertyValue('--bh')) || 74;
+    if (bw && bhNow > bw * 0.5 / 1.6) app.style.setProperty('--bh', Math.max(52, Math.floor(bw * 0.5 / 1.6)) + 'px');
     var cell = (bsz - 20) / S.sz;
     bdEl.style.setProperty('--cell', cell + 'px');
     paintRoom();
