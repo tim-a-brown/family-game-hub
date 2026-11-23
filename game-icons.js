@@ -123,6 +123,10 @@ var GameIcon = (function () {
 
     // Board
     chess: function () { return path('M12 2.5a3 3 0 0 0-1.7 5.5C8.6 9 7.8 10.6 7.8 12h8.4c0-1.4-.8-3-2.5-4A3 3 0 0 0 12 2.5zM9.2 13l-1.2 5.5h8l-1.2-5.5zM5.5 19.5h13v2.8h-13z', K); },
+    xiangqi: function () {   // a boxwood piece with the red General's character carved in a ring
+      return circ(12, 13.4, 10.6, '#8a5a2a') + circ(12, 12, 10.6, '#f1d6a2') + circ(12, 12, 8.4, 'none', ' stroke="#b3121b" stroke-width="1.3"') +
+        '<text x="12" y="12.4" text-anchor="middle" dominant-baseline="central" font-family="Kaiti TC, STKaiti, PingFang TC, Hiragino Sans, Noto Sans CJK TC, WenQuanYi Zen Hei, serif" font-weight="700" font-size="11" fill="#b3121b">帥</text>';
+    },
     checkers: function () { return '<ellipse cx="12" cy="16" rx="9" ry="4.2" fill="#a51428"/>' + rect(3, 11, 18, 5, 0, '#a51428') + '<ellipse cx="12" cy="11" rx="9" ry="4.2" fill="' + R + '"/>' + '<ellipse cx="12" cy="11" rx="5.5" ry="2.4" fill="none" stroke="#ff8b99" stroke-width="1.3"/>'; },
     connectfour: function () { var s = rect(1, 3, 22, 19, 3, B); var cols = [[0, R, Y], [Y, R, R], [R, Y, Y]]; for (var r = 0; r < 3; r++) for (var c = 0; c < 3; c++) s += circ(5.5 + c * 6.5, 7.5 + r * 6, 2.4, cols[r][c] || '#173c8a'); return s; },
     tictactoe: function () { return line('M9 3v18M15 3v18M3 9h18M3 15h18', K, 1.6) + line('M3.8 3.8l3.4 3.4M7.2 3.8 3.8 7.2', R, 2.2) + circ(18, 18, 2.4, 'none', ' stroke="' + B + '" stroke-width="2.2"') + line('M10.3 16.3l3.4 3.4M13.7 16.3l-3.4 3.4', R, 2.2); },

@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Xiangqi</title>
+<link rel="stylesheet" href="../kit.css">
+<link rel="preload" href="../fonts/xiangqi-kai.woff2" as="font" type="font/woff2" crossorigin>
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
+<script src="xiangqi-core.js"></script>
+<style>
+/* the carved characters (LXGW WenKai TC, fonts/xiangqi-LICENSE.txt) */
+@font-face{font-family:'XQ Kai';src:url(../fonts/xiangqi-kai.woff2) format('woff2');font-weight:700;font-display:block;}
+.cb-col{max-width:460px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
+/* Player bars */
+.pbar{--c:var(--accent);display:flex;align-items:center;gap:10px;min-height:46px;padding:5px 10px;border-radius:16px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);transition:box-shadow .2s, background .2s;}
+.pbar.on{background:color-mix(in srgb,var(--lit) 11%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--lit) 65%,transparent),0 0 18px color-mix(in srgb,var(--lit) 18%,transparent);}
+.pbar.chk{box-shadow:inset 0 0 0 1.5px rgba(255,80,80,.8),0 0 18px rgba(255,60,60,.25);}
+.pbar .tok{width:34px;height:34px;flex:none;position:relative;}
+.pbar .tok .dk{width:100%;height:100%;}
+.pbar .who{flex:1;min-width:0;display:flex;flex-direction:column;}
+.pbar .nm{font-weight:800;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;}
+.pbar .nm .ico{width:15px;height:15px;color:var(--text-3);flex:none;}
+.pbar .nm span{overflow:hidden;text-overflow:ellipsis;}
+.pbar .sub{font-size:.72rem;font-weight:700;color:var(--text-3);white-space:nowrap;}
+.pbar.on .sub{color:var(--lit-ink);}
+.pbar.chk .sub{color:#ff8a8a;}
+.tray{display:flex;align-items:center;flex-wrap:nowrap;max-width:48%;overflow:hidden;padding:2px 0;}
+.tray .dk{width:20px;height:20px;flex:none;margin-left:-7px;}
+.tray .dk:first-child{margin-left:0;}
+.tray .adv{margin-left:6px;font-size:.78rem;font-weight:900;color:var(--text-2);flex:none;}
+.think i{display:inline-block;width:5px;height:5px;margin:0 1px;border-radius:50%;background:currentColor;animation:th 1s infinite;}
+.think i:nth-child(2){animation-delay:.15s}.think i:nth-child(3){animation-delay:.3s}
+@keyframes th{50%{opacity:.2;transform:translateY(-2px);}}
+
+/* The board: a walnut frame round a sheet of pale boxwood with the lines printed on it */
+.frame{--rim:clamp(16px,4.6vw,24px);position:relative;box-sizing:border-box;padding:var(--rim);border-radius:14px;
+  background:
+    repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0 2px,transparent 2px 7px),
+    repeating-linear-gradient(88deg,rgba(0,0,0,.08) 0 1px,transparent 1px 11px),
+    linear-gradient(180deg,#6b3a1d,#4a2612);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.18),inset 0 -3px 0 rgba(0,0,0,.35),0 16px 34px rgba(0,0,0,.5);}
+.fno{position:absolute;left:var(--rim);right:var(--rim);height:var(--rim);display:grid;grid-template-columns:repeat(9,1fr);pointer-events:none;
+  font:800 clamp(9px,2.5vw,12px)/var(--rim) var(--font);color:#f0d6a6;opacity:.78;text-align:center;font-variant-numeric:tabular-nums;}
+.fno.b{bottom:0;}.fno.t{top:0;}
+.bd{position:relative;aspect-ratio:9/10;container-type:inline-size;touch-action:none;user-select:none;-webkit-user-select:none;border-radius:3px;
+  background:
+    radial-gradient(ellipse at 30% 20%,rgba(255,255,255,.16),transparent 60%),
+    repeating-linear-gradient(93deg,rgba(120,70,20,.05) 0 2px,transparent 2px 9px),
+    repeating-linear-gradient(87deg,rgba(120,70,20,.04) 0 1px,transparent 1px 13px),
+    linear-gradient(170deg,#f1d49c,#e2b977 55%,#d6a964);
+  box-shadow:0 0 0 2px #2c160a,inset 0 0 18px rgba(90,50,10,.28);}
+.bd>svg.grid{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+.bd.flip>svg.grid{transform:rotate(180deg);}
+.river{position:absolute;left:5.6%;right:5.6%;top:45%;height:10%;pointer-events:none;}
+.layer{position:absolute;inset:0;pointer-events:none;}
+/* marks on the points */
+.mk{position:absolute;width:calc(100% / 9);height:10%;display:grid;place-items:center;pointer-events:none;}
+.mk::after{content:"";display:block;}
+.mk.mv::after{width:28%;height:28%;border-radius:50%;background:rgba(40,70,40,.55);box-shadow:0 0 0 3px rgba(255,255,255,.35);}
+.mk.cap::after{width:96%;aspect-ratio:1;border-radius:50%;box-shadow:inset 0 0 0 3.5px rgba(30,120,40,.85),0 0 10px rgba(30,160,60,.45);}
+.mk.blk::after,.mk.face::after,.mk.chkx::after{width:46%;aspect-ratio:1;border-radius:50%;border:2px dashed rgba(150,40,20,.75);
+  background:linear-gradient(45deg,transparent 45%,rgba(150,40,20,.8) 45% 55%,transparent 55%);}
+.mk.face::after,.mk.chkx::after{border-color:rgba(200,30,30,.85);background:linear-gradient(45deg,transparent 44%,rgba(200,30,30,.9) 44% 56%,transparent 56%),linear-gradient(-45deg,transparent 44%,rgba(200,30,30,.9) 44% 56%,transparent 56%);}
+.mk.from::after{width:34%;height:34%;border-radius:50%;border:2.5px solid rgba(214,140,20,.85);}
+.mk.to::after{width:104%;aspect-ratio:1;border-radius:50%;
+  background:conic-gradient(from 45deg,rgba(230,150,20,.95) 0 8%,transparent 8% 17%,rgba(230,150,20,.95) 17% 33%,transparent 33% 42%,rgba(230,150,20,.95) 42% 58%,transparent 58% 67%,rgba(230,150,20,.95) 67% 83%,transparent 83% 92%,rgba(230,150,20,.95) 92%);
+  -webkit-mask:radial-gradient(circle,transparent 62%,#000 63% 70%,transparent 71%);mask:radial-gradient(circle,transparent 62%,#000 63% 70%,transparent 71%);}
+.mk.hit::after{width:100%;aspect-ratio:1;border-radius:50%;box-shadow:0 0 0 3px rgba(255,190,60,.95),0 0 16px rgba(255,170,40,.7);animation:hit 1.1s ease-in-out infinite;}
+.mk.leg::after{width:100%;aspect-ratio:1;border-radius:50%;box-shadow:0 0 0 3px rgba(190,40,30,.85),0 0 12px rgba(190,40,30,.5);}
+@keyframes hit{50%{transform:scale(1.08);opacity:.7;}}
+.mk.shake{animation:shake .4s;}
+/* the pieces: boxwood discs with the character carved in and inked */
+.pc{position:absolute;width:calc(100% / 9);height:10%;display:grid;place-items:center;}
+.dk{--ink:#a8141c;position:relative;width:90%;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;
+  background:radial-gradient(circle at 36% 28%,#fbecc9,#ecd09b 50%,#c99a5c 92%);
+  box-shadow:0 2px 0 #8a5a2a,0 3.5px 0 #5e3a17,0 5px 7px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.6),inset 0 -2px 3px rgba(120,70,20,.35);
+  transition:transform .15s var(--spring);}
+.dk.k{--ink:#1c1a18;}
+.dk::before{content:"";position:absolute;inset:9%;border-radius:50%;border:1.5px solid var(--ink);opacity:.72;box-shadow:inset 0 1px 1px rgba(0,0,0,.15),0 1px 0 rgba(255,255,255,.45);}
+.dk .ch{position:relative;font-family:'XQ Kai',serif;font-weight:700;font-size:calc(100cqw / 9 * .54);line-height:1;color:var(--ink);
+  text-shadow:0 1px 0 rgba(255,250,235,.75),0 -.5px 0 rgba(60,30,5,.45);transform:translateY(-1%);}
+.pbar .dk .ch,.tray .dk .ch{font-size:19px;}.tray .dk .ch{font-size:11px;}
+.pbar .dk,.tray .dk{box-shadow:0 1.5px 0 #8a5a2a,0 2px 4px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.6);}
+.tray .dk::before{border-width:1px;}
+.dk .lt{position:absolute;right:-6%;bottom:-6%;width:36%;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;
+  font:900 calc(100cqw / 9 * .2)/1 var(--font);color:#fff;background:var(--ink);box-shadow:0 0 0 1.5px #f3dcae,0 1px 2px rgba(0,0,0,.5);}
+.pc.mine .dk{cursor:pointer;}
+.pc.lift .dk{transform:translateY(-7%) scale(1.1);box-shadow:0 7px 0 #5e3a17,0 12px 14px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.6);}
+.pc.chk .dk{animation:chk 1s ease-in-out infinite;}
+@keyframes chk{50%{box-shadow:0 2px 0 #8a5a2a,0 0 0 4px rgba(230,40,40,.9),0 0 20px rgba(255,40,40,.85);}}
+.pc.gone{animation:gone .4s ease-out forwards;z-index:4;}
+@keyframes gone{30%{transform:scale(1.15);}to{opacity:0;transform:scale(.4) rotate(25deg);}}
+.pc.screen .dk{box-shadow:0 2px 0 #8a5a2a,0 0 0 3px rgba(255,190,60,.95),0 0 18px rgba(255,170,40,.8);}
+.pc.nudge .dk{animation:shake .4s;}
+.bd.shake{animation:shake .4s;}
+.lines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;}
+
+.turn{margin:2px 0 0;min-height:34px;}
+.turn.alert{--c:#ff5a5a !important;}
+.turn.nudge{animation:shake .4s;}
+.tip{font-size:.82rem;font-weight:600;color:var(--text-2);line-height:1.35;min-height:4.05em;padding:0 4px;}
+@media (max-width:380px), (max-height:620px){ .tip{font-size:.74rem;} }
+.tip b{color:var(--text);}
+.moves{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding:2px 0;min-height:34px;align-items:center;}
+.moves::-webkit-scrollbar{display:none;}
+.moves .mp{flex:none;display:inline-flex;gap:6px;align-items:baseline;height:30px;padding:0 10px;border-radius:11px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);font-size:.85rem;font-weight:650;color:var(--text-2);line-height:30px;font-variant-numeric:tabular-nums;}
+.moves .mp i{font-style:normal;color:var(--text-3);font-weight:800;}
+.moves .mp .r{color:#ff8f86;}
+.moves .mp.now{background:color-mix(in srgb,var(--lit) 14%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--lit) 55%,transparent);color:var(--lit-ink);}
+.moves .empty{color:var(--text-3);font-size:.85rem;font-weight:700;margin:0 auto;}
+.acts{display:flex;gap:10px;justify-content:center;margin-top:2px;}
+.acts .btn{flex:1;max-width:180px;}
+.acts .btn-sm{padding-left:10px;padding-right:10px;white-space:nowrap;}
+
+/* A layout for each shape (fit() sizes the board). Upright: the players over and under the board, the board as large
+   as the room allows. Sideways: the player bars, whose turn, the moves and the buttons in a column at the left, the
+   board you play on at the right, as tall as the room */
+#app.stage.ipl{max-width:none;box-sizing:border-box;height:var(--avh,auto);display:flex;flex-direction:column;align-items:center;
+  padding:4px max(17px,var(--corner-x)) max(calc(var(--safe-b) + 10px),18px);}
+#app.ipl>.cb-col{width:var(--colw,100%);max-width:none;flex:none;margin:auto 0;}
+#app.ipl:not(.xq-land)>.cb-col>.frame{width:var(--cw,100%);align-self:center;}
+#app.xq-tall .frame{--rim:26px;}
+#app.xq-tall .fno{font-size:13px;}
+#app.xq-land>.cb-col{width:auto;height:var(--bh);display:grid;grid-template-columns:var(--sw,300px) var(--bw);
+  grid-template-rows:max-content max-content max-content minmax(0,1fr) max-content max-content;
+  grid-template-areas:"t b" "s b" "h b" "m b" "a b" "p b";column-gap:var(--cg,24px);row-gap:9px;justify-content:center;}
+#app.xq-land>.cb-col>.frame{grid-area:b;--rim:clamp(14px,3vh,26px);}
+#app.xq-land>.cb-col>.pbar:nth-child(1){grid-area:t;}
+#app.xq-land>.cb-col>.pbar:nth-child(3){grid-area:p;}
+#app.xq-land>.cb-col>.turn{grid-area:s;justify-self:start;}
+#app.xq-land>.cb-col>.tip{grid-area:h;}
+#app.xq-land>.cb-col>.moves{grid-area:m;display:grid;grid-template-columns:1fr 1fr;gap:6px;align-content:start;overflow-y:auto;overflow-x:hidden;padding:10px;border-radius:18px;background:var(--well);box-shadow:inset 0 0 0 1px var(--gl-line);}
+#app.xq-land>.cb-col>.moves .mp{justify-content:flex-start;}
+#app.xq-land>.cb-col>.moves .empty{grid-column:1/-1;margin:6px auto;}
+#app.xq-land>.cb-col>.acts{grid-area:a;}
+#app.xq-land .fno{font-size:11px;}
+/* a phone on its side: the column is narrow and short */
+#app.xq-low>.cb-col{row-gap:6px;}
+#app.xq-low .pbar{min-height:40px;padding:3px 8px;}
+#app.xq-low .pbar .tray{display:none;}
+#app.xq-low>.cb-col>.turn{min-height:28px;font-size:.95rem;margin:0;}
+#app.xq-low>.cb-col>.tip{font-size:.74rem;min-height:0;}
+#app.xq-low>.cb-col>.moves{padding:6px;gap:4px;}
+#app.xq-low>.cb-col>.moves .mp{height:26px;line-height:26px;padding:0 8px;font-size:.8rem;}
+#app.xq-low .acts .btn-sm .ico{display:none;}
+#app.xq-low .fno{font-size:9px;}
+@media (max-width:360px){ .acts .btn-sm .ico{display:none;} }
+/* a small phone upright: the moves stay in the game's history, the bars and the note slim down so the board keeps its size */
+#app.xq-short>.cb-col{gap:6px;}
+#app.xq-short>.cb-col>.moves{display:none;}
+#app.xq-short .pbar{min-height:40px;padding:3px 8px;}
+#app.xq-short .pbar .tok{width:30px;height:30px;}
+#app.xq-short>.cb-col>.turn{min-height:28px;margin:0;font-size:.95rem;}
+#app.xq-short>.cb-col>.tip{min-height:2.7em;font-size:.72rem;}
+/* A large window (a computer): the board sized from the window, the room at the left with what a phone keeps a tap away
+   (every move written out, the pieces each side has taken, the past games at this table), the players and the buttons
+   at the right where you act. xq-dw: three columns; xq-ds: a window too square for that, the players and buttons under
+   the board. Phones and tablets never get xq-desk. */
+.xq-room{display:none;}
+#app.xq-desk>.cb-col{width:auto;max-width:none;height:var(--ch);display:grid;column-gap:28px;row-gap:10px;justify-content:center;align-content:center;}
+#app.xq-desk>.cb-col>.frame{grid-area:b;width:var(--bw);--rim:var(--drim);align-self:center;}
+#app.xq-desk>.cb-col>.pbar:nth-child(1){grid-area:t;}
+#app.xq-desk>.cb-col>.pbar:nth-child(3){grid-area:p;}
+#app.xq-desk>.cb-col>.turn{grid-area:s;justify-self:start;}
+#app.xq-desk>.cb-col>.tip{grid-area:h;}
+#app.xq-desk>.cb-col>.acts{grid-area:a;}
+#app.xq-desk>.cb-col>.moves{display:none;}
+#app.xq-desk .fno{font-size:calc(var(--drim) * .48);line-height:var(--drim);}
+#app.xq-desk.xq-dw>.cb-col{grid-template-columns:var(--rw) var(--bw) var(--sw);grid-template-rows:max-content max-content max-content minmax(0,1fr) max-content max-content;
+  grid-template-areas:"r b t" "r b s" "r b h" "r b ." "r b a" "r b p";}
+#app.xq-desk.xq-ds>.cb-col{grid-template-columns:var(--rw) calc((var(--bw) - 20px) / 2) calc((var(--bw) - 20px) / 2);column-gap:20px;grid-template-rows:max-content max-content max-content max-content;
+  grid-template-areas:"r b b" "r t s" "r p a" "r h h";align-items:center;}
+#app.xq-desk.xq-ds>.cb-col>.frame{justify-self:end;}
+#app.xq-desk .xq-room{display:flex;flex-direction:column;gap:12px;grid-area:r;min-height:0;height:var(--ch);overflow:hidden;}
+.xq-room .pn{background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);border-radius:18px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-height:0;flex:none;}
+.xq-room .pn.grow{flex:1 1 auto;}
+.xq-room h4{margin:0;font-size:.9rem;font-weight:700;color:var(--text-2);}
+.xq-room .ml{flex:1;min-height:0;overflow-y:auto;display:grid;grid-template-columns:max-content 1fr 1fr;gap:3px 12px;align-content:start;font-size:.95rem;font-weight:650;font-variant-numeric:tabular-nums;color:var(--text-2);scrollbar-width:thin;}
+.xq-room .ml .no{color:var(--text-3);font-weight:800;}
+.xq-room .ml .r{color:#ff8f86;}
+.xq-room .ml .on{color:var(--lit-ink);font-weight:850;}
+.xq-room .ml .em{grid-column:1/-1;color:var(--text-3);}
+.xq-room .cr{display:flex;align-items:center;gap:10px;min-height:30px;}
+.xq-room .cr .who{width:84px;flex:none;font-weight:750;font-size:.88rem;white-space:nowrap;overflow:hidden;}
+.xq-room .cr .dks{display:flex;flex-wrap:wrap;gap:3px;flex:1;min-width:0;}
+.xq-room .cr .dk{width:26px;height:26px;flex:none;box-shadow:0 1.5px 0 #8a5a2a,0 2px 4px rgba(0,0,0,.45);}
+.xq-room .cr .dk .ch{font-size:15px;}.xq-room .cr .dk::before{border-width:1px;}
+.xq-room .cr .v{font-weight:800;color:var(--text-3);font-size:.85rem;flex:none;}
+.xq-room .pg{display:flex;justify-content:space-between;gap:10px;font-size:.88rem;padding:3px 0;border-top:1px solid var(--gl-line);}
+.xq-room .pg:first-of-type{border-top:0;}
+.xq-room .pg b{font-weight:750;}.xq-room .pg span{color:var(--text-3);white-space:nowrap;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.7,.25,1);}
+::view-transition-old(root),::view-transition-new(root){animation:none;}
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  function vtGo(fn) { var t = document.startViewTransition(fn); ['ready', 'finished', 'updateCallbackDone'].forEach(function (k) { if (t && t[k] && t[k].catch) t[k].catch(function () {}); }); }
+  var el = Kit.el, app = document.getElementById('app'), X = window.XiangqiCore;
+  var SAVE = 'xiangqi_state', KEY = 'xiangqi', LETK = 'xiangqi_letters';
+  var RED = 1, BLACK = -1;
+  // the characters carved on each side's pieces (Red: 帥仕相傌俥炮兵, Black: 將士象馬車砲卒)
+  var CHR = { '1': ['', '帥', '仕', '相', '傌', '俥', '炮', '兵'], '-1': ['', '將', '士', '象', '馬', '車', '砲', '卒'] };
+  var PN = X.NAME, PL = ['', 'the General', 'an Advisor', 'an Elephant', 'a Horse', 'a Chariot', 'a Cannon', 'a Soldier'];
+  var PV = [0, 0, 2, 2, 4, 9, 4.5, 1];   // the usual values, for the material count (a Chariot 9, a Soldier 1)
+
+  // ── The computer thinks in a Worker built from the core ──
+  var worker = null, workerOk = true, reqId = 0, pending = null;
+  function getWorker() {
+    if (worker || !workerOk) return worker;
+    try {
+      var src = 'var X=(' + X.factory.toString() + ')();onmessage=function(e){var d=e.data;postMessage({id:d.id,res:X.search(d.st,d.opts)});};';
+      worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+      worker.onmessage = function (e) { if (pending && e.data.id === pending.id) { var p = pending; pending = null; p.cb(e.data.res); } };
+      worker.onerror = function () { workerOk = false; worker = null; if (pending) { var p = pending; pending = null; p.cb(X.search(p.st, p.opts)); } };
+    } catch (e) { workerOk = false; worker = null; }
+    return worker;
+  }
+  function think(st, opts, cb) {
+    var id = ++reqId, w = Kit.inDemo && Kit.inDemo() ? null : getWorker();
+    pending = { id: id, cb: cb, st: st, opts: opts };
+    if (w) w.postMessage({ id: id, st: st, opts: opts });
+    else setTimeout(function () { if (pending && pending.id === id) { pending = null; cb(X.search(st, opts)); } }, 30);
+  }
+  function cancelThink() { pending = null; }
+
+  // ── State ──
+  // S = {mode, level, players:[{name, cpu, side}], g0 (the core state it began from), g (the core state now),
+  //      hist:[{n, ev, cpu}] (undo: the plies to go back to), events:[], over, result, started, busy, offer}
+  var S = null, sel = -1, flash = null;
+  var NET = null, LEFT = null, WINO = null, NETREC = {}, SHOWN = 0, OFFERSH = null;
+  var LEVELS = { easy: { depth: 1, time: 400, noise: 160 }, normal: { depth: 4, time: 1200, noise: 22 }, hard: { depth: 7, time: 2600, noise: 0 } };
+  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  // the letters on the pieces: on until the first game is played, then as chosen
+  function lettersOn() { var v = lsGet(LETK); if (v === '1') return true; if (v === '0') return false; return !lsGet('gh_' + KEY); }
+  function save() {
+    if (NET || !S) return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (!S.over) Kit.resume.set(S.g.pl.length ? 'Move ' + (Math.floor(S.g.pl.length / 2) + 1) : 'Ready');
+  }
+  function clearSave() { if (NET) return; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function pl(side) { return S.players[0].side === side ? S.players[0] : S.players[1]; }
+  function vsCpu() { return S.players.some(function (p) { return p.cpu; }); }
+  function human() { return S.players.filter(function (p) { return !p.cpu; })[0]; }
+  function mySide() { return NET && NET.seat >= 0 ? S.players[NET.seat].side : null; }
+  function bottomSide() { if (NET) return NET.seat >= 0 ? mySide() : RED; return vsCpu() ? human().side : RED; }
+  function sideName(side) { return side === RED ? 'Red' : 'Black'; }
+  function G() { return S.g; }
+
+  Kit.init({
+    id: 'xiangqi', mark: false,
+    snap: '.bd', snapY: 0.5,
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } cancelThink(); clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Xiangqi: past games' }); } },
+      { icon: 'eye', toggle: lettersOn, label: 'Piece letters', sub: 'K, A, E, H, R, C and P on the pieces', onClick: function () { lsSet(LETK, lettersOn() ? '0' : '1'); Kit.sfx('tap'); if (S && S.g) render(); } },
+      { icon: 'hand', label: 'Offer a draw', when: function () { return !!(S && S.g && !S.over); }, onClick: function () { offerDraw(); } },
+      { icon: 'close', label: 'Resign', onClick: function () { if (NET) netResign(); else resign(); } }
+    ]),
+    rules:
+      '<p class="goal">Trap the other player’s <b>General</b> so it can’t escape. That’s <b>checkmate</b>, and it wins the game.</p>' +
+      '<h3>The board</h3><ul>' +
+      '<li>The pieces stand on the points where the lines cross, not inside the squares.</li>' +
+      '<li>The <b>river</b> runs across the middle. Each side has a <b>palace</b>: the nine points marked with an X at the middle of its back ranks.</li>' +
+      '<li><b>Red moves first.</b> A piece captures by moving onto an enemy piece’s point.</li></ul>' +
+      '<h3>How the pieces move</h3><ul>' +
+      '<li><b>General</b> (帥 or 將): one point up, down or across, and it never leaves its palace.</li>' +
+      '<li><b>Advisor</b> (仕 or 士): one point diagonally, inside the palace.</li>' +
+      '<li><b>Elephant</b> (相 or 象): exactly two points diagonally. It can’t cross the river, and a piece on the point in between blocks it.</li>' +
+      '<li><b>Horse</b> (傌 or 馬): one point straight, then one point diagonally outward. It can’t jump: a piece on that first point, its leg, blocks that way.</li>' +
+      '<li><b>Chariot</b> (俥 or 車): any distance up, down or across, like a rook in chess.</li>' +
+      '<li><b>Cannon</b> (炮 or 砲): moves like a Chariot, but it captures only by jumping over exactly one piece of either color, with any number of empty points around that piece.</li>' +
+      '<li><b>Soldier</b> (兵 or 卒): one point forward. Once it has crossed the river it can also step one point sideways. It never moves backward.</li></ul>' +
+      '<h3>The Generals</h3><ul>' +
+      '<li>The two Generals may never face each other on the same file with nothing between them. A move that would leave them facing isn’t allowed.</li>' +
+      '<li>You can’t make a move that leaves your own General in check.</li></ul>' +
+      '<h3>How a game ends</h3><ul>' +
+      '<li><b>Checkmate</b> wins. If the player to move has no legal move at all, even without being in check, that player loses too.</li>' +
+      '<li>If the same position comes up three times, the game ends. A player who gave check with every move of that repetition loses (perpetual check isn’t allowed). Otherwise, a player who kept chasing the same unprotected piece with every move loses (perpetual chase isn’t allowed); a Chariot is chased by a Horse or a Cannon even when it’s protected. The General and the Soldiers never count as chasing. Any other repetition is a draw.</li>' +
+      '<li>It’s a draw when neither side has a Chariot, a Horse, a Cannon or a Soldier left, after 60 moves each with no capture, or when both players agree to a draw.</li></ul>' +
+      '<h3>Playing here</h3><ul>' +
+      '<li>Tap a piece to see where it can go, then tap a point. A piece that is blocked shows where it would go with a crossed mark, and the piece in its way is ringed in red.</li>' +
+      '<li>The moves are written the standard way (WXF): the piece’s letter, the file it stands on counted from that player’s right, then + forward, − back or = across, and how far it went or the file it landed on. C2=5 is the Cannon on file 2 moving across to file 5. The numbers along the board’s edges are the files.</li>' +
+      '<li>The letters are K General, A Advisor, E Elephant, H Horse, R Chariot, C Cannon and P Soldier. You can show them on the pieces or hide them from the menu.</li></ul>' +
+      '<h3>Online</h3><ul><li><b>Play online</b> in the menu: open a table and the other player joins on their own device. Take your turn whenever you like; the home screen shows when it’s your move.</li>' +
+      '<li>Your pieces are always at the bottom. Each rematch swaps colors. Moves can’t be taken back online, and a draw is offered on your turn.</li></ul>'
+  });
+
+  function firstTime() { return !lsGet('gh_' + KEY); }
+  function showSetup() {
+    S = null; sel = -1;
+    app.classList.remove('ipl', 'xq-land', 'xq-low', 'xq-tall', 'xq-short');
+    Kit.setup(app, {
+      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: '2p', kind: 'local' }]),
+      options: [
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Looks one move ahead and often leaves pieces hanging.'], ['normal', 'Normal', 'Looks a few moves ahead. A good game.'], ['hard', 'Hard', 'Thinks deeper and longer. Very hard to beat.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'side', label: 'You play', value: 'r', choices: [['r', 'Red\nMoves first', 'Red always moves first, so you start.'], ['b', 'Black', 'The computer plays Red and moves first.'], ['x', 'Random', 'A coin toss picks your color.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'pass', label: 'Between turns', value: 'on', choices: [['on', 'Hand over', 'A cover comes up after each move with the next player’s name, so each of you knows it’s your turn. Hold it to take your turn.'], ['off', 'Open board', 'No cover between moves: the board stays in view, as on a real table.']], when: function (m) { return m === '2p'; } },
+        { id: 'letters', label: 'Piece letters', value: firstTime() ? 'on' : (lsGet(LETK) === '1' ? 'on' : 'off'), choices: [['on', 'Shown', 'A small Western letter on each piece says what it is: K General, A Advisor, E Elephant, H Horse, R Chariot, C Cannon, P Soldier.'], ['off', 'Hidden', 'The pieces show only their Chinese characters, as on a real set.']] }
+      ],
+      players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
+      onStart: function (cfg) {
+        var cpu = cfg.mode === 'cpu', sd = cfg.options.side || 'r';
+        if (sd === 'x') sd = Math.random() < 0.5 ? 'r' : 'b';
+        var hs = cpu && sd === 'b' ? BLACK : RED;
+        lsSet(LETK, cfg.options.letters === 'off' ? '0' : '1');
+        S = { mode: cfg.mode, level: cfg.options.level || 'normal', pass: cfg.mode === '2p' && cfg.options.pass !== 'off', players: cfg.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, side: i === 0 ? hs : -hs }; }) };
+        newGame();
+      }
+    });
+  }
+  function newGame(swap, g0) {
+    cancelThink();
+    if (swap && !vsCpu()) S.players.forEach(function (p) { p.side = -p.side; });
+    S.g0 = g0 || X.start(); S.g = S.g0; S.hist = []; S.events = []; S.over = false; S.result = null; S.started = Date.now(); S.busy = false; S.offer = null;
+    sel = -1; flash = null;
+    Kit.gameStart(); save(); render(); maybeCpu();
+  }
+  function caps(side) { return G().pl.filter(function (p, i) { return p.c && moverAt(G(), i) === side; }).map(function (p) { return Math.abs(p.c); }); }
+  // the side that made ply i (0-based) of a core state
+  function moverAt(g, i) { var n = g.pl.length; return (n - i) % 2 === 1 ? -g.turn : g.turn; }
+  function matOf(side) { return caps(side).reduce(function (a, v) { return a + PV[v]; }, 0); }
+
+  // ── Moves ──
+  function commit(m, byCpu) {
+    if (!S || S.over) return;
+    if (NET) { netMove(m); return; }
+    var g = G(), side = g.turn, ng = X.play(g, m);
+    if (!ng) return;
+    S.hist.push({ n: g.pl.length, ev: S.events.length, cpu: !!byCpu });
+    S.g = ng; S.offer = null; sel = -1; flash = null;
+    var rec = ng.pl[ng.pl.length - 1];
+    noteEvents(S, g, rec, side, false);
+    var end = X.result(ng);
+    afterMove(g, ng, rec, side, !!byCpu, end);
+    if (end) { var me = S; S.over = true; S.result = end; save(); setTimeout(function () { if (S === me) finish(end); }, end.type === 'mate' ? 650 : 400); return; }
+    save();
+    if (S.pass && !vsCpu() && !(Kit.inDemo && Kit.inDemo())) {
+      // pass and play: the device goes to the next person (people only: the computer never needs a cover)
+      var nx = pl(-side), me2 = S;
+      setTimeout(function () { if (S !== me2 || S.over || G().turn !== -side) return; Kit.handoff({ name: nx.name, color: -side === RED ? '#c8262e' : '#2a2622', what: 'move', hint: 'Hold for a moment to take your turn as ' + sideName(-side), msg: rec.k ? sideName(-side) + ' is in check' : 'Your move as ' + sideName(-side), hold: 700 }); }, 1100);
+    }
+    setTimeout(maybeCpu, 420);
+  }
+  // what a move did, for the history's highlights (st: the local S or an online table's state)
+  function noteEvents(st, g, rec, side, quiet) {
+    var who = st.players[st.players[0].side === side ? 0 : 1].name, n = Math.floor((g.pl.length) / 2) + 1, mover = Math.abs(g.b[rec.f]);
+    function add(type, text) { st.events.push({ type: type, side: side, text: text }); }
+    var vic = Math.abs(rec.c);
+    if (vic === X.R && !st.events.some(function (e) { return e.type === 'chariot'; })) add('chariot', who + ' took the first Chariot on move ' + n);
+    if (rec.c && mover === X.C) add('cannon', who + '’s Cannon jumped a screen to take ' + PL[vic] + ' on move ' + n);
+    if (mover === X.P && !X.crossed(side, Math.floor(rec.f / 9)) && X.crossed(side, Math.floor(rec.t / 9)) && !st.events.some(function (e) { return e.type === 'river' && e.side === side; })) add('river', who + ' sent the first Soldier across the river on move ' + n);
+    if (rec.k) {
+      var att = attackers(X.apply(g.b, rec), -side);
+      if (att.length >= 2) add('double', who + ' gave a double check on move ' + n);
+    }
+  }
+  // the enemy pieces that give check to side's General on board b
+  function attackers(b, side) {
+    var gpos = X.general(b, side), out = [];
+    for (var s = 0; s < 90; s++) if (b[s] * side < 0) { var ms = X.pieceMoves(b, s, [], true); if (ms.some(function (m) { return m.t === gpos; })) out.push(s); }
+    return out;
+  }
+  // a move has been made on the board: draw it, play its sound and its moment
+  function afterMove(g, ng, rec, side, byCpu, end) {
+    var mover = Math.abs(g.b[rec.f]), scr = rec.c ? X.screen(g.b, rec.f, rec.t) : -1;
+    render({ rec: rec, side: side, mover: mover, victim: rec.c, screen: scr });
+    var dur = scr >= 0 ? 520 : 300;
+    setTimeout(function () { Kit.sfx('chip', rec.c ? 1 : 0.8); Kit.haptic(rec.c ? 'medium' : 'light'); if (rec.c) setTimeout(function () { Kit.sfx('pop', .5); }, 60); }, dur - 40);
+    if (end && end.type === 'mate') return;
+    var mine = !(pl(side) && pl(side).cpu) && (!NET || side === mySide());
+    if (rec.k) {
+      var att = attackers(ng.b, -side), dbl = att.length >= 2, by = att.length ? PN[Math.abs(ng.b[att[0]])] : '';
+      setTimeout(function () {
+        Kit.moment({ title: dbl ? 'Double check' : 'Check', line: dbl ? 'Two pieces attack the General at once.' : 'The ' + by + ' attacks the General.', chip: CHR[-side][1], tone: mine ? '' : 'bad', at: bdEl, ms: dbl ? 2000 : 1400 });
+        Kit.sfx(dbl ? 'sparkle' : 'clash', .7); Kit.haptic('heavy');
+      }, dur + 40);
+    } else if (rec.c && Math.abs(rec.c) === X.R) {
+      setTimeout(function () { Kit.moment({ title: 'Chariot taken', line: 'The ' + PN[mover] + ' captured a Chariot, the strongest piece on the board.', chip: CHR[-side][5], tone: mine ? '' : 'bad', at: bdEl, ms: 1600 }); Kit.sfx(mine ? 'good' : 'bad'); }, dur + 40);
+    } else if (scr >= 0) {
+      setTimeout(function () { Kit.callout('Over the screen!'); }, dur);
+    } else if (mover === X.P && !X.crossed(side, Math.floor(rec.f / 9)) && X.crossed(side, Math.floor(rec.t / 9))) {
+      var firstAcross = !G().pl.slice(0, -1).some(function (p, i) { return moverAt(G(), i) === side && Math.abs(g.b[p.f]) === X.P && X.crossed(side, Math.floor(p.t / 9)); });
+      if (firstAcross) setTimeout(function () { Kit.callout('Across the river'); Kit.sfx('splash', .5); }, dur);
+    }
+  }
+
+  var END_TEXT = {
+    mate: 'Checkmate', stalemate: 'No legal move left', perpetual: 'Perpetual check isn’t allowed', chase: 'Perpetual chase isn’t allowed',
+    repetition: 'Draw by repetition', material: 'Draw: no attacking pieces left', quiet: 'Draw: 60 moves each with no capture', agreed: 'Draw agreed', resign: 'Resigned', left: 'Left the table'
+  };
+  function whySub(res, loser) {
+    var ln = loser ? loser.name : '';
+    if (res.type === 'mate') return 'Checkmate in ' + plural(movesOf(G()), 'move');
+    if (res.type === 'stalemate') return ln + ' had no legal move left, which loses in Xiangqi';
+    if (res.type === 'perpetual') return ln + ' gave check with every move as the position came round a third time';
+    if (res.type === 'chase') return ln + ' kept chasing the same piece as the position came round a third time';
+    if (res.type === 'resign') return ln + ' resigned';
+    return END_TEXT[res.type] || '';
+  }
+  function movesOf(g) { return Math.ceil(g.pl.length / 2); }
+  // the rarer wins, for the big moment and the history
+  function specialWins(st, g, w, lo, net) {
+    var out = [], res = st.result, moves = movesOf(g);
+    if (res.type === 'mate') {
+      var last = g.pl[g.pl.length - 1], piece = Math.abs(g.b[last.t]);
+      if (moves <= 20 && g.keys[0] === X.start().keys[0]) out.push({ t: 'Mate in ' + moves, l: w.name + ' checkmated ' + lo.name + ' in only ' + moves + ' moves.', h: w.name + ' checkmated ' + lo.name + ' in only ' + moves + ' moves' });
+      if (piece === X.P) out.push({ t: 'A Soldier’s mate', l: 'A Soldier delivered the checkmate.', h: w.name + ' checkmated with a Soldier' });
+      else if (piece === X.C) out.push({ t: 'Cannon mate', l: 'The Cannon delivered the checkmate over its screen.', h: w.name + ' checkmated with a Cannon' });
+      else if (piece === X.H && attackers(g.b, -w.side).length === 1) out.push({ t: 'Horse mate', l: 'The Horse delivered the checkmate.', h: w.name + ' checkmated with a Horse' });
+      var behind = matOfFor(g, -w.side) - matOfFor(g, w.side);
+      if (behind >= 4) out.push({ t: 'Mate from behind', l: w.name + ' was ' + behind + ' points of pieces down and still won.', h: w.name + ' checkmated while ' + behind + ' points of pieces down' });
+    }
+    if (!net && lo.cpu && !w.cpu && st.level === 'hard') out.push({ t: 'Hard computer beaten', l: lo.name + ' was playing on Hard.', h: w.name + ' beat ' + lo.name + ' on Hard' });
+    return out;
+  }
+  function matOfFor(g, side) { var t = 0; g.pl.forEach(function (p, i) { if (p.c && moverAt(g, i) === side) t += PV[Math.abs(p.c)]; }); return t; }
+  function highlights(st, g, res, w, lo, sp) {
+    var hl = [], moves = movesOf(g);
+    if (w && res.type === 'mate') { var last = g.pl[g.pl.length - 1]; hl.push(w.name + ' checkmated ' + lo.name + ' in ' + plural(moves, 'move') + ' with ' + PL[Math.abs(g.b[last.t])]); }
+    else if (w) hl.push(whySub(res, lo) + ', after ' + plural(moves, 'move'));
+    else hl.push((END_TEXT[res.type] || 'A draw') + ' after ' + plural(moves, 'move'));
+    sp.forEach(function (x) { hl.push(x.h); });
+    st.events.filter(function (e) { return e.type === 'double' || e.type === 'chariot'; }).slice(0, 2).forEach(function (e) { hl.push(e.text); });
+    st.events.filter(function (e) { return e.type === 'cannon'; }).slice(0, 1).forEach(function (e) { hl.push(e.text); });
+    st.events.filter(function (e) { return e.type === 'river'; }).slice(0, 1).forEach(function (e) { hl.push(e.text); });
+    var a = matOfFor(g, RED), b = matOfFor(g, BLACK), na = g.pl.filter(function (p, i) { return p.c && moverAt(g, i) === RED; }).length, nb = g.pl.filter(function (p, i) { return p.c && moverAt(g, i) === BLACK; }).length;
+    if (na + nb) hl.push('Pieces captured: Red took ' + na + ' (worth ' + a + '), Black took ' + nb + ' (worth ' + b + ')');
+    return hl;
+  }
+  function plural(n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); }
+  function finish(res) {
+    if (NET) return;
+    var me = S;
+    S.over = true; S.result = res; save(); clearSave(); render();
+    var g = G(), winner = res.winner ? pl(res.winner) : null, loser = res.winner ? pl(-res.winner) : null, moves = movesOf(g);
+    var sp = winner ? specialWins(S, g, winner, loser, false) : [];
+    var hl = highlights(S, g, res, winner, loser, sp);
+    if (vsCpu()) hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
+    Kit.record(KEY, {
+      started: S.started, mode: vsCpu() ? 'vs Computer (' + LEVEL_NAME[S.level] + ')' : 'Pass & play',
+      players: S.players.map(function (p) { return { name: p.name + ' (' + sideName(p.side) + ')', score: winner ? (p === winner ? 1 : 0) : 0.5, cpu: p.cpu }; }),
+      winner: winner ? winner.name + ' (' + sideName(winner.side) + ')' : null,
+      summary: winner ? winner.name + ' won in ' + plural(moves, 'move') : END_TEXT[res.type] || 'Draw',
+      highlights: hl, detail: detailOf(S, g, res)
+    });
+    var mineW = winner && !winner.cpu, big = sp.length || res.type === 'stalemate' || res.type === 'perpetual' || res.type === 'chase';
+    if (res.type === 'mate') { Kit.sfx('boom', .6); Kit.haptic('heavy'); }
+    if (big) {
+      var t = sp.length ? sp[0].t : res.type === 'stalemate' ? 'No moves left' : res.type === 'perpetual' ? 'Perpetual check' : 'Perpetual chase';
+      var line = sp.length ? sp.map(function (x) { return x.l; }).join(' ') : whySub(res, loser) + '.';
+      setTimeout(function () { if (S !== me) return; Kit.moment({ big: true, title: t, line: line, icon: mineW ? 'trophy' : winner && winner.cpu ? 'bot' : 'flag', tone: mineW || !vsCpu() ? '' : 'bad', at: bdEl, ms: 2400 }); Kit.sfx(mineW || !vsCpu() ? 'sparkle' : 'lose'); Kit.haptic(mineW ? 'success' : 'heavy'); }, 250);
+    } else if (res.type === 'mate') Kit.callout('Checkmate!');
+    setTimeout(function () {
+      if (S !== me) return;
+      var lose = winner && winner.cpu;
+      Kit.win({
+        icon: !winner ? 'users' : lose ? 'bot' : 'trophy',
+        title: !winner ? 'It’s a draw' : lose ? winner.name + ' wins this one' : winner.name === 'You' ? 'You win!' : winner.name + ' wins!',
+        sub: winner ? whySub(res, loser) : END_TEXT[res.type],
+        lose: !!lose,
+        again: function () { newGame(true); },
+        look: true,
+        setup: function () { cancelThink(); clearSave(); showSetup(); }
+      });
+    }, big ? 2800 : res.type === 'mate' ? 1300 : 700);
+  }
+  // History detail: the final board (10 rows of 9: RHEAKCP for Red, lowercase for Black), every move as from-to points
+  // (ICCS, "h3e3") for the replay, the moves in WXF, and who was who
+  function detailOf(st, g, res) {
+    try {
+      var rows = [], CH = ' KAEHRCP';
+      for (var r = 0; r < 10; r++) { var row = ''; for (var c = 0; c < 9; c++) { var v = g.b[r * 9 + c]; row += v > 0 ? CH[v] : v < 0 ? CH[-v].toLowerCase() : '.'; } rows.push(row); }
+      var start = g.keys[0];
+      return {
+        b: rows, u: g.pl.map(function (p) { return X.sqName(p.f) + X.sqName(p.t); }).join(' '), w: g.pl.map(function (p) { return p.n; }).join(' '),
+        k: g.pl.map(function (p) { return p.k ? 1 : 0; }).join(''), res: res.type, wn: res.winner || 0, s0: st.players[0].side,
+        st: start && start !== X.start().keys[0] ? start : '', lv: !NET && vsCpu() ? st.level : ''
+      };
+    } catch (e) { return null; }
+  }
+  function resign() {
+    if (!S || !S.g || S.over) return Kit.toast('No game in progress');
+    var side = vsCpu() ? human().side : G().turn;
+    Kit.confirm(pl(side).name + ' resigns?', { ok: 'Resign', danger: true, body: pl(-side).name + ' will win this game.' }).then(function (ok) {
+      if (!ok) return; cancelThink(); S.busy = false; finish({ type: 'resign', winner: -side });
+    });
+  }
+  function offerDraw() {
+    if (!S || !S.g || S.over) return;
+    if (NET) return netOfferDraw();
+    if (vsCpu()) {
+      // the computer agrees when it isn't ahead
+      var cpu = S.players.filter(function (p) { return p.cpu; })[0], sc = X.evaluate(G().b, cpu.side);
+      if (G().pl.length < 20) { Kit.toast(cpu.name + ' wants to play on for now'); return; }
+      if (sc > 60) { Kit.toast(cpu.name + ' thinks it’s ahead and plays on'); Kit.sfx('bad'); return; }
+      cancelThink(); S.busy = false; finish({ type: 'agreed', winner: 0 }); return;
+    }
+    var other = pl(-G().turn);
+    Kit.confirm(other.name + ', do you agree to a draw?', { ok: 'Agree to a draw', body: Kit.poss(pl(G().turn).name) + ' offer. The game ends as a draw if ' + other.name + ' agrees.' }).then(function (ok) {
+      if (ok) finish({ type: 'agreed', winner: 0 });
+    });
+  }
+  function undo() {
+    if (!S || !S.g) return;
+    if (S.over) return Kit.toast('The game is over');
+    var cpu = vsCpu();
+    if (!S.hist.some(function (h) { return !h.cpu; })) return Kit.toast('Nothing to undo');
+    cancelThink(); S.busy = false;
+    var snap;
+    while (S.hist.length) { snap = S.hist.pop(); if (!cpu || !snap.cpu) break; }
+    var g = S.g0, moves = S.g.pl.slice(0, snap.n);
+    moves.forEach(function (p) { g = X.play(g, { f: p.f, t: p.t }); });
+    S.g = g; S.events.length = snap.ev; sel = -1; flash = null;
+    Kit.sfx('whoosh'); save(); render(); maybeCpu();
+  }
+
+  // ── Computer ──
+  // a few standard first moves, so the computer's openings vary as a person's do
+  var BOOK = { '1': ['C2=5', 'C8=5', 'H2+3', 'H8+7', 'P7+1', 'P3+1', 'E3+5'], '-1': ['H8+7', 'H2+3', 'C8=5', 'C2=5', 'P7+1', 'P3+1', 'E3+5'] };
+  function bookMove(g, level) {
+    if (level === 'easy' || g.pl.length > 1 || (g.pl.length === 0 && g.keys[0] !== X.start().keys[0])) return null;
+    var list = X.legal(g).filter(function (m) { return BOOK[g.turn].indexOf(X.wxf(g.b, m)) >= 0; });
+    return list.length ? list[Math.floor(Math.random() * list.length)] : null;
+  }
+  function maybeCpu() {
+    if (NET || !S || S.over || !pl(G().turn).cpu || S.busy) return;
+    S.busy = true; paintStatus();
+    var t0 = Date.now(), myN = G().pl.length, g = G(), bk = bookMove(g, S.level);
+    var go = function (mv) {
+      setTimeout(function () {
+        if (!S || G().pl.length !== myN || S.over) return;
+        S.busy = false;
+        if (mv) commit(mv, true);
+      }, Math.max(0, 700 - (Date.now() - t0)));
+    };
+    if (bk) { go({ f: bk.f, t: bk.t }); return; }
+    think(g, LEVELS[S.level] || LEVELS.normal, function (res) { if (!S || G().pl.length !== myN) return; go(res && res.move); });
+  }
+
+  // ── Render ──
+  var bdEl, layerEl, markEl, lineEl, topBar, botBar, turnEl, tipEl, movesEl, actsEl, roomEl;
+  function flipped() { return bottomSide() === BLACK; }
+  function disp(s) { return flipped() ? 89 - s : s; }
+  function place(node, s) { var d = disp(s); node.style.left = (d % 9) * 100 / 9 + '%'; node.style.top = Math.floor(d / 9) * 10 + '%'; }
+  function discEl(v, small) {
+    var side = v > 0 ? RED : BLACK, p = Math.abs(v), d = el('span', { class: 'dk' + (side === BLACK ? ' k' : '') }, [el('span', { class: 'ch', text: CHR[side][p] })]);
+    if (!small && lettersOn()) d.appendChild(el('span', { class: 'lt', text: X.LET[p] }));
+    d.setAttribute('aria-hidden', 'true');
+    return d;
+  }
+  function pieceEl(v, s) { var n = el('div', { class: 'pc', 'data-s': s, 'aria-label': (v > 0 ? 'Red ' : 'Black ') + PN[Math.abs(v)] + ' on ' + X.sqName(s) }, [discEl(v)]); place(n, s); return n; }
+  // the printed board: 9 files, 10 ranks, the river, the palaces' diagonals, the marks at the Cannons' and Soldiers' points
+  function gridSvg() {
+    var x = function (c) { return 5 + c * 10; }, y = function (r) { return 5 + r * 10; }, L = '#4a2a10', s = '';
+    s += '<rect x="5" y="5" width="80" height="90" fill="none" stroke="' + L + '" stroke-width="0.9"/>';
+    s += '<rect x="3.6" y="3.6" width="82.8" height="92.8" fill="none" stroke="' + L + '" stroke-width="0.35"/>';
+    for (var r = 1; r < 9; r++) s += '<line x1="5" x2="85" y1="' + y(r) + '" y2="' + y(r) + '"/>';
+    for (var c = 1; c < 8; c++) s += '<line x1="' + x(c) + '" x2="' + x(c) + '" y1="5" y2="45"/><line x1="' + x(c) + '" x2="' + x(c) + '" y1="55" y2="95"/>';
+    s += '<line x1="35" y1="5" x2="55" y2="25"/><line x1="55" y1="5" x2="35" y2="25"/><line x1="35" y1="75" x2="55" y2="95"/><line x1="55" y1="75" x2="35" y2="95"/>';
+    // the marks: a little corner on each side of the point (not past the board's edge)
+    [[2, 1], [2, 7], [7, 1], [7, 7], [3, 0], [3, 2], [3, 4], [3, 6], [3, 8], [6, 0], [6, 2], [6, 4], [6, 6], [6, 8]].forEach(function (p) {
+      var cx = x(p[1]), cy = y(p[0]), g = 1.1, l = 2.4;
+      [-1, 1].forEach(function (sx) {
+        if ((sx < 0 && p[1] === 0) || (sx > 0 && p[1] === 8)) return;
+        [-1, 1].forEach(function (sy) { s += '<path d="M' + (cx + sx * g) + ' ' + (cy + sy * (g + l)) + 'V' + (cy + sy * g) + 'H' + (cx + sx * (g + l)) + '" fill="none"/>'; });
+      });
+    });
+    // the river's lettering: 楚河 facing the top player, 漢界 facing the bottom one
+    s += '<g font-family="XQ Kai, serif" font-weight="700" font-size="6.4" fill="#5a3112" fill-opacity=".82" text-anchor="middle" dominant-baseline="central" stroke="none">' +
+      '<g transform="rotate(180 25 50)"><text x="18" y="50">楚</text><text x="32" y="50">河</text></g>' +
+      '<text x="58" y="50">漢</text><text x="72" y="50">界</text></g>';
+    return '<svg class="grid" viewBox="0 0 90 100" preserveAspectRatio="none" aria-hidden="true"><g stroke="' + L + '" stroke-width="0.55" stroke-linecap="square">' + s + '</g></svg>';
+  }
+  function render(anim) {
+    if (!S || !S.g) return;
+    app.innerHTML = ''; app.classList.add('ipl');
+    var col = el('div', { class: 'cb-col' });
+    topBar = el('div', { class: 'pbar', style: { 'view-transition-name': 'xq-top' } }); botBar = el('div', { class: 'pbar', style: { 'view-transition-name': 'xq-bot' } });
+    var frame = el('div', { class: 'frame', style: { 'view-transition-name': 'xq-board' } });
+    bdEl = el('div', { class: 'bd' + (flipped() ? ' flip' : ''), role: 'grid', 'aria-label': 'Xiangqi board' });
+    bdEl.innerHTML = gridSvg();
+    bdEl.appendChild(el('div', { class: 'river' }));
+    markEl = el('div', { class: 'layer marks' }); bdEl.appendChild(markEl);
+    lineEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); lineEl.setAttribute('class', 'lines'); lineEl.setAttribute('viewBox', '0 0 90 100'); lineEl.setAttribute('preserveAspectRatio', 'none'); bdEl.appendChild(lineEl);
+    layerEl = el('div', { class: 'layer' }); bdEl.appendChild(layerEl);
+    frame.appendChild(bdEl);
+    // file numbers: each player counts from their own right
+    var nb = el('div', { class: 'fno b' }), nt = el('div', { class: 'fno t' });
+    for (var i = 0; i < 9; i++) { nb.appendChild(el('span', { text: String(9 - i) })); nt.appendChild(el('span', { text: String(i + 1) })); }
+    frame.appendChild(nb); frame.appendChild(nt);
+    col.appendChild(topBar); col.appendChild(frame); col.appendChild(botBar);
+    turnEl = el('div', { class: 'turn' }); col.appendChild(turnEl);
+    tipEl = el('div', { class: 'tip' }); col.appendChild(tipEl);
+    movesEl = el('div', { class: 'moves' }); col.appendChild(movesEl);
+    actsEl = el('div', { class: 'acts' }); col.appendChild(actsEl);
+    roomEl = el('div', { class: 'xq-room', style: { 'view-transition-name': 'xq-room' } }); col.appendChild(roomEl);
+    app.appendChild(col);
+    paintBoard(anim); paintStatus(); paintMoves(); paintActs();
+    fit();
+    bindInput();
+  }
+  function paintActs() {
+    var b = function (cls, ic, label, fn) { return el('button', { type: 'button', class: 'btn btn-sm ' + cls, html: (ic ? Kit.icon(ic) : '') + '<span>' + label + '</span>', onclick: fn }); };
+    actsEl.innerHTML = '';
+    if (NET) {
+      if (S.over || LEFT) actsEl.appendChild(b('btn-primary', '', LEFT ? 'Back to the lobby' : 'Play again', netAgain));
+      else { actsEl.appendChild(b('btn-soft', 'hand', 'Offer a draw', netOfferDraw)); actsEl.appendChild(b('btn-soft', 'flag', 'Resign', netResign)); }
+      return;
+    }
+    if (S.over) actsEl.appendChild(b('btn-primary', '', 'Play again', function () { newGame(true); }));
+    else { actsEl.appendChild(b('btn-soft', 'undo', 'Undo', undo)); actsEl.appendChild(b('btn-soft', 'hand', 'Offer a draw', offerDraw)); }
+  }
+  // The board as large as the room allows for the shape the screen is now (the board is 9 wide by 10 tall)
+  function fit() {
+    var col = app.querySelector('.cb-col'); if (!col || !app.classList.contains('ipl')) return;
+    var W = window.innerWidth, Hh = window.innerHeight, desk = deskWin(), land = !desk && W > Hh * 1.05, low = land && Hh < 560;
+    app.classList.toggle('xq-desk', desk);
+    if (desk) { app.classList.remove('xq-land', 'xq-low', 'xq-tall', 'xq-short'); return fitDesk(col, W, Hh); }
+    app.classList.remove('xq-dw', 'xq-ds'); col.querySelector('.frame').style.height = '';
+    app.classList.toggle('xq-land', land); app.classList.toggle('xq-low', low); app.classList.toggle('xq-tall', !land && W >= 700); app.classList.toggle('xq-short', !land && Hh < 680);
+    var top = app.getBoundingClientRect().top + (window.scrollY || 0);
+    app.style.setProperty('--avh', Math.max(300, Hh - top) + 'px');
+    var cs = getComputedStyle(app), iw = app.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), ih = app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    var frame = col.querySelector('.frame'), rim = parseFloat(getComputedStyle(frame).paddingLeft) || 20;
+    if (land) {
+      var sw = low ? Math.min(250, Math.max(200, W * 0.27)) : Math.min(330, Math.max(260, W * 0.28)), cg = low ? 16 : 28;
+      app.style.setProperty('--sw', sw + 'px'); app.style.setProperty('--cg', cg + 'px');
+      var bh = Math.floor(Math.max(220, ih)), bw = Math.floor((bh - 2 * rim) * 0.9 + 2 * rim);
+      if (bw > iw - sw - cg) { bw = Math.floor(iw - sw - cg); bh = Math.floor((bw - 2 * rim) / 0.9 + 2 * rim); }
+      app.style.setProperty('--bw', bw + 'px'); app.style.setProperty('--bh', bh + 'px');
+      frame.style.width = bw + 'px'; frame.style.height = '';
+    } else {
+      frame.style.width = '';
+      var other = 0;
+      Array.prototype.forEach.call(col.children, function (c) { if (c !== frame) other += c.offsetHeight + 8; });
+      var fh = ih - other, cw = Math.floor(Math.max(200, Math.min(iw, 760, (fh - 2 * rim) * 0.9 + 2 * rim)));
+      app.style.setProperty('--cw', cw + 'px'); app.style.setProperty('--colw', Math.floor(Math.max(cw, Math.min(iw, 460))) + 'px');
+      for (var k = 0; k < 3; k++) {   // (the board is 10 tall to 9 wide: a pixel narrower is a little more than a pixel shorter)
+        var over = col.getBoundingClientRect().height - ih;
+        if (over <= 0) break;
+        cw = Math.max(180, cw - Math.ceil(over * 0.9) - 1); app.style.setProperty('--cw', cw + 'px');
+      }
+    }
+    movesEnd();
+  }
+  // a window that no phone or tablet has (a computer's)
+  function deskWin() { var W = window.innerWidth, H = window.innerHeight; return (W >= 1100 && H >= 500) || (W >= 900 && H >= 1100); }
+  function fitDesk(col, W, Hh) {
+    var top = app.getBoundingClientRect().top + (window.scrollY || 0);
+    app.style.setProperty('--avh', Math.max(300, Hh - top) + 'px');
+    var cs = getComputedStyle(app), iw = app.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), ih = app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    var rw = Math.round(Math.max(280, Math.min(440, W * 0.2))), sw = Math.round(Math.max(300, Math.min(400, W * 0.19)));
+    function bwOf(h, wmax) { var r = Math.max(20, Math.min(44, h * 0.035)), bw = (h - 2 * r) * 0.9 + 2 * r; if (bw > wmax) { bw = wmax; h = (bw - 2 * r) / 0.9 + 2 * r; } return { bw: Math.floor(bw), bh: Math.floor(h), rim: Math.round(r) }; }
+    var a = bwOf(ih, iw - rw - sw - 56);   // three columns
+    var stH = 150, b = bwOf(ih - stH - 20, iw - rw - 28);   // the players and buttons under the board
+    var useA = a.bw >= b.bw * 0.94, k = useA ? a : b;
+    if (useA) { var extra = Math.max(0, iw - k.bw - rw - sw - 56); rw += Math.round(Math.min(extra / 2, Math.max(0, 560 - rw))); sw += Math.round(Math.min(extra / 2, Math.max(0, 480 - sw))); }   // (a wide strip: the columns take the room the board can't use)
+    app.classList.toggle('xq-dw', useA); app.classList.toggle('xq-ds', !useA);
+    app.style.setProperty('--rw', rw + 'px'); app.style.setProperty('--sw', sw + 'px'); app.style.setProperty('--bw', k.bw + 'px'); app.style.setProperty('--drim', k.rim + 'px');
+    app.style.setProperty('--ch', Math.floor(ih) + 'px');
+    var frame = col.querySelector('.frame'); frame.style.width = k.bw + 'px'; frame.style.height = k.bh + 'px';
+    if (!useA) { var over = col.scrollHeight - ih; if (over > 0) { k = bwOf(k.bh - over - 2, iw - rw - 28); app.style.setProperty('--bw', k.bw + 'px'); frame.style.width = k.bw + 'px'; frame.style.height = k.bh + 'px'; } }
+    paintRoom();
+  }
+  function paintRoom() {
+    if (!roomEl || !S || !S.g || !app.classList.contains('xq-desk')) return;
+    var g = G(), first = g.keys[0].slice(-1) === 'b' ? BLACK : RED, list = g.pl.map(function (p) { return p.n + (p.k ? '+' : ''); });
+    roomEl.innerHTML = '';
+    // every move, a row a turn
+    var ml = el('div', { class: 'ml' });
+    if (first === BLACK) list.unshift('…');
+    if (!list.length) ml.appendChild(el('span', { class: 'em', text: first === RED ? 'Red moves first. Each move is written here as it is made.' : 'Black moves first in this position.' }));
+    for (var i = 0; i < list.length; i += 2) {
+      var now = i >= list.length - 2;
+      ml.appendChild(el('span', { class: 'no', text: (i / 2 + 1) + '.' }));
+      ml.appendChild(el('span', { class: 'r' + (now && !list[i + 1] ? ' on' : ''), text: list[i] }));
+      ml.appendChild(el('span', { class: now && list[i + 1] ? 'on' : '', text: list[i + 1] || '' }));
+    }
+    roomEl.appendChild(el('div', { class: 'pn grow' }, [el('h4', { text: 'Moves' }), ml]));
+    // the pieces each side has taken
+    var cp = el('div', { class: 'pn' }, [el('h4', { text: 'Pieces taken' })]);
+    [RED, BLACK].forEach(function (side) {
+      var dks = el('div', { class: 'dks' }); caps(side).sort(function (a, b) { return PV[b] - PV[a]; }).forEach(function (v) { dks.appendChild(discEl(v * -side, true)); });
+      if (!dks.children.length) dks.appendChild(el('span', { class: 'v', text: 'None yet' }));
+      var m = matOf(side);
+      cp.appendChild(el('div', { class: 'cr' }, [el('span', { class: 'who', text: pl(side).name }), dks, m ? el('span', { class: 'v', text: String(m) }) : null]));
+    });
+    roomEl.appendChild(cp);
+    // the past games on this device
+    var past = []; try { past = (window.GameHistory && GameHistory.load(KEY)) || []; } catch (e) {}
+    if (past.length) {
+      var pp = el('div', { class: 'pn' }, [el('h4', { text: 'Past games' })]);
+      past.slice(0, Math.max(1, Math.min(6, Math.floor((window.innerHeight - 560) / 34)))).forEach(function (e) {
+        var d = e._date ? new Date(e._date) : null;
+        pp.appendChild(el('div', { class: 'pg' }, [el('b', { text: e.summary || (e.winner ? e.winner + ' won' : 'Draw') }), el('span', { text: d ? d.toLocaleDateString([], { month: 'short', day: 'numeric' }) : '' })]));
+      });
+      roomEl.appendChild(pp);
+    }
+    var mlEl = roomEl.querySelector('.ml'); requestAnimationFrame(function () { mlEl.scrollTop = mlEl.scrollHeight; });
+  }
+  var lastWH = window.innerWidth + 'x' + window.innerHeight;
+  window.addEventListener('resize', function () {
+    var wh = window.innerWidth + 'x' + window.innerHeight; if (wh === lastWH) return; lastWH = wh;
+    if (!app.classList.contains('ipl')) return;
+    Kit.glide ? Kit.glide(fit) : fit();
+  });
+
+  function mkEl(cls, s) { var n = el('div', { class: 'mk ' + cls, 'data-s': s }); place(n, s); markEl.appendChild(n); return n; }
+  function pt(s) { var d = disp(s); return [5 + (d % 9) * 10, 5 + Math.floor(d / 9) * 10]; }
+  function svgLine(a, b, color, dash) {
+    var p = pt(a), q = pt(b), ln = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    ln.setAttribute('x1', p[0]); ln.setAttribute('y1', p[1]); ln.setAttribute('x2', q[0]); ln.setAttribute('y2', q[1]);
+    ln.setAttribute('stroke', color); ln.setAttribute('stroke-width', '1.3'); ln.setAttribute('stroke-linecap', 'round');
+    if (dash) ln.setAttribute('stroke-dasharray', dash);
+    ln.setAttribute('vector-effect', 'non-scaling-stroke'); ln.style.strokeWidth = '3px';
+    lineEl.appendChild(ln); return ln;
+  }
+  // the selected piece: where it can go, where it would go but for a piece in the way, and where it may not go because of
+  // its own General
+  function options(s) {
+    var g = G(), b = g.b, legalTo = {}, out = { mv: [], blk: X.blocked(b, s), bad: [] };
+    X.legal(g).forEach(function (m) { if (m.f === s) { legalTo[m.t] = 1; out.mv.push(m); } });
+    X.pieceMoves(b, s, []).forEach(function (m) { if (!legalTo[m.t]) out.bad.push({ t: m.t, why: X.why(b, s, m.t) }); });
+    return out;
+  }
+  function paintBoard(anim) {
+    var g = G(), b = g.b, last = g.pl.length ? g.pl[g.pl.length - 1] : null, chkSide = 0, att = [];
+    markEl.innerHTML = ''; layerEl.innerHTML = ''; while (lineEl.firstChild) lineEl.removeChild(lineEl.firstChild);
+    if ((!S.over || (S.result && S.result.type === 'mate')) && X.inCheck(b, g.turn)) { chkSide = g.turn; att = attackers(b, g.turn); }
+    if (last && !(anim && anim.rec)) { mkEl('from', last.f); mkEl('to', last.t); }
+    else if (last) { mkEl('from', last.f); }
+    var opt = sel >= 0 ? options(sel) : null;
+    if (opt) {
+      opt.mv.forEach(function (m) { mkEl(m.c ? 'cap' : 'mv', m.t); });
+      opt.blk.forEach(function (x) { mkEl('blk', x.t); mkEl('leg', x.at); });
+      opt.bad.forEach(function (x) { mkEl(x.why === 'face' ? 'face' : 'chkx', x.t); });
+      if (opt.bad.some(function (x) { return x.why === 'face'; })) { var a = X.general(b, 1), z = X.general(b, -1); if (a >= 0 && z >= 0) svgLine(a, z, 'rgba(210,30,30,.75)', '4 5'); }
+    }
+    if (flash) {
+      if (flash.leg != null) mkEl('leg', flash.leg).classList.add('shake');
+      if (flash.t != null) { var fm = markEl.querySelector('.mk[data-s="' + flash.t + '"]:not(.leg)'); if (fm) fm.classList.add('shake'); }
+    }
+    // the screen a Cannon could jump to capture: lit while that capture is on offer
+    var scrs = {};
+    if (opt && Math.abs(b[sel]) === X.C) opt.mv.forEach(function (m) { if (m.c) { var sc = X.screen(b, sel, m.t); if (sc >= 0) scrs[sc] = 1; } });
+    var mineSide = canAct() ? g.turn : 0;
+    for (var s = 0; s < 90; s++) {
+      if (!b[s]) continue;
+      var p = pieceEl(b[s], s);
+      if (s === sel) p.classList.add('lift');
+      if (scrs[s]) p.classList.add('screen');
+      if (chkSide && b[s] === chkSide) p.classList.add('chk');
+      if (mineSide && b[s] * mineSide > 0) p.classList.add('mine');
+      layerEl.appendChild(p);
+    }
+    if (chkSide) { var gk = X.general(b, chkSide); att.forEach(function (a) { svgLine(a, gk, 'rgba(225,40,40,.7)'); }); }
+    if (anim && anim.rec) animateMove(anim);
+  }
+  function animateMove(a) {
+    var rec = a.rec, p = layerEl.querySelector('.pc[data-s="' + rec.t + '"]'); if (!p || !p.animate) return;
+    var f = disp(rec.f), t = disp(rec.t), dx = ((f % 9) - (t % 9)) * 100, dy = (Math.floor(f / 9) - Math.floor(t / 9)) * 100;
+    p.style.zIndex = 5;
+    var jump = a.screen >= 0, dur = jump ? 520 : 300;
+    var frames = jump ? [
+      { transform: 'translate(' + dx + '%,' + dy + '%) scale(1)' },
+      { transform: 'translate(' + dx / 2 + '%,' + (dy / 2 - 45) + '%) scale(1.32)', offset: 0.5 },
+      { transform: 'translate(0,0) scale(1.06)', offset: 0.86 },
+      { transform: 'none' }
+    ] : [{ transform: 'translate(' + dx + '%,' + dy + '%) scale(1.06)' }, { transform: 'scale(1.06)', offset: 0.85 }, { transform: 'none' }];
+    p.animate(frames, { duration: dur, easing: jump ? 'cubic-bezier(.35,0,.3,1)' : 'cubic-bezier(.22,1,.36,1)' });
+    if (a.victim) {
+      var gp = pieceEl(a.victim, rec.t); gp.style.zIndex = 4; layerEl.insertBefore(gp, layerEl.firstChild);
+      setTimeout(function () { gp.classList.add('gone'); setTimeout(function () { gp.remove(); }, 420); }, dur - 60);
+    }
+    if (jump) {
+      var sp = layerEl.querySelector('.pc[data-s="' + a.screen + '"]');
+      if (sp) { sp.classList.add('screen'); setTimeout(function () { sp.classList.remove('screen'); }, dur + 700); }
+      var arc = svgLine(rec.f, rec.t, 'rgba(255,180,50,.9)', '2 6');
+      setTimeout(function () { if (arc.parentNode) arc.remove(); }, dur + 600);
+    }
+    setTimeout(function () { if (!markEl) return; var q = markEl.querySelector('.mk.to'); if (!q) mkEl('to', rec.t); }, dur);
+  }
+  function capTray(side) {
+    var tray = el('div', { class: 'tray' }), list = caps(side);
+    list.sort(function (a, b) { return PV[b] - PV[a]; }).forEach(function (v) { tray.appendChild(discEl(v * -side, true)); });
+    var adv = matOf(side) - matOf(-side);
+    if (adv > 0) tray.appendChild(el('span', { class: 'adv', text: '+' + adv }));
+    return tray;
+  }
+  function bar(node, side) {
+    var p = pl(side), g = G(), on = !S.over && !LEFT && g.turn === side, chk = on && X.inCheck(g.b, side);
+    node.className = 'pbar' + (on ? ' on' : '') + (chk ? ' chk' : '');
+    var me = NET && NET.seat >= 0 && S.players[NET.seat].side === side;
+    var sub = on && p.cpu && S.busy ? '<span class="think">Thinking <i></i><i></i><i></i></span>' : on ? (chk ? sideName(side) + ' is in check!' : me ? 'Your move as ' + sideName(side) : sideName(side) + ' to move') : sideName(side);
+    node.innerHTML = '';
+    node.appendChild(el('span', { class: 'tok' }, [discEl(side, true)]));
+    node.appendChild(el('div', { class: 'who' }, [el('span', { class: 'nm', html: (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(p.name) + '</span>' }), el('span', { class: 'sub', html: sub })]));
+    node.appendChild(capTray(side));
+  }
+  var TIP = {
+    1: 'The General moves one point up, down or across, and it never leaves the palace.',
+    2: 'The Advisor moves one point diagonally, and it stays inside the palace.',
+    3: 'The Elephant moves exactly two points diagonally. It can’t cross the river, and a piece on the point in between blocks it.',
+    4: 'The Horse moves one point straight, then one point diagonally outward. A piece on that first point blocks that way.',
+    5: 'The Chariot moves any distance up, down or across.',
+    6: 'The Cannon moves like a Chariot, but to capture it has to jump over exactly one piece.',
+    7: 'The Soldier moves one point forward.'
+  };
+  function paintStatus() {
+    if (!turnEl) return;
+    var bs = bottomSide(); bar(topBar, -bs); bar(botBar, bs);
+    var g = G(), p = pl(g.turn), chk = X.inCheck(g.b, g.turn);
+    turnEl.innerHTML = ''; turnEl.classList.toggle('alert', !S.over && chk);
+    turnEl.style.setProperty('--c', g.turn === RED ? '#ff6b5e' : '#d8d2c6');
+    tipEl.innerHTML = '';
+    if (NET && LEFT) { turnEl.appendChild(el('span', { text: LEFT.text || 'The other player left' })); return; }
+    if (S.over) {
+      var r = S.result, w = r.winner ? pl(r.winner) : null;
+      turnEl.appendChild(el('span', { text: w ? (r.type === 'mate' ? 'Checkmate! ' : '') + (NET && S.players[NET.seat] === w ? 'You win!' : w.name + ' wins') : END_TEXT[r.type] || 'It’s a draw' }));
+      return;
+    }
+    turnEl.appendChild(el('span', { class: 'dot' }));
+    var mine = NET ? NET.myTurn() : !p.cpu;
+    var txt = NET ? (mine ? (chk ? 'Check! Your move' : 'Your move') : 'Waiting for ' + p.name) : p.cpu ? p.name + ' is thinking…' : (chk ? 'Check! ' : '') + Kit.poss(p.name) + ' move';
+    turnEl.appendChild(el('span', { text: txt }));
+    // what the piece in your hand does (with the letters on), or what just went wrong
+    if (flash && flash.say) tipEl.innerHTML = Kit.esc(flash.say);
+    else if (sel >= 0 && lettersOn()) {
+      var v = Math.abs(g.b[sel]), t = TIP[v];
+      if (v === X.P) t = X.crossed(g.turn, Math.floor(sel / 9)) ? 'The Soldier moves one point forward, and since it has crossed the river it can also step sideways.' : 'The Soldier moves one point forward. Once it crosses the river it can step sideways too.';
+      tipEl.innerHTML = Kit.esc(t);
+    } else if (NET && S.offer != null && S.offer !== NET.seat && mine) tipEl.textContent = S.players[S.offer].name + ' offered a draw.';
+  }
+  function paintMoves() {
+    movesEl.innerHTML = '';
+    var g = G(), first = g.keys[0].slice(-1) === 'b' ? BLACK : RED;
+    if (!g.pl.length) { movesEl.appendChild(el('span', { class: 'empty', text: first === RED ? 'Red moves first' : 'Black to move' })); return; }
+    var list = g.pl.map(function (p) { return p.n; });
+    if (first === BLACK) list.unshift('…');
+    for (var i = 0; i < list.length; i += 2) {
+      var now = i >= list.length - 2;
+      movesEl.appendChild(el('span', { class: 'mp' + (now ? ' now' : '') }, [el('i', { text: (i / 2 + 1) + '.' }), el('span', { class: 'r', text: list[i] }), list[i + 1] ? el('span', { text: list[i + 1] }) : null]));
+    }
+    requestAnimationFrame(movesEnd);
+  }
+  function movesEnd() { if (movesEl) { movesEl.scrollLeft = movesEl.scrollWidth; movesEl.scrollTop = movesEl.scrollHeight; } }
+
+  // ── Input: tap a piece, then a point ──
+  function canAct() { return S && S.g && !S.over && !S.busy && (NET ? !LEFT && NET.myTurn() : !pl(G().turn).cpu); }
+  function nudge() { Kit.haptic('error'); turnEl.classList.remove('nudge'); void turnEl.offsetWidth; turnEl.classList.add('nudge'); }
+  function ptAt(x, y) {
+    var rc = bdEl.getBoundingClientRect();
+    var c = Math.floor((x - rc.left) / rc.width * 9), r = Math.floor((y - rc.top) / rc.height * 10);
+    if (c < 0 || c > 8 || r < 0 || r > 9) return -1;
+    return disp(r * 9 + c);
+  }
+  function nm(s) { var v = G().b[s]; return (v > 0 ? 'Red ' : 'Black ') + PN[Math.abs(v)]; }
+  function tapPoint(s) {
+    if (!canAct()) { if (S && !S.over && !S.busy && !LEFT) nudge(); return; }
+    var g = G(), b = g.b;
+    if (sel >= 0) {
+      var opt = options(sel), m = opt.mv.filter(function (x) { return x.t === s; })[0];
+      if (m) { commit({ f: m.f, t: m.t }); return; }
+      var bl = opt.blk.filter(function (x) { return x.t === s; })[0];
+      if (bl) {
+        flash = { t: s, leg: bl.at, say: bl.kind === 'leg' ? 'The ' + nm(bl.at) + ' stands on the Horse’s leg, so the Horse can’t go that way.' : 'The ' + nm(bl.at) + ' sits on the point between, so the Elephant can’t go that way.' };
+        Kit.sfx('bad', .6); Kit.haptic('error'); paintBoard(); paintStatus(); clearFlash(); return;
+      }
+      var bad = opt.bad.filter(function (x) { return x.t === s; })[0];
+      if (bad) {
+        flash = { t: s, say: bad.why === 'face' ? 'That move would leave the two Generals facing each other with nothing between them, and that’s never allowed.' : 'That move would leave your General in check.' };
+        Kit.sfx('bad', .6); Kit.haptic('error'); paintBoard(); paintStatus(); clearFlash(); return;
+      }
+    }
+    if (b[s] * g.turn > 0) {
+      if (sel === s) { sel = -1; flash = null; paintBoard(); paintStatus(); return; }
+      sel = s; flash = null; Kit.sfx('tick'); Kit.haptic('tick');
+      if (!options(s).mv.length) { flash = { say: 'This ' + PN[Math.abs(b[s])] + ' has no move it can make right now.' }; Kit.haptic('error'); }
+      paintBoard(); paintStatus(); return;
+    }
+    if (sel >= 0) { sel = -1; flash = null; paintBoard(); paintStatus(); }
+  }
+  var flashT = 0;
+  function clearFlash() { clearTimeout(flashT); var f = flash; flashT = setTimeout(function () { if (flash === f && S && S.g) { flash = null; paintBoard(); paintStatus(); } }, 3200); }
+  function bindInput() {
+    bdEl.addEventListener('pointerdown', function (e) {
+      if (e.button > 0) return;
+      var s = ptAt(e.clientX, e.clientY); if (s >= 0) tapPoint(s);
+    });
+  }
+
+  // ── Online (turnnet.js) ──
+  // Seat 0 plays Red (moves first) in the first game; each rematch swaps colors. The table's state:
+  // {mode:'online', players:[{name, side}], g (the core state), events, wins:[seat 0, seat 1, draws], offer (seat), over,
+  //  result, started}
+  function netSeatOf(st, side) { return st.players[0].side === side ? 0 : 1; }
+  function netStart(players, opts, last) {
+    var s0 = last && last.players ? -last.players[0].side : RED;
+    return { mode: 'online', players: players.map(function (p, i) { return { name: p.name, cpu: false, side: i === 0 ? s0 : -s0 }; }),
+      g: X.start(), events: [], wins: last && last.wins ? last.wins.slice() : [0, 0, 0], offer: null, over: false, result: null, started: Date.now() };
+  }
+  function netEndOf(st, res) { st.over = true; st.result = res; st.wins[res.winner ? netSeatOf(st, res.winner) : 2]++; }
+  function netApply(st, f, t) {
+    if (st.over) return null;
+    var g = st.g, side = g.turn, ng = X.play(g, { f: f, t: t });
+    if (!ng) return null;
+    var rec = ng.pl[ng.pl.length - 1];
+    noteEvents(st, g, rec, side, true);
+    st.g = ng; st.offer = null;
+    var end = X.result(ng); if (end) netEndOf(st, end);
+    return { state: st, mv: { f: f, t: t, side: side } };
+  }
+  function netMove(m) { var f = m.f, t = m.t; sel = -1; flash = null; NET.act(function (st) { return netApply(st, f, t); }); }
+  function netResign() {
+    if (!S || S.over || LEFT) return Kit.toast('The game is over');
+    if (!NET.myTurn()) return Kit.toast('You can resign on your turn');
+    var me = NET.seat;
+    Kit.confirm('Resign this game?', { ok: 'Resign', danger: true, body: S.players[1 - me].name + ' will win this game.' }).then(function (ok) {
+      if (!ok || !NET) return;
+      NET.act(function (st) { if (st.over) return null; netEndOf(st, { type: 'resign', winner: -st.players[me].side }); return { state: st, mv: { resign: me } }; });
+    });
+  }
+  function netOfferDraw() {
+    if (!S || S.over || LEFT) return;
+    if (!NET.myTurn()) return Kit.toast('You can offer a draw on your turn');
+    if (S.offer != null && S.offer !== NET.seat) return netAnswerOffer();
+    var me = NET.seat;
+    Kit.confirm('Offer ' + S.players[1 - me].name + ' a draw?', { ok: 'Offer a draw', body: 'Then make your move. ' + S.players[1 - me].name + ' can agree on their turn, or play on.' }).then(function (ok) {
+      if (!ok || !NET) return;
+      NET.act(function (st) { if (st.over) return null; st.offer = me; return { state: st, mv: { offer: me } }; }); Kit.toast('Your offer stands until ' + S.players[1 - me].name + ' moves. Now make your move.');
+    });
+  }
+  function netAnswerOffer() {
+    if (!NET || !S || S.over || OFFERSH) return;
+    var other = S.players[S.offer], me = NET.seat;
+    OFFERSH = true;
+    Kit.confirm(other.name + ' offered a draw', { ok: 'Agree to a draw', body: 'Agree and the game ends as a draw, or play on and make your move.' }).then(function (ok) {
+      OFFERSH = null;
+      if (!ok || !NET) return;
+      NET.act(function (st) { if (st.over || st.offer == null || st.offer === me) return null; netEndOf(st, { type: 'agreed', winner: 0 }); return { state: st, mv: { agreed: 1 } }; });
+    });
+  }
+  function netAgain() { if (!NET) return; if (LEFT) { TurnNet.leave(); TurnNet.open(); } else NET.again(); }
+  function netShow(net, info) {
+    NET = net; cancelThink();
+    if (WINO && (info.again || info.fresh)) { WINO.close(); WINO = null; }
+    var prev = S && S.g;
+    S = JSON.parse(JSON.stringify(net.state)); S.busy = false; S.hist = []; sel = -1; flash = null;
+    LEFT = net.status === 'over' && !S.over && net.result && net.result.left != null ? net.result : null;
+    var tok = ++SHOWN, mv = info.mv && info.mv.f != null && !info.fresh && !info.again ? info.mv : null;
+    if (mv && prev && prev.pl.length === S.g.pl.length - 1) {
+      var rec = S.g.pl[S.g.pl.length - 1];
+      afterMove(prev, S.g, rec, mv.side, !info.mine, S.over ? S.result : null);
+    } else render();
+    if (info.again) { Kit.sfx('deal'); Kit.callout(S.players[netSeatOf(S, RED)] === S.players[net.seat] ? 'You start' : S.players[netSeatOf(S, RED)].name + ' starts'); }
+    setTimeout(function () {
+      if (tok !== SHOWN) return;
+      if (S.over || LEFT) setTimeout(function () { if (tok === SHOWN) netEnd(); }, mv ? 900 : 150);
+      else if (net.myTurn() && S.offer != null && S.offer !== net.seat) netAnswerOffer();
+      else if (!info.mine && net.myTurn() && !info.fresh) Kit.haptic('light');
+    }, mv ? 420 : 0);
+  }
+  function netEnd() {
+    if (!NET || !S) return;
+    var me = NET.seat, res = S.result || {}, left = LEFT, g = S.g;
+    var wi = left ? (left.win && left.win.length ? left.win[0] : -1) : res.winner ? netSeatOf(S, res.winner) : -1;
+    var w = wi >= 0 ? S.players[wi] : null, lo = wi >= 0 ? S.players[1 - wi] : null, moves = movesOf(g), key = NET.code + ':' + S.started;
+    var done = NETREC[key]; try { done = done || (JSON.parse(localStorage.getItem('xiangqi_net_rec')) || []).indexOf(key) >= 0; } catch (e) {}
+    var sp = w && !left ? specialWins(S, g, w, lo, true) : [];
+    if (!done) {
+      NETREC[key] = 1;
+      try { var rl = JSON.parse(localStorage.getItem('xiangqi_net_rec')) || []; rl.push(key); localStorage.setItem('xiangqi_net_rec', JSON.stringify(rl.slice(-30))); } catch (e) {}
+      var hl = left ? [left.text] : highlights(S, g, res, w, lo, sp);
+      hl.push('Played online at table ' + NET.code);
+      Kit.record(KEY, {
+        started: S.started, mode: 'Online',
+        players: S.players.map(function (p, i) { return { name: p.name + ' (' + sideName(p.side) + ')', score: w ? (i === wi ? 1 : 0) : 0.5 }; }),
+        winner: w ? w.name + ' (' + sideName(w.side) + ')' : null,
+        summary: left ? left.text : w ? w.name + ' won in ' + moves + ' moves' : END_TEXT[res.type] || 'Draw',
+        highlights: hl, detail: detailOf(S, g, left ? { type: 'left', winner: w ? w.side : 0 } : res)
+      });
+      if (sp.length) { Kit.moment({ big: true, title: sp[0].t, line: sp.map(function (x) { return x.l; }).join(' '), icon: wi === me ? 'trophy' : 'flag', tone: wi === me ? '' : 'bad', at: bdEl, ms: 2300 }); Kit.sfx(wi === me ? 'sparkle' : 'lose'); }
+    }
+    var series = S.players[0].name + ' ' + S.wins[0] + ' – ' + S.wins[1] + ' ' + S.players[1].name + (S.wins[2] ? ', ' + S.wins[2] + (S.wins[2] === 1 ? ' draw' : ' draws') : '');
+    setTimeout(function () {
+      if (!NET) return;
+      if (WINO) WINO.close();
+      WINO = Kit.win({
+        icon: !w ? 'users' : wi === me ? 'trophy' : 'users',
+        title: left ? left.text : !w ? 'It’s a draw' : wi === me ? 'You win!' : w.name + ' wins',
+        sub: left ? '' : w ? whySub(res, lo) : END_TEXT[res.type], notes: [series], notesTitle: 'Series',
+        lose: !!w && wi !== me, againLabel: left ? 'Back to the lobby' : 'Play again',
+        again: function () { WINO = null; netAgain(); },
+        look: { label: 'Look at the board', onClick: function () { WINO = null; } }
+      });
+    }, sp.length && !done ? 2600 : 300);
+  }
+  function netLeave() {
+    NET = null; LEFT = null; SHOWN++; if (WINO) { WINO.close(); WINO = null; }
+    sel = -1; flash = null;
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.g && sv.players && !sv.over) { S = sv; S.busy = false; render(); save(); maybeCpu(); }
+    else showSetup();
+  }
+
+  // ── Test and demo hooks ──
+  function boardFrom(list) { var b = []; for (var i = 0; i < 90; i++) b.push(0); list.forEach(function (x) { b[X.sqOf(x[0])] = x[1]; }); return b; }
+  window.__xq = {
+    X: X, state: function () { return S; },
+    // a fresh game for these players: {mode: '2p' | 'cpu', level, players: [{name, cpu, side}]}
+    start: function (cfg) { cancelThink(); if (cfg.letters != null) lsSet(LETK, cfg.letters ? '1' : '0'); S = { mode: cfg.mode || '2p', level: cfg.level || 'normal', players: cfg.players }; newGame(); },
+    // a position: [['e1', 1], ['e10', -1], ['b3', 6], ...] with Red (1) or Black (-1) to move
+    set: function (list, turn) { cancelThink(); S.busy = false; newGame(false, X.fromBoard(Array.isArray(list[0]) ? boardFrom(list) : list, turn || 1)); },
+    tap: function (n) { tapPoint(typeof n === 'string' ? X.sqOf(n) : n); },
+    play: function (a, z) { commit({ f: X.sqOf(a), t: X.sqOf(z) }); },
+    netSet: function (list, turn) { if (NET) NET.act(function (st) { st.g = X.fromBoard(boardFrom(list), turn || 1); return { state: st, mv: null }; }); }
+  };
+
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.g && saved.players && !saved.over) { S = saved; S.busy = false; render(); maybeCpu(); }
+  else showSetup();
+
+  TurnNet.setup({
+    game: 'xiangqi', title: 'Xiangqi', min: 2, max: 2,
+    opts: function () { return {}; }, start: netStart,
+    turn: function (st) { return st.over ? [] : [netSeatOf(st, st.g.turn)]; },
+    over: function (st) {
+      if (!st.over) return null;
+      var r = st.result || {}, w = r.winner ? netSeatOf(st, r.winner) : -1;
+      return { win: w >= 0 ? [w] : [], text: w >= 0 ? st.players[w].name + (r.type === 'resign' ? ' wins: ' + st.players[1 - w].name + ' resigned' : ' wins') : 'Draw' };
+    },
+    show: netShow, leave: netLeave
+  });
+})();
+</script>
+</body>
+</html>
