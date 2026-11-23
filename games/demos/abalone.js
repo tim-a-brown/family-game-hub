@@ -17,7 +17,7 @@
 
   Kit.demoScript({
     intro: 'Here’s how marbles move and push, and then you push the sixth marble off the board to win.',
-    beats: 11,
+    beats: 9,
     end: 'Move up to three marbles in a line, push when you outnumber the other side, and push six of their marbles off the board.',
     start: function () {
       var me = (localStorage.getItem('my_name') || '').trim() || 'You';
@@ -25,31 +25,29 @@
     },
     steps: async function (D) {
       var them = S().players[1].name;
-      await D.say('You play black, and black goes first. Each side has 14 marbles, and the first to push six of the other side’s marbles off the board wins.', { at: mbs(['A3', 'I7']) });
-      await D.tap(mb('C3'), { after: 500 });
-      await D.tap(mb('C5'), { after: 600 });
-      await D.say('Tap a marble, then one or two more in a straight line, and they move together. The gold arrows show every way these three can go.', { at: arrows });
+      await D.say('You play black, and black goes first. The first to push six of the other side’s marbles off the board wins.', { at: mbs(['A3', 'I7']) });
+      await D.tap(mb('C3'), { after: 350 });
+      await D.tap(mb('C5'), { after: 400 });
+      await D.say('Tap a marble, then one or two more in a straight line. The gold arrows show every way they can go.', { at: arrows });
       var n = moved();
-      await D.tap(arrow(1), { after: 300 });
+      await D.tap(arrow(1), { after: 200 });
       await D.wait(function () { return moved() > n; }, 3000);
-      await D.wait(700);
-      await D.say('All three slid sideways into the empty holes beside them. A sideways move never pushes anything.', { at: mbs(['D4', 'D5', 'D6']) });
+      await D.wait(450);
+      await D.say('All three slid sideways into the empty holes. A sideways move never pushes.', { at: mbs(['D4', 'D5', 'D6']) });
       await D.set(function () { A.set(PUSH, 1, [1, 2]); });
-      await D.say('A few moves later, three of your marbles stand in a line with two of ' + them + '’s right in front of them.', { at: mbs(['E3', 'E4', 'E5', 'E6', 'E7']) });
-      await D.tap(mb('E3'), { after: 500 });
-      await D.tap(mb('E5'), { after: 600 });
-      await D.say('Moving along their own line, your marbles can push ' + them + '’s when yours outnumber them: three push two, and two push one. A push shows a red arrow.', { at: arrow(0) });
+      await D.tap(mb('E3'), { after: 350 });
+      await D.tap(mb('E5'), { after: 400 });
+      await D.say('Later on, your three face two of ' + them + '’s. Moving along their line, yours can push when they outnumber ' + them + '’s.', { at: arrow(0) });
       await D.you(arrow(0), 'Your turn. Tap the red arrow to push.', { until: function () { return moved() > 0; } });
-      await D.wait(900);
-      await D.say('Your three pushed two of ' + them + '’s along the row. That push is called a sumito. Two against two, or three against three, can never push.', { at: mbs(['E4', 'E5', 'E6', 'E7', 'E8']) });
+      await D.wait(700);
+      await D.say('That push is a sumito: three push two, and two push one. Equal numbers can never push.', { at: mbs(['E4', 'E5', 'E6', 'E7', 'E8']) });
       await D.set(function () { A.set(LATE, 1, [2, 5]); });
-      await D.say('Now we skip ahead. You have pushed five of ' + them + '’s marbles into your tray, and ' + them + ' has pushed two of yours.', { at: '.pbar.bot .tray' });
-      await D.tap(mb('E5'), { after: 500 });
-      await D.tap(mb('E7'), { after: 600 });
-      await D.say('There’s no empty hole past ' + them + '’s marble at the edge, so this push sends it off the board.', { at: mbs(['E8', 'E9']) });
+      await D.tap(mb('E5'), { after: 350 });
+      await D.tap(mb('E7'), { after: 400 });
+      await D.say('Now you have pushed five of ' + them + '’s marbles off. With no hole past the marble at the edge, this push sends it off too.', { at: mbs(['E8', 'E9']) });
       await D.you(arrow(0), 'Your turn. Push the sixth marble off the board.', { until: function () { return moved() > 0; } });
       await D.wait(function () { return document.querySelector('.k-win h2'); }, 9000);
-      await D.wait(700);
+      await D.wait(500);
       await D.say('Six of ' + them + '’s marbles are off the board, so you win the game.', { at: '.k-win .rank', pos: 'above' });
     }
   });

@@ -1543,8 +1543,11 @@ Underlying principles for everything:
   Horse Race's `deviceShape`): the board sized from the window to 1,400 px across; `w1`/`w2` (wider than 1.25 to 1) the
   plates, turn and Undo in a column at the left, the room under them or in a column of its own, the board the window's
   height at the right; `t` (squarer) the board across the top, the column and the room's panels side by side under it.
-  The room: This game (marbles pushed off, pushes, sumitos, marbles on the board), the moves so far newest first in the
-  official notation, past games; whole rows only. A change of shape or composition glides (`Kit.glide`).
+  The room, every panel as tall as what it holds: Off the board (each side's six slots with the marbles it has pushed
+  off, a sentence a side, and the last move in words; the room's spare height goes to these marbles, `--om`), This game
+  (pushes, sumitos, marbles on the board), the moves so far newest first in the official notation, past games; whole
+  rows only (`fitRoom`). A change of shape or composition glides (`Kit.glide`). A phone held upright spreads its parts
+  evenly down the screen, and a tall one (740 or more) has two-line plates with the tray of six as large marbles.
 
 ## Wax Pack (2026-11-19; Tim: the Sandlot redesign, named "wax pack", the pitch duel "sure i'll try it", scanning "to log a player's deck")
 

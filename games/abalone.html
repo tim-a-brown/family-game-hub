@@ -90,17 +90,20 @@
 .ab-col>.pbar.top{view-transition-name:ab-top;}
 .ab-col>.pbar.bot{view-transition-name:ab-bot;}
 /* Phone upright: the board as wide as the screen, the column in the middle of the height */
-html[data-o=port] #app.stage.ipl{min-height:calc(100dvh - var(--bar));display:flex;flex-direction:column;justify-content:center;
+html[data-o=port] #app.stage.ipl{min-height:calc(100dvh - var(--bar));display:flex;flex-direction:column;justify-content:stretch;
   padding-left:8px;padding-right:8px;padding-bottom:calc(var(--safe-b) + 18px);}
-html[data-o=port] .ab-col{width:100%;gap:10px;}
+html[data-o=port] .ab-col{width:100%;gap:10px;flex:1 1 auto;justify-content:space-evenly;}
 html[data-o=port] .ab-col>.frame{width:min(100%,calc((100dvh - var(--bar) - 250px) * 1.155));align-self:center;}
-@media (max-width:699px) and (min-height:780px){
-  html[data-o=port] .ab-col{gap:14px;}
-  html[data-o=port] .pbar{min-height:66px;padding:8px 14px 8px 12px;}
-  html[data-o=port] .pbar .nm{font-size:1.08rem;}
-  html[data-o=port] .tok{--d:36px;}
-  html[data-o=port] .tray{--s:22px;gap:4px;}
-  html[data-o=port] .ab-col>.frame{width:min(100%,calc((100dvh - var(--bar) - 290px) * 1.155));}
+/* a tall phone: the board is held by the width, so the plates take the height left over: the marble and the name with
+   whose turn it is, and under them the tray of six as large marbles */
+@media (max-width:699px) and (min-height:740px){
+  html[data-o=port] .pbar{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"k w" "k t";column-gap:14px;row-gap:8px;padding:12px 16px;min-height:0;}
+  html[data-o=port] .pbar>.tok{grid-area:k;--d:52px;align-self:center;}
+  html[data-o=port] .pbar>.who{grid-area:w;}
+  html[data-o=port] .pbar>.tray{grid-area:t;justify-self:start;--s:min(34px,calc((100vw - 140px) / 6.6));gap:5px;padding:5px 8px;}
+  html[data-o=port] .pbar .nm{font-size:1.12rem;}
+  html[data-o=port] .pbar .sub{font-size:.8rem;}
+  html[data-o=port] .turn{font-size:1.05rem;}
 }
 @media (max-height:600px){ html[data-o=port] .ab-col{gap:6px;} html[data-o=port] .pbar{min-height:46px;} html[data-o=port] .ab-col>.frame{width:min(100%,calc((100dvh - var(--bar) - 214px) * 1.155));} }
 @media (min-width:700px){
@@ -136,7 +139,7 @@ html[data-o=land] .ab-col>.ab-room{display:none;}
 
 /* ── The desk: a window larger than a phone's or a tablet's (html.ab-dk, set by deskPlan) ── */
 html.ab-dk #app.stage.ipl{max-width:none;padding:0;min-height:0;}
-html.ab-dk .ab-col{position:fixed;left:var(--x0);top:var(--y0);width:var(--aw);height:var(--ah);max-width:none;margin:0;display:grid;gap:var(--g);
+html.ab-dk .ab-col{justify-content:normal;position:fixed;left:var(--x0);top:var(--y0);width:var(--aw);height:var(--ah);max-width:none;margin:0;display:grid;gap:var(--g);
   grid-template-columns:var(--cols);grid-template-rows:max-content max-content max-content max-content minmax(0,1fr);grid-template-areas:var(--areas);}
 html.ab-dk .ab-col>.frame{grid-area:b;width:var(--bw);align-self:center;justify-self:center;}
 html.ab-dk .ab-col>.pbar.top{grid-area:t;}
@@ -144,15 +147,15 @@ html.ab-dk .ab-col>.pbar.bot{grid-area:p;}
 html.ab-dk .ab-col>.turn{grid-area:s;justify-self:start;font-size:calc(1rem * var(--dk));}
 html.ab-dk .ab-col>.acts{grid-area:a;justify-content:flex-start;}
 html.ab-dk .ab-col>.ab-room{grid-area:r;display:flex;flex-direction:column;gap:var(--g);min-height:0;overflow:hidden;view-transition-name:ab-room;}
-html.ab-dk .ab-room.row{align-items:stretch;}
+html.ab-dk .ab-room.row{align-items:flex-start;}
 html.ab-dk .pbar{min-height:calc(60px * var(--dk));padding:calc(8px * var(--dk)) calc(14px * var(--dk));}
 html.ab-dk .pbar .nm{font-size:calc(1.05rem * var(--dk));}
 html.ab-dk .pbar{flex-wrap:wrap;row-gap:6px;}
 html.ab-dk .pbar .who{min-width:7.5em;}
 html.ab-dk .ab-room.row{flex-direction:row;}
-html.ab-dk .ab-room.row>.pn{flex:1 1 0;}
-html.ab-dk .ab-room.row>.pn:first-child{flex:1.5 1 0;}
-html.ab-dk .ab-room.row>.pn.grow{flex:1.4 1 0;}
+html.ab-dk .ab-room.row>.pn{flex:1 1 0;min-width:0;}
+
+
 html.ab-dk .pbar .sub{font-size:calc(.82rem * var(--dk));}
 html.ab-dk .tok{--d:calc(34px * var(--dk));}
 html.ab-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
@@ -178,6 +181,15 @@ html.ab-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
 .pgr .sc{font-weight:800;font-variant-numeric:tabular-nums;}
 .pgr .dt{grid-column:1/-1;font-size:.82em;color:var(--text-3);font-weight:600;}
 .pn .none{color:var(--text-3);font-weight:600;}
+.offp{gap:10px;}
+.ofr{display:flex;flex-direction:column;gap:6px;}
+.oft{font-weight:700;}
+.ofs{display:flex;gap:calc(6px * var(--dk,1));}
+.ofh{width:var(--om,30px);height:var(--om,30px);border-radius:50%;position:relative;flex:none;background:radial-gradient(circle at 50% 60%,rgba(0,0,0,.6),rgba(0,0,0,.25) 70%);box-shadow:inset 0 2px 4px rgba(0,0,0,.6);}
+.ofh.last{box-shadow:inset 0 2px 4px rgba(0,0,0,.6),0 0 0 1.5px color-mix(in srgb,var(--lit) 55%,transparent);}
+.ofh .tok{--d:100%;position:absolute;inset:0;}
+.olast{color:var(--text-3);font-weight:600;}
+.mvp .rows{overflow:hidden;}
 </style>
 </head>
 <body>
@@ -645,53 +657,79 @@ html.ab-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
     else txt = SEL.length ? 'Now tap an arrow, or drag the marbles' : Kit.poss(p.name) + ' turn: tap marbles to move them';
     turnEl.appendChild(el('span', { text: txt }));
   }
-  // At a desk, the room beside the board: the moves so far, this game's numbers side by side, and past games
+  // At a desk, the room beside the board: the marbles each side has pushed off (as marbles, as large as the room's spare
+  // height allows) with the last move in words, this game's numbers side by side, the moves so far and past games
   function paintRoom() {
     if (!roomEl || !R.classList.contains('ab-dk') || !S) return;
     roomEl.innerHTML = '';
+    var sides = [BLACK, WHITE];
+    var op = el('section', { class: 'pn offp' }, [el('h3', { text: 'Off the board' })]);
+    sides.forEach(function (sd) {
+      var p = pl(sd), k = S.off[3 - sd], them = pl(3 - sd), row = el('div', { class: 'ofr' }), slots = el('div', { class: 'ofs' });
+      for (var i = 0; i < 6; i++) slots.appendChild(el('span', { class: 'ofh' + (i === 5 ? ' last' : '') }, i < k ? [el('span', { class: 'tok ' + (sd === BLACK ? 'w' : 'b') })] : []));
+      row.appendChild(el('div', { class: 'oft', text: k ? nameOf(p) + ' has pushed ' + k + ' of ' + Kit.poss(nameOf(them)) + ' marbles off. ' + (6 - k === 1 ? 'One more wins.' : (6 - k) + ' more win.') : nameOf(p) + ' hasn’t pushed any of ' + Kit.poss(nameOf(them)) + ' marbles off yet.' }));
+      row.appendChild(slots); op.appendChild(row);
+    });
+    var lastLine = '';
+    if (S.ml.length) {
+      var g = Core.newGame(S.start), list = [];
+      S.ml.forEach(function (st) { var side = g.turn, m = Core.decode(g, st); if (!m) return; Core.play(g, st); list.push({ m: m, side: side, n: g.n }); });
+      var L = list[list.length - 1];
+      if (L) lastLine = Core.describe(L.m, L.side).replace(/^(Black|White)/, nameOf(pl(L.side))) + '.';
+    }
+    op.appendChild(el('div', { class: 'olast', text: lastLine ? 'Last move: ' + lastLine : colorName(S.turn) + ' makes the first move.' }));
+    roomEl.appendChild(op);
     var tb = el('section', { class: 'pn' }, [el('h3', { text: 'This game' })]);
-    var t = el('table', { class: 'stt' }), sides = [BLACK, WHITE];
-    var head = el('tr', null, [el('th', { text: '' })].concat(sides.map(function (s) { return el('td', { html: '<span class="tok ' + (s === BLACK ? 'b' : 'w') + '"></span> ' + Kit.esc(nameOf(pl(s))) }); })));
-    t.appendChild(head);
-    [['Marbles pushed off', function (s) { return S.off[3 - s]; }], ['Pushes', function (s) { return S.st.push[s]; }], ['Sumitos (3 push 2)', function (s) { return S.st.sumito[s]; }], ['Marbles on the board', function (s) { return Core.count(S.b, s); }]].forEach(function (row) {
-      t.appendChild(el('tr', null, [el('th', { text: row[0] })].concat(sides.map(function (s) { return el('td', { text: String(row[1](s)) }); }))));
+    var t = el('table', { class: 'stt' });
+    t.appendChild(el('tr', null, [el('th', { text: '' })].concat(sides.map(function (sd) { return el('td', { html: '<span class="tok ' + (sd === BLACK ? 'b' : 'w') + '"></span> ' + Kit.esc(nameOf(pl(sd))) }); }))));
+    [['Pushes', function (sd) { return S.st.push[sd]; }], ['Sumitos (3 push 2)', function (sd) { return S.st.sumito[sd]; }], ['Marbles on the board', function (sd) { return Core.count(S.b, sd); }]].forEach(function (row) {
+      t.appendChild(el('tr', null, [el('th', { text: row[0] })].concat(sides.map(function (sd) { return el('td', { text: String(row[1](sd)) }); }))));
     });
     tb.appendChild(t); roomEl.appendChild(tb);
-    var mv = el('section', { class: 'pn grow' }, [el('h3', { text: S.ml.length ? 'Moves so far' : 'Moves' })]), rows = el('div', { class: 'rows' });
-    if (!S.ml.length) rows.appendChild(el('div', { class: 'none', text: colorName(S.turn) + ' makes the first move.' }));
-    else {
-      var g = Core.newGame(S.start), list = [];
-      S.ml.forEach(function (s) { var side = g.turn, m = Core.decode(g, s); if (!m) return; Core.play(g, s); list.push({ m: m, side: side, n: g.n }); });
-      list.reverse().slice(0, 60).forEach(function (x, i) {
+    if (list && list.length) {
+      var mv = el('section', { class: 'pn mvp' }, [el('h3', { text: 'Moves so far' })]), rows = el('div', { class: 'rows' });
+      list.slice().reverse().slice(0, 40).forEach(function (x, i) {
         rows.appendChild(el('div', { class: 'mvr' + (i === 0 ? ' now' : '') }, [el('span', { class: 'no', text: x.n + '' }), el('span', { class: 'tok ' + (x.side === BLACK ? 'b' : 'w') }),
-          el('span', { class: 'nt', text: Core.short(x.m).replace(/ (off|push)$/, '') }),
+          el('span', { class: 'nt', text: Core.short(x.m) }),
           x.m.x ? el('span', { class: 'tg x', text: 'Off the board' }) : x.m.p.length ? el('span', { class: 'tg p', text: 'Pushed ' + x.m.p.length }) : el('span')]));
       });
+      mv.appendChild(rows); roomEl.appendChild(mv);
     }
-    mv.appendChild(rows); roomEl.appendChild(mv);
     var past = []; try { past = GameHistory.load(KEY).slice(0, 8); } catch (e) {}
-    var pg = el('section', { class: 'pn' }, [el('h3', { text: 'Past games' })]), pr = el('div', { class: 'rows' });
-    if (!past.length) pr.appendChild(el('div', { class: 'none', text: 'Games you finish show up here.' }));
-    past.forEach(function (e) {
-      var ps = e.players || [];
-      pr.appendChild(el('div', { class: 'pgr' }, [el('span', { class: 'w', text: e.winner ? e.winner.replace(/ \((Black|White)\)$/, '') + ' won' : 'No winner' }),
-        el('span', { class: 'sc', text: ps.map(function (p) { return p.score; }).join(' to ') }), el('span', { class: 'dt', text: Kit.fmtDate ? Kit.fmtDate(e._date || e.started) : '' })]));
-    });
-    pg.appendChild(pr); roomEl.appendChild(pg);
+    if (past.length) {
+      var pg = el('section', { class: 'pn pgp' }, [el('h3', { text: 'Past games' })]), pr = el('div', { class: 'rows' });
+      past.forEach(function (e) {
+        var ps = e.players || [];
+        pr.appendChild(el('div', { class: 'pgr' }, [el('span', { class: 'w', text: e.winner ? e.winner.replace(/ \((Black|White)\)$/, '') + ' won' : 'No winner' }),
+          el('span', { class: 'sc', text: ps.map(function (p) { return p.score; }).join(' to ') }), el('span', { class: 'dt', text: Kit.fmtDate ? Kit.fmtDate(e._date || e.started) : '' })]));
+      });
+      pg.appendChild(pr); roomEl.appendChild(pg);
+    }
     fitRoom();
   }
-  // give up whole rows (the oldest moves, then the oldest past games) until the room fits; never a cut row
+  // Every panel is as tall as what it holds. Too little room: whole rows go (the oldest past games down to two, the
+  // oldest moves down to three, then the past games), never a cut row. Room to spare: the marbles off the board grow.
   function fitRoom() {
     if (!roomEl) return;
-    var lists = roomEl.querySelectorAll('.rows'), guard = 0;
-    while (roomEl.scrollHeight > roomEl.clientHeight + 1 && guard++ < 200) {
-      var pastRows = lists[1] ? lists[1].children : [], mvRows = lists[0] ? lists[0].children : [];
-      if (pastRows.length > 2) lists[1].removeChild(pastRows[pastRows.length - 1]);
-      else if (mvRows.length > 1) lists[0].removeChild(mvRows[mvRows.length - 1]);
-      else if (lists[1] && lists[1].parentNode.isConnected) lists[1].parentNode.remove();
+    var dk = DK ? DK.dk : 1, op = roomEl.querySelector('.offp');
+    roomEl.style.setProperty('--om', Math.round(30 * dk) + 'px');
+    var mv = roomEl.querySelector('.mvp .rows'), pg = roomEl.querySelector('.pgp .rows'), guard = 0;
+    function over() { return roomEl.scrollHeight > roomEl.clientHeight + 1 || [].some.call(roomEl.children, function (c) { return c.offsetTop + c.offsetHeight > roomEl.offsetTop + roomEl.clientHeight + 1 || c.scrollHeight > c.clientHeight + 1; }); }
+    while (over() && guard++ < 200) {
+      if (pg && pg.children.length > 2) pg.removeChild(pg.lastChild);
+      else if (mv && mv.children.length > 3) mv.removeChild(mv.lastChild);
+      else if (pg && pg.parentNode.isConnected) { pg.parentNode.remove(); pg = null; }
+      else if (mv && mv.children.length > 1) mv.removeChild(mv.lastChild);
       else break;
     }
-    var mv = lists[0]; if (mv) { var g2 = 0; while (mv.scrollHeight > mv.clientHeight + 1 && mv.children.length > 1 && g2++ < 200) mv.removeChild(mv.lastChild); }
+    if (!op) return;
+    // the spare height goes to the marbles off the board (two rows of six), as large as the panel's width allows
+    var rt = roomEl.getBoundingClientRect(), lastK = roomEl.lastElementChild, used = lastK ? lastK.getBoundingClientRect().bottom - rt.top : 0;
+    var spare = roomEl.classList.contains('row') ? roomEl.clientHeight - op.offsetHeight : roomEl.clientHeight - used;
+    var slots = op.querySelector('.ofs'), w = slots ? op.clientWidth - 2 * Math.round(14 * dk) : 0;
+    var base = 30 * dk, s = Math.min(base + Math.max(0, spare) / 2, (w - 5 * 6 * dk) / 6, 76 * dk);
+    if (s > base) roomEl.style.setProperty('--om', Math.floor(s) + 'px');
+    if (!fitRoom.again) { fitRoom.again = 1; requestAnimationFrame(function () { fitRoom.again = 0; if (roomEl && roomEl.isConnected && op.isConnected) { var o = parseFloat(roomEl.style.getPropertyValue('--om')); if (roomEl.scrollHeight > roomEl.clientHeight + 1 && o > base) roomEl.style.setProperty('--om', Math.max(base, o - (roomEl.scrollHeight - roomEl.clientHeight) / 2) + 'px'); } }); }
   }
 
   // ── The desk (a window larger than a phone's or a tablet's) ──────────────
@@ -759,7 +797,7 @@ html.ab-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
     if (S.off[w.side] === 0) hl.push(w.name + ' won without losing a single marble.');
     if (S.lo[w.side] <= -2) hl.push(w.name + ' came back from ' + (-S.lo[w.side]) + ' marbles behind to win.');
     [BLACK, WHITE].forEach(function (s) { if (S.st.sumito[s]) hl.push(pl(s).name + ' made ' + (S.st.sumito[s] === 1 ? 'a sumito' : S.st.sumito[s] + ' sumitos') + ', three marbles pushing two.'); });
-    hl.push('The game took ' + S.n + ' moves from ' + (Core.START[S.start] ? 'the ' + Core.START[S.start].name + ' position' : 'a set position') + '.');
+    hl.push('The game took ' + S.n + (S.n === 1 ? ' move' : ' moves') + ' from ' + (Core.START[S.start] ? 'the ' + Core.START[S.start].name + ' position' : 'a set position') + '.');
     if (vsCpu()) hl.push('The computer played at ' + SKILL[S.level] + '.');
     return hl;
   }
