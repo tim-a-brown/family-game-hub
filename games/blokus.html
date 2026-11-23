@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Blokus</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
+<script src="blokus-core.js"></script>
+<style>
+.bk-credit{margin:-6px 0 2px;text-align:center;font-size:.78rem;font-weight:600;color:var(--text-3);}
+:root{--c1:#2f74e0;--c2:#f2c418;--c3:#e2382c;--c4:#2fa152;}
+
+/* ── The page: plates (each color's tray and squares left), the board, the dock (whose turn, your tray, the buttons),
+   and at a desk the room. fit() picks the composition and sizes every part from the window ── */
+#app.stage.ipl{max-width:none;box-sizing:border-box;height:var(--avh,auto);padding:4px max(10px,var(--corner-x,0px)) max(calc(var(--safe-b) + 10px),18px);display:flex;align-items:stretch;justify-content:center;}
+.bk{display:grid;gap:var(--gp,10px);width:100%;height:100%;min-height:0;}
+.bk-port .bk{grid-template-columns:var(--cw);grid-template-rows:max-content var(--fsz) minmax(0,1fr);grid-template-areas:"p" "b" "d";justify-content:center;align-content:center;}
+.bk-land .bk{grid-template-columns:var(--pl) var(--fsz) var(--dw);grid-template-rows:var(--fsz);grid-template-areas:"p b d";justify-content:center;align-content:center;column-gap:var(--cg,16px);}
+.bk-dw .bk{grid-template-columns:var(--pl) var(--fsz) var(--dw);grid-template-rows:minmax(0,1fr);grid-template-areas:"p b d";justify-content:center;align-content:stretch;column-gap:var(--cg,28px);}
+.bk-dv .bk{grid-template-columns:var(--pl) var(--fsz);grid-template-rows:var(--fsz) minmax(0,1fr);grid-template-areas:"p b" "p d";justify-content:center;column-gap:var(--cg,28px);row-gap:var(--gp,16px);}
+.bk>.lcol{grid-area:p;min-height:0;min-width:0;display:flex;flex-direction:column;gap:10px;}
+.bk>.frame{grid-area:b;align-self:center;justify-self:center;}
+.bk>.dock{grid-area:d;min-height:0;min-width:0;}
+
+/* the plates: one a color, its owner, how many squares it has left and its tray drawn small */
+.plates{display:grid;gap:8px;align-content:start;}
+.bk-port .plates{grid-template-columns:1fr 1fr;}
+.bk-port.bk-four .plates{grid-template-columns:repeat(4,1fr);}
+.bk-land .plates,.bk-dw .plates,.bk-dv .plates{display:flex;flex-direction:column;gap:8px;}
+.bk-land .plates{flex:1 1 auto;}
+.bk-land .plate{flex:1 1 0;align-content:center;max-height:150px;}
+.plate{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"s w n" "m m m";align-items:center;column-gap:8px;row-gap:4px;padding:6px 10px 7px 8px;border-radius:14px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);transition:box-shadow .2s,background .2s,opacity .3s;}
+.plate.on{background:color-mix(in srgb,var(--lit) 11%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--lit) 65%,transparent),0 0 18px color-mix(in srgb,var(--lit) 16%,transparent);}
+.plate.out:not(.on){opacity:.72;}
+.plate .sw{grid-area:s;width:22px;height:22px;border-radius:6px;background:var(--pc);box-shadow:inset 0 -3px 0 rgba(0,0,0,.25),inset 0 2px 0 rgba(255,255,255,.35),0 2px 4px rgba(0,0,0,.35);}
+.plate .who{grid-area:w;min-width:0;display:flex;flex-direction:column;line-height:1.15;}
+.plate .nm{font-weight:800;font-size:.9rem;display:flex;align-items:center;gap:5px;min-width:0;}
+.plate .nm>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+.plate .nm .ico{width:14px;height:14px;color:var(--text-3);flex:none;}
+.plate .sub{font-size:.7rem;font-weight:700;color:var(--text-3);}
+.plate.on .sub{color:var(--lit-ink);}
+.plate .n{grid-area:n;display:flex;flex-direction:column;align-items:flex-end;line-height:1;}
+.plate .n b{font-family:var(--display);font-size:1.35rem;font-weight:800;font-variant-numeric:tabular-nums;}
+.plate .n small{font-size:.64rem;font-weight:700;color:var(--text-3);margin-top:2px;white-space:nowrap;}
+.plate .n b.bump{animation:pop .45s var(--spring);}
+.plate .mini{grid-area:m;display:block;width:100%;height:var(--mh,18px);}
+.plate.nomini .mini{display:none;}
+.plate.nomini{grid-template-areas:"s w n";}
+.bk-short .plate{padding:4px 8px;column-gap:6px;}
+/* the smallest phones: the four plates in one row, each its color with its owner's initial and the squares left */
+.bk-tiny .plates{grid-template-columns:repeat(4,1fr);gap:6px;}
+.bk-tiny .plate{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"s n";padding:4px 7px;}
+.bk-tiny .plate .who{display:none;}
+.bk-tiny .plate .sw{width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.78rem;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.5);}
+.bk-tiny .plate .n small{font-size:.58rem;}
+.bk-short .plate .sw{width:16px;height:16px;}
+.bk-short .plate .nm{font-size:.8rem;}
+.bk-short .plate .n b{font-size:1.1rem;}
+
+/* the board: smoked slate in a dark frame, the four start squares marked in their colors */
+.frame{--rim:clamp(5px,1.6vmin,14px);position:relative;padding:var(--rim);border-radius:16px;width:var(--fsz);height:var(--fsz);box-sizing:border-box;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--c1) 30%,#2a2f3d) 0,#262a36 22%,#20242f 50%,#262a36 78%,color-mix(in srgb,var(--c3) 30%,#2a2f3d) 100%);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.12),inset 0 -3px 0 rgba(0,0,0,.45),0 16px 34px rgba(0,0,0,.5);view-transition-name:bk-board;}
+.frame::before{content:"";position:absolute;inset:0;border-radius:16px;pointer-events:none;background:linear-gradient(225deg,color-mix(in srgb,var(--c2) 34%,transparent) 0,transparent 22%),linear-gradient(45deg,color-mix(in srgb,var(--c4) 34%,transparent) 0,transparent 22%);mix-blend-mode:screen;opacity:.8;}
+.bd{position:relative;width:100%;height:100%;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}
+.bd>svg{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible;}
+.bd .hz{fill:transparent;}
+.bd .pz.drop{animation:pdrop .38s cubic-bezier(.3,1.4,.5,1) both;transform-box:fill-box;transform-origin:center;}
+@keyframes pdrop{0%{transform:scale(1.35);opacity:0;}60%{opacity:1;}100%{transform:none;opacity:1;}}
+.bd .pz.won{animation:pwon 1.1s ease-in-out 2;transform-box:fill-box;transform-origin:center;}
+@keyframes pwon{50%{filter:brightness(1.45) drop-shadow(0 0 .25px #fff3b0);}}
+.bd .dot{animation:dotp 1.8s ease-in-out infinite;}
+.bd .dot.lit{animation:none;opacity:1;}
+@keyframes dotp{50%{opacity:.45;}}
+.bd .gh.spin{animation:gspin .22s ease-out;transform-box:fill-box;transform-origin:center;}
+@keyframes gspin{from{transform:rotate(-90deg);}}
+.bd .gh.flip{animation:gflip .22s ease-out;transform-box:fill-box;transform-origin:center;}
+@keyframes gflip{from{transform:scaleX(-1);}}
+.bd .spk{animation:spk 1.2s ease-in-out infinite;transform-box:fill-box;transform-origin:center;}
+@keyframes spk{50%{transform:scale(1.5);opacity:.6;}}
+.bd .ripple{fill:none;stroke:#ffd75a;stroke-width:.1;animation:rip .7s ease-out forwards;transform-box:fill-box;transform-origin:center;}
+.bd .ripple.bad{stroke:#ff6a4d;}
+@keyframes rip{from{transform:scale(.4);opacity:1;}to{transform:scale(2.6);opacity:0;}}
+.bd.shake{animation:shake .4s;}
+.fly{position:fixed;z-index:60;pointer-events:none;filter:drop-shadow(0 10px 14px rgba(0,0,0,.5));}
+.fly svg{display:block;width:100%;height:100%;overflow:visible;}
+
+/* the dock: whose turn, your tray, the buttons */
+.dock{display:flex;flex-direction:column;gap:8px;}
+.dock .turn{min-height:24px;margin:0;font-size:.92rem;font-weight:700;line-height:1.3;}
+.tray{position:relative;flex:1 1 auto;min-height:0;}
+.bk-strip .tray{overflow-x:auto;overflow-y:hidden;scrollbar-width:none;flex:0 0 58px;}
+.bk-strip .tray::-webkit-scrollbar{display:none;}
+.bk-strip .tray .pc{touch-action:pan-x;}
+.tray .pc{position:absolute;display:flex;align-items:center;justify-content:center;padding:0;margin:0;border:0;border-radius:10px;background:transparent;cursor:pointer;touch-action:none;transition:background .15s,opacity .2s,transform .15s;-webkit-tap-highlight-color:transparent;}
+.tray .pc svg{display:block;overflow:visible;pointer-events:none;}
+.tray .pc:hover{background:rgba(255,255,255,.05);}
+.tray .pc.sel{background:color-mix(in srgb,var(--lit) 16%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--lit) 70%,transparent);transform:translateY(-2px);}
+.tray .pc.dead{opacity:.32;}
+.tray .pc.used{cursor:default;pointer-events:none;}
+.tray .pc:active:not(.used){transform:scale(.94);}
+.tray.idle .pc{cursor:default;}
+.tray.idle{opacity:.78;}
+.acts{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
+.acts .btn{flex:1 1 0;min-width:0;max-width:200px;}
+.acts .btn.place{animation:pop .35s var(--spring);}
+.acts .btn .ico{width:18px;height:18px;}
+.bk-land .acts .btn,.bk-dw .acts .btn{flex:1 1 calc(50% - 8px);max-width:none;}
+.bk-short .dock .turn{min-height:20px;font-size:.84rem;}
+.think i{display:inline-block;width:5px;height:5px;margin:0 1px;border-radius:50%;background:currentColor;animation:th 1s infinite;}
+.think i:nth-child(2){animation-delay:.15s}.think i:nth-child(3){animation-delay:.3s}
+@keyframes th{50%{opacity:.2;transform:translateY(-2px);}}
+.bk-dv .dock{display:grid;grid-template-columns:minmax(0,1fr) var(--aw,260px);grid-template-rows:max-content minmax(0,1fr);grid-template-areas:"t t" "y a";column-gap:20px;}
+.bk-dv .dock .turn{grid-area:t;}
+.bk-dv .dock .tray{grid-area:y;}
+.bk-dv .dock .acts{grid-area:a;flex-direction:column;justify-content:flex-start;}
+.bk-dv .dock .acts .btn{flex:none;max-width:none;}
+
+/* at a desk: words a step up, and the room under the plates */
+.room{display:none;}
+.bk-desk .plates{gap:12px;}
+.bk-desk .plate{padding:calc(8px * var(--dk,1)) calc(12px * var(--dk,1));border-radius:18px;}
+.bk-desk .plate .nm{font-size:calc(1rem * var(--dk,1));}
+.bk-desk .plate .sub{font-size:calc(.78rem * var(--dk,1));}
+.bk-desk .plate .n b{font-size:calc(1.6rem * var(--dk,1));}
+.bk-desk .plate .n small{font-size:calc(.72rem * var(--dk,1));}
+.bk-desk .plate .sw{width:calc(26px * var(--dk,1));height:calc(26px * var(--dk,1));}
+.bk-desk .dock .turn{font-size:calc(1rem * var(--dk,1));}
+.bk-desk .lcol{gap:14px;}
+.bk-desk .lcol>.plates{flex:none;}
+.bk-desk .plates.two{display:grid;grid-template-columns:1fr 1fr;}
+.bk-desk .room{display:grid;grid-template-columns:repeat(var(--rc,1),minmax(0,1fr));grid-auto-rows:max-content;gap:12px;align-content:start;align-items:start;flex:1 1 auto;min-height:0;overflow:hidden;}
+.room .pn{background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);border-radius:18px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-height:0;font-size:calc(.92rem * var(--dk,1));}
+.room h4{margin:0;font-size:.88em;font-weight:800;color:var(--text-3);}
+.room .say{margin:0;font-weight:600;line-height:1.35;}
+.room .sc{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;}
+.room .sc .pn2{display:flex;align-items:center;gap:6px;font-weight:700;overflow-wrap:anywhere;}
+.room .sc .pn2 i{width:.95em;height:.95em;border-radius:3px;flex:none;background:var(--pc);}
+.room .sc b{font-family:var(--display);font-size:1.35em;font-variant-numeric:tabular-nums;text-align:right;}
+.room .sc .lead b{color:var(--lit-ink);}
+.room .sc small{grid-column:1/-1;margin:-3px 0 2px 1.6em;color:var(--text-3);font-weight:700;font-size:.82em;}
+.room .mvl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;overflow:hidden;min-height:0;}
+.room .mvl li{display:grid;grid-template-columns:2.2em .9em minmax(0,1fr) auto;align-items:center;gap:8px;padding:4px;border-radius:9px;}
+.room .mvl li:first-child{background:color-mix(in srgb,var(--lit) 12%,transparent);}
+.room .mvl li .no{color:var(--text-3);font-variant-numeric:tabular-nums;font-weight:700;text-align:right;}
+.room .mvl li i{width:.9em;height:.9em;border-radius:3px;background:var(--pc);}
+.room .mvl li .t{font-weight:600;overflow-wrap:anywhere;}
+.room .mvl li .tag{font-size:.8em;font-weight:800;padding:1px 8px;border-radius:999px;white-space:nowrap;background:color-mix(in srgb,var(--lit) 20%,transparent);color:var(--lit-ink);}
+.room .mvl li .tag.blk{background:rgba(255,122,89,.18);color:#ffb39f;}
+.room .mvl li.none{display:block;color:var(--text-3);}
+.room .wins{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;}
+.room .wins li{display:flex;justify-content:space-between;gap:10px;}
+.room .wins li span{font-weight:700;overflow-wrap:anywhere;}
+.plates{view-transition-name:bk-plates;}
+.dock{view-transition-name:bk-dock;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.7,.25,1);}
+::view-transition-old(root),::view-transition-new(root){animation:none;}
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app'), C = window.BlokusCore;
+  var SAVE = 'blokus_state', KEY = 'blokus', N = 20, H = 400;
+  var CREDIT = 'Blokus was designed by Bernard Tavitian and is published by Mattel Games.';
+  var HEX = [null, '#2f74e0', '#f2c418', '#e2382c', '#2fa152'];
+  var DARK = [null, '#123a86', '#8a6200', '#7c0f0a', '#0e5527'];
+  var LIGHT = [null, '#9cc4ff', '#fff0a0', '#ffad9f', '#9be8b3'];
+  var CNAME = [null, 'Blue', 'Yellow', 'Red', 'Green'];
+  var NUM = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+  function num(n) { return NUM[n] || String(n); }
+  function cap1(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  var ICO_ROT = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg>';
+  var ICO_FLIP = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="M8 7 3 12l5 5z"/><path d="M16 7l5 5-5 5z"/></svg>';
+
+  // ── The computer thinks in a Web Worker (blokus-core.js again), or on the page where a worker can't start ──
+  var worker = null, workerOk = true, reqId = 0, pending = null;
+  function getWorker() {
+    if (worker || !workerOk) return worker;
+    try {
+      var url = new URL('blokus-core.js', location.href).href;
+      var src = 'importScripts(' + JSON.stringify(url) + ');onmessage=function(e){var d=e.data;postMessage({id:d.id,res:self.BlokusCore.search(d.st,d.o)});};';
+      worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+      worker.onmessage = function (e) { if (pending && e.data.id === pending.id) { var p = pending; pending = null; p.cb(e.data.res); } };
+      worker.onerror = function () { workerOk = false; worker = null; if (pending) { var p = pending; pending = null; p.cb(C.search(p.st, p.o)); } };
+    } catch (e) { workerOk = false; worker = null; }
+    return worker;
+  }
+  function think(st, o, cb) {
+    var id = ++reqId, w = getWorker();
+    pending = { id: id, cb: cb, st: st, o: o };
+    if (w) w.postMessage({ id: id, st: st, o: o });
+    else setTimeout(function () { if (pending && pending.id === id) { pending = null; cb(C.search(st, o)); } }, 30);
+  }
+  function cancelThink() { pending = null; }
+  function coreOf(st) { return { np: st.np, own: st.own, sh: st.sh, b: st.b, turn: st.turn, left: st.left, out: st.out, lastP: st.lastP, ml: [], n: st.n, over: st.over, sc: st.sc, psc: st.psc, win: st.win, last: null }; }
+
+  // ── State ────────────────────────────────────────────────────────────────
+  // S = the core's state (blokus-core.js) and {mode, cover, players: [{name, cpu, level}], hist (undo snapshots),
+  //   started, bl: [squares of other players' corners each move covered], outN: [_, move when each color went out]}
+  var S = null, SEL = -1, ORI = 0, GA = -1, GMOVED = false, LEG = null, LEGC = 0, LEGN = -1, OR_OF = {};
+  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  var NET = null, LEFT = null, WINO = null, NETREC = {}, SHOWN = 0, HOLD = false, LASTP = -1;
+  function save() {
+    if (NET) return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S && !S.over) Kit.resume.set(S.n ? 'Move ' + (S.n + 1) : 'Ready');
+  }
+  function clearSave() { if (NET) return; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function humans() { return S.players.filter(function (p) { return !p.cpu; }).length; }
+  function vsCpu() { return S.players.some(function (p) { return p.cpu; }); }
+  function solo() { return !NET && humans() === 1; }
+  function isMe(i) { return NET ? NET.seat === i : solo() && !S.players[i].cpu; }
+  function nmI(i) { return isMe(i) ? 'You' : S.players[i].name; }
+  function whoC(c) { return S.own[c] < 0 ? -1 : S.own[c]; }
+  // a color's name for a sentence: "Blue" (whose it is goes on the plate)
+  function ownerLine(c) {
+    var o = whoC(c);
+    if (o < 0) return S.over ? 'Shared, not scored' : 'Shared: ' + nmI(C.ctrl(S, c)).replace(/^You$/, 'you') + ' next';
+    return nmI(o);
+  }
+  function ctrlNow() { return C.ctrl(S, S.turn); }
+
+  function rulesHtml() {
+    return '<p class="goal">Fit as many of <b>your 21 pieces</b> onto the board as you can. The player with the fewest squares left over wins.</p>' +
+      '<h3>Your turn</h3><ul><li>The colors play in turn: <b>Blue, Yellow, Red, Green</b>.</li>' +
+      '<li>Each color’s <b>first piece covers its corner square</b>: Blue the top left, Yellow the top right, Red the bottom right and Green the bottom left.</li>' +
+      '<li>Every piece after that must touch a piece of <b>its own color corner to corner</b>, and it can’t touch its own color along a side. It may touch other colors anywhere.</li>' +
+      '<li>You can turn a piece and flip it over before you put it down.</li>' +
+      '<li>When a color has no piece that fits anywhere, it is out for the rest of the game. The game ends when no color can play.</li></ul>' +
+      '<h3>Placing a piece</h3><ul><li>Tap a piece in your tray. It appears on the board, outlined in white where it fits and in red where it doesn’t. Drag it, or tap the square where you want it.</li>' +
+      '<li>Turn it with the turn button, or by tapping the piece in your tray again, and flip it with the flip button. On a keyboard, R turns, F flips, the arrow keys move it and Enter puts it down.</li>' +
+      '<li>The small diamonds are the squares where your color can start a piece, and the gold sparks show the corners your piece touches.</li>' +
+      '<li>Tap Place, or tap the piece on the board again, to put it down. A piece that can’t go anywhere is dimmed in your tray.</li></ul>' +
+      '<h3>Scoring</h3><ul><li>Each color loses a point for each square left in its tray.</li>' +
+      '<li>A color that places all 21 pieces gets <b>15 points</b>, or <b>20</b> if its last piece was the single square.</li>' +
+      '<li>The highest score wins.</li></ul>' +
+      '<h3>Two and three players</h3><ul><li><b>Two players:</b> one plays Blue and Red, the other Yellow and Green, and each adds their two colors’ scores together.</li>' +
+      '<li><b>Three players:</b> each plays one color, and Green is shared. Green’s turns go to each player in turn, and Green’s score doesn’t count for anyone.</li></ul>' +
+      '<h3>Online</h3><ul><li><b>Play online</b> opens a table, and the others join on their own devices. Seats nobody takes are played by the computer. Take your turn whenever you like: the home screen shows when it’s your move.</li></ul>' +
+      '<h3>Tips</h3><ul><li>Play your big pieces early, while there is room for them.</li>' +
+      '<li>Head for the middle of the board, and keep plenty of corners open for yourself.</li>' +
+      '<li>A piece laid across the corners another color needs can shut it in.</li></ul>' +
+      '<p class="src">These are the rules in Mattel’s Blokus instructions, with the advanced scoring. Blokus Duo’s smaller two-player board is not included.</p>' +
+      '<p class="credit">' + CREDIT + '</p>';
+  }
+
+  Kit.init({
+    id: KEY, mark: false, snap: '.frame', snapY: 0.5,
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } cancelThink(); clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Blokus: past games' }); } }]),
+    rules: rulesHtml()
+  });
+
+  function showSetup() {
+    S = null; SEL = -1; GA = -1;
+    app.className = 'stage';
+    app.style.cssText = '';
+    Kit.setup(app, {
+      modes: Kit.modes([{ id: 'cpu', desc: 'You against 1 to 3 computer players' }, { id: 'pp', kind: 'local' }]),
+      options: [
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Puts down a piece that fits, without much of a plan.'], ['normal', 'Normal', 'Plays big pieces early, heads for the middle and covers your corners.'], ['hard', 'Hard', 'Weighs where every color could still go after each move, and shuts you in.']] },
+        { id: 'cover', label: 'Hand over between turns', value: 'off', choices: [['off', 'Off', 'Nothing in Blokus is hidden, so the device just goes round the table.'], ['on', 'On', 'A cover names whose turn it is before each move.']], when: function (m) { return m === 'pp'; } }
+      ],
+      players: {
+        min: 2, max: 4,
+        range: function () { return [2, 4]; },
+        cpu: function (m) { return m === 'cpu' ? 'seats' : 'mix'; }
+      },
+      onStart: function (cfg) {
+        var players = cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.level || cfg.options.level || 'normal' }; });
+        newGame({ mode: cfg.mode, cover: cfg.options.cover === 'on' && cfg.mode === 'pp', players: players });
+      }
+    });
+    var hero = app.querySelector('.setup-hero');
+    if (hero && !app.querySelector('.bk-credit')) hero.parentNode.insertBefore(el('p', { class: 'bk-credit', text: CREDIT }), hero.nextSibling);
+    // (only where the line doesn't make the setup scroll)
+    var hideC = function () { var c = app.querySelector('.bk-credit'); if (c && document.documentElement.scrollHeight > window.innerHeight + 1) c.style.display = 'none'; };
+    requestAnimationFrame(hideC); setTimeout(hideC, 700);
+  }
+  function freshFields(st) {
+    st.hist = []; st.started = Date.now(); st.busy = false; st.bl = []; st.outN = [0, 0, 0, 0, 0];
+  }
+  function newGame(o, rotate) {
+    cancelThink();
+    var keep = o || { mode: S.mode, cover: S.cover, players: S.players };
+    var players = keep.players.slice();
+    // the next game at the table: the seats move round one, so a different player has Blue and starts
+    if (rotate) players = players.slice(1).concat([players[0]]);
+    var st = C.newGame(players.length);
+    st.mode = keep.mode; st.cover = keep.cover; st.players = players;
+    freshFields(st);
+    S = st; SEL = -1; GA = -1; LEG = null;
+    Kit.gameStart(); save(); render(); Kit.sfx('deal');
+    afterTurn();
+  }
+
+  // ── Moves ────────────────────────────────────────────────────────────────
+  function snap(byCpu) { var c = JSON.parse(JSON.stringify(S)); delete c.hist; return { s: c, cpu: !!byCpu }; }
+  // the corners of other players' colors (not the mover's own, not the shared one) this move covers
+  function covered(st, m) {
+    var c = st.turn, mover = C.ctrl(st, c), cl = C.cellsOf(m), n = 0, who = {};
+    for (var c2 = 1; c2 <= 4; c2++) {
+      if (c2 === c || st.out[c2] || st.own[c2] < 0 || st.own[c2] === mover) continue;
+      var cs = C.cornersOf(st, c2), k = 0;
+      cl.forEach(function (x) { if (cs.indexOf(x) >= 0) k++; });
+      if (k) { n += k; who[c2] = k; }
+    }
+    return { n: n, who: who };
+  }
+  function note(st, res, cov) {
+    st.bl.push(cov.n);
+    if (st.bl.length > 120) st.bl.shift();
+    res.passes.forEach(function (c) { st.outN[c] = st.n; });
+  }
+  function play(m, byCpu) {
+    if (!S || S.over) return false;
+    var cov = covered(S, m), h0 = snap(byCpu);
+    var res = C.play(S, m);
+    if (!res) return false;
+    S.hist.push(h0);
+    if (S.hist.length > 120) S.hist.shift();
+    note(S, res, cov);
+    SEL = -1; GA = -1; LEG = null;
+    save();
+    show(res, cov);
+    return true;
+  }
+  function moveT(res) { return 380 + res.cells.length * 50; }
+  // Draw the board after a move: the piece drops in square by square with a click, then the reward or the end
+  function show(res, cov, net) {
+    render({ res: res });
+    var T = moveT(res);
+    Kit.sfx('tap'); Kit.haptic('light');
+    setTimeout(function () { Kit.sfx('chip', 0.85); }, 160);
+    if (res.first) setTimeout(function () { ripple(C.START[res.c]); }, 200);
+    reward(res, cov, T);
+    var outs = res.passes.filter(function (c) { return S.left[c]; });
+    if (outs.length) setTimeout(function () { shutOut(outs); }, T + (cov && cov.n >= 3 ? 900 : 150));
+    if (S.over) { setTimeout(function () { if (net) netEnd(); else finish(); }, T + (outs.length ? 2200 : 500) + (res.all ? 1800 : 0)); return; }
+    if (!net) setTimeout(afterTurn, T + (outs.length ? 1500 : 60) + (res.all ? 1200 : 0));
+  }
+  // A good move's reward, where it happens: a block called out, all 21 placed, the single square last
+  function reward(res, cov, T) {
+    var frame = document.querySelector('.frame'), c = res.c, who = nmI(C.ctrl(S, c));
+    if (res.all) setTimeout(function () {
+      Kit.sfx('sparkle'); Kit.haptic('success'); Kit.confetti();
+      Kit.moment({ title: res.mono ? 'The single square last' : 'All 21 placed', big: true,
+        line: res.mono ? CNAME[c] + ' placed every piece and saved the single square for last, for 20 bonus points.' : CNAME[c] + ' placed every one of its 21 pieces, for 15 bonus points.',
+        icon: 'trophy', pts: res.mono ? '+20' : '+15', color: HEX[c], at: frame });
+    }, T);
+    else if (cov && cov.n >= 5) setTimeout(function () {
+      Kit.sfx('clash'); Kit.haptic('heavy'); shake(); ripple(res.cells[0], true);
+      var cs = Object.keys(cov.who).map(function (k) { return CNAME[k]; });
+      Kit.moment({ title: 'A big block', line: (who === 'You' ? 'You' : who) + ' covered ' + cov.n + ' squares ' + listAnd(cs) + ' could have started from.', icon: 'shield', pts: String(cov.n), color: HEX[c], at: frame });
+    }, T - 60);
+    else if (cov && cov.n >= 3) setTimeout(function () { Kit.sfx('clash', 0.7); Kit.haptic('medium'); ripple(res.cells[0], true); Kit.callout('Blocked!'); }, T - 60);
+    else if (res.cells.length === 5 && res.first) setTimeout(function () { Kit.sfx('good', 0.6); }, T);
+  }
+  function shutOut(cs) {
+    var frame = document.querySelector('.frame');
+    Kit.sfx('bad'); Kit.haptic('medium');
+    cs.forEach(function (c) { var pl = document.querySelector('.plate[data-c="' + c + '"]'); if (pl) { pl.classList.remove('shake'); void pl.offsetWidth; pl.classList.add('shake'); } });
+    var line = cs.length === 1 ? CNAME[cs[0]] + ' has no piece that fits anywhere, with ' + C.squaresLeft(S, cs[0]) + ' squares left, so ' + CNAME[cs[0]] + ' is out.' :
+      listAnd(cs.map(function (c) { return CNAME[c]; })) + ' have no piece that fits anywhere, so they are out.';
+    Kit.moment({ title: cs.length === 1 ? CNAME[cs[0]] + ' is out' : 'Out of moves', line: line, icon: 'lock', color: HEX[cs[0]], tone: 'bad', at: frame });
+  }
+  function listAnd(a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+  function shake() { var b = document.querySelector('.bd'); if (!b) return; b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); }
+  function ripple(x, bad) {
+    var g = document.querySelector('.bd .ovl'); if (!g || x < 0) return;
+    var c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('cx', C.colOf(x) + 0.5); c.setAttribute('cy', C.rowOf(x) + 0.5); c.setAttribute('r', '.6');
+    c.setAttribute('class', 'ripple' + (bad ? ' bad' : ''));
+    g.appendChild(c); setTimeout(function () { c.remove(); }, 800);
+  }
+  // After each turn: the hand-over cover between people, or the computer's move
+  function afterTurn() {
+    if (!S || S.over || NET) return;
+    paintAll();
+    var p = S.players[ctrlNow()];
+    if (p.cpu) return maybeCpu();
+    if (S.cover && humans() > 1 && S.n > 0 && LASTP !== ctrlNow() && !(Kit.inDemo && Kit.inDemo())) {
+      HOLD = true; paintAll();
+      Kit.handoff({ name: p.name, color: HEX[S.turn], msg: 'You play ' + CNAME[S.turn] + '.', hint: 'Hold for a moment to take your turn', hold: 700 }).then(function () { HOLD = false; LASTP = ctrlNow(); paintAll(); });
+    } else LASTP = ctrlNow();
+  }
+  function maybeCpu() {
+    if (NET || !S || S.over || !S.players[ctrlNow()].cpu || S.busy) return;
+    S.busy = true; paintAll();
+    var t0 = Date.now(), myN = S.n, p = S.players[ctrlNow()];
+    var L = Object.assign({}, C.LEVELS[p.level] || C.LEVELS.normal, { seed: Math.floor(Math.random() * 1e9) });
+    think(coreOf(S), L, function (res) {
+      if (!S || S.n !== myN) return;
+      setTimeout(function () {
+        if (!S || S.n !== myN) return;
+        S.busy = false;
+        if (res && res.move != null) play(res.move, true);
+      }, Math.max(0, (S.players.every(function (q) { return q.cpu; }) ? 250 : 650) - (Date.now() - t0)));
+    });
+  }
+  function undo() {
+    if (!S || S.over == null) return;
+    if (S.over) return Kit.toast('The game is over');
+    var cpu = vsCpu();
+    if (!S.hist.some(function (h) { return !h.cpu; })) return Kit.toast('Nothing to undo');
+    cancelThink(); S.busy = false;
+    var h, hist = S.hist;
+    while (hist.length) { h = hist.pop(); if (!cpu || !h.cpu) break; }
+    S = h.s; S.hist = hist; S.busy = false; SEL = -1; GA = -1; LEG = null;
+    Kit.sfx('whoosh'); save(); render(); afterTurn();
+  }
+
+  // ── The end ──────────────────────────────────────────────────────────────
+  function scoreStr(v) { return v > 0 ? '+' + v : String(v).replace('-', '−'); }
+  function endLine() {
+    var w = S.win.map(function (i) { return nmI(i); }), v = S.psc[S.win[0]];
+    if (w.length > 1) return listAnd(w) + ' tie with ' + scoreStr(v) + '.';
+    var i = S.win[0], cs = [1, 2, 3, 4].filter(function (c) { return S.own[c] === i; }), left = 0;
+    cs.forEach(function (c) { left += C.squaresLeft(S, c); });
+    return (w[0] === 'You' ? 'You' : w[0]) + (left ? ' had the fewest squares left over, ' + left + (left === 1 ? ' square' : ' squares') + '.' : ' placed every piece.');
+  }
+  function highlights() {
+    var hl = [endLine().replace(/\.$/, '')];
+    for (var c = 1; c <= 4; c++) {
+      if (!S.left[c]) hl.push(CNAME[c] + ' placed all 21 pieces' + (S.lastP[c] === 0 ? ', the single square last' : ''));
+    }
+    var best = 0, bi = -1; (S.bl || []).forEach(function (v, i) { if (v > best) { best = v; bi = i; } });
+    if (best >= 4) {
+      var off = S.ml.length - S.bl.length, st = C.replay(S.ml.slice(0, bi + off), S.np), c2 = st ? st[st.length - 1].turn : 0;
+      if (c2) hl.push(CNAME[c2] + ' made the biggest block, covering ' + best + ' squares other colors could start from');
+    }
+    var sh = [1, 2, 3, 4].filter(function (c) { return S.own[c] < 0; })[0];
+    if (sh) hl.push('Green was shared, so its score counted for nobody');
+    if (vsCpu()) hl.push('Computer skill: ' + S.players.filter(function (p) { return p.cpu; }).map(function (p) { return LEVEL_NAME[p.level] || 'Normal'; }).filter(function (v, i, a) { return a.indexOf(v) === i; }).join(' and '));
+    return hl;
+  }
+  function detail() {
+    return { mv: S.ml.join(' '), np: S.np, sc: S.sc.slice(1), psc: S.psc.slice(), win: S.win.slice(), bl: (S.bl || []).join(' '),
+      cols: S.own.slice(1).map(function (o) { return o < 0 ? '-' : String(o); }).join(''), n: S.n };
+  }
+  function recPlayers() {
+    return S.players.map(function (p, i) {
+      var cs = [1, 2, 3, 4].filter(function (c) { return S.own[c] === i; }).map(function (c) { return CNAME[c]; });
+      return { name: p.name + ' (' + cs.join(' and ') + ')', score: S.psc[i], cpu: p.cpu };
+    });
+  }
+  // the winners' pieces light up, color by color
+  function winWave() {
+    var cs = []; S.win.forEach(function (i) { [1, 2, 3, 4].forEach(function (c) { if (S.own[c] === i) cs.push(c); }); });
+    cs.forEach(function (c, k) {
+      setTimeout(function () {
+        Array.prototype.forEach.call(document.querySelectorAll('.bd .pz[data-c="' + c + '"]'), function (g, j) { setTimeout(function () { g.classList.add('won'); }, j * 30); });
+        Kit.sfx('tick', 0.6);
+      }, k * 500);
+    });
+    return cs.length * 500 + 900;
+  }
+  function finish() {
+    save(); clearSave(); SEL = -1; render();
+    var wave = winWave();
+    var w = S.win.length === 1 ? S.players[S.win[0]] : null;
+    Kit.record(KEY, {
+      started: S.started, mode: vsCpu() ? (humans() > 1 ? 'Pass & play with the computer' : 'vs Computer') : 'Pass & play',
+      players: recPlayers(), winner: S.win.map(function (i) { return S.players[i].name; }).join(' and '),
+      highlights: highlights(), detail: detail()
+    });
+    endShow(wave, false);
+  }
+  function endShow(wave, net) {
+    setTimeout(function () {
+      var lose = !net && S.win.every(function (i) { return S.players[i].cpu; }) && humans() > 0;
+      Kit.sfx(lose ? 'lose' : 'sparkle'); Kit.haptic(lose ? 'heavy' : 'success');
+      if (net) return netWin();
+      var one = S.win.length === 1, w = S.players[S.win[0]], wn = nmI(S.win[0]);
+      Kit.win({
+        icon: !one ? 'users' : lose ? 'bot' : 'trophy',
+        title: !one ? 'A tie' : wn === 'You' ? 'You win!' : w.name + ' wins' + (lose ? ' this one' : '!'),
+        sub: endLine(),
+        rank: rankRows(),
+        lose: !!lose,
+        again: function () { newGame(null, true); },
+        look: true,
+        setup: function () { cancelThink(); clearSave(); showSetup(); }
+      });
+    }, wave);
+  }
+  function rankRows() {
+    return S.players.map(function (p, i) { return { i: i, v: S.psc[i] }; }).sort(function (a, b) { return b.v - a.v; }).map(function (r) {
+      var c = [1, 2, 3, 4].filter(function (c2) { return S.own[c2] === r.i; })[0];
+      return { name: S.players[r.i].name, me: isMe(r.i), score: scoreStr(r.v), color: HEX[c] };
+    });
+  }
+
+  // ── The board ────────────────────────────────────────────────────────────
+  var bdEl, svgEl, gPcs, gOvl, gDots, platesEl, frameEl, dockEl, turnEl, trayEl, actsEl, roomEl, lcolEl, lastLeft = {};
+  var M = 0;
+  function defs() {
+    var s = '<defs>';
+    for (var c = 1; c <= 4; c++) {
+      s += '<linearGradient id="bkG' + c + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' + LIGHT[c] + '"/><stop offset=".35" stop-color="' + HEX[c] + '"/><stop offset="1" stop-color="' + DARK[c] + '"/></linearGradient>';
+    }
+    return s + '<radialGradient id="bkPip" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="rgba(255,255,255,.35)"/><stop offset="1" stop-color="rgba(0,0,0,.12)"/></radialGradient></defs>';
+  }
+  // one square of a piece: translucent plastic with a lit edge and the raised pip in its middle
+  function sq(x, y, c, op) {
+    return '<rect x="' + (x + 0.05) + '" y="' + (y + 0.05) + '" width=".9" height=".9" rx=".14" fill="url(#bkG' + c + ')" stroke="' + DARK[c] + '" stroke-width=".05"' + (op ? ' opacity="' + op + '"' : '') + '/>' +
+      '<rect x="' + (x + 0.16) + '" y="' + (y + 0.12) + '" width=".68" height=".14" rx=".07" fill="rgba(255,255,255,.38)"/>' +
+      '<circle cx="' + (x + 0.5) + '" cy="' + (y + 0.52) + '" r=".2" fill="url(#bkPip)" stroke="rgba(255,255,255,.2)" stroke-width=".03"/>';
+  }
+  // a piece by its cells as its own little drawing (trays, plates, the floating piece)
+  function pieceSvg(p, o, c, u, cls) {
+    var O = C.ORI[p][o], s = '<svg class="' + (cls || '') + '" viewBox="0 0 ' + O.w + ' ' + O.h + '" width="' + (O.w * u) + '" height="' + (O.h * u) + '">' + defs();
+    O.c.forEach(function (q) { s += sq(q[1], q[0], c); });
+    return s + '</svg>';
+  }
+  function baseSvg() {
+    var s = defs(), lo = -M, wd = N + 2 * M;
+    s += '<rect x="' + lo + '" y="' + lo + '" width="' + wd + '" height="' + wd + '" rx=".3" fill="#171a22"/>';
+    var cells = '';
+    for (var r = 0; r < N; r++) for (var c = 0; c < N; c++) cells += '<rect x="' + (c + 0.06) + '" y="' + (r + 0.06) + '" width=".88" height=".88" rx=".1"/>';
+    s += '<g fill="#2a2f3c" stroke="rgba(0,0,0,.35)" stroke-width=".03">' + cells + '</g>';
+    s += '<g fill="none" stroke="rgba(255,255,255,.05)" stroke-width=".03" transform="translate(0 .03)">' + cells.replace(/ rx="\.1"/g, ' rx=".1"') + '</g>';
+    // the four start squares, each ringed in its color
+    for (var k = 1; k <= 4; k++) {
+      var x = C.colOf(C.START[k]), y = C.rowOf(C.START[k]);
+      s += '<rect x="' + (x + 0.1) + '" y="' + (y + 0.1) + '" width=".8" height=".8" rx=".12" fill="' + HEX[k] + '" opacity=".18"/><rect x="' + (x + 0.1) + '" y="' + (y + 0.1) + '" width=".8" height=".8" rx=".12" fill="none" stroke="' + HEX[k] + '" stroke-width=".07"/>';
+    }
+    if (M > 0) {
+      var t = '', L = 'ABCDEFGHIJKLMNOPQRST';
+      for (var q = 0; q < N; q++) t += '<text x="' + (q + 0.5) + '" y="' + (-M * 0.5) + '">' + L.charAt(q) + '</text><text x="' + (q + 0.5) + '" y="' + (N + M * 0.5) + '">' + L.charAt(q) + '</text><text x="' + (-M * 0.5) + '" y="' + (q + 0.5) + '">' + (q + 1) + '</text><text x="' + (N + M * 0.5) + '" y="' + (q + 0.5) + '">' + (q + 1) + '</text>';
+      s += '<g font-size=".36" font-weight="700" fill="rgba(220,226,240,.42)" text-anchor="middle" dominant-baseline="central" style="font-family:var(--display,system-ui)">' + t + '</g>';
+    }
+    s += '<g class="dots"></g><g class="pcs"></g><g class="ovl"></g>';
+    // the squares to tap (one rect each, so a demo's finger has something to press)
+    var hz = '';
+    for (var h = 0; h < H; h++) hz += '<rect class="hz" data-x="' + h + '" x="' + C.colOf(h) + '" y="' + C.rowOf(h) + '" width="1" height="1"/>';
+    return s + '<g class="hzs">' + hz + '</g>';
+  }
+  function buildBoard() {
+    var vb = (-M) + ' ' + (-M) + ' ' + (N + 2 * M) + ' ' + (N + 2 * M);
+    bdEl.innerHTML = '<svg viewBox="' + vb + '" aria-hidden="true">' + baseSvg() + '</svg>';
+    svgEl = bdEl.firstChild; gPcs = svgEl.querySelector('.pcs'); gOvl = svgEl.querySelector('.ovl'); gDots = svgEl.querySelector('.dots');
+  }
+  // the pieces on the board, each a group, the newest dropping in
+  function paintPieces(anim) {
+    if (!gPcs) return;
+    var res = anim && anim.res, pcs = piecesOnBoard(), s = '';
+    pcs.forEach(function (pc) {
+      var drop = res && pc.k === S.ml.length - 1;
+      s += '<g class="pz' + (drop ? ' drop' : '') + '" data-c="' + pc.c + '" data-k="' + pc.k + '">';
+      pc.cells.forEach(function (x) { s += sq(C.colOf(x), C.rowOf(x), pc.c); });
+      s += '</g>';
+    });
+    gPcs.innerHTML = s;
+    paintOverlay();
+  }
+  // which cells each placed piece covers (from the moves, so each piece is drawn as one)
+  var PCCACHE = { key: '', list: [] };
+  function piecesOnBoard() {
+    var key = S.ml.join(',');
+    if (PCCACHE.key === key) return PCCACHE.list;
+    var list = [];
+    S.ml.forEach(function (cd, k) { var m = C.uncode(cd), cl = C.cellsOf(m); if (cl) list.push({ c: S.b[cl[0]], cells: cl, k: k }); });
+    PCCACHE = { key: key, list: list };
+    return list;
+  }
+
+  // ── Picking up and placing a piece ───────────────────────────────────────
+  function canAct() { return S && !S.over && !S.busy && !HOLD && (NET ? !LEFT && NET.myTurn() : !S.players[ctrlNow()].cpu); }
+  function legalList() {
+    if (!S || S.over) return [];
+    if (LEG && LEGC === S.turn && LEGN === S.n) return LEG;
+    LEG = C.moves(coreOf(S), S.turn); LEGC = S.turn; LEGN = S.n;
+    return LEG;
+  }
+  function curMove() { return SEL >= 0 && GA >= 0 ? C.enc(SEL, ORI, GA) : -1; }
+  function ghostOk() { var m = curMove(); return m >= 0 && C.why(S, S.turn, m) === null; }
+  function clampA(p, o, r, c) { var O = C.ORI[p][o]; r = Math.max(0, Math.min(N - O.h, r)); c = Math.max(0, Math.min(N - O.w, c)); return r * N + c; }
+  function centerOf(p, o, a) { var O = C.ORI[p][o]; return [C.rowOf(a) + (O.h - 1) / 2, C.colOf(a) + (O.w - 1) / 2]; }
+  function dist2(a, b) { return (a[0] - b[0]) * (a[0] - b[0]) + (a[1] - b[1]) * (a[1] - b[1]); }
+  // pick up piece p: the ghost goes where it fits nearest where the last one was (or nearest the middle)
+  function select(p) {
+    if (!canAct() || !C.has(S, S.turn, p)) return;
+    if (SEL === p) return turnPiece();
+    var prevC = GA >= 0 && SEL >= 0 ? centerOf(SEL, ORI, GA) : null;
+    SEL = p; ORI = OR_OF[p] != null ? OR_OF[p] : 0;
+    var ms = legalList().filter(function (m) { return C.dec(m).p === p; });
+    var aim = prevC || aimPoint();
+    if (ms.length) {
+      var same = ms.filter(function (m) { return C.dec(m).o === ORI; }), pool = same.length ? same : ms;
+      pool.sort(function (a, b) { var da = C.dec(a), db = C.dec(b); return dist2(centerOf(p, da.o, da.a), aim) - dist2(centerOf(p, db.o, db.a), aim); });
+      var d = C.dec(pool[0]); ORI = d.o; GA = d.a;
+    } else {
+      var O = C.ORI[p][ORI]; GA = clampA(p, ORI, Math.round(aim[0] - (O.h - 1) / 2), Math.round(aim[1] - (O.w - 1) / 2));
+      Kit.toast(cap1(C.PIECES[p].name) + ' doesn’t fit anywhere now.');
+    }
+    GMOVED = false;
+    Kit.sfx('pop', 0.6); Kit.haptic('light');
+    paintGhostAll();
+  }
+  // where a new ghost heads: the middle of this color's open corners, pulled a little toward the middle of the board
+  function aimPoint() {
+    var cs = C.cornersOf(S, S.turn);
+    if (!cs.length) return [9.5, 9.5];
+    var r = 0, c = 0; cs.forEach(function (x) { r += C.rowOf(x); c += C.colOf(x); });
+    r /= cs.length; c /= cs.length;
+    return [r * 0.7 + 9.5 * 0.3, c * 0.7 + 9.5 * 0.3];
+  }
+  function drop() { SEL = -1; GA = -1; paintGhostAll(); }
+  // turn or flip the piece in hand round its middle, then to the nearest place it fits, a square or two away
+  function reorient(no, cls) {
+    if (SEL < 0 || !canAct()) return;
+    var ctr = centerOf(SEL, ORI, GA), O = C.ORI[SEL][no];
+    ORI = no; OR_OF[SEL] = no;
+    GA = clampA(SEL, no, Math.round(ctr[0] - (O.h - 1) / 2), Math.round(ctr[1] - (O.w - 1) / 2));
+    snapNear(2);
+    Kit.sfx('flip', 0.7); Kit.haptic('light');
+    paintGhostAll(cls);
+  }
+  function turnPiece() { if (SEL >= 0) reorient(C.ROT[SEL][ORI], 'spin'); }
+  function flipPiece() { if (SEL >= 0) reorient(C.FLIP[SEL][ORI], 'flip'); }
+  function snapNear(rad) {
+    if (ghostOk()) return true;
+    var r0 = C.rowOf(GA), c0 = C.colOf(GA), best = -1, bd = 1e9;
+    legalList().forEach(function (m) {
+      var d = C.dec(m); if (d.p !== SEL || d.o !== ORI) return;
+      var dr = C.rowOf(d.a) - r0, dc = C.colOf(d.a) - c0, k = Math.max(Math.abs(dr), Math.abs(dc));
+      if (k <= rad && dr * dr + dc * dc < bd) { bd = dr * dr + dc * dc; best = d.a; }
+    });
+    if (best >= 0) { GA = best; return true; }
+    return false;
+  }
+  // a tap on the board with a piece in hand: the piece goes where it fits covering that square (nearest where it was),
+  // in any of its turns if this one doesn't fit there
+  function aimAt(x) {
+    var near = GA >= 0 ? centerOf(SEL, ORI, GA) : [C.rowOf(x), C.colOf(x)];
+    var ms = legalList().filter(function (m) { var d = C.dec(m); return d.p === SEL && C.cellsOf(m).indexOf(x) >= 0; });
+    if (ms.length) {
+      var same = ms.filter(function (m) { return C.dec(m).o === ORI; }), pool = same.length ? same : ms;
+      pool.sort(function (a, b) { var da = C.dec(a), db = C.dec(b); return dist2(centerOf(SEL, da.o, da.a), near) - dist2(centerOf(SEL, db.o, db.a), near); });
+      var d = C.dec(pool[0]); ORI = d.o; GA = d.a; OR_OF[SEL] = ORI;
+    } else {
+      // no fit covers it: the piece's middle goes there, outlined in red
+      var O = C.ORI[SEL][ORI]; GA = clampA(SEL, ORI, C.rowOf(x) - Math.floor((O.h - 1) / 2), C.colOf(x) - Math.floor((O.w - 1) / 2));
+    }
+    Kit.sfx('tick', 0.5); Kit.haptic('tick');
+    paintGhostAll();
+  }
+  function nudge(dr, dc) {
+    if (SEL < 0) return;
+    GA = clampA(SEL, ORI, C.rowOf(GA) + dr, C.colOf(GA) + dc);
+    Kit.sfx('tick', 0.4); paintGhostAll();
+  }
+  function placeNow() {
+    if (!canAct() || SEL < 0) return;
+    var m = curMove(), why = C.why(S, S.turn, m);
+    if (why) { Kit.haptic('error'); Kit.sfx('bad', 0.6); shake(); Kit.toast(whySay(why)); return; }
+    OR_OF[SEL] = ORI;
+    if (NET) return netMove(m);
+    play(m);
+  }
+  function whySay(w) {
+    var c = S.turn, n = CNAME[c];
+    if (w === 'taken') return 'Part of the piece lies on a square that’s already covered.';
+    if (w === 'side') return 'A ' + n.toLowerCase() + ' piece can’t touch another ' + n.toLowerCase() + ' piece along a side.';
+    if (w === 'corner') return 'The piece has to touch a ' + n.toLowerCase() + ' piece corner to corner.';
+    if (w === 'start') return n + '’s first piece has to cover the corner square ' + (c === 1 ? 'at the top left' : c === 2 ? 'at the top right' : c === 3 ? 'at the bottom right' : 'at the bottom left') + '.';
+    return 'The piece doesn’t fit there.';
+  }
+
+  // The overlay: the last piece ringed, the ghost (white edge where it fits, red where it doesn't, the clashing squares
+  // crossed), and gold sparks on the corners it touches
+  function paintOverlay(cls) {
+    if (!gOvl) return;
+    var s = '';
+    if (S.last && !S.over && SEL < 0) {
+      var cl = S.last.cells, mr = 99, mc = 99, xr = -1, xc = -1;
+      cl.forEach(function (x) { mr = Math.min(mr, C.rowOf(x)); mc = Math.min(mc, C.colOf(x)); xr = Math.max(xr, C.rowOf(x)); xc = Math.max(xc, C.colOf(x)); });
+      s += '<rect x="' + (mc - 0.08) + '" y="' + (mr - 0.08) + '" width="' + (xc - mc + 1.16) + '" height="' + (xr - mr + 1.16) + '" rx=".3" fill="none" stroke="#ffd75a" stroke-width=".07" stroke-dasharray=".3 .2" opacity=".75"/>';
+    }
+    if (SEL >= 0 && GA >= 0 && S && !S.over) {
+      var m = curMove(), cells = C.cellsOf(m) || [], c = S.turn, ok = C.why(S, c, m) === null, open = C.openMap(S.b, c), mine = {};
+      cells.forEach(function (x) { mine[x] = 1; });
+      var g = '<g class="gh' + (cls ? ' ' + cls : '') + '">';
+      cells.forEach(function (x) { g += sq(C.colOf(x), C.rowOf(x), c, ok ? '.82' : '.55'); });
+      // the outline round the piece: each square's open sides
+      var path = '';
+      cells.forEach(function (x) {
+        var r = C.rowOf(x), cc = C.colOf(x);
+        if (!mine[x - N] || r === 0) path += 'M' + cc + ' ' + r + 'h1';
+        if (!mine[x + N] || r === N - 1) path += 'M' + cc + ' ' + (r + 1) + 'h1';
+        if (!mine[x - 1] || cc === 0) path += 'M' + cc + ' ' + r + 'v1';
+        if (!mine[x + 1] || cc === N - 1) path += 'M' + (cc + 1) + ' ' + r + 'v1';
+      });
+      g += '<path d="' + path + '" fill="none" stroke="' + (ok ? '#fff' : '#ff5a3c') + '" stroke-width=".12" stroke-linecap="round"/>';
+      if (!ok) cells.forEach(function (x) {
+        if (open[x]) return;
+        var X = C.colOf(x) + 0.5, Y = C.rowOf(x) + 0.5;
+        g += '<path d="M' + (X - 0.25) + ' ' + (Y - 0.25) + 'l.5 .5M' + (X + 0.25) + ' ' + (Y - 0.25) + 'l-.5 .5" stroke="#ff5a3c" stroke-width=".13" stroke-linecap="round"/>';
+      });
+      g += '</g>';
+      // the corners it touches: the point where a square of the ghost meets its own color corner to corner
+      if (ok && !C.first(S, c)) cells.forEach(function (x) {
+        var r = C.rowOf(x), cc = C.colOf(x);
+        [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(function (d) {
+          var rr = r + d[0], c2 = cc + d[1];
+          if (rr < 0 || rr >= N || c2 < 0 || c2 >= N || S.b[rr * N + c2] !== c) return;
+          var X = cc + (d[1] > 0 ? 1 : 0), Y = r + (d[0] > 0 ? 1 : 0);
+          g += '<circle class="spk" cx="' + X + '" cy="' + Y + '" r=".2" fill="#ffe27a" stroke="#fff" stroke-width=".05"/>';
+        });
+      });
+      if (ok && C.first(S, c)) { var sx = C.START[c]; g += '<circle class="spk" cx="' + (C.colOf(sx) + 0.5) + '" cy="' + (C.rowOf(sx) + 0.5) + '" r=".24" fill="#ffe27a" stroke="#fff" stroke-width=".05"/>'; }
+      s += g;
+    }
+    gOvl.innerHTML = s;
+  }
+  // the small diamonds: every square where the color to move can start a piece (lit where the piece in hand fits)
+  function paintDots() {
+    if (!gDots) return;
+    if (!S || S.over || !canAct()) { gDots.innerHTML = ''; return; }
+    var c = S.turn, cs = C.cornersOf(S, c), lit = {}, s = '';
+    if (SEL >= 0) legalList().forEach(function (m) { if (C.dec(m).p !== SEL) return; C.cellsOf(m).forEach(function (x) { if (cs.indexOf(x) >= 0) lit[x] = 1; }); });
+    cs.forEach(function (x) {
+      var X = C.colOf(x) + 0.5, Y = C.rowOf(x) + 0.5, on = SEL < 0 || lit[x];
+      s += '<path class="dot' + (on && SEL >= 0 ? ' lit' : '') + '" d="M' + X + ' ' + (Y - 0.24) + 'l.24 .24-.24 .24-.24-.24z" fill="' + LIGHT[c] + '" stroke="' + HEX[c] + '" stroke-width=".05" opacity="' + (on ? '.95' : '.3') + '"/>';
+    });
+    gDots.innerHTML = s;
+  }
+  function paintGhostAll(cls) { paintOverlay(cls); paintDots(); paintActs(); paintTurn(); paintTray(); }
+
+  // ── Pointers on the board ────────────────────────────────────────────────
+  function cellAt(x, y) {
+    var r = svgEl.getBoundingClientRect(), k = (N + 2 * M) / r.width;
+    var u = (x - r.left) * k - M, v = (y - r.top) * k - M;
+    if (u < 0 || u >= N || v < 0 || v >= N) return -1;
+    return Math.floor(v) * N + Math.floor(u);
+  }
+  function cellPx() { var r = svgEl.getBoundingClientRect(); return r.width / (N + 2 * M); }
+  var PRESS = null, SUPPRESS = 0, FLY = null;
+  function wireBoard() {
+    bdEl.addEventListener('pointerdown', function (e) {
+      if (!canAct()) { if (S && !S.over && NET && !NET.myTurn()) { Kit.haptic('error'); Kit.toast('It’s ' + Kit.poss(S.players[ctrlNow()].name) + ' turn'); } return; }
+      var x = cellAt(e.clientX, e.clientY); if (x < 0) return;
+      if (SEL < 0) { nudgeTray(); return; }
+      e.preventDefault();
+      try { bdEl.setPointerCapture(e.pointerId); } catch (q) {}
+      var cells = C.cellsOf(curMove()) || [], onG = cells.indexOf(x) >= 0;
+      PRESS = { id: e.pointerId, x: e.clientX, y: e.clientY, cell: x, on: onG, moved: false, dr: onG ? C.rowOf(x) - C.rowOf(GA) : 0, dc: onG ? C.colOf(x) - C.colOf(GA) : 0, wasOk: ghostOk() };
+      if (!onG) { aimAt(x); var c2 = C.cellsOf(curMove()) || []; if (c2.indexOf(x) >= 0) { PRESS.dr = C.rowOf(x) - C.rowOf(GA); PRESS.dc = C.colOf(x) - C.colOf(GA); PRESS.on = true; PRESS.fresh = true; } }
+    });
+    bdEl.addEventListener('pointermove', function (e) {
+      if (!PRESS || e.pointerId !== PRESS.id) return;
+      if (Math.hypot(e.clientX - PRESS.x, e.clientY - PRESS.y) > 7) PRESS.moved = true;
+      if (!PRESS.moved || !PRESS.on) return;
+      var x = cellAt(e.clientX, e.clientY); if (x < 0) return;
+      var a = clampA(SEL, ORI, C.rowOf(x) - PRESS.dr, C.colOf(x) - PRESS.dc);
+      if (a !== GA) { GA = a; GMOVED = true; Kit.haptic('tick'); paintOverlay(); paintActs(); paintTurn(); }
+    });
+    function up(e) {
+      if (!PRESS || e.pointerId !== PRESS.id) return;
+      var p = PRESS; PRESS = null; SUPPRESS = Date.now() + 400;
+      if (e.type === 'pointercancel') return;
+      if (p.moved) { if (snapNear(1)) Kit.sfx('tick', 0.5); paintGhostAll(); if (e.pointerType === 'mouse' && ghostOk()) placeNow(); return; }
+      // a tap on the piece already there, where it fits, puts it down
+      if (!p.fresh && p.on && p.wasOk) placeNow();
+    }
+    bdEl.addEventListener('pointerup', up); bdEl.addEventListener('pointercancel', up);
+  }
+  // a tap on the board with nothing in hand: the tray answers
+  function nudgeTray() { if (!trayEl) return; trayEl.classList.remove('shake'); void trayEl.offsetWidth; trayEl.classList.add('shake'); Kit.haptic('error'); paintTurn('Choose a piece from your tray first.'); }
+  // A piece dragged out of the tray: it floats under the finger (a little above it on a touch screen) and becomes the
+  // ghost once over the board; let go there and it stays (a mouse puts it down where it fits)
+  function trayDown(e, p) {
+    if (!canAct() || !C.has(S, S.turn, p)) return;
+    e.preventDefault();
+    var t = e.currentTarget; try { t.setPointerCapture(e.pointerId); } catch (q) {}
+    var D = { id: e.pointerId, p: p, x: e.clientX, y: e.clientY, drag: false, touch: e.pointerType !== 'mouse', t: t };
+    function mv(ev) {
+      if (ev.pointerId !== D.id) return;
+      if (!D.drag && Math.hypot(ev.clientX - D.x, ev.clientY - D.y) > 9) {
+        D.drag = true;
+        if (SEL !== p) { SEL = p; ORI = OR_OF[p] != null ? OR_OF[p] : 0; GA = -1; }
+        Kit.sfx('pop', 0.5); Kit.haptic('light');
+        paintTray(); paintActs();
+      }
+      if (D.drag) flyTo(ev.clientX, ev.clientY - (D.touch ? cellPx() * 2.2 : 0));
+    }
+    function end(ev) {
+      if (ev.pointerId !== D.id) return;
+      t.removeEventListener('pointermove', mv); t.removeEventListener('pointerup', end); t.removeEventListener('pointercancel', end);
+      var wasFly = FLY && FLY.on; flyOff();
+      if (!D.drag) { if (ev.type === 'pointerup') select(p); return; }
+      if (wasFly) { if (snapNear(1)) Kit.sfx('tick', 0.5); Kit.sfx('pop', 0.5); paintGhostAll(); if (!D.touch && ghostOk()) placeNow(); }
+      else { if (GA < 0) { SEL = -1; } paintGhostAll(); }
+    }
+    t.addEventListener('pointermove', mv); t.addEventListener('pointerup', end); t.addEventListener('pointercancel', end);
+  }
+  function flyTo(x, y) {
+    var O = C.ORI[SEL][ORI], u = cellPx();
+    var cx = x - (O.w * u) / 2, cy = y - (O.h * u) / 2;
+    // over the board: it becomes the ghost, its top left on the square under its own top left
+    var a = cellAt(cx + u / 2, cy + u / 2), over = cellAt(x, y) >= 0;
+    if (over) {
+      var r = svgEl.getBoundingClientRect(), k = (N + 2 * M) / r.width;
+      var rr = Math.round((cy - r.top) * k - M), cc = Math.round((cx - r.left) * k - M);
+      var na = clampA(SEL, ORI, rr, cc);
+      if (FLY) FLY.el.style.display = 'none';
+      if (na !== GA) { GA = na; Kit.haptic('tick'); paintOverlay(); paintTurn(); }
+      if (FLY) FLY.on = true;
+      return;
+    }
+    if (!FLY) { FLY = { el: el('div', { class: 'fly' }), on: false }; document.body.appendChild(FLY.el); }
+    FLY.on = false;
+    if (GA >= 0) { GA = -1; paintOverlay(); }
+    FLY.el.style.display = 'block';
+    FLY.el.innerHTML = pieceSvg(SEL, ORI, S.turn, u);
+    FLY.el.style.left = cx + 'px'; FLY.el.style.top = cy + 'px';
+    FLY.el.style.width = O.w * u + 'px'; FLY.el.style.height = O.h * u + 'px';
+  }
+  function flyOff() { if (FLY) { FLY.el.remove(); FLY = null; } }
+  document.addEventListener('keydown', function (e) {
+    if (!S || !canAct() || e.target && /input|textarea/i.test(e.target.tagName)) return;
+    var k = e.key;
+    if (k === 'r' || k === 'R') { turnPiece(); e.preventDefault(); }
+    else if (k === 'f' || k === 'F') { flipPiece(); e.preventDefault(); }
+    else if (k === 'Enter') { placeNow(); e.preventDefault(); }
+    else if (k === 'Escape') { drop(); }
+    else if (SEL >= 0 && /^Arrow/.test(k)) { nudge(k === 'ArrowUp' ? -1 : k === 'ArrowDown' ? 1 : 0, k === 'ArrowLeft' ? -1 : k === 'ArrowRight' ? 1 : 0); e.preventDefault(); }
+  });
+
+  // ── The plates, the tray, the turn and the buttons ───────────────────────
+  // Each piece's place in a tray: lying flat (wider than tall), in one fixed order, packed on shelves
+  var TRAYO = C.ORI.map(function (os) { var b = 0; os.forEach(function (o, i) { var x = os[b]; if (o.h < x.h || o.h === x.h && o.w > x.w) b = i; }); return b; });
+  function pack(width, u, pad, gap, minW, minH) {
+    var x = 0, y = 0, rowH = 0, pos = [];
+    for (var p = 0; p < C.NP; p++) {
+      var O = C.ORI[p][TRAYO[p]], w = Math.max(minW, O.w * u + 2 * pad), h = Math.max(minH, O.h * u + 2 * pad);
+      if (x > 0 && x + w > width + 0.5) { x = 0; y += rowH + gap; rowH = 0; }
+      pos.push({ x: x, y: y, w: w, h: h }); x += w + gap; rowH = Math.max(rowH, h);
+    }
+    // each shelf spread to the full width
+    var rows = {}; pos.forEach(function (q) { (rows[q.y] = rows[q.y] || []).push(q); });
+    Object.keys(rows).forEach(function (k) { var r = rows[k], used = 0; r.forEach(function (q) { used += q.w; }); var sp = r.length > 1 ? (width - used) / (r.length - 1) : 0, xx = 0; r.forEach(function (q) { q.x = xx; xx += q.w + Math.min(sp, gap * 4 + 12); }); var tot = xx - Math.min(sp, gap * 4 + 12), off = (width - tot) / 2; r.forEach(function (q) { q.x += off; }); });
+    return { pos: pos, h: y + rowH };
+  }
+  // the largest squares for a tray that fit its box
+  var TRAYL = null;
+  function trayLayout(w, h, umax, umin) {
+    var touch = !matchMedia('(pointer: fine)').matches, minW = touch ? 38 : 30, minH = touch ? 34 : 28;
+    if (STRIP) {
+      // one row: the squares from the row's height, the row as long as it needs (it slides sideways)
+      var us = Math.max(7, Math.min(umax, (h - 8) / 3)), x = 0, pos = [], pd = 4;
+      for (var p = 0; p < C.NP; p++) { var O = C.ORI[p][TRAYO[p]], bw = Math.max(minW, O.w * us + 2 * pd), bh = Math.max(minH, h - 2); pos.push({ x: x, y: 0, w: bw, h: bh }); x += bw + 4; }
+      return { pos: pos, h: h, w: x, u: us };
+    }
+    umin = umin || 5;
+    for (var u = umax; u >= umin; u -= 0.5) {
+      var pad = Math.max(3, Math.round(u * 0.35)), gap = Math.max(2, Math.round(u * 0.25)), L = pack(w, u, pad, gap, minW, minH);
+      if (L.h <= h) { L.u = u; return L; }
+    }
+    var L2 = pack(w, umin, 3, 2, minW, minH); L2.u = umin; return L2;
+  }
+  function trayColor() {
+    if (!S) return 1;
+    if (canAct() || S.over) return S.turn;
+    var me = NET ? NET.seat : solo() ? S.players.findIndex(function (p) { return !p.cpu; }) : -1;
+    if (me >= 0) { var c = S.turn; for (var k = 0; k < 4; k++) { c = C.ORDER[c]; if (!S.out[c] && (S.own[c] === me)) return c; } }
+    return S.turn;
+  }
+  function paintTray() {
+    if (!trayEl || !S) return;
+    var c = trayColor(), act = canAct() && c === S.turn;
+    var w = trayEl.clientWidth, h = trayEl.clientHeight; if (!w || !h) return;
+    var key = w + 'x' + h + ':' + TRAYU + (STRIP ? 's' : '');
+    if (!TRAYL || TRAYL.key !== key) { TRAYL = trayLayout(w, h, TRAYU); TRAYL.key = key; }
+    var ms = act ? legalList() : [], fits = {};
+    ms.forEach(function (m) { fits[C.dec(m).p] = 1; });
+    trayEl.classList.toggle('idle', !act);
+    trayEl.style.setProperty('--pc', HEX[c]);
+    var kids = trayEl.children;
+    if (kids.length !== C.NP || trayEl.dataset.c !== String(c) || trayEl.dataset.u !== String(TRAYL.u)) {
+      trayEl.innerHTML = ''; trayEl.dataset.c = String(c); trayEl.dataset.u = String(TRAYL.u);
+      for (var p = 0; p < C.NP; p++) (function (p) {
+        var b = el('button', { type: 'button', class: 'pc', 'data-p': String(p), 'aria-label': cap1(C.PIECES[p].name) });
+        b.innerHTML = pieceSvg(p, TRAYO[p], c, TRAYL.u);
+        b.addEventListener('pointerdown', function (e) { trayDown(e, p); });
+        b.addEventListener('click', function (e) { if (e.detail === 0) select(p); });   // (keys)
+        trayEl.appendChild(b);
+      })(p);
+    }
+    for (var q = 0; q < C.NP; q++) {
+      var b2 = trayEl.children[q], P = TRAYL.pos[q], have = C.has(S, c, q);
+      if (STRIP && q === 0) trayEl.style.setProperty('--tw', TRAYL.w + 'px');
+      b2.style.left = P.x + 'px'; b2.style.top = P.y + 'px'; b2.style.width = P.w + 'px'; b2.style.height = P.h + 'px';
+      b2.classList.toggle('used', !have);
+      b2.classList.toggle('sel', act && SEL === q);
+      b2.classList.toggle('dead', have && act && !fits[q]);
+      b2.disabled = !have;
+      var sv = b2.firstChild; if (sv) sv.style.opacity = have ? '' : '0.1';
+    }
+  }
+  // the plates: whose each color is, the squares it has left (its score at the end), its tray drawn small
+  var MINI = { u: 3 };
+  function miniSvg(c, w) {
+    var u = MINI.u, L = MINI.L, s = '<svg class="mini" viewBox="0 0 ' + w + ' ' + L.h + '" preserveAspectRatio="xMinYMid meet" aria-hidden="true">';
+    for (var p = 0; p < C.NP; p++) {
+      var O = C.ORI[p][TRAYO[p]], P = L.pos[p], have = C.has(S, c, p);
+      O.c.forEach(function (q) {
+        s += '<rect x="' + (P.x + q[1] * u + 0.25) + '" y="' + (P.y + q[0] * u + 0.25) + '" width="' + (u - 0.5) + '" height="' + (u - 0.5) + '" rx="' + (u * 0.18) + '" fill="' + (have ? HEX[c] : 'rgba(255,255,255,.08)') + '"' + (have ? ' stroke="' + DARK[c] + '" stroke-width="' + (u * 0.08) + '"' : '') + '/>';
+      });
+    }
+    return s + '</svg>';
+  }
+  function paintPlates() {
+    if (!platesEl || !S) return;
+    if (platesEl.children.length !== 4) {
+      platesEl.innerHTML = '';
+      for (var c = 1; c <= 4; c++) platesEl.appendChild(el('div', { class: 'plate', 'data-c': String(c), style: { '--pc': HEX[c] } }));
+    }
+    var mw = MINI.w || 160;
+    for (var c2 = 1; c2 <= 4; c2++) {
+      var pl = platesEl.children[c2 - 1], on = !S.over && S.turn === c2, out = !!S.out[c2] && !S.over, o = whoC(c2);
+      pl.className = 'plate' + (on ? ' on' : '') + (out ? ' out' : '') + (MINI.off ? ' nomini' : '');
+      var who = o < 0 ? 'Shared' : nmI(o), p = o >= 0 ? S.players[o] : null;
+      var sub = S.over ? (o < 0 ? 'Green, not scored' : CNAME[c2]) : on && S.players[ctrlNow()].cpu && S.busy ? '<span class="think">Thinking <i></i><i></i><i></i></span>' :
+        on ? (o < 0 ? 'Green, ' + nmI(C.ctrl(S, c2)).replace(/^You$/, 'your') + (isMe(C.ctrl(S, c2)) ? ' move' : ' to move') : CNAME[c2] + ' to move') :
+        out ? CNAME[c2] + ' is out' : (o < 0 ? 'Green, ' + nmI(C.ctrl(S, c2)) + ' next' : CNAME[c2]);
+      var left = C.squaresLeft(S, c2), big = S.over ? scoreStr(C.score(S, c2)) : String(left);
+      var bump = lastLeft[c2] != null && left < lastLeft[c2] && !S.over; lastLeft[c2] = left;
+      pl.innerHTML = '<span class="sw">' + (app.classList.contains('bk-tiny') ? Kit.esc(who.charAt(0)) : '') + '</span><div class="who"><span class="nm">' + (p && p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(who) + '</span></span><span class="sub">' + sub + '</span></div>' +
+        '<div class="n" aria-label="' + (S.over ? 'Score ' + big : left + ' squares left') + '"><b' + (bump ? ' class="bump"' : '') + '>' + big + '</b><small>' + (S.over ? 'points' : app.classList.contains('bk-tiny') || pl.clientWidth < 205 ? 'left' : left === 1 ? 'square left' : 'squares left') + '</small></div>' +
+        (MINI.off || !MINI.L ? '' : miniSvg(c2, mw));
+      var ns = pl.querySelector('.nm>span:last-child'); if (ns) Kit.fitText(ns, 0.7);
+    }
+  }
+  function paintTurn(msg) {
+    if (!turnEl || !S) return;
+    var p = S.players[ctrlNow()], c = S.turn, txt;
+    turnEl.style.color = '';
+    if (NET && LEFT) txt = LEFT.text || 'A player left';
+    else if (S.over) txt = S.win.length > 1 ? 'A tie' : (nmI(S.win[0]) === 'You' ? 'You win' : S.players[S.win[0]].name + ' wins');
+    else if (msg) txt = msg;
+    else if (NET && !isMe(ctrlNow())) txt = p.cpu ? p.name + ' (the computer) is playing ' + CNAME[c] : 'Waiting for ' + p.name + ' to play ' + CNAME[c];
+    else if (p.cpu) txt = p.name + ' is thinking about ' + CNAME[c] + '…';
+    else if (HOLD) txt = 'Pass the device to ' + p.name;
+    else if (SEL >= 0 && GA >= 0) {
+      var w = C.why(S, c, curMove());
+      txt = w ? whySay(w) : 'Tap Place, or tap the piece again, to put it down.';
+    } else if (C.first(S, c)) txt = (NET || solo() ? 'Your turn as ' + CNAME[c] : Kit.poss(p.name) + ' turn as ' + CNAME[c]) + '. The first piece covers your corner square.';
+    else txt = (NET || solo() ? 'Your turn as ' + CNAME[c] : Kit.poss(p.name) + ' turn as ' + CNAME[c]) + '. Choose a piece from your tray.';
+    turnEl.textContent = txt;
+  }
+  function btn(cls, ic, label, fn, dis) { return el('button', { type: 'button', class: 'btn ' + cls + ' btn-sm', html: ic + '<span>' + label + '</span>', onclick: fn, disabled: !!dis }); }
+  function paintActs() {
+    if (!actsEl || !S) return;
+    actsEl.innerHTML = '';
+    if (NET && (S.over || LEFT)) { actsEl.appendChild(btn('btn-primary', '', LEFT ? 'Back to the lobby' : 'Play again', netAgain)); return; }
+    if (S.over) { actsEl.appendChild(btn('btn-primary', '', 'Play again', function () { newGame(null, true); })); return; }
+    if (SEL >= 0 && canAct()) {
+      actsEl.appendChild(btn('btn-soft', ICO_ROT, 'Turn', turnPiece));
+      actsEl.appendChild(btn('btn-soft', ICO_FLIP, 'Flip', flipPiece));
+      actsEl.appendChild(btn('btn-soft', Kit.icon('close'), 'Cancel', drop));
+      actsEl.appendChild(btn('btn-primary place', Kit.icon('check'), 'Place', placeNow, !ghostOk()));
+      return;
+    }
+    if (!NET) actsEl.appendChild(btn('btn-soft', Kit.icon('undo'), 'Undo', undo));
+  }
+  function paintAll() { paintPlates(); paintTurn(); paintActs(); paintTray(); paintDots(); paintOverlay(); paintRoom(); }
+
+  // ── The room at a desk ───────────────────────────────────────────────────
+  // Scores so far, the moves newest first, past games here
+  function moveSay(k, cov) {
+    var cd = S.ml[k], m = C.uncode(cd), cl = C.cellsOf(m), c = S.b[cl[0]], d = C.dec(m);
+    return { c: c, t: CNAME[c] + ' placed ' + C.PIECES[d.p].name + ' at ' + C.cellName(cl[0]), b: cov };
+  }
+  function paintRoom() {
+    if (!roomEl) return;
+    if (!app.classList.contains('bk-desk')) { roomEl.innerHTML = ''; return; }
+    roomEl.innerHTML = '';
+    // the scores: each player's total now (the squares left, as the game would end now), each color under it
+    var sc = el('section', { class: 'pn' }, [el('h4', { text: S.over ? 'Final scores' : 'Scores if the game ended now' })]), g = el('div', { class: 'sc' });
+    var tot = S.players.map(function (p, i) { var v = 0; [1, 2, 3, 4].forEach(function (c) { if (S.own[c] === i) v += C.score(S, c); }); return v; });
+    var best = Math.max.apply(null, tot);
+    S.players.forEach(function (p, i) {
+      var cs = [1, 2, 3, 4].filter(function (c) { return S.own[c] === i; });
+      var row = el('div', { class: 'pn2', style: { '--pc': HEX[cs[0]] } }, [el('i'), el('span', { text: nmI(i) })]);
+      g.appendChild(row); var b = el('b', { text: scoreStr(tot[i]) }); g.appendChild(b);
+      if (tot[i] === best) { row.classList.add('lead'); b.parentNode && b.classList.add('lead'); b.style.color = 'var(--lit-ink)'; }
+      g.appendChild(el('small', { text: cs.map(function (c) { return CNAME[c] + ' ' + C.piecesLeft(S, c) + (C.piecesLeft(S, c) === 1 ? ' piece' : ' pieces') + ' left' + (S.out[c] && S.left[c] ? ', out' : ''); }).join('. ') }));
+    });
+    var shc = [1, 2, 3, 4].filter(function (c) { return S.own[c] < 0; })[0];
+    if (shc) g.appendChild(el('small', { text: 'Green is shared and not scored: ' + C.piecesLeft(S, shc) + ' pieces left.' }));
+    sc.appendChild(g); roomEl.appendChild(sc);
+    // the moves, newest first
+    var mv = el('section', { class: 'pn mv' }, [el('h4', { text: 'Moves' })]), list = el('ol', { class: 'mvl' });
+    if (!S.ml.length) list.appendChild(el('li', { class: 'none', text: 'No pieces yet. Blue starts in the top left corner.' }));
+    var off = S.ml.length - (S.bl || []).length;
+    for (var k = S.ml.length - 1; k >= 0 && list.children.length < 40; k--) {
+      var cv = (S.bl || [])[k - off] || 0, ms = moveSay(k, cv), cs2 = [];
+      for (var c3 = 1; c3 <= 4; c3++) if (S.outN[c3] === k + 1 && S.left[c3]) cs2.push(CNAME[c3]);
+      var tag = cs2.length ? el('span', { class: 'tag blk', text: cs2.join(', ') + ' out' }) : cv >= 3 ? el('span', { class: 'tag blk', text: 'Block' }) : el('span');
+      list.appendChild(el('li', { style: { '--pc': HEX[ms.c] } }, [el('span', { class: 'no', text: String(k + 1) }), el('i'), el('span', { class: 't', text: ms.t }), tag]));
+    }
+    mv.appendChild(list); roomEl.appendChild(mv);
+    // past games on this device
+    var past = []; try { past = (GameHistory.load(KEY) || []).slice(); } catch (x) {}
+    if (past.length) {
+      var wins = {}, names = [];
+      past.forEach(function (gm) { String(gm.winner || '').split(' and ').forEach(function (w) { if (!w) return; if (!wins[w]) { wins[w] = 0; names.push(w); } wins[w]++; }); });
+      names.sort(function (a, b) { return wins[b] - wins[a]; });
+      var pg = el('section', { class: 'pn pg' }, [el('h4', { text: 'Past games here' })]), wl = el('ul', { class: 'wins' });
+      names.slice(0, 5).forEach(function (n) { wl.appendChild(el('li', null, [el('span', { text: n }), el('b', { text: wins[n] + (wins[n] === 1 ? ' win' : ' wins') })])); });
+      pg.appendChild(wl); roomEl.appendChild(pg);
+    }
+    // give up whole parts until it fits: the oldest moves down to six, past games, then the oldest moves
+    var over = function () { return roomEl.scrollHeight > roomEl.clientHeight + 1 || list.scrollHeight > list.clientHeight + 1 || [].some.call(roomEl.children, function (k) { return k.getBoundingClientRect().bottom > roomEl.getBoundingClientRect().bottom + 1; }); };
+    while (over() && list.children.length > 6) list.removeChild(list.lastChild);
+    if (over()) { var pgE = roomEl.querySelector('.pg'); if (pgE) pgE.remove(); }
+    while (over() && list.children.length > 1) list.removeChild(list.lastChild);
+    if (over()) { mv.remove(); }
+    if (over()) roomEl.innerHTML = '';
+  }
+
+  // ── Building the page ────────────────────────────────────────────────────
+  function render(anim) {
+    if (!S || !S.b) return;
+    flyOff();
+    app.innerHTML = ''; app.classList.add('ipl');
+    var bk = el('div', { class: 'bk' });
+    platesEl = el('div', { class: 'plates' });
+    frameEl = el('div', { class: 'frame' });
+    bdEl = el('div', { class: 'bd', role: 'grid', 'aria-label': 'Blokus board' });
+    frameEl.appendChild(bdEl);
+    dockEl = el('div', { class: 'dock' });
+    turnEl = el('p', { class: 'turn', 'aria-live': 'polite' });
+    trayEl = el('div', { class: 'tray', 'aria-label': 'Your pieces' });
+    actsEl = el('div', { class: 'acts' });
+    dockEl.appendChild(turnEl); dockEl.appendChild(trayEl); dockEl.appendChild(actsEl);
+    roomEl = el('div', { class: 'room', 'aria-label': 'This game and past games' });
+    lcolEl = el('div', { class: 'lcol' });
+    bk.appendChild(lcolEl); lcolEl.appendChild(platesEl); lcolEl.appendChild(roomEl);
+    bk.appendChild(frameEl); bk.appendChild(dockEl);
+    app.appendChild(bk);
+    TRAYL = null;
+    fit(true);
+    buildBoard();
+    paintPieces(anim);
+    paintAll();
+    wireBoard();
+    requestAnimationFrame(function () { if (app.classList.contains('ipl')) { fit(); } });
+  }
+
+  // ── Sizes for the shape of the screen ────────────────────────────────────
+  function deskWin() {
+    if (Kit.inDemo && Kit.inDemo()) return false;
+    var W = window.innerWidth, Hh = window.innerHeight;
+    return W >= 480 && Hh > 520 && (Math.max(W, Hh) > 1024 || Math.min(W, Hh) > 768);
+  }
+  var TRAYU = 14, STRIP = false;
+  function setV(k, v) { app.style.setProperty(k, v); }
+  function fit(first) {
+    var bk = app.querySelector('.bk'); if (!bk || !app.classList.contains('ipl')) return;
+    var W = window.innerWidth, Hh = window.innerHeight, land = W > Hh, desk = deskWin();
+    // (the page never scrolls: a window shrunk from a taller layout can be left scrolled for a moment)
+    if (window.scrollY) window.scrollTo(0, 0);
+    var top = app.getBoundingClientRect().top;
+    setV('--avh', Math.max(300, Hh - top) + 'px');
+    var cs = getComputedStyle(app), iw = app.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), ih = app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    var rim = Math.max(5, Math.min(14, Math.min(W, Hh) * 0.016)), cls = [], dk = 1;
+    app.classList.remove('bk-port', 'bk-land', 'bk-dw', 'bk-dv', 'bk-desk', 'bk-four', 'bk-short', 'bk-tiny');
+    MINI.off = false; if (platesEl) platesEl.classList.remove('two');
+    var fsz, plan;
+    if (desk) {
+      dk = Math.max(1, Math.min(1.45, W / 1600, Hh / 1050));
+      var gap = Math.round(28 * dk);
+      // two ways to lay a desk out; the one with the larger board wins
+      var Lw = Math.round(Math.min(560, Math.max(300, W * 0.22))), Dw = Math.round(Math.min(520, Math.max(280, W * 0.2)));
+      var fW = Math.floor(Math.min(ih, iw - Lw - Dw - 2 * gap));
+      var Lv = Math.round(Math.min(600, Math.max(300, W * 0.24))), Dh = Math.round(Math.min(420, Math.max(250, ih * 0.26)));
+      var fV = Math.floor(Math.min(iw - Lv - gap, ih - Dh - Math.round(16 * dk)));
+      plan = fV > fW * 1.04 ? 'v' : 'w';
+      cls.push('bk-desk', plan === 'v' ? 'bk-dv' : 'bk-dw');
+      setV('--dk', dk.toFixed(3)); setV('--cg', gap + 'px');
+      if (plan === 'w') {
+        fsz = fW;
+        var spare = iw - fsz - Lw - Dw - 2 * gap;
+        var addL = Math.min(spare, Math.max(0, 640 - Lw) + Math.max(0, spare - 400)); Lw += Math.max(0, addL); spare -= Math.max(0, addL);
+        Dw += Math.max(0, Math.min(spare, 160));
+        setV('--pl', Lw + 'px'); setV('--dw', Dw + 'px');
+        TRAYU = Math.round(26 * dk);
+      } else {
+        fsz = fV;
+        Lv = iw - fsz - gap;
+        setV('--pl', Lv + 'px'); setV('--aw', Math.round(240 * dk) + 'px');
+        TRAYU = Math.round(26 * dk);
+      }
+      setV('--rc', (plan === 'w' ? Lw : Lv) >= 620 ? '2' : '1');
+      platesEl.classList.toggle('two', (plan === 'w' ? Lw : Lv) >= 620);
+      setV('--gp', Math.round(16 * dk) + 'px');
+    } else if (land) {
+      cls.push('bk-land');
+      var gap2 = Hh < 500 ? 12 : 18, pl = Math.round(Math.min(230, Math.max(150, W * 0.16))), dwMin = Math.round(Math.min(300, Math.max(150, W * 0.15)));
+      fsz = Math.floor(Math.min(ih, iw - pl - dwMin - 2 * gap2));
+      var dw = iw - fsz - pl - 2 * gap2;
+      if (dw > 380) { var give = Math.min(dw - 380, 260 - pl); if (give > 0) { pl += give; dw -= give; } dw = Math.min(dw, 420); }
+      setV('--pl', pl + 'px'); setV('--dw', Math.floor(dw) + 'px'); setV('--cg', gap2 + 'px');
+      TRAYU = Hh < 500 ? 13 : 18;
+      if (Hh < 500) cls.push('bk-short');
+      MINI.budget = Math.max(16, Math.min(64, (fsz - 4 * (Hh < 500 ? 40 : 46) - 24) / 4 - 14));
+    } else {
+      cls.push('bk-port');
+      var four = W >= 600, short = Hh < 700;
+      if (four) cls.push('bk-four');
+      if (short) { cls.push('bk-short'); MINI.off = true; }
+      if (short && W < 600) cls.push('bk-tiny');
+      TRAYU = four ? 22 : 15;
+      MINI.budget = four ? 50 : 30;
+      setV('--gp', short ? '6px' : '10px');
+      fsz = Math.floor(Math.min(iw, four ? 900 : 9999));
+    }
+    cls.forEach(function (k) { app.classList.add(k); });
+    setV('--fsz', fsz + 'px');
+    STRIP = false; app.classList.remove('bk-strip');
+    if (!desk && !land) {
+      setV('--cw', fsz + 'px');
+      // measure the plates, then share the height between the board and the tray: the board as wide as the screen,
+      // smaller only as far as the tray needs (to a fifth smaller); past that the tray is one row that slides sideways
+      sizeMinis();
+      paintPlates();
+      var ph = platesEl.offsetHeight, gp = parseFloat(getComputedStyle(app).getPropertyValue('--gp')) || 10;
+      var turnH = short ? 22 : 26, actsH = 42, upref = W >= 600 ? 17 : 11;
+      var need = function (w, u) { return trayLayout(w, 1e5, u, u).h; };
+      var avail = ih - ph - 3 * gp - turnH - actsH - 4, f = fsz, floor = Math.round(fsz * 0.8), umin = W >= 600 ? 12 : 9;
+      for (var it = 0; it < 60 && f > floor && f + need(f, upref) > avail; it++) f -= 6;
+      if (f + need(f, upref) > avail) { f = fsz; for (it = 0; it < 60 && f > floor && f + need(f, umin) > avail; it++) f -= 6; }
+      if (f + need(f, umin) > avail) {
+        // the smallest phones: the tray is one row of pieces that slides sideways
+        STRIP = true; app.classList.add('bk-strip');
+        f = Math.max(200, Math.min(fsz, avail - 62));
+      }
+      fsz = Math.max(200, f);
+      setV('--fsz', fsz + 'px'); setV('--cw', Math.max(fsz, Math.min(iw, fsz + 40)) + 'px');
+    }
+    sizeMinis();
+    // at a desk the board is large enough for its letters and numbers round the edge
+    var lab = desk && fsz / 21 >= 30;
+    if ((lab ? 0.8 : 0) !== M) { M = lab ? 0.8 : 0; if (svgEl) { buildBoard(); paintPieces(null); } }
+    TRAYL = null;
+    if (!first) paintAll();
+  }
+  // the plates' small trays: their squares from the plate's width
+  function sizeMinis() {
+    var pl = platesEl && platesEl.firstChild; if (!pl) { paintPlates(); pl = platesEl.firstChild; }
+    if (!pl) return;
+    var w = pl.clientWidth - 18; if (w < 60) w = 60;
+    // the largest squares that keep the little tray within its height
+    var desk = app.classList.contains('bk-desk');
+    var budget = desk ? Math.round(64 * (parseFloat(getComputedStyle(app).getPropertyValue('--dk')) || 1)) : MINI.budget || 30;
+    var u = desk ? 10 : 6, L;
+    for (; u > 1.6; u -= 0.2) { L = pack(w, u, 0, u * 0.6, 0, 0); if (L.h <= budget) break; }
+    MINI.u = u; MINI.L = pack(w, u, 0, u * 0.6, 0, 0); MINI.w = w;
+    platesEl.style.setProperty('--mh', Math.ceil(MINI.L.h) + 'px');
+  }
+  var lastWH = window.innerWidth + 'x' + window.innerHeight, RZT = 0;
+  window.addEventListener('resize', function () {
+    var wh = window.innerWidth + 'x' + window.innerHeight; if (wh === lastWH) return; lastWH = wh;
+    // (a device turned glides; a computer's window dragged to a new size is laid out again at once)
+    if (app.classList.contains('ipl') && !app.classList.contains('bk-desk') && !deskWin()) Kit.glide(function () { fit(); }); else fit();
+    // (once more when the window has settled, in case a glide was cut short by the next one)
+    clearTimeout(RZT); RZT = setTimeout(function () { if (app.classList.contains('ipl')) fit(); }, 650);
+  });
+
+  // ── Online ───────────────────────────────────────────────────────────────
+  // Two to four people, each on their own device; the seats nobody takes are the computer's, played from whichever
+  // device has the table open. The table's state is the core's with the players and the counts the room and the
+  // history need; it has no undo snapshots. Each new game at the table moves the seats round one.
+  function netOpts() {
+    var o = { seats: 2, level: 'normal' };
+    try { var g = JSON.parse(localStorage.getItem('gn_setup_' + KEY)) || {}, op = g.options || {}; if (+g.count >= 2 && +g.count <= 4) o.seats = +g.count; if (LEVEL_NAME[op.level]) o.level = op.level; } catch (e) {}
+    return o;
+  }
+  function netStart(players, opts, last) {
+    var ps = players.map(function (p) { return { name: p.name, cpu: !!p.bot, level: (opts && opts.level) || 'normal' }; });
+    var st = C.newGame(ps.length);
+    st.mode = 'online'; st.players = ps; st.rot = last && last.rot != null ? (last.rot + 1) % ps.length : 0;
+    // the seats move round one each game: seat rot plays the first player's colors
+    var own = st.own.slice(); st.own = own.map(function (o) { return o < 0 ? o : (o + st.rot) % ps.length; });
+    freshFields(st); delete st.hist; delete st.busy;
+    st.wins = last && last.wins ? last.wins.slice() : ps.map(function () { return 0; });
+    return st;
+  }
+  function netApply(st, m) {
+    if (st.over) return null;
+    var cov = covered(st, m), res = C.play(st, m);
+    if (!res) return null;
+    note(st, res, cov);
+    if (st.over) st.win.forEach(function (i) { st.wins[i] = (st.wins[i] || 0) + 1; });
+    return { state: st, mv: { m: m, c: res.c, cov: cov.n } };
+  }
+  function netBot(st, seat) {
+    var p = st.players[seat], L = Object.assign({}, C.LEVELS[p.level] || C.LEVELS.normal, { seed: Math.floor(Math.random() * 1e9) });
+    return new Promise(function (res) {
+      think(coreOf(st), L, function (r) { res(r && r.move != null ? netApply(st, r.move) : null); });
+    });
+  }
+  function netMove(m) { if (!S || S.over || LEFT || !NET.myTurn()) return; S.busy = true; paintActs(); NET.act(function (st) { return netApply(st, m); }); setTimeout(function () { if (S) S.busy = false; }, 4000); }
+  function netAgain() { if (!NET) return; if (LEFT) { TurnNet.leave(); TurnNet.open(); } else NET.again(); }
+  function netShow(net, info) {
+    NET = net; cancelThink();
+    if (WINO && (info.again || info.fresh)) { WINO.close(); WINO = null; }
+    var prev = S;
+    S = JSON.parse(JSON.stringify(net.state)); S.busy = false; S.hist = []; SEL = -1; GA = -1; LEG = null;
+    LEFT = net.status === 'over' && !S.over && net.result && net.result.left != null ? net.result : null;
+    var tok = ++SHOWN, mv = info.mv && info.mv.m != null && !info.fresh && !info.again ? info.mv : null;
+    if (mv && prev && prev.b && prev.n === S.n - 1) {
+      var cl = C.cellsOf(mv.m), res = { c: mv.c, m: mv.m, p: C.dec(mv.m).p, cells: cl, passes: [], first: prev.left[mv.c] === C.FULL, all: !S.left[mv.c], mono: !S.left[mv.c] && C.dec(mv.m).p === 0 };
+      for (var c = 1; c <= 4; c++) if (S.out[c] && !prev.out[c]) res.passes.push(c);
+      show(res, { n: mv.cov || 0, who: {} }, true);
+      if (!S.over && !info.mine && net.myTurn()) setTimeout(function () { if (tok === SHOWN) Kit.haptic('light'); }, moveT(res));
+    } else {
+      render(null);
+      if (S.over || LEFT) setTimeout(function () { if (tok === SHOWN) netEnd(); }, 150);
+    }
+    if (info.again) { Kit.sfx('deal'); Kit.callout(isMe(C.ctrl(S, 1)) ? 'You start' : S.players[C.ctrl(S, 1)].name + ' starts'); }
+  }
+  function netEnd() {
+    if (!NET || !S) return;
+    var left = LEFT, key = NET.code + ':' + S.started;
+    var done = NETREC[key]; try { done = done || (JSON.parse(localStorage.getItem('blokus_net_rec')) || []).indexOf(key) >= 0; } catch (e) {}
+    if (!done && !left) {
+      NETREC[key] = 1;
+      try { var rl = JSON.parse(localStorage.getItem('blokus_net_rec')) || []; rl.push(key); localStorage.setItem('blokus_net_rec', JSON.stringify(rl.slice(-30))); } catch (e) {}
+      var hl = highlights(); hl.push('Played online at table ' + NET.code);
+      Kit.record(KEY, { started: S.started, mode: 'Online', players: recPlayers(), winner: S.win.map(function (i) { return S.players[i].name; }).join(' and '), highlights: hl, detail: detail() });
+    }
+    if (WINO) WINO.close();
+    if (left) return netWin();
+    endShow(winWave(), true);
+  }
+  function netWin() {
+    if (!NET) return;
+    var me = NET.seat, left = LEFT, one = S.win && S.win.length === 1;
+    WINO = Kit.win({
+      icon: left || !one ? 'users' : S.win[0] === me ? 'trophy' : 'users',
+      title: left ? left.text : !one ? 'A tie' : S.win[0] === me ? 'You win!' : S.players[S.win[0]].name + ' wins',
+      sub: left ? '' : endLine(),
+      rank: left ? null : rankRows(),
+      notes: left ? null : [S.players.map(function (p, i) { return p.name + ' ' + (S.wins[i] || 0); }).join(', ')], notesTitle: 'Games won at this table',
+      lose: !left && one && S.win[0] !== me, againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { WINO = null; netAgain(); },
+      look: { label: 'Look at the board', onClick: function () { WINO = null; } }
+    });
+  }
+  function netLeave() {
+    NET = null; LEFT = null; SHOWN++; if (WINO) { WINO.close(); WINO = null; }
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.b && sv.players && !sv.over) { S = sv; S.busy = false; S.hist = S.hist || []; render(); afterTurn(); }
+    else showSetup();
+  }
+
+  // ── Test and demo hooks ──────────────────────────────────────────────────
+  window.__blokus = {
+    C: C, state: function () { return S; }, sel: function () { return { p: SEL, o: ORI, a: GA, ok: ghostOk() }; },
+    // a fresh game for these players: {mode: 'pp' | 'cpu', players: [{name, cpu, level}]}
+    start: function (cfg) { cancelThink(); newGame({ mode: cfg.mode || 'pp', cover: false, players: cfg.players }); },
+    // a position from a list of moves (codes, played in turn from an empty board), without the animations
+    set: function (list) {
+      cancelThink();
+      var st = C.newGame(S.np);
+      ['mode', 'cover', 'players', 'started'].forEach(function (k) { st[k] = S[k]; });
+      freshFields(st);
+      (Array.isArray(list) ? list : String(list).split(/\s+/).filter(Boolean)).forEach(function (cd) { var m = C.uncode(cd), cov = covered(st, m), r = C.play(st, m); if (r) note(st, r, cov); });
+      S = st; SEL = -1; GA = -1; LEG = null; save(); render(); afterTurn();
+    },
+    code: C.code, play: function (m) { m = typeof m === 'string' ? C.uncode(m) : m; if (NET) return netMove(m); return play(m); },
+    pick: function (p) { select(p); }, turn: turnPiece, flip: flipPiece, at: function (x) { aimAt(x); }, place: placeNow,
+    piece: function (p) { return trayEl ? trayEl.querySelector('.pc[data-p="' + p + '"]') : null; },
+    cell: function (x) { return bdEl ? bdEl.querySelector('.hz[data-x="' + x + '"]') : null; },
+    ghost: function () { return bdEl ? bdEl.querySelector('.gh') : null; },
+    fit: function () { fit(); }
+  };
+
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.b && saved.players && !saved.over) { S = saved; S.busy = false; S.hist = S.hist || []; render(); afterTurn(); }
+  else showSetup();
+
+  TurnNet.setup({
+    game: KEY, title: 'Blokus', min: 2, max: 4, botMs: 600,
+    seats: function (n, o) { return Math.max(n, Math.min(4, o && +o.seats || n)); },
+    opts: netOpts, start: netStart, bot: netBot,
+    turn: function (st) { return st.over ? [] : [C.ctrl(st, st.turn)]; },
+    over: function (st) {
+      if (!st.over) return null;
+      return { win: st.win.slice(), text: st.win.length > 1 ? 'A tie' : st.players[st.win[0]].name + ' wins with ' + scoreStr(st.psc[st.win[0]]) };
+    },
+    show: netShow, leave: netLeave
+  });
+})();
+</script>
+</body>
+</html>

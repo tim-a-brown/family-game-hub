@@ -143,6 +143,11 @@ var GameIcon = (function () {
       return line('M4.5 19.5 8.5 11.5 16.5 7.5', '#c42a20', 2.6) + line('M13.5 18 18.5 14 21 20', K, 2.4) +
         circ(4.5, 19.5, 2.6, R) + circ(8.5, 11.5, 2.6, R) + circ(16.5, 7.5, 2.6, R) + circ(13.5, 18, 2.4, K) + circ(18.5, 14, 2.4, K) + circ(21, 20, 2.4, K);
     },
+    blokus: function () {   // four pieces of three squares, one in each color, round the board's middle
+      var sq = function (r, c, f) { return rect(1.3 + c * 5.4, 1.3 + r * 5.4, 5, 5, 1.1, f, ' stroke="' + K + '" stroke-opacity=".4" stroke-width=".7"'); };
+      return sq(0, 0, '#2f74e0') + sq(0, 1, '#2f74e0') + sq(1, 0, '#2f74e0') + sq(0, 3, '#f2c418') + sq(1, 3, '#f2c418') + sq(1, 2, '#f2c418') +
+        sq(3, 3, '#e2382c') + sq(3, 2, '#e2382c') + sq(2, 3, '#e2382c') + sq(3, 0, '#2fa152') + sq(2, 0, '#2fa152') + sq(3, 1, '#2fa152');
+    },
     othello: function () { return circ(8, 13, 7, K) + circ(16, 11, 7, W, ' stroke="' + K + '" stroke-width="1.8"'); },
     backgammon: function (c) { var t = ''; for (var i = 0; i < 4; i++) { var x = 1 + i * 5.6; t += path('M' + x + ' 1h5l-2.5 9.5z', i % 2 ? K : c) + path('M' + x + ' 23h5l-2.5-9.5z', i % 2 ? c : K); } return t + circ(9, 12, 2.2, R) + circ(15, 12, 2.2, W, ' stroke="' + K + '" stroke-width="1.2"'); },
     battleship: function () { return path('M2 13h20l-3 6H5z', K) + rect(8, 9, 8, 4, 1, S) + rect(11, 5.5, 2, 4, .6, K) + line('M2 21.5c2 0 2-1.2 4-1.2s2 1.2 4 1.2 2-1.2 4-1.2 2 1.2 4 1.2 2-1.2 4-1.2', B, 1.6); },

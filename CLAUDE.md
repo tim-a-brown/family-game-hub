@@ -1681,6 +1681,59 @@ Underlying principles for everything:
   (`start`, `set('K10 M13 ...')`, `place('L12')`, `swap`, `hole`, `peg`, `aim`). The scratchpad's `newgames/twixt/` has
   the scripts (`shots.js`, `play.js`, `online.js`).
 
+## Blokus (2026-11-23; included with Mattel's written permission, Bernard Tavitian credited)
+
+- **Credit the designer and publisher**: "Blokus was designed by Bernard Tavitian and is published by Mattel Games."
+  stands under the title in the setup (`.bk-credit`, hidden only where it would make the setup scroll) and at the foot of
+  How to play; the condition of the permission. The board and pieces are our own drawing (a smoked slate grid in a dark
+  frame tinted at each corner by its color, translucent plastic squares with a lit edge and a raised pip); never the
+  commercial box art, logo or trade dress.
+- `games/blokus.html` (catalog id `blokus`, Board, 1 to 4), the rules and the robots in `games/blokus-core.js`
+  (`BlokusCore`, plain JSON; the page, the robots' Web Worker, the TurnNet table and Node), history `hist/blokus.js`
+  (hist-view.js loads the core first: the final board, a replay through `HistView.boardUI.replay`, scores by color and
+  by player, the biggest block), demo `games/demos/blokus.js`. `node scripts/blokus-sim.js [games] [--np=2|3|4]
+  [--seats=easy,normal,...] [--matrix --pairs=easy-normal,...]` checks every placement against a plain reading of the
+  rules written there (its own 21 shapes and their eight turns and flips, the corner square first, corner to corner and
+  never along a side), every color put out against a brute-force search for any placement left, and every score, total
+  and winner worked out again.
+- The rules are Mattel's: a 20 by 20 board, Blue, Yellow, Red, Green in turn from the top left, top right, bottom right
+  and bottom left corners; 21 pieces each (89 squares); a color with no piece that fits is out for good; the advanced
+  scoring (-1 a square left, +15 for all 21, +20 in all when the single square was last). Two players play Blue and Red
+  against Yellow and Green, scores added; three players have one color each and share Green in turn (`own` -1, `sh`
+  counts its turns, its score counts for nobody). Blokus Duo's 14 by 14 board is left out. A move is an integer
+  (`enc(p, o, a)`: piece, orientation in `ORI`, the cell of its box's top left) and is kept as a 4-letter code in `ml`
+  (`code`, `uncode`). Ties are shared wins.
+- Robots (`LEVELS`): Easy plays a random piece that fits (a little more often a large one) at a random place, a third
+  of the time the best spot for it; Normal weighs each placement by its size, the new corners it opens, the other
+  players' corners it covers (a partner's are spared, the shared color is nobody's) and the pull toward the middle
+  early on, keeping the single square for last; Hard takes Normal's best 14 and plays each out one move, weighing every
+  color's placements, corners and room after it (`deep`, 1.5 s). Measured (`--matrix`): Easy beat Normal in 1 of 100
+  two-player games; Hard beat Normal in 68% to 83% of two-player games and won 44% of four-player games against three
+  Normals (an even share is 25%).
+- The table: tap a piece in the tray (pieces with no place left are dimmed, played ones a faint outline in their slot,
+  the slots never move) and it lies on the board where it fits nearest the last one, or drag it out of the tray (it
+  floats over the finger and becomes the ghost over the board); a tap on a square moves the piece to the fit covering
+  that square, a drag moves it, Turn (or a second tap in the tray) and Flip turn it round its middle and snap it to a fit
+  a square or two away; white edge where it fits, red with the clashing squares crossed where it doesn't, gold sparks on
+  the corners it touches; Place, or a tap on the piece where it fits, puts it down (a mouse drop where it fits places at
+  once). Keys: R, F, arrows, Enter, Escape. Diamonds mark every square the color to move can start from (lit where the
+  piece in hand fits). Moments: Blocked! (3 or more squares other players' colors could start from covered), A big
+  block (5 or more), a color out (its plate shakes), All 21 placed and The single square last, the winners' pieces
+  lighting at the end. Pass and play can hand over with `Kit.handoff` (off by default: nothing is hidden).
+- Layouts (`fit`): upright, the four plates (each color's owner, squares left and its tray drawn small) over the board
+  and the dock (whose turn, the tray, the buttons), the board as wide as the screen and smaller by up to a fifth to give
+  the tray room; on the smallest phones (320 by 568) the plates are one row of initials and counts and the tray one row
+  that slides sideways (`bk-strip`). Sideways: plates at the left, the board, the dock at the right. **At a desk**
+  (`deskWin`, the kit's test, `bk-desk`): `w` the plates and the room at the left, the board, the dock at the right; `v`
+  (square and tall windows) the plates and the room the window's height at the left, the board over the dock; the board
+  has its letters and numbers once a square is 30px. The room: scores if the game ended now by player with each color's
+  pieces left, the moves newest first with blocks and outs, past games here; whole rows given up. A turn of the device
+  glides (`Kit.glide`). Saved in `blokus_state` (sync.js's `ST_SAVES` needs `"blokus":["blokus_state"]`); online
+  records once a device in `blokus_net_rec`; each game at a table moves the seats round one (`rot`). Test hook
+  `window.__blokus` (`start`, `set(codes)`, `play`, `pick`, `turn`, `flip`, `at`, `place`, `piece`, `cell`, `ghost`,
+  `sel`). The scratchpad's `newgames/blokus/` has the scripts (`shots.js`, `flow.js`, `hv.js`, `touchdemo.js`,
+  `gen-demo.js`).
+
 ## Wax Pack (2026-11-19; Tim: the Sandlot redesign, named "wax pack", the pitch duel "sure i'll try it", scanning "to log a player's deck")
 
 - Catalog id stays `sandlot` (favorites and `gh_sandlot` history carry over); the page is `games/waxpack.html` with
