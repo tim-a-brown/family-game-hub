@@ -183,6 +183,12 @@ var GameIcon = (function () {
       for (var i = 0; i < 4; i++) t += line('M' + (5 + i * 4.67) + ' 4.5v15M4.5 ' + (5 + i * 4.67) + 'h15', '#6b4a1f', .8);
       return t + circ(9.67, 9.67, 3.2, K) + circ(14.33, 14.33, 3.2, W, ' stroke="' + K + '" stroke-width=".9"') + circ(14.33, 9.67, 3.2, K) + circ(9.6, 8.6, .9, W, ' opacity=".35"');
     },
+    shogi: function () {   // two wedge-shaped pieces of boxwood, the front one with the King's 王 in ink
+      var wood = '#f1cf8a', edge = ' stroke="' + K + '" stroke-width="1.2" stroke-linejoin="round"';
+      return path('M15.5 2.2l5.2 2.1 1.6 11.5h-13.6l1.6-11.5z', '#e2b468', edge + ' transform="rotate(14 15.5 9)" opacity=".9"') +
+        path('M11 4.2l6.4 2.6 2 15.2H2.6l2-15.2z', wood, edge) +
+        line('M7.2 10.6h7.6M7.6 14.6h6.8M6.6 18.8h8.8M11 10.6v8.2', K, 1.7);
+    },
     marblesolitaire: function (c) {   // the cross-shaped peg board with one empty hole in the middle
       var t = path('M8 1.5h8v6.5h6.5v8H16v6.5H8V16H1.5V8H8z', '#b07a3e', ' stroke="' + K + '" stroke-width="1"');
       var cells = [[10,4],[14,4],[10,8],[14,8],[4,10],[8,10],[16,10],[20,10],[4,14],[8,14],[16,14],[20,14],[10,16],[14,16],[10,20],[14,20]];

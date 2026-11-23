@@ -1485,6 +1485,39 @@ Underlying principles for everything:
   the time it looks first (its own train when its marker is out, a double it can follow, a heavier tile): `EZ` in the
   core. The sim (mulberry32 now) has Easy winning about 1 match in 5 against Normal head to head, 1 in 15 against Hard.
 
+## Shogi (2026-11-23)
+
+- `games/shogi.html`, the rules and the computer in `games/shogi-core.js` (plain JSON state; the page, the TurnNet table,
+  Node, and a Web Worker when loaded as one), history `hist/shogi.js`, demo `games/demos/shogi.js`. The kanji are
+  `fonts/shogi-kanji.woff2`, the 16 characters the pieces use cut from Noto Serif JP Bold (OFL,
+  `fonts/shogi-kanji-LICENSE.txt`).
+- The rules as Wikipedia's article and the JSA give them: promotion in the far three ranks (optional, forced for a Pawn
+  or Lance on the last rank and a Knight on the last two), drops (never promoted, never dead, no nifu, no uchifuzume), no
+  stalemate (no legal move loses), fourfold repetition a draw unless one side checked every move of the cycle (that side
+  loses), and the impasse: the 27-point declaration as 81Dojo uses it (`impasse`, a Declare button while both Kings are
+  in their zones) and the 24-point count by agreement from the menu (`count24`; online an offer the other seat answers,
+  `offer` in the table's state). Resign is in the menu.
+- Moves are integers (`from | to << 7 | promote << 14`, a drop from 81 + type); notation is Western, P7g-7f, B8hx2b+
+  (= declines a promotion it could make), P*5e, and `parse` reads it back (the history's replay). Perft from the start is
+  30, 900, 25,470, 719,731.
+- The computer: alpha-beta with quiescence (captures, and every reply when in check), killers and history ordering, an
+  evaluation of material (pieces in hand worth a little more), King guards and attackers near each King, advancement.
+  `LEVELS` in the page: Easy depth 1 with a lot of noise, Normal depth 3 in 1.5 s, Hard depth 5 in 3.5 s. The computer
+  declares an impasse it is sure to win and agrees to a count it doesn't lose.
+- `node scripts/shogi-sim.js [games] [--robots]` checks every position against a second move generator written from
+  the rules, the piece counts, nifu, dead pieces, the ends, and fixed tests for uchifuzume, nifu, forced promotion, no
+  stalemate, perpetual check and the declaration.
+- The table: kaya board with its four star points, wedge pieces sized by rank (King largest) pointing at their owner,
+  promoted faces in red, a small Western letter under each kanji; Piece labels in the menu (`shogi_labels`: kanji with a
+  letter, kanji only, or big letters with dots and bars for the moves). Each player's piece stand beside their bar
+  (`merged`) or under it (`split`), whichever gives the larger board (`fit`). The promotion choice is the piece's two
+  faces over the board. A move glides, a drop arcs in from the stand, a capture flies to the captor's stand turning to
+  face them. Sideways and at a desk the bars, stands, the move list (and at a desk the game's numbers, `.stats`) stand
+  at the left and the board at the right; the board flips when you play White. Pass and play has no hand-over cover:
+  nothing on a Shogi table is hidden. Online is people only (two seats), as Othello's.
+- Saved in `shogi_state` (needs `"shogi":["shogi_state"]` in sync.js's `ST_SAVES`); online records once a device in
+  `shogi_net_rec`. Test hook `window.__shogi` (`start(cfg, pos)`, `set(pos)`, `play('P7g-7f')`, `tapSq`, `tapHand`, `sq`).
+
 ## Pong's Tunnel (2026-11-15; Tim: "a 1 player 3-D concept for pong with bounces off the ceiling, floor and walls ... get weird and colorful and wacky with the effects")
 
 - A Table in Pong's setup (`table`: Classic or Tunnel), not a tile of its own. Choosing it shows the Tunnel's own setup
