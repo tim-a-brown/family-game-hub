@@ -139,6 +139,10 @@ var GameIcon = (function () {
       [[15.2, 12], [19.6, 12], [13, 7.8]].forEach(function (q) { s += circ(q[0], q[1], 2.5, W, ' stroke="' + K + '" stroke-width="1.1"'); });
       return s;
     },
+    twixt: function () {   // three red pegs joined by two links, a black peg's link across the way
+      return line('M4.5 19.5 8.5 11.5 16.5 7.5', '#c42a20', 2.6) + line('M13.5 18 18.5 14 21 20', K, 2.4) +
+        circ(4.5, 19.5, 2.6, R) + circ(8.5, 11.5, 2.6, R) + circ(16.5, 7.5, 2.6, R) + circ(13.5, 18, 2.4, K) + circ(18.5, 14, 2.4, K) + circ(21, 20, 2.4, K);
+    },
     othello: function () { return circ(8, 13, 7, K) + circ(16, 11, 7, W, ' stroke="' + K + '" stroke-width="1.8"'); },
     backgammon: function (c) { var t = ''; for (var i = 0; i < 4; i++) { var x = 1 + i * 5.6; t += path('M' + x + ' 1h5l-2.5 9.5z', i % 2 ? K : c) + path('M' + x + ' 23h5l-2.5-9.5z', i % 2 ? c : K); } return t + circ(9, 12, 2.2, R) + circ(15, 12, 2.2, W, ' stroke="' + K + '" stroke-width="1.2"'); },
     battleship: function () { return path('M2 13h20l-3 6H5z', K) + rect(8, 9, 8, 4, 1, S) + rect(11, 5.5, 2, 4, .6, K) + line('M2 21.5c2 0 2-1.2 4-1.2s2 1.2 4 1.2 2-1.2 4-1.2 2 1.2 4 1.2 2-1.2 4-1.2', B, 1.6); },

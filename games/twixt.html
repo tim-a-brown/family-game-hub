@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Twixt</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
+<script src="twixt-core.js"></script>
+<style>
+.tw-credit{margin:-6px 0 2px;text-align:center;font-size:.78rem;font-weight:600;color:var(--text-3);}
+@media (max-height:600px){.tw-credit{display:none;}}
+.cb-col{max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
+/* A player's plate: their peg, their name and whose turn, how many more pegs they need to join their borders, and
+   under them the longest chain they have, drawn across the board's width */
+.pbar{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;min-height:48px;padding:5px 12px 5px 10px;border-radius:16px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);transition:box-shadow .2s, background .2s;}
+.pbar.on{background:color-mix(in srgb,var(--lit) 11%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--lit) 65%,transparent),0 0 18px color-mix(in srgb,var(--lit) 18%,transparent);}
+.pbar .who{flex:1;min-width:0;display:flex;flex-direction:column;}
+.pbar .nm{font-weight:800;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;}
+.pbar .nm .ico{width:15px;height:15px;color:var(--text-3);flex:none;}
+.pbar .nm span{overflow:hidden;text-overflow:ellipsis;}
+.pbar .sub{font-size:.72rem;font-weight:700;color:var(--text-3);white-space:nowrap;}
+.pbar.on .sub{color:var(--lit-ink);}
+.pbar .tg{display:flex;flex-direction:column;align-items:flex-end;gap:1px;min-width:3.6em;}
+.pbar .tg b{font-family:var(--display);font-size:1.5rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;}
+.pbar .tg small{font-size:.7rem;font-weight:700;color:var(--text-3);white-space:nowrap;}
+.pbar .tg.done b{color:var(--lit-ink);}
+.pbar .tg b.bump{animation:pop .45s var(--spring);}
+.peg{width:26px;height:26px;flex:none;border-radius:50%;position:relative;}
+.peg.r{background:radial-gradient(circle at 36% 30%,#ff9c8a 0,#e0352b 30%,#9e1a14 72%,#5a0b08 100%);box-shadow:0 2px 0 #4a0a07,0 3px 6px rgba(0,0,0,.5);}
+.peg.k{background:radial-gradient(circle at 36% 30%,#8f9098 0,#3a3b42 30%,#17171b 72%,#050506 100%);box-shadow:0 2px 0 #000,0 3px 6px rgba(0,0,0,.55);}
+.pbar .span{flex-basis:100%;display:none;position:relative;height:8px;border-radius:5px;background:rgba(0,0,0,.28);box-shadow:inset 0 1px 2px rgba(0,0,0,.5);margin:2px 0 1px;}
+.pbar .span i{position:absolute;top:0;bottom:0;border-radius:5px;transition:left .4s var(--spring),width .4s var(--spring);}
+.pbar .span i.r{background:linear-gradient(180deg,#f0574b,#a51b14);}
+.pbar .span i.k{background:linear-gradient(180deg,#6d6e78,#1d1d22);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);}
+.pbar .span em{position:absolute;top:-1px;bottom:-1px;width:2px;background:rgba(255,255,255,.22);}
+.think i{display:inline-block;width:5px;height:5px;margin:0 1px;border-radius:50%;background:currentColor;animation:th 1s infinite;}
+.think i:nth-child(2){animation-delay:.15s}.think i:nth-child(3){animation-delay:.3s}
+@keyframes th{50%{opacity:.2;transform:translateY(-2px);}}
+
+/* The board: a walnut frame round a maple pegboard; Red's border rows at the top and bottom, Black's at the sides */
+.frame{--rim:clamp(8px,2.4vw,15px);position:relative;padding:var(--rim);border-radius:14px;
+  background:
+    repeating-linear-gradient(91deg,rgba(255,255,255,.035) 0 2px,transparent 2px 8px),
+    repeating-linear-gradient(87deg,rgba(0,0,0,.12) 0 1px,transparent 1px 13px),
+    linear-gradient(180deg,#5a3720,#33200f);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.16),inset 0 -3px 0 rgba(0,0,0,.4),0 16px 34px rgba(0,0,0,.5);}
+.bd{position:relative;aspect-ratio:1;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:pointer;}
+.bd>svg{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible;}
+.bd.shake{animation:shake .4s;}
+.bd .hz{fill:transparent;}
+.bd .pg.drop{animation:pdrop .42s cubic-bezier(.3,1.5,.5,1) both;transform-box:fill-box;transform-origin:center;}
+@keyframes pdrop{0%{transform:translateY(-.9px) scale(1.7);opacity:0;}55%{opacity:1;}100%{transform:none;opacity:1;}}
+.bd .lk.snap{stroke-dasharray:2.3;stroke-dashoffset:2.3;animation:lsnap .26s ease-out forwards;}
+@keyframes lsnap{to{stroke-dashoffset:0;}}
+.bd .lk.won,.bd .lkh.won{stroke:#ffd75a!important;filter:drop-shadow(0 0 .18px #ffd75a);transition:stroke .2s;}
+.bd .pg.won .pb{filter:drop-shadow(0 0 .2px #ffd75a) brightness(1.2);}
+.bd .ripple{fill:none;stroke:#ffd75a;stroke-width:.08;animation:rip .7s ease-out forwards;transform-box:fill-box;transform-origin:center;}
+.bd .ripple.bad{stroke:#ff6a4d;}
+@keyframes rip{from{transform:scale(.4);opacity:1;}to{transform:scale(2.6);opacity:0;}}
+.bd .ghost{animation:gin .16s ease-out both;transform-box:fill-box;transform-origin:center;}
+@keyframes gin{from{opacity:0;transform:scale(.6);}}
+.bd .pv{stroke-dasharray:.18 .12;animation:pvm .8s linear infinite;}
+@keyframes pvm{to{stroke-dashoffset:-.3;}}
+.bd .lastr{fill:none;stroke:#ffd75a;stroke-width:.07;}
+/* the loupe: the holes under a finger, three times larger, over the board */
+.loupe{position:absolute;z-index:8;width:var(--ls,132px);height:var(--ls,132px);border-radius:50%;overflow:hidden;pointer-events:none;
+  box-shadow:0 0 0 3px rgba(255,226,140,.9),0 10px 26px rgba(0,0,0,.55);background:#e2cda0;display:none;}
+.loupe.on{display:block;}
+.loupe svg{width:100%;height:100%;display:block;}
+.turn{margin:2px 0 0;min-height:34px;}
+.acts{display:flex;gap:10px;justify-content:center;margin-top:2px;}
+.acts .btn{flex:1;max-width:200px;}
+.acts .btn.place{animation:pop .35s var(--spring);}
+
+/* A layout for each shape (fit() sizes the board to the room). Upright: the players over and under the board, the
+   board as wide as the screen allows. Sideways: the players, whose turn and the buttons in a column at the left, the
+   board you play on at the right, as tall as the room */
+#app.stage.ipl{max-width:none;box-sizing:border-box;height:var(--avh,auto);display:flex;flex-direction:column;align-items:center;
+  padding:4px max(10px,var(--corner-x,0px)) max(calc(var(--safe-b) + 10px),18px);}
+#app.ipl>.cb-col{width:var(--cw,100%);max-width:none;flex:none;margin:auto 0;}
+#app.tw-port>.cb-col{height:100%;margin:0;gap:var(--gp,10px);justify-content:center;}
+#app.tw-port .pbar{min-height:56px;padding:7px 14px 7px 11px;}
+#app.tw-port .pbar .nm{font-size:1.02rem;}
+#app.tw-port .pbar .sub{font-size:.78rem;}
+#app.tw-port .pbar .tg b{font-size:1.75rem;}
+#app.tw-port .peg{width:32px;height:32px;}
+#app.tw-port>.cb-col>.turn{font-size:1.05rem;margin:0;}
+#app.tw-port>.cb-col>.acts{margin:0;}
+#app.tw-port:not(.tw-short) .pbar .span,#app.tw-land:not(.tw-low) .pbar .span{display:block;}
+#app.tw-port.tw-short .pbar{min-height:44px;padding:3px 10px;}
+#app.tw-port.tw-short .pbar .tg b{font-size:1.35rem;}
+#app.tw-port.tw-short .peg{width:26px;height:26px;}
+#app.tw-port.tw-short>.cb-col>.turn{min-height:26px;font-size:.92rem;}
+#app.tw-tall .frame{--rim:18px;}
+#app.tw-tall .pbar{min-height:62px;padding:8px 16px 8px 12px;}
+#app.tw-tall .pbar .nm{font-size:1.1rem;}
+#app.tw-tall .pbar .sub{font-size:.85rem;}
+#app.tw-tall .pbar .tg b{font-size:2rem;}
+#app.tw-tall .peg{width:36px;height:36px;}
+#app.tw-tall .pbar .span{height:10px;}
+#app.tw-land>.cb-col{width:auto;height:var(--bsz);display:grid;grid-template-columns:var(--sw,300px) var(--bsz);
+  grid-template-rows:max-content max-content minmax(0,1fr) max-content max-content;
+  grid-template-areas:"t b" "s b" ". b" "a b" "p b";column-gap:var(--cg,24px);row-gap:10px;justify-content:center;}
+#app.tw-land>.cb-col>.frame{grid-area:b;--rim:clamp(8px,2vh,20px);}
+#app.tw-land>.cb-col>.pbar.top{grid-area:t;}
+#app.tw-land>.cb-col>.pbar.bot{grid-area:p;}
+#app.tw-land>.cb-col>.turn{grid-area:s;justify-self:start;}
+#app.tw-land>.cb-col>.acts{grid-area:a;justify-content:flex-start;flex-wrap:wrap;}
+#app.tw-land:not(.tw-low) .pbar{min-height:58px;}
+#app.tw-land:not(.tw-low) .pbar .tg b{font-size:1.9rem;}
+#app.tw-low>.cb-col{row-gap:6px;}
+#app.tw-low .pbar{min-height:42px;padding:3px 9px;}
+#app.tw-low .peg{width:24px;height:24px;}
+#app.tw-low>.cb-col>.turn{min-height:26px;font-size:.92rem;margin:0;}
+#app.tw-low>.cb-col>.acts .btn{min-height:40px;}
+/* A large window: the room in the column at the left, between whose turn it is and the buttons */
+.room{display:none;}
+#app.tw-land.tw-desk>.cb-col{grid-template-areas:"t b" "s b" "m b" "a b" "p b";}
+#app.tw-land.tw-desk.tw-two>.cb-col{grid-template-columns:var(--sw) var(--rw) var(--bsz);grid-template-rows:max-content max-content minmax(0,1fr) max-content max-content;grid-template-areas:"t m b" "s m b" ". m b" "a m b" "p m b";}
+#app.tw-land.tw-desk>.cb-col>.room{grid-area:m;display:flex;flex-direction:column;gap:12px;min-height:0;overflow:hidden;}
+#app.tw-desk .pbar{min-height:calc(62px * var(--dk,1));padding:calc(8px * var(--dk,1)) calc(16px * var(--dk,1));}
+#app.tw-desk .pbar .nm{font-size:calc(1.05rem * var(--dk,1));}
+#app.tw-desk .pbar .sub{font-size:calc(.8rem * var(--dk,1));}
+#app.tw-desk .pbar .tg b{font-size:calc(1.9rem * var(--dk,1));}
+#app.tw-desk .peg{width:calc(34px * var(--dk,1));height:calc(34px * var(--dk,1));}
+#app.tw-desk .pbar .span{height:calc(10px * var(--dk,1));}
+#app.tw-desk>.cb-col>.turn{font-size:calc(1rem * var(--dk,1));}
+.room .pn{background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);border-radius:18px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-height:0;flex:none;font-size:calc(.92rem * var(--dk,1));}
+.room .pn.mv{flex:0 1 auto;}
+.room h4{margin:0;font-size:.88em;font-weight:800;color:var(--text-3);}
+.room .say{margin:0;font-weight:600;line-height:1.35;}
+.room .say b{font-weight:800;}
+.room .tgt{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:6px 10px;}
+#app .room .tgt .peg{width:1.3em;height:1.3em;}
+.room .tgt .n{font-weight:700;overflow-wrap:anywhere;}
+.room .tgt b{font-family:var(--display);font-size:1.5em;line-height:1;font-variant-numeric:tabular-nums;text-align:right;}
+.room .tgt small{color:var(--text-3);font-weight:700;white-space:nowrap;}
+.room .chart svg{width:100%;height:calc(74px * var(--dk,1));display:block;}
+.room .key{margin:0;font-size:.85em;color:var(--text-3);}
+.room .mvl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;overflow:hidden;min-height:0;}
+.room .mvl li{display:grid;grid-template-columns:2.2em 1.1em minmax(0,1fr) auto;align-items:center;gap:8px;padding:4px 4px;border-radius:9px;}
+.room .mvl li:first-child{background:color-mix(in srgb,var(--lit) 12%,transparent);}
+.room .mvl li .no{color:var(--text-3);font-variant-numeric:tabular-nums;font-weight:700;text-align:right;}
+#app .room .mvl li .peg{width:1em;height:1em;}
+.room .mvl li .who{font-weight:700;overflow-wrap:anywhere;}
+.room .mvl li b{font-variant-numeric:tabular-nums;white-space:nowrap;}
+.room .mvl li .tag{font-size:.8em;font-weight:800;padding:1px 8px;border-radius:999px;white-space:nowrap;background:color-mix(in srgb,var(--lit) 20%,transparent);color:var(--lit-ink);}
+.room .mvl li .tag.blk{background:rgba(255,122,89,.18);color:#ffb39f;}
+.room .mvl li.none{display:block;color:var(--text-3);}
+.room .wins{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;}
+.room .wins li{display:flex;justify-content:space-between;gap:10px;}
+.room .wins li span{font-weight:700;overflow-wrap:anywhere;}
+.frame{view-transition-name:tw-board;}
+.pbar.top{view-transition-name:tw-top;}
+.pbar.bot{view-transition-name:tw-bot;}
+.cb-col>.turn{view-transition-name:tw-turn;}
+.cb-col>.acts{view-transition-name:tw-acts;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.7,.25,1);}
+::view-transition-old(root),::view-transition-new(root){animation:none;}
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app'), C = window.TwixtCore;
+  var SAVE = 'twixt_state', KEY = 'twixt', N = 24, H = N * N;
+  var RED = 1, BLACK = 2;
+  var NUM = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight'];
+  function num(n) { return NUM[n] || String(n); }
+  function cap1(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  var CREDIT = 'Twixt was designed by Alex Randolph.';
+
+  // ── The computer thinks in a Web Worker (twixt-core.js again), or on the page where a worker can't start ──
+  var worker = null, workerOk = true, reqId = 0, pending = null;
+  function getWorker() {
+    if (worker || !workerOk) return worker;
+    try {
+      var url = new URL('twixt-core.js', location.href).href;
+      var src = 'importScripts(' + JSON.stringify(url) + ');onmessage=function(e){var d=e.data;postMessage({id:d.id,res:self.TwixtCore.search(d.st,d.o)});};';
+      worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+      worker.onmessage = function (e) { if (pending && e.data.id === pending.id) { var p = pending; pending = null; p.cb(e.data.res); } };
+      worker.onerror = function () { workerOk = false; worker = null; if (pending) { var p = pending; pending = null; p.cb(C.search(p.st, p.o)); } };
+    } catch (e) { workerOk = false; worker = null; }
+    return worker;
+  }
+  function think(st, o, cb) {
+    var id = ++reqId, w = getWorker();
+    pending = { id: id, cb: cb, st: st, o: o };
+    if (w) w.postMessage({ id: id, st: st, o: o });
+    else setTimeout(function () { if (pending && pending.id === id) { pending = null; cb(C.search(st, o)); } }, 30);
+  }
+  function cancelThink() { pending = null; }
+
+  // ── State ────────────────────────────────────────────────────────────────
+  // S = the core's state (twixt-core.js) and {mode, level, cover, players: [{name, cpu, side}], hist (undo snapshots),
+  //   started, tg: ['13.12', ...] (each side's pegs to go after every move, red's first; x = no way through left),
+  //   ev: ['r2b', ...] (for each move: r/b who moved, how many links it made, b when it blocked), span: {1, 2} (the
+  //   longest chain each side has had, in rows or columns), lo: {1, 2} (how far behind each side has been), offer}
+  var S = null, AIM = -1, HOV = -1;
+  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  var NET = null, LEFT = null, WINO = null, NETREC = {}, SHOWN = 0, OFFERSH = null, HOLD = false;
+  function save() {
+    if (NET) return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S && !S.over) Kit.resume.set(S.n ? 'Move ' + (S.n + 1) : 'Ready');
+  }
+  function clearSave() { if (NET) return; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function pl(side) { return S.players[0].side === side ? S.players[0] : S.players[1]; }
+  function vsCpu() { return S.players.some(function (p) { return p.cpu; }); }
+  function colorName(side) { return side === RED ? 'Red' : 'Black'; }
+  function isMe(p) { return NET ? NET.seat >= 0 && S.players[NET.seat] === p : !p.cpu && vsCpu(); }
+  function nm(p) { return isMe(p) ? 'You' : p.name; }
+  function poss(p) { return isMe(p) ? 'your' : Kit.poss(p.name); }
+  function way(side) { return side === RED ? 'the top to the bottom' : 'the left side to the right'; }
+  function pegCls(side) { return side === RED ? 'r' : 'k'; }
+
+  function rulesHtml() {
+    return '<p class="goal">Join <b>your two border rows</b> with an unbroken chain of your pegs and links. Red joins the top to the bottom, Black the left side to the right.</p>' +
+      '<h3>Your turn</h3><ul><li><b>Red goes first.</b> On your turn, put one peg in any empty hole. The four corner holes aren’t used.</li>' +
+      '<li>Red’s border rows are the top and bottom rows, and Black’s are the left and right columns. You can’t put a peg in the other player’s border rows.</li>' +
+      '<li>Two of your pegs a <b>knight’s move</b> apart (two holes one way and one hole across, as a chess knight moves) are joined by a link at once.</li>' +
+      '<li><b>Links never cross.</b> If a link would cross one already on the board, of either color, it isn’t made. Links stay for the rest of the game.</li>' +
+      '<li>Touch and hold the board to see a hole up close. The ghost peg shows the links it would make, and a red dashed line shows a link that would be blocked. Tap Place, or tap the ghost peg again, to put your peg there.</li></ul>' +
+      '<h3>Swap</h3><ul><li>Red moving first is an advantage, so after Red’s first peg, Black may <b>swap sides</b> instead of placing a peg. That peg stays red and becomes Black’s player’s, the players change colors, and the new Black moves next. You can turn the swap rule off in setup.</li></ul>' +
+      '<h3>Winning</h3><ul><li>The first player whose links join a peg in one of their border rows to a peg in the other wins.</li>' +
+      '<li>If neither player can join their border rows any more, the game is a draw. Players can also agree to a draw from the menu.</li></ul>' +
+      '<h3>Online</h3><ul><li><b>Play online</b> opens a table, and the other player joins on their own device. Take your turn whenever you like: the home screen shows when it’s your move. Each new game at the table swaps colors.</li></ul>' +
+      '<h3>Tips</h3><ul><li>The number on your plate counts the pegs you still need to join your borders.</li>' +
+      '<li>Two of your pegs placed two knight’s moves apart in a straight line are hard to cut off: there are two ways to join them.</li>' +
+      '<li>Block early. A peg a few holes in front of the other player’s chain, joined to one of yours, turns them aside.</li></ul>' +
+      '<p class="src">The first rules of 1962 let you add links when you chose and take your own links away again. This game uses the rules most people play today: links are made at once and never removed.</p>' +
+      '<p class="credit">' + CREDIT + '</p>';
+  }
+
+  Kit.init({
+    id: KEY, mark: false, snap: '.frame', snapY: 0.5,
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } cancelThink(); clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([
+      { icon: 'hand', label: 'Offer a draw', when: function () { return !!(S && S.b && !S.over); }, onClick: function () { offerDraw(); } },
+      { icon: 'flag', label: 'Resign', when: function () { return !!(S && S.b && !S.over); }, onClick: function () { resign(); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Twixt: past games' }); } }]),
+    rules: rulesHtml()
+  });
+
+  function showSetup() {
+    S = null; AIM = HOV = -1;
+    app.classList.remove('ipl', 'tw-land', 'tw-low', 'tw-tall', 'tw-port', 'tw-short', 'tw-desk', 'tw-deskp');
+    Kit.setup(app, {
+      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: '2p', kind: 'local' }]),
+      options: [
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Looks only at its own move, and often picks a weaker one.'], ['normal', 'Normal', 'Looks at your answer and its next move, and blocks your way through.'], ['hard', 'Hard', 'Looks five moves ahead and rarely lets a chain past.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'side', label: 'You play', value: 'r', choices: [['r', 'Red\nMoves first', 'Red always moves first, so you start. You join the top to the bottom.'], ['b', 'Black', 'The computer plays Red and moves first. You join the left side to the right.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'swap', label: 'Swap rule', value: 'on', choices: [['on', 'On', 'After Red’s first peg, Black may swap sides and take that peg, so Red’s first peg is best not too strong.'], ['off', 'Off', 'No swap: Red simply moves first.']] },
+        { id: 'cover', label: 'Hand over between turns', value: 'off', choices: [['off', 'Off', 'Nothing in Twixt is hidden, so the device just goes across the table.'], ['on', 'On', 'A cover names whose turn it is before each move.']], when: function (m) { return m === '2p'; } }
+      ],
+      players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
+      onStart: function (cfg) {
+        var cpu = cfg.mode === 'cpu', hs = cpu && cfg.options.side === 'b' ? BLACK : RED;
+        var pls = cfg.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, side: i === 0 ? hs : 3 - hs }; });
+        newGame({ mode: cfg.mode, level: cfg.options.level || 'normal', swap: cfg.options.swap !== 'off', cover: cfg.options.cover === 'on' && !cpu, players: pls });
+      }
+    });
+    var hero = app.querySelector('.setup-hero');
+    if (hero && !app.querySelector('.tw-credit')) hero.parentNode.insertBefore(el('p', { class: 'tw-credit', text: CREDIT }), hero.nextSibling);
+    // (only where the line doesn't make the setup scroll)
+    requestAnimationFrame(function () { var c = app.querySelector('.tw-credit'); if (c && document.documentElement.scrollHeight > window.innerHeight + 1) c.style.display = 'none'; });
+  }
+  function freshFields(st) {
+    st.hist = []; st.started = Date.now(); st.busy = false;
+    st.tg = [tgStr(st)]; st.ev = []; st.span = { 1: 0, 2: 0 }; st.lo = { 1: 0, 2: 0 }; st.offer = null;
+  }
+  function newGame(o, swap) {
+    cancelThink();
+    var keep = o || { mode: S.mode, level: S.level, swap: S.swap, cover: S.cover, players: S.players };
+    var players = keep.players;
+    if (swap && !players.some(function (p) { return p.cpu; })) players.forEach(function (p) { p.side = 3 - p.side; });
+    // a swapped game ends with the colors traded: a rematch against the computer starts from the setup's colors again
+    S = C.newGame({ swap: keep.swap });
+    S.mode = keep.mode; S.level = keep.level; S.cover = keep.cover; S.players = players;
+    freshFields(S);
+    AIM = HOV = -1;
+    Kit.gameStart(); save(); render(); Kit.sfx('deal');
+    afterTurn();
+  }
+  function tgStr(st) { var g = C.toGo(st); return (g[1] >= 99 ? 'x' : g[1]) + '.' + (g[2] >= 99 ? 'x' : g[2]); }
+  function tgOf(str, side) { var p = String(str || '').split('.'), v = p[side - 1]; return v === 'x' || v == null ? 99 : +v; }
+
+  // ── Moves ────────────────────────────────────────────────────────────────
+  function snap(byCpu) { var c = JSON.parse(JSON.stringify(S)); delete c.hist; return { s: c, cpu: !!byCpu }; }
+  // What a move did, kept for the room, the moments and the history: blocks, chains, how far behind each side was
+  function note(st, res, before) {
+    var side = res.side, opp = 3 - side;
+    var tg = tgStr(st); st.tg.push(tg);
+    if (st.tg.length > 400) st.tg.splice(1, 1);
+    if (res.swap) { st.ev.push((side === RED ? 'r' : 'b') + 's'); return { swap: true }; }
+    var b0 = tgOf(before, opp), b1 = tgOf(tg, opp), m0 = tgOf(before, side), m1 = tgOf(tg, side);
+    var blocked = b1 >= 99 && b0 < 99 || b0 < 99 && b1 - b0 >= 2;
+    var span = C.longest(st, side).span, mile = 0;
+    if (span >= 12 && st.span[side] < 12) mile = 12;
+    if (span >= 18 && st.span[side] < 18) mile = 18;
+    if (span > st.span[side]) st.span[side] = span;
+    [RED, BLACK].forEach(function (sd) { var me = tgOf(tg, sd), them = tgOf(tg, 3 - sd); if (me < 99 && them < 99) st.lo[sd] = Math.min(st.lo[sd], them - me); });
+    st.ev.push((side === RED ? 'r' : 'b') + res.links.length + (blocked ? 'x' : ''));
+    if (st.ev.length > 400) st.ev.splice(0, 1);
+    return { blocked: blocked, sealed: b1 >= 99 && b0 < 99, gain: m0 - m1, span: span, mile: mile, before: b0, after: b1 };
+  }
+  function play(mv, byCpu) {
+    if (!S || S.over) return false;
+    var before = S.tg[S.tg.length - 1], h0 = snap(byCpu);
+    var res = C.play(S, mv);
+    if (!res) return false;
+    S.hist.push(h0);
+    if (S.hist.length > 300) S.hist.shift();
+    S.offer = null;
+    if (res.swap) S.players.forEach(function (p) { p.side = 3 - p.side; });
+    var info = note(S, res, before);
+    AIM = HOV = -1;
+    save();
+    show(res, info);
+    return true;
+  }
+  function moveT(res) { return res.swap ? 700 : 420 + res.links.length * 140; }
+  // Draw the board after a move: the peg drops in, each new link snaps across with a click, and the reward or the end
+  function show(res, info, net) {
+    render({ res: res });
+    var T = moveT(res), who = pl(res.side === undefined ? S.turn : res.side);
+    if (res.swap) {
+      Kit.sfx('whoosh'); Kit.haptic('medium');
+      // the players have traded colors: who took Red's peg
+      var nowRed = pl(RED);
+      setTimeout(function () { Kit.callout('Swapped'); }, 120);
+      setTimeout(function () { Kit.toast(nm(nowRed) === 'You' ? 'You swapped: the red peg is yours, and you play Red now.' : nowRed.name + ' swapped and plays Red now, with that peg.'); }, 700);
+    } else {
+      Kit.sfx('tap'); Kit.haptic('light');
+      res.links.forEach(function (id, i) { setTimeout(function () { Kit.sfx('chip', 0.8); Kit.haptic('light'); }, 300 + i * 140); });
+      reward(res, info, pl(res.side), T);
+    }
+    if (S.over) { setTimeout(function () { if (net) netEnd(); else finish(); }, T + 250); return; }
+    if (res.pass != null) setTimeout(function () { var p = pl(res.pass); Kit.callout(nm(p) === 'You' ? 'You have no hole to play, so you pass' : p.name + ' has no hole to play and passes'); Kit.sfx('bad'); }, T + 100);
+    if (!net) setTimeout(afterTurn, T + 80);
+  }
+  // A good move's reward, where it happens: links snapping in, a block called out, a chain halfway or most of the way
+  function reward(res, info, who, T) {
+    if (!info || S.over) return;
+    var n = nm(who), frame = document.querySelector('.frame');
+    if (info.sealed) setTimeout(function () {
+      Kit.sfx('clash'); Kit.haptic('heavy'); shake(); ripple(res.h, true);
+      var o = pl(3 - res.side);
+      Kit.moment({ title: 'Sealed off', line: (n === 'You' ? 'You' : n) + ' closed the last way through: ' + nm(o).replace(/^You$/, 'you') + ' can’t join ' + (isMe(o) ? 'your' : 'their') + ' borders any more.', icon: 'shield', color: res.side === RED ? '#c42a20' : '#2a2a30', at: frame });
+    }, T);
+    else if (info.blocked) setTimeout(function () {
+      Kit.sfx('clash', 0.7); Kit.haptic('medium'); ripple(res.h, true);
+      Kit.callout(info.after - info.before >= 3 ? 'Big block!' : 'Blocked!');
+    }, T - 60);
+    else if (res.links.length >= 3) setTimeout(function () { Kit.sfx('good'); Kit.callout(cap1(num(res.links.length)) + ' links'); ripple(res.h); }, T);
+    if (info.mile === 18) setTimeout(function () {
+      Kit.sfx('sparkle'); if (isMe(who) || !vsCpu()) Kit.haptic('success');
+      Kit.moment({ title: 'A long chain', line: (n === 'You' ? 'Your' : Kit.poss(n)) + ' chain now reaches across ' + info.span + (res.side === RED ? ' rows' : ' columns') + ' of the 24.', pts: String(info.span), color: res.side === RED ? '#c42a20' : '#2a2a30', at: frame });
+    }, T + 200);
+    else if (info.mile === 12 && !info.blocked) setTimeout(function () { Kit.sfx('good', 0.7); Kit.callout('Halfway across'); }, T + 120);
+  }
+  function shake() { var b = document.querySelector('.bd'); if (!b) return; b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); }
+  function ripple(h, bad) {
+    var g = document.querySelector('.bd .ovl'); if (!g || h < 0) return;
+    var c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('cx', C.colOf(h) + 0.5); c.setAttribute('cy', C.rowOf(h) + 0.5); c.setAttribute('r', '.5');
+    c.setAttribute('class', 'ripple' + (bad ? ' bad' : ''));
+    g.appendChild(c); setTimeout(function () { c.remove(); }, 800);
+  }
+  // After each turn: the hand-over cover between people, or the computer's move
+  function afterTurn() {
+    if (!S || S.over || NET) return;
+    paintStatus();
+    if (pl(S.turn).cpu) return maybeCpu();
+    if (S.cover && !vsCpu() && S.n > 0 && !(Kit.inDemo && Kit.inDemo())) {
+      HOLD = true; paintStatus();
+      var p = pl(S.turn);
+      Kit.handoff({ name: p.name, color: S.turn === RED ? '#d2372c' : '#2b2d33', msg: 'You play ' + colorName(S.turn) + ', joining ' + way(S.turn) + '.', hint: 'Hold for a moment to take your turn', hold: 700 }).then(function () { HOLD = false; paintStatus(); paintActs(); });
+    }
+  }
+
+  // ── The end ──────────────────────────────────────────────────────────────
+  function endLine() {
+    if (S.why === 'stuck') return 'Neither player can join their border rows any more, so the game is a draw.';
+    if (S.why === 'agreed') return 'Both players agreed to a draw.';
+    var w = pl(S.win), l = pl(3 - S.win);
+    if (S.why === 'resign') return (nm(l) === 'You' ? 'You' : l.name) + ' resigned, so ' + (nm(w) === 'You' ? 'you win' : w.name + ' wins') + '.';
+    var k = S.chain ? S.chain.length : 0;
+    return (nm(w) === 'You' ? 'Your' : Kit.poss(w.name)) + ' chain of ' + k + ' pegs joins ' + (S.win === RED ? 'the top to the bottom' : 'the left side to the right') + '.';
+  }
+  function highlights() {
+    var hl = [], w = S.win ? pl(S.win) : null;
+    hl.push(endLine().replace(/\.$/, ''));
+    var blk = { 1: 0, 2: 0 }, best = { 1: 0, 2: 0 };
+    (S.ev || []).forEach(function (e) { var sd = e.charAt(0) === 'r' ? RED : BLACK; if (/x$/.test(e)) blk[sd]++; var k = +e.charAt(1); if (k > best[sd]) best[sd] = k; });
+    if (w && S.why === 'connect') {
+      if (S.lo[S.win] <= -3) hl.push(w.name + ' came back from ' + (-S.lo[S.win]) + ' pegs behind to win');
+      hl.push(w.name + ' won with ' + C.count(S, S.win) + ' pegs on the board');
+    }
+    [RED, BLACK].forEach(function (sd) {
+      var p = pl(sd);
+      if (blk[sd]) hl.push(p.name + ' blocked the other player’s way ' + (blk[sd] === 1 ? 'once' : blk[sd] === 2 ? 'twice' : blk[sd] + ' times'));
+      if (best[sd] >= 3) hl.push(p.name + ' made ' + num(best[sd]) + ' links with one peg');
+      if (S.span[sd] >= 18 && !(S.win === sd && S.why === 'connect')) hl.push(Kit.poss(p.name) + ' longest chain reached across ' + S.span[sd] + (sd === RED ? ' rows' : ' columns'));
+    });
+    if (S.swapped) hl.push('Black swapped sides after Red’s first peg');
+    if (vsCpu()) hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
+    return hl;
+  }
+  function detail() {
+    return { mv: (S.ml || []).join(' '), win: S.win === RED ? 'r' : S.win === BLACK ? 'b' : '', why: S.why || '', swap: S.swap ? 1 : 0,
+      sides: S.players.map(function (p) { return p.side === RED ? 'r' : 'b'; }).join(''), tg: (S.tg || []).join(' '), ev: (S.ev || []).join(' '),
+      chain: (S.chain || []).map(C.name).join(' '), n: S.n, pegs: [C.count(S, RED), C.count(S, BLACK)], span: [S.span[1] || 0, S.span[2] || 0] };
+  }
+  // The winning chain lights from one border to the other, link by link
+  function winWave() {
+    if (!S.chain || !S.chain.length) return 0;
+    var ch = S.chain, step = Math.max(60, Math.min(140, 2400 / ch.length));
+    ch.forEach(function (h, i) {
+      setTimeout(function () {
+        var p = document.querySelector('.bd .pg[data-h="' + h + '"]'); if (p) p.classList.add('won');
+        if (i) { var a = ch[i - 1], ln = document.querySelectorAll('.bd [data-l="' + Math.min(a, h) + '-' + Math.max(a, h) + '"]'); Array.prototype.forEach.call(ln, function (x) { x.classList.add('won'); }); }
+        if (i % 2 === 0) Kit.sfx('tick', 0.5);
+      }, i * step);
+    });
+    return ch.length * step + 300;
+  }
+  function finish() {
+    save(); clearSave(); render();
+    var w = S.win ? pl(S.win) : null;
+    var wave = S.why === 'connect' ? winWave() : 0;
+    Kit.record(KEY, {
+      started: S.started, mode: vsCpu() ? 'vs Computer (' + LEVEL_NAME[S.level] + ')' : 'Pass & play',
+      players: S.players.map(function (p) { return { name: p.name + ' (' + colorName(p.side) + ')', score: S.win === p.side ? 'Joined' : (tgOf(S.tg[S.tg.length - 1], p.side) >= 99 ? 'Cut off' : tgOf(S.tg[S.tg.length - 1], p.side) + ' to go'), cpu: p.cpu }; }),
+      winner: w ? w.name + ' (' + colorName(w.side) + ')' : null,
+      highlights: highlights(), detail: detail()
+    });
+    endShow(w, wave, false);
+  }
+  function endShow(w, wave, net) {
+    setTimeout(function () {
+      if (w && S.why === 'connect') {
+        Kit.sfx('sparkle'); Kit.haptic('success');
+        var wn = nm(w), come = S.lo[S.win] <= -3;
+        Kit.moment({ big: true, title: come ? 'A comeback' : 'Border to border', line: come ? (wn === 'You' ? 'You were ' : wn + ' was ') + (-S.lo[S.win]) + ' pegs behind and still joined ' + (S.win === RED ? 'the top to the bottom.' : 'the left side to the right.') : endLine(), icon: 'trophy', pts: S.chain.length + ' pegs' });
+      } else if (!w) { Kit.sfx('good'); Kit.moment({ title: 'A draw', line: endLine(), icon: 'users', at: document.querySelector('.frame') }); }
+    }, wave);
+    setTimeout(function () {
+      if (net) return netWin(w);
+      var lose = w && w.cpu;
+      Kit.win({
+        icon: !w ? 'users' : lose ? 'bot' : 'trophy',
+        title: !w ? 'It’s a draw' : lose ? w.name + ' wins this one' : nm(w) === 'You' ? 'You win!' : w.name + ' wins!',
+        sub: endLine(),
+        rank: rankRows(),
+        lose: !!lose,
+        again: function () { newGame(null, true); },
+        look: true,
+        setup: function () { cancelThink(); clearSave(); showSetup(); }
+      });
+    }, wave + (w && S.why === 'connect' ? 2600 : 1400));
+  }
+  function rankRows() {
+    var last = S.tg[S.tg.length - 1];
+    return S.players.slice().sort(function (a, c) { return (S.win === c.side) - (S.win === a.side); }).map(function (p) {
+      var g = tgOf(last, p.side);
+      return { name: p.name, me: isMe(p), score: S.win === p.side && S.why === 'connect' ? 'Joined' : g >= 99 ? 'Cut off' : g + ' to go', color: p.side === RED ? '#d2372c' : '#2a2a30' };
+    });
+  }
+  function undo() {
+    if (!S || !S.b) return;
+    if (S.over) return Kit.toast('The game is over');
+    var cpu = vsCpu();
+    if (!S.hist.some(function (h) { return !h.cpu; })) return Kit.toast('Nothing to undo');
+    cancelThink(); S.busy = false;
+    var h, hist = S.hist;
+    while (hist.length) { h = hist.pop(); if (!cpu || !h.cpu) break; }
+    S = h.s; S.hist = hist; S.busy = false; AIM = HOV = -1;
+    Kit.sfx('whoosh'); save(); render(); afterTurn();
+  }
+  function maybeCpu() {
+    if (NET || !S || S.over || !pl(S.turn).cpu || S.busy) return;
+    S.busy = true; paintStatus(); paintActs();
+    var t0 = Date.now(), myN = S.n, L = Object.assign({}, C.LEVELS[S.level] || C.LEVELS.normal, { seed: Math.floor(Math.random() * 1e9) });
+    var st = { b: S.b, lk: S.lk, turn: S.turn, n: S.n, swap: S.swap, swapped: S.swapped, ml: S.ml, over: S.over };
+    think(st, L, function (res) {
+      if (!S || S.n !== myN) return;
+      setTimeout(function () {
+        if (!S || S.n !== myN) return;
+        S.busy = false;
+        if (res && res.move != null) play(res.move, true);
+      }, Math.max(0, 700 - (Date.now() - t0)));
+    });
+  }
+  function resign() {
+    if (!S || !S.b || S.over) return;
+    if (NET) return netResign();
+    var side = vsCpu() ? S.players.filter(function (p) { return !p.cpu; })[0].side : S.turn, p = pl(side);
+    Kit.confirm((vsCpu() ? 'Resign this game?' : p.name + ' resigns?'), { ok: 'Resign', danger: true, body: pl(3 - side).name + ' will win this game.' }).then(function (ok) {
+      if (!ok) return; cancelThink(); S.busy = false; C.end(S, 'resign', 3 - side); finish();
+    });
+  }
+  function offerDraw() {
+    if (!S || !S.b || S.over) return;
+    if (NET) return netOfferDraw();
+    if (vsCpu()) {
+      // the computer agrees when it isn't ahead
+      var cpu = S.players.filter(function (p) { return p.cpu; })[0], g = S.tg[S.tg.length - 1], mine = tgOf(g, cpu.side), yours = tgOf(g, 3 - cpu.side);
+      if (S.n < 12) { Kit.toast(cpu.name + ' wants to play on for now'); return; }
+      if (mine < 99 && mine <= yours) { Kit.toast(cpu.name + ' thinks it can still get through, and plays on'); Kit.sfx('bad'); return; }
+      cancelThink(); S.busy = false; C.end(S, 'agreed', 0); finish(); return;
+    }
+    var other = pl(3 - S.turn);
+    Kit.confirm(other.name + ', do you agree to a draw?', { ok: 'Agree to a draw', body: Kit.poss(pl(S.turn).name) + ' offer. The game ends as a draw if ' + other.name + ' agrees.' }).then(function (ok) {
+      if (ok) { C.end(S, 'agreed', 0); finish(); }
+    });
+  }
+
+  // ── The board ────────────────────────────────────────────────────────────
+  // One SVG in board units (a hole's middle at c + .5, r + .5), margin M round it for the letters and numbers at a desk
+  var bdEl, svgEl, gPcs, gOvl, loupeEl, topBar, botBar, turnEl, actsEl, roomEl, lastTg = {}, M = 0.3, LABELS = false;
+  function bottomSide() { if (NET) return NET.seat >= 0 ? S.players[NET.seat].side : RED; return vsCpu() ? S.players.filter(function (p) { return !p.cpu; })[0].side : RED; }
+  function canAct() { return S && !S.over && !S.busy && !HOLD && (NET ? !LEFT && NET.myTurn() : !pl(S.turn).cpu); }
+  function cx(h) { return C.colOf(h) + 0.5; }
+  function cy(h) { return C.rowOf(h) + 0.5; }
+  function baseSvg() {
+    var s = '<defs>' +
+      '<radialGradient id="twR" cx=".36" cy=".3" r=".8"><stop offset="0" stop-color="#ffb0a0"/><stop offset=".22" stop-color="#e8443a"/><stop offset=".7" stop-color="#a71d15"/><stop offset="1" stop-color="#5c0b07"/></radialGradient>' +
+      '<radialGradient id="twK" cx=".36" cy=".3" r=".8"><stop offset="0" stop-color="#a4a5ae"/><stop offset=".22" stop-color="#44454d"/><stop offset=".7" stop-color="#18181c"/><stop offset="1" stop-color="#040405"/></radialGradient>' +
+      '<linearGradient id="twM" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ecdcb4"/><stop offset=".5" stop-color="#e2cc9c"/><stop offset="1" stop-color="#d4b882"/></linearGradient>' +
+      '<pattern id="twG" width="3" height=".6" patternUnits="userSpaceOnUse" patternTransform="rotate(-4)"><rect width="3" height=".6" fill="none"/><path d="M0 .3h3" stroke="rgba(120,72,20,.07)" stroke-width=".05"/></pattern>' +
+      '</defs>';
+    var lo = -M, wd = N + 2 * M;
+    s += '<g id="tw-all"><rect x="' + lo + '" y="' + lo + '" width="' + wd + '" height="' + wd + '" rx=".25" fill="url(#twM)"/><rect x="' + lo + '" y="' + lo + '" width="' + wd + '" height="' + wd + '" fill="url(#twG)"/>';
+    // the border rows: Red's along the top and bottom, Black's down the sides, each ruled off by a line in its color
+    s += '<rect x="1" y="0" width="22" height="1" fill="rgba(210,50,40,.17)"/><rect x="1" y="23" width="22" height="1" fill="rgba(210,50,40,.17)"/>' +
+      '<rect x="0" y="1" width="1" height="22" fill="rgba(20,20,26,.15)"/><rect x="23" y="1" width="1" height="22" fill="rgba(20,20,26,.15)"/>' +
+      '<g class="bln" stroke-width=".09" stroke-linecap="round"><path d="M1 1H23M1 23H23" stroke="#c42a20"/><path d="M1 1V23M23 1V23" stroke="#1d1d22"/></g>';
+    var holes = '';
+    for (var h = 0; h < H; h++) { if (C.CORNER[h]) continue; holes += '<circle cx="' + cx(h) + '" cy="' + cy(h) + '" r=".13"/>'; }
+    s += '<g fill="#3b2612" opacity=".62">' + holes + '</g><g fill="none" stroke="rgba(255,250,235,.5)" stroke-width=".025" transform="translate(.02 .03)">' + holes.replace(/r="\.13"/g, 'r=".14"') + '</g>';
+    if (LABELS) {
+      var t = '';
+      for (var c = 0; c < N; c++) { t += '<text x="' + (c + 0.5) + '" y="' + (-M * 0.45) + '">' + C.COLS.charAt(c) + '</text><text x="' + (c + 0.5) + '" y="' + (N + M * 0.5) + '">' + C.COLS.charAt(c) + '</text>'; }
+      for (var r = 0; r < N; r++) { t += '<text x="' + (-M * 0.5) + '" y="' + (r + 0.5) + '">' + (r + 1) + '</text><text x="' + (N + M * 0.5) + '" y="' + (r + 0.5) + '">' + (r + 1) + '</text>'; }
+      s += '<g font-size=".42" font-weight="700" fill="rgba(70,40,12,.6)" text-anchor="middle" dominant-baseline="central" style="font-family:var(--display,system-ui)">' + t + '</g>';
+    }
+    s += '<g class="pcs"></g><g class="ovl"></g></g>';
+    // the holes to tap (one circle each, so a demo's finger has something to press)
+    var hz = '';
+    for (h = 0; h < H; h++) if (!C.CORNER[h]) hz += '<circle class="hz" data-h="' + h + '" cx="' + cx(h) + '" cy="' + cy(h) + '" r=".5"/>';
+    s += '<g class="hzs">' + hz + '</g>';
+    return s;
+  }
+  function linkSvg(id, cls, extra) {
+    var e = C.ends(id), a = e[0], b = e[1], side = S.b[a], col = side === RED ? '#a51b14' : '#141418', hi = side === RED ? '#f17a6e' : '#6b6c76';
+    var key = Math.min(a, b) + '-' + Math.max(a, b);
+    return '<line class="lk ' + (cls || '') + '" data-l="' + key + '" x1="' + cx(a) + '" y1="' + cy(a) + '" x2="' + cx(b) + '" y2="' + cy(b) + '" stroke="' + col + '" stroke-width=".26" stroke-linecap="round"' + (extra || '') + '/>' +
+      '<line class="lkh ' + (cls || '') + '" data-l="' + key + '" x1="' + cx(a) + '" y1="' + (cy(a) - 0.04) + '" x2="' + cx(b) + '" y2="' + (cy(b) - 0.04) + '" stroke="' + hi + '" stroke-width=".07" stroke-linecap="round"' + (extra || '') + '/>';
+  }
+  function pegSvg(h, side, cls) {
+    var x = cx(h), y = cy(h);
+    return '<g class="pg ' + (cls || '') + '" data-h="' + h + '"><circle cx="' + x + '" cy="' + (y + 0.08) + '" r=".36" fill="rgba(0,0,0,.38)"/>' +
+      '<circle class="pb" cx="' + x + '" cy="' + y + '" r=".34" fill="url(#tw' + (side === RED ? 'R' : 'K') + ')"/>' +
+      '<ellipse cx="' + (x - 0.1) + '" cy="' + (y - 0.13) + '" rx=".12" ry=".065" fill="rgba(255,255,255,' + (side === RED ? '.55' : '.38') + ')" transform="rotate(-28 ' + (x - 0.1) + ' ' + (y - 0.13) + ')"/></g>';
+  }
+  function paintPieces(anim) {
+    if (!gPcs) return;
+    var res = anim && anim.res, fresh = {}, s = '', p = '';
+    if (res && res.links) res.links.forEach(function (id) { fresh[id] = 1; });
+    S.lk.forEach(function (id) {
+      if (!fresh[id]) { s += linkSvg(id); return; }
+      // a new link draws from the new peg outward
+      var e = C.ends(id), from = e[0] === res.h ? e[0] : e[1], to = from === e[0] ? e[1] : e[0], k = res.links.indexOf(id);
+      var col = res.side === RED ? '#a51b14' : '#141418', hi = res.side === RED ? '#f17a6e' : '#6b6c76', key = Math.min(from, to) + '-' + Math.max(from, to), dl = ' style="animation-delay:' + (300 + k * 140) + 'ms"';
+      s += '<line class="lk snap" data-l="' + key + '" x1="' + cx(from) + '" y1="' + cy(from) + '" x2="' + cx(to) + '" y2="' + cy(to) + '" stroke="' + col + '" stroke-width=".26" stroke-linecap="round"' + dl + '/>' +
+        '<line class="lkh snap" data-l="' + key + '" x1="' + cx(from) + '" y1="' + (cy(from) - 0.04) + '" x2="' + cx(to) + '" y2="' + (cy(to) - 0.04) + '" stroke="' + hi + '" stroke-width=".07" stroke-linecap="round"' + dl + '/>';
+    });
+    for (var h = 0; h < H; h++) if (S.b[h]) p += pegSvg(h, S.b[h], res && res.h === h ? 'drop' : '');
+    gPcs.innerHTML = s + p;
+    paintOverlay();
+  }
+  // The overlay: the last peg ringed, and the ghost peg where a person aims with the links it would make (bright) and
+  // the ones a link on the board would block (dashed red, crossed where the other link lies)
+  function paintOverlay() {
+    if (!gOvl) return;
+    var s = '';
+    if (S.last && S.last.h != null && !S.over) s += '<circle class="lastr" cx="' + cx(S.last.h) + '" cy="' + cy(S.last.h) + '" r=".5"/>';
+    var h = AIM >= 0 ? AIM : HOV;
+    if (h >= 0 && canAct() && S.b[h] === 0) {
+      var side = S.turn, ok = C.playable(h, side);
+      if (ok) {
+        var w = C.wouldLink(S, h, side), col = side === RED ? '#e0352b' : '#26262c';
+        w.make.forEach(function (x) { s += '<line class="pv" x1="' + cx(h) + '" y1="' + cy(h) + '" x2="' + cx(x.h) + '" y2="' + cy(x.h) + '" stroke="' + col + '" stroke-width=".2" stroke-linecap="round" opacity=".85"/>'; });
+        w.blocked.forEach(function (x) {
+          s += '<line x1="' + cx(h) + '" y1="' + cy(h) + '" x2="' + cx(x.h) + '" y2="' + cy(x.h) + '" stroke="#ff5a3c" stroke-width=".07" stroke-dasharray=".14 .1" stroke-linecap="round"/>';
+          var p = meet(h, x.h, x.by);
+          if (p) s += '<g stroke="#ff5a3c" stroke-width=".09" stroke-linecap="round"><path d="M' + (p[0] - 0.13) + ' ' + (p[1] - 0.13) + 'l.26 .26M' + (p[0] + 0.13) + ' ' + (p[1] - 0.13) + 'l-.26 .26"/></g>';
+        });
+        s += '<g class="ghost" opacity=".88">' + pegSvg(h, side, '') + '</g>';
+        if (AIM >= 0) s += '<circle cx="' + cx(h) + '" cy="' + cy(h) + '" r=".6" fill="rgba(255,215,90,.18)" stroke="#ffd75a" stroke-width=".09"/>';
+      } else {
+        s += '<g stroke="#ff5a3c" stroke-width=".1" stroke-linecap="round"><path d="M' + (cx(h) - 0.22) + ' ' + (cy(h) - 0.22) + 'l.44 .44M' + (cx(h) + 0.22) + ' ' + (cy(h) - 0.22) + 'l-.44 .44"/></g>';
+      }
+    }
+    gOvl.innerHTML = s;
+  }
+  // where the would-be link a-b meets the link id on the board
+  function meet(a, b, id) {
+    var e = C.ends(id), x1 = cx(a), y1 = cy(a), x2 = cx(b), y2 = cy(b), x3 = cx(e[0]), y3 = cy(e[0]), x4 = cx(e[1]), y4 = cy(e[1]);
+    var d = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4); if (!d) return null;
+    var t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / d;
+    return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)];
+  }
+  function render(anim) {
+    if (!S || !S.b) return;
+    app.innerHTML = ''; app.classList.add('ipl');
+    var col = el('div', { class: 'cb-col' });
+    topBar = el('div', { class: 'pbar top' }); botBar = el('div', { class: 'pbar bot' });
+    var frame = el('div', { class: 'frame' });
+    bdEl = el('div', { class: 'bd', role: 'grid', 'aria-label': 'Twixt board' });
+    loupeEl = el('div', { class: 'loupe', 'aria-hidden': 'true' });
+    frame.appendChild(bdEl); frame.appendChild(loupeEl);
+    col.appendChild(topBar); col.appendChild(frame); col.appendChild(botBar);
+    turnEl = el('div', { class: 'turn' }); col.appendChild(turnEl);
+    actsEl = el('div', { class: 'acts' }); col.appendChild(actsEl);
+    roomEl = el('div', { class: 'room', 'aria-label': 'This game and past games' }); col.appendChild(roomEl);
+    app.appendChild(col);
+    paintStatus(); paintActs();
+    fit();
+    buildBoard();
+    paintPieces(anim);
+    wireBoard();
+    // (the first frame after the setup can measure the page before it settles)
+    requestAnimationFrame(function () { if (app.classList.contains('ipl')) fit(); });
+  }
+  function buildBoard() {
+    var vb = (-M) + ' ' + (-M) + ' ' + (N + 2 * M) + ' ' + (N + 2 * M);
+    bdEl.innerHTML = '<svg viewBox="' + vb + '" aria-hidden="true">' + baseSvg() + '</svg>';
+    svgEl = bdEl.firstChild; gPcs = svgEl.querySelector('.pcs'); gOvl = svgEl.querySelector('.ovl');
+    loupeEl.innerHTML = '<svg viewBox="0 0 7 7"><use href="#tw-all"/></svg>';
+  }
+  // ── Aiming and placing ───────────────────────────────────────────────────
+  // A mouse: the ghost peg follows the pointer and a click places it. A finger: touching the board shows the loupe (the
+  // holes under the finger, three times larger, above it) and the ghost with its links; letting go leaves the ghost
+  // there, and Place, or a tap on the ghost, puts the peg in. A tap elsewhere moves the ghost.
+  function holeAt(x, y) {
+    var r = svgEl.getBoundingClientRect(), k = (N + 2 * M) / r.width;
+    var u = (x - r.left) * k - M, v = (y - r.top) * k - M;
+    var c = Math.floor(u), rr = Math.floor(v);
+    if (c < 0 || c >= N || rr < 0 || rr >= N) return -1;
+    var h = rr * N + c;
+    return C.CORNER[h] ? -1 : h;
+  }
+  var PRESS = null, SUPPRESS = 0;
+  function wireBoard() {
+    bdEl.addEventListener('pointermove', function (e) {
+      if (e.pointerType === 'mouse' && !PRESS) { var h = holeAt(e.clientX, e.clientY); if (h !== HOV) { HOV = h; if (AIM < 0) paintOverlay(); } return; }
+      if (!PRESS || e.pointerId !== PRESS.id) return;
+      var h2 = holeAt(e.clientX, e.clientY);
+      if (Math.hypot(e.clientX - PRESS.x, e.clientY - PRESS.y) > 6) PRESS.moved = true;
+      if (h2 >= 0 && h2 !== AIM) { AIM = h2; paintOverlay(); Kit.haptic('tick'); }
+      loupe(e.clientX, e.clientY);
+    });
+    bdEl.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse' && HOV >= 0) { HOV = -1; paintOverlay(); } });
+    bdEl.addEventListener('pointerdown', function (e) {
+      if (!canAct()) { if (S && !S.over && NET && !NET.myTurn()) { Kit.haptic('error'); Kit.toast('It’s ' + Kit.poss(pl(S.turn).name) + ' turn'); } return; }
+      var h = holeAt(e.clientX, e.clientY); if (h < 0) return;
+      if (e.pointerType === 'mouse') return;   // (a mouse places on click)
+      e.preventDefault();
+      try { bdEl.setPointerCapture(e.pointerId); } catch (x) {}
+      PRESS = { id: e.pointerId, x: e.clientX, y: e.clientY, was: AIM, h: h, moved: false, t: Date.now() };
+      // a tap on the ghost itself places it; anywhere else aims there
+      if (AIM === h) return;
+      AIM = h; paintOverlay(); paintActs(); paintStatus(); Kit.sfx('tick', 0.4);
+      PRESS.lt = setTimeout(function () { if (PRESS) loupe(PRESS.x, PRESS.y); }, 160);
+    });
+    function up(e) {
+      if (!PRESS || e.pointerId !== PRESS.id) return;
+      var p = PRESS; PRESS = null; clearTimeout(p.lt); loupe(null);
+      SUPPRESS = Date.now() + 400;
+      if (e.type === 'pointercancel') return;
+      if (p.was >= 0 && p.was === p.h && !p.moved) { place(p.was); return; }
+      paintActs(); paintStatus();
+    }
+    bdEl.addEventListener('pointerup', up); bdEl.addEventListener('pointercancel', up);
+    bdEl.addEventListener('click', function (e) {
+      if (Date.now() < SUPPRESS) return;
+      if (!canAct()) return;
+      var h = holeAt(e.clientX, e.clientY); if (h < 0) return;
+      // a click without a pointer press first (a mouse, or keys): place at once
+      place(h);
+    });
+  }
+  function loupe(x, y) {
+    if (!loupeEl) return;
+    if (x == null || AIM < 0) { loupeEl.classList.remove('on'); return; }
+    var fr = loupeEl.parentNode.getBoundingClientRect(), sz = Math.round(Math.max(110, Math.min(170, fr.width * 0.36)));
+    loupeEl.style.setProperty('--ls', sz + 'px');
+    var lx = x - fr.left - sz / 2, ly = y - fr.top - sz - 48;
+    if (ly < -fr.top + 4) ly = y - fr.top + 44;   // (no room above the finger: below it)
+    lx = Math.max(-fr.left + 4, Math.min(window.innerWidth - fr.left - sz - 4, lx));
+    loupeEl.style.left = lx + 'px'; loupeEl.style.top = ly + 'px';
+    var u = loupeEl.querySelector('svg');
+    if (u) u.setAttribute('viewBox', (cx(AIM) - 3.5) + ' ' + (cy(AIM) - 3.5) + ' 7 7');
+    loupeEl.classList.add('on');
+  }
+  function place(h) {
+    if (!canAct() || h < 0) return;
+    if (S.b[h]) { Kit.haptic('error'); Kit.toast('That hole already has a peg'); AIM = -1; paintOverlay(); paintActs(); return; }
+    if (!C.playable(h, S.turn)) {
+      Kit.haptic('error');
+      Kit.toast(S.turn === RED ? 'The left and right columns are Black’s border rows. Red can’t play there.' : 'The top and bottom rows are Red’s border rows. Black can’t play there.');
+      AIM = -1; paintOverlay(); paintActs(); return;
+    }
+    AIM = HOV = -1;
+    if (NET) return netMove(h);
+    play(h);
+  }
+  function swapNow() {
+    if (!canAct() || !C.canSwap(S)) return;
+    AIM = -1;
+    if (NET) return netMove('swap');
+    play('swap');
+  }
+
+  // ── The plates, the turn and the buttons ─────────────────────────────────
+  function bar(node, side) {
+    var p = pl(side), on = !S.over && S.turn === side, last = S.tg[S.tg.length - 1], g = tgOf(last, side);
+    node.className = 'pbar ' + (node === topBar ? 'top' : 'bot') + (on ? ' on' : '');
+    var sub = on && p.cpu && S.busy ? '<span class="think">Thinking <i></i><i></i><i></i></span>' : on ? (NET && isMe(p) ? 'Your move as ' + colorName(side) : colorName(side) + ' to move') : colorName(side) + (side === RED ? ' joins the top and bottom' : ' joins the two sides');
+    if (S.over && S.win === side) sub = 'Won the game';
+    node.innerHTML = '';
+    node.appendChild(el('span', { class: 'peg ' + pegCls(side) }));
+    node.appendChild(el('div', { class: 'who' }, [el('span', { class: 'nm', html: (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(nm(p) === 'You' && NET ? 'You' : p.name) + '</span>' }), el('span', { class: 'sub', html: sub })]));
+    var done = S.over && S.win === side && S.why === 'connect';
+    var b = el('b', { text: done ? '0' : g >= 99 ? '–' : String(g) });
+    if (lastTg[side] != null && g < lastTg[side]) b.classList.add('bump');
+    lastTg[side] = g;
+    node.appendChild(el('div', { class: 'tg' + (done ? ' done' : ''), 'aria-label': done ? 'Joined' : g >= 99 ? 'No way through' : g + ' pegs to go' }, [b, el('small', { text: done ? 'Joined' : g >= 99 ? 'cut off' : 'to go' })]));
+    // the longest chain, as a bar across the board's width (rows for Red, columns for Black)
+    var L = C.longest(S, side), sp = el('div', { class: 'span', 'aria-hidden': 'true' });
+    sp.appendChild(el('em', { style: { left: 'calc(50% - 1px)' } }));
+    if (L.span) sp.appendChild(el('i', { class: pegCls(side), style: { left: (L.from / N * 100) + '%', width: (L.span / N * 100) + '%' } }));
+    node.appendChild(sp);
+  }
+  function paintStatus() {
+    if (!turnEl || !S) return;
+    var bs = bottomSide(); bar(topBar, 3 - bs); bar(botBar, bs);
+    var p = pl(S.turn);
+    turnEl.innerHTML = ''; turnEl.style.setProperty('--c', S.turn === RED ? '#ec5146' : '#c9c9d2');
+    if (NET && LEFT) { turnEl.appendChild(el('span', { text: LEFT.text || 'The other player left' })); return; }
+    if (S.over) { turnEl.appendChild(el('span', { text: S.win ? (nm(pl(S.win)) === 'You' ? 'You win' : pl(S.win).name + ' wins') : 'A draw' })); return; }
+    turnEl.appendChild(el('span', { class: 'dot' }));
+    var txt, me = NET ? isMe(p) : !p.cpu;
+    if (NET && !isMe(p)) txt = 'Waiting for ' + p.name;
+    else if (p.cpu) txt = p.name + ' is thinking…';
+    else if (HOLD) txt = 'Pass the device to ' + p.name;
+    else if (AIM >= 0) txt = C.playable(AIM, S.turn) && !S.b[AIM] ? 'Tap Place, or tap the ghost peg again' : 'That hole can’t take your peg';
+    else if (C.canSwap(S)) txt = (NET || vsCpu() ? 'Place a peg, or swap sides' : Kit.poss(p.name) + ' turn: place a peg, or swap sides');
+    else txt = (NET || vsCpu() ? 'Your turn: ' : Kit.poss(p.name) + ' turn: ') + 'join ' + way(S.turn);
+    if (S.last && S.last.swap && AIM < 0 && me) txt = 'The players swapped. ' + txt;
+    turnEl.appendChild(el('span', { text: txt }));
+    paintRoom();
+  }
+  function paintActs() {
+    if (!actsEl || !S) return;
+    actsEl.innerHTML = '';
+    var b = function (cls, ic, label, fn) { return el('button', { type: 'button', class: 'btn ' + cls + ' btn-sm', html: (ic ? Kit.icon(ic) : '') + '<span>' + label + '</span>', onclick: fn }); };
+    if (NET) {
+      if (S.over || LEFT) actsEl.appendChild(b('btn-primary', '', LEFT ? 'Back to the lobby' : 'Play again', netAgain));
+      else if (AIM >= 0 && canAct()) actsEl.appendChild(b('btn-primary place', 'check', 'Place', function () { place(AIM); }));
+      else if (canAct() && C.canSwap(S)) actsEl.appendChild(b('btn-soft', 'swap', 'Swap sides', swapNow));
+      return;
+    }
+    if (S.over) { actsEl.appendChild(b('btn-primary', '', 'Play again', function () { newGame(null, true); })); return; }
+    if (AIM >= 0 && canAct()) { actsEl.appendChild(b('btn-soft', 'close', 'Cancel', function () { AIM = -1; paintOverlay(); paintActs(); paintStatus(); })); actsEl.appendChild(b('btn-primary place', 'check', 'Place', function () { place(AIM); })); return; }
+    actsEl.appendChild(b('btn-soft', 'undo', 'Undo', undo));
+    if (canAct() && C.canSwap(S)) actsEl.appendChild(b('btn-soft', 'swap', 'Swap sides', swapNow));
+  }
+
+  // ── The room at a desk ───────────────────────────────────────────────────
+  // The last move in words, each side's pegs to go with the race move by move, the moves so far, past games here
+  function lastSay() {
+    if (!S.ml.length) return 'Red places the first peg.';
+    var i = S.ml.length - 1, m = S.ml[i], e = S.ev[S.ev.length - 1] || '', side = e.charAt(0) === 'r' ? RED : BLACK, who = nm(pl(side));
+    if (m === 'swap') return (who === 'You' ? 'You' : who) + ' swapped sides and took the red peg.';
+    var k = +e.charAt(1) || 0, blk = /x$/.test(e);
+    return (who === 'You' ? 'You' : who) + ' placed a peg at ' + m + (k ? ', making ' + num(k) + (k === 1 ? ' link' : ' links') : '') + (blk ? ', and blocked ' + poss(pl(3 - side)) + ' way through' : '') + '.';
+  }
+  function paintRoom() {
+    if (!roomEl || !app.classList.contains('tw-desk') || !app.classList.contains('tw-land')) { if (roomEl) roomEl.innerHTML = ''; return; }
+    roomEl.innerHTML = '';
+    roomEl.appendChild(el('section', { class: 'pn lm' }, [el('h4', { text: 'Last move' }), el('p', { class: 'say', text: lastSay() })]));
+    // pegs to go, side by side, and the race move by move (lower is closer)
+    var last = S.tg[S.tg.length - 1], race = el('section', { class: 'pn rc', 'data-give': '1' }, [el('h4', { text: 'Pegs to go' })]);
+    var grid = el('div', { class: 'tgt' });
+    [RED, BLACK].forEach(function (sd) {
+      var g = tgOf(last, sd), L = C.longest(S, sd);
+      grid.appendChild(el('span', { class: 'peg ' + pegCls(sd) }));
+      grid.appendChild(el('span', { class: 'n', text: nm(pl(sd)) }));
+      grid.appendChild(el('small', { text: L.span ? 'Chain ' + L.span + (sd === RED ? ' rows' : ' columns') : 'No chain yet' }));
+      grid.appendChild(el('b', { text: S.over && S.win === sd && S.why === 'connect' ? '0' : g >= 99 ? '–' : String(g) }));
+    });
+    race.appendChild(grid);
+    var tg = S.tg || [];
+    if (tg.length > 2) {
+      var fin = []; tg.forEach(function (x) { [RED, BLACK].forEach(function (sd) { var v = tgOf(x, sd); if (v < 99) fin.push(v); }); });
+      var hi = Math.max.apply(null, fin.concat([4])) + 1, Wd = 300, Hd = 74, P = 6;
+      var vr = tg.map(function (x) { return Math.min(hi, tgOf(x, RED)); }), vb = tg.map(function (x) { return Math.min(hi, tgOf(x, BLACK)); });
+      var px = function (i) { return P + i * (Wd - 2 * P) / Math.max(1, tg.length - 1); }, py = function (v) { return P + (1 - v / hi) * (Hd - 2 * P); };
+      var line = function (v, c, w) { return '<polyline fill="none" stroke="' + c + '" stroke-width="' + w + '" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" points="' + v.map(function (y, i) { return px(i).toFixed(1) + ',' + py(y).toFixed(1); }).join(' ') + '"/>'; };
+      var svg = '<svg viewBox="0 0 ' + Wd + ' ' + Hd + '" preserveAspectRatio="none" aria-hidden="true"><line x1="' + P + '" x2="' + (Wd - P) + '" y1="' + (Hd - P) + '" y2="' + (Hd - P) + '" stroke="rgba(255,214,90,.55)" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>' +
+        line(vb, '#9b9ca6', 2.5) + line(vr, '#ec5146', 2.5) + '</svg>';
+      race.appendChild(el('div', { class: 'chart', html: svg }));
+      race.appendChild(el('p', { class: 'key', text: 'Move by move, the lower a line, the fewer pegs that side still needs. The dashed line is joined; a line at the top is cut off.' }));
+    }
+    roomEl.appendChild(race);
+    // the moves, newest first
+    var mv = el('section', { class: 'pn mv' }, [el('h4', { text: 'Moves' })]), list = el('ol', { class: 'mvl' });
+    if (!S.ml.length) list.appendChild(el('li', { class: 'none', text: 'No pegs yet. Red moves first.' }));
+    for (var i = S.ml.length - 1; i >= 0; i--) {
+      var e = S.ev[i - (S.ml.length - S.ev.length)] || '', sd = e.charAt(0) === 'r' ? RED : BLACK, k = +e.charAt(1) || 0, m = S.ml[i];
+      var tag = m === 'swap' ? el('span', { class: 'tag', text: 'Swap' }) : /x$/.test(e) ? el('span', { class: 'tag blk', text: 'Block' }) : k ? el('span', { class: 'tag', text: k + (k === 1 ? ' link' : ' links') }) : el('span');
+      list.appendChild(el('li', null, [el('span', { class: 'no', text: String(i + 1) }), el('i', { class: 'peg ' + pegCls(sd) }), el('span', { class: 'who', text: m === 'swap' ? nm(pl(sd)) : nm(pl(sd)) + ' ' + m }), tag]));
+      if (list.children.length > 60) break;
+    }
+    mv.appendChild(list); roomEl.appendChild(mv);
+    // past games on this device
+    var past = []; try { past = (GameHistory.load(KEY) || []).slice(); } catch (x) {}
+    if (past.length) {
+      var wins = {}, names = [];
+      past.forEach(function (g) { var w = String(g.winner || '').replace(/ \((Red|Black)\)$/, ''); if (!w) return; if (!wins[w]) { wins[w] = 0; names.push(w); } wins[w]++; });
+      names.sort(function (a, c) { return wins[c] - wins[a]; });
+      var pg = el('section', { class: 'pn pg', 'data-give': '2' }, [el('h4', { text: 'Past games here' })]), wl = el('ul', { class: 'wins' });
+      names.slice(0, 4).forEach(function (n) { wl.appendChild(el('li', null, [el('span', { text: n }), el('b', { text: wins[n] + (wins[n] === 1 ? ' win' : ' wins') })])); });
+      var draws = past.filter(function (g) { return !g.winner; }).length;
+      if (draws) wl.appendChild(el('li', null, [el('span', { text: 'Draws' }), el('b', { text: String(draws) })]));
+      pg.appendChild(wl); roomEl.appendChild(pg);
+    }
+    // give up whole parts until it fits: the oldest moves down to six, past games, the chart, then the oldest moves
+    var over = function () { return roomEl.scrollHeight > roomEl.clientHeight + 1 || list.scrollHeight > list.clientHeight + 1; };
+    while (over() && list.children.length > 6) list.removeChild(list.lastChild);
+    ['2', '1'].forEach(function (k) { if (over()) { var n = roomEl.querySelector('[data-give="' + k + '"]'); if (n) { var ch = n.querySelector('.chart'), ky = n.querySelector('.key'); if (k === '1' && ch) { ch.remove(); if (ky) ky.remove(); if (over()) n.remove(); } else n.remove(); } } });
+    while (over() && list.children.length > 1) list.removeChild(list.lastChild);
+    if (over()) roomEl.innerHTML = '';
+  }
+
+  // ── Sizes for the shape of the screen ────────────────────────────────────
+  function deskWin() {
+    if (Kit.inDemo && Kit.inDemo()) return false;
+    var W = window.innerWidth, Hh = window.innerHeight;
+    return W >= 480 && Hh > 520 && (Math.max(W, Hh) > 1024 || Math.min(W, Hh) > 768);
+  }
+  function fit() {
+    var col = app.querySelector('.cb-col'); if (!col || !app.classList.contains('ipl')) return;
+    var W = window.innerWidth, Hh = window.innerHeight, land = W > Hh, low = land && Hh < 560;
+    app.classList.toggle('tw-land', land); app.classList.toggle('tw-low', low); app.classList.toggle('tw-tall', !land && W >= 700);
+    app.classList.toggle('tw-port', !land); app.classList.toggle('tw-short', !land && Hh < 640);
+    var desk = deskWin(); app.classList.toggle('tw-desk', !!desk); app.classList.toggle('tw-deskp', !!desk && !land);
+    app.style.setProperty('--dk', desk ? Math.max(1, Math.min(1.45, W / 1600, Hh / 1050)).toFixed(3) : '1');
+    var top = app.getBoundingClientRect().top + (window.scrollY || 0);
+    app.style.setProperty('--avh', Math.max(300, Hh - top) + 'px');
+    var cs = getComputedStyle(app), iw = app.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), ih = app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    var bsz;
+    if (land) {
+      var sw = low ? Math.min(250, Math.max(205, W * 0.27)) : Math.min(330, Math.max(250, W * 0.28)), cg = low ? 16 : 26;
+      if (desk) { sw = Math.round(Math.min(560, Math.max(300, W * 0.25))); cg = 36; }
+      app.style.setProperty('--sw', sw + 'px'); app.style.setProperty('--cg', cg + 'px');
+      bsz = Math.floor(Math.max(200, Math.min(ih, iw - sw - cg)));
+      // a wide strip of a window: the room stands in a column of its own between the players and the board
+      var spare = iw - bsz - sw - cg, two = !!desk && spare >= 300 + cg;
+      app.classList.toggle('tw-two', two);
+      if (two) { var rw = Math.min(560, spare - cg); app.style.setProperty('--rw', rw + 'px'); }
+      app.style.setProperty('--bsz', bsz + 'px');
+    } else {
+      app.style.setProperty('--gp', '10px');
+      var other = 0, gap = 10;
+      Array.prototype.forEach.call(col.children, function (c) { if (!c.classList.contains('frame') && getComputedStyle(c).display !== 'none') other += c.offsetHeight + gap; });
+      var cw = Math.floor(Math.max(240, Math.min(iw, desk ? 1e5 : 820, ih - other)));
+      app.style.setProperty('--cw', cw + 'px');
+      var over = col.scrollHeight - ih;
+      if (over > 0) app.style.setProperty('--cw', Math.max(180, cw - over) + 'px');
+      // the room the board can't use goes into the gaps between the parts (up to 30px each), not into one empty band
+      app.style.setProperty('--gp', '10px');
+      var kids = Array.prototype.filter.call(col.children, function (c) { return getComputedStyle(c).display !== 'none'; }), used = 0;
+      kids.forEach(function (c) { used += c.offsetHeight; });
+      var free = ih - used - 10 * (kids.length - 1);
+      if (free > 0) app.style.setProperty('--gp', Math.min(30, 10 + free / (kids.length + 1)) + 'px');
+      bsz = parseFloat(getComputedStyle(app).getPropertyValue('--cw')) || cw;
+    }
+    // at a desk the board is large enough for its letters and numbers round the edge
+    var lab = bsz / 25 >= 26;
+    if (lab !== LABELS) { LABELS = lab; M = lab ? 0.95 : 0.3; if (svgEl) { buildBoard(); paintPieces(null); } }
+    paintRoom();
+  }
+  var lastWH = window.innerWidth + 'x' + window.innerHeight;
+  window.addEventListener('resize', function () {
+    var wh = window.innerWidth + 'x' + window.innerHeight; if (wh === lastWH) return; lastWH = wh;
+    if (app.classList.contains('ipl')) Kit.glide(fit); else fit();
+  });
+
+  // ── Online ───────────────────────────────────────────────────────────────
+  // Seat 0 plays the setup's color in the first game; each new game at the table swaps colors. A swap trades the
+  // players' colors in the table's state. The table's state is the core's with the players and the counts the room and
+  // the history need; it has no undo snapshots.
+  function netSeatOf(st, side) { return st.players[0].side === side ? 0 : 1; }
+  function netOpts() {
+    var o = { side: 'r', swap: 'on' };
+    try { var g = JSON.parse(localStorage.getItem('gn_setup_' + KEY)); if (g && g.options) { if (g.options.side === 'b') o.side = 'b'; if (g.options.swap === 'off') o.swap = 'off'; } } catch (e) {}
+    return o;
+  }
+  function netStart(players, opts, last) {
+    var s0 = last && last.players ? (last.p0 ? 3 - last.p0 : 3 - last.players[0].side) : opts && opts.side === 'b' ? BLACK : RED;
+    var st = C.newGame({ swap: !(opts && opts.swap === 'off') });
+    st.mode = 'online'; st.level = 'normal';
+    st.players = players.map(function (p, i) { return { name: p.name, cpu: false, side: i === 0 ? s0 : 3 - s0 }; });
+    st.p0 = s0;   // (seat 0's color as the game began, so a swap doesn't decide the next game's colors)
+    freshFields(st); delete st.hist; delete st.busy;
+    st.wins = last && last.wins ? last.wins.slice() : [0, 0, 0];
+    return st;
+  }
+  function netApply(st, mv) {
+    if (st.over) return null;
+    var before = st.tg[st.tg.length - 1], res = C.play(st, mv);
+    if (!res) return null;
+    st.offer = null;
+    if (res.swap) st.players.forEach(function (p) { p.side = 3 - p.side; });
+    note(st, res, before);
+    if (st.ml.length > 600) return null;
+    if (st.over) st.wins[st.win ? netSeatOf(st, st.win) : 2]++;
+    return { state: st, mv: { h: res.swap ? 'swap' : res.h, side: res.side } };
+  }
+  function netEndOf(st, why, win) { C.end(st, why, win); st.wins[win ? netSeatOf(st, win) : 2]++; }
+  function netMove(mv) { if (!S || S.over || LEFT || !NET.myTurn()) return; S.busy = true; paintActs(); NET.act(function (st) { return netApply(st, mv); }); setTimeout(function () { if (S) S.busy = false; }, 4000); }
+  function netResign() {
+    if (!S || S.over || LEFT) return;
+    var me = NET.seat;
+    Kit.confirm('Resign this game?', { ok: 'Resign', danger: true, body: S.players[1 - me].name + ' will win this game.' }).then(function (ok) {
+      if (!ok || !NET) return;
+      NET.act(function (st) { if (st.over) return null; netEndOf(st, 'resign', 3 - st.players[me].side); return { state: st, mv: { resign: me } }; });
+    });
+  }
+  function netOfferDraw() {
+    if (!S || S.over || LEFT) return;
+    if (!NET.myTurn()) return Kit.toast('You can offer a draw on your turn');
+    if (S.offer != null && S.offer !== NET.seat) return netAnswerOffer();
+    var me = NET.seat;
+    Kit.confirm('Offer ' + S.players[1 - me].name + ' a draw?', { ok: 'Offer a draw', body: 'Then place your peg. ' + S.players[1 - me].name + ' can agree on their turn, or play on.' }).then(function (ok) {
+      if (!ok || !NET) return;
+      NET.act(function (st) { if (st.over) return null; st.offer = me; return { state: st, mv: { offer: me } }; });
+      Kit.toast('Your offer stands until ' + S.players[1 - me].name + ' moves. Now place your peg.');
+    });
+  }
+  function netAnswerOffer() {
+    if (!NET || !S || S.over || OFFERSH) return;
+    var other = S.players[S.offer], me = NET.seat;
+    OFFERSH = true;
+    Kit.confirm(other.name + ' offered a draw', { ok: 'Agree to a draw', body: 'Agree and the game ends as a draw, or play on and place your peg.' }).then(function (ok) {
+      OFFERSH = null;
+      if (!ok || !NET) return;
+      NET.act(function (st) { if (st.over || st.offer == null || st.offer === me) return null; netEndOf(st, 'agreed', 0); return { state: st, mv: { agreed: 1 } }; });
+    });
+  }
+  function netAgain() { if (!NET) return; if (LEFT) { TurnNet.leave(); TurnNet.open(); } else NET.again(); }
+  function netShow(net, info) {
+    NET = net; cancelThink();
+    if (WINO && (info.again || info.fresh)) { WINO.close(); WINO = null; }
+    var prev = S;
+    S = JSON.parse(JSON.stringify(net.state)); S.busy = false; S.hist = []; AIM = HOV = -1;
+    LEFT = net.status === 'over' && !S.over && net.result && net.result.left != null ? net.result : null;
+    var tok = ++SHOWN, mv = info.mv && info.mv.h != null && !info.fresh && !info.again ? info.mv : null;
+    if (mv && prev && prev.b && prev.n === S.n - 1) {
+      var res = mv.h === 'swap' ? { swap: true, side: mv.side, links: [] } : { h: mv.h, side: mv.side, links: S.last && S.last.links ? S.last.links : [] };
+      var e = S.ev[S.ev.length - 1] || '', info2 = res.swap ? null : { blocked: /x$/.test(e), sealed: tgOf(S.tg[S.tg.length - 1], 3 - mv.side) >= 99 && tgOf(prev.tg[prev.tg.length - 1], 3 - mv.side) < 99, after: tgOf(S.tg[S.tg.length - 1], 3 - mv.side), before: tgOf(prev.tg[prev.tg.length - 1], 3 - mv.side), span: S.span[mv.side], mile: S.span[mv.side] >= 18 && prev.span[mv.side] < 18 ? 18 : S.span[mv.side] >= 12 && prev.span[mv.side] < 12 ? 12 : 0 };
+      show(res, info2, true);
+      if (!S.over && !info.mine && net.myTurn()) setTimeout(function () { if (tok === SHOWN) { Kit.haptic('light'); if (S.offer != null && S.offer !== net.seat) netAnswerOffer(); } }, moveT(res));
+    } else {
+      render(null);
+      if (S.over || LEFT) setTimeout(function () { if (tok === SHOWN) netEnd(); }, 150);
+      else if (S.offer != null && S.offer !== net.seat && net.myTurn()) setTimeout(function () { if (tok === SHOWN) netAnswerOffer(); }, 400);
+    }
+    if (info.again) { Kit.sfx('deal'); Kit.callout(isMe(pl(RED)) ? 'You start' : pl(RED).name + ' starts'); }
+  }
+  function netEnd() {
+    if (!NET || !S) return;
+    var left = LEFT;
+    var wi = left ? (left.win && left.win.length ? left.win[0] : -1) : S.win ? netSeatOf(S, S.win) : -1;
+    var w = wi >= 0 ? S.players[wi] : null, key = NET.code + ':' + S.started;
+    var done = NETREC[key]; try { done = done || (JSON.parse(localStorage.getItem('twixt_net_rec')) || []).indexOf(key) >= 0; } catch (e) {}
+    var wave = left ? 0 : S.why === 'connect' ? winWave() : 0;
+    if (!done && !left) {
+      NETREC[key] = 1;
+      try { var rl = JSON.parse(localStorage.getItem('twixt_net_rec')) || []; rl.push(key); localStorage.setItem('twixt_net_rec', JSON.stringify(rl.slice(-30))); } catch (e) {}
+      var hl = highlights(); hl.push('Played online at table ' + NET.code);
+      Kit.record(KEY, {
+        started: S.started, mode: 'Online',
+        players: S.players.map(function (p) { var g = tgOf(S.tg[S.tg.length - 1], p.side); return { name: p.name + ' (' + colorName(p.side) + ')', score: S.win === p.side ? 'Joined' : g >= 99 ? 'Cut off' : g + ' to go', cpu: false }; }),
+        winner: w ? w.name + ' (' + colorName(w.side) + ')' : null,
+        highlights: hl, detail: detail()
+      });
+    }
+    if (WINO) WINO.close();
+    if (left) return netWin(w);
+    endShow(w, wave, true);
+  }
+  function netWin(w) {
+    if (!NET) return;
+    var me = NET.seat, left = LEFT, wi = w ? S.players.indexOf(w) : -1;
+    WINO = Kit.win({
+      icon: !w ? 'users' : wi === me ? 'trophy' : 'users',
+      title: left ? left.text : !w ? 'It’s a draw' : wi === me ? 'You win!' : w.name + ' wins',
+      sub: left ? '' : endLine(),
+      rank: left ? null : rankRows(),
+      notes: left ? null : [S.players[0].name + ' has won ' + S.wins[0] + ' and ' + S.players[1].name + ' has won ' + S.wins[1] + (S.wins[2] ? ', with ' + S.wins[2] + (S.wins[2] === 1 ? ' draw' : ' draws') : '') + '.'], notesTitle: 'Games at this table',
+      lose: !!w && wi !== me, againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { WINO = null; netAgain(); },
+      look: { label: 'Look at the board', onClick: function () { WINO = null; } }
+    });
+  }
+  function netLeave() {
+    NET = null; LEFT = null; SHOWN++; if (WINO) { WINO.close(); WINO = null; }
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.b && sv.players && !sv.over) { S = sv; S.busy = false; S.hist = S.hist || []; render(); afterTurn(); }
+    else showSetup();
+  }
+
+  // ── Test and demo hooks ──────────────────────────────────────────────────
+  window.__twixt = {
+    C: C, state: function () { return S; }, aim: function () { return AIM; },
+    // a fresh game for these players: {mode: '2p' | 'cpu', level, swap, players: [{name, cpu, side}]}
+    start: function (cfg) { cancelThink(); newGame({ mode: cfg.mode || '2p', level: cfg.level || 'normal', swap: cfg.swap !== false, cover: false, players: cfg.players }); },
+    // a position from a list of moves ('D5 F6 swap ...', played in turn from an empty board), without the animations
+    set: function (moves, keepTurn) {
+      cancelThink(); S.busy = false;
+      var st = C.newGame({ swap: S.swap }), list = Array.isArray(moves) ? moves : String(moves).split(/\s+/).filter(Boolean);
+      var keep = { mode: S.mode, level: S.level, cover: S.cover, players: S.players, started: S.started };
+      st.mode = keep.mode; st.level = keep.level; st.cover = keep.cover; st.players = keep.players;
+      freshFields(st);
+      list.forEach(function (m) { var before = st.tg[st.tg.length - 1], r = C.play(st, m); if (r) { if (r.swap) st.players.forEach(function (p) { p.side = 3 - p.side; }); note(st, r, before); } });
+      if (keepTurn) st.turn = keepTurn;
+      S = st; AIM = HOV = -1; save(); render(); afterTurn();
+    },
+    place: function (name) { place(typeof name === 'string' ? C.hole(name) : name); },
+    hole: function (name) { var h = typeof name === 'string' ? C.hole(name) : name; return bdEl ? bdEl.querySelector('.hz[data-h="' + h + '"]') : null; },
+    peg: function (name) { var h = typeof name === 'string' ? C.hole(name) : name; return bdEl ? bdEl.querySelector('.pg[data-h="' + h + '"]') : null; },
+    swap: swapNow
+  };
+
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.b && saved.players && !saved.over) { S = saved; S.busy = false; S.hist = S.hist || []; render(); afterTurn(); }
+  else showSetup();
+
+  TurnNet.setup({
+    game: KEY, title: 'Twixt', min: 2, max: 2,
+    opts: netOpts, start: netStart,
+    turn: function (st) { return st.over ? [] : [netSeatOf(st, st.turn)]; },
+    over: function (st) {
+      if (!st.over) return null;
+      var w = st.win ? netSeatOf(st, st.win) : -1;
+      return { win: w >= 0 ? [w] : [], text: w >= 0 ? st.players[w].name + (st.why === 'resign' ? ' wins by resignation' : ' joined their borders') : 'A draw' };
+    },
+    show: netShow, leave: netLeave
+  });
+})();
+</script>
+</body>
+</html>

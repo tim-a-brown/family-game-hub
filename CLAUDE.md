@@ -1639,6 +1639,48 @@ Underlying principles for everything:
   rows only (`fitRoom`). A change of shape or composition glides (`Kit.glide`). A phone held upright spreads its parts
   evenly down the screen, and a tall one (740 or more) has two-line plates with the tray of six as large marbles.
 
+## Twixt (2026-11-23; included with the rights holder's written permission, Alex Randolph credited)
+
+- **Credit the designer**: "Twixt was designed by Alex Randolph." stands under the title in the setup (`.tw-credit`, hidden
+  only where it would make the setup scroll) and at the foot of How to play; the condition of the permission. The board
+  and pegs are our own drawing (a walnut frame round a maple pegboard, lacquered red and black pegs); never the
+  commercial box art, logo or trade dress.
+- `games/twixt.html` (catalog id `twixt`, Board), the rules and the computer in `games/twixt-core.js` (`TwixtCore`, plain
+  JSON; the page, the computer's Web Worker, the TurnNet table and Node), history `hist/twixt.js` (hist-view.js loads the
+  core first and the replay rebuilds every link), demo `games/demos/twixt.js`. `node scripts/twixt-sim.js [games]
+  [--pairs=easy-normal,normal-hard] [--scale=0.3] [--noswap]` plays the skills against each other and checks every peg
+  against a plain reading of the rules written there (the hole, the links made worked out from coordinates, no two
+  links on the board crossing), every win against a flood fill of its own and every draw against its own search.
+- The rules: 24 by 24 holes, the corners unused; Red owns the top and bottom rows, Black the left and right columns, Red
+  first; a peg never goes in the other player's border rows; two pegs of one color a knight's move apart link at once
+  unless the link would cross one on the board (`CROSS`, each link crosses 9 others); links never cross and are never
+  removed (the 1962 rules' manual links and removing your own links are left out, and How to play says so); a chain of
+  links from one border row to the other wins. Swap (the setup's Swap rule, on by default): on Black's first turn Black
+  may swap; the peg stays red and the players trade colors (`S.players` sides swap; the core's turn stays Black). A draw
+  when neither side can still get through (`canConnect`: its pegs and playable holes joined by its links and links
+  nothing crosses yet, which only shrinks), or by agreement (menu: Offer a draw; online the offer stands until the other
+  player moves, as Xiangqi's). Resign is in the menu. Holes are named A1 (top left) to X24.
+- Computer: alpha-beta over the holes on either side's shortest paths and near the last pegs, weighing each side's pegs
+  to go (a 0-1 shortest path: own pegs 0, playable empty holes 1, over links nothing crosses) and the width of its
+  shortest paths (`Engine`, `candidates`). `LEVELS` in the core: Easy one move deep with noise, Normal 3 deep, Hard to 5
+  deep in 3 s. Red's computer opens near its own border when the swap is on, and swaps a first peg in the middle of the
+  board. A two-distance evaluation (as Hex programs use) was tried and played worse than this one.
+- The table: tap-to-aim on a touch screen (a press shows a loupe, the holes three times larger above the finger, and the
+  ghost peg with the links it would make as moving lines in its color and the links that would be blocked as red dashes
+  crossed where the other link lies; Place or a second tap on the ghost puts it in; Cancel), a mouse's ghost follows the
+  pointer and a click places. Each plate counts the pegs still to go (`toGo`) with the longest chain as a bar across the
+  board. Moments: a peg drops, each link snaps out from it with a click, a block (the other side's pegs to go up by 2 or
+  more) is called out, Sealed off (no way through left), Halfway across and A long chain (18 rows or columns), the
+  winning chain lighting gold border to border (`winWave`), Border to border or A comeback (3 or more pegs behind). Pass
+  and play can hand over with `Kit.handoff` (the setup's Hand over between turns, off by default). **At a desk**
+  (`deskWin`, the kit's test, `tw-desk`): the board from the window with its letters and numbers round the edge
+  (`LABELS` once a hole is 26 px), the room in the left column, or in a column of its own in a wide strip (`tw-two`):
+  Last move in words, Pegs to go with each side's chain and the race move by move, the moves newest first with links and
+  blocks, past games here; whole rows given up (`paintRoom`). Saved in `twixt_state`; online records once a device in
+  `twixt_net_rec`; seat 0 plays the setup's color first and each rematch swaps (`p0`). Test hook `window.__twixt`
+  (`start`, `set('K10 M13 ...')`, `place('L12')`, `swap`, `hole`, `peg`, `aim`). The scratchpad's `newgames/twixt/` has
+  the scripts (`shots.js`, `play.js`, `online.js`).
+
 ## Wax Pack (2026-11-19; Tim: the Sandlot redesign, named "wax pack", the pitch duel "sure i'll try it", scanning "to log a player's deck")
 
 - Catalog id stays `sandlot` (favorites and `gh_sandlot` history carry over); the page is `games/waxpack.html` with
