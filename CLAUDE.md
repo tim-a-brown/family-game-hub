@@ -1485,6 +1485,29 @@ Underlying principles for everything:
   the time it looks first (its own train when its marker is out, a double it can follow, a heavier tile): `EZ` in the
   core. The sim (mulberry32 now) has Easy winning about 1 match in 5 against Normal head to head, 1 in 15 against Hard.
 
+## Lines of Action (2026-11-23)
+
+- `games/lines-of-action.html` (catalog id `linesofaction`, Board, 2 players), the rules and the robots in
+  `games/loa-core.js` (`LOACore`, plain JSON; the page, the computer's Web Worker, the TurnNet table and Node), history
+  `hist/loa.js` (the final board, a replay, each side's groups over the game, the moves), demo
+  `games/demos/lines-of-action.js`, `scripts/loa-sim.js` (robot games with every move checked against a plain reading of
+  the rules and every win against a flood fill of its own). Saved in `loa_state`; online tables record once a device
+  (`loa_net_rec`).
+- Sackson's rules as the Mind Sports Olympiad plays them: Black on b1-g1 and b8-g8, White on a2-a7 and h2-h7; a piece
+  moves exactly as many squares as there are pieces on its whole line, jumps its own pieces, never an enemy's, and
+  captures by landing; all of a player's pieces in one 8-connected group wins (one piece counts); a capture that joins
+  only the other player's pieces wins for them. The setup's If both connect at once (`tie`): Draw (the default) or
+  Mover wins (Sackson's second edition). No move passes; a position seen a third time with the same player to move is a
+  draw. Scrambled Eggs is left out: Wikipedia names it without its layout, and its source page could not be read.
+- The table: an inlaid maple and walnut board in a walnut frame, polished stones; each side's groups lie on a soft
+  shadow joining the pieces that touch (`paintPool`), and each player's bar counts their groups. A tap on your piece
+  lights its four lines edge to edge, rings the pieces each line counts, and puts the count on every landing (gold,
+  red for a capture), with a dashed line and a mark where an enemy piece blocks (`paintRays`). Moments: groups joined
+  (`reward`), a long move, a capture's burst, the winner's pieces lighting out from the last move (`winWave`).
+- Robots: alpha-beta (`search`) on spread around the center of mass, quads (Euler number), centralization, groups and
+  mobility; `LEVELS` Easy depth 1 with noise, Normal 3, Hard 6 within 2.2 s. Test hook `window.__loa`
+  (`start`, `set(rows, turn)`, `tap`, `play`).
+
 ## Pong's Tunnel (2026-11-15; Tim: "a 1 player 3-D concept for pong with bounces off the ceiling, floor and walls ... get weird and colorful and wacky with the effects")
 
 - A Table in Pong's setup (`table`: Classic or Tunnel), not a tile of its own. Choosing it shows the Tunnel's own setup
