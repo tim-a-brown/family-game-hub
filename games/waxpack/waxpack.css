@@ -132,7 +132,7 @@ p.wp-play b{color:var(--text);font-size:1.05rem;}
 
 /* ── The draft ──────────────────────────────────────────────────────────────────────── */
 .wp-drf{grid-template-rows:auto minmax(0,1fr) auto;}
-.wp-drf .wp-gbox{padding-bottom:14px;}
+.wp-drf .wp-gbox{padding-top:7px;padding-bottom:14px;}
 .wp-dteams{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .wp-dteam{min-width:0;padding:7px 9px;border-radius:14px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);transition:box-shadow .25s,background .25s;}
 .wp-dteam.on{background:color-mix(in srgb,var(--lit) 10%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--lit) 70%,transparent),0 0 16px color-mix(in srgb,var(--lit) 18%,transparent);}
@@ -150,25 +150,76 @@ html[data-o=land] .wp-drf>.wp-dock{grid-area:d;align-self:end;}
 /* a draft too big for a small phone: the cards as name tiles, a tap shows the card large over the teams (listFit) */
 .wp-ct{display:none;}
 .wp-grid.lst{width:100%;justify-content:stretch;}
-.wp-drf .wp-gbox.lst{padding-bottom:0;}
+.wp-drf .wp-gbox.lst{padding-top:0;padding-bottom:0;}
 .wp-grid.lst>.wp-cbtn{height:var(--rh,30px);border-radius:9px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);text-align:left;min-width:0;}
 .wp-grid.lst>.wp-cbtn>.wc,.wp-grid.lst>.wp-cbtn>.wp-cr{display:none;}
 .wp-grid.lst .wp-ct{display:flex;flex-direction:column;justify-content:center;height:100%;padding:0 6px 0 9px;box-sizing:border-box;border-left:3px solid var(--tc);border-radius:9px;min-width:0;line-height:1.1;}
+.wp-grid.lst.c4 .wp-ct{padding:0 3px 0 6px;}
 .wp-ct b{font-size:11px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:clip;}
 .wp-ct i{font-style:normal;font-size:9.5px;font-weight:700;color:var(--text-2);white-space:nowrap;}
-.wp-grid.lst>.wp-cbtn.on{background:color-mix(in srgb,var(--lit) 20%,transparent);box-shadow:inset 0 0 0 2px var(--lit);}
 .wp-grid.lst>.wp-cbtn.cpu-pick{transform:none;box-shadow:inset 0 0 0 2px var(--lit);}
-.wp-drf>.wp-peek{grid-row:1;grid-column:1;z-index:3;display:flex;align-items:center;gap:10px;min-width:0;padding:6px 8px;border-radius:14px;background:var(--sheet-solid,#141a30);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--lit) 70%,transparent),0 8px 24px rgba(0,0,0,.45);animation:wppk .22s var(--spring,ease) both;}
-.wp-drf:has(>.wp-peek)>.wp-dteams{grid-row:1;grid-column:1;}
-html[data-o=land] .wp-drf>.wp-peek{grid-area:t;}
-.wp-pkc{flex:none;padding:0;border:0;background:none;cursor:pointer;}
-.wp-pkc .wc{--w:60px;}
-.wp-pki{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
-.wp-pki b{font-size:.92rem;line-height:1.15;}
-.wp-pki span{font-size:.75rem;color:var(--text-2);line-height:1.2;}
-.wp-pki em{font-style:normal;font-size:.72rem;font-weight:800;color:var(--lit);}
-.wp-peek>.btn{flex:none;min-height:40px;padding:0 12px;}
-@keyframes wppk{from{opacity:0;transform:translateY(-6px) scale(.97);}}
+/* the draft's inspector (inspect, insEl, fitIns): the card picked up, large, beside what it plays; the grid refits above
+   it upright, and it stands in the right-hand column sideways */
+.wp-drf.ins{grid-template-rows:auto minmax(0,1fr) auto auto;}
+html[data-o=land] .wp-drf.ins{grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"g t" "g i" "g d";}
+html[data-o=land] .wp-drf>.wp-ins{grid-area:i;}
+html.wp-dk[data-o=land] .wp-drf.dk.ins{grid-template-rows:minmax(0,1fr) auto auto;}
+.wp-ins{--iw:110px;position:relative;min-height:0;min-width:0;display:grid;grid-template-columns:var(--iw) minmax(0,1fr);column-gap:12px;row-gap:8px;align-content:start;padding:10px 12px 10px 10px;border-radius:16px;overflow:hidden;
+  background:var(--gl);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--lit) 60%,transparent),0 8px 24px rgba(0,0,0,.35);animation:wppk .22s var(--spring,ease) both;}
+.wi-card{grid-column:1;padding:0;border:0;background:none;cursor:pointer;align-self:start;border-radius:calc(var(--iw) * .06);box-shadow:0 6px 18px rgba(0,0,0,.45);}
+.wi-card .wc{--w:var(--iw);}
+.wi-card{grid-row:1 / span 2;}
+.wi-top,.wi-bot{grid-column:2;min-width:0;display:flex;flex-direction:column;gap:6px;}
+.wi-top{grid-row:1;}
+.wi-bot{grid-row:2;justify-content:flex-end;}
+.wp-ins.st .wi-card{grid-row:1;}
+.wp-ins.st .wi-bot{grid-column:1 / -1;}
+.wi-hd{min-width:0;padding-right:30px;}
+.wi-nm{display:block;font-size:1.05rem;line-height:1.15;font-weight:800;color:var(--text);}
+.wi-tags{display:flex;flex-wrap:wrap;gap:3px 5px;margin-top:4px;}
+.wi-tags span{font-size:.72rem;font-weight:700;line-height:1.2;color:var(--text-2);padding:1px 7px;border-radius:7px;background:rgba(255,255,255,.07);}
+.wi-vals{margin-top:0;}
+.wi-ln{min-width:0;}
+.wi-lh{display:block;font-size:.68rem;font-weight:700;color:var(--text-3);margin-bottom:2px;}
+.wi-st{display:flex;flex-wrap:wrap;gap:2px 12px;}
+.wi-st span{display:flex;flex-direction:column;align-items:flex-start;line-height:1.1;}
+.wi-st i{font-style:normal;font-size:.64rem;font-weight:800;color:var(--text-3);}
+.wi-st b{font-size:.95rem;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;}
+.wi-pw{padding:5px 8px;}
+.wi-pw.odd b{font-size:.92rem;}
+.wi-take{min-height:42px;width:100%;padding-left:10px;padding-right:10px;}
+.wi-take.shut{background:var(--gl);color:var(--text-2);box-shadow:inset 0 0 0 1px var(--gl-line);}
+.wi-rg{grid-column:1 / -1;grid-row:3;}
+.wi-rg .wp-rg{margin-top:0;}
+.wi-x{position:absolute;top:6px;right:6px;z-index:2;width:30px;height:30px;display:grid;place-items:center;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.08);color:var(--text-2);cursor:pointer;}
+.wi-x svg,.wi-x .ico{width:16px;height:16px;}
+.wp-ins:is(.n1,.n2,.n3,.n4,.n5) .wi-rg,.wp-ins:is(.n2,.n3,.n4,.n5) .wi-ln,.wp-ins:is(.n3,.n4) .wi-pw:not(.odd) span,.wp-ins:is(.n4,.n5) .wi-tags,
+.wp-ins.n5 .wi-pw:not(.odd),.wp-ins.n5 .wi-vals .mu-mark,.wp-ins.n5 .wi-hd:has(+.wi-pw.odd){display:none;}
+/* a short window held upright: the teams keep their names, counts and pitchers while a card is picked up */
+@media (orientation:portrait) and (max-height:700px){
+  html:not(.wp-dk) .wp-drf.ins .wp-dpile{display:none;}
+  html:not(.wp-dk) .wp-drf.ins .wp-dteam{padding:5px 9px;}
+}
+/* a short window held sideways: each team is one line while a card is picked up, so the card has the column's height */
+@media (max-height:560px){
+  html[data-o=land]:not(.wp-dk) .wp-drf.ins .wp-dpile{display:none;}
+  html[data-o=land]:not(.wp-dk) .wp-drf.ins .wp-dteams{gap:6px;}
+  html[data-o=land]:not(.wp-dk) .wp-drf.ins .wp-dteam{display:flex;align-items:center;gap:10px;padding:5px 10px;}
+  html[data-o=land]:not(.wp-dk) .wp-drf.ins .wp-dtn{flex:1;min-width:0;}
+  html[data-o=land]:not(.wp-dk) .wp-drf.ins .wp-dpit{margin-top:0;}
+  html[data-o=land]:not(.wp-dk) .wp-drf.ins .wp-dpit b{display:none;}
+}
+/* the card picked up stays lit in the grid, lifted in a gold ring */
+.wp-grid>.wp-cbtn.on{transform:translateY(-4px) scale(1.05);box-shadow:0 0 0 3px var(--lit),0 10px 22px rgba(0,0,0,.5);z-index:2;}
+.wp-grid.lst>.wp-cbtn.on{transform:none;background:color-mix(in srgb,var(--lit) 20%,transparent);box-shadow:inset 0 0 0 2px var(--lit);}
+html.wp-dk .wi-nm{font-size:calc(1.15rem * var(--dkc,1));}
+html.wp-dk .wi-tags span{font-size:calc(.78rem * var(--dkc,1));}
+html.wp-dk .wi-st b{font-size:calc(1.05rem * var(--dkc,1));}
+html.wp-dk .wi-st i,html.wp-dk .wi-lh{font-size:calc(.74rem * var(--dkc,1));}
+html.wp-dk .wi-vals .mu-mark{font-size:calc(.76rem * var(--dkc,1));}
+html.wp-dk .wi-pw{font-size:calc(.86rem * var(--dkc,1));}
+html.wp-dk .wi-pw b{font-size:calc(.9rem * var(--dkc,1));}
+@keyframes wppk{from{opacity:0;transform:translateY(6px) scale(.98);}}
 .wp-coinov{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:rgba(6,8,20,.72);backdrop-filter:blur(4px);transition:opacity .35s;perspective:600px;}
 .wp-coinov.out{opacity:0;}
 .wp-coin{width:110px;height:110px;position:relative;transform-style:preserve-3d;transition:transform 1.5s cubic-bezier(.2,.7,.25,1);}

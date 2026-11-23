@@ -1910,11 +1910,25 @@ Underlying principles for everything:
   draft from a full box), `proof.sh` with `cmp.sh` (the device proof, `proof.txt`; `proofn` is base against base),
   `rzp.js <stack|stack0|draft|dbox|lineup|play>` (one page dragged through every window), `rz.js`, `full.js` (a whole
   game by `auto`), `print.js` (Print the table cards as a Letter PDF), `dbg.js`.
+- **The draft's inspector** (Tim, 2026-11-23: "a good way of seeing the detail of a card while still being able to view
+  how many/which cards are left"; `inspect`, `closeIns`, `paintIns`, `insEl`, `seasonEl`, `fitIns`, `takeIns`, `INS` in
+  ui.js; `.wp-ins`, `.wi-*` in waxpack.css). A first tap on a card in the draft lights it in the grid (lifted, gold ring)
+  and opens the inspector: the drawn card as large as the room allows (a tap reads its sheet), the name with the year,
+  team and positions as tags, Bat or Arm with the card's type and a pitcher's pitch cards, the season on the card's back
+  as a label over each number, the milestone power with its line, and the die ranges as the table card prints them; an
+  odd card says what it does in play. Take (or a second tap on the lit card) picks it with the fly to the team; a team
+  with three pitchers sees why on the button. The X, a tap on the table round the cards or Escape puts it back; the
+  computer's turn closes it, and a turn of the device keeps it on the same card. Upright it stands over the caption and
+  the grid refits above it (`fitGrid` shrinks the inspector, then lists the cards, before the grid would scroll; a short
+  phone's teams lose their picks while it is open); sideways and at a desk it stands in the right-hand column under the
+  teams (a short window folds each team to one line). `fitIns` takes the largest card that leaves room for the rest,
+  beside the facts or (`st`) over the power and Take, and gives up the die ranges, the season, the power's words, the
+  tags, then the power and the card type (`n1` to `n5`) rather than cut anything. The caption counts the cards left.
+  Scenes: the scratchpad's `big/waxinsp/` (`h.js ins.js` with `SIZES` and `BOX=1`, `flow.js` the taps).
 - **A small phone** (2026-11-20): a draft whose cards would need scrolling (a full box on a 320 by 568 phone: 28 to 34
   cards) lists them as name tiles instead (`listFit`, `.wp-grid.lst`, `--rh`): the last name over what the card plays
   ("SS Bat +2", "Arm 0", an odd card's play), 11px stepping to 9px for a long name, a pitcher or hitter edged gold and
-  an odd card blue. A first tap lifts the tile and shows the card large over the teams with what it is and a Take
-  button (`draftPeek`, `.wp-peek`; a tap on the card reads its sheet); a second tap on the tile, or Take, picks it. The
+  an odd card blue, four across where three would not fit and every name still fits (`.c4`). The
   line score shows as many innings as fit around the one being played (`paintBoard(cols)`: six of nine at 320 wide,
   so Top 1st stays on the screen). A drawn card's small print never goes under 9px (`max(9px, …)` on the team line,
   the script first name and the RC, AS and RB tabs in cardface.css, which only changes cards 130 to about 190px

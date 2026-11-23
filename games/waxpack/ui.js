@@ -264,7 +264,7 @@
   }
   // A grid of cards as large as the box allows, with no scrolling: try every column count, keep the largest card
   function gridFit(box, n, gap, minW) {
-    var W = box.clientWidth, H = box.clientHeight - (parseFloat(getComputedStyle(box).paddingBottom) || 0) - 4, best = { w: 0, cols: 1 };
+    var W = box.clientWidth, H = box.clientHeight - (parseFloat(getComputedStyle(box).paddingBottom) || 0) - (parseFloat(getComputedStyle(box).paddingTop) || 0) - 4, best = { w: 0, cols: 1 };
     if (!W || !H) return best;
     for (var cols = 1; cols <= Math.max(1, n); cols++) {
       var rows = Math.ceil(Math.max(1, n) / cols);
@@ -277,12 +277,19 @@
   function fitGrid() {
     var g = app.querySelector('.wp-grid'); if (!g) return;
     var dr = S && S.phase === 'draft', n = g.children.length;
-    g.classList.remove('lst'); g.parentNode.classList.remove('lst'); g.style.removeProperty('--rh');
+    g.classList.remove('lst', 'c4'); g.parentNode.classList.remove('lst'); g.style.removeProperty('--rh');
     var mk0 = app.querySelector('.wp-smk'); if (mk0) mk0.hidden = false;
-    var f = gridFit(g.parentNode, n, dr ? 16 : 8, 40);
     // a draft too big for its screen (a full box on a small phone) lists the cards as name tiles in place of
-    // pictures: the last name and what the card plays, a tap shows the card large and a second tap takes it
-    if (dr && f.scroll && listFit(g, n)) return;
+    // pictures: the last name and what the card plays. With a card picked up, the inspector gives up height before the
+    // grid of cards left would scroll
+    var f, ins = dr && app.querySelector('.wp-ins'), port = document.documentElement.getAttribute('data-o') !== 'land';
+    for (var si = 0, SH = [1, .84, .7, .56]; si < SH.length; si++) {
+      if (ins) fitIns(SH[si]);
+      f = gridFit(g.parentNode, n, dr ? 16 : 8, 40);
+      if (!f.scroll) break;
+      if (dr && listFit(g, n)) return;
+      if (!ins || !port) break;
+    }
     if (dr) fitPiles();
     g.style.rowGap = (dr ? 16 : 8) + 'px';
     g.style.setProperty('--cw', Math.min(DK.on ? 210 : 180, f.w) + 'px'); g.style.gridTemplateColumns = 'repeat(' + f.cols + ', var(--cw))';
@@ -302,15 +309,23 @@
 
   function listFit(g, n) {
     var box = g.parentNode; g.classList.add('lst'); box.classList.add('lst');
-    var W = box.clientWidth, H = box.clientHeight - (parseFloat(getComputedStyle(box).paddingBottom) || 0) - 2, gap = 4, cols = Math.max(2, Math.floor((W + gap) / (84 + gap))), rows = Math.ceil(n / cols);
-    var rh = Math.floor((H - gap * (rows - 1)) / rows);
-    if (rh < 22) { g.classList.remove('lst'); box.classList.remove('lst'); return false; }
-    box.classList.remove('scroll');
-    g.style.rowGap = gap + 'px'; g.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))'; g.style.setProperty('--rh', Math.min(46, rh) + 'px');
-    // a long name steps down to 9px before anything is cut: read every name, then write
-    var bs = [].slice.call(g.querySelectorAll('.wp-ct b')); bs.forEach(function (b) { b.style.fontSize = ''; });
-    [10, 9].forEach(function (px) { bs.filter(function (b) { return b.scrollWidth > b.clientWidth + 1; }).forEach(function (b) { b.style.fontSize = px + 'px'; }); });
-    return true;
+    var W = box.clientWidth, H = box.clientHeight - (parseFloat(getComputedStyle(box).paddingBottom) || 0) - 2, gap = 4, c0 = Math.max(2, Math.floor((W + gap) / (84 + gap)));
+    var bs = [].slice.call(g.querySelectorAll('.wp-ct b'));
+    // three across where the rows fit, otherwise four narrower tiles where every name still fits whole
+    for (var cols = c0; cols <= c0 + 1; cols++) {
+      var rows = Math.ceil(n / cols), rh = Math.floor((H - gap * (rows - 1)) / rows);
+      if (rh < 22 || cols > c0 && (W - gap * (cols - 1)) / cols < 62) continue;
+      box.classList.remove('scroll');
+      g.style.rowGap = gap + 'px'; g.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))'; g.style.setProperty('--rh', Math.min(46, rh) + 'px'); g.classList.toggle('c4', cols > c0);
+      // a long name steps down to 9px before anything is cut: read every name, then write
+      var is = [].slice.call(g.querySelectorAll('.wp-ct i'));
+      bs.concat(is).forEach(function (b) { b.style.fontSize = ''; });
+      [10, 9].forEach(function (px) { bs.filter(function (b) { return b.scrollWidth > b.clientWidth + 1; }).forEach(function (b) { b.style.fontSize = px + 'px'; }); });
+      is.filter(function (b) { return b.scrollWidth > b.clientWidth + 1; }).forEach(function (b) { b.style.fontSize = '9px'; });
+      if (cols === c0 || ![].some.call(g.querySelectorAll('.wp-ct b, .wp-ct i'), function (b) { return b.scrollWidth > b.clientWidth + 1; })) return true;
+    }
+    g.classList.remove('lst', 'c4'); box.classList.remove('lst'); g.style.removeProperty('--rh'); [].forEach.call(g.querySelectorAll('.wp-ct b, .wp-ct i'), function (b) { b.style.fontSize = ''; });
+    return false;
   }
   // at a desk held sideways each team's picks lie as cards in its half of the column, sized so a full team fits
   function fitPiles() {
@@ -324,20 +339,100 @@
     });
   }
   var ODDSHORT = { highlight: 'Highlight', leaders: 'Leaders', rb: 'Record card' };
-  // the card picked up from the list: shown large over the teams, with the button that takes it
-  function draftPeek(id, from) {
-    var old = app.querySelector('.wp-peek'); if (old) old.remove();
-    [].forEach.call(app.querySelectorAll('.wp-grid .wp-cbtn.on'), function (b) { b.classList.remove('on'); });
-    if (!id) return;
-    var c = S.C[id], r = c.kind === 'player' ? rr(c) : null;
-    from.classList.add('on'); Kit.sfx('tap'); Kit.haptic('light');
-    var pk = el('div', { class: 'wp-peek', role: 'group', 'aria-label': c.name }, [
-      el('button', { type: 'button', class: 'wp-pkc', 'aria-label': 'Read ' + c.name + '’s card', onclick: function () { cardSheet(c, false); } }, [cardFace(c)]),
-      el('div', { class: 'wp-pki' }, [el('b', { text: c.name }), el('span', { text: c.kind === 'player' ? quick(c) + ', ' + E.CNAME[r.card].toLowerCase() : C.SPECIAL[c.kind].play }), r && r.pw ? el('em', { text: E.PNAME2[r.pw] }) : null]),
-      el('button', { type: 'button', class: 'btn btn-primary', text: 'Take ' + (c.kind === 'player' ? last(c.name) : 'it'), onclick: function () { draftPeek(null); pick(id, from); } })]);
-    app.querySelector('.wp-drf').appendChild(pk);
-    requestAnimationFrame(function () { fitCardNames(pk); });
+  // ── The draft's inspector: a first tap on a card lights it and lays it out large beside what it plays, the grid of
+  // cards left refitting to the room that remains; a second tap on the lit card, or Take, takes it ─────────────────
+  var INS = null;
+  function inspect(id) {
+    if (INS === id) return;
+    INS = id; Kit.sfx('tap'); Kit.haptic('light');
+    paintIns();
   }
+  function closeIns() { if (!INS) return; INS = null; Kit.sfx('tap'); paintIns(); }
+  // the inspector and the lit card follow INS without a new draft screen, so the grid keeps its cards where they were
+  function paintIns() {
+    var drf = app.querySelector('.wp-drf'); if (!drf) return;
+    var old = drf.querySelector('.wp-ins'); if (old) old.remove();
+    [].forEach.call(drf.querySelectorAll('.wp-grid .wp-cbtn.on'), function (b) { b.classList.remove('on'); });
+    drf.classList.toggle('ins', !!INS);
+    if (INS) {
+      var b = drf.querySelector('.wp-grid .wp-cbtn[data-id="' + INS + '"]'); if (b) b.classList.add('on');
+      drf.insertBefore(insEl(INS), drf.querySelector('.wp-dock'));
+    }
+    fitGrid(); requestAnimationFrame(function () { fitCardNames(); });
+  }
+  function takeIns(from) {
+    var id = INS, t = S.draft.turn, c = S.C[id]; if (!id) return;
+    if (!myPick()) return Kit.toast(S.T[t].name + ' is picking');
+    if (!canTake(t, c)) { Kit.sfx('bad'); return Kit.toast(shutSay(t)); }
+    INS = null; pick(id, from);
+  }
+  function shutSay(t) { var n = S.T[t].name; return n === 'You' ? 'You already have three pitchers.' : n + ' already has three pitchers.'; }
+  // the season on the card's back as a small table: a label over each number
+  function seasonEl(c) {
+    var s = c.line; if (!s || c.kid || c.scout) return null;
+    var cells = c.role === 'p' ? [['W', s.w], ['L', s.l], ['ERA', s.ipo ? (s.er * 27 / s.ipo).toFixed(2) : '0.00'], ['SO', s.so], ['IP', Math.round((s.ipo || 0) / 3)]].concat(s.sv >= 10 ? [['SV', s.sv]] : [])
+      : [['AVG', avg3(s.h / Math.max(1, s.ab))], ['HR', s.hr], ['RBI', s.rbi], ['SB', s.sb]].concat(s.d != null ? [['2B', s.d]] : []);
+    return el('div', { class: 'wi-ln' }, [el('span', { class: 'wi-lh', text: (c.sy || (c.year ? c.year - 1 : '')) + ' season' }),
+      el('div', { class: 'wi-st' }, cells.map(function (x) { return el('span', {}, [el('i', { text: x[0] }), el('b', { text: String(x[1] == null ? 0 : x[1]) })]); }))]);
+  }
+  function insEl(id) {
+    var c = S.C[id], t = S.draft.turn, ok = canTake(t, c), pl = c.kind === 'player', r = pl ? rr(c) : null, p = pl && c.role === 'p';
+    var tags = [];
+    if (pl) {
+      if (c.year) tags.push(String(c.year));
+      if (c.team) tags.push(c.team);
+      (p ? ['P'] : (c.pos || []).slice(0, 2)).forEach(function (x) { tags.push(POSN[x] || x); });
+    } else if (c.team) tags.push(c.team);
+    var top = el('div', { class: 'wi-top' }, [el('div', { class: 'wi-hd' }, [el('b', { class: 'wi-nm', text: c.kid ? 'Sandlot kid' : pl ? c.name : C.SPECIAL[c.kind].name }), el('div', { class: 'wi-tags' }, tags.map(function (x) { return el('span', { text: x }); }))])]);
+    var bot = el('div', { class: 'wi-bot' }), rg = null;
+    if (pl) {
+      top.appendChild(el('div', { class: 'mu-nums wi-vals' }, [numChip(p ? 'Arm' : 'Bat', p ? r.arm : r.bat, 'var(--gold-hi,#f5c84b)'), el('span', { class: 'mu-mark', text: E.CNAME[r.card] }), p ? el('span', { class: 'mu-mark', text: r.np + ' pitch cards' }) : null]));
+      var ln = seasonEl(c); if (ln) top.appendChild(ln);
+      if (r.pw) bot.appendChild(el('p', { class: 'wp-pw wi-pw' }, [el('b', { text: E.PNAME2[r.pw] }), el('span', { text: E.powerLabel(r.pw) })]));
+      rg = el('div', { class: 'rl-card wi-rg ' + (p ? 'p' : 'b'), style: { '--tc': 'var(--gold-hi,#f5c84b)' } }, [el('div', { class: 'rl-rows' }, (p ? ['p'] : ['right', 'wrong']).map(function (rw) {
+        return el('div', { class: 'rl-row on' }, [rw === 'p' ? null : el('span', { class: 'rl-rl', text: rw === 'right' ? 'Guessed right' : 'Guessed wrong' }), rangesEl(r.card, rw === 'p' ? null : rw, 0)]); }))]);
+    } else top.appendChild(el('p', { class: 'wp-pw wi-pw odd' }, [el('b', { text: C.SPECIAL[c.kind].play }), el('span', { text: C.SPECIAL[c.kind].say })]));
+    var ins = el('div', { class: 'wp-ins', role: 'group', 'aria-label': c.name });
+    bot.appendChild(el('button', { type: 'button', class: 'btn btn-primary wi-take' + (ok ? '' : ' shut'), 'aria-disabled': ok ? null : 'true', text: ok ? 'Take ' + (pl ? (c.kid ? 'the kid' : last(c.name)) : 'the ' + C.SPECIAL[c.kind].name) : shutSay(t).replace(/\.$/, ''),
+      onclick: function () { takeIns(ins.querySelector('.wi-card')); } }));
+    [el('button', { type: 'button', class: 'wi-x', 'aria-label': 'Put the card back', html: Kit.icon('close'), onclick: function () { closeIns(); } }),
+      el('button', { type: 'button', class: 'wi-card', 'aria-label': 'Read ' + c.name + '’s card', onclick: function () { cardSheet(c, false); } }, [cardFace(c)]), top, bot, rg].filter(Boolean).forEach(function (n) { ins.appendChild(n); });
+    return ins;
+  }
+  // the inspector's card as large as its room allows; a short room lets go of the die ranges, then the season, then the
+  // power's words, then the tags, never cutting what stays
+  function fitIns(sc) {
+    var ins = app.querySelector('.wp-ins'); if (!ins) return;
+    var drf = ins.parentNode, land = document.documentElement.getAttribute('data-o') === 'land' && !DK.on, H = drf.clientHeight;
+    ins.style.removeProperty('max-height');
+    var dkl = DK.on && document.documentElement.getAttribute('data-o') === 'land';
+    var maxH = land ? ins.clientHeight : dkl ? Math.min(540, H * .52) : Math.min(DK.on ? 420 : 370, Math.max(140, H * (H < 600 ? .37 : H < 900 ? .34 : .37))) * (sc || 1);
+    var maxW = DK.on ? 210 : land ? 200 : 160, minW = 56, lv = ['', 'n1', 'n2', 'n3', 'n4', 'n5'];
+    var cap = Math.min(maxW, (maxH - 20) / 1.4), floor = Math.max(minW, Math.round(cap * (land ? .6 : .5))), done = false;
+    function over() { return ins.scrollHeight > maxH + 1 || ins.scrollWidth > ins.clientWidth + 1 || [].some.call(ins.querySelectorAll('.wi-rg .wp-rg, .wi-rg .rg-r span'), function (x) { return x.offsetParent && x.scrollWidth > x.clientWidth + 1; }); }
+    // the largest card that fits, beside what it plays or (st) over the power and the button; with none, the least
+    // needed part goes and it tries again
+    function largest(st) {
+      ins.classList.toggle('st', st);
+      for (var w = Math.floor(cap); w >= floor; w -= 6) {
+        ins.style.setProperty('--iw', w + 'px'); fitFaces(ins);
+        if (!over()) return w;
+      }
+      return 0;
+    }
+    for (var i = 0; i < lv.length * 2 && !done; i++) {
+      if (i === lv.length) floor = minW;
+      lv.forEach(function (k) { if (k) ins.classList.remove(k); }); if (lv[i % lv.length]) ins.classList.add(lv[i % lv.length]);
+      var a = largest(false), b = largest(true);
+      if (a || b) { done = true; if (b > a * 1.12) { ins.classList.add('st'); ins.style.setProperty('--iw', b + 'px'); } else { ins.classList.remove('st'); ins.style.setProperty('--iw', a + 'px'); } fitFaces(ins); }
+    }
+    fitCardNames(ins);
+    // nothing fits: the inspector keeps its own height whole and the grid gives way instead
+    if (!land && done) ins.style.maxHeight = maxH + 'px';
+    ins.style.overflowY = land && !done ? 'auto' : '';
+  }
+  // Escape puts the lit card back
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && INS && S && S.phase === 'draft') closeIns(); });
 
   // ── The stack ────────────────────────────────────────────────────────────
   function need() { return S.size * 2; }
@@ -884,22 +979,23 @@
       teams.appendChild(row);
     });
     var left = draftLeft();
-    var gridBox = el('div', { class: 'wp-gbox' }), grid = el('div', { class: 'wp-grid' });
+    if (INS && (draftDone() || !myPick() || left.indexOf(INS) < 0)) INS = null;
+    var gridBox = el('div', { class: 'wp-gbox', onclick: function (e) { if (e.target === gridBox || e.target === grid) closeIns(); } }), grid = el('div', { class: 'wp-grid' });
     left.forEach(function (id) {
       var c = S.C[id], shut = !draftDone() && !canTake(D.turn, c);
-      grid.appendChild(el('button', { type: 'button', class: 'wp-cbtn' + (shut ? ' shut' : ''), 'aria-label': 'Take ' + c.name, 'aria-disabled': shut ? 'true' : null, onclick: function (e) {
+      grid.appendChild(el('button', { type: 'button', class: 'wp-cbtn' + (shut ? ' shut' : '') + (INS === id ? ' on' : ''), 'data-id': id, 'aria-label': 'Take ' + c.name, 'aria-disabled': shut ? 'true' : null, onclick: function (e) {
         if (!myPick()) return Kit.toast(S.T[S.draft.turn].name + ' is picking');
-        if (!canTake(S.draft.turn, c)) return Kit.toast(S.T[S.draft.turn].name + ' already ' + (S.T[S.draft.turn].name === 'You' ? 'have' : 'has') + ' three pitchers');
-        var b = e.currentTarget;
-        if (grid.classList.contains('lst') && !b.classList.contains('on')) return draftPeek(id, b);
-        draftPeek(null); pick(id, b); } }, [cardFace(c), c.kind === 'player' ? el('span', { class: 'wp-cr', text: quick(c) }) : null,
+        if (INS === id) return takeIns(e.currentTarget);
+        inspect(id); } }, [cardFace(c), c.kind === 'player' ? el('span', { class: 'wp-cr', text: quick(c) }) : null,
         el('span', { class: 'wp-ct', style: { '--tc': c.kind === 'player' ? 'var(--gold-hi)' : '#9fb4ff' } }, [el('b', { text: c.kind === 'player' ? (c.kid ? 'Kid' : last(c.name)) : ODDSHORT[c.kind] || c.name }), el('i', { text: c.kind === 'player' ? quick(c) : C.SPECIAL[c.kind].play })])]));
     });
     gridBox.appendChild(grid);
-    var cap = el('div', { class: 'wp-cap' }, [el('p', { text: draftDone() ? 'Both teams are picked. Slide each card to its team’s side of the table.' : myPick() ? T.name + ', take a card.' : vb(T.name, 'is', 'are') + ' choosing…' })]);
+    var nl = left.length, lft = nl === 1 ? 'One card is left.' : nl + ' cards are left.';
+    var cap = el('div', { class: 'wp-cap' }, [el('p', { text: draftDone() ? 'Both teams are picked. Slide each card to its team’s side of the table.' : myPick() ? T.name + ', take a card. ' + lft : vb(T.name, 'is', 'are') + ' choosing. ' + lft })]);
     var dock = el('div', { class: 'wp-dock' }, [cap]);
     if (draftDone()) dock.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block wp-go', text: 'Set the lineups', onclick: function () { toLineup(); } }));
-    app.appendChild(el('div', { class: 'wp-scr wp-drf' + (DK.on ? ' dk' : '') }, [teams, gridBox, dock]));
+    var drf = el('div', { class: 'wp-scr wp-drf' + (DK.on ? ' dk' : '') + (INS ? ' ins' : '') }, [teams, gridBox, INS ? insEl(INS) : null, dock].filter(Boolean));
+    app.appendChild(drf);
     requestAnimationFrame(function () { fitGrid(); requestAnimationFrame(function () { fitCardNames(); }); });
     if (D.flip) { D.flip = false; save(); coinFlip(); return; }
     if (!draftDone() && !myPick()) later(cpuPick, 900);

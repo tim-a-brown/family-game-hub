@@ -19,7 +19,7 @@
 
   Kit.demoScript({
     intro: 'Here’s Wax Pack. Your old baseball cards play a real game, and the dice decide every at-bat.',
-    beats: 8,
+    beats: 9,
     end: 'Spread out a stack of your own cards, or open a box, and pick teams. The menu prints the cards to play at a table without the app.',
     start: function () {
       W.first(0);
@@ -36,7 +36,9 @@
       await D.wait(150);
       var star = bestHitter();
       await D.you(function () { return D.qa('.wp-cbtn').filter(function (b) { return b.getAttribute('aria-label') === 'Take ' + star.name; })[0]; },
-        'A coin flip says you pick first. Pick teams the way kids do at recess: take ' + star.name + '.', { until: function () { return S().T[0].cards.length > 0; } });
+        'A coin flip says you pick first. Pick teams the way kids do at recess. Tap ' + star.name + ' to look him over.', { until: function () { return D.q('.wp-ins'); } });
+      await D.wait(300);
+      await D.you('.wi-take', 'His card, his numbers from the season and his power are all here, and the cards still on the table stay in view. Take him.', { avoid: '.wi-top', until: function () { return S().T[0].cards.length > 0; } });
       await D.wait(function () { return S().T[1].cards.length > 0; }, 6000);
       await D.wait(200);
       await D.set(function () { W.finishDraft(); });
