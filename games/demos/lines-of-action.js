@@ -15,7 +15,7 @@
 
   Kit.demoScript({
     intro: 'Here’s how pieces count their way across the board, and how joining every piece wins.',
-    beats: 14,
+    beats: 12,
     end: 'Count the pieces on a line to see how far you move, jump your own pieces, take theirs, and join all of yours into one group.',
     start: function () {
       var me = (localStorage.getItem('my_name') || '').trim() || 'You';
@@ -24,27 +24,25 @@
     steps: async function (D) {
       var them = S().players[1].name;
       await D.say('You play black, along the top and bottom edges. ' + them + ' plays white, down the two sides.', { at: '.frame' });
-      await D.say('To win, join all of your pieces into one group. Pieces in a group touch side by side or corner to corner. Right now you have two groups.', { at: '.pbar.bot .grp' });
+      await D.say('To win, join all of your pieces into one group, touching side by side or corner to corner. Right now you have two groups.', { at: '.pbar.bot .grp' });
       await D.tap(sq('c1'), { after: 500 });
-      await D.say('Tap a piece to see its lines. A piece moves exactly as many squares as there are pieces on that whole line, both colors, counting itself.', { at: sq('c1') });
-      await D.say('The c column has two pieces in it, so this piece moves two squares up. The number on each landing shows how far that line lets it go.', { at: sqs(['c1', 'c8', 'c3']) });
-      await D.you(sq('c3'), 'Your turn. Move the piece two squares up.', { until: function () { return moved() > 0; } });
+      await D.say('A piece moves exactly as many squares as there are pieces on its whole line, both colors, counting itself.', { at: sq('c1'), avoid: '.bd' });
+      await D.say('The c column holds two pieces, so this one moves two squares. Each landing shows its number.', { at: sqs(['c1', 'c8', 'c3']), avoid: '.bd' });
+      await D.you(sq('c3'), 'Your turn. Move the piece two squares up.', { avoid: '.bd', until: function () { return moved() > 0; } });
       await D.wait(900);
       await D.tap(sq('h4'), { after: 400 });
-      await D.tap(sq('f2'), { after: 1200 });
-      await D.say(them + ' moved a white piece two squares on a diagonal, since that diagonal holds two pieces.', { at: sqs(['f2', 'e1']) });
+      await D.tap(sq('f2'), { after: 900 });
       await D.set(function () { L.set(MID, 1); });
       await D.tap(sq('b4'), { after: 600 });
-      await D.say('Now we skip ahead to the middle of a game. This row has three pieces, so the piece goes three squares to the right. It can jump over your own piece on the way.', { at: sqs(['b4', 'd4', 'e4']) });
-      await D.say('This diagonal has three pieces too, but a piece can never jump over the other player’s pieces, so that way is blocked.', { at: sqs(['c5']) });
-      await D.say('The column has two pieces, and the landing two squares up holds a white piece. Landing on it captures it.', { at: sqs(['b6']) });
-      await D.you(sq('b6'), 'Your turn. Capture the white piece.', { until: function () { return moved() > 0; } });
-      await D.wait(1300);
-      await D.say('The white piece is gone from the game, and White has one fewer piece to join.', { at: sq('b6') });
+      await D.say('Later in a game, this row holds three pieces, so the piece moves three squares, jumping your own piece on the way.', { at: sqs(['b4', 'd4', 'e4']), avoid: '.bd' });
+      await D.say('A piece can never jump the other player’s pieces, so this diagonal is blocked.', { at: sqs(['c5']), avoid: '.bd' });
+      await D.say('Two squares up is a white piece. Landing on it captures it.', { at: sqs(['b6']), avoid: '.bd' });
+      await D.you(sq('b6'), 'Your turn. Capture the white piece.', { avoid: '.bd', until: function () { return moved() > 0; } });
+      await D.wait(1100);
       await D.set(function () { L.set(END, 1); });
-      await D.say('Near the end of the game, every one of your pieces is in one group except the one at the bottom.', { at: sqs(['f1', 'e4', 'd3']) });
+      await D.say('Near the end, all your pieces but one are in a group.', { at: sqs(['f1', 'e4', 'd3']), avoid: '.bd' });
       await D.tap(sq('f1'), { after: 500 });
-      await D.you(sq('f2'), 'Your turn. Move it up one square to join the group.', { until: function () { return moved() > 0; } });
+      await D.you(sq('f2'), 'Your turn. Move it up one square to join the group.', { avoid: '.bd', until: function () { return moved() > 0; } });
       await D.wait(function () { return document.querySelector('.k-win h2'); }, 12000);
       await D.wait(700);
       await D.say('All of your pieces touch in one group, so you win the game.', { at: '.k-win .rank', pos: 'above' });

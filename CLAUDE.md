@@ -1504,6 +1504,15 @@ Underlying principles for everything:
   lights its four lines edge to edge, rings the pieces each line counts, and puts the count on every landing (gold,
   red for a capture), with a dashed line and a mark where an enemy piece blocks (`paintRays`). Moments: groups joined
   (`reward`), a long move, a capture's burst, the winner's pieces lighting out from the last move (`winWave`).
+- Layouts (`fit`): upright, the column takes the screen's height and the room the board can't use goes into the gaps
+  (`--gp`), each player's plate holding a row of their twelve stones with a dimple for each one captured; sideways the
+  players, whose turn and Undo stand at the left and the board at the right; a turn of the device glides (`Kit.glide`).
+  Pass and play hands the device over between moves with `Kit.handoff` (a 1-second hold; never against the computer,
+  online or in the demo). **At a desk** (`deskWin`, the kit's test, so phones and tablets are unchanged; `la-desk`): the
+  board takes the window's height and the left column (300 to 520px) holds the room (`paintRoom`): This game, every
+  move newest first with captures in red; Groups, move by move (each side's group count toward the dashed one-group
+  line); Past games here (wins by name and the last game); it gives up the chart, then past games, then the oldest
+  moves, never a cut row. A desk window held upright keeps the device column without the 760px cap.
 - Robots: alpha-beta (`search`) on spread around the center of mass, quads (Euler number), centralization, groups and
   mobility; `LEVELS` Easy depth 1 with noise, Normal 3, Hard 6 within 2.2 s. Test hook `window.__loa`
   (`start`, `set(rows, turn)`, `tap`, `play`).
