@@ -143,6 +143,11 @@ var GameIcon = (function () {
       return line('M4.5 19.5 8.5 11.5 16.5 7.5', '#c42a20', 2.6) + line('M13.5 18 18.5 14 21 20', K, 2.4) +
         circ(4.5, 19.5, 2.6, R) + circ(8.5, 11.5, 2.6, R) + circ(16.5, 7.5, 2.6, R) + circ(13.5, 18, 2.4, K) + circ(18.5, 14, 2.4, K) + circ(21, 20, 2.4, K);
     },
+    entropy: function () {   // chips of many colors in a grid, a palindrome across the middle outlined in gold
+      var s = rect(2.2, 9.1, 19.6, 5.8, 2.9, 'none', ' stroke="#ffd75a" stroke-width="1.3"');
+      [[5, 4.8, '#2f9a4c'], [12, 4.8, '#8a4fd0'], [19, 4.8, Y], [5, 12, R], [12, 12, B], [19, 12, R], [5, 19.2, Y], [12, 19.2, K], [19, 19.2, '#2f9a4c']].forEach(function (q) { s += circ(q[0], q[1], 2.7, q[2]); });
+      return s;
+    },
     othello: function () { return circ(8, 13, 7, K) + circ(16, 11, 7, W, ' stroke="' + K + '" stroke-width="1.8"'); },
     backgammon: function (c) { var t = ''; for (var i = 0; i < 4; i++) { var x = 1 + i * 5.6; t += path('M' + x + ' 1h5l-2.5 9.5z', i % 2 ? K : c) + path('M' + x + ' 23h5l-2.5-9.5z', i % 2 ? c : K); } return t + circ(9, 12, 2.2, R) + circ(15, 12, 2.2, W, ' stroke="' + K + '" stroke-width="1.2"'); },
     battleship: function () { return path('M2 13h20l-3 6H5z', K) + rect(8, 9, 8, 4, 1, S) + rect(11, 5.5, 2, 4, .6, K) + line('M2 21.5c2 0 2-1.2 4-1.2s2 1.2 4 1.2 2-1.2 4-1.2 2 1.2 4 1.2 2-1.2 4-1.2', B, 1.6); },

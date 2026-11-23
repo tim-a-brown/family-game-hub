@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Entropy</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
+<script src="entropy-core.js"></script>
+<style>
+.en-credit{margin:-6px 0 2px;text-align:center;font-size:.78rem;font-weight:600;color:var(--text-3);}
+.cb-col{max-width:460px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
+/* The chips: enamel discs in seven colors, each with its own mark pressed into it, so no two are told apart by color
+   alone */
+.k1{--c:#d8352c;--hi:#ff9d90;--lo:#6e0f0a;--gl:rgba(70,0,0,.42);}
+.k2{--c:#f0b41f;--hi:#fff0a6;--lo:#8a5a00;--gl:rgba(90,50,0,.42);}
+.k3{--c:#2f9a4c;--hi:#9cf0a8;--lo:#0d4a1f;--gl:rgba(0,40,10,.45);}
+.k4{--c:#2c6fd8;--hi:#a6c8ff;--lo:#0c2c6a;--gl:rgba(0,20,70,.45);}
+.k5{--c:#8a4fd0;--hi:#dcbcff;--lo:#3a1470;--gl:rgba(40,0,80,.45);}
+.k6{--c:#ece4d2;--hi:#ffffff;--lo:#9a8f78;--gl:rgba(80,60,30,.38);}
+.k7{--c:#2b2d33;--hi:#8f939e;--lo:#050507;--gl:rgba(255,255,255,.4);}
+.disc{position:relative;border-radius:50%;background:radial-gradient(circle at 34% 28%,var(--hi) 0,var(--c) 40%,var(--lo) 100%);
+  box-shadow:inset 0 -2px 3px rgba(0,0,0,.32),inset 0 1.5px 1.5px rgba(255,255,255,.4),0 2px 0 rgba(0,0,0,.35),0 4px 7px rgba(0,0,0,.35);}
+.disc::before{content:'';position:absolute;inset:13%;border-radius:50%;box-shadow:inset 0 1px 1px rgba(0,0,0,.25),0 1px 0 rgba(255,255,255,.25);}
+.disc svg{position:absolute;inset:27%;width:46%;height:46%;fill:var(--gl);display:block;}
+.k7.disc{box-shadow:inset 0 -2px 3px rgba(0,0,0,.4),inset 0 0 0 1.5px rgba(200,205,220,.35),inset 0 1.5px 1.5px rgba(255,255,255,.35),0 2px 0 rgba(0,0,0,.4),0 4px 7px rgba(0,0,0,.35);}
+
+/* A player's plate: their role (Order's mirror, Chaos's scatter), their name, and their points as Order */
+.pbar{display:flex;align-items:center;gap:10px;min-height:50px;padding:5px 12px 5px 10px;border-radius:16px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);transition:box-shadow .2s,background .2s;}
+.pbar.on{background:color-mix(in srgb,var(--lit) 11%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--lit) 65%,transparent),0 0 18px color-mix(in srgb,var(--lit) 18%,transparent);}
+.pbar .role{width:34px;height:34px;flex:none;border-radius:11px;display:grid;place-items:center;background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);}
+.pbar .role svg{width:24px;height:24px;display:block;}
+.pbar.on .role{background:color-mix(in srgb,var(--lit) 22%,transparent);}
+.pbar .who{flex:1;min-width:0;display:flex;flex-direction:column;}
+.pbar .nm{font-weight:800;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;}
+.pbar .nm .ico{width:15px;height:15px;color:var(--text-3);flex:none;}
+.pbar .nm span{overflow:hidden;text-overflow:ellipsis;}
+.pbar .sub{font-size:.74rem;font-weight:700;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pbar.on .sub{color:var(--lit-ink);}
+.pbar .pt{display:flex;flex-direction:column;align-items:flex-end;gap:1px;min-width:3.4em;}
+.pbar .pt b{font-family:var(--display);font-size:1.55rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;}
+.pbar .pt small{font-size:.68rem;font-weight:700;color:var(--text-3);white-space:nowrap;}
+.pbar .pt.live b{color:var(--lit-ink);}
+.pbar .pt b.bump{animation:pop .45s var(--spring);}
+.think i{display:inline-block;width:5px;height:5px;margin:0 1px;border-radius:50%;background:currentColor;animation:th 1s infinite;}
+.think i:nth-child(2){animation-delay:.15s}.think i:nth-child(3){animation-delay:.3s}
+@keyframes th{50%{opacity:.2;transform:translateY(-2px);}}
+
+/* The bag: a cloth bag on the table, the chip just drawn beside it, and how many of each color are still inside, as
+   stacks of chips */
+.bagbox{display:flex;align-items:center;gap:12px;padding:6px 12px 6px 8px;border-radius:18px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);min-height:var(--bh,74px);}
+.bag{width:calc(var(--bh,74px) * .82);height:calc(var(--bh,74px) * .9);flex:none;position:relative;}
+.bag svg{width:100%;height:100%;display:block;overflow:visible;}
+.bag .body{transform-origin:50% 100%;transition:transform .5s var(--spring);}
+.bag.shake{animation:bagsh .5s ease-in-out;}
+@keyframes bagsh{20%{transform:rotate(-7deg);}45%{transform:rotate(6deg);}70%{transform:rotate(-3deg);}}
+.tray{width:calc(var(--bh,74px) * .78);height:calc(var(--bh,74px) * .78);flex:none;border-radius:50%;position:relative;display:grid;place-items:center;
+  background:radial-gradient(circle at 50% 40%,rgba(0,0,0,.42),rgba(0,0,0,.2) 70%,rgba(255,255,255,.05));box-shadow:inset 0 2px 5px rgba(0,0,0,.5),0 1px 0 rgba(255,255,255,.08);}
+.tray .disc{width:84%;height:84%;}
+.tray .disc.rise{animation:rise .62s cubic-bezier(.25,1.4,.5,1) both;}
+@keyframes rise{0%{transform:translate(calc(var(--bh,74px) * -.9),calc(var(--bh,74px) * .1)) scale(.3);opacity:0;}35%{opacity:1;transform:translate(calc(var(--bh,74px) * -.6),calc(var(--bh,74px) * -.55)) scale(.8);}100%{transform:none;}}
+.tray .disc.lift{transform:translateY(-3px) scale(1.06);box-shadow:0 0 0 3px #ffd75a,0 8px 16px rgba(0,0,0,.5);}
+.tray.empty::after{content:'';width:30%;height:30%;border-radius:50%;border:2px dashed rgba(255,255,255,.18);}
+.counts{flex:1;min-width:0;display:flex;justify-content:space-between;align-items:flex-end;gap:2px;}
+.counts .st{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;flex:1;}
+.counts .stk{position:relative;width:min(26px,100%);height:calc(var(--bh,74px) * .52);}
+.counts .stk .disc{position:absolute;left:0;width:100%;height:auto;aspect-ratio:1/.42;border-radius:50%;box-shadow:inset 0 -1px 1px rgba(0,0,0,.4),0 1px 0 rgba(0,0,0,.4);}
+.counts .stk .disc::before,.counts .stk .disc svg{display:none;}
+.counts small{font-size:.72rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text-2);line-height:1;}
+.counts .st.out{opacity:.35;}
+.counts .st.drew small{color:var(--lit-ink);}
+.bagbox .gtag{display:none;}
+
+/* The board: a walnut frame round a slate tray with a carved well for every square */
+.frame{--rim:clamp(7px,2vw,14px);position:relative;padding:var(--rim);border-radius:16px;
+  background:repeating-linear-gradient(91deg,rgba(255,255,255,.035) 0 2px,transparent 2px 8px),repeating-linear-gradient(87deg,rgba(0,0,0,.12) 0 1px,transparent 1px 13px),linear-gradient(180deg,#5a3720,#33200f);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.16),inset 0 -3px 0 rgba(0,0,0,.4),0 16px 34px rgba(0,0,0,.5);}
+.bd{--n:7;position:relative;aspect-ratio:1;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:pointer;border-radius:8px;
+  background:radial-gradient(120% 90% at 30% 20%,#4a5662,#323b45 60%,#262d35);box-shadow:inset 0 2px 6px rgba(0,0,0,.6),inset 0 0 0 1px rgba(0,0,0,.4);}
+.bd .lyr{position:absolute;inset:0;pointer-events:none;}
+.bd .lyr.wls{pointer-events:auto;}
+.bd .wl{position:absolute;width:calc(100% / var(--n));height:calc(100% / var(--n));display:grid;place-items:center;}
+.bd .wl::before{content:'';width:84%;height:84%;border-radius:50%;background:radial-gradient(circle at 50% 38%,rgba(0,0,0,.38),rgba(0,0,0,.18) 70%,rgba(255,255,255,.05));box-shadow:inset 0 2px 4px rgba(0,0,0,.55),0 1px 0 rgba(255,255,255,.07);}
+.bd .wl.lit::before{box-shadow:inset 0 2px 4px rgba(0,0,0,.55),0 0 0 1.5px rgba(255,215,90,.2);}
+.bd .ch{position:absolute;width:calc(100% / var(--n));height:calc(100% / var(--n));display:grid;place-items:center;pointer-events:none;}
+.bd .ch .disc{width:84%;height:84%;transition:transform .2s var(--spring),box-shadow .2s;}
+.bd .ch.sel .disc{transform:translateY(-3px) scale(1.07);box-shadow:0 0 0 3px #ffd75a,0 0 18px rgba(255,215,90,.55),0 8px 14px rgba(0,0,0,.5);}
+.bd .ch.last .disc{box-shadow:inset 0 -2px 3px rgba(0,0,0,.32),inset 0 1.5px 1.5px rgba(255,255,255,.4),0 0 0 2px rgba(255,215,90,.75),0 4px 7px rgba(0,0,0,.35);}
+.bd .ch.gone{opacity:.28;}
+.bd .ch.ghost{opacity:.62;}
+.bd .ch.drag{z-index:5;}
+.bd .ch.drag .disc{transform:scale(1.12);box-shadow:0 0 0 3px #ffd75a,0 14px 22px rgba(0,0,0,.55);}
+.bd .ch.fly{z-index:4;}
+.bd .ch.pop .disc{animation:cpop .42s cubic-bezier(.3,1.6,.5,1);}
+@keyframes cpop{0%{transform:scale(1.25);}100%{transform:none;}}
+.bd svg.runs{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;}
+.bd .run{fill:none;stroke:rgba(255,215,90,.42);stroke-width:.035;}
+.bd .run.new{fill:none;stroke:#ffd75a;stroke-width:.06;filter:drop-shadow(0 0 .08px #ffd75a);animation:rnew 1.4s ease-out;}
+@keyframes rnew{0%{stroke-width:.16;opacity:.2;}25%{opacity:1;}}
+.bd .run.pv{fill:none;stroke:#ffd75a;stroke-width:.05;stroke-dasharray:.14 .09;}
+.bd .run.cnt{fill:none;stroke:#ffe27a;stroke-width:.07;filter:drop-shadow(0 0 .1px #ffd75a);}
+.bd .run.dim{opacity:.35;}
+.bd .lnhl{fill:rgba(255,226,140,.04);stroke:rgba(255,226,140,.5);stroke-width:.03;}
+.bd .dst{position:absolute;width:calc(100% / var(--n));height:calc(100% / var(--n));display:grid;place-items:center;pointer-events:none;}
+.bd .dst span{min-width:46%;height:46%;padding:0 3px;box-sizing:border-box;border-radius:999px;display:grid;place-items:center;font-weight:800;font-size:calc(var(--cell) * .24);font-variant-numeric:tabular-nums;line-height:1;
+  background:rgba(255,215,90,.16);box-shadow:0 0 0 2px rgba(255,215,90,.75);color:#ffe9a8;animation:din .2s ease-out both;}
+.bd .dst span.z{min-width:26%;height:26%;padding:0;background:rgba(255,215,90,.55);box-shadow:0 0 0 2px rgba(255,215,90,.35);}
+.bd .dst span.neg{background:rgba(255,106,77,.16);box-shadow:0 0 0 2px rgba(255,120,90,.7);color:#ffc2b2;}
+.bd .dst span.give{background:rgba(255,106,77,.12);box-shadow:0 0 0 1.5px rgba(255,120,90,.55);color:#ffc2b2;min-width:40%;height:40%;}
+.bd .dst.hov span{transform:scale(1.15);background:rgba(255,215,90,.32);}
+@keyframes din{from{opacity:0;transform:scale(.5);}}
+.bd .gf{position:absolute;font-family:var(--display);font-weight:800;font-size:calc(var(--cell) * .5);color:#ffe27a;text-shadow:0 2px 6px rgba(0,0,0,.7),0 0 12px rgba(255,200,60,.6);pointer-events:none;transform:translate(-50%,-50%);animation:gfloat 1.3s ease-out forwards;white-space:nowrap;z-index:6;}
+.bd .gf.neg{color:#ff9b85;text-shadow:0 2px 6px rgba(0,0,0,.7);}
+@keyframes gfloat{0%{opacity:0;transform:translate(-50%,-20%) scale(.6);}20%{opacity:1;transform:translate(-50%,-60%) scale(1.1);}100%{opacity:0;transform:translate(-50%,-170%) scale(1);}}
+.bd .lp{position:absolute;z-index:7;transform:translate(-50%,-50%);min-width:1.9em;padding:2px 7px;border-radius:999px;text-align:center;font-weight:800;font-size:min(calc(var(--cell) * .26),24px);font-variant-numeric:tabular-nums;
+  background:linear-gradient(180deg,#ffe48a,#d9a223);color:#3a2600;box-shadow:0 2px 6px rgba(0,0,0,.5);animation:lpin .35s ease-out;pointer-events:none;}
+@keyframes lpin{from{opacity:0;filter:brightness(1.8);}}
+.bd .lp.z{background:rgba(30,34,40,.85);color:rgba(255,255,255,.55);box-shadow:0 0 0 1px rgba(255,255,255,.15);}
+.bd.shake{animation:shake .4s;}
+.frame .lbl{position:absolute;font-size:calc(var(--cell) * .2);font-weight:800;color:rgba(255,226,180,.55);pointer-events:none;transform:translate(-50%,-50%);font-family:var(--display);}
+.turn{margin:2px 0 0;min-height:34px;}
+.acts{display:flex;gap:10px;justify-content:center;margin-top:2px;}
+.acts .btn{flex:1;max-width:200px;}
+
+/* A layout for each shape (fit() sizes the board to the room). Upright: the other player, the bag, the board, you, whose
+   turn and the buttons. Sideways: the players, the bag, whose turn and the buttons in a column at the left, the board
+   you play on at the right */
+#app.stage.ipl{max-width:none;box-sizing:border-box;height:var(--avh,auto);display:flex;flex-direction:column;align-items:center;
+  padding:4px max(10px,var(--corner-x,0px)) max(calc(var(--safe-b) + 10px),18px);}
+#app.ipl>.cb-col{width:var(--cw,100%);max-width:none;flex:none;margin:auto 0;}
+#app.en-port>.cb-col{height:100%;margin:0;gap:var(--gp,10px);justify-content:center;}
+#app.en-port>.cb-col>*{flex:none;}
+#app.en-port>.cb-col>.turn{font-size:1.02rem;margin:0;}
+.pbar .sub .lg{display:none;}
+#app.en-tall .pbar .sub .lg,#app.en-desk .pbar .sub .lg,#app.en-land:not(.en-low) .pbar .sub .lg{display:inline;}
+#app.en-tall .pbar .sub .sh,#app.en-desk .pbar .sub .sh,#app.en-land:not(.en-low) .pbar .sub .sh{display:none;}
+#app.en-port>.cb-col>.acts{margin:0;}
+#app.en-port.en-short .pbar{min-height:42px;padding:3px 10px;}
+#app.en-port.en-short .pbar .role{width:28px;height:28px;}
+#app.en-port.en-short .pbar .pt b{font-size:1.3rem;}
+#app.en-port.en-short>.cb-col>.turn{min-height:24px;font-size:.9rem;}
+#app.en-port.en-short>.cb-col>.acts .btn{min-height:40px;}
+#app.en-tall .pbar{min-height:62px;padding:8px 16px 8px 12px;}
+#app.en-tall .pbar .nm{font-size:1.1rem;}
+#app.en-tall .pbar .sub{font-size:.85rem;}
+#app.en-tall .pbar .pt b{font-size:2rem;}
+#app.en-tall .pbar .role{width:42px;height:42px;}
+#app.en-tall .pbar .role svg{width:30px;height:30px;}
+#app.en-tall .counts small{font-size:.85rem;}
+#app.en-land>.cb-col{width:auto;height:var(--bsz);display:grid;grid-template-columns:var(--sw,300px) var(--bsz);
+  grid-template-rows:max-content max-content max-content minmax(0,1fr) max-content max-content;
+  grid-template-areas:"t b" "g b" "s b" ". b" "a b" "p b";column-gap:var(--cg,24px);row-gap:10px;justify-content:center;}
+#app.en-land>.cb-col>.frame{grid-area:b;--rim:clamp(7px,1.8vh,20px);}
+#app.en-land>.cb-col>.pbar.top{grid-area:t;}
+#app.en-land>.cb-col>.pbar.bot{grid-area:p;}
+#app.en-land>.cb-col>.bagbox{grid-area:g;}
+#app.en-land>.cb-col>.turn{grid-area:s;justify-self:start;}
+#app.en-land>.cb-col>.acts{grid-area:a;justify-content:flex-start;flex-wrap:wrap;}
+#app.en-low>.cb-col{row-gap:6px;}
+#app.en-low .pbar{min-height:40px;padding:3px 9px;}
+#app.en-low .pbar .role{width:26px;height:26px;}
+#app.en-low .pbar .role svg{width:19px;height:19px;}
+#app.en-low .pbar .pt b{font-size:1.25rem;}
+#app.en-low>.cb-col>.turn{min-height:24px;font-size:.9rem;margin:0;}
+#app.en-low>.cb-col>.acts .btn{min-height:40px;}
+/* A large window: the room in the column at the left (or a column of its own), between whose turn it is and the
+   buttons */
+.room{display:none;}
+#app.en-land.en-desk>.cb-col{grid-template-areas:"t b" "g b" "s b" "m b" "a b" "p b";}
+#app.en-land.en-desk.en-two>.cb-col{grid-template-columns:var(--sw) var(--rw) var(--bsz);grid-template-areas:"t m b" "g m b" "s m b" ". m b" "a m b" "p m b";}
+#app.en-land.en-desk>.cb-col>.room{grid-area:m;display:flex;flex-direction:column;gap:12px;min-height:0;overflow:hidden;}
+#app.en-desk .pbar{min-height:calc(62px * var(--dk,1));padding:calc(8px * var(--dk,1)) calc(16px * var(--dk,1));}
+#app.en-desk .pbar .nm{font-size:calc(1.05rem * var(--dk,1));}
+#app.en-desk .pbar .sub{font-size:calc(.8rem * var(--dk,1));}
+#app.en-desk .pbar .pt b{font-size:calc(1.9rem * var(--dk,1));}
+#app.en-desk .pbar .role{width:calc(40px * var(--dk,1));height:calc(40px * var(--dk,1));}
+#app.en-desk .pbar .role svg{width:calc(28px * var(--dk,1));height:calc(28px * var(--dk,1));}
+#app.en-desk .counts small{font-size:calc(.85rem * var(--dk,1));}
+#app.en-desk>.cb-col>.turn{font-size:calc(1rem * var(--dk,1));}
+.room .pn{background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);border-radius:18px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-height:0;flex:none;font-size:calc(.92rem * var(--dk,1));}
+.room .pn.mv{flex:0 1 auto;}
+.room h4{margin:0;font-size:.88em;font-weight:800;color:var(--text-3);display:flex;justify-content:space-between;gap:8px;}
+.room h4 b{color:var(--lit-ink);font-family:var(--display);font-size:1.35em;line-height:1;}
+.room .say{margin:0;font-weight:600;line-height:1.35;}
+.room .lines{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;}
+.room .lines li{display:grid;grid-template-columns:5.2em minmax(0,1fr) 2.2em;align-items:center;gap:8px;}
+.room .lines li span{font-weight:700;white-space:nowrap;}
+.room .lines li b{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--display);font-size:1.15em;}
+.room .mini{display:flex;gap:2px;align-items:center;position:relative;}
+.room .mini .disc{width:1.05em;height:1.05em;flex:none;box-shadow:inset 0 -1px 1px rgba(0,0,0,.35),0 1px 1px rgba(0,0,0,.35);}
+.room .mini .disc::before,.room .mini .disc svg{display:none;}
+.room .mini .disc.on{box-shadow:0 0 0 1.5px #ffd75a,0 0 6px rgba(255,215,90,.6);}
+.room .mini .disc.off{opacity:.4;}
+.room .mvl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;overflow:hidden;min-height:0;}
+.room .mvl li{display:grid;grid-template-columns:2.2em 1.1em minmax(0,1fr) auto;align-items:center;gap:8px;padding:3px 4px;border-radius:9px;}
+.room .mvl li:first-child{background:color-mix(in srgb,var(--lit) 12%,transparent);}
+.room .mvl li .no{color:var(--text-3);font-variant-numeric:tabular-nums;font-weight:700;text-align:right;}
+.room .mvl li .disc{width:1em;height:1em;}
+.room .mvl li .disc::before,.room .mvl li .disc svg{display:none;}
+.room .mvl li .who{font-weight:700;overflow-wrap:anywhere;}
+.room .mvl li .tag{font-size:.8em;font-weight:800;padding:1px 8px;border-radius:999px;white-space:nowrap;background:color-mix(in srgb,var(--lit) 20%,transparent);color:var(--lit-ink);}
+.room .mvl li .tag.neg{background:rgba(255,122,89,.18);color:#ffb39f;}
+.room .mvl li.none{display:block;color:var(--text-3);}
+.room .g1{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;}
+.room .g1 .mb{display:grid;gap:1px;width:calc(7.5em * var(--dk,1));aspect-ratio:1;padding:3px;border-radius:7px;background:#2c343d;}
+.room .g1 .mb i{display:block;border-radius:50%;}
+.room .wins{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;}
+.room .wins li{display:flex;justify-content:space-between;gap:10px;}
+.room .wins li span{font-weight:700;overflow-wrap:anywhere;}
+.frame{view-transition-name:en-board;}
+.pbar.top{view-transition-name:en-top;}
+.pbar.bot{view-transition-name:en-bot;}
+.bagbox{view-transition-name:en-bag;}
+.cb-col>.turn{view-transition-name:en-turn;}
+.cb-col>.acts{view-transition-name:en-acts;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.7,.25,1);}
+::view-transition-old(root),::view-transition-new(root){animation:none;}
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app'), C = window.EntropyCore;
+  var SAVE = 'entropy_state', KEY = 'entropy';
+  var CREDIT = 'Entropy was designed by Eric Solomon.';
+  var CNAME = [null, 'red', 'yellow', 'green', 'blue', 'purple', 'white', 'black'];
+  var CHEX = [null, '#d8352c', '#f0b41f', '#2f9a4c', '#2c6fd8', '#8a4fd0', '#ece4d2', '#55585f'];
+  // each color's mark: a ring, a triangle, a square, a diamond, a cross, a star, a hexagon (in a 10 by 10 box)
+  var GLYPH = [null,
+    '<path d="M5 2.2a2.8 2.8 0 1 0 .01 0zm0 1.5a1.3 1.3 0 1 1-.01 0z" fill-rule="evenodd"/>',
+    '<path d="M5 1.8 8.4 7.9H1.6z"/>',
+    '<path d="M2.4 2.4h5.2v5.2H2.4z"/>',
+    '<path d="M5 1.4 8.6 5 5 8.6 1.4 5z"/>',
+    '<path d="M4 1.6h2v2.4h2.4v2H6v2.4H4V6H1.6V4H4z"/>',
+    '<path d="M5 1.3l1.1 2.4 2.6.3-1.9 1.8.5 2.6L5 7.1 2.7 8.4l.5-2.6L1.3 4l2.6-.3z"/>',
+    '<path d="M5 1.5 8.1 3.25v3.5L5 8.5 1.9 6.75v-3.5z"/>'];
+  var NUM = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'];
+  function num(n) { return NUM[n] || String(n); }
+  function cap1(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  function disc(c, cls) { return '<span class="disc k' + c + (cls ? ' ' + cls : '') + '"><svg viewBox="0 0 10 10" aria-hidden="true">' + GLYPH[c] + '</svg></span>'; }
+  // the roles' marks: Order a mirrored pattern either side of a line, Chaos chips flung apart
+  var ROLE_SVG = {
+    order: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18" stroke="#ffd75a" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="2 2.4"/><circle cx="6.5" cy="7" r="2.6" fill="#2c6fd8"/><circle cx="17.5" cy="7" r="2.6" fill="#2c6fd8"/><circle cx="7.5" cy="16.5" r="2.6" fill="#d8352c"/><circle cx="16.5" cy="16.5" r="2.6" fill="#d8352c"/></svg>',
+    chaos: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="8" r="2.5" fill="#f0b41f"/><circle cx="16.5" cy="5.5" r="2.3" fill="#2f9a4c"/><circle cx="18" cy="16" r="2.6" fill="#8a4fd0"/><circle cx="8.5" cy="17.5" r="2.4" fill="#d8352c"/><circle cx="12.2" cy="11.6" r="1.7" fill="#ece4d2"/><path d="M3 13.5c2-.6 3 .8 4.5 0M14 2.8c.8 1.2 2.4 1 3.2 2" stroke="rgba(255,255,255,.4)" stroke-width="1" fill="none" stroke-linecap="round"/></svg>'
+  };
+
+  // ── State ────────────────────────────────────────────────────────────────
+  // S = the core's state (entropy-core.js) and {mode, level, cover, players: [{name, cpu}], hist (undo snapshots),
+  //   started, ev: ['+3', '-2', '0', ...] (each Order move's points, this game), best: [longest run each seat made as
+  //   Order], big: [best single slide each seat made]}
+  var S = null, VIEW = null, SEL = -1, HOV = -1, DRAG = null, BUSY = 0, HOLD = false;
+  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  var NET = null, LEFT = null, WINO = null, NETREC = {}, SHOWN = 0;
+  function save() {
+    if (NET) return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S && !S.over) Kit.resume.set('Game ' + (S.g + 1) + ' of 2');
+  }
+  function clearSave() { if (NET) return; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function vsCpu() { return S.players.some(function (p) { return p.cpu; }); }
+  function mySeat() { if (NET) return NET.seat; if (vsCpu()) return S.players[0].cpu ? 1 : 0; return -1; }
+  function isMe(seat) { return NET ? NET.seat === seat : vsCpu() && !S.players[seat].cpu; }
+  function nmOf(seat) { return isMe(seat) ? 'You' : S.players[seat].name; }
+  function nmIn(seat) { return isMe(seat) ? 'you' : S.players[seat].name; }
+  function orderSeat() { return S.ord[S.g]; }
+  function chaosSeat() { return 1 - S.ord[S.g]; }
+  function sz() { return S.sz; }
+
+  function rulesHtml() {
+    return '<p class="goal">One player is <b>Order</b> and makes patterns; the other is <b>Chaos</b> and tries to stop them. You play two games, one in each role. Whoever scores more points as Order wins.</p>' +
+      '<h3>A turn</h3><ul><li><b>Chaos</b> draws a chip from the bag at random, so both players see its color, and puts it on any empty square.</li>' +
+      '<li>Then <b>Order</b> may slide any one chip on the board, any number of empty squares along its row or its column, as a rook moves in chess. A chip can’t jump over another chip. Order can also pass.</li>' +
+      '<li>Every chip belongs to nobody: Order can slide any chip, wherever it came from.</li>' +
+      '<li>Tap a chip to see where it can slide. Each lit square shows the points that slide would make or lose for Order.</li></ul>' +
+      '<h3>Scoring</h3><ul><li>When Chaos puts the last chip on the board, Order scores every <b>palindrome</b> in every row and every column: two or more chips side by side that read the same in both directions.</li>' +
+      '<li>A palindrome scores one point for each chip in it. Red, blue, red scores 3. Red, red scores 2.</li>' +
+      '<li>Palindromes inside palindromes count too, and so do ones that overlap. Red, blue, blue, red scores 4 for itself and 2 for the two blues, 6 in all.</li>' +
+      '<li>The gold outlines on the board show the palindromes standing now, and Order’s plate shows the points they make.</li></ul>' +
+      '<h3>Two games</h3><ul><li>After the first game, the players change roles and play again on an empty board. The player with more points as Order wins the match. Equal points are a draw.</li>' +
+      '<li>The 7 by 7 board has 49 chips, seven of each of seven colors. The 5 by 5 board, the game’s first version, has 25 chips, five of each of five colors.</li></ul>' +
+      '<h3>Online</h3><ul><li><b>Play online</b> opens a table, and the other player joins on their own device. Take your turn whenever you like: the home screen shows when it’s your move. Every draw comes from the table’s bag, so both devices see the same chip.</li></ul>' +
+      '<h3>Tips</h3><ul><li>As Chaos, put a chip where its color matches nothing near it in its row and column.</li>' +
+      '<li>As Order, build the middle of a pattern first. A palindrome can grow outward from both ends.</li></ul>' +
+      '<p class="src">Entropy was first published in 1977. Its later editions were called Hyle, and the 7 by 7 game Hyle7.</p>' +
+      '<p class="credit">' + CREDIT + '</p>';
+  }
+
+  Kit.init({
+    id: KEY, mark: false, snap: '.frame', snapY: 0.5,
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } stopAll(); clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Entropy: past games' }); } }]),
+    rules: rulesHtml()
+  });
+
+  function showSetup() {
+    S = null; VIEW = null; SEL = HOV = -1;
+    app.classList.remove('ipl', 'en-land', 'en-low', 'en-tall', 'en-port', 'en-short', 'en-desk', 'en-two');
+    Kit.setup(app, {
+      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: '2p', kind: 'local' }]),
+      options: [
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Often makes a weaker move, and looks only at the patterns standing now.'], ['normal', 'Normal', 'Weighs every pattern each move could lead to.'], ['hard', 'Hard', 'Looks at your answer too: as Order, every chip the bag could give next.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'size', label: 'Board', value: '7', choices: [['7', '7 by 7\n49 chips', 'Seven colors, seven chips of each: Hyle7, the larger game.'], ['5', '5 by 5\n25 chips', 'Five colors, five chips of each: the first Entropy, a shorter game.']] },
+        { id: 'role', label: 'You start as', value: 'order', choices: [['order', 'Order', 'In the first game you slide chips to make patterns, and the computer is Chaos. Then you change roles.'], ['chaos', 'Chaos', 'In the first game you place the chips to spoil patterns, and the computer is Order. Then you change roles.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'role2', label: 'Order in the first game', value: 'p1', choices: [['p1', 'First player', 'The first player on the Players card is Order in the first game, then Chaos.'], ['p2', 'Second player', 'The second player on the Players card is Order in the first game, then Chaos.']], when: function (m) { return m === '2p'; } },
+        { id: 'cover', label: 'Hand over between turns', value: 'off', choices: [['off', 'Off', 'Nothing in Entropy is hidden, so the device just goes across the table.'], ['on', 'On', 'A cover names whose turn it is before each move.']], when: function (m) { return m === '2p'; } }
+      ],
+      players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
+      onStart: function (cfg) {
+        var cpu = cfg.mode === 'cpu', o = cfg.options;
+        var first = cpu ? (o.role === 'chaos' ? 1 : 0) : (o.role2 === 'p2' ? 1 : 0);
+        // vs the computer, seat 0 is the person
+        var pls = cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu }; });
+        if (cpu && pls[0].cpu && !pls[1].cpu) pls.reverse();
+        newGame({ mode: cfg.mode, level: o.level || 'normal', sz: o.size === '5' ? 5 : 7, first: first, cover: o.cover === 'on' && !cpu, players: pls });
+      }
+    });
+    var hero = app.querySelector('.setup-hero');
+    if (hero && !app.querySelector('.en-credit')) hero.parentNode.insertBefore(el('p', { class: 'en-credit', text: CREDIT }), hero.nextSibling);
+    // (only where the line doesn't make the setup scroll)
+    requestAnimationFrame(function () { var c = app.querySelector('.en-credit'); if (c && document.documentElement.scrollHeight > window.innerHeight + 1) c.style.display = 'none'; });
+  }
+  function freshFields(st) { st.hist = []; st.started = Date.now(); st.ev = []; st.best = [0, 0]; st.big = [0, 0]; }
+  function newGame(o, again) {
+    stopAll();
+    var keep = o || { mode: S.mode, level: S.level, sz: S.sz, first: S.ord[0], cover: S.cover, players: S.players };
+    // a rematch: the other player is Order first this time
+    var first = again ? 1 - keep.first : keep.first;
+    S = C.newMatch({ sz: keep.sz, first: first });
+    S.mode = keep.mode; S.level = keep.level; S.cover = keep.cover; S.players = keep.players;
+    freshFields(S); VIEW = null; SEL = HOV = -1;
+    Kit.gameStart(); save(); render();
+    Kit.sfx('deal');
+    drawShow(function () { afterTurn(); });
+  }
+  var TIMERS = [];
+  function later(fn, ms) { var t = setTimeout(function () { TIMERS.splice(TIMERS.indexOf(t), 1); fn(); }, ms); TIMERS.push(t); return t; }
+  function stopAll() { TIMERS.forEach(clearTimeout); TIMERS = []; BUSY = 0; VIEW = null; DRAG = null; }
+
+  // ── Moves ────────────────────────────────────────────────────────────────
+  function snap(byCpu) { var c = JSON.parse(JSON.stringify(S)); delete c.hist; return { s: c, cpu: !!byCpu }; }
+  // what a move did, for the moments and the room: the palindromes it made that weren't there before
+  function runsKey(b) { var o = {}; C.score(b, S.sz).runs.forEach(function (r) { o[r.join(',')] = r; }); return o; }
+  function newRuns(b0, b1) { var a = runsKey(b0), b = runsKey(b1), out = []; Object.keys(b).forEach(function (k) { if (!a[k]) out.push(b[k]); }); return out; }
+  function play(mv, byCpu) {
+    if (!S || S.over || BUSY) return false;
+    var b0 = S.b.slice(), h0 = snap(byCpu), trayR = trayRect();
+    var res = C.play(S, mv);
+    if (!res) return false;
+    if (res.end) S.hist = []; else { S.hist.push(h0); if (S.hist.length > 200) S.hist.shift(); }
+    note(S, res, b0);
+    SEL = HOV = -1;
+    save();
+    show(res, b0, trayR);
+    return true;
+  }
+  function note(st, res, b0) {
+    if (res.t === 'place') return;
+    var seat = res.seat, nr = res.t === 'slide' ? newRuns(b0, boardBeforeDraw(st, res)) : [];
+    st.ev.push(res.t === 'pass' ? 'p' : (res.gain0 = gainOf(b0, res)) > 0 ? '+' + res.gain0 : String(res.gain0));
+    if (st.ev.length > 120) st.ev.shift();
+    nr.forEach(function (r) { if (r[2] > st.best[seat]) st.best[seat] = r[2]; });
+    if (res.gain0 > st.big[seat]) st.big[seat] = res.gain0;
+    res.nr = nr;
+  }
+  // the board just after Order's slide, before the next chip lands (the auto-placed last chip comes after it)
+  function boardBeforeDraw(st, res) {
+    if (res.end) { var b = res.end.b.slice(); if (res.auto) b[res.auto.i] = 0; return b; }
+    var c = st.b.slice(); if (res.auto) c[res.auto.i] = 0; return c;
+  }
+  function gainOf(b0, res) { if (res.t !== 'slide') return 0; var b = b0.slice(); b[res.to] = b[res.f]; b[res.f] = 0; return C.total(b, S.sz) - C.total(b0, S.sz); }
+
+  // Play a move out on the table: the chip flies from the tray (a placement) or slides along its line, the palindromes
+  // it makes light and count up, then the next chip is drawn from the bag (or the game is counted)
+  function show(res, b0, trayR, net) {
+    BUSY++;
+    var endB = res.end ? res.end.b : null;
+    if (res.t === 'place') {
+      VIEW = endB ? { b: endB } : null;
+      paintAll();
+      flyIn(res.i, trayR);
+      Kit.sfx('chip'); Kit.haptic('light');
+      var nrP = newRuns(b0, (endB || S.b));
+      if (nrP.length) later(function () { flashRuns(nrP); floatGain(res.i, res.gain); }, 260);
+      later(function () { BUSY--; if (res.end) return endGame(res, net); if (net) netAfter(); else afterTurn(); }, 420);
+      return;
+    }
+    // Order: the slide (or a pass), then the draw
+    var mid = boardBeforeDraw(S, res);
+    VIEW = { b: mid, chip: 0 };
+    paintAll();
+    if (res.t === 'slide') {
+      slideAnim(res.f, res.to);
+      Kit.sfx('slide'); later(function () { Kit.sfx('chip', 0.6); Kit.haptic('light'); }, 260);
+      later(function () { reward(res); }, 300);
+    } else { Kit.sfx('tap'); Kit.callout(isMe(res.seat) ? 'You pass' : S.players[res.seat].name + ' passes'); }
+    var T = res.t === 'slide' ? 700 + (res.nr && res.nr.some(function (r) { return r[2] >= 5; }) ? 900 : 0) : 650;
+    later(function () {
+      VIEW = res.end ? { b: mid, chip: res.auto ? res.auto.c : 0 } : null;
+      paintAll();
+      drawAnim(res.auto ? res.auto.c : S.chip);
+      if (res.auto) {
+        later(function () {
+          var tr = trayRect();
+          VIEW = { b: res.end.b };
+          paintAll(); flyIn(res.auto.i, tr); Kit.sfx('chip'); Kit.haptic('light');
+          later(function () { BUSY--; endGame(res, net); }, 600);
+        }, 800);
+      } else later(function () { BUSY--; if (!net) afterTurn(); else netAfter(); }, 520);
+    }, T);
+  }
+  // A good slide's reward where it happens: the new palindromes light, the points rise from the chip; a run of five or
+  // more and a big slide are moments
+  function reward(res) {
+    var g = res.gain0 || 0, who = res.seat;
+    if (res.nr && res.nr.length) flashRuns(res.nr);
+    if (g) floatGain(res.to, g);
+    if (g > 0) { Kit.sfx(g >= 4 ? 'good' : 'tick', g >= 4 ? 0.8 : 0.6); if (isMe(who) || !vsCpu()) Kit.haptic(g >= 4 ? 'medium' : 'light'); }
+    else if (g < 0) Kit.sfx('bad', 0.4);
+    var long = (res.nr || []).reduce(function (m, r) { return r[2] > m[2] ? r : m; }, [0, 0, 0]);
+    var frame = document.querySelector('.frame');
+    if (long[2] >= 5) later(function () {
+      Kit.sfx('sparkle'); Kit.haptic('success');
+      var cols = lineColors(boardBeforeDraw(S, res), long);
+      Kit.moment({ title: 'A run of ' + num(long[2]), line: cap1(C.lineName(long[0], S.sz)) + ' reads ' + cols.join(', ') + ', the same both ways.', pts: '+' + g, color: CHEX[cols.c], at: frame, ms: 2200 });
+    }, 380);
+    else if (g >= 8) later(function () {
+      Kit.sfx('sparkle'); Kit.haptic('success');
+      Kit.moment({ title: 'A big slide', line: (isMe(who) ? 'Your' : Kit.poss(S.players[who].name)) + ' slide of the ' + CNAME[res.c] + ' chip from ' + C.name(res.f, S.sz) + ' to ' + C.name(res.to, S.sz) + ' made ' + g + ' points of palindromes.', pts: '+' + g, color: CHEX[res.c], at: frame, ms: 2000 });
+    }, 380);
+  }
+  function lineColors(b, run) {
+    var ln = C.lines(S.sz)[run[0]], out = [];
+    for (var k = run[1]; k < run[1] + run[2]; k++) out.push(CNAME[b[ln[k]]]);
+    out.c = b[ln[run[1]]];
+    return out;
+  }
+  // After each turn: the hand-over cover between people, or the computer's move
+  function afterTurn() {
+    if (!S || S.over || NET || BUSY) return;
+    paintStatus(); paintActs();
+    var seat = C.seatToMove(S);
+    if (S.players[seat].cpu) return maybeCpu();
+    if (S.cover && !vsCpu() && !(Kit.inDemo && Kit.inDemo())) {
+      HOLD = true; paintStatus(); paintActs();
+      var role = S.ph === 'place' ? 'Chaos' : 'Order';
+      Kit.handoff({ name: S.players[seat].name, msg: 'You are ' + role + '. ' + (S.ph === 'place' ? 'Put the ' + CNAME[S.chip] + ' chip on an empty square.' : 'Slide a chip, or pass.'), hint: 'Hold for a moment to take your turn', hold: 700 }).then(function () { HOLD = false; paintStatus(); paintActs(); paintBoard(); });
+    }
+  }
+  function maybeCpu() {
+    if (NET || !S || S.over || BUSY) return;
+    var seat = C.seatToMove(S); if (!S.players[seat].cpu) return;
+    BUSY++; paintStatus(); paintActs();
+    var myN = S.n, myG = S.g, t0 = Date.now();
+    later(function () {
+      var r = C.search(S, { level: S.level, seed: Math.floor(Math.random() * 1e9) });
+      later(function () {
+        BUSY--;
+        if (!S || S.n !== myN || S.g !== myG) return;
+        play(r.move, true);
+      }, Math.max(0, (S.ph === 'place' ? 650 : 800) - (Date.now() - t0)));
+    }, 60);
+  }
+
+  // ── The end of a game: every palindrome counted, line by line ────────────
+  function endGame(res, net) {
+    var g = res.end.g, b = res.end.b, o = S.gm[g].o;
+    BUSY++;
+    VIEW = { b: b, count: true };
+    SEL = HOV = -1;
+    paintAll();
+    countLines(b, o, function () {
+      var frame = document.querySelector('.frame'), sc = res.end.sc;
+      var bestPrev = bestBefore();
+      if (g === 0) {
+        Kit.sfx('good'); Kit.haptic('medium');
+        Kit.moment({ big: true, title: 'Change roles', line: (isMe(o) ? 'You' : S.players[o].name) + ' scored ' + sc + ' points as Order. Now ' + nmIn(1 - o) + (isMe(1 - o) ? ' play' : ' plays') + ' Order, and ' + nmIn(o) + (isMe(o) ? ' play' : ' plays') + ' Chaos.', pts: String(sc), icon: 'swap', ms: 3000 });
+        if (bestPrev != null && sc > bestPrev) later(function () { Kit.callout('A new best as Order'); }, 3100);
+        later(function () {
+          sweepBack(function () {
+            VIEW = null; BUSY--; paintAll();
+            drawShow(function () { if (net) netAfter(); else afterTurn(); });
+          });
+        }, 3300);
+      } else {
+        if (net) { BUSY--; return netEnd(); }
+        BUSY--; finish(bestPrev);
+      }
+    });
+  }
+  // the best score as Order on this board size in past games on this device (null before any)
+  function bestBefore() {
+    var best = null;
+    try { (GameHistory.load(KEY) || []).forEach(function (g) { var d = g.dt || g.detail; if (!d || d.sz !== S.sz || !d.sc) return; d.sc.forEach(function (x) { if (best == null || x > best) best = x; }); }); } catch (e) {}
+    return best;
+  }
+  var COUNTING = null;
+  function countLines(b, oSeat, done) {
+    var sc = C.score(b, S.sz), L = C.lines(S.sz), n = S.sz, k = 0, run = 0;
+    var base = 0; S.gm.forEach(function (x, i) { if (i < S.gm.length - 1 && x.o === oSeat) base += x.sc; });
+    var fast = (Kit.inDemo && Kit.inDemo()) ? 0.8 : 1;
+    COUNTING = { done: done, skip: false };
+    function step() {
+      if (!COUNTING) return;
+      if (k >= L.length) { var d = COUNTING.done; COUNTING = null; paintStatus(); later(d, 500); return; }
+      var pts = sc.lines[k], mine = sc.runs.filter(function (r) { return r[0] === k; });
+      paintCount(b, k, mine, pts, sc.lines);
+      run += pts;
+      paintStatus({ count: { seat: oSeat, v: base + run, line: k, pts: pts } });
+      if (pts) { Kit.sfx('tick', 0.7); mine.forEach(function (r, j) { if (j && j < 5) later(function () { Kit.sfx('tick', 0.45); }, j * 60); }); if (pts >= 8) Kit.haptic('light'); }
+      k++;
+      later(step, COUNTING.skip ? 40 : (pts ? 420 : 150) * fast);
+    }
+    later(step, 450);
+  }
+
+  // ── Undo, the computer, the end ──────────────────────────────────────────
+  function undo() {
+    if (!S || S.over || COUNTING || VIEW) return;
+    if (BUSY) stopAll();
+    var cpu = vsCpu();
+    if (!S.hist.some(function (h) { return !h.cpu; })) return Kit.toast('Nothing to undo');
+    var h, hist = S.hist;
+    while (hist.length) { h = hist.pop(); if (!cpu || !h.cpu) break; }
+    S = h.s; S.hist = hist; SEL = HOV = -1; VIEW = null;
+    Kit.sfx('whoosh'); save(); paintAll(); afterTurn();
+  }
+  function totals() { return C.points(S); }
+  function endLine() {
+    var p = totals(), w = S.win;
+    if (w < 0) return 'Both players scored ' + p[0] + ' points as Order, so the match is a draw.';
+    var l = 1 - w;
+    return (isMe(w) ? 'You' : S.players[w].name) + ' scored ' + p[w] + ' points as Order and ' + nmIn(l) + ' scored ' + p[l] + ', so ' + (isMe(w) ? 'you win' : S.players[w].name + ' wins') + '.';
+  }
+  function highlights() {
+    var hl = [endLine().replace(/\.$/, '')];
+    S.gm.forEach(function (g, i) { hl.push('Game ' + (i + 1) + ': ' + S.players[g.o].name + ' scored ' + g.sc + ' as Order'); });
+    [0, 1].forEach(function (s) {
+      if ((S.best[s] || 0) >= 5) hl.push(S.players[s].name + ' made a palindrome of ' + num(S.best[s]) + ' chips');
+      if ((S.big[s] || 0) >= 8) hl.push(Kit.poss(S.players[s].name) + ' best slide made ' + S.big[s] + ' points');
+    });
+    hl.push('Board: ' + S.sz + ' by ' + S.sz);
+    if (vsCpu()) hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
+    return hl;
+  }
+  function detail() {
+    return { sz: S.sz, f: S.ord[0], sc: S.gm.map(function (g) { return g.sc; }), b1: S.gm[0] ? S.gm[0].b : '', b2: S.gm[1] ? S.gm[1].b : '',
+      m1: S.gm[0] ? S.gm[0].ml : '', m2: S.gm[1] ? S.gm[1].ml : '', win: S.win, best: S.best.slice(), big: S.big.slice() };
+  }
+  function recPlayers() { var p = totals(); return S.players.map(function (x, i) { return { name: x.name, score: p[i], cpu: x.cpu }; }); }
+  function finish(bestPrev) {
+    save(); clearSave();
+    var w = S.win >= 0 ? S.players[S.win] : null;
+    Kit.record(KEY, { started: S.started, mode: vsCpu() ? 'vs Computer (' + LEVEL_NAME[S.level] + ')' : 'Pass & play', players: recPlayers(), winner: w ? w.name : null, highlights: highlights(), detail: detail() });
+    endShow(bestPrev, false);
+  }
+  function endShow(bestPrev, net) {
+    var g2 = S.gm[1], frame = document.querySelector('.frame'), wait = 0;
+    var hi = Math.max(S.gm[0].sc, g2.sc);
+    if (bestPrev != null && hi > bestPrev) {
+      wait = 2400;
+      Kit.sfx('sparkle'); Kit.haptic('success');
+      var who = S.gm[0].sc >= g2.sc ? S.gm[0].o : g2.o;
+      Kit.moment({ title: 'A new best as Order', line: (isMe(who) ? 'Your ' : Kit.poss(S.players[who].name) + ' ') + hi + ' points beat the best on this device, ' + bestPrev + '.', pts: String(hi), icon: 'star', at: frame, ms: 2200 });
+    }
+    later(function () {
+      if (net) return netWin();
+      var w = S.win >= 0 ? S.players[S.win] : null, lose = w && w.cpu;
+      if (w) { Kit.sfx('win'); Kit.haptic('success'); }
+      Kit.win({
+        icon: !w ? 'users' : lose ? 'bot' : 'trophy',
+        title: !w ? 'It’s a draw' : lose ? w.name + ' wins this one' : isMe(S.win) ? 'You win!' : w.name + ' wins!',
+        sub: endLine(), rank: rankRows(), lose: !!lose,
+        again: function () { newGame(null, true); },
+        look: true,
+        setup: function () { stopAll(); clearSave(); showSetup(); }
+      });
+    }, wait + 300);
+  }
+  function rankRows() {
+    var p = totals();
+    return [0, 1].sort(function (a, c) { return p[c] - p[a]; }).map(function (s) {
+      return { name: S.players[s].name, me: isMe(s), score: p[s] + (p[s] === 1 ? ' point' : ' points'), color: s === 0 ? '#ffd75a' : '#8fb6ff' };
+    });
+  }
+
+  // ── The table ────────────────────────────────────────────────────────────
+  var bdEl, wellsEl, chipsEl, runsEl, dstEl, fxEl, bagBox, bagEl, trayEl, countsEl, topBar, botBar, turnEl, actsEl, roomEl;
+  function render() {
+    if (!S) return;
+    app.innerHTML = ''; app.classList.add('ipl');
+    var col = el('div', { class: 'cb-col' });
+    topBar = el('div', { class: 'pbar top' }); botBar = el('div', { class: 'pbar bot' });
+    bagBox = el('div', { class: 'bagbox' });
+    bagEl = el('div', { class: 'bag', 'aria-hidden': 'true', html: bagSvg() });
+    trayEl = el('div', { class: 'tray', 'aria-label': 'The chip drawn' });
+    countsEl = el('div', { class: 'counts', 'aria-label': 'Chips left in the bag' });
+    bagBox.appendChild(bagEl); bagBox.appendChild(trayEl); bagBox.appendChild(countsEl);
+    var frame = el('div', { class: 'frame' });
+    bdEl = el('div', { class: 'bd', role: 'grid', 'aria-label': 'Entropy board' });
+    wellsEl = el('div', { class: 'lyr wls' }); chipsEl = el('div', { class: 'lyr' }); dstEl = el('div', { class: 'lyr' }); fxEl = el('div', { class: 'lyr' });
+    runsEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); runsEl.setAttribute('class', 'runs');
+    bdEl.appendChild(wellsEl); bdEl.appendChild(chipsEl); bdEl.appendChild(runsEl); bdEl.appendChild(dstEl); bdEl.appendChild(fxEl);
+    frame.appendChild(bdEl);
+    col.appendChild(topBar); col.appendChild(bagBox); col.appendChild(frame); col.appendChild(botBar);
+    turnEl = el('div', { class: 'turn' }); col.appendChild(turnEl);
+    actsEl = el('div', { class: 'acts' }); col.appendChild(actsEl);
+    roomEl = el('div', { class: 'room', 'aria-label': 'This match and past games' }); col.appendChild(roomEl);
+    app.appendChild(col);
+    buildWells();
+    paintAll();
+    fit();
+    wireBoard();
+    requestAnimationFrame(function () { if (app.classList.contains('ipl')) fit(); });
+  }
+  function buildWells() {
+    var n = S.sz, s = '';
+    bdEl.style.setProperty('--n', n);
+    for (var i = 0; i < n * n; i++) s += '<div class="wl" data-i="' + i + '" style="left:' + (i % n) * 100 / n + '%;top:' + Math.floor(i / n) * 100 / n + '%"></div>';
+    wellsEl.innerHTML = s;
+    runsEl.setAttribute('viewBox', '0 0 ' + n + ' ' + n);
+  }
+  function bagSvg() {
+    return '<svg viewBox="0 0 60 66"><defs><radialGradient id="enBag" cx=".38" cy=".35" r=".8"><stop offset="0" stop-color="#5d3f8e"/><stop offset=".6" stop-color="#3a2462"/><stop offset="1" stop-color="#1d1036"/></radialGradient>' +
+      '<pattern id="enWv" width="3" height="3" patternUnits="userSpaceOnUse"><path d="M0 0l3 3M3 0 0 3" stroke="rgba(255,255,255,.05)" stroke-width=".6"/></pattern></defs>' +
+      '<ellipse cx="30" cy="63" rx="22" ry="3" fill="rgba(0,0,0,.35)"/>' +
+      '<g class="body"><path d="M18 16c-9 6-14 17-14 28 0 13 11 19 26 19s26-6 26-19c0-11-5-22-14-28z" fill="url(#enBag)"/><path d="M18 16c-9 6-14 17-14 28 0 13 11 19 26 19s26-6 26-19c0-11-5-22-14-28z" fill="url(#enWv)"/>' +
+      '<path d="M10 40c4 9 12 13 20 13" stroke="rgba(255,255,255,.12)" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+      '<path d="M9 30c3-6 7-10 11-12" stroke="rgba(255,255,255,.18)" stroke-width="1.4" fill="none" stroke-linecap="round"/></g>' +
+      // the gathered neck and its gold cord
+      '<path d="M17 16c4-3 22-3 26 0l-3 4c-5-2-15-2-20 0z" fill="#2a1848"/><path d="M19 8c3 4 2 7-1 8M41 8c-3 4-2 7 1 8M24 6c1 4 1 7 0 10M36 6c-1 4-1 7 0 10M30 5v11" stroke="#4a3078" stroke-width="2.4" stroke-linecap="round" fill="none"/>' +
+      '<ellipse cx="30" cy="7" rx="12" ry="3" fill="#1b0e30"/>' +
+      '<path d="M16 18c6 3 22 3 28 0" stroke="#e4b44a" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M44 18c4 2 6 8 4 12M45 18c1 3 1 7-2 10" stroke="#e4b44a" stroke-width="1.8" fill="none" stroke-linecap="round"/><circle cx="47.8" cy="30.5" r="2.2" fill="#f2c95c"/><circle cx="43" cy="28.6" r="2" fill="#f2c95c"/></svg>';
+  }
+  function paintAll() { paintBoard(); paintBag(); paintStatus(); paintActs(); }
+  function curB() { return VIEW && VIEW.b ? VIEW.b : S.b; }
+  function curChip() { return VIEW ? (VIEW.chip || 0) : S.chip; }
+  function canAct() { return S && !S.over && !BUSY && !HOLD && !VIEW && (NET ? !LEFT && NET.myTurn() : !S.players[C.seatToMove(S)].cpu); }
+  function cellXY(i) { var n = S.sz; return [i % n, Math.floor(i / n)]; }
+  function paintBoard() {
+    if (!chipsEl || !S) return;
+    var b = curB(), n = S.sz, s = '', last = !VIEW && S.last ? S.last : null, lastI = last ? (last.t === 'place' ? last.i : last.to) : -1;
+    for (var i = 0; i < n * n; i++) {
+      if (!b[i]) continue;
+      var xy = cellXY(i), cls = 'ch' + (i === SEL ? ' sel' : '') + (i === lastI ? ' last' : '') + (DRAG && DRAG.f === i && DRAG.on ? ' gone' : '');
+      s += '<div class="' + cls + '" data-i="' + i + '" style="left:' + xy[0] * 100 / n + '%;top:' + xy[1] * 100 / n + '%">' + disc(b[i]) + '</div>';
+    }
+    // a ghost where the chip would go (a slide aimed or dragged to, or Chaos's chip held over a square)
+    var gh = ghost();
+    if (gh) { var gx = cellXY(gh.i); s += '<div class="ch ghost" style="left:' + gx[0] * 100 / n + '%;top:' + gx[1] * 100 / n + '%">' + disc(gh.c) + '</div>'; }
+    chipsEl.innerHTML = s;
+    paintRuns();
+    paintDst();
+    // the empty wells Chaos can fill glow faintly on a person's turn
+    var lit = canAct() && S.ph === 'place';
+    Array.prototype.forEach.call(wellsEl.children, function (w, i) { w.classList.toggle('lit', lit && !b[i]); });
+  }
+  function ghost() {
+    if (!canAct()) return null;
+    var h = DRAG && DRAG.on ? DRAG.over : HOV;
+    if (h < 0) return null;
+    if (S.ph === 'place') return S.b[h] ? null : { i: h, c: S.chip };
+    if (SEL >= 0 && C.canSlide(S.b, S.sz, SEL, h)) return { i: h, c: S.b[SEL] };
+    return null;
+  }
+  function hypo() {
+    var g = ghost(); if (!g) return null;
+    var b = S.b.slice();
+    if (S.ph === 'slide') b[SEL] = 0;
+    b[g.i] = g.c;
+    return b;
+  }
+  // the palindromes standing: the longest in each place outlined (a run inside a longer one in the same line isn't
+  // drawn again); a move's new ones lit, an aimed move's dashed
+  var FLASH = {};
+  function maximal(runs) {
+    return runs.filter(function (r) { return !runs.some(function (o) { return o !== r && o[0] === r[0] && o[1] <= r[1] && o[1] + o[2] >= r[1] + r[2] && o[2] > r[2]; }); });
+  }
+  function capsule(r, cls) {
+    var n = S.sz, k = r[0], a = r[1], len = r[2], p = 0.07, x, y, w, h;
+    if (k < n) { x = a + p; y = k + p; w = len - 2 * p; h = 1 - 2 * p; } else { x = k - n + p; y = a + p; w = 1 - 2 * p; h = len - 2 * p; }
+    return '<rect class="run ' + (cls || '') + '" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx=".43"/>';
+  }
+  function paintRuns() {
+    if (!runsEl) return;
+    var s = '';
+    if (VIEW && VIEW.count) { runsEl.innerHTML = VIEW.cs || ''; return; }
+    var b = curB(), sc = C.score(b, S.sz), hb = hypo();
+    if (hb) {
+      var nr = newRuns(S.b, hb), keys = {}; nr.forEach(function (r) { keys[r.join(',')] = 1; });
+      maximal(C.score(hb, S.sz).runs).forEach(function (r) { s += capsule(r, keys[r.join(',')] ? 'pv' : 'dim'); });
+    } else maximal(sc.runs).forEach(function (r) { s += capsule(r, FLASH[r.join(',')] ? 'new' : ''); });
+    runsEl.innerHTML = s;
+  }
+  function flashRuns(list) {
+    FLASH = {}; list.forEach(function (r) { FLASH[r.join(',')] = 1; });
+    paintRuns();
+    later(function () { FLASH = {}; }, 1500);
+  }
+  // where a chosen chip can slide, each lit square with what the slide makes for Order; on Chaos's turn, the squares
+  // where the chip would make a palindrome, with the points it would give Order
+  function paintDst() {
+    if (!dstEl) return;
+    var s = '', n = S.sz;
+    if (canAct()) {
+      var base = C.total(S.b, n), hv = DRAG && DRAG.on ? DRAG.over : HOV;
+      if (S.ph === 'slide' && SEL >= 0) {
+        C.slides(S.b, n).forEach(function (m) {
+          if (m[0] !== SEL) return;
+          var b = S.b.slice(); b[m[1]] = b[m[0]]; b[m[0]] = 0;
+          var g = C.total(b, n) - base, xy = cellXY(m[1]);
+          s += '<div class="dst' + (m[1] === hv ? ' hov' : '') + '" style="left:' + xy[0] * 100 / n + '%;top:' + xy[1] * 100 / n + '%"><span class="' + (g > 0 ? '' : g < 0 ? 'neg' : 'z') + '">' + (g > 0 ? '+' + g : g < 0 ? '−' + (-g) : '') + '</span></div>';
+        });
+      } else if (S.ph === 'place' && S.chip) {
+        for (var i = 0; i < n * n; i++) {
+          if (S.b[i]) continue;
+          var b2 = S.b.slice(); b2[i] = S.chip;
+          var g2 = C.total(b2, n) - base;
+          if (g2 > 0) { var xy2 = cellXY(i); s += '<div class="dst" style="left:' + xy2[0] * 100 / n + '%;top:' + xy2[1] * 100 / n + '%"><span class="give">+' + g2 + '</span></div>'; }
+        }
+      }
+    }
+    dstEl.innerHTML = s;
+  }
+  function paintCount(b, k, mine, pts, per) {
+    var n = S.sz, s = '';
+    // the line being counted, its palindromes lit, the lines already counted with theirs dimmed
+    var x = k < n ? 0 : k - n, y = k < n ? k : 0, w = k < n ? n : 1, h = k < n ? 1 : n;
+    s += '<rect class="lnhl" x="' + (x + 0.02) + '" y="' + (y + 0.02) + '" width="' + (w - 0.04) + '" height="' + (h - 0.04) + '" rx=".46"/>';
+    var sc = C.score(b, n);
+    maximal(sc.runs.filter(function (r) { return r[0] < k; })).forEach(function (r) { s += capsule(r, 'dim'); });
+    maximal(mine).forEach(function (r) { s += capsule(r, 'cnt'); });
+    VIEW.cs = s; paintRuns();
+    // the line's points on a gold pill at its end
+    var cell = bdEl.getBoundingClientRect().width / n;
+    var pill = el('div', { class: 'lp' + (pts ? '' : ' z'), text: String(pts) });
+    // (over the line's last chip's outer edge, so it stays on the frame at every size)
+    if (k < n) { pill.style.left = 'calc(100% - 3px)'; pill.style.top = ((k + 0.5) * 100 / n) + '%'; pill.style.transform = 'translate(-100%,-50%)'; }
+    else { pill.style.left = ((k - n + 0.5) * 100 / n) + '%'; pill.style.top = 'calc(100% - 3px)'; pill.style.transform = 'translate(-50%,-100%)'; }
+    fxEl.appendChild(pill);
+  }
+  function floatGain(i, g) {
+    if (!fxEl || !g) return;
+    var xy = cellXY(i), n = S.sz;
+    var f = el('div', { class: 'gf' + (g < 0 ? ' neg' : ''), text: g > 0 ? '+' + g : '−' + (-g) });
+    f.style.left = ((xy[0] + 0.5) * 100 / n) + '%'; f.style.top = ((xy[1] + 0.5) * 100 / n) + '%';
+    fxEl.appendChild(f); setTimeout(function () { f.remove(); }, 1400);
+  }
+  // motion: a placement flies in from the tray, a slide glides along its line
+  function trayRect() { var d = trayEl && trayEl.querySelector('.disc'); return d ? d.getBoundingClientRect() : trayEl ? trayEl.getBoundingClientRect() : null; }
+  function chipAt(i) { return chipsEl && chipsEl.querySelector('.ch[data-i="' + i + '"]'); }
+  function flyIn(i, from) {
+    var c = chipAt(i); if (!c) return;
+    if (!from) { c.classList.add('pop'); return; }
+    var r = c.getBoundingClientRect(), dx = from.left + from.width / 2 - (r.left + r.width / 2), dy = from.top + from.height / 2 - (r.top + r.height / 2);
+    c.classList.add('fly');
+    c.style.transition = 'none'; c.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(1.15)';
+    void c.offsetWidth;
+    c.style.transition = 'transform .4s cubic-bezier(.3,.8,.35,1.1)'; c.style.transform = '';
+    setTimeout(function () { c.classList.remove('fly'); c.classList.add('pop'); }, 400);
+  }
+  function slideAnim(f, t) {
+    var c = chipAt(t); if (!c) return;
+    var a = cellXY(f), b = cellXY(t), cell = bdEl.getBoundingClientRect().width / S.sz;
+    var dist = Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]);
+    c.classList.add('fly');
+    c.style.transition = 'none'; c.style.transform = 'translate(' + (a[0] - b[0]) * cell + 'px,' + (a[1] - b[1]) * cell + 'px)';
+    void c.offsetWidth;
+    c.style.transition = 'transform ' + Math.min(0.5, 0.16 + dist * 0.05) + 's cubic-bezier(.4,.1,.25,1)'; c.style.transform = '';
+    setTimeout(function () { c.classList.remove('fly'); }, 520);
+  }
+  // the draw: the bag shakes and the chip rises out of it into the tray
+  function drawAnim(c) {
+    if (!bagEl) return;
+    paintBag(c);
+    bagEl.classList.remove('shake'); void bagEl.offsetWidth; bagEl.classList.add('shake');
+    var d = trayEl.querySelector('.disc'); if (d) { d.classList.remove('rise'); void d.offsetWidth; d.classList.add('rise'); }
+    Kit.sfx('flip', 0.7); later(function () { Kit.sfx('chip', 0.5); }, 420);
+  }
+  function drawShow(cb) { paintBag(0); later(function () { drawAnim(S.chip); paintStatus(); }, 250); later(cb, 900); }
+  // the chips sweep back into the bag for the second game
+  function sweepBack(cb) {
+    var br = bagEl.getBoundingClientRect(), list = chipsEl.querySelectorAll('.ch');
+    Kit.sfx('roll'); Kit.haptic('medium');
+    runsEl.innerHTML = ''; fxEl.innerHTML = '';
+    Array.prototype.forEach.call(list, function (c, j) {
+      var r = c.getBoundingClientRect(), dx = br.left + br.width / 2 - (r.left + r.width / 2), dy = br.top + br.height * 0.45 - (r.top + r.height / 2);
+      c.style.transition = 'transform .55s cubic-bezier(.5,0,.75,.4) ' + (j * 9) + 'ms, opacity .25s ease ' + (j * 9 + 380) + 'ms';
+      c.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(.3)'; c.style.opacity = '0';
+    });
+    later(function () { bagEl.classList.remove('shake'); void bagEl.offsetWidth; bagEl.classList.add('shake'); Kit.sfx('whoosh'); }, 600);
+    later(cb, 1100);
+  }
+  function paintBag(chipOverride) {
+    if (!countsEl || !S) return;
+    var c = chipOverride != null ? chipOverride : curChip(), n = S.sz, bag = S.bag.slice();
+    // while the board shows the move before the draw, the drawn chip is still in the bag
+    if (VIEW && !VIEW.count && S.chip && !VIEW.chip && chipOverride == null) bag[S.chip - 1]++;
+    // while a finished game is counted, its bag is empty
+    if (VIEW && VIEW.count) { bag = bag.map(function () { return 0; }); c = 0; }
+    if (chipOverride === 0 && S.chip) bag[S.chip - 1]++;
+    trayEl.innerHTML = c ? disc(c, canAct() && S.ph === 'place' ? 'lift' : '') : '';
+    trayEl.classList.toggle('empty', !c);
+    var s = '', tot = 0;
+    for (var k = 1; k <= n; k++) {
+      var m = bag[k - 1], stk = '';
+      tot += m;
+      for (var j = 0; j < m; j++) stk += '<span class="disc k' + k + '" style="bottom:' + (j * 12) + '%"></span>';
+      s += '<div class="st' + (m ? '' : ' out') + (c === k ? ' drew' : '') + '" title="' + cap1(CNAME[k]) + ': ' + m + ' left"><div class="stk">' + stk + '</div><small>' + m + '</small></div>';
+    }
+    countsEl.innerHTML = s;
+    countsEl.setAttribute('aria-label', tot + ' chips left in the bag');
+    var body = bagEl.querySelector('.body'); if (body) body.style.transform = 'scale(' + (0.78 + 0.22 * tot / (n * n)).toFixed(3) + ')';
+  }
+
+  // ── The plates, the turn and the buttons ─────────────────────────────────
+  var lastPt = {};
+  function bar(node, seat, cnt) {
+    var p = S.players[seat], toMove = C.seatToMove(S), on = !S.over && !VIEW && toMove === seat, role = cnt ? (cnt.seat === seat ? 'order' : 'chaos') : S.over ? (S.ord[1] === seat ? 'order' : 'chaos') : C.roleOf(S, seat);
+    node.className = 'pbar ' + (node === topBar ? 'top' : 'bot') + (on ? ' on' : '');
+    var sub;
+    if (cnt && cnt.seat === seat) sub = 'Counting ' + C.lineName(cnt.line, S.sz);
+    else if (on && p.cpu) sub = '<span class="think">' + (role === 'order' ? 'Looking for a slide' : 'Placing the ' + CNAME[S.chip] + ' chip') + ' <i></i><i></i><i></i></span>';
+    else if (on) sub = role === 'order' ? '<span class="sh">Order to move</span><span class="lg">Order: slide a chip or pass</span>' : '<span class="sh">Chaos to move</span><span class="lg">Chaos: place the ' + CNAME[S.chip] + ' chip</span>';
+    else sub = S.over ? (S.win === seat ? 'Won the match' : S.win < 0 ? 'A draw' : 'Second') : role === 'order' ? '<span class="sh">Order</span><span class="lg">Order makes patterns</span>' : '<span class="sh">Chaos</span><span class="lg">Chaos spoils them</span>';
+    node.innerHTML = '';
+    node.appendChild(el('span', { class: 'role', title: role === 'order' ? 'Order' : 'Chaos', html: ROLE_SVG[role] }));
+    node.appendChild(el('div', { class: 'who' }, [el('span', { class: 'nm', html: (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(p.name) + '</span>' }), el('span', { class: 'sub', html: sub })]));
+    // the points as Order: the game being played counts what stands now; one still to come says so
+    var pts = totals(), played = S.gm.some(function (g) { return g.o === seat; }), now = !S.over && !cnt && S.ord[S.g] === seat;
+    var v = cnt && cnt.seat === seat ? cnt.v : pts[seat], show = played || now || (cnt && cnt.seat === seat);
+    var lab = cnt && cnt.seat === seat ? 'counting' : now ? (S.g === 0 ? 'as Order' : 'as Order now') : played ? 'as Order' : 'Order next';
+    var b = el('b', { text: show ? String(v) : '–' });
+    if (lastPt[seat] != null && v > lastPt[seat] && show) b.classList.add('bump');
+    lastPt[seat] = show ? v : null;
+    node.appendChild(el('div', { class: 'pt' + (now || (cnt && cnt.seat === seat) ? ' live' : ''), 'aria-label': show ? v + ' points as Order' : 'Plays Order in the second game' }, [b, el('small', { text: lab })]));
+  }
+  function bottomSeat() { if (NET) return NET.seat >= 0 ? NET.seat : 0; if (vsCpu()) return S.players[0].cpu ? 1 : 0; return 0; }
+  function paintStatus(o) {
+    if (!turnEl || !S) return;
+    var bs = bottomSeat(), cnt = o && o.count;
+    bar(topBar, 1 - bs, cnt); bar(botBar, bs, cnt);
+    turnEl.innerHTML = '';
+    if (NET && LEFT) { turnEl.appendChild(el('span', { text: LEFT.text || 'The other player left' })); return; }
+    if (cnt) { turnEl.appendChild(el('span', { text: 'Game ' + (S.gm.length) + ': counting ' + C.lineName(cnt.line, S.sz) + (cnt.pts ? ', ' + cnt.pts + (cnt.pts === 1 ? ' point' : ' points') : ', no palindromes') })); return; }
+    if (S.over) { turnEl.appendChild(el('span', { text: S.win >= 0 ? (isMe(S.win) ? 'You win the match' : S.players[S.win].name + ' wins the match') : 'The match is a draw' })); return; }
+    if (VIEW) { turnEl.appendChild(el('span', { text: 'Game ' + (S.g + 1) + ' of 2' })); return; }
+    turnEl.appendChild(el('span', { class: 'dot' }));
+    var seat = C.seatToMove(S), p = S.players[seat], txt, solo = NET || vsCpu();
+    if (NET && !isMe(seat)) txt = 'Waiting for ' + p.name;
+    else if (p.cpu) txt = S.ph === 'place' ? p.name + ' is placing the ' + CNAME[S.chip] + ' chip' : p.name + ' is choosing a slide';
+    else if (HOLD) txt = 'Pass the device to ' + p.name;
+    else if (S.ph === 'place') txt = (solo ? 'Your turn as Chaos: ' : Kit.poss(p.name) + ' turn as Chaos: ') + 'put the ' + CNAME[S.chip] + ' chip on an empty square';
+    else if (SEL >= 0) txt = 'Tap a lit square to slide the ' + CNAME[S.b[SEL]] + ' chip there';
+    else txt = (solo ? 'Your turn as Order: ' : Kit.poss(p.name) + ' turn as Order: ') + 'slide a chip, or pass';
+    turnEl.appendChild(el('span', { text: txt }));
+    paintRoom();
+  }
+  function paintActs() {
+    if (!actsEl || !S) return;
+    actsEl.innerHTML = '';
+    var b = function (cls, ic, label, fn) { return el('button', { type: 'button', class: 'btn ' + cls + ' btn-sm', html: (ic ? Kit.icon(ic) : '') + '<span>' + label + '</span>', onclick: fn }); };
+    if (NET) {
+      if (S.over || LEFT) actsEl.appendChild(b('btn-primary', '', LEFT ? 'Back to the lobby' : 'Play again', netAgain));
+      else if (canAct() && S.ph === 'slide') actsEl.appendChild(b('btn-soft pass', 'right', 'Pass', passNow));
+      return;
+    }
+    if (S.over) { actsEl.appendChild(b('btn-primary', '', 'Play again', function () { newGame(null, true); })); return; }
+    var ub = b('btn-soft', 'undo', 'Undo', undo);
+    if (!S.hist.some(function (h) { return !h.cpu; })) ub.disabled = true;
+    actsEl.appendChild(ub);
+    if (canAct() && S.ph === 'slide') actsEl.appendChild(b('btn-soft pass', 'right', 'Pass', passNow));
+  }
+  function passNow() { if (!canAct() || S.ph !== 'slide') return; SEL = -1; if (NET) return netMove('pass'); play('pass'); }
+
+  // ── Touch and mouse ──────────────────────────────────────────────────────
+  // Order: tap a chip to see where it can slide (each lit square says what it would make), then tap one of them; or
+  // drag the chip there. Chaos: tap an empty square to put the chip there, or drag the chip from the tray over the
+  // board to see what each square would give Order first. A mouse over a square shows the same.
+  function cellAt(x, y) {
+    var r = bdEl.getBoundingClientRect(), n = S.sz;
+    var c = Math.floor((x - r.left) / r.width * n), rr = Math.floor((y - r.top) / r.height * n);
+    if (c < 0 || c >= n || rr < 0 || rr >= n) return -1;
+    return rr * n + c;
+  }
+  function wireBoard() {
+    bdEl.addEventListener('pointerdown', function (e) {
+      if (COUNTING) { COUNTING.skip = true; return; }
+      if (!canAct()) { if (S && !S.over && NET && !NET.myTurn() && !VIEW) { Kit.haptic('error'); Kit.toast('It’s ' + Kit.poss(S.players[C.seatToMove(S)].name) + ' turn'); } return; }
+      var i = cellAt(e.clientX, e.clientY); if (i < 0) return;
+      e.preventDefault();
+      if (S.ph === 'slide' && S.b[i]) {
+        try { bdEl.setPointerCapture(e.pointerId); } catch (x) {}
+        DRAG = { id: e.pointerId, f: i, x: e.clientX, y: e.clientY, on: false, over: -1, was: SEL };
+        if (SEL !== i) { SEL = i; Kit.sfx('tick', 0.5); Kit.haptic('tick'); paintBoard(); paintStatus(); paintActs(); }
+      } else if (S.ph === 'place' && !S.b[i] && e.pointerType !== 'mouse') {
+        try { bdEl.setPointerCapture(e.pointerId); } catch (x) {}
+        DRAG = { id: e.pointerId, place: true, x: e.clientX, y: e.clientY, on: false, over: i };
+      }
+    });
+    bdEl.addEventListener('pointermove', function (e) {
+      if (!S || COUNTING) return;
+      if (DRAG && e.pointerId === DRAG.id) {
+        if (!DRAG.on && Math.hypot(e.clientX - DRAG.x, e.clientY - DRAG.y) > 8) { DRAG.on = true; }
+        if (!DRAG.on) return;
+        var o = cellAt(e.clientX, e.clientY);
+        if (o !== DRAG.over) { DRAG.over = o; if (o >= 0) Kit.haptic('tick'); paintBoard(); }
+        dragFollow(e);
+        return;
+      }
+      if (e.pointerType === 'mouse' && canAct()) { var h = cellAt(e.clientX, e.clientY); if (h !== HOV) { HOV = h; paintBoard(); } }
+    });
+    bdEl.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse' && HOV >= 0 && !DRAG) { HOV = -1; paintBoard(); } });
+    function up(e) {
+      if (!DRAG || e.pointerId !== DRAG.id) return;
+      var d = DRAG; DRAG = null; dragFollow(null);
+      if (e.type === 'pointercancel') { paintBoard(); return; }
+      var i = cellAt(e.clientX, e.clientY);
+      if (d.place) { if (i >= 0 && !S.b[i]) placeAt(i); else paintBoard(); return; }
+      if (d.on) {
+        if (i >= 0 && C.canSlide(S.b, S.sz, d.f, i)) return slideTo(d.f, i, true);
+        paintBoard(); return;
+      }
+      // a tap: on the chip already chosen puts it down again
+      if (d.was === d.f && i === d.f) { SEL = -1; paintBoard(); paintStatus(); paintActs(); }
+    }
+    bdEl.addEventListener('pointerup', up); bdEl.addEventListener('pointercancel', up);
+    // a tap on an empty square: a slide there for the chosen chip, or Chaos's placement (a mouse)
+    bdEl.addEventListener('click', function (e) {
+      if (!canAct()) return;
+      var i = cellAt(e.clientX, e.clientY); if (i < 0) return;
+      if (S.ph === 'place') { if (e.pointerType === 'mouse' || e.detail === 0 || !e.pointerType) { if (!S.b[i]) placeAt(i); } return; }
+      if (S.b[i]) return;
+      if (SEL >= 0 && C.canSlide(S.b, S.sz, SEL, i)) return slideTo(SEL, i);
+      if (SEL >= 0) { Kit.haptic('error'); Kit.toast('A chip slides along its row or column, over empty squares only.'); }
+      else { Kit.haptic('error'); Kit.toast('Tap a chip first, then where it should slide.'); }
+    });
+    // the tray's chip can be dragged onto the board too
+    trayEl.addEventListener('pointerdown', function (e) {
+      if (!canAct() || S.ph !== 'place') return;
+      e.preventDefault();
+      try { trayEl.setPointerCapture(e.pointerId); } catch (x) {}
+      DRAG = { id: e.pointerId, place: true, x: e.clientX, y: e.clientY, on: true, over: -1, tray: true };
+      dragFollow(e);
+    });
+    trayEl.addEventListener('pointermove', function (e) {
+      if (!DRAG || !DRAG.tray || e.pointerId !== DRAG.id) return;
+      var o = cellAt(e.clientX, e.clientY);
+      if (o !== DRAG.over) { DRAG.over = o; if (o >= 0) Kit.haptic('tick'); paintBoard(); }
+      dragFollow(e);
+    });
+    function tup(e) {
+      if (!DRAG || !DRAG.tray || e.pointerId !== DRAG.id) return;
+      var i = cellAt(e.clientX, e.clientY); DRAG = null; dragFollow(null);
+      if (e.type !== 'pointercancel' && i >= 0 && !S.b[i]) placeAt(i); else paintBoard();
+    }
+    trayEl.addEventListener('pointerup', tup); trayEl.addEventListener('pointercancel', tup);
+  }
+  // the chip under the finger while it is dragged
+  var FOLLOW = null;
+  function dragFollow(e) {
+    if (!e) { if (FOLLOW) { FOLLOW.remove(); FOLLOW = null; } return; }
+    var c = DRAG && (DRAG.place ? S.chip : S.b[DRAG.f]); if (!c) return;
+    if (!FOLLOW) {
+      var w = bdEl.getBoundingClientRect().width / S.sz * 0.9;
+      FOLLOW = el('div', { html: disc(c), style: { position: 'fixed', zIndex: 60, width: w + 'px', height: w + 'px', pointerEvents: 'none', transform: 'translate(-50%,-62%) scale(1.1)', filter: 'drop-shadow(0 10px 12px rgba(0,0,0,.5))' } });
+      FOLLOW.firstChild.style.width = FOLLOW.firstChild.style.height = '100%'; FOLLOW.firstChild.style.display = 'block';
+      document.body.appendChild(FOLLOW);
+    }
+    FOLLOW.style.left = e.clientX + 'px'; FOLLOW.style.top = e.clientY + 'px';
+  }
+  function placeAt(i) {
+    if (!canAct() || S.ph !== 'place' || S.b[i]) return;
+    HOV = -1;
+    if (NET) return netMove(C.name(i, S.sz));
+    play(C.name(i, S.sz));
+  }
+  function slideTo(f, t) {
+    if (!canAct()) return;
+    SEL = -1; HOV = -1;
+    var mv = C.name(f, S.sz) + '-' + C.name(t, S.sz);
+    if (NET) return netMove(mv);
+    play(mv);
+  }
+
+  // ── The room at a desk ───────────────────────────────────────────────────
+  // Order's score now with every line that scores, the moves of this game, the first game's result while the second is
+  // played, past games here
+  function miniLine(b, ln, runs) {
+    var on = {}; runs.forEach(function (r) { for (var k = r[1]; k < r[1] + r[2]; k++) on[k] = 1; });
+    return el('span', { class: 'mini', html: ln.map(function (i, k) { return b[i] ? disc(b[i], on[k] ? 'on' : 'off') : '<span class="disc" style="background:rgba(0,0,0,.3);box-shadow:inset 0 1px 2px rgba(0,0,0,.5)"></span>'; }).join('') });
+  }
+  function paintRoom() {
+    if (!roomEl || !app.classList.contains('en-desk') || !app.classList.contains('en-land')) { if (roomEl) roomEl.innerHTML = ''; return; }
+    roomEl.innerHTML = '';
+    var b = curB(), n = S.sz, sc = C.score(b, n), L = C.lines(n), oSeat = S.over ? S.ord[1] : S.ord[S.g];
+    var now = el('section', { class: 'pn sc' }, [el('h4', { html: '<span>' + Kit.esc((isMe(oSeat) ? 'Your' : Kit.poss(S.players[oSeat].name)) + ' score as Order now') + '</span><b>' + sc.total + '</b>' })]);
+    var ul = el('ul', { class: 'lines' });
+    L.forEach(function (ln, k) {
+      if (!sc.lines[k]) return;
+      ul.appendChild(el('li', { 'data-p': sc.lines[k] }, [el('span', { text: cap1(C.lineName(k, n)) }), miniLine(b, ln, sc.runs.filter(function (r) { return r[0] === k; })), el('b', { text: String(sc.lines[k]) })]));
+    });
+    if (!ul.children.length) ul.appendChild(el('li', { style: { display: 'block', color: 'var(--text-3)' }, text: 'No palindromes on the board yet.' }));
+    now.appendChild(ul); roomEl.appendChild(now);
+    // the moves, newest first
+    var mv = el('section', { class: 'pn mv' }, [el('h4', { text: 'Game ' + (S.over ? 2 : S.g + 1) + ' moves' })]), list = el('ol', { class: 'mvl' });
+    var ml = S.over ? String(S.gm[1].ml).split(' ') : S.ml, evs = S.ev || [], ei = evs.length - 1;
+    if (!ml.length) list.appendChild(el('li', { class: 'none', text: 'Chaos places the first chip.' }));
+    for (var i = ml.length - 1; i >= 0; i--) {
+      var m = ml[i], pm = /^(\d)([a-j]\d+)$/.exec(m), chaos = !!pm, seat = chaos ? (S.over ? 1 - S.ord[1] : chaosSeat()) : (S.over ? S.ord[1] : orderSeat());
+      var tag = el('span'), c = chaos ? +pm[1] : 0;
+      if (!chaos) { var e = evs[ei--] || ''; if (/^\+/.test(e)) tag = el('span', { class: 'tag', text: e }); else if (/^-/.test(e)) tag = el('span', { class: 'tag neg', text: '−' + e.slice(1) }); }
+      list.appendChild(el('li', null, [el('span', { class: 'no', text: String(i + 1) }), chaos ? el('span', { html: disc(c) }) : el('span', { html: ROLE_SVG.order.replace('<svg', '<svg style="width:1.1em;height:1.1em;display:block"') }),
+        el('span', { class: 'who', text: chaos ? nmOf(seat) + ' ' + pm[2] : m === 'pass' ? nmOf(seat) + ' passed' : nmOf(seat) + ' ' + m }), tag]));
+      if (list.children.length > 60) break;
+    }
+    mv.appendChild(list); roomEl.appendChild(mv);
+    // the first game, while the second is played
+    if (S.gm.length && !S.over) {
+      var g0 = S.gm[0], mb = el('div', { class: 'mb', style: { gridTemplateColumns: 'repeat(' + n + ',1fr)', gridTemplateRows: 'repeat(' + n + ',1fr)' } });
+      String(g0.b).split('').forEach(function (d) { mb.appendChild(el('i', { style: { background: CHEX[+d] } })); });
+      roomEl.appendChild(el('section', { class: 'pn g1', 'data-give': '1' }, [mb, el('div', null, [el('h4', { html: '<span>Game 1</span><b>' + g0.sc + '</b>' }), el('p', { class: 'say', text: (isMe(g0.o) ? 'You' : S.players[g0.o].name) + ' scored ' + g0.sc + ' points as Order. ' + (isMe(1 - g0.o) ? 'You need' : S.players[1 - g0.o].name + ' needs') + ' ' + (g0.sc + 1) + ' to win.' })])]));
+    }
+    // past games on this device
+    var past = []; try { past = (GameHistory.load(KEY) || []).slice(); } catch (x) {}
+    if (past.length) {
+      var wins = {}, names = [], best = 0;
+      past.forEach(function (g) { var w = g.winner; var d = g.dt || g.detail; if (d && d.sc) d.sc.forEach(function (x) { if (x > best && d.sz === n) best = x; }); if (!w) return; if (!wins[w]) { wins[w] = 0; names.push(w); } wins[w]++; });
+      names.sort(function (a, c) { return wins[c] - wins[a]; });
+      var pg = el('section', { class: 'pn pg', 'data-give': '2' }, [el('h4', { text: 'Past matches here' })]), wl = el('ul', { class: 'wins' });
+      names.slice(0, 4).forEach(function (nm2) { wl.appendChild(el('li', null, [el('span', { text: nm2 }), el('b', { text: wins[nm2] + (wins[nm2] === 1 ? ' win' : ' wins') })])); });
+      if (best) wl.appendChild(el('li', null, [el('span', { text: 'Best score as Order on ' + n + ' by ' + n }), el('b', { text: String(best) })]));
+      pg.appendChild(wl); roomEl.appendChild(pg);
+    }
+    // give up whole parts until it fits: the oldest moves down to six, past games, the first game, the lowest lines
+    var over = function () { return roomEl.scrollHeight > roomEl.clientHeight + 1 || list.scrollHeight > list.clientHeight + 1; };
+    while (over() && list.children.length > 6) list.removeChild(list.lastChild);
+    ['2', '1'].forEach(function (k) { if (over()) { var x = roomEl.querySelector('[data-give="' + k + '"]'); if (x) x.remove(); } });
+    while (over() && list.children.length > 2) list.removeChild(list.lastChild);
+    var lis = Array.prototype.slice.call(ul.children).sort(function (a, c) { return (+a.dataset.p || 0) - (+c.dataset.p || 0); });
+    while (over() && lis.length > 1) lis.shift().remove();
+    if (over()) roomEl.innerHTML = '';
+  }
+
+  // ── Sizes for the shape of the screen ────────────────────────────────────
+  function deskWin() {
+    if (Kit.inDemo && Kit.inDemo()) return false;
+    var W = window.innerWidth, Hh = window.innerHeight;
+    return W >= 480 && Hh > 520 && (Math.max(W, Hh) > 1024 || Math.min(W, Hh) > 768);
+  }
+  function fit() {
+    var col = app.querySelector('.cb-col'); if (!col || !app.classList.contains('ipl')) return;
+    var W = window.innerWidth, Hh = window.innerHeight, land = W > Hh, low = land && Hh < 560;
+    app.classList.toggle('en-land', land); app.classList.toggle('en-low', low); app.classList.toggle('en-tall', !land && W >= 700);
+    app.classList.toggle('en-port', !land); app.classList.toggle('en-short', !land && Hh < 640);
+    var desk = deskWin(); app.classList.toggle('en-desk', !!desk);
+    var dk = desk ? Math.max(1, Math.min(1.45, W / 1600, Hh / 1050)) : 1;
+    app.style.setProperty('--dk', dk.toFixed(3));
+    var top = app.getBoundingClientRect().top + (window.scrollY || 0);
+    app.style.setProperty('--avh', Math.max(300, Hh - top) + 'px');
+    var cs = getComputedStyle(app), iw = app.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), ih = app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    var bsz;
+    if (land) {
+      var sw = low ? Math.min(270, Math.max(220, W * 0.3)) : Math.min(340, Math.max(270, W * 0.3)), cg = low ? 16 : 26;
+      if (desk) { sw = Math.round(Math.min(560, Math.max(320, W * 0.25))); cg = 36; }
+      app.style.setProperty('--sw', sw + 'px'); app.style.setProperty('--cg', cg + 'px');
+      app.style.setProperty('--bh', Math.round(low ? 58 : desk ? 110 * dk : Math.min(84, Math.max(64, ih * 0.13))) + 'px');
+      bsz = Math.floor(Math.max(200, Math.min(ih, iw - sw - cg)));
+      var spare = iw - bsz - sw - cg, two = !!desk && spare >= 320 + cg;
+      app.classList.toggle('en-two', two);
+      if (two) app.style.setProperty('--rw', Math.min(560, spare - cg) + 'px');
+      app.style.setProperty('--bsz', bsz + 'px');
+      // the height the column doesn't need goes to the bag (a device; at a desk the room takes it)
+      if (!desk || two) {
+        var cu = 0, kids2 = Array.prototype.filter.call(col.children, function (c) { return !c.classList.contains('frame') && !c.classList.contains('room'); });
+        kids2.forEach(function (c) { cu += c.offsetHeight; });
+        var fr2 = bsz - cu - (low ? 6 : 10) * (kids2.length - 1) - 8;
+        if (fr2 > 10) app.style.setProperty('--bh', Math.round(Math.min(low ? 96 : desk ? 150 * dk : 120, parseFloat(getComputedStyle(app).getPropertyValue('--bh')) + fr2 * 0.85)) + 'px');
+      }
+    } else {
+      app.classList.remove('en-two');
+      app.style.setProperty('--bh', (Hh < 640 ? 56 : W >= 700 ? 96 : 72) + 'px');
+      app.style.setProperty('--gp', '10px');
+      var other = 0, gap = 10;
+      Array.prototype.forEach.call(col.children, function (c) { if (!c.classList.contains('frame') && getComputedStyle(c).display !== 'none') other += c.offsetHeight + gap; });
+      var cw = Math.floor(Math.max(240, Math.min(iw, desk ? 1e5 : 860, ih - other)));
+      app.style.setProperty('--cw', cw + 'px');
+      var over = col.scrollHeight - ih;
+      if (over > 0) app.style.setProperty('--cw', Math.max(180, cw - over) + 'px');
+      // the room the board can't use goes into the gaps between the parts (up to 26px each), then into the bag
+      var kids = Array.prototype.filter.call(col.children, function (c) { return getComputedStyle(c).display !== 'none'; }), used = 0;
+      kids.forEach(function (c) { used += c.offsetHeight; });
+      var free = ih - used - 10 * (kids.length - 1);
+      if (free > 0) {
+        var g = Math.min(26, 10 + free / (kids.length + 1)), left = free - (g - 10) * (kids.length - 1);
+        app.style.setProperty('--gp', g + 'px');
+        if (left > 20) app.style.setProperty('--bh', Math.min(W >= 700 ? 130 : 100, parseFloat(getComputedStyle(app).getPropertyValue('--bh')) + left * 0.8) + 'px');
+      }
+      bsz = parseFloat(getComputedStyle(app).getPropertyValue('--cw')) || cw;
+    }
+    var cell = (bsz - 20) / S.sz;
+    bdEl.style.setProperty('--cell', cell + 'px');
+    paintRoom();
+  }
+  var lastWH = window.innerWidth + 'x' + window.innerHeight;
+  window.addEventListener('resize', function () {
+    var wh = window.innerWidth + 'x' + window.innerHeight; if (wh === lastWH) return; lastWH = wh;
+    if (app.classList.contains('ipl')) Kit.glide(fit); else fit();
+  });
+
+  // ── Online ───────────────────────────────────────────────────────────────
+  // Seat 0 is Order in the first game when the host chose Order (or First player); each new match at the table starts
+  // the other way round. The bag's random state is in the table's state, so every device draws the same chip.
+  function netOpts() {
+    var o = { size: '7', first: 0 };
+    try { var g = JSON.parse(localStorage.getItem('gn_setup_' + KEY)); if (g && g.options) { if (g.options.size === '5') o.size = '5'; if (g.mode === 'cpu' ? g.options.role === 'chaos' : g.options.role2 === 'p2') o.first = 1; } } catch (e) {}
+    return o;
+  }
+  function netStart(players, opts, last) {
+    var first = last && last.ord ? 1 - last.ord[0] : opts && opts.first ? 1 : 0;
+    var st = C.newMatch({ sz: last && last.sz ? last.sz : opts && opts.size === '5' ? 5 : 7, first: first });
+    st.mode = 'online'; st.level = 'normal';
+    st.players = players.map(function (p) { return { name: p.name, cpu: false }; });
+    freshFields(st); delete st.hist;
+    st.wins = last && last.wins ? last.wins.slice() : [0, 0, 0];
+    return st;
+  }
+  function netApply(st, mv) {
+    if (st.over) return null;
+    var b0 = st.b.slice(), S0 = S; S = st;
+    var res = C.play(st, mv);
+    if (res) note(st, res, b0);
+    S = S0;
+    if (!res) return null;
+    if (st.over) st.wins[st.win >= 0 ? st.win : 2]++;
+    var r = { t: res.t, i: res.i, f: res.f, to: res.to, c: res.c, seat: res.seat, gain: res.gain, gain0: res.gain0, nr: res.nr, auto: res.auto, end: res.end ? { g: res.end.g, sc: res.end.sc, b: res.end.b } : null, over: res.over };
+    return { state: st, mv: { r: r, b0: b0 } };
+  }
+  function netMove(mv) { if (!S || S.over || LEFT || !NET.myTurn()) return; BUSY++; paintActs(); var tr = trayRect(); NETTRAY = tr; var tok = SHOWN; NET.act(function (st) { return netApply(st, mv); }); setTimeout(function () { if (tok === SHOWN && BUSY) { BUSY = 0; paintAll(); } }, 4000); }
+  var NETTRAY = null;
+  function netAgain() { if (!NET) return; if (LEFT) { TurnNet.leave(); TurnNet.open(); } else NET.again(); }
+  function netAfter() { if (!S) return; paintAll(); }
+  function netShow(net, info) {
+    NET = net;
+    if (WINO && (info.again || info.fresh)) { WINO.close(); WINO = null; }
+    var prev = S;
+    var mine = info.mine && BUSY;
+    stopAll();
+    S = JSON.parse(JSON.stringify(net.state)); S.hist = []; SEL = HOV = -1;
+    LEFT = net.status === 'over' && !S.over && net.result && net.result.left != null ? net.result : null;
+    var tok = ++SHOWN, mv = info.mv && info.mv.r && !info.fresh && !info.again ? info.mv : null;
+    var same = mv && prev && prev.ml && (prev.g === S.g ? prev.n < S.n : mv.r.end);
+    if (!app.classList.contains('ipl') || !bdEl || !prev || prev.sz !== S.sz) render();
+    if (same) {
+      show(mv.r, mv.b0, mine ? NETTRAY : trayRect(), true);
+      if (!S.over && net.myTurn() && !info.mine) later(function () { if (tok === SHOWN) Kit.haptic('light'); }, 900);
+    } else {
+      paintAll(); fit();
+      if (S.over || LEFT) later(function () { if (tok === SHOWN) netEnd(); }, 150);
+      else if (info.again || info.fresh) drawShow(function () { paintAll(); });
+    }
+    if (info.again) { Kit.sfx('deal'); Kit.callout((isMe(S.ord[0]) ? 'You are' : S.players[S.ord[0]].name + ' is') + ' Order first'); }
+  }
+  function netEnd() {
+    if (!NET || !S) return;
+    var left = LEFT, key = NET.code + ':' + S.started;
+    var done = NETREC[key]; try { done = done || (JSON.parse(localStorage.getItem('entropy_net_rec')) || []).indexOf(key) >= 0; } catch (e) {}
+    var bestPrev = bestBefore();
+    if (!done && !left && S.over) {
+      NETREC[key] = 1;
+      try { var rl = JSON.parse(localStorage.getItem('entropy_net_rec')) || []; rl.push(key); localStorage.setItem('entropy_net_rec', JSON.stringify(rl.slice(-30))); } catch (e) {}
+      var hl = highlights(); hl.push('Played online at table ' + NET.code);
+      Kit.record(KEY, { started: S.started, mode: 'Online', players: recPlayers(), winner: S.win >= 0 ? S.players[S.win].name : null, highlights: hl, detail: detail() });
+    }
+    if (WINO) WINO.close();
+    if (left) return netWin();
+    endShow(bestPrev, true);
+  }
+  function netWin() {
+    if (!NET) return;
+    var me = NET.seat, left = LEFT, w = left ? null : S.win;
+    WINO = Kit.win({
+      icon: left ? 'users' : w < 0 ? 'users' : w === me ? 'trophy' : 'users',
+      title: left ? left.text : w < 0 ? 'It’s a draw' : w === me ? 'You win!' : S.players[w].name + ' wins',
+      sub: left ? '' : endLine(),
+      rank: left ? null : rankRows(),
+      notes: left || !S.wins ? null : [S.players[0].name + ' has won ' + S.wins[0] + ' and ' + S.players[1].name + ' has won ' + S.wins[1] + (S.wins[2] ? ', with ' + S.wins[2] + (S.wins[2] === 1 ? ' draw' : ' draws') : '') + '.'], notesTitle: 'Matches at this table',
+      lose: !left && w >= 0 && w !== me, againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { WINO = null; netAgain(); },
+      look: { label: 'Look at the board', onClick: function () { WINO = null; } }
+    });
+  }
+  function netLeave() {
+    NET = null; LEFT = null; SHOWN++; stopAll(); if (WINO) { WINO.close(); WINO = null; }
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.b && sv.players && !sv.over) { S = sv; S.hist = S.hist || []; render(); afterTurn(); }
+    else showSetup();
+  }
+
+  // ── Test and demo hooks ──────────────────────────────────────────────────
+  window.__entropy = {
+    C: C, state: function () { return S; }, busy: function () { return BUSY || !!COUNTING; }, sel: function () { return SEL; },
+    // a fresh match for these players: {mode: '2p' | 'cpu', level, sz, first, seed, players: [{name, cpu}]}
+    start: function (cfg) {
+      stopAll();
+      S = C.newMatch({ sz: cfg.sz || 7, first: cfg.first || 0, seed: cfg.seed });
+      S.mode = cfg.mode || '2p'; S.level = cfg.level || 'normal'; S.cover = false; S.players = cfg.players;
+      freshFields(S); VIEW = null; SEL = HOV = -1;
+      Kit.gameStart(); save(); render(); afterTurn();
+    },
+    // a board and the chip in hand: rows top to bottom as digits ('0' empty), the bag counted from what is left
+    set: function (rows, o) {
+      o = o || {}; stopAll();
+      var b = String(rows).replace(/[^0-9]/g, '').split('').map(Number), n = S.sz;
+      S.b = b; S.bag = []; for (var k = 1; k <= n; k++) S.bag.push(n - b.filter(function (x) { return x === k; }).length);
+      if (o.chip) S.bag[o.chip - 1]--;
+      S.chip = o.chip || 0; S.ph = o.ph || (o.chip ? 'place' : 'slide'); S.n = b.filter(Boolean).length * 2; S.ml = []; S.last = null;
+      if (o.g != null) S.g = o.g;
+      if (o.gm) S.gm = o.gm;
+      S.hist = []; VIEW = null; SEL = HOV = -1;
+      save(); render(); afterTurn();
+    },
+    play: function (mv) { return play(mv); },
+    // a move as this device would make it (online through the table)
+    move: function (mv) { if (NET) return netMove(mv); return play(mv); },
+    mine: function () { return canAct(); },
+    cell: function (name) { var i = typeof name === 'string' ? C.sq(name, S.sz) : name; return wellsEl ? wellsEl.querySelector('.wl[data-i="' + i + '"]') : null; },
+    chip: function (name) { var i = typeof name === 'string' ? C.sq(name, S.sz) : name; return chipAt(i); },
+    tray: function () { return trayEl; },
+    bag: function () { return bagEl; }
+  };
+
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.b && saved.players && !saved.over) { S = saved; S.hist = S.hist || []; render(); afterTurn(); }
+  else showSetup();
+
+  TurnNet.setup({
+    game: KEY, title: 'Entropy', min: 2, max: 2,
+    opts: netOpts, start: netStart,
+    turn: function (st) { return st.over ? [] : [C.seatToMove(st)]; },
+    over: function (st) {
+      if (!st.over) return null;
+      return { win: st.win >= 0 ? [st.win] : [], text: st.win >= 0 ? st.players[st.win].name + ' scored more as Order' : 'A draw' };
+    },
+    show: netShow, leave: netLeave
+  });
+})();
+</script>
+</body>
+</html>
