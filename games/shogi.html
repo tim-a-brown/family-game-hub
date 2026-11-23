@@ -40,12 +40,12 @@
 .seat{display:grid;gap:6px;min-width:0;}
 .sg.merged .seat{grid-template-columns:clamp(136px,36%,260px) minmax(0,1fr);align-items:stretch;}
 /* The piece stand: a small table of the same wood as the board, with the pieces in hand on it */
-.stand{position:relative;min-height:calc(var(--hp) + 10px);border-radius:10px;padding:4px 6px;display:flex;flex-wrap:wrap;align-items:center;align-content:center;gap:2px 4px;
+.stand{position:relative;min-height:calc(var(--hp) + 10px + var(--sadd,0px));border-radius:10px;padding:4px 6px;display:flex;flex-wrap:wrap;align-items:center;align-content:center;gap:2px 4px;
   background:repeating-linear-gradient(91deg,rgba(120,70,20,.08) 0 2px,transparent 2px 9px),linear-gradient(180deg,#e7c27f,#cf9f57);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 -2px 0 rgba(0,0,0,.18),0 6px 14px rgba(0,0,0,.35);}
 .stand.top{flex-direction:row-reverse;}
 .stand .none{font-size:.74rem;font-weight:700;color:rgba(70,40,10,.55);margin:auto;}
-.hp{position:relative;width:var(--hp);height:var(--hp);border:0;padding:0;background:none;cursor:pointer;display:grid;place-items:center;border-radius:8px;transition:transform .15s var(--spring),filter .15s;touch-action:manipulation;}
+.hp{position:relative;width:var(--hp);height:var(--hp);border:0;padding:0;background:none;cursor:pointer;display:grid;place-items:center;border-radius:8px;transition:transform .15s var(--spring),filter .15s;touch-action:none;}
 .hp svg{width:100%;height:100%;filter:drop-shadow(0 1.5px 1px rgba(0,0,0,.45));overflow:visible;}
 .stand.top .hp svg{transform:rotate(180deg);}
 .hp b{position:absolute;right:-7px;top:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#2a1a0c;color:#ffe9bd;font-size:11px;font-weight:900;line-height:17px;text-align:center;box-shadow:0 0 0 1.5px #f2d49a;font-variant-numeric:tabular-nums;}
@@ -58,7 +58,7 @@
 .frame{--rim:clamp(10px,3vw,20px);position:relative;padding:var(--rim);border-radius:10px;width:var(--bsz);height:var(--bsz);box-sizing:border-box;
   background:repeating-linear-gradient(90deg,rgba(255,255,255,.03) 0 2px,transparent 2px 8px),linear-gradient(180deg,#8a5a2b,#5e3a19);
   box-shadow:inset 0 2px 0 rgba(255,255,255,.18),inset 0 -3px 0 rgba(0,0,0,.35),0 16px 34px rgba(0,0,0,.5);view-transition-name:sg-board;}
-.bd{position:relative;width:100%;height:100%;display:grid;grid-template-columns:repeat(9,1fr);grid-template-rows:repeat(9,1fr);touch-action:manipulation;user-select:none;-webkit-user-select:none;
+.bd{position:relative;width:100%;height:100%;display:grid;grid-template-columns:repeat(9,1fr);grid-template-rows:repeat(9,1fr);touch-action:none;user-select:none;-webkit-user-select:none;
   background:
     repeating-linear-gradient(87deg,rgba(140,80,20,.07) 0 1px,transparent 1px 7px),
     repeating-linear-gradient(93deg,rgba(255,255,255,.08) 0 2px,transparent 2px 13px),
@@ -75,7 +75,7 @@
 .sq.mv.pz::after{background:rgba(190,40,20,.5);}
 .sq.mv.cap.pz::after{background:none;box-shadow:inset 0 0 0 3px rgba(190,40,20,.65);}
 .star{position:absolute;width:7px;height:7px;border-radius:50%;background:#2c1a08;transform:translate(-50%,-50%);pointer-events:none;z-index:1;}
-.coord{position:absolute;font-size:clamp(8px,1.4vmin,12px);font-weight:800;color:#f3dcb0;opacity:.85;pointer-events:none;display:grid;place-items:center;font-variant-numeric:tabular-nums;}
+.coord{position:absolute;font-size:var(--cf,clamp(8px,1.4vmin,12px));font-weight:800;color:#f3dcb0;opacity:.85;pointer-events:none;display:grid;place-items:center;font-variant-numeric:tabular-nums;}
 .coord.f{top:0;height:var(--rim);width:calc((100% - 2 * var(--rim)) / 9);}
 .coord.r{right:0;width:var(--rim);height:calc((100% - 2 * var(--rim)) / 9);}
 .layer{position:absolute;inset:0;pointer-events:none;z-index:2;}
@@ -94,6 +94,9 @@
 .ring{position:absolute;width:11.111%;height:11.111%;pointer-events:none;border-radius:50%;box-shadow:0 0 0 3px rgba(255,214,90,.9);animation:ring .8s ease-out forwards;z-index:3;}
 @keyframes ring{from{transform:scale(.6);opacity:1;}to{transform:scale(2.1);opacity:0;}}
 .fly{position:fixed;z-index:400;pointer-events:none;}
+.fly.drag{z-index:600;}
+.pc.dragging,.hp.dragging{opacity:.25;}
+.sq.hov::before{background:rgba(255,214,90,.45);box-shadow:inset 0 0 0 2px rgba(255,214,90,.95);}
 .fly svg{width:100%;height:100%;filter:drop-shadow(0 6px 5px rgba(0,0,0,.45));overflow:visible;}
 .bd.shake{animation:shake .4s;}
 /* The promotion choice: the piece's two faces, over the board */
@@ -117,31 +120,52 @@
 .acts .btn{flex:1;max-width:200px;white-space:nowrap;}
 /* Upright: the other player and their stand over the board, you and yours under it */
 .sg.port{grid-template-columns:var(--bsz);}
+.sg.port .pbar{min-height:calc(44px + var(--padd,0px));}
 .sg.port .moves{display:none;}
 .sg.port.roomy .moves{display:flex;}
 /* Sideways: what you look at in a column at the left, the board where the taps go at the right */
-.sg.land{height:var(--bsz);grid-template-columns:var(--lw) var(--bsz);grid-template-rows:max-content max-content minmax(0,1fr) max-content max-content max-content;
-  grid-template-areas:"t b" "s b" "m b" "x b" "a b" "y b";column-gap:var(--cg,22px);row-gap:8px;}
+.sg.land{height:var(--bsz);grid-template-columns:var(--lw) var(--bsz);
+  grid-template-rows:max-content max-content max-content minmax(0,max-content) max-content max-content max-content minmax(0,1fr) max-content max-content;
+  grid-template-areas:"t b" "s b" "l b" "m b" "k b" "x b" "p b" ". b" "a b" "y b";column-gap:var(--cg,22px);row-gap:8px;}
 .sg.land>.seat.top{grid-area:t;}
 .sg.land>.seat.bot{grid-area:y;}
 .sg.land>.frame{grid-area:b;}
 .sg.land>.turn{grid-area:s;}
-.sg.land>.moves{grid-area:m;display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:5px;align-content:start;overflow-y:auto;overflow-x:hidden;padding:8px;border-radius:16px;background:var(--well);box-shadow:inset 0 0 0 1px var(--gl-line);min-height:0;}
-.sg.land>.moves .empty{grid-column:1/-1;margin:auto;align-self:center;}
-.sg.land>.moves:has(.empty){align-content:center;}
+.sg.land>.lastmv{grid-area:l;}
+.sg.land>.taken{grid-area:k;}
+.sg.land>.stats{grid-area:x;}
+.sg.land>.past{grid-area:p;}
 .sg.land>.acts{grid-area:a;justify-content:flex-start;}
-/* At a desk (a window larger than a phone's or a tablet's): the room beside the board holds this game's numbers too */
-.sg>.stats{display:none;}
-.sg.land.desk>.stats{grid-area:x;display:block;padding:10px 14px;border-radius:16px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);}
+/* the move list sideways: a glass panel only as tall as its moves, scrolling inside itself once the column is full */
+.sg.land>.moves{grid-area:m;display:grid;grid-template-columns:repeat(auto-fill,minmax(calc(112px * var(--dk,1)),1fr));gap:5px;align-content:start;overflow-y:auto;overflow-x:hidden;padding:8px;border-radius:16px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);min-height:0;}
+.sg.land>.moves .empty{grid-column:1/-1;margin:2px auto;}
+/* The room's glass panels, each as tall as what it holds */
+.sg>.pn{display:none;}
+.sg.land>.pn:not(.none):not(.off){display:block;padding:calc(10px * var(--dk,1)) calc(14px * var(--dk,1));border-radius:16px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);font-size:calc(.9rem * var(--dk,1));}
+.pn h4{margin:0 0 6px;font-size:.84em;font-weight:700;color:var(--text-3);}
+.lastmv p{margin:0;font-weight:650;line-height:1.35;color:var(--text);}
+.tkrow{display:flex;align-items:center;gap:10px;min-height:calc(30px * var(--dk,1));}
+.tkrow+.tkrow{border-top:1px solid var(--gl-line);}
+.tkn{flex:none;width:30%;font-weight:700;color:var(--text-2);overflow-wrap:anywhere;}
+.tkp{display:flex;flex-wrap:wrap;gap:2px;align-items:center;}
+.tkp i{font-style:normal;color:var(--text-3);font-weight:600;}
+.tkpc{width:calc(26px * var(--dk,1));height:calc(26px * var(--dk,1));display:grid;}
+.tkpc svg{width:100%;height:100%;filter:drop-shadow(0 1px 1px rgba(0,0,0,.45));}
 .stats table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;}
-.stats th{font-size:.78rem;font-weight:700;color:var(--text-3);text-align:right;padding:2px 6px;}
-.stats th:first-child{text-align:left;}
+.stats th{font-size:.84em;font-weight:700;color:var(--text-3);text-align:right;padding:2px 6px;}
+.stats th:first-child{text-align:left;padding-left:0;}
 .stats td{font-weight:800;text-align:right;padding:3px 6px;border-top:1px solid var(--gl-line);}
-.stats td:first-child{text-align:left;font-weight:650;color:var(--text-2);}
+.stats td:first-child{text-align:left;font-weight:650;color:var(--text-2);padding-left:0;}
+.wins{display:grid;gap:2px;margin-bottom:6px;}
+.wrow{display:flex;justify-content:space-between;gap:10px;font-weight:650;}
+.wrow b{font-variant-numeric:tabular-nums;}
+.plist{margin:0;padding:0 0 0 1.1em;color:var(--text-2);display:grid;gap:3px;}
+.plist li{line-height:1.3;}
 .sg.land.desk .pbar{min-height:calc(44px * var(--dk,1));}
 .sg.land.desk .pbar .nm{font-size:calc(.95rem * var(--dk,1));}
+.sg.land.desk .pbar .sub{font-size:calc(.74rem * var(--dk,1));}
+.sg.land.desk .turn{font-size:calc(1rem * var(--dk,1));}
 .sg.land.desk .moves .mp{font-size:calc(.82rem * var(--dk,1));height:calc(28px * var(--dk,1));line-height:calc(28px * var(--dk,1));}
-.sg.land.desk>.moves{grid-template-columns:repeat(auto-fill,minmax(calc(120px * var(--dk,1)),1fr));}
 .sg.land.low{row-gap:5px;}
 .sg.land.low .pbar{min-height:38px;padding:3px 10px 3px 6px;}
 .sg.land.low .turn{min-height:26px;font-size:.92rem;}
@@ -275,7 +299,7 @@
   // the name to use in a sentence: "You" for the person holding this device, where that is plain
   function who(p) { if (NET) return p === me() ? 'You' : p.name; if (vsCpu()) return p.cpu ? p.name : 'You'; return p.name; }
   function isYou(p) { return who(p) === 'You'; }
-  function newEv() { return { promos: [0, 0], caps: [0, 0], drops: [0, 0], checks: [0, 0], dragon: [0, 0], horse: [0, 0], run: [0, 0], best: [0, 0], low: [0, 0], entered: [0, 0], mateDrop: 0, matePawn: 0 }; }
+  function newEv() { return { promos: [0, 0], caps: [0, 0], drops: [0, 0], checks: [0, 0], dragon: [0, 0], horse: [0, 0], run: [0, 0], best: [0, 0], low: [0, 0], entered: [0, 0], mateDrop: 0, matePawn: 0, tk: ['', ''] }; }
   function si(side) { return side > 0 ? 0 : 1; }
 
   Kit.init({
@@ -345,7 +369,7 @@
   function track(ev, g, info) {
     var i = si(info.side);
     if (info.pr) { ev.promos[i]++; if (info.moved === 7) ev.dragon[i]++; if (info.moved === 6) ev.horse[i]++; }
-    if (info.cap) ev.caps[i]++;
+    if (info.cap) { ev.caps[i]++; ev.tk = ev.tk || ['', '']; ev.tk[i] += String(C.base(info.cap)); }
     if (info.drop) ev.drops[i]++;
     if (info.check) { ev.checks[i]++; ev.run[i]++; if (ev.run[i] > ev.best[i]) ev.best[i] = ev.run[i]; } else ev.run[i] = 0;
     var d = material(g.pos, info.side) - material(g.pos, -info.side);
@@ -374,6 +398,7 @@
   // where the moving piece and a captured one were before the board is drawn again (for their flight)
   function rects(info) {
     var o = {};
+    if (dragRect) { o.from = dragRect; dragRect = null; if (info.cap) { var c0 = pcEl(C.to(info.m)); if (c0) o.cap = c0.getBoundingClientRect(); } return o; }
     var from = info.drop ? standSlot(info.side, info.moved) : sqEl(C.from(info.m));
     if (from) o.from = from.getBoundingClientRect();
     if (info.cap) { var c = pcEl(C.to(info.m)); if (c) o.cap = c.getBoundingClientRect(); }
@@ -593,21 +618,23 @@
     for (var i = 0; i < 81; i++) {
       (function (d) {
         var s = disp(d), q = el('div', { class: 'sq', 'data-s': s, role: 'gridcell', 'aria-label': C.sqName(s) });
-        q.addEventListener('click', function () { tapSq(s); });
+        q.addEventListener('click', function () { if (Date.now() - dragEndAt < 350) return; tapSq(s); });
         bd.appendChild(q);
       })(i);
     }
     [[3, 3], [3, 6], [6, 3], [6, 6]].forEach(function (rc) { bd.appendChild(el('span', { class: 'star', style: { left: rc[1] * 100 / 9 + '%', top: rc[0] * 100 / 9 + '%' } })); });
     bd.appendChild(el('div', { class: 'layer' }));
+    bd.addEventListener('pointerdown', function (e) { dragStart(e, { board: true }); });
     frame.appendChild(bd);
     for (var c = 0; c < 9; c++) {
       frame.appendChild(el('span', { class: 'coord f', text: String(flip ? c + 1 : 9 - c), style: { left: 'calc(var(--rim) + ' + c + ' * (100% - 2 * var(--rim)) / 9)' } }));
       frame.appendChild(el('span', { class: 'coord r', text: 'abcdefghi'.charAt(flip ? 8 - c : c), style: { top: 'calc(var(--rim) + ' + c + ' * (100% - 2 * var(--rim)) / 9)' } }));
     }
-    var turn = el('div', { class: 'turn' }), moves = el('div', { class: 'moves' }), acts = el('div', { class: 'acts' }), stats = el('div', { class: 'stats' });
-    wrap.appendChild(top); wrap.appendChild(frame); wrap.appendChild(bot); wrap.appendChild(turn); wrap.appendChild(moves); wrap.appendChild(stats); wrap.appendChild(acts);
+    var turn = el('div', { class: 'turn' }), moves = el('div', { class: 'moves' }), acts = el('div', { class: 'acts' }), stats = el('div', { class: 'stats pn' });
+    var lastmv = el('div', { class: 'lastmv pn' }), taken = el('div', { class: 'taken pn' }), past = el('div', { class: 'past pn' });
+    [top, frame, bot, turn, lastmv, moves, taken, stats, past, acts].forEach(function (n) { wrap.appendChild(n); });
     app.appendChild(wrap);
-    paintPieces(); paintMarks(); paintActs(); paintMoves(); paintStats(); paintStatus();
+    paintPieces(); paintMarks(); paintActs(); paintMoves(); paintRoom(); paintStatus();
     fit();
   }
   function seat(side, where) {
@@ -639,7 +666,8 @@
         (function (t) {
           var b = el('button', { type: 'button', class: 'hp' + (sel && sel.d === t && S.g.pos.turn === side ? ' sel' : ''), 'data-t': t, 'aria-label': h[t] + ' ' + NAME[t] + (h[t] > 1 ? 's' : '') + ' in hand', html: pieceSvg(t, side) + (h[t] > 1 ? '<b>' + h[t] + '</b>' : '') });
           if (!mine) b.disabled = true;
-          b.addEventListener('click', function () { tapHand(side, t); });
+          b.addEventListener('click', function () { if (Date.now() - dragEndAt < 350) return; tapHand(side, t); });
+          b.addEventListener('pointerdown', function (e) { if (mine) dragStart(e, { side: side, t: t, el: b }); });
           st.appendChild(b);
         })(t);
       }
@@ -695,8 +723,9 @@
     turnEl.appendChild(el('span', { text: txt }));
   }
   function selText() {
-    if (sel.d) return 'Tap an empty square to drop your ' + NAME[sel.d];
-    var v = Math.abs(S.g.pos.b[sel.f]); return 'Tap a square to move your ' + NAME[v];
+    var held = drag && drag.on;
+    if (sel.d) return (held ? 'Let go over an empty square to drop your ' : 'Tap an empty square to drop your ') + NAME[sel.d];
+    var v = Math.abs(S.g.pos.b[sel.f]); return (held ? 'Let go over a dot to move your ' : 'Tap a square to move your ') + NAME[v];
   }
   function paintActs() {
     var acts = app.querySelector('.acts'); if (!acts) return;
@@ -723,12 +752,75 @@
     var land = app.querySelector('.sg.land');
     if (land) mv.scrollTop = mv.scrollHeight; else mv.scrollLeft = mv.scrollWidth;
   }
+  // The room beside the board sideways: the last move in words, the moves, the pieces each side has taken, this game's
+  // numbers and the games played on this device. fitRoom gives up whole panels from the least wanted.
+  function pieceWord(t) { return NAME[t]; }
+  function lastSay() {
+    var g = S.g, l = g.last; if (!l) return '';
+    var p = pl(l.side), nm = who(p), sq = function (s) { return C.sqName(s); }, t;
+    var poss = nm === 'You' ? 'Your' : Kit.poss(nm);
+    if (l.f < 0) t = (nm === 'You' ? 'You' : nm) + ' dropped a ' + pieceWord(l.d) + ' on ' + sq(l.t) + '.';
+    else if (l.cap) t = poss + ' ' + pieceWord(l.pc) + ' took ' + 'a ' + pieceWord(C.base(l.cap)) + ' on ' + sq(l.t) + (l.pr ? ' and turned over into a ' + pieceWord(l.pc + 8) : '') + '.';
+    else t = poss + ' ' + pieceWord(l.pc) + ' moved from ' + sq(l.f) + ' to ' + sq(l.t) + (l.pr ? ' and turned over into a ' + pieceWord(l.pc + 8) : '') + '.';
+    var ck = g.ck.charAt(g.ck.length - 1);
+    if (!g.over && (ck === 'B' || ck === 'W')) t += ' That puts ' + (isYou(pl(-l.side)) ? 'your' : Kit.poss(who(pl(-l.side)))) + ' King in check.';
+    return t;
+  }
+  function paintRoom() {
+    paintStats();
+    var lm = app.querySelector('.lastmv'), tk = app.querySelector('.taken'), ps = app.querySelector('.past');
+    if (lm) { var say = lastSay(); lm.innerHTML = ''; if (say) { lm.appendChild(el('h4', { text: 'Last move' })); lm.appendChild(el('p', { text: say })); } lm.classList.toggle('none', !say); }
+    if (tk) {
+      tk.innerHTML = ''; var any = false, ev = S.ev, list = ev.tk || ['', ''];
+      tk.appendChild(el('h4', { text: 'Pieces taken' }));
+      [BLACK, WHITE].forEach(function (sd) {
+        var s = list[si(sd)] || '', row = el('div', { class: 'tkrow' }, [el('span', { class: 'tkn', text: pl(sd).name })]), box = el('span', { class: 'tkp' });
+        if (!s) box.appendChild(el('i', { text: 'Nothing yet' }));
+        s.split('').sort(function (a, b) { return b - a; }).forEach(function (c) { any = true; box.appendChild(el('span', { class: 'tkpc', html: pieceSvg(+c, sd) })); });
+        row.appendChild(box); tk.appendChild(row);
+      });
+      tk.classList.toggle('none', !any);
+    }
+    if (ps) {
+      ps.innerHTML = ''; var recs = [];
+      try { recs = (window.GameHistory && GameHistory.load('shogi')) || []; } catch (e) {}
+      recs = recs.filter(function (e) { return e && e.players; });
+      ps.classList.toggle('none', !recs.length);
+      if (recs.length) {
+        var wins = {}, strip = function (n) { return String(n || '').replace(/ \((Black|White)\)$/, ''); };
+        recs.forEach(function (e) { var w = strip(e.winner); if (w) wins[w] = (wins[w] || 0) + 1; });
+        ps.appendChild(el('h4', { text: recs.length === 1 ? 'The last game on this device' : 'The last ' + Math.min(recs.length, 40) + ' games on this device' }));
+        var wl = el('div', { class: 'wins' });
+        Object.keys(wins).sort(function (a, b) { return wins[b] - wins[a]; }).slice(0, 4).forEach(function (n) { wl.appendChild(el('div', { class: 'wrow' }, [el('span', { text: n }), el('b', { text: wins[n] + (wins[n] === 1 ? ' win' : ' wins') })])); });
+        ps.appendChild(wl);
+        var ul = el('ul', { class: 'plist' });
+        recs.slice(0, 5).forEach(function (e) { var h = (e.highlights || [])[0]; if (h) ul.appendChild(el('li', { text: h + '.' })); });
+        ps.appendChild(ul);
+      }
+    }
+  }
+  function fitRoom() {
+    var wrap = app.querySelector('.sg'); if (!wrap) return;
+    var order = ['.past', '.stats', '.taken', '.lastmv'], land = wrap.classList.contains('land');
+    order.forEach(function (q) { var n = wrap.querySelector(q); if (n) n.classList.toggle('off', !land); });
+    if (!land) return;
+    var mv = wrap.querySelector('.moves');
+    for (var i = 0; i < order.length; i++) {
+      // the moves keep at least three rows of room; whole panels give way, the least wanted first
+      var need = Math.min(mv.scrollHeight, 96);
+      if (mv.clientHeight + 1 >= need && wrap.scrollHeight <= wrap.clientHeight + 1) break;
+      var n = wrap.querySelector(order[i]); if (n) n.classList.add('off');
+    }
+  }
   function paintStats() {
     var box = app.querySelector('.stats'); if (!box || !S.ev) return;
     var ev = S.ev, b = pl(BLACK), w = pl(WHITE);
+    if (!ev.tk) ev.tk = ['', ''];
     var rows = [['Captures', ev.caps], ['Drops', ev.drops], ['Promotions', ev.promos], ['Checks', ev.checks]];
+    box.classList.toggle('none', !S.g.n);
     box.innerHTML = '<table><tr><th>This game</th><th>' + Kit.esc(b.name) + '</th><th>' + Kit.esc(w.name) + '</th></tr>' +
-      rows.map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + r[1][0] + '</td><td>' + r[1][1] + '</td></tr>'; }).join('') + '</table>';
+      rows.map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + r[1][0] + '</td><td>' + r[1][1] + '</td></tr>'; }).join('') +
+      '<tr><td>Points for an impasse count</td><td>' + C.count24(S.g.pos, b.side) + '</td><td>' + C.count24(S.g.pos, w.side) + '</td></tr></table>';
   }
   function repaint() { paintPieces(); paintMarks(); paintStatus(); paintActs(); }
 
@@ -738,7 +830,7 @@
     var vw = window.innerWidth, vh = window.innerHeight, top = app.getBoundingClientRect().top + window.scrollY;
     var padX = Math.max(17, (parseFloat(getComputedStyle(app).paddingLeft) || 17)), bottomPad = 20;
     var availW = vw - 2 * padX, availH = vh - top - bottomPad - 4;
-    var land = vw > vh, rim = function (b) { return Math.max(10, Math.min(22, b * 0.035)); };
+    var land = vw > vh, rim = function (b) { return Math.max(10, Math.min(b > 1000 ? 34 : 22, b * 0.035)); };
     var bsz, mode = '', lw = 0, desk = !!(Kit.desk && Kit.desk());
     wrap.classList.toggle('desk', desk);
     wrap.style.setProperty('--dk', desk ? Math.max(1, Math.min(1.5, Math.min(vw / 1512, vh / 982))) : 1);
@@ -751,34 +843,46 @@
       if (bS >= bM - 1) { bsz = bS; mode = 'split'; } else { bsz = bM; mode = 'merged'; }
       // with room to spare the move list shows under the status
       var used = bsz + (mode === 'split' ? fixedS : fixedM) + 2 * Math.max(46, sq(bsz) * 0.92 + 12);
-      wrap.classList.toggle('roomy', availH - used > 50);
+      var roomy = availH - used > 50;
+      wrap.classList.toggle('roomy', roomy);
+      if (roomy) used += 40;
+      // height to spare (a phone, whose board can grow no wider) goes to the stands and the bars, then to the gaps,
+      // so nothing floats in an empty band
+      var extra = Math.max(0, availH - used), sAdd = Math.min(extra * 0.3, 26), pAdd = mode === 'split' ? Math.min(extra * 0.12, 12) : 0;
+      extra -= 2 * sAdd + 2 * pAdd;
+      var g2 = Math.min(22, gap + extra / 7);
+      wrap.style.setProperty('--sadd', Math.floor(sAdd) + 'px'); wrap.style.setProperty('--padd', Math.floor(pAdd) + 'px');
+      wrap.style.rowGap = g2 + 'px';
     } else {
       var cg = Math.max(16, Math.min(40, vw * 0.025));
       if (desk) {
         // sized from the window, with a room at the left of at least 340px (a third of a wide window)
-        bsz = Math.floor(Math.min(availH, availW - Math.max(340, availW * 0.3) - cg));
-        lw = Math.floor(Math.min(availW - bsz - cg, 760));
+        bsz = Math.floor(Math.min(availH, availW - 400 - cg));
+        lw = Math.floor(Math.min(availW - bsz - cg, 820));
       } else {
         bsz = Math.floor(Math.min(availH, availW - 230 - cg, 1100));
         lw = Math.floor(Math.min(availW - bsz - cg, 560));
       }
-      mode = lw >= 400 ? 'merged' : 'split';
+      mode = lw >= (desk ? 560 : 400) ? 'merged' : 'split';
       wrap.style.setProperty('--cg', cg + 'px');
       wrap.classList.toggle('low', availH < 560);
       wrap.classList.remove('roomy');
+      wrap.style.setProperty('--sadd', '0px'); wrap.style.setProperty('--padd', '0px'); wrap.style.rowGap = '';
     }
     var q = (bsz - 2 * rim(bsz)) / 9;
     wrap.classList.toggle('port', !land); wrap.classList.toggle('land', land);
     wrap.classList.toggle('merged', mode === 'merged'); wrap.classList.toggle('split', mode === 'split');
     wrap.style.setProperty('--bsz', bsz + 'px'); wrap.style.setProperty('--sq', q + 'px'); wrap.style.setProperty('--lw', lw + 'px');
     wrap.querySelector('.frame').style.setProperty('--rim', rim(bsz) + 'px');
+    wrap.querySelector('.frame').style.setProperty('--cf', Math.max(8, Math.min(18, rim(bsz) * 0.62)) + 'px');
     // pieces in hand as large as a square on the board, smaller when a stand has to hold many kinds
-    var hp = Math.min(q * 0.92, desk ? 120 : 64);
+    var hp = Math.min(q * 0.92 + (parseFloat(wrap.style.getPropertyValue('--sadd')) || 0) * 0.6, desk ? 120 : 70);
     wrap.querySelectorAll('.stand').forEach(function (st) {
       var n = st.querySelectorAll('.hp').length, w = st.clientWidth - 12;
       var per = n ? Math.min(hp, (w - (n - 1) * 4) / n) : hp;
       st.style.setProperty('--hp', Math.max(22, Math.floor(per)) + 'px');
     });
+    fitRoom();
   }
 
   // The move: the piece glides (or drops from the stand), a captured piece flies to the captor's stand, turning round
@@ -821,6 +925,87 @@
       ], { duration: 640, delay: dur * 0.6, easing: 'cubic-bezier(.4,.1,.3,1)', fill: 'forwards' });
       f.onfinish = function () { fly.remove(); slot.style.visibility = ''; slot.classList.add('bump'); Kit.sfx('chip', 0.6); };
     }
+  }
+
+  // ── Drag to move: a piece on the board or on your stand follows the finger, the squares it can go to show their
+  // dots, the square under the finger lights, and letting go there moves it (or asks Promote or Keep). Letting go
+  // anywhere else puts it back. A tap without moving is the tap as before.
+  var drag = null, dragEndAt = 0, dragRect = null;
+  function sqAt(x, y) {
+    var bd = app.querySelector('.bd'); if (!bd) return -1;
+    var r = bd.getBoundingClientRect(); if (x < r.left || x >= r.right || y < r.top || y >= r.bottom) return -1;
+    var c = Math.floor((x - r.left) / r.width * 9), rr = Math.floor((y - r.top) / r.height * 9), d = rr * 9 + c;
+    return disp(d);
+  }
+  function dragStart(e, o) {
+    if (e.button > 0 || !canAct() || drag) return;
+    var turn = S.g.pos.turn, src;
+    if (o.board) { src = sqAt(e.clientX, e.clientY); if (src < 0 || S.g.pos.b[src] * turn <= 0) return; }
+    else if (o.side !== turn) return;
+    drag = { o: o, src: src, x0: e.clientX, y0: e.clientY, id: e.pointerId, on: false, over: -1 };
+    window.addEventListener('pointermove', dragMove);
+    window.addEventListener('pointerup', dragEnd);
+    window.addEventListener('pointercancel', dragCancel);
+  }
+  function dragMove(e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    if (!drag.on) {
+      if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 8) return;
+      drag.on = true;
+      sel = drag.o.board ? { f: drag.src } : { d: drag.o.t };
+      paintMarks(); paintStands(); paintStatus();
+      var srcEl = drag.o.board ? pcEl(drag.src) : standSlot(drag.o.side, drag.o.t);
+      var t = drag.o.board ? Math.abs(S.g.pos.b[drag.src]) : drag.o.t, side = S.g.pos.turn, sqe = app.querySelector('.sq');
+      var w = sqe ? sqe.getBoundingClientRect().width * 1.15 : 48;
+      drag.ghost = el('div', { class: 'fly drag' + ((flip ? -side : side) < 0 ? ' w' : ''), html: pieceSvg(t, side) });
+      drag.ghost.style.width = w + 'px'; drag.ghost.style.height = w + 'px';
+      if ((flip ? -side : side) < 0) drag.ghost.firstChild.style.transform = 'rotate(180deg)';
+      document.body.appendChild(drag.ghost);
+      if (srcEl) { drag.srcEl = srcEl; srcEl.classList.add('dragging'); }
+      Kit.haptic('light'); Kit.sfx('tap', 0.4);
+    }
+    var g = drag.ghost, w2 = parseFloat(g.style.width);
+    g.style.left = (e.clientX - w2 / 2) + 'px'; g.style.top = (e.clientY - w2 * 0.75) + 'px';
+    var s = sqAt(e.clientX, e.clientY);
+    if (s !== drag.over) {
+      var prev = sqEl(drag.over); if (prev) prev.classList.remove('hov');
+      drag.over = s; var q = sqEl(s); if (q && q.classList.contains('mv')) { q.classList.add('hov'); Kit.haptic('light'); }
+    }
+  }
+  function dragDone() {
+    window.removeEventListener('pointermove', dragMove);
+    window.removeEventListener('pointerup', dragEnd);
+    window.removeEventListener('pointercancel', dragCancel);
+    var d = drag; drag = null; return d;
+  }
+  function dragCancel() {
+    var d = dragDone(); if (!d || !d.on) return;
+    dragEndAt = Date.now();
+    if (d.srcEl) d.srcEl.classList.remove('dragging');
+    if (d.ghost) d.ghost.remove();
+    sel = null; paintMarks(); paintStands(); paintStatus();
+  }
+  function dragEnd(e) {
+    var d = dragDone(); if (!d) return;
+    if (!d.on) return;   // a tap: the click that follows does it
+    dragEndAt = Date.now();
+    var s = sqAt(e.clientX, e.clientY), ms = legalNow();
+    var cand = s < 0 ? [] : ms.filter(function (m) { return C.to(m) === s && (d.o.board ? C.from(m) === d.src : C.dropType(m) === d.o.t); });
+    var g = d.ghost;
+    if (!cand.length) {
+      // back where it came from
+      var back = d.srcEl ? d.srcEl.getBoundingClientRect() : null;
+      if (back && g.animate) {
+        var gr = g.getBoundingClientRect();
+        var a = g.animate([{ transform: 'none' }, { transform: 'translate(' + (back.left + back.width / 2 - gr.left - gr.width / 2) + 'px,' + (back.top + back.height / 2 - gr.top - gr.height / 2) + 'px) scale(' + (back.width / gr.width) + ')' }], { duration: 200, easing: 'ease-in' });
+        a.onfinish = function () { g.remove(); if (d.srcEl) d.srcEl.classList.remove('dragging'); };
+      } else { g.remove(); if (d.srcEl) d.srcEl.classList.remove('dragging'); }
+      if (s >= 0 && s !== d.src) { Kit.haptic('error'); }
+      sel = null; paintMarks(); paintStands(); paintStatus(); return;
+    }
+    dragRect = g.getBoundingClientRect(); g.remove();
+    if (cand.length === 2) { if (d.srcEl) d.srcEl.classList.remove('dragging'); askPromo(cand, Math.abs(S.g.pos.b[d.src])); return; }
+    go(cand[0]);
   }
 
   // ── Taps ─────────────────────────────────────────────────────────────────
@@ -882,7 +1067,7 @@
     pp.appendChild(el('button', { type: 'button', class: 'go', onclick: function (e) { e.stopPropagation(); close(); go(mPro); } }, [el('span', { class: 'face', html: pieceSvg(t + 8, side) }), el('span', { text: 'Promote' }), el('small', { text: 'It becomes a ' + NAME[t + 8] })]));
     pp.appendChild(el('button', { type: 'button', onclick: function (e) { e.stopPropagation(); close(); go(mKeep); } }, [el('span', { class: 'face', html: pieceSvg(t, side) }), el('span', { text: 'Keep' }), el('small', { text: 'It stays a ' + NAME[t] })]));
     ov.appendChild(pp);
-    ov.addEventListener('click', function () { close(); sel = null; paintMarks(); paintStatus(); });
+    ov.addEventListener('click', function () { close(); sel = null; dragRect = null; app.querySelectorAll('.dragging').forEach(function (n) { n.classList.remove('dragging'); }); paintMarks(); paintStatus(); });
     frame.appendChild(ov);
     Kit.sfx('flip', 0.5); Kit.haptic('light');
   }

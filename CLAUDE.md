@@ -1512,8 +1512,13 @@ Underlying principles for everything:
   letter, kanji only, or big letters with dots and bars for the moves). Each player's piece stand beside their bar
   (`merged`) or under it (`split`), whichever gives the larger board (`fit`). The promotion choice is the piece's two
   faces over the board. A move glides, a drop arcs in from the stand, a capture flies to the captor's stand turning to
-  face them. Sideways and at a desk the bars, stands, the move list (and at a desk the game's numbers, `.stats`) stand
-  at the left and the board at the right; the board flips when you play White. Pass and play has no hand-over cover:
+  face them. A piece on the board or on your stand can also be dragged (`dragStart`, `dragEnd`; letting go off a dot
+  puts it back), alongside tap then tap. Upright, height a phone's board can't use goes to the stands and bars, then the
+  gaps (`--sadd`, `--padd`). Sideways and at a desk the bars, stands and glass panels stand at the left and the board at
+  the right, each panel as tall as what it holds: the last move in words, the moves, the pieces each side has taken,
+  this game's numbers with the impasse points, and the games played on this device (`paintRoom`); `fitRoom` gives up
+  whole panels from the least wanted. At a desk the board is as large as the window allows beside a room of 400px or
+  more. The board flips when you play White. Pass and play has no hand-over cover:
   nothing on a Shogi table is hidden. Online is people only (two seats), as Othello's.
 - Saved in `shogi_state` (needs `"shogi":["shogi_state"]` in sync.js's `ST_SAVES`); online records once a device in
   `shogi_net_rec`. Test hook `window.__shogi` (`start(cfg, pos)`, `set(pos)`, `play('P7g-7f')`, `tapSq`, `tapHand`, `sq`).
