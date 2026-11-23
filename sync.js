@@ -106,9 +106,23 @@
   var DEMO = !!(window.__KIT_DEMO || window.__KIT_SNAP), SBX = window.__KIT_DEMO || window.__KIT_SNAP;
   // This file reads and writes the device's storage directly; everything else goes through Storage.prototype, which
   // is wrapped below (stWatch) so saves made by games are noticed and sent to the PIN's cloud copy
+  // A save that doesn't fit makes room (Tim, 2026-11-23: Safari keeps about 2.5 million characters for the whole site,
+  // and once history, saves and Keep playing's pictures filled it a game's save failed without a word, so a game
+  // reopened at an older move). Keep playing's pictures are the one thing that can be made again, so a write that
+  // doesn't fit drops them on this device, oldest first, until it does; a picture that doesn't fit is let go.
+  function roomy(s, st, rm, ky, g, k, v){
+    try{ return st.call(s, k, v); }catch(e){
+      if(/^gn_snap_/.test(String(k))) throw e;
+      var pics = [], i, kk, t;
+      for(i = 0; i < s.length; i++){ kk = ky.call(s, i); if(kk && kk.indexOf('gn_snap_') === 0){ t = 0; try{ t = JSON.parse(g.call(s, kk)).ts || 0; }catch(x){} pics.push([t, kk]); } }
+      pics.sort(function(a, b){ return a[0] - b[0]; });
+      for(i = 0; i < pics.length; i++){ try{ rm.call(s, pics[i][1]); }catch(x){} try{ return st.call(s, k, v); }catch(x){} }
+      throw e;
+    }
+  }
   var LS = (function(){
     var s = window.localStorage, P = Storage.prototype, g = P.getItem, st = P.setItem, rm = P.removeItem, ky = P.key;
-    var o = { getItem: function(k){ return g.call(s, k); }, setItem: function(k, v){ st.call(s, k, v); }, removeItem: function(k){ rm.call(s, k); }, key: function(i){ return ky.call(s, i); }, clear: function(){ s.clear(); } };
+    var o = { getItem: function(k){ return g.call(s, k); }, setItem: function(k, v){ roomy(s, st, rm, ky, g, k, v); }, removeItem: function(k){ rm.call(s, k); }, key: function(i){ return ky.call(s, i); }, clear: function(){ s.clear(); } };
     Object.defineProperty(o, 'length', { get: function(){ return s.length; } });
     return o;
   })();
@@ -786,7 +800,7 @@
     P.getItem = function(k){ if(this === ls && stKey(k)) _stKeys[k] = 1; return g.apply(this, arguments); };
     P.setItem = function(k, v){
       if(this === ls && _stFrozen[k]) return;
-      st.apply(this, arguments);
+      if(this === ls) roomy(ls, st, rm, Storage.prototype.key, g, k, v); else st.apply(this, arguments);
       if(this === ls && stKey(k)){ _stKeys[k] = 1; _stDirty[k] = 1; stSoon(); }
     };
     P.removeItem = function(k){
