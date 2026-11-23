@@ -397,11 +397,25 @@
     for (var i = 0; i < list.length; i++) if (list[i] && (list[i] === t || list[i].contains(t))) return true;
     return false;
   }
+  // (a game whose pieces take no pointer events hears the press on the board under them, so a press that lands inside
+  // the ringed piece counts too: Xiangqi's Cannon, 2026-11-23)
+  function allowedAt(e) {
+    if (!st.allow) return false;
+    var p = e.touches && e.touches[0] || e.changedTouches && e.changedTouches[0] || e;
+    if (p.clientX == null) return false;
+    var list = st.allow();
+    for (var i = 0; i < list.length; i++) {
+      if (!list[i] || !list[i].getBoundingClientRect) continue;
+      var r = list[i].getBoundingClientRect();
+      if (r.width && p.clientX >= r.left && p.clientX <= r.right && p.clientY >= r.top && p.clientY <= r.bottom) return true;
+    }
+    return false;
+  }
   ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click', 'touchstart', 'touchend', 'contextmenu', 'dblclick'].forEach(function (type) {
     window.addEventListener(type, function (e) {
       if (st.synth || inUi(e.target)) return;
       // (the rest of a press the player began on their target goes through too, wherever the game has captured it)
-      var ok = allowed(e.target) || (st.allow && type !== 'pointerdown' && type !== 'mousedown' && type !== 'touchstart' && Date.now() < (st.okUntil || 0));
+      var ok = allowed(e.target) || allowedAt(e) || (st.allow && type !== 'pointerdown' && type !== 'mousedown' && type !== 'touchstart' && Date.now() < (st.okUntil || 0));
       if (!st.ended && ok) {
         if (PZ.on) resume();
         if (type === 'pointerdown' || type === 'mousedown' || type === 'touchstart') st.okUntil = Date.now() + 1500;
