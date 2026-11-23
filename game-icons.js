@@ -126,6 +126,12 @@ var GameIcon = (function () {
     checkers: function () { return '<ellipse cx="12" cy="16" rx="9" ry="4.2" fill="#a51428"/>' + rect(3, 11, 18, 5, 0, '#a51428') + '<ellipse cx="12" cy="11" rx="9" ry="4.2" fill="' + R + '"/>' + '<ellipse cx="12" cy="11" rx="5.5" ry="2.4" fill="none" stroke="#ff8b99" stroke-width="1.3"/>'; },
     connectfour: function () { var s = rect(1, 3, 22, 19, 3, B); var cols = [[0, R, Y], [Y, R, R], [R, Y, Y]]; for (var r = 0; r < 3; r++) for (var c = 0; c < 3; c++) s += circ(5.5 + c * 6.5, 7.5 + r * 6, 2.4, cols[r][c] || '#173c8a'); return s; },
     tictactoe: function () { return line('M9 3v18M15 3v18M3 9h18M3 15h18', K, 1.6) + line('M3.8 3.8l3.4 3.4M7.2 3.8 3.8 7.2', R, 2.2) + circ(18, 18, 2.4, 'none', ' stroke="' + B + '" stroke-width="2.2"') + line('M10.3 16.3l3.4 3.4M13.7 16.3l-3.4 3.4', R, 2.2); },
+    abalone: function () {   // three black marbles and three white ones inside the hexagon of the board
+      var s = path('M7 3.2h10l5 8.8-5 8.8H7L2 12z', 'none', ' stroke="' + K + '" stroke-opacity=".28" stroke-width="1.4" stroke-linejoin="round"');
+      [[6.4, 12], [10.8, 12], [8.6, 16.2]].forEach(function (q) { s += circ(q[0], q[1], 2.5, K); });
+      [[15.2, 12], [19.6, 12], [13, 7.8]].forEach(function (q) { s += circ(q[0], q[1], 2.5, W, ' stroke="' + K + '" stroke-width="1.1"'); });
+      return s;
+    },
     othello: function () { return circ(8, 13, 7, K) + circ(16, 11, 7, W, ' stroke="' + K + '" stroke-width="1.8"'); },
     backgammon: function (c) { var t = ''; for (var i = 0; i < 4; i++) { var x = 1 + i * 5.6; t += path('M' + x + ' 1h5l-2.5 9.5z', i % 2 ? K : c) + path('M' + x + ' 23h5l-2.5-9.5z', i % 2 ? c : K); } return t + circ(9, 12, 2.2, R) + circ(15, 12, 2.2, W, ' stroke="' + K + '" stroke-width="1.2"'); },
     battleship: function () { return path('M2 13h20l-3 6H5z', K) + rect(8, 9, 8, 4, 1, S) + rect(11, 5.5, 2, 4, .6, K) + line('M2 21.5c2 0 2-1.2 4-1.2s2 1.2 4 1.2 2-1.2 4-1.2 2 1.2 4 1.2 2-1.2 4-1.2', B, 1.6); },

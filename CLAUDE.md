@@ -1510,6 +1510,42 @@ Underlying principles for everything:
 - Test hook `window.__tunnel`: `get`, `auto(on, missEvery, curve)`, `sim(seconds, untilPhase)` (full speed, no
   drawing), `hold`, `level`, `pts`, `lives`, `diff`, `tune`, `miss`, `point`, `curve`, `quality(q, lock)`, `perf`.
 
+## Abalone (2026-11-23; included with the written permission of Abalone S.A.)
+
+- **Credit the designers**: "Abalone was designed by Michel Lalet and Laurent Lévi." stands under the title in the setup
+  (`.ab-credit`) and at the foot of How to play; the condition of the permission. The board and marbles are our own
+  drawing (a walnut hexagon, a slate field, onyx and pearl marbles); never the commercial box art, logo or trade dress.
+- `games/abalone.html`, the rules and the computer in `games/abalone-core.js` (`AbaloneCore`, plain JSON; the page,
+  TurnNet, a Web Worker for the search and Node), history `hist/abalone.js` (hist-view.js loads the core first, for the
+  replay), demo `games/demos/abalone.js`. `node scripts/abalone-sim.js [games] [hardGames]` plays the skills against each
+  other from all three openings and checks every move against a separate plain reading of the rules, make and unmake,
+  14 marbles a color and the win at the sixth marble off.
+- The rules are the official booklet's: 61 holes, 14 marbles each, Black first; 1 to 3 marbles in a line move one hole,
+  in line or sideways (sideways never pushes); a sumito pushes fewer of the other color (3 push 2 or 1, 2 push 1) into
+  an empty hole or off the edge; equal numbers (pac) or your own marble behind theirs block; your own marble never goes
+  off; six off wins. Starting positions Standard, Belgian Daisy and German Daisy (`START`). Holes are named in the
+  official notation (A1 at Black's end to I9). No draw rule (the booklet has none); the computer weighs down a move back
+  into a position already played (`seen`).
+- Computer: negamax with alpha-beta; the position is weighed by marbles off, marbles the side to move can push off now,
+  its own marbles open to a push off next move, nearness to the middle, marbles touching and marbles on the edge (`W`).
+  Easy looks two moves ahead (its move and the answer) with noise at the root, Normal three, Hard deepens to 6 in
+  1.5 s (`LEVELS`).
+- The table: tap marbles to choose 1 to 3 in a line (a tap two holes along takes the one between), gold arrows on every
+  way they can go (a push's arrow is red, standing where the lead marble meets the first one pushed, the marbles pushed
+  ringed red and the one that would go off pulsing), or drag the marbles that way. Marbles glide, pushed ones knock, a
+  marble pushed off rides over the frame and rolls into the pusher's tray of six on their plate (`dropOff`), with a
+  moment for each (first off, five off: "One more wins"); a sumito is called out; the end has a clean sweep (6 to 0)
+  and a comeback (from 2 or more behind). Pass and play can hand over with `Kit.handoff` between turns (the setup's Hand
+  over between turns, off by default, since nothing is hidden). Saved in `abalone_state`; online seats swap colors each
+  game; `abalone_net_rec` records an online game once per device. Test hook `window.__abalone` (`start`, `set(rows,
+  turn, off)`, `play`, `move`, `marble`, `at`, `arrow`, `desk`).
+- **At a desk** (`deskPlan`, `deskApply`, `paintRoom`, `fitRoom`; `html.ab-dk`, never at a phone's or tablet's shape,
+  Horse Race's `deviceShape`): the board sized from the window to 1,400 px across; `w1`/`w2` (wider than 1.25 to 1) the
+  plates, turn and Undo in a column at the left, the room under them or in a column of its own, the board the window's
+  height at the right; `t` (squarer) the board across the top, the column and the room's panels side by side under it.
+  The room: This game (marbles pushed off, pushes, sumitos, marbles on the board), the moves so far newest first in the
+  official notation, past games; whole rows only. A change of shape or composition glides (`Kit.glide`).
+
 ## Wax Pack (2026-11-19; Tim: the Sandlot redesign, named "wax pack", the pitch duel "sure i'll try it", scanning "to log a player's deck")
 
 - Catalog id stays `sandlot` (favorites and `gh_sandlot` history carry over); the page is `games/waxpack.html` with
