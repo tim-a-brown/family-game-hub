@@ -1906,6 +1906,8 @@ Underlying principles for everything:
 
 ## Lorcana card updates
 
+- **Who a character can challenge, and what would happen** (Tim, 2026-11-23: "build both"). In the card reader, a ready character that can challenge has a row per target over Quest and Challenge (`chalList`, sentences from `chalSay` on `chalOutcome`): the target's picture, lying sideways when exerted, what the challenge does to each side with Willpower pips, your card banished in red and theirs in green; a tap on a row challenges, and with one target the button names it. On the table, dragging a challenger over a glowing target draws a dashed line to it with a glass tag saying the outcome in one sentence, the dragged card half see-through; both go in `cleanDrag`. On a phone the reader's card shrinks (to 214px) rather than scroll when rows are listed.
+
 - Every deploy (and the weekly `lorcana-check.yml` Action, Mondays) saves Lorcast's full card list to
   Firebase Storage `lorcana/data/cards.json` (public): `https://firebasestorage.googleapis.com/v0/b/familygames-da3e5.firebasestorage.app/o/lorcana%2Fdata%2Fcards.json?alt=media`.
 - The weekly Action runs `scripts/check-lorcana-abilities.js`, which runs every card through the game's own rules
