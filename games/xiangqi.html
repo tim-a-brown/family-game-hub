@@ -109,6 +109,7 @@
 .tip{font-size:.82rem;font-weight:600;color:var(--text-2);line-height:1.35;min-height:4.05em;padding:0 4px;}
 @media (max-width:380px), (max-height:620px){ .tip{font-size:.74rem;} }
 .tip b{color:var(--text);}
+.tip.last{color:var(--text-3);}
 .moves{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding:2px 0;min-height:34px;align-items:center;}
 .moves::-webkit-scrollbar{display:none;}
 .moves .mp{flex:none;display:inline-flex;gap:6px;align-items:baseline;height:30px;padding:0 10px;border-radius:11px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);font-size:.85rem;font-weight:650;color:var(--text-2);line-height:30px;font-variant-numeric:tabular-nums;}
@@ -126,7 +127,12 @@
 #app.stage.ipl{max-width:none;box-sizing:border-box;height:var(--avh,auto);display:flex;flex-direction:column;align-items:center;
   padding:4px max(17px,var(--corner-x)) max(calc(var(--safe-b) + 10px),18px);}
 #app.ipl>.cb-col{width:var(--colw,100%);max-width:none;flex:none;margin:auto 0;}
-#app.ipl:not(.xq-land)>.cb-col>.frame{width:var(--cw,100%);align-self:center;}
+#app.ipl:not(.xq-land)>.cb-col>.frame{width:var(--cw,100%);align-self:center;flex:none;}
+#app.ipl:not(.xq-land):not(.xq-desk)>.cb-col{height:var(--colh,auto);margin:0;}
+#app.ipl:not(.xq-land):not(.xq-desk)>.cb-col>*{flex:none;}
+#app.ipl:not(.xq-land):not(.xq-desk)>.cb-col>.moves{flex:1 1 44px;min-height:44px;padding:6px;border-radius:16px;background:var(--well);box-shadow:inset 0 0 0 1px var(--gl-line);flex-wrap:wrap;align-content:flex-start;align-items:flex-start;overflow-x:hidden;overflow-y:auto;}
+#app.ipl:not(.xq-land):not(.xq-desk)>.cb-col>.moves .empty{margin:6px auto;}
+#app.xq-short>.cb-col>.tip{flex:1 1 auto !important;}
 #app.xq-tall .frame{--rim:26px;}
 #app.xq-tall .fno{font-size:13px;}
 #app.xq-land>.cb-col{width:auto;height:var(--bh);display:grid;grid-template-columns:var(--sw,300px) var(--bw);
@@ -164,7 +170,27 @@
    (every move written out, the pieces each side has taken, the past games at this table), the players and the buttons
    at the right where you act. xq-dw: three columns; xq-ds: a window too square for that, the players and buttons under
    the board. Phones and tablets never get xq-desk. */
-.xq-room{display:none;}
+.xq-room,.xq-side{display:none;}
+#app.xq-desk.xq-dw .xq-side{display:flex;flex-direction:column;gap:12px;grid-area:x;min-height:0;overflow:hidden;align-self:start;}
+.xq-side .pn{background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);border-radius:18px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;}
+.xq-side h4{margin:0;font-size:.9rem;font-weight:700;color:var(--text-2);}
+.xq-side .lm{margin:0;font-size:.95rem;font-weight:600;line-height:1.35;color:var(--text);}
+.xq-side .wx{font-size:.85rem;font-weight:800;color:var(--text-3);font-variant-numeric:tabular-nums;}
+.xq-side .mat{margin:2px 0 0;font-size:.85rem;font-weight:600;line-height:1.35;color:var(--text-2);}
+.xq-side .cr{display:flex;align-items:center;gap:10px;min-height:30px;}
+.xq-side .cr .who{width:84px;flex:none;font-weight:750;font-size:.88rem;white-space:nowrap;overflow:hidden;}
+.xq-side .cr .dks{display:flex;flex-wrap:wrap;gap:3px;flex:1;min-width:0;}
+.xq-side .cr .dk{width:28px;height:28px;flex:none;box-shadow:0 1.5px 0 #8a5a2a,0 2px 4px rgba(0,0,0,.45);}
+.xq-side .cr .dk .ch{font-size:16px;}.xq-side .cr .dk::before{border-width:1px;}
+.xq-side .cr .v{font-weight:800;color:var(--text-3);font-size:.85rem;flex:none;}
+.xq-room .pn.mv{flex:0 1 auto;min-height:90px;}
+#app.xq-desk>.cb-col>.tip{min-height:0;}
+#app.xq-desk>.cb-col>.tip:empty{display:none;}
+.xq-room .rf{display:flex;align-items:center;gap:10px;font-size:.85rem;line-height:1.3;color:var(--text-2);}
+.xq-room .rf .two{display:flex;gap:3px;flex:none;}
+.xq-room .rf .dk{width:26px;height:26px;box-shadow:0 1.5px 0 #8a5a2a,0 2px 4px rgba(0,0,0,.45);}
+.xq-room .rf .dk .ch{font-size:15px;}.xq-room .rf .dk::before{border-width:1px;}
+.xq-room .rf b{color:var(--text);font-weight:750;}
 #app.xq-desk>.cb-col{width:auto;max-width:none;height:var(--ch);display:grid;column-gap:28px;row-gap:10px;justify-content:center;align-content:center;}
 #app.xq-desk>.cb-col>.frame{grid-area:b;width:var(--bw);--rim:var(--drim);align-self:center;}
 #app.xq-desk>.cb-col>.pbar:nth-child(1){grid-area:t;}
@@ -175,7 +201,8 @@
 #app.xq-desk>.cb-col>.moves{display:none;}
 #app.xq-desk .fno{font-size:calc(var(--drim) * .48);line-height:var(--drim);}
 #app.xq-desk.xq-dw>.cb-col{grid-template-columns:var(--rw) var(--bw) var(--sw);grid-template-rows:max-content max-content max-content minmax(0,1fr) max-content max-content;
-  grid-template-areas:"r b t" "r b s" "r b h" "r b ." "r b a" "r b p";}
+  grid-template-areas:"r b t" "r b s" "r b h" "r b x" "r b ." "r b a" "r b p";}
+#app.xq-desk.xq-dw>.cb-col{grid-template-rows:max-content max-content max-content minmax(0,max-content) minmax(0,1fr) max-content max-content;}
 #app.xq-desk.xq-ds>.cb-col{grid-template-columns:var(--rw) calc((var(--bw) - 20px) / 2) calc((var(--bw) - 20px) / 2);column-gap:20px;grid-template-rows:max-content max-content max-content max-content;
   grid-template-areas:"r b b" "r t s" "r p a" "r h h";align-items:center;}
 #app.xq-desk.xq-ds>.cb-col>.frame{justify-self:end;}
@@ -553,7 +580,7 @@
   }
 
   // ── Render ──
-  var bdEl, layerEl, markEl, lineEl, topBar, botBar, turnEl, tipEl, movesEl, actsEl, roomEl;
+  var bdEl, layerEl, markEl, lineEl, topBar, botBar, turnEl, tipEl, movesEl, actsEl, roomEl, sideEl;
   function flipped() { return bottomSide() === BLACK; }
   function disp(s) { return flipped() ? 89 - s : s; }
   function place(node, s) { var d = disp(s); node.style.left = (d % 9) * 100 / 9 + '%'; node.style.top = Math.floor(d / 9) * 10 + '%'; }
@@ -609,6 +636,7 @@
     movesEl = el('div', { class: 'moves' }); col.appendChild(movesEl);
     actsEl = el('div', { class: 'acts' }); col.appendChild(actsEl);
     roomEl = el('div', { class: 'xq-room', style: { 'view-transition-name': 'xq-room' } }); col.appendChild(roomEl);
+    sideEl = el('div', { class: 'xq-side' }); col.appendChild(sideEl);
     app.appendChild(col);
     paintBoard(anim); paintStatus(); paintMoves(); paintActs();
     fit();
@@ -645,16 +673,18 @@
       app.style.setProperty('--bw', bw + 'px'); app.style.setProperty('--bh', bh + 'px');
       frame.style.width = bw + 'px'; frame.style.height = '';
     } else {
+      // upright: the column takes the whole height, the board as wide as the screen allows (on a phone reaching into
+      // the side margin, 8px from the screen's edge), and the moves take whatever height is left under it
       frame.style.width = '';
-      var other = 0;
-      Array.prototype.forEach.call(col.children, function (c) { if (c !== frame) other += c.offsetHeight + 8; });
-      var fh = ih - other, cw = Math.floor(Math.max(200, Math.min(iw, 760, (fh - 2 * rim) * 0.9 + 2 * rim)));
-      app.style.setProperty('--cw', cw + 'px'); app.style.setProperty('--colw', Math.floor(Math.max(cw, Math.min(iw, 460))) + 'px');
-      for (var k = 0; k < 3; k++) {   // (the board is 10 tall to 9 wide: a pixel narrower is a little more than a pixel shorter)
-        var over = col.getBoundingClientRect().height - ih;
-        if (over <= 0) break;
-        cw = Math.max(180, cw - Math.ceil(over * 0.9) - 1); app.style.setProperty('--cw', cw + 'px');
-      }
+      app.style.setProperty('--colh', Math.floor(ih) + 'px');
+      var pad = parseFloat(cs.paddingLeft), ext = W < 700 ? Math.max(0, 2 * (pad - 8)) : 0;
+      var mv = col.querySelector('.moves'), other = 0;
+      Array.prototype.forEach.call(col.children, function (c) {
+        if (c === frame || getComputedStyle(c).display === 'none') return;
+        other += (c === mv ? 44 : c.offsetHeight) + 8;
+      });
+      var fh = ih - other, cw = Math.floor(Math.max(200, Math.min(iw + ext, 760, (fh - 2 * rim) * 0.9 + 2 * rim)));
+      app.style.setProperty('--cw', cw + 'px'); app.style.setProperty('--colw', Math.floor(Math.max(Math.min(cw, iw), Math.min(iw, 460))) + 'px');
     }
     movesEnd();
   }
@@ -677,11 +707,23 @@
     if (!useA) { var over = col.scrollHeight - ih; if (over > 0) { k = bwOf(k.bh - over - 2, iw - rw - 28); app.style.setProperty('--bw', k.bw + 'px'); frame.style.width = k.bw + 'px'; frame.style.height = k.bh + 'px'; } }
     paintRoom();
   }
+  var BRIEF = ['', 'One point up, down or across, inside the palace.', 'One point diagonally, inside the palace.', 'Two points diagonally, never across the river.',
+    'One point straight, then one diagonally outward.', 'Any distance up, down or across.', 'Moves like a Chariot, and captures by jumping one piece.', 'One point forward, and sideways too once across the river.'];
+  // what happened last, said the way a person would say it
+  function lastSay(g) {
+    var n = g.pl.length; if (!n) return null;
+    var rec = g.pl[n - 1], side = moverAt(g, n - 1), who = pl(side).name, what = PN[Math.abs(g.b[rec.t])], vic = rec.c ? PN[Math.abs(rec.c)] : '';
+    var t = what === 'Cannon' && vic ? Kit.poss(who) + ' Cannon jumped its screen and took the ' + vic + ' on ' + X.sqName(rec.t) + '.'
+      : vic ? Kit.poss(who) + ' ' + what + ' took the ' + vic + ' on ' + X.sqName(rec.t) + '.'
+      : who + ' moved the ' + what + ' from ' + X.sqName(rec.f) + ' to ' + X.sqName(rec.t) + '.';
+    if (rec.k) t += ' That puts ' + Kit.poss(pl(-side).name) + ' General in check.';
+    return t;
+  }
   function paintRoom() {
     if (!roomEl || !S || !S.g || !app.classList.contains('xq-desk')) return;
     var g = G(), first = g.keys[0].slice(-1) === 'b' ? BLACK : RED, list = g.pl.map(function (p) { return p.n + (p.k ? '+' : ''); });
-    roomEl.innerHTML = '';
-    // every move, a row a turn
+    roomEl.innerHTML = ''; sideEl.innerHTML = '';
+    // every move, a row a turn (the panel only as tall as its moves, scrolling inside once they outgrow the room)
     var ml = el('div', { class: 'ml' });
     if (first === BLACK) list.unshift('…');
     if (!list.length) ml.appendChild(el('span', { class: 'em', text: first === RED ? 'Red moves first. Each move is written here as it is made.' : 'Black moves first in this position.' }));
@@ -691,8 +733,25 @@
       ml.appendChild(el('span', { class: 'r' + (now && !list[i + 1] ? ' on' : ''), text: list[i] }));
       ml.appendChild(el('span', { class: now && list[i + 1] ? 'on' : '', text: list[i + 1] || '' }));
     }
-    roomEl.appendChild(el('div', { class: 'pn grow' }, [el('h4', { text: 'Moves' }), ml]));
-    // the pieces each side has taken
+    roomEl.appendChild(el('div', { class: 'pn mv' }, [el('h4', { text: 'Moves' }), ml]));
+    // how each piece moves, Red's and Black's side by side
+    var ref = el('div', { class: 'pn ref' }, [el('h4', { text: 'How the pieces move' })]);
+    for (var p = 1; p <= 7; p++) ref.appendChild(el('div', { class: 'rf' }, [el('span', { class: 'two' }, [discEl(p, true), discEl(-p, true)]), el('span', { class: 'tx', html: '<b>' + PN[p] + '</b> ' + Kit.esc(BRIEF[p]) })]));
+    roomEl.appendChild(ref);
+    // the past games on this device
+    var past = []; try { past = (window.GameHistory && GameHistory.load(KEY)) || []; } catch (e) {}
+    if (past.length) {
+      var pp = el('div', { class: 'pn past' }, [el('h4', { text: 'Past games' })]);
+      past.slice(0, 6).forEach(function (e) {
+        var d = e._date ? new Date(e._date) : null;
+        pp.appendChild(el('div', { class: 'pg' }, [el('b', { text: e.summary || (e.winner ? e.winner + ' won' : 'Draw') }), el('span', { text: d ? d.toLocaleDateString([], { month: 'short', day: 'numeric' }) : '' })]));
+      });
+      roomEl.appendChild(pp);
+    }
+    // at the right, under whose turn it is: the last move in words, and the pieces each side has taken
+    var ls = lastSay(g), sideT = app.classList.contains('xq-ds') ? roomEl : sideEl, after = roomEl.querySelector('.ref');
+    function put(n) { if (sideT === roomEl) roomEl.insertBefore(n, after); else sideEl.appendChild(n); }
+    if (ls) put(el('div', { class: 'pn' }, [el('h4', { text: 'Last move' }), el('p', { class: 'lm', text: ls }), el('span', { class: 'wx', text: g.pl[g.pl.length - 1].n })]));
     var cp = el('div', { class: 'pn' }, [el('h4', { text: 'Pieces taken' })]);
     [RED, BLACK].forEach(function (side) {
       var dks = el('div', { class: 'dks' }); caps(side).sort(function (a, b) { return PV[b] - PV[a]; }).forEach(function (v) { dks.appendChild(discEl(v * -side, true)); });
@@ -700,18 +759,20 @@
       var m = matOf(side);
       cp.appendChild(el('div', { class: 'cr' }, [el('span', { class: 'who', text: pl(side).name }), dks, m ? el('span', { class: 'v', text: String(m) }) : null]));
     });
-    roomEl.appendChild(cp);
-    // the past games on this device
-    var past = []; try { past = (window.GameHistory && GameHistory.load(KEY)) || []; } catch (e) {}
-    if (past.length) {
-      var pp = el('div', { class: 'pn' }, [el('h4', { text: 'Past games' })]);
-      past.slice(0, Math.max(1, Math.min(6, Math.floor((window.innerHeight - 560) / 34)))).forEach(function (e) {
-        var d = e._date ? new Date(e._date) : null;
-        pp.appendChild(el('div', { class: 'pg' }, [el('b', { text: e.summary || (e.winner ? e.winner + ' won' : 'Draw') }), el('span', { text: d ? d.toLocaleDateString([], { month: 'short', day: 'numeric' }) : '' })]));
-      });
-      roomEl.appendChild(pp);
-    }
-    var mlEl = roomEl.querySelector('.ml'); requestAnimationFrame(function () { mlEl.scrollTop = mlEl.scrollHeight; });
+    var diff = matOf(RED) - matOf(BLACK);
+    cp.appendChild(el('p', { class: 'mat', text: !g.pl.some(function (q) { return q.c; }) ? 'Nothing has been taken yet. A Chariot counts 9, a Cannon 4.5, a Horse 4, an Advisor or Elephant 2 and a Soldier 1.' : diff ? pl(diff > 0 ? RED : BLACK).name + ' is ahead by ' + Math.abs(diff) + ' in pieces taken.' : 'The pieces taken are even.' }));
+    put(cp);
+    // whole panels only: the reference goes first, then past games' last rows, never anything cut through
+    var room = roomEl;
+    requestAnimationFrame(function () {
+      if (room !== roomEl) return;
+      var mlEl = room.querySelector('.ml'); if (mlEl) mlEl.scrollTop = mlEl.scrollHeight;
+      if (room.scrollHeight > room.clientHeight + 1) { var r = room.querySelector('.ref'); if (r) r.remove(); }
+      var pgs = room.querySelectorAll('.past .pg');
+      for (var k = pgs.length - 1; k > 0 && room.scrollHeight > room.clientHeight + 1; k--) pgs[k].remove();
+      if (mlEl) mlEl.scrollTop = mlEl.scrollHeight;
+      var sd = sideEl; if (sd.scrollHeight > sd.clientHeight + 1) { var lm = sd.querySelector('.pn'); if (lm && sd.children.length > 1) lm.remove(); }
+    });
   }
   var lastWH = window.innerWidth + 'x' + window.innerHeight;
   window.addEventListener('resize', function () {
@@ -827,7 +888,7 @@
     var g = G(), p = pl(g.turn), chk = X.inCheck(g.b, g.turn);
     turnEl.innerHTML = ''; turnEl.classList.toggle('alert', !S.over && chk);
     turnEl.style.setProperty('--c', g.turn === RED ? '#ff6b5e' : '#d8d2c6');
-    tipEl.innerHTML = '';
+    tipEl.innerHTML = ''; tipEl.classList.remove('last');
     if (NET && LEFT) { turnEl.appendChild(el('span', { text: LEFT.text || 'The other player left' })); return; }
     if (S.over) {
       var r = S.result, w = r.winner ? pl(r.winner) : null;
@@ -845,6 +906,7 @@
       if (v === X.P) t = X.crossed(g.turn, Math.floor(sel / 9)) ? 'The Soldier moves one point forward, and since it has crossed the river it can also step sideways.' : 'The Soldier moves one point forward. Once it crosses the river it can step sideways too.';
       tipEl.innerHTML = Kit.esc(t);
     } else if (NET && S.offer != null && S.offer !== NET.seat && mine) tipEl.textContent = S.players[S.offer].name + ' offered a draw.';
+    else if (!app.classList.contains('xq-desk')) { var ls = lastSay(g); if (ls) { tipEl.textContent = ls; tipEl.classList.add('last'); } }
   }
   function paintMoves() {
     movesEl.innerHTML = '';
