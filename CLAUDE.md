@@ -1800,31 +1800,36 @@ Underlying principles for everything:
   taken over the game), demo `games/demos/boku.js`. `node scripts/boku-sim.js [games] [hardGames]` plays the skills
   against each other and checks every move against a plain reading of the rules written there (its own board from
   coordinates, its own sandwich test, its own scan of every line for five): the hole just emptied by a capture refused
-  for one turn, every capture the plain reading allows accepted and every other refused, no capture with a winning
+  for one turn, a trapped pair never left standing, every capture the plain reading allows accepted and every other
+  refused, the supplies of 36 kept (a taken marble handed back), the run-out draw, no capture with a winning
   move, the end exactly at five or a full board, and the marbles adding up.
-- The rules (Rob Nelson's, as the Mind Sports Olympiad plays them): 80 holes in rows of 5, 6, 7, 8, 9, 10, 9, 8, 7, 6,
-  5; White first; one marble a turn into any empty hole; five or more in a straight line win at once. A marble that
-  traps exactly two of the other color between itself and another of the mover's own may take one of the two; one or
-  three trapped take nothing; placing between two of the other color is safe. The other player can't use the emptied
-  hole on their very next turn (`blk` in the state, a red crossed ring on the board). A winning placement takes nothing.
-  A full board with no five is a draw. **Choices made where the sources we could read are silent** (Wikipedia's "may
-  remove", the official rules site boku.bandoodle.co.uk was not reachable): taking is optional; one marble a turn
-  however many lines are trapped (the player chooses from all of them); a player whose only empty hole is the blocked
-  one passes (`play` passes for them at once). Holes are named by row from the bottom (A to K) and place from the left.
-  Moves are 'F5' or 'F5 xG6' (took G6), and 'pass'.
+- The rules (Rob Nelson's official rules, which Tim pasted on 2026-11-23): 80 holes in rows of 5, 6, 7, 8, 9, 10, 9, 8,
+  7, 6, 5; 36 marbles each (`MARBLES`, `sup` in the state); **Black first**; one marble a turn into any empty hole;
+  five or more in a straight line along any of the three directions win at once. A marble that traps exactly two of
+  the other color between itself and another of the mover's own **must** take one of the two, the mover's choice, and
+  the taken marble goes back to its owner's supply; one or three trapped take nothing; placing between two of the other
+  color is safe. One capture a turn: with pairs trapped in more than one line (the official "double sandwich"), any
+  one of the trapped marbles. The other player can't use the emptied hole on their very next turn (`blk` in the
+  state, a red crossed ring on the board). A player with no marbles left to place when their turn comes ends the game
+  in a draw (the official suggestion; `why: 'out'`). **Not in the official rules**: whether a placement that makes five
+  must still capture; ours wins at once and takes nothing. 72 marbles can never fill 80 holes, so the full-board draw
+  (`why: 'full'`) and a pass for a player whose only empty hole is the blocked one can't happen; the draw is kept in the
+  code, the pass was dropped. Holes are named by row from the bottom (A to K) and place from the left. Moves are 'F5'
+  or 'F5 xG6' (took G6).
 - Computer (`search`, `LEVELS`): alpha-beta over the holes within two steps of a marble, best first by a quick guess,
   each window of five weighed by how full it is with one color only (`V`), pairs the other side could trap and take
   counted against their owner (`capturable`), marbles taken a little; when the other side has a four only the moves
   that stop it are searched (a block, or a capture that breaks the line, with the emptied hole counted), so a line that
-  can't be stopped is seen as lost. Easy one move deep with a lot of noise (it still blocks a four), Normal 3 deep,
-  Hard deepens to 8 in 1.8 s (beam 12). Measured (`boku-sim.js 400 60`, Hard capped at depth 4 there): Easy beat
-  Normal in 6 of 400; Hard beat Normal in 48 of 60.
+  can't be stopped is seen as lost. A placement that traps is only ever searched with each of its captures. Easy one
+  move deep with a lot of noise (it still blocks a four), Normal 3 deep, Hard deepens to 8 in 1.8 s (beam 12).
+  Measured under the official rules (`boku-sim.js 400 60`, Hard capped at depth 4 there): Easy beat Normal in 1 of
+  400; Hard beat Normal in 44 of 60; no game ran out of marbles.
 - The table: a tap on a hole shows a ghost marble with the lines of three or more it would make (gold) and the pairs it
   would trap ringed red on a dashed line; a second tap (or Place on F5 in the buttons) puts it down; a mouse click puts
   it down at once, hovering shows the ghost. A placement that traps pairs puts the marble down and rings the marbles
-  it may take, pulsing: a tap takes one, Take none keeps them, Back lifts the marble. Dashed rings in each color mark
-  the holes where that player would make five. Marbles drop in with a click; a taken marble rolls into the taker's tray
-  on their plate (`flyToTray`). Moments: A capture (`Kit.moment`), Two ways to win (a callout, `dbl` in the state), the
+  it may take, pulsing: a tap takes one (there is no taking none), Back lifts the marble. Dashed rings in each color
+  mark the holes where that player would make five. Each plate has the player's bowl, their own marble with how many
+  are left to place; marbles drop in with a click, and a taken marble rolls back into its owner's bowl (`flyToTray`). Moments: A capture (`Kit.moment`), Two ways to win (a callout, `dbl` in the state), the
   winning line lighting marble by marble with a gold line drawn through it, a big end moment (six in a row, a win after
   taking three, a win from a double threat). Pass and play can hand over with `Kit.handoff` (off by default: nothing is
   hidden). Layouts as Abalone's: upright the plates over and under the board; sideways the plates, turn and buttons at
@@ -1832,8 +1837,8 @@ Underlying principles for everything:
   board from the window to 1500px, the room: Last move in words (and the hole the next player can't use), Threats on
   the board (each player's five-holes by name), Marbles taken (as marbles), the moves newest first with Took, Four, Two
   threats and Five, past games; every panel as tall as what it holds, whole rows given up (`fitRoom`). Saved in
-  `boku_state` (sync.js's `ST_SAVES` needs `"boku":["boku_state"]`); online records once a device in `boku_net_rec`;
-  each new game at a table swaps colors. Test hook `window.__boku` (`start`, `set(rows, turn, caps, blk)`, `play`,
+  `boku_state` (a save from before the official rules, with no `sup`, is set aside); online records once a device in
+  `boku_net_rec`; seat 0 plays Black in the first game and each new game at a table swaps colors. Test hook `window.__boku` (`start`, `set(rows, turn, caps, blk)`, `play`,
   `ghostAt`, `marble`, `hole`, `at`, `desk`, `pend`). The scratchpad's `newgames/boku/` has the scripts (`pos.js` the
   positions, `shots.js`, `touch.js` the demo with real touch or `--auto`, `online.js`).
 

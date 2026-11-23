@@ -2,10 +2,11 @@
 // games/boku-core.js and checks the rules hold at every step, with a separate plain reading of the rules written here
 // (its own board from coordinates, its own sandwich test, its own scan of every line for five), never the core's code:
 //   every move played puts a marble into an empty hole, never the hole the other player emptied by a capture the turn
-//   before; a capture takes one of exactly two of the other color trapped in a straight line between the new marble
-//   and another of the mover's own; a move that makes five takes nothing;
-//   a game ends exactly when the scan finds five or more in a row (for the player who just moved) or the board fills;
-//   marbles add up: on the board plus taken is the number each side has placed.
+//   before; a placement that traps exactly two of the other color in a straight line between it and another of the
+//   mover's own must take one of them (any one when several pairs are trapped), and nothing else is ever taken; a move
+//   that makes five takes nothing; a taken marble goes back to its owner's 36;
+//   a game ends exactly when the scan finds five or more in a row (for the player who just moved), the board fills,
+//   or the player to move has no marbles left (a draw); each color's marbles on the board plus in hand are 36.
 // It prints the skills' results against each other, how long games run and how often captures come.
 const C = require('../games/boku-core.js');
 const G = +(process.argv[2] || 400), GH = +(process.argv[3] || 40);
@@ -51,67 +52,74 @@ for (let h = 0; h < 80; h++) for (let d = 0; d < 6; d++) {
 }
 
 function playGame(lv) {
-  const st = C.newGame(), b = new Array(80).fill(0), placed = [0, 0, 0];
-  let forbidden = -1, caps = 0, ends = null;
+  // the plain reading keeps its own board, supply, captures and forbidden hole
+  const st = C.newGame(), b = new Array(80).fill(0), sup = [0, 36, 36];
+  let forbidden = -1, turn = 1, caps = 0, ends = null;
   while (!st.over) {
-    const side = st.turn, L = Object.assign({}, C.LEVELS[lv[side - 1]], { rnd });
+    const side = turn, L = Object.assign({}, C.LEVELS[lv[side - 1]], { rnd });
     if (L.time) { L.time = 0; L.depth = Math.min(L.depth, 4); }
+    check(st.turn === turn, 'turn');
+    check(sup[side] > 0, 'a turn with no marbles left');
     const res = C.search(st.b, side, st.blk, st.caps, L);
     const mv = C.parse(res.move);
     check(mv, 'unparsable ' + res.move);
-    // the plain reading
     check(st.blk === forbidden, 'blocked hole ' + st.blk + ' vs ' + forbidden);
-    if (mv.pass) { check(b.every((v, i) => v || i === forbidden), 'passed with a hole free'); forbidden = -1; C.play(st, 'pass'); continue; }
     check(b[mv.c] === 0, 'placed on a marble');
     check(mv.c !== forbidden, 'placed on the hole just emptied');
-    b[mv.c] = side; placed[side]++;
+    const before = b.slice();
+    b[mv.c] = side; sup[side]--;
     const won = fiveOn(b, side);
-    const before = b.slice(); before[mv.c] = 0;
     const tr = trapped(before, mv.c, side);
-    if (mv.x >= 0) { check(!won, 'captured with a winning move'); check(tr.includes(mv.x), 'captured a marble not trapped ' + res.move); }
-    // every capture the plain reading allows, the core allows (on a copy)
-    if (!won) for (const x of tr) { const cp = C.clone(st); check(C.play(cp, C.encode(mv.c, x)), 'core refused a capture ' + C.encode(mv.c, x)); }
-    // a capture of a marble not trapped is refused
+    if (won) check(mv.x < 0, 'captured with a winning move');
+    else if (tr.length) check(tr.includes(mv.x), 'a trapped pair and no capture of one of them: ' + res.move);
+    else check(mv.x < 0, 'a capture with nothing trapped ' + res.move);
+    // the core: a placement that traps refuses to go without a capture; every trapped marble may be the one taken
+    if (!won && tr.length) {
+      check(!C.play(C.clone(st), C.encode(mv.c, -1)), 'core allowed a trapped pair to stand');
+      for (const x of tr) check(C.play(C.clone(st), C.encode(mv.c, x)), 'core refused a capture ' + C.encode(mv.c, x));
+    }
     if (!won) for (let x = 0; x < 80; x++) if (before[x] === 3 - side && !tr.includes(x)) { const cp = C.clone(st); if (C.play(cp, C.encode(mv.c, x))) { check(false, 'core took an untrapped marble'); break; } }
     const r = C.play(st, res.move);
     check(r, 'core refused its own move ' + res.move);
     forbidden = -1;
-    if (mv.x >= 0) { b[mv.x] = 0; forbidden = mv.x; caps++; }
-    const full = b.every(v => v);
+    if (mv.x >= 0 && !won) { b[mv.x] = 0; sup[3 - side]++; forbidden = mv.x; caps++; }
+    turn = 3 - side;
+    const full = b.every(v => v), out = !won && !full && sup[turn] === 0;
     check(st.b.join('') === b.join(''), 'boards differ');
-    check(st.over === (won || full), 'end rule (won ' + won + ', full ' + full + ', over ' + st.over + ')');
+    check(st.sup[1] === sup[1] && st.sup[2] === sup[2], 'supplies differ');
+    check(st.over === (won || full || out), 'end rule (won ' + won + ', full ' + full + ', out ' + out + ', over ' + st.over + ')');
     if (won) { check(st.winner === side, 'winner'); ends = 'five'; }
-    else if (full) { check(st.draw && !st.winner, 'draw'); ends = 'full'; }
-    for (const s of [1, 2]) check(C.count(st.b, s) + st.caps[3 - s] === placed[s], 'marbles add up');
-    // the core passes for a player whose only free hole is the forbidden one
-    if (!st.over && st.ml[st.ml.length - 1] === 'pass') { check(b.every((v, i) => v || i === forbidden), 'pass with a hole free'); forbidden = -1; }
+    else if (full || out) { check(st.draw && !st.winner, 'draw'); ends = full ? 'full' : 'out'; }
+    for (const s of [1, 2]) check(C.count(st.b, s) + sup[s] === 36, 'marbles add up to 36');
   }
   return { winner: st.winner, n: st.n, caps, ends, dbl: st.dbl[1] + st.dbl[2] };
 }
 
 // Hand-made cases
 (function cases() {
-  function set(spec) { const st = C.newGame(); spec.w.split(' ').filter(Boolean).forEach(n => st.b[C.idx(n)] = 1); spec.b.split(' ').filter(Boolean).forEach(n => st.b[C.idx(n)] = 2); st.turn = spec.turn || 1; return st; }
-  // row F has 10 holes: W on F1, B on F2 F3, W places F4: captures one of F2, F3
-  let st = set({ w: 'F1', b: 'F2 F3' });
+  function set(spec) { const st = C.newGame(); (spec.me || '').split(' ').filter(Boolean).forEach(n => st.b[C.idx(n)] = 1); (spec.them || '').split(' ').filter(Boolean).forEach(n => st.b[C.idx(n)] = 2); st.turn = spec.turn || 1; st.sup = [0, 36 - C.count(st.b, 1), 36 - C.count(st.b, 2)]; return st; }
+  check(C.newGame().turn === C.BLACK && C.colorName(1) === 'Black', 'Black moves first');
+  // row F has 10 holes: Black on F1, White on F2 F3, Black places F4: must take one of F2, F3
+  let st = set({ me: 'F1', them: 'F2 F3' });
   check(C.play(C.clone(st), 'F4 xF2') && C.play(C.clone(st), 'F4 xF3'), 'sandwich capture either one');
-  check(C.play(C.clone(st), 'F4'), 'capture is optional');
+  check(!C.play(C.clone(st), 'F4'), 'capture is mandatory');
   check(!C.play(C.clone(st), 'F4 xF1'), 'own marble never taken');
-  st = set({ w: 'F1', b: 'F2' }); check(!C.play(C.clone(st), 'F3 xF2'), 'one marble is not a sandwich');
-  st = set({ w: 'F1', b: 'F2 F3 F4' }); check(!C.play(C.clone(st), 'F5 xF2'), 'three marbles are not a sandwich');
-  // the forbidden hole: after W takes F3, Black may not play F3, but may next turn after
-  st = set({ w: 'F1', b: 'F2 F3' }); C.play(st, 'F4 xF3');
+  st = set({ me: 'F1', them: 'F2 F3' }); C.play(st, 'F4 xF3');
+  check(st.sup[2] === 35 && st.sup[1] === 34, 'a taken marble goes back to its owner');
   check(st.blk === C.idx('F3') && !C.play(C.clone(st), 'F3'), 'the just-emptied hole is forbidden');
   C.play(st, 'A1'); C.play(st, 'A2'); check(C.play(C.clone(st), 'F3'), 'the hole is free again a turn later');
-  // a five wins, and takes nothing
-  st = set({ w: 'F1 F2 F3 F4', b: 'E1' }); check(C.play(C.clone(st), 'F5').five, 'five wins');
-  st = set({ w: 'F1 F2 F3 F4', b: 'G1 G2' }); st.b[C.idx('H1')] = 1;
-  // F5 makes five; no capture may go with it
-  check(!C.play(C.clone(st), 'F5 xG1'), 'no capture with a winning move');
-  // six in a row wins too
-  st = set({ w: 'F1 F2 F3 F5 F6', b: '' }); check(C.play(C.clone(st), 'F4').five.length === 6, 'six in a row wins');
-  // a marble placed between two of the other's is safe
-  st = set({ w: 'F1 F4', b: 'F2', turn: 2 }); C.play(st, 'F3'); check(st.b[C.idx('F2')] === 2 && st.b[C.idx('F3')] === 2, 'placing into a sandwich is safe');
+  st = set({ me: 'F1', them: 'F2' }); check(!C.play(C.clone(st), 'F3 xF2') && C.play(C.clone(st), 'F3'), 'one marble is not a sandwich');
+  st = set({ me: 'F1', them: 'F2 F3 F4' }); check(!C.play(C.clone(st), 'F5 xF2') && C.play(C.clone(st), 'F5'), 'three marbles are not a sandwich');
+  // a double sandwich: any one of the four trapped marbles
+  st = set({ me: 'F1 F7', them: 'F2 F3 F5 F6' });
+  check(['F2', 'F3', 'F5', 'F6'].every(x => C.play(C.clone(st), 'F4 x' + x)), 'double sandwich: any one of four');
+  st = set({ me: 'F1 F2 F3 F4', them: 'E1' }); check(C.play(C.clone(st), 'F5').five, 'five wins');
+  st = set({ me: 'F1 F2 F3 F4 H1', them: 'G1 G2' });
+  check(!C.play(C.clone(st), 'F5 xG1') && C.play(C.clone(st), 'F5').five, 'a win takes no capture');
+  st = set({ me: 'F1 F2 F3 F5 F6' }); check(C.play(C.clone(st), 'F4').five.length === 6, 'six in a row wins');
+  st = set({ me: 'F1 F4', them: 'F2', turn: 2 }); C.play(st, 'F3'); check(st.b[C.idx('F2')] === 2 && st.b[C.idx('F3')] === 2, 'placing into a sandwich is safe');
+  // running out: White to move with none left is a draw
+  st = set({ me: '', them: '' }); st.sup = [0, 1, 0]; const r = C.play(st, 'F5'); check(r && st.over && st.draw && st.why === 'out', 'a player with no marbles left: a draw');
 })();
 
 function series(a, bLv, n, label) {

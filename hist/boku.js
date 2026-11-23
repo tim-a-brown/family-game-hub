@@ -2,9 +2,9 @@
 // History view: Boku. The board at the end with the winning line lit, a replay you can step through move by move
 // (rebuilt from the move list with games/boku-core.js, which hist-view.js loads first), the captures over the game and
 // the numbers side by side.
-// detail: {mv: 'F5,F6,E5 xF6,...' (move strings), grid [11 rows of w/b/.], caps [taken by White, taken by Black],
-// sides 'wb' (the players' colors in record order), line 'F1 F2 F3 F4 F5' (the winning line), cx '12,30' (moves that
-// captured), dbl [w, b] (two threats at once), n, end ('five' | 'full')}
+// detail: {mv: 'F5,F6,E5 xF6,...' (move strings, Black first), grid [11 rows of b/w/.], caps [taken by Black, taken by White],
+// sides 'bw' (the players' colors in record order), line 'F1 F2 F3 F4 F5' (the winning line), cx '12,30' (moves that
+// captured), dbl [b, w] (two threats at once), n, end ('five' | 'out' | 'full')}
 (function () {
   if (!window.HistView) return;
   var VW = 1080, VH = 1010;
@@ -24,7 +24,7 @@
     for (var c = 0; c < C.N; c++) {
       var p = pt(C, c), x = p.x.toFixed(1), y = p.y.toFixed(1);
       s += '<circle cx="' + x + '" cy="' + y + '" r="35" fill="#0b1224"/>';
-      if (b[c]) s += '<circle cx="' + x + '" cy="' + (p.y + 3).toFixed(1) + '" r="40" fill="rgba(0,0,0,.4)"/><circle cx="' + x + '" cy="' + y + '" r="40" fill="url(#hb' + (b[c] === 1 ? 'w' : 'b') + ')"/>';
+      if (b[c]) s += '<circle cx="' + x + '" cy="' + (p.y + 3).toFixed(1) + '" r="40" fill="rgba(0,0,0,.4)"/><circle cx="' + x + '" cy="' + y + '" r="40" fill="url(#hb' + (b[c] === 1 ? 'b' : 'w') + ')"/>';
       if (c === mark) s += '<circle cx="' + x + '" cy="' + y + '" r="11" fill="#ffd34d"/>';
       if (c === took) s += '<circle cx="' + x + '" cy="' + y + '" r="34" fill="none" stroke="#ff6a4a" stroke-width="6"/><path d="M' + (p.x - 16) + ' ' + (p.y - 16) + 'l32 32M' + (p.x + 16) + ' ' + (p.y - 16) + 'l-32 32" stroke="#ff6a4a" stroke-width="6" stroke-linecap="round"/>';
       if (line && line.indexOf(c) >= 0) s += '<circle cx="' + x + '" cy="' + y + '" r="46" fill="none" stroke="#ffd34d" stroke-width="7"/>';
@@ -33,7 +33,7 @@
   }
   HistView.register('boku', function (e, ui) {
     var d = e.dt, C = window.BokuCore; if (!d || !d.grid || !C) return null;
-    var sides = String(d.sides || 'wb');
+    var sides = String(d.sides || 'bw');
     function nameOf(col) { var i = sides.indexOf(col), p = (e.players || [])[i]; return p ? String(p.name).replace(/ \((Black|White)\)$/, '') : col === 'w' ? 'White' : 'Black'; }
     var fin = C.fromGrid(d.grid), line = String(d.line || '').split(' ').filter(Boolean).map(C.idx);
     var g = C.newGame(), pos = [{ b: g.b.slice(), mark: -1, took: -1, line: [] }], lines = [], capW = [0], capB = [0], ok = true;
@@ -42,18 +42,17 @@
       var side = g.turn, r = C.play(g, s); if (!r) { ok = false; return; }
       pos.push({ b: g.b.slice(), mark: r.c, took: r.x, line: r.five || [] });
       lines.push({ side: side, s: s, r: r });
-      capW.push(g.caps[1]); capB.push(g.caps[2]);
+      capB.push(g.caps[1]); capW.push(g.caps[2]);
     });
     var N = lines.length, caps = d.caps || [0, 0];
     var snap = ui.el('div', null, [ui.picture(svg(C, fin, -1, -1, line), { frame: 'dark', max: 420 })]);
-    var out = [ui.section(d.end === 'full' ? 'Final board (full, a draw)' : 'Final board', snap)];
+    var out = [ui.section(d.end === 'out' || d.end === 'full' ? 'Final board (a draw)' : 'Final board', snap)];
     if (ok && N > 1) {
       var label = ui.el('b'), rng = ui.el('input', { type: 'range', min: '0', max: String(N), value: String(N), class: 'hv-range', 'aria-label': 'Move' });
       var show = function (n) {
         var P = pos[n]; snap.innerHTML = ''; snap.appendChild(ui.picture(svg(C, P.b, P.mark, P.took, P.line), { frame: 'dark', max: 420 }));
         if (!n) return 'The empty board';
-        var L = lines[n - 1], who = nameOf(L.side === 1 ? 'w' : 'b'), m = C.parse(L.s);
-        if (m.pass) return 'Move ' + n + ' · ' + who + ' passed';
+        var L = lines[n - 1], who = nameOf(L.side === 1 ? 'b' : 'w'), m = C.parse(L.s);
         return 'Move ' + n + ' · ' + who + ' · ' + C.NAMES[m.c] + (m.x >= 0 ? ' · Took the marble on ' + C.NAMES[m.x] : '') + (L.r.five ? ' · Five in a row' : '');
       };
       rng.addEventListener('input', function () { label.textContent = show(+rng.value); });
@@ -71,10 +70,10 @@
       }
     }
     var dbl = d.dbl || [0, 0];
-    out.push(ui.table(['', nameOf('w') + ' (White)', nameOf('b') + ' (Black)'], [
+    out.push(ui.table(['', nameOf('b') + ' (Black)', nameOf('w') + ' (White)'], [
       ['Marbles taken', caps[0], caps[1]], ['Two ways to win at once', dbl[0], dbl[1]]
     ]));
-    out.push(ui.facts([['Moves', d.n || N], ['How it ended', d.end === 'full' ? 'The board filled: a draw' : 'Five in a row']]));
+    out.push(ui.facts([['Moves', d.n || N], ['How it ended', d.end === 'out' ? 'A player ran out of marbles: a draw' : d.end === 'full' ? 'The board filled: a draw' : 'Five in a row']]));
     return ui.wrap(out);
   });
 })();
