@@ -1734,6 +1734,60 @@ Underlying principles for everything:
   `sel`). The scratchpad's `newgames/blokus/` has the scripts (`shots.js`, `flow.js`, `hv.js`, `touchdemo.js`,
   `gen-demo.js`).
 
+## Entropy (2026-11-23; included with franjos Spieleverlag's written permission, Eric Solomon credited)
+
+- **Credit the designer**: "Entropy was designed by Eric Solomon." stands under the title in the setup (`.en-credit`,
+  hidden only where it would make the setup scroll) and at the foot of How to play; the condition of the permission
+  (a digital version for the family's personal use, not distributed or sold). How to play names Hyle and Hyle7, the
+  later editions. The board, chips and bag are our own drawing (a walnut frame round a slate tray of carved wells,
+  enamel chips, a cloth bag); never franjos's box art, logo or trade dress.
+- `games/entropy.html` (catalog id `entropy`, Board), the rules and the computer in `games/entropy-core.js`
+  (`EntropyCore`, plain JSON; the page, the TurnNet table and Node), history `hist/entropy.js` (hist-view.js loads the
+  core first: the scoring runs and the replay are worked out again), demo `games/demos/entropy.js`.
+  `node scripts/entropy-sim.js [matches] [--pairs=easy-normal,normal-hard] [--sz=7|5]` plays robot matches and checks
+  every placement and slide against a plainer reading of the rules, the bag and board adding up to sz of each color,
+  every score (after every move and at the end of every game) against a brute-force count, and fixed lines of the
+  counting convention.
+- The rules (the Mind Sports Olympiad's): 7 by 7 with 49 chips, seven of each of seven colors (Hyle7), or 5 by 5 with 25
+  chips (the setup's Board). Chaos draws a chip at random, seen by both, and puts it on any empty square; then Order
+  may slide any one chip any number of empty squares along its row or column (a rook's move, no jumping) or pass. When
+  Chaos's last chip goes down (it goes to the last empty square by itself, `res.auto`), Order scores every palindrome
+  of 2 or more chips side by side in every row and column, each scoring its length, runs inside runs and overlapping
+  runs all counting (red-blue-red 3, red-blue-blue-red 4 + 2; `eachRun` grows each one from its middle). Then the roles
+  swap for a second game; the higher total as Order wins the match, equal is a draw. Squares are named as on a chess
+  board (a1 the bottom left); moves are '3d4' (Chaos put color 3 on d4), 'd4-d7', 'pass'.
+- **The bag is seeded**: the state carries `rs` (mulberry32) and every draw comes from it inside the move that comes
+  before it (Order's slide or pass draws Chaos's next chip), so every device at a TurnNet table draws the same chip,
+  and an undo brings back the same chip.
+- Computer (`search`, `LEVELS`): a board is weighed by what Order can expect from it, every run of squares in every line
+  counted at its length times the chance it ends up a palindrome if its empty squares were filled from the bag. Normal
+  takes the best move by that weight; Hard looks at the answer too (Chaos at Order's best slide after each of its best
+  placements, Order at every color the bag could give next and Chaos's worst placement of it, an expectimax over the
+  draw); Easy plays a random move 40% of the time and otherwise only looks at the palindromes a slide makes now. Fast
+  enough to run on the page (a few ms a move), so there is no Worker.
+- The table: the bag with the chip just drawn in a tray beside it and how many of each color are left as stacks of
+  chips; the bag shakes and the chip rises out of it (`drawAnim`) and flies to its square when placed (`flyIn`). Each
+  color has its own mark pressed into the chip (ring, triangle, square, diamond, cross, star, hexagon). The palindromes
+  standing are outlined in gold (the longest in each place), a move's new ones lit and its points rising from the chip
+  (`floatGain`). A tap on a chip lights the squares it can slide to, each with the points that slide would make or lose;
+  on Chaos's turn the squares where the chip would make a palindrome show what it would give Order; a chip can also be
+  dragged (from the board, or from the tray), with the ghost and the would-be palindromes dashed. Moments: a run of
+  five or more, a big slide (8 points or more), a new best as Order on this device, the role swap (a big moment, then
+  the chips sweep back into the bag). At the end of each game every line is counted in turn (`countLines`), its
+  palindromes lit and its points on a gold pill at its end, Order's plate counting up; a tap speeds it. Layouts:
+  upright, the other player, the bag, the board, you, whose turn and the buttons (spare height to the gaps, then the
+  bag); sideways, the plates, the bag, whose turn and the buttons at the left, the board at the right, spare height to
+  the bag. **At a desk** (`deskWin`, the kit's test, `en-desk`): the board from the window, the room in the left column
+  or a column of its own (`en-two`): Order's score now with every line that scores (its chips, the scoring stretch lit),
+  this game's moves newest first with each slide's points, game 1's board and score while game 2 is played, past matches
+  and the best score as Order here; whole parts given up (`paintRoom`). Saved in `entropy_state`; online records once a
+  device in `entropy_net_rec`; each new match at a table starts with the other seat as Order. Test hook
+  `window.__entropy` (`start`, `set(rows, {chip, ph, g, gm})`, `play`, `move`, `cell`, `chip`, `sel`, `busy`). The
+  scratchpad's `newgames/entropy/` has the scripts (`shots.js`, `online.js`, `touch.js` the demo with real touch).
+- Not confirmed from a primary source: the MSO's own rule page could not be read here, so the counting convention is the
+  one every description of the game gives (each palindromic run of length 2 or more, all nested and overlapping runs
+  counted); whether the 5 by 5 game is "Entropy" and the 7 by 7 "Hyle7" in every edition is as Wikipedia has it.
+
 ## Wax Pack (2026-11-19; Tim: the Sandlot redesign, named "wax pack", the pitch duel "sure i'll try it", scanning "to log a player's deck")
 
 - Catalog id stays `sandlot` (favorites and `gh_sandlot` history carry over); the page is `games/waxpack.html` with

@@ -93,6 +93,7 @@ var GAMES = [
   { id: 'abalone',     name: 'Abalone',      color: '#0e7490', cat: 'board', min: 1, max: 2, tag: 'Push six marbles off the board', play: 'abalone', demo: 1 },
   { id: 'twixt',       name: 'Twixt',        color: '#b4322a', cat: 'board', min: 1, max: 2, tag: 'Peg a chain from border to border', play: 'twixt', demo: 1 },
   { id: 'blokus',      name: 'Blokus',       color: '#2f74e0', cat: 'board', min: 1, max: 4, tag: 'Fit your pieces in corner to corner', play: 'blokus', demo: 1 },
+  { id: 'entropy',     name: 'Entropy',      color: '#6a3fb0', cat: 'board', min: 1, max: 2, tag: 'Order makes patterns, Chaos spoils them', play: 'entropy', demo: 1 },
   { id: 'othello',     name: 'Othello',      color: '#15803d', cat: 'board', min: 1, max: 2, tag: 'Flip discs, own the board', play: 'othello', demo: 1 },
   { id: 'backgammon',  name: 'Backgammon',   color: '#b45309', cat: 'board', min: 1, max: 2, tag: 'Race your checkers home', play: 'backgammon', demo: 1 },
   { id: 'battleship',  name: 'Battleship',   color: '#0369a1', cat: 'board', min: 1, max: 2, tag: 'Hunt down the hidden fleet', play: 'battleship', demo: 1 },
