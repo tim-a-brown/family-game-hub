@@ -89,7 +89,7 @@
   var smem = Object.create(null);
   SP.getItem = function(k){ k = String(k); if(this === ss) return k in smem ? (smem[k] === GONE ? null : smem[k]) : get.call(ss, k); if(this !== ls) return get.apply(this, arguments); return k in mem ? (mem[k] === GONE ? null : mem[k]) : get.call(ls, k); };
   SP.setItem = function(k, v){ k = String(k); if(this === ss){ smem[k] = String(v); return; } if(this !== ls) return set.apply(this, arguments); if(THRU.test(k)) return set.call(ls, k, v); D.writes.push(k); mem[k] = String(v); };
-  SP.removeItem = function(k){ k = String(k); if(this === ss){ smem[k] = GONE; return; } if(this !== ls) return del.apply(this, arguments); D.writes.push(k); mem[k] = GONE; };
+  SP.removeItem = function(k){ k = String(k); if(this === ss){ smem[k] = GONE; return; } if(this !== ls) return del.apply(this, arguments); if(THRU.test(k)){ delete mem[k]; return del.call(ls, k); } D.writes.push(k); mem[k] = GONE; };
   SP.key = function(i){ if(this !== ls) return key.apply(this, arguments); var a = keys(); return i >= 0 && i < a.length ? a[i] : null; };
   SP.clear = function(){ if(this !== ls) return clr.apply(this, arguments); keys().forEach(function(k){ mem[k] = GONE; }); };
   try{ Object.defineProperty(SP, 'length', { configurable: true, enumerable: true, get: function(){ return this === ls ? keys().length : lenD.get.call(this); } }); }catch(e){}

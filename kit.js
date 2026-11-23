@@ -1658,9 +1658,28 @@
       // (a deal or a move that began while the page was being copied may be half in it: a moment later)
       if (!snapS.hide && (snapS.moved || snapMoving())) { snapS.dirty = true; snapS.id = id; clearTimeout(snapS.t); snapS.t = setTimeout(snapIdle, 900); return false; }
       var v = JSON.stringify({ v: 1, ts: Date.now(), d: d, cx: Math.round(cx * 1000) / 1000, cy: Math.round(cy * 1000) / 1000 });
-      try { LS.setItem(snapKey(id), v); } catch (e) { return false; }
-      return true;
+      return snapPut(id, v, k, cx, cy);
     });
+  }
+  // Writing the picture. Safari keeps about 2.5 million characters for the whole site, and an account's history, saves
+  // and pictures can fill it (Tim, 2026-11-23: Keep playing had no new pictures on his iPhone, only old ones), so a
+  // write that doesn't fit makes room: first the pictures of games no longer in progress or older than their game, then
+  // this picture again as a smaller JPEG, then the oldest pictures of other games, a few at most
+  function snapPut(id, v, k, cx, cy) {
+    var put = function (val) { try { LS.setItem(snapKey(id), val); return true; } catch (e) { snapS.err = String(e && e.name || e); return false; } };
+    if (put(v)) return true;
+    var all = [], res = {}; try { res = JSON.parse(lsGet('gn_resume', '{}')) || {}; } catch (e) {}
+    for (var i = 0; i < LS.length; i++) { var kk = LS.key(i); if (kk && kk.indexOf('gn_snap_') === 0 && kk !== snapKey(id)) all.push(kk); }
+    var live = {}; Object.keys(res).forEach(function (g) { if (res[g] && !res[g].x) live[snapKey(g)] = res[g]; });
+    var info = all.map(function (kk) { var ts = 0; try { ts = JSON.parse(LS.getItem(kk)).ts || 0; } catch (e) {} return { k: kk, ts: ts, r: live[kk] }; });
+    var freed = 0, drop = function (x) { try { LS.removeItem(x.k); freed++; } catch (e) {} };
+    info.filter(function (x) { return !x.r || (x.r.s && x.ts < x.r.s); }).forEach(drop);
+    if (freed && put(v)) return snapLog('room: ' + freed), true;
+    var small = k.toDataURL('image/jpeg', 0.5), v2 = small.indexOf('data:image/jpeg') === 0 ? JSON.stringify({ v: 1, ts: Date.now(), d: small, cx: Math.round(cx * 1000) / 1000, cy: Math.round(cy * 1000) / 1000 }) : null;
+    if (v2 && v2.length < v.length && put(v2)) return true;
+    var rest = info.filter(function (x) { return x.r && !(x.r.s && x.ts < x.r.s); }).sort(function (a, b) { return a.ts - b.ts; });
+    for (var j = 0; j < Math.min(4, rest.length); j++) { drop(rest[j]); if (put(v2 || v)) return true; }
+    return false;
   }
   if (!SNAP_MODE) doc.addEventListener('visibilitychange', function () {
     // (put away: the picture as you left it, if the game has moved since the last one; best effort)
