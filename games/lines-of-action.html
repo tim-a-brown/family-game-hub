@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lines of Action</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
+<script src="loa-core.js"></script>
+<style>
+.cb-col{max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
+.pbar{display:flex;align-items:center;gap:10px;min-height:48px;padding:5px 12px 5px 10px;border-radius:16px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);transition:box-shadow .2s, background .2s;}
+.pbar.on{background:color-mix(in srgb,var(--lit) 11%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--lit) 65%,transparent),0 0 18px color-mix(in srgb,var(--lit) 18%,transparent);}
+.pbar .who{flex:1;min-width:0;display:flex;flex-direction:column;}
+.pbar .nm{font-weight:800;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;}
+.pbar .nm .ico{width:15px;height:15px;color:var(--text-3);flex:none;}
+.pbar .nm span{overflow:hidden;text-overflow:ellipsis;}
+.pbar .sub{font-size:.72rem;font-weight:700;color:var(--text-3);white-space:nowrap;}
+.pbar.on .sub{color:var(--lit-ink);}
+.pbar .grp{display:flex;flex-direction:column;align-items:flex-end;gap:1px;min-width:3.4em;}
+.pbar .grp b{font-family:var(--display);font-size:1.5rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;}
+.pbar .grp small{font-size:.7rem;font-weight:700;color:var(--text-3);white-space:nowrap;}
+.pbar .grp.one b{color:var(--lit-ink);}
+.pbar .grp b.bump{animation:pop .45s var(--spring);}
+.pbar .tok{width:30px;height:30px;flex:none;position:relative;}
+.think i{display:inline-block;width:5px;height:5px;margin:0 1px;border-radius:50%;background:currentColor;animation:th 1s infinite;}
+.think i:nth-child(2){animation-delay:.15s}.think i:nth-child(3){animation-delay:.3s}
+@keyframes th{50%{opacity:.2;transform:translateY(-2px);}}
+
+/* The board: a walnut frame with an inlaid board of maple and walnut squares */
+.frame{--rim:clamp(10px,3vw,15px);position:relative;padding:var(--rim);border-radius:14px;
+  background:
+    repeating-linear-gradient(91deg,rgba(255,255,255,.035) 0 2px,transparent 2px 8px),
+    repeating-linear-gradient(87deg,rgba(0,0,0,.12) 0 1px,transparent 1px 13px),
+    linear-gradient(180deg,#5a3720,#33200f);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.16),inset 0 -3px 0 rgba(0,0,0,.4),0 16px 34px rgba(0,0,0,.5);}
+.bd{position:relative;aspect-ratio:1;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);
+  box-shadow:0 0 0 2px #1c1209,0 0 0 3.5px rgba(214,170,98,.45),inset 0 0 16px rgba(0,0,0,.3);touch-action:manipulation;user-select:none;-webkit-user-select:none;}
+.sq{position:relative;cursor:pointer;}
+.sq.l{background:repeating-linear-gradient(100deg,rgba(120,72,20,.07) 0 1px,transparent 1px 5px),linear-gradient(150deg,#e8cf9e,#d6b57c);}
+.sq.d{background:repeating-linear-gradient(80deg,rgba(0,0,0,.09) 0 1px,transparent 1px 6px),linear-gradient(150deg,#86592f,#6b4423);}
+.sq::before{content:"";position:absolute;inset:0;pointer-events:none;}
+.sq.lf::before{background:rgba(255,206,64,.2);}
+.sq.lt::before{background:rgba(255,206,64,.34);}
+.sq.sel::before{background:rgba(255,214,90,.42);box-shadow:inset 0 0 0 2px rgba(255,226,140,.8);}
+.layer{position:absolute;inset:0;pointer-events:none;}
+.layer svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
+.pool{z-index:1;}
+.pool svg{overflow:hidden;}
+.pool g{transition:opacity .4s;}
+.pool g.won{opacity:.6!important;fill:#ffd75a;stroke:#ffd75a;}
+.rays{z-index:2;}
+.pcs{z-index:3;}
+.marks{z-index:4;}
+
+/* The pieces: polished stones, jet black and white marble */
+.pc{position:absolute;width:12.5%;height:12.5%;display:grid;place-items:center;transition:transform .16s var(--spring);}
+.pc .st{position:relative;width:78%;height:78%;border-radius:50%;}
+.pc.b .st{background:radial-gradient(circle at 36% 30%,#8d8d98 0,#3a3a42 18%,#16161a 55%,#040405 100%);
+  box-shadow:0 2px 0 #000,0 4px 7px rgba(0,0,0,.6),inset 0 -3px 5px rgba(255,255,255,.08),inset 0 2px 3px rgba(255,255,255,.12);}
+.pc.w .st{background:
+    radial-gradient(ellipse 60% 22% at 60% 66%,rgba(170,160,140,.22),transparent 70%),
+    radial-gradient(ellipse 40% 14% at 35% 48%,rgba(160,150,130,.16),transparent 70%),
+    radial-gradient(circle at 36% 30%,#ffffff 0,#f6f3ec 30%,#e2dccf 70%,#bdb5a4 100%);
+  box-shadow:0 2px 0 #8c8473,0 4px 7px rgba(0,0,0,.5),inset 0 -3px 5px rgba(0,0,0,.1),inset 0 2px 3px rgba(255,255,255,.7);}
+.pc .st::after{content:"";position:absolute;left:20%;top:12%;width:36%;height:22%;border-radius:50%;background:radial-gradient(ellipse at 50% 50%,rgba(255,255,255,.75),rgba(255,255,255,0) 70%);transform:rotate(-24deg);}
+.pc.b .st::after{opacity:.5;}
+.pc.lift{transform:translateY(-7%) scale(1.1);z-index:2;}
+.pc.lift .st{box-shadow:0 7px 0 rgba(0,0,0,.35),0 12px 14px rgba(0,0,0,.45),inset 0 -3px 5px rgba(255,255,255,.08);}
+.pc.mine-on .st{animation:breathe 2.4s ease-in-out infinite;}
+@keyframes breathe{50%{box-shadow:0 2px 0 rgba(0,0,0,.6),0 0 0 3px rgba(255,214,90,.35),0 4px 8px rgba(0,0,0,.5);}}
+.pc.glow .st{animation:winglow 1.6s ease-out both;}
+@keyframes winglow{0%{filter:none;}30%{filter:drop-shadow(0 0 9px rgba(255,214,90,1)) brightness(1.25);transform:scale(1.15);}100%{filter:drop-shadow(0 0 4px rgba(255,214,90,.7));}}
+.pc.hit .st{animation:hit .5s ease-out forwards;}
+@keyframes hit{0%{transform:scale(1);}25%{transform:scale(1.25);filter:brightness(1.6);}100%{transform:scale(0) rotate(40deg);opacity:0;}}
+.shard{position:absolute;width:2.2%;height:2.2%;border-radius:2px;pointer-events:none;z-index:5;}
+.bd.shake{animation:shake .4s;}
+.mini{position:absolute;inset:2px;border-radius:50%;}
+.mini.b{background:radial-gradient(circle at 36% 30%,#8d8d98 0,#3a3a42 18%,#16161a 55%,#040405 100%);box-shadow:0 1.5px 0 #000;}
+.mini.w{background:radial-gradient(circle at 36% 30%,#ffffff 0,#f2eee6 40%,#c6beae 100%);box-shadow:0 1.5px 0 #8c8473;}
+.turn{margin:2px 0 0;min-height:34px;}
+.acts{display:flex;gap:10px;justify-content:center;margin-top:2px;}
+.acts .btn{flex:1;max-width:180px;}
+.rulechip{text-align:center;font-size:.8rem;font-weight:600;color:var(--text-3);}
+
+/* A layout for each shape (fit() sizes the board to the room). Upright: the players over and under the board, the
+   board as wide as the screen allows. Sideways: the players, whose turn and the buttons in a column at the left, the
+   board you play on at the right, as tall as the room */
+#app.stage.ipl{max-width:none;box-sizing:border-box;height:var(--avh,auto);display:flex;flex-direction:column;align-items:center;
+  padding:4px max(17px,var(--corner-x,0px)) max(calc(var(--safe-b) + 10px),18px);}
+#app.ipl>.cb-col{width:var(--cw,100%);max-width:none;flex:none;margin:auto 0;}
+/* Upright: the column takes the screen's height; the players and the board stand together in the middle of the room
+   above the turn line, and the turn line and Undo stand at the foot where the thumb is (no band left floating) */
+#app.la-port>.cb-col{height:100%;margin:0;gap:var(--gp,10px);justify-content:center;}
+#app.la-port .pbar{min-height:56px;padding:7px 14px 7px 11px;}
+#app.la-port .pbar .nm{font-size:1.02rem;}
+#app.la-port .pbar .sub{font-size:.78rem;}
+#app.la-port .pbar .grp b{font-size:1.75rem;}
+#app.la-port .pbar .tok{width:34px;height:34px;}
+#app.la-port>.cb-col>.turn{font-size:1.08rem;margin:0;}
+#app.la-port>.cb-col>.acts{margin:0;}
+#app.la-port>.cb-col>.acts .btn{max-width:220px;}
+#app.la-port.la-short .pbar{min-height:44px;padding:3px 10px;}
+#app.la-port.la-short .pbar .grp b{font-size:1.4rem;}
+#app.la-port.la-short .pbar .tok{width:28px;height:28px;}
+#app.la-port.la-short>.cb-col>.turn{min-height:26px;font-size:.95rem;}
+#app.la-port.la-short>.cb-col>.rulechip{display:none;}
+/* A large window: the room in the column at the left, between whose turn it is and Undo */
+.room{display:none;}
+#app.la-land.la-desk>.cb-col{grid-template-areas:"t b" "s b" "m b" "a b" "r b" "p b";}
+#app.la-land.la-desk>.cb-col>.room{grid-area:m;display:flex;flex-direction:column;gap:12px;min-height:0;overflow:hidden;}
+.room .pn{background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);border-radius:18px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-height:0;}
+.room .pn.mv{flex:1 1 auto;}
+.room h4{margin:0;font-size:.82rem;font-weight:800;color:var(--text-3);}
+.room .mvl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;overflow:hidden;min-height:0;}
+.room .mvl li{display:grid;grid-template-columns:2.4em 18px minmax(0,1fr) auto;align-items:center;gap:8px;padding:5px 4px;border-radius:9px;font-size:.92rem;}
+.room .mvl li:first-child{background:color-mix(in srgb,var(--lit) 12%,transparent);}
+.room .mvl li .no{color:var(--text-3);font-variant-numeric:tabular-nums;font-weight:700;text-align:right;}
+.room .mvl li .mini{position:relative;inset:auto;width:16px;height:16px;display:block;}
+.room .mvl li .who{font-weight:700;overflow-wrap:anywhere;}
+.room .mvl li b{font-variant-numeric:tabular-nums;white-space:nowrap;}
+.room .mvl li.cap b{color:#ff8f7a;}
+.room .mvl li.none{display:block;color:var(--text-3);}
+.room .chart svg{width:100%;height:80px;display:block;}
+.room .key{margin:0;font-size:.78rem;color:var(--text-3);}
+.room .wins{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;}
+.room .wins li{display:flex;justify-content:space-between;gap:10px;font-size:.92rem;}
+.room .wins li span{font-weight:700;overflow-wrap:anywhere;}
+/* each player's twelve pieces as a row of stones: the ones still on the board, and an empty dimple for each one captured */
+.pbar{flex-wrap:wrap;}
+.pbar .tray{display:none;flex-basis:100%;gap:3%;padding:2px 0 1px;justify-content:space-between;}
+#app.la-port:not(.la-short) .pbar .tray,#app.la-land:not(.la-low) .pbar .tray{display:flex;}
+.tray i{position:relative;flex:1;max-width:22px;aspect-ratio:1;border-radius:50%;}
+.tray i.b{background:radial-gradient(circle at 36% 30%,#8d8d98 0,#3a3a42 18%,#16161a 55%,#040405 100%);box-shadow:0 1.5px 0 #000;}
+.tray i.w{background:radial-gradient(circle at 36% 30%,#ffffff 0,#f2eee6 40%,#c6beae 100%);box-shadow:0 1.5px 0 #8c8473;}
+.tray i.gone{background:none;box-shadow:inset 0 1.5px 3px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.12);}
+#app.la-tall .frame{--rim:20px;}
+#app.la-tall .pbar{min-height:60px;padding:8px 16px 8px 12px;}
+#app.la-tall .pbar .nm{font-size:1.1rem;}
+#app.la-tall .pbar .sub{font-size:.85rem;}
+#app.la-tall .pbar .grp b{font-size:2rem;}
+#app.la-tall .pbar .tok{width:36px;height:36px;}
+#app.la-land>.cb-col{width:auto;height:var(--bsz);display:grid;grid-template-columns:var(--sw,300px) var(--bsz);
+  grid-template-rows:max-content max-content minmax(0,1fr) max-content max-content max-content;
+  grid-template-areas:"t b" "s b" ". b" "a b" "r b" "p b";column-gap:var(--cg,24px);row-gap:10px;justify-content:center;}
+#app.la-land>.cb-col>.frame{grid-area:b;--rim:clamp(10px,2.4vh,22px);}
+#app.la-land>.cb-col>.pbar.top{grid-area:t;}
+#app.la-land>.cb-col>.pbar.bot{grid-area:p;}
+#app.la-land>.cb-col>.turn{grid-area:s;justify-self:start;}
+#app.la-land>.cb-col>.acts{grid-area:a;justify-content:flex-start;}
+#app.la-land>.cb-col>.rulechip{grid-area:r;text-align:left;}
+#app.la-land:not(.la-low) .pbar{min-height:58px;}
+#app.la-land:not(.la-low) .pbar .grp b{font-size:1.9rem;}
+#app.la-low>.cb-col{row-gap:6px;}
+#app.la-low .pbar{min-height:42px;padding:3px 9px;}
+#app.la-low>.cb-col>.turn{min-height:26px;font-size:.92rem;margin:0;}
+#app.la-low>.cb-col>.rulechip{display:none;}
+.frame{view-transition-name:la-board;}
+.pbar.top{view-transition-name:la-top;}
+.pbar.bot{view-transition-name:la-bot;}
+.cb-col>.turn{view-transition-name:la-turn;}
+.cb-col>.acts{view-transition-name:la-acts;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.7,.25,1);}
+::view-transition-old(root),::view-transition-new(root){animation:none;}
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  function vtGo(fn) { var t = document.startViewTransition(fn); ['ready', 'finished', 'updateCallbackDone'].forEach(function (k) { if (t && t[k] && t[k].catch) t[k].catch(function () {}); }); }
+  var el = Kit.el, app = document.getElementById('app'), C = window.LOACore;
+  var SAVE = 'loa_state', KEY = 'linesofaction';
+  var BLACK = 1, WHITE = -1;
+  var NUM = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+  function num(n) { return NUM[n] || String(n); }
+  function cap1(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  // ── The computer thinks in a Web Worker (loa-core.js again), or on the page where a worker can't start ──
+  var worker = null, workerOk = true, reqId = 0, pending = null;
+  function getWorker() {
+    if (worker || !workerOk) return worker;
+    try {
+      var url = new URL('loa-core.js', location.href).href;
+      var src = 'importScripts(' + JSON.stringify(url) + ');onmessage=function(e){var d=e.data;postMessage({id:d.id,res:self.LOACore.search(d.b,d.side,d.o)});};';
+      worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+      worker.onmessage = function (e) { if (pending && e.data.id === pending.id) { var p = pending; pending = null; p.cb(e.data.res); } };
+      worker.onerror = function () { workerOk = false; worker = null; if (pending) { var p = pending; pending = null; p.cb(C.search(p.b, p.side, p.o)); } };
+    } catch (e) { workerOk = false; worker = null; }
+    return worker;
+  }
+  function think(b, side, o, cb) {
+    var id = ++reqId, w = getWorker();
+    pending = { id: id, cb: cb, b: b, side: side, o: o };
+    if (w) w.postMessage({ id: id, b: b, side: side, o: o });
+    else setTimeout(function () { if (pending && pending.id === id) { pending = null; cb(C.search(b, side, o)); } }, 30);
+  }
+  function cancelThink() { pending = null; }
+
+  // ── State ────────────────────────────────────────────────────────────────
+  // S = the core's state (loa-core.js) and {mode, level, players: [{name, cpu, side}], hist (undo snapshots), started,
+  //     caps: {'1': n, '-1': n}, bestJoin: {'1': n, '-1': n}, longest: {'1': n, '-1': n}, low: {'1': fewest groups... }}
+  var S = null, sel = -1;
+  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  var NET = null, LEFT = null, WINO = null, NETREC = {}, SHOWN = 0;
+  function save() {
+    if (NET) return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S && !S.over) Kit.resume.set(S.n ? 'Move ' + (S.n + 1) : 'Ready');
+  }
+  function clearSave() { if (NET) return; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function pl(side) { return S.players[0].side === side ? S.players[0] : S.players[1]; }
+  function vsCpu() { return S.players.some(function (p) { return p.cpu; }); }
+  function colorName(side) { return side === BLACK ? 'Black' : 'White'; }
+  function isMe(p) { return NET ? NET.seat >= 0 && S.players[NET.seat] === p : !p.cpu && (vsCpu() || false); }
+  function nm(p) { return isMe(p) ? 'You' : p.name; }   // "You" only where one person plays against the computer or online
+  function groupsOf(side) { return C.groups(S.b, side); }
+
+  function rulesHtml() {
+    return '<p class="goal">Join <b>all of your pieces into one group</b>. Pieces in a group touch each other side by side or corner to corner.</p>' +
+      '<h3>Your turn</h3><ul><li><b>Black goes first.</b> Black starts along the top and bottom edges, White along the left and right, and the corners are empty.</li>' +
+      '<li>Move one of your pieces in a straight line: across, up and down, or on a diagonal.</li>' +
+      '<li>A piece moves <b>exactly as many squares as there are pieces on that whole line</b>, from one edge of the board to the other. Pieces of both colors count, and so does the piece that moves.</li>' +
+      '<li>A piece can jump over your own pieces, but <b>never over the other player’s</b>.</li>' +
+      '<li>It can land on an empty square, or on one of the other player’s pieces to <b>capture</b> it. It can’t land on one of your own.</li>' +
+      '<li>Tap one of your pieces to see its lines. The number on each landing is how far that line lets it move.</li></ul>' +
+      '<h3>Winning</h3><ul><li>The first player whose pieces are all in one group wins. If you’re down to one piece, that piece is a group, and you win.</li>' +
+      '<li>If your capture leaves the other player’s pieces all in one group, the other player wins.</li>' +
+      '<li>If one move joins both players’ pieces at once, the game is a draw. In setup you can choose instead that the player who moved wins, as in Sid Sackson’s second edition.</li>' +
+      '<li>A player with no move passes. If the same position comes up a third time with the same player to move, the game is a draw.</li></ul>' +
+      '<h3>Online</h3><ul><li><b>Play online</b> opens a table, and the other player joins on their own device. Take your turn whenever you like: the home screen shows when it’s your move. Each new game at the table swaps colors.</li></ul>' +
+      '<h3>Tips</h3><ul><li>The soft shadow under each group shows how your pieces are joined, and the number beside your name says how many groups you still have.</li>' +
+      '<li>Bring your pieces toward the middle, where they can reach each other.</li>' +
+      '<li>Capturing isn’t always good: every piece you take is one fewer the other player has to join.</li>' +
+      '<li>A piece of yours on the second row or column can hem the other player’s pieces against the edge.</li></ul>' +
+      '<p class="src">Lines of Action was invented by Claude Soucie and published in Sid Sackson’s A Gamut of Games (1969). These are the rules of the Mind Sports Olympiad.</p>';
+  }
+
+  Kit.init({
+    id: KEY, mark: false, snap: '.frame',
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } cancelThink(); clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Lines of Action: past games' }); } }]),
+    rules: rulesHtml()
+  });
+
+  var TIE_CH = [['draw', 'Draw', 'A move that joins both players’ pieces at once ends the game in a draw. Tournaments play it this way today.'],
+    ['mover', 'Mover wins', 'A move that joins both players’ pieces at once wins for the player who made it, as Sid Sackson’s second edition says.']];
+  function showSetup() {
+    S = null; sel = -1;
+    app.classList.remove('ipl', 'la-land', 'la-low', 'la-tall', 'la-port', 'la-short');
+    Kit.setup(app, {
+      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: '2p', kind: 'local' }]),
+      options: [
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Looks one move ahead and often picks a weaker move.'], ['normal', 'Normal', 'Looks a few moves ahead.'], ['hard', 'Hard', 'Looks several moves ahead and never misses a win it can see.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'side', label: 'You play', value: 'b', choices: [['b', 'Black\nMoves first', 'Black always moves first, so you start.'], ['w', 'White', 'The computer plays Black and moves first.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'tie', label: 'If both connect at once', value: 'draw', choices: TIE_CH }
+      ],
+      players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
+      onStart: function (cfg) {
+        var cpu = cfg.mode === 'cpu', hs = cpu && cfg.options.side === 'w' ? WHITE : BLACK;
+        var pls = cfg.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, side: i === 0 ? hs : -hs }; });
+        newGame({ mode: cfg.mode, level: cfg.options.level || 'normal', tie: cfg.options.tie || 'draw', players: pls });
+      }
+    });
+  }
+  function newGame(o, swap) {
+    cancelThink();
+    var players = o ? o.players : S.players, mode = o ? o.mode : S.mode, level = o ? o.level : S.level, tie = o ? o.tie : S.tie;
+    if (swap && !players.some(function (p) { return p.cpu; })) players.forEach(function (p) { p.side = -p.side; });
+    S = C.newGame({ tie: tie });
+    S.mode = mode; S.level = level; S.players = players; S.hist = []; S.started = Date.now(); S.busy = false;
+    S.caps = { '1': 0, '-1': 0 }; S.bestJoin = { '1': 0, '-1': 0 }; S.longest = { '1': 0, '-1': 0 };
+    S.gl = [[C.groups(S.b, 1).length, C.groups(S.b, -1).length].join('')];
+    sel = -1;
+    Kit.gameStart(); save(); render(); maybeCpu();
+  }
+
+  // ── Moves ────────────────────────────────────────────────────────────────
+  function snap() { var c = JSON.parse(JSON.stringify(S)); delete c.hist; return c; }
+  function play(f, t, byCpu) {
+    if (!S || S.over) return;
+    var before = snap(), side = S.turn, g0 = C.groups(S.b, -side).length;
+    var mv = C.play(S, f, t);
+    if (!mv) return;
+    S.hist.push({ s: before, cpu: !!byCpu });
+    if (S.hist.length > 400) S.hist.shift();
+    note(mv, g0);
+    sel = -1;
+    save();
+    show(mv);
+    if (!S.over) setTimeout(maybeCpu, moveT(mv) + (mv.pass != null ? 900 : 120));
+  }
+  // what a move did, for the history's highlights
+  function note(mv, g0) {
+    var side = mv.side;
+    if (mv.cap) S.caps[side]++;
+    if (mv.joined > S.bestJoin[side]) S.bestJoin[side] = mv.joined;
+    if (mv.n > S.longest[side]) S.longest[side] = mv.n;
+    S.gl = S.gl || [];
+    S.gl.push([C.groups(S.b, 1).length, C.groups(S.b, -1).length].join(''));
+    mv.g0 = g0;
+  }
+  function moveT(mv) { return 220 + mv.n * 55; }
+  // Draw the board after a move: the piece glides along its line, a captured piece bursts, and the reward or the end
+  function show(mv) {
+    render({ mv: mv });
+    var who = pl(mv.side), mine = isMe(who) || !vsCpu() && !NET;
+    Kit.sfx('whoosh', 0.5);
+    var T = moveT(mv);
+    setTimeout(function () {
+      Kit.sfx(mv.cap ? 'clash' : 'chip'); Kit.haptic(mv.cap ? 'medium' : 'light');
+      if (mv.cap) burst(mv.t, -mv.side);
+    }, T - 30);
+    reward(mv, who, mine, T);
+    if (S.over) { setTimeout(finish, T + 250); return; }
+    if (mv.pass != null) setTimeout(function () { var p = pl(mv.pass); Kit.callout(nm(p) === 'You' ? 'You have no move, so you pass' : p.name + ' has no move and passes'); Kit.sfx('bad'); }, T + 100);
+    else handOver(mv, T);
+  }
+  // Pass and play between people: the device goes across the table, and the next player holds to see the board
+  function handOver(mv, T) {
+    if (NET || vsCpu() || (Kit.inDemo && Kit.inDemo()) || S.over) return;
+    var n = S.n, next = pl(S.turn);
+    setTimeout(function () {
+      if (!S || S.n !== n || S.over) return;
+      Kit.handoff({ name: next.name, color: S.turn === BLACK ? '#2a2a30' : '#8a8172', what: 'board', hold: 1000, hint: 'Hold to see the board',
+        msg: pl(mv.side).name + ' moved ' + C.sqName(mv.f).toUpperCase() + (mv.cap ? ' and took the piece on ' : ' to ') + C.sqName(mv.t).toUpperCase() + '.' });
+    }, T + 650);
+  }
+  // A good move's reward, where it happens: groups joining glow, a long move or a capture is called out
+  function reward(mv, who, mine, T) {
+    var n = nm(who);
+    if (mv.joined >= 3 && !S.over) setTimeout(function () {
+      Kit.sfx('sparkle'); if (mine) Kit.haptic('success');
+      Kit.moment({ title: cap1(num(mv.joined)) + ' groups joined', line: (n === 'You' ? 'You' : n) + ' joined ' + num(mv.joined) + ' groups into one with a single move.', pts: String(C.groups(S.b, mv.side).length), color: mv.side === BLACK ? '#2a2a30' : '#ece7dc', at: document.querySelector('.frame') });
+      pulsePool(mv.side);
+    }, T + 80);
+    else if (mv.joined === 2 && !S.over) setTimeout(function () { Kit.sfx('good', 0.6); pulsePool(mv.side); }, T + 40);
+    if (mv.n >= 6 && !S.over && mv.joined < 3) setTimeout(function () { Kit.callout(mv.n + ' squares in one move'); }, T + 60);
+  }
+
+  // ── The end ──────────────────────────────────────────────────────────────
+  function endLine() {
+    if (S.why === 'rep') return 'The same position came up a third time, so the game is a draw.';
+    if (S.why === 'stuck') return 'Neither player could move, so the game is a draw.';
+    if (S.why === 'both') return S.win ? 'One move joined both players’ pieces at once, and the player who moved wins.' : 'One move joined both players’ pieces at once, so the game is a draw.';
+    var w = pl(S.win), l = pl(-S.win), last = S.last;
+    if (last && last.side !== S.win) return (nm(l) === 'You' ? 'Your' : Kit.poss(l.name)) + ' capture left ' + (nm(w) === 'You' ? 'your' : Kit.poss(w.name)) + ' pieces all in one group.';
+    var k = C.pieces(S.b, S.win);
+    return k === 1 ? (nm(w) === 'You' ? 'You are' : w.name + ' is') + ' down to one piece, and one piece is a group.' : 'All ' + k + ' of ' + (nm(w) === 'You' ? 'your' : Kit.poss(w.name)) + ' pieces are joined in one group.';
+  }
+  function highlights() {
+    var hl = [], w = S.win ? pl(S.win) : null;
+    hl.push(endLine().replace(/\.$/, ''));
+    if (w) {
+      var kw = C.pieces(S.b, S.win), kl = C.pieces(S.b, -S.win);
+      if (kw < kl) hl.push(w.name + ' won with ' + kw + ' pieces against ' + kl);
+      if (S.last && S.last.side === S.win && S.last.cap) hl.push('The winning move was a capture');
+      if (S.last && S.last.side === S.win && S.last.joined >= 3) hl.push('The winning move joined ' + num(S.last.joined) + ' groups at once');
+    }
+    [BLACK, WHITE].forEach(function (sd) {
+      var p = pl(sd);
+      if (S.bestJoin[sd] >= 3 && !(S.last && S.last.side === sd && S.last.joined === S.bestJoin[sd] && S.win === sd)) hl.push(p.name + ' joined ' + num(S.bestJoin[sd]) + ' groups in one move');
+      if (S.caps[sd]) hl.push(p.name + ' captured ' + S.caps[sd] + ' piece' + (S.caps[sd] === 1 ? '' : 's'));
+      if (S.longest[sd] >= 6) hl.push(p.name + ' moved a piece ' + S.longest[sd] + ' squares at once');
+      if (S.passes && S.passes[sd]) hl.push(p.name + ' had to pass ' + (S.passes[sd] === 1 ? 'once' : S.passes[sd] + ' times'));
+    });
+    if (vsCpu()) hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
+    if (S.tie === 'mover') hl.push('A move that joined both sides at once would win for the player who moved');
+    return hl;
+  }
+  function detail() {
+    var rows = [];
+    for (var r = 0; r < 8; r++) { var row = ''; for (var c = 0; c < 8; c++) { var v = S.b[r * 8 + c]; row += v === BLACK ? 'b' : v === WHITE ? 'w' : '.'; } rows.push(row); }
+    return { grid: rows, mv: (S.ml || []).join(' '), win: S.win === BLACK ? 'b' : S.win === WHITE ? 'w' : '', why: S.why || '', tie: S.tie,
+      sides: S.players.map(function (p) { return p.side === BLACK ? 'b' : 'w'; }).join(''), caps: [S.caps['1'] || 0, S.caps['-1'] || 0],
+      gl: (S.gl || []).join(' '), last: S.last ? S.last.t : -1 };
+  }
+  // The last group joining: the winner's pieces light one after another out from the piece that moved
+  function winWave() {
+    if (!S.win) return 0;
+    var g = C.groups(S.b, S.win)[0] || [], start = S.last && S.b[S.last.t] === S.win ? S.last.t : g[0], dist = {}, q = [start];
+    dist[start] = 0;
+    while (q.length) { var x = q.shift(); g.forEach(function (y) { if (dist[y] == null && Math.abs((x >> 3) - (y >> 3)) <= 1 && Math.abs((x & 7) - (y & 7)) <= 1) { dist[y] = dist[x] + 1; q.push(y); } }); }
+    var mx = 0;
+    g.forEach(function (s) {
+      var p = pcEl(s); if (!p) return;
+      var d = dist[s] || 0; if (d > mx) mx = d;
+      setTimeout(function () { p.classList.add('glow'); if (d % 2 === 0) Kit.sfx('tick', 0.5); }, d * 110);
+    });
+    var pool = document.querySelector('.pool svg g.s' + (S.win === BLACK ? 'b' : 'w'));
+    if (pool) setTimeout(function () { pool.classList.add('won'); }, mx * 110);
+    return mx * 110 + 500;
+  }
+  function finish() {
+    save(); clearSave(); render();
+    var w = S.win ? pl(S.win) : null, l = S.win ? pl(-S.win) : null;
+    var wave = winWave();
+    var hl = highlights();
+    Kit.record(KEY, {
+      started: S.started, mode: vsCpu() ? 'vs Computer (' + LEVEL_NAME[S.level] + ')' : 'Pass & play',
+      players: S.players.map(function (p) { return { name: p.name + ' (' + colorName(p.side) + ')', score: C.pieces(S.b, p.side), cpu: p.cpu }; }),
+      winner: w ? w.name + ' (' + colorName(w.side) + ')' : null,
+      highlights: hl, detail: detail()
+    });
+    setTimeout(function () {
+      if (w) {
+        Kit.sfx('sparkle'); Kit.haptic('success');
+        var k = C.pieces(S.b, S.win);
+        var mvs = Math.ceil(S.n / 2), wn = nm(w);
+        Kit.moment({ title: k === 1 ? 'One piece left' : 'All ' + k + ' joined', line: (wn === 'You' ? 'You' : wn) + ' joined every piece in about ' + mvs + ' moves.', icon: 'trophy', color: S.win === BLACK ? '#2a2a30' : '#ece7dc', at: document.querySelector('.frame') });
+      } else if (S.why === 'both') { Kit.sfx('good'); Kit.moment({ title: 'Both joined at once', line: endLine(), icon: 'users', at: document.querySelector('.frame') }); }
+    }, wave);
+    setTimeout(function () {
+      var lose = w && (w.cpu || NET && !isMe(w));
+      Kit.win({
+        icon: !w ? 'users' : lose ? 'bot' : 'trophy',
+        title: !w ? 'It’s a draw' : lose ? w.name + ' wins this one' : nm(w) === 'You' ? 'You win!' : w.name + ' wins!',
+        sub: endLine(),
+        rank: S.players.slice().sort(function (a, c) { return (S.win === c.side) - (S.win === a.side); }).map(function (p) { return { name: p.name, me: isMe(p), score: C.groups(S.b, p.side).length === 1 ? 'Joined' : C.groups(S.b, p.side).length + ' groups', color: p.side === BLACK ? '#2a2a30' : '#f1efe9' }; }),
+        lose: !!lose,
+        again: function () { newGame(null, true); },
+        look: true,
+        setup: function () { cancelThink(); clearSave(); showSetup(); }
+      });
+    }, wave + 2400);
+  }
+  function undo() {
+    if (!S || !S.b) return;
+    if (S.over) return Kit.toast('The game is over');
+    var cpu = vsCpu();
+    if (!S.hist.some(function (h) { return !h.cpu; })) return Kit.toast('Nothing to undo');
+    cancelThink(); S.busy = false;
+    var h, hist = S.hist;
+    while (hist.length) { h = hist.pop(); if (!cpu || !h.cpu) break; }
+    S = h.s; S.hist = hist; S.busy = false; sel = -1;
+    Kit.sfx('whoosh'); save(); render(); maybeCpu();
+  }
+  function maybeCpu() {
+    if (NET || !S || S.over || !pl(S.turn).cpu || S.busy) return;
+    S.busy = true; paintStatus();
+    var t0 = Date.now(), myN = S.n, L = Object.assign({}, C.LEVELS[S.level] || C.LEVELS.normal, { tie: S.tie, seed: Math.floor(Math.random() * 1e9) });
+    think(S.b, S.turn, L, function (res) {
+      if (!S || S.n !== myN) return;
+      setTimeout(function () {
+        if (!S || S.n !== myN) return;
+        S.busy = false;
+        if (res && res.move) play(res.move.f, res.move.t, true);
+      }, Math.max(0, 700 - (Date.now() - t0)));
+    });
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────
+  var bdEl, poolEl, raysEl, pcsEl, marksEl, topBar, botBar, turnEl, lastG = {};
+  function bottomSide() { if (NET) return NET.seat >= 0 ? S.players[NET.seat].side : BLACK; return vsCpu() ? S.players.filter(function (p) { return !p.cpu; })[0].side : BLACK; }
+  function canAct() { return S && !S.over && !S.busy && (NET ? !LEFT && NET.myTurn() : !pl(S.turn).cpu); }
+  function pcEl(s) { return pcsEl && pcsEl.querySelector('.pc[data-s="' + s + '"]'); }
+  function render(anim) {
+    if (!S || !S.b) return;
+    app.innerHTML = ''; app.classList.add('ipl');
+    var col = el('div', { class: 'cb-col' });
+    topBar = el('div', { class: 'pbar top' }); botBar = el('div', { class: 'pbar bot' });
+    var frame = el('div', { class: 'frame' });
+    bdEl = el('div', { class: 'bd', role: 'grid', 'aria-label': 'Lines of Action board' });
+    for (var s = 0; s < 64; s++) {
+      (function (s) {
+        var q = el('div', { class: 'sq ' + (((s >> 3) + (s & 7)) % 2 ? 'd' : 'l'), 'data-s': s, role: 'gridcell', 'aria-label': C.sqName(s) });
+        q.addEventListener('click', function () { tap(s); });
+        bdEl.appendChild(q);
+      })(s);
+    }
+    poolEl = el('div', { class: 'layer pool' }); raysEl = el('div', { class: 'layer rays' }); pcsEl = el('div', { class: 'layer pcs' }); marksEl = el('div', { class: 'layer marks' });
+    [poolEl, raysEl, pcsEl, marksEl].forEach(function (n) { bdEl.appendChild(n); });
+    frame.appendChild(bdEl);
+    col.appendChild(topBar); col.appendChild(frame); col.appendChild(botBar);
+    turnEl = el('div', { class: 'turn' }); col.appendChild(turnEl);
+    var acts = el('div', { class: 'acts' });
+    if (NET) { if (S.over || LEFT) acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: LEFT ? 'Back to the lobby' : 'Play again', onclick: netAgain })); }
+    else if (S.over) acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Play again', onclick: function () { newGame(null, true); } }));
+    else acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('undo') + '<span>Undo</span>', onclick: undo }));
+    col.appendChild(acts);
+    col.appendChild(el('div', { class: 'room', 'aria-label': 'This game and past games' }));
+    col.appendChild(el('div', { class: 'rulechip', text: S.tie === 'mover' ? 'If one move joins both sides, the mover wins' : 'If one move joins both sides, it’s a draw' }));
+    app.appendChild(col);
+    paintStatus();
+    fit();
+    paintBoard(anim);
+  }
+  function stone(side, s) {
+    var n = el('div', { class: 'pc ' + (side === BLACK ? 'b' : 'w'), 'data-s': s }, [el('span', { class: 'st' })]);
+    n.style.left = (s & 7) * 12.5 + '%'; n.style.top = (s >> 3) * 12.5 + '%';
+    return n;
+  }
+  function paintBoard(anim) {
+    var mv = anim && anim.mv;
+    // the last move's squares
+    Array.prototype.forEach.call(bdEl.querySelectorAll('.sq'), function (q) { q.classList.remove('lf', 'lt', 'sel'); });
+    if (S.last) { bdEl.children[S.last.f].classList.add('lf'); bdEl.children[S.last.t].classList.add('lt'); }
+    if (sel >= 0) bdEl.children[sel].classList.add('sel');
+    pcsEl.innerHTML = '';
+    var mineOn = canAct() && sel < 0 && S.n === 0 && !NET;
+    for (var s = 0; s < 64; s++) {
+      var v = S.b[s]; if (!v) continue;
+      var p = stone(v, s);
+      if (s === sel) p.classList.add('lift');
+      if (mineOn && v === S.turn) p.classList.add('mine-on');
+      pcsEl.appendChild(p);
+    }
+    paintPool(mv);
+    paintRays();
+    if (mv) slide(mv);
+  }
+  // The groups: a soft shadow under each group of one color, joining the pieces that touch
+  function poolSvg(side, b) {
+    var out = '', done = {};
+    for (var s = 0; s < 64; s++) {
+      if (b[s] !== side) continue;
+      var r = s >> 3, c = s & 7, x = c + 0.5, y = r + 0.5;
+      out += '<circle cx="' + x + '" cy="' + y + '" r=".45"/>';
+      [[0, 1], [1, -1], [1, 0], [1, 1]].forEach(function (d) {
+        var rr = r + d[0], cc = c + d[1]; if (rr > 7 || cc < 0 || cc > 7) return;
+        if (b[rr * 8 + cc] === side) out += '<line x1="' + x + '" y1="' + y + '" x2="' + (cc + 0.5) + '" y2="' + (rr + 0.5) + '"/>';
+      });
+    }
+    return out;
+  }
+  function paintPool(mv) {
+    var b = mv ? S.b : S.b;
+    poolEl.innerHTML = '<svg viewBox="0 0 8 8" aria-hidden="true">' +
+      '<g class="sb" fill="#06060a" stroke="#06060a" stroke-width=".9" stroke-linecap="round" opacity=".34">' + poolSvg(BLACK, b) + '</g>' +
+      '<g class="sw" fill="#fffaf0" stroke="#fffaf0" stroke-width=".9" stroke-linecap="round" opacity=".3">' + poolSvg(WHITE, b) + '</g></svg>';
+  }
+  function pulsePool(side) {
+    var g = poolEl && poolEl.querySelector('g.s' + (side === BLACK ? 'b' : 'w'));
+    if (g && g.animate) g.animate([{ opacity: g.getAttribute('opacity') }, { opacity: side === BLACK ? 0.6 : 0.62 }, { opacity: g.getAttribute('opacity') }], { duration: 900, easing: 'ease-in-out' });
+  }
+  // The lines of the chosen piece: each of its four lines lit edge to edge, a landing for each way it can go with the
+  // number of pieces on that line (how far it moves), a capture ringed, and where the other player's piece blocks the way
+  function paintRays() {
+    raysEl.innerHTML = ''; marksEl.innerHTML = '';
+    if (sel < 0 || !S.b[sel]) return;
+    var rs = C.rays(S.b, sel), r0 = sel >> 3, c0 = sel & 7, x0 = c0 + 0.5, y0 = r0 + 0.5;
+    var under = '', over = '', axes = {};
+    rs.forEach(function (ry) {
+      var d = C.DIRS[ry.d], ax = Math.min(ry.d, 7 - ry.d);
+      if (!axes[ax]) {
+        axes[ax] = 1;
+        var line = C.lineSquares(sel, d[0], d[1]), a = line[0], z = line[line.length - 1];
+        under += '<line class="band" x1="' + ((a & 7) + 0.5) + '" y1="' + ((a >> 3) + 0.5) + '" x2="' + ((z & 7) + 0.5) + '" y2="' + ((z >> 3) + 0.5) + '"/>';
+        // the pieces this line counts get a small ring
+        line.forEach(function (q) { if (S.b[q] && q !== sel) under += '<circle class="cnt" cx="' + ((q & 7) + 0.5) + '" cy="' + ((q >> 3) + 0.5) + '" r=".44"/>'; });
+      }
+      if (ry.why === 'edge') return;
+      var tx = (ry.t & 7) + 0.5, ty = (ry.t >> 3) + 0.5;
+      if (ry.ok) {
+        under += '<line class="go" x1="' + x0 + '" y1="' + y0 + '" x2="' + tx + '" y2="' + ty + '"/>';
+        over += '<g class="land' + (ry.cap ? ' cap' : '') + '" data-t="' + ry.t + '">' + (ry.cap ? '<circle class="ring" cx="' + tx + '" cy="' + ty + '" r=".44"/>' : '') +
+          '<circle class="dot" cx="' + tx + '" cy="' + ty + '" r="' + (ry.cap ? '.2' : '.24') + '"/><text x="' + tx + '" y="' + (ty + 0.01) + '">' + ry.n + '</text></g>';
+      } else {
+        var bx = (ry.block & 7) + 0.5, by = (ry.block >> 3) + 0.5;
+        under += '<line class="no" x1="' + x0 + '" y1="' + y0 + '" x2="' + bx + '" y2="' + by + '"/>';
+        // the mark sits on the blocker's near edge, toward the chosen piece
+        var ux = Math.sign(x0 - bx) * 0.36, uy = Math.sign(y0 - by) * 0.36;
+        over += '<g class="blk"><circle cx="' + (bx + ux) + '" cy="' + (by + uy) + '" r=".15"/><path d="M' + (bx + ux - 0.07) + ' ' + (by + uy - 0.07) + 'l.14 .14M' + (bx + ux + 0.07) + ' ' + (by + uy - 0.07) + 'l-.14 .14"/></g>';
+      }
+    });
+    raysEl.innerHTML = '<svg viewBox="0 0 8 8" aria-hidden="true"><style>' +
+      '.band{stroke:rgba(255,226,140,.26);stroke-width:.62;stroke-linecap:round;}' +
+      '.cnt{fill:none;stroke:rgba(255,226,140,.75);stroke-width:.045;}' +
+      '.go{stroke:#ffd75a;stroke-width:.075;stroke-linecap:round;filter:drop-shadow(0 0 .05px #000);}' +
+      '.no{stroke:rgba(30,20,10,.55);stroke-width:.06;stroke-dasharray:.12 .1;stroke-linecap:round;}</style>' + under + '</svg>';
+    marksEl.innerHTML = '<svg viewBox="0 0 8 8" aria-hidden="true"><style>' +
+      '.land .dot{fill:#ffd75a;stroke:#5a3b06;stroke-width:.035;}' +
+      '.land.cap .dot{fill:#ff6a4d;stroke:#4a0f05;}' +
+      '.land .ring{fill:none;stroke:#ff6a4d;stroke-width:.07;animation:lpulse 1s ease-in-out infinite alternate;}' +
+      '.land text{font:800 .26px var(--display,system-ui);fill:#2b1a02;text-anchor:middle;dominant-baseline:central;}' +
+      '.land.cap text{fill:#fff;}' +
+      '.land{animation:lin .22s var(--spring,ease-out) both;transform-box:fill-box;transform-origin:center;}' +
+      '.blk circle{fill:#2a1a0e;stroke:rgba(255,255,255,.5);stroke-width:.03;}.blk path{stroke:#ff8f7a;stroke-width:.045;stroke-linecap:round;}' +
+      '@keyframes lin{from{opacity:0;transform:scale(.4);}}@keyframes lpulse{to{stroke-width:.03;opacity:.6;}}</style>' + over + '</svg>';
+  }
+  // the piece glides along its line from where it was; a captured piece waits under it and bursts as it lands
+  function slide(mv) {
+    var p = pcEl(mv.t); if (!p || !p.animate) return;
+    var dx = ((mv.f & 7) - (mv.t & 7)) * 100, dy = ((mv.f >> 3) - (mv.t >> 3)) * 100, T = moveT(mv);
+    if (mv.cap) {
+      var ghost = stone(-mv.side, mv.t); ghost.classList.add('ghost'); pcsEl.insertBefore(ghost, pcsEl.firstChild);
+      setTimeout(function () { ghost.classList.add('hit'); setTimeout(function () { ghost.remove(); }, 520); }, T - 40);
+    }
+    p.style.zIndex = 3;
+    p.animate([
+      { transform: 'translate(' + dx + '%,' + dy + '%) scale(1.06)' },
+      { transform: 'translate(' + dx * 0.5 + '%,' + (dy * 0.5 - 18) + '%) scale(1.16)', offset: 0.5 },
+      { transform: 'translate(0,0) scale(1)' }
+    ], { duration: T, easing: 'cubic-bezier(.35,.1,.3,1)' }).onfinish = function () { p.style.zIndex = ''; };
+    var st = p.querySelector('.st');
+    if (st && st.animate) setTimeout(function () { st.animate([{ transform: 'scale(1.08,.9)' }, { transform: 'none' }], { duration: 220, easing: 'ease-out' }); }, T - 20);
+  }
+  // a captured stone breaks into a few chips that scatter over the board
+  function burst(s, side) {
+    if (!bdEl || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var x = (s & 7) * 12.5 + 6.25, y = (s >> 3) * 12.5 + 6.25;
+    for (var i = 0; i < 9; i++) {
+      var sh = el('span', { class: 'shard' });
+      sh.style.left = x + '%'; sh.style.top = y + '%';
+      sh.style.background = side === BLACK ? (i % 2 ? '#3a3a42' : '#111114') : (i % 2 ? '#f6f2e9' : '#d8d1c2');
+      bdEl.appendChild(sh);
+      var a = i / 9 * Math.PI * 2 + Math.random() * 0.4, d = 140 + Math.random() * 160;
+      if (sh.animate) sh.animate([{ transform: 'translate(-50%,-50%) rotate(0)', opacity: 1 }, { transform: 'translate(' + (Math.cos(a) * d - 50) + '%,' + (Math.sin(a) * d - 50) + '%) rotate(' + (200 + i * 40) + 'deg)', opacity: 0 }], { duration: 520 + Math.random() * 200, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' }).onfinish = (function (n) { return function () { n.remove(); }; })(sh);
+      else sh.remove();
+    }
+    var b = bdEl; b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake');
+  }
+  function bar(node, side) {
+    var p = pl(side), on = !S.over && S.turn === side, ng = C.groups(S.b, side).length, np = C.pieces(S.b, side);
+    node.className = 'pbar ' + (node === topBar ? 'top' : 'bot') + (on ? ' on' : '');
+    var me = NET ? isMe(p) : false;
+    var sub = on && p.cpu && S.busy ? '<span class="think">Thinking <i></i><i></i><i></i></span>' : on ? (me ? 'Your move as ' + colorName(side) : colorName(side) + ' to move') : np + ' piece' + (np === 1 ? '' : 's');
+    node.innerHTML = '';
+    node.appendChild(el('span', { class: 'tok' }, [el('span', { class: 'mini ' + (side === BLACK ? 'b' : 'w') })]));
+    node.appendChild(el('div', { class: 'who' }, [el('span', { class: 'nm', html: (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(p.name) + '</span>' }), el('span', { class: 'sub', html: sub })]));
+    var gb = el('b', { text: ng === 1 ? '1' : String(ng) });
+    if (lastG[side] != null && ng < lastG[side]) gb.classList.add('bump');
+    lastG[side] = ng;
+    var tray = el('div', { class: 'tray', 'aria-hidden': 'true' });
+    for (var k = 0; k < 12; k++) tray.appendChild(el('i', { class: k < np ? (side === BLACK ? 'b' : 'w') : 'gone' }));
+    node.appendChild(el('div', { class: 'grp' + (ng === 1 ? ' one' : ''), 'aria-label': ng === 1 ? 'All joined' : ng + ' groups' }, [gb, el('small', { text: ng === 1 ? 'Joined' : 'groups' })]));
+    node.appendChild(tray);
+  }
+  function paintStatus() {
+    if (!turnEl) return;
+    var bs = bottomSide(); bar(topBar, -bs); bar(botBar, bs);
+    var p = pl(S.turn);
+    turnEl.innerHTML = '';
+    if (NET && LEFT) { turnEl.appendChild(el('span', { text: LEFT.text || 'The other player left' })); return; }
+    if (NET) return netStatus();
+    if (S.over) { turnEl.appendChild(el('span', { text: S.win ? (nm(pl(S.win)) === 'You' ? 'You win' : pl(S.win).name + ' wins') : 'A draw' })); return; }
+    turnEl.appendChild(el('span', { class: 'dot' }));
+    var txt = p.cpu ? p.name + ' is thinking…' : (nm(p) === 'You' ? 'Your turn' : Kit.poss(p.name) + ' turn');
+    if (S.last && S.last.pass != null) { var pp = pl(S.last.pass); txt = (nm(pp) === 'You' ? 'You have no move. ' : pp.name + ' has no move. ') + (p.cpu ? p.name + ' goes again' : nm(p) === 'You' ? 'It’s your turn again' : Kit.poss(p.name) + ' turn again'); }
+    turnEl.appendChild(el('span', { text: txt }));
+  }
+  function choose(s) {
+    sel = s; Kit.sfx('tick'); Kit.haptic('light');
+    paintBoard(null);
+  }
+  function tap(s) {
+    if (!S || S.over) return;
+    if (!canAct()) {
+      if (S.b[s] && NET && !NET.myTurn()) { Kit.haptic('error'); Kit.toast('It’s ' + Kit.poss(pl(S.turn).name) + ' turn'); }
+      return;
+    }
+    var side = S.turn;
+    if (sel >= 0 && s !== sel) {
+      var m = C.legal(S.b, side, sel, s);
+      if (m) { if (NET) return netMove(sel, s); return play(sel, s); }
+    }
+    if (S.b[s] === side) { if (s === sel) { sel = -1; Kit.sfx('tap', 0.5); paintBoard(null); } else choose(s); return; }
+    if (sel >= 0) {
+      // a square the chosen piece can't reach: say why where it helps, and put the piece down
+      var r = C.rays(S.b, sel).filter(function (x) { return x.t === s || x.block === s; })[0];
+      Kit.haptic('error');
+      if (r && r.why === 'enemy') Kit.toast('A piece can’t jump over the other player’s pieces');
+      else if (S.b[s] === -side) Kit.toast('The line doesn’t have the right number of pieces to reach there');
+      sel = -1; paintBoard(null); return;
+    }
+    if (S.b[s] === -side) { Kit.haptic('error'); Kit.toast('Tap one of your own pieces'); }
+  }
+  // A large window (a computer's, no phone's or tablet's: the kit's own test): the board takes the window's height, and
+  // the column at the left holds the room: the moves of this game, each side's groups over the game, and past games here
+  function deskWin() {
+    if (Kit.inDemo && Kit.inDemo()) return false;
+    var W = window.innerWidth, H = window.innerHeight;
+    return W >= 480 && H > 520 && (Math.max(W, H) > 1024 || Math.min(W, H) > 768);
+  }
+  function moveText(m) { var x = /^([a-h][1-8])([-x])([a-h][1-8])$/.exec(m); return x ? x[1].toUpperCase() + (x[2] === 'x' ? ' takes ' : ' to ') + x[3].toUpperCase() : m; }
+  function paintRoom(on) {
+    var room = app.querySelector('.room'); if (!room) return;
+    room.innerHTML = ''; if (!on || !S) return;
+    // the moves, newest first; who moved is read from the square the piece landed on in the order of play
+    var ml = S.ml || [], first = BLACK, side = first, rows = [];
+    var b = C.startBoard();
+    ml.forEach(function (m, i) {
+      var x = /^([a-h][1-8])[-x]([a-h][1-8])$/.exec(m); var f = x ? C.sqOf(x[1]) : -1, t = x ? C.sqOf(x[2]) : -1;
+      var sd = f >= 0 && b[f] ? b[f] : side;
+      if (f >= 0) { b[t] = b[f]; b[f] = 0; }
+      rows.push({ n: i + 1, side: sd, t: moveText(m), cap: m.indexOf('x') > 0 });
+      side = -sd;
+    });
+    var mv = el('section', { class: 'pn mv' }, [el('h4', { text: 'This game' })]);
+    var list = el('ol', { class: 'mvl' });
+    if (!rows.length) list.appendChild(el('li', { class: 'none', text: 'No moves yet. Black moves first.' }));
+    rows.slice().reverse().forEach(function (r) {
+      list.appendChild(el('li', { class: r.cap ? 'cap' : '' }, [el('span', { class: 'no', text: String(r.n) }), el('i', { class: 'mini ' + (r.side === BLACK ? 'b' : 'w') }), el('span', { class: 'who', text: pl(r.side).name }), el('b', { text: r.t })]));
+    });
+    mv.appendChild(list);
+    room.appendChild(mv);
+    // each side's groups over the game, toward 1 (the dashed line)
+    var gl = S.gl || [];
+    if (gl.length > 1) {
+      var gb = gl.map(function (x) { return +String(x).charAt(0); }), gw = gl.map(function (x) { return +String(x).charAt(1); });
+      var Wd = 300, Hd = 80, P = 6, hi = Math.max.apply(null, gb.concat(gw).concat([4]));
+      var px = function (i) { return P + i * (Wd - 2 * P) / Math.max(1, gl.length - 1); }, py = function (v) { return P + (v - 1) / (hi - 1) * (Hd - 2 * P); };
+      var line = function (v, c, w) { return '<polyline fill="none" stroke="' + c + '" stroke-width="' + w + '" stroke-linejoin="round" stroke-linecap="round" points="' + v.map(function (y, i) { return px(i).toFixed(1) + ',' + py(y).toFixed(1); }).join(' ') + '"/>'; };
+      var svg = '<svg viewBox="0 0 ' + Wd + ' ' + Hd + '" preserveAspectRatio="none" aria-hidden="true"><line x1="' + P + '" x2="' + (Wd - P) + '" y1="' + py(1) + '" y2="' + py(1) + '" stroke="rgba(255,214,90,.55)" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>' +
+        line(gw, '#f4f1e8', 2.5) + line(gb, '#6e6e7a', 3) + '</svg>';
+      room.appendChild(el('section', { class: 'pn gr', 'data-give': '1' }, [el('h4', { text: 'Groups, move by move' }), el('div', { class: 'chart', html: svg }),
+        el('p', { class: 'key', text: 'The lower a line, the closer that side is to joining. The dashed line is one group.' })]));
+    }
+    // past games on this device
+    var past = []; try { past = (GameHistory.load(KEY) || []).slice(); } catch (e) {}
+    if (past.length) {
+      var wins = {}, names = [];
+      past.forEach(function (g) { var w = String(g.winner || '').replace(/ \((Black|White)\)$/, ''); if (!w) return; if (!wins[w]) { wins[w] = 0; names.push(w); } wins[w]++; });
+      names.sort(function (a, c) { return wins[c] - wins[a]; });
+      var pg = el('section', { class: 'pn pg', 'data-give': '2' }, [el('h4', { text: 'Past games' })]);
+      var wl = el('ul', { class: 'wins' });
+      names.slice(0, 4).forEach(function (n) { wl.appendChild(el('li', null, [el('span', { text: n }), el('b', { text: wins[n] + (wins[n] === 1 ? ' win' : ' wins') })])); });
+      var draws = past.filter(function (g) { return !g.winner; }).length;
+      if (draws) wl.appendChild(el('li', null, [el('span', { text: 'Draws' }), el('b', { text: String(draws) })]));
+      pg.appendChild(wl);
+      var last = past[0], lw = last && String(last.winner || '').replace(/ \((Black|White)\)$/, '');
+      if (last) pg.appendChild(el('p', { class: 'key', text: 'Last game: ' + (lw ? lw + ' won' : 'a draw') + (last._date ? ' on ' + new Date(last._date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : '') + '.' }));
+      room.appendChild(pg);
+    }
+    // give up whole parts until it fits: the chart, then past games, then the oldest moves
+    var give = function () { return room.scrollHeight > room.clientHeight + 1; };
+    ['1', '2'].forEach(function (k) { if (give()) { var n = room.querySelector('[data-give="' + k + '"]'); if (n) n.remove(); } });
+    while (give() && list.children.length > 1) list.removeChild(list.lastChild);
+    if (give()) room.innerHTML = '';
+  }
+  // Sizes for the shape of the screen
+  function fit() {
+    var col = app.querySelector('.cb-col'); if (!col || !app.classList.contains('ipl')) return;
+    var W = window.innerWidth, Hh = window.innerHeight, land = W > Hh, low = land && Hh < 560;
+    app.classList.toggle('la-land', land); app.classList.toggle('la-low', low); app.classList.toggle('la-tall', !land && W >= 700);
+    app.classList.toggle('la-port', !land); app.classList.toggle('la-short', !land && Hh < 640);
+    var desk = deskWin(); app.classList.toggle('la-desk', !!desk && land); app.classList.toggle('la-deskp', !!desk && !land);
+    var top = app.getBoundingClientRect().top + (window.scrollY || 0);
+    app.style.setProperty('--avh', Math.max(300, Hh - top) + 'px');
+    var cs = getComputedStyle(app), iw = app.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), ih = app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    if (land) {
+      var sw = low ? Math.min(250, Math.max(200, W * 0.26)) : Math.min(330, Math.max(260, W * 0.27)), cg = low ? 18 : 28;
+      if (desk) { sw = Math.round(Math.min(520, Math.max(300, W * 0.24))); cg = 40; }
+      app.style.setProperty('--sw', sw + 'px'); app.style.setProperty('--cg', cg + 'px');
+      app.style.setProperty('--bsz', Math.floor(Math.max(200, Math.min(ih, iw - sw - cg))) + 'px');
+    } else {
+      var other = 0, gap = parseFloat(getComputedStyle(col).rowGap) || 8;
+      Array.prototype.forEach.call(col.children, function (c) { if (!c.classList.contains('frame') && getComputedStyle(c).display !== 'none') other += c.offsetHeight + gap; });
+      var cw = Math.floor(Math.max(240, Math.min(iw, desk ? 1e5 : 760, ih - other)));
+      app.style.setProperty('--cw', cw + 'px');
+      var over = col.scrollHeight - ih;
+      if (over > 0) app.style.setProperty('--cw', Math.max(180, cw - over) + 'px');
+      // the room the board can't use goes into the gaps between the parts (up to 34px each), not into one empty band
+      app.style.setProperty('--gp', '10px');
+      var kids = Array.prototype.filter.call(col.children, function (c) { return getComputedStyle(c).display !== 'none'; }), used = 0;
+      kids.forEach(function (c) { used += c.offsetHeight; });
+      var free = ih - used - 10 * (kids.length - 1);
+      if (free > 0) app.style.setProperty('--gp', Math.min(34, 10 + free / (kids.length + 1)) + 'px');
+    }
+    paintRoom(desk && land);
+  }
+  var lastWH = window.innerWidth + 'x' + window.innerHeight;
+  window.addEventListener('resize', function () {
+    var wh = window.innerWidth + 'x' + window.innerHeight; if (wh === lastWH) return; lastWH = wh;
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (app.classList.contains('ipl')) Kit.glide(fit); else fit();
+  });
+
+  // ── Online ───────────────────────────────────────────────────────────────
+  // Seat 0 plays Black in the first game; each new game at the table swaps colors. The table's state is the core's
+  // state with the players and the counts the history needs; it has no undo snapshots.
+  function netSeatOf(st, side) { return st.players[0].side === side ? 0 : 1; }
+  function netOpts() {
+    var o = { side: 'b', tie: 'draw' };
+    try { var g = JSON.parse(localStorage.getItem('gn_setup_' + KEY)); if (g && g.options) { if (g.options.side === 'w') o.side = 'w'; if (g.options.tie === 'mover') o.tie = 'mover'; } } catch (e) {}
+    return o;
+  }
+  function netStart(players, opts, last) {
+    var s0 = last && last.players ? -last.players[0].side : opts && opts.side === 'w' ? WHITE : BLACK;
+    var st = C.newGame({ tie: opts && opts.tie === 'mover' ? 'mover' : 'draw' });
+    st.mode = 'online'; st.level = 'normal';
+    st.players = players.map(function (p, i) { return { name: p.name, cpu: false, side: i === 0 ? s0 : -s0 }; });
+    st.caps = { '1': 0, '-1': 0 }; st.bestJoin = { '1': 0, '-1': 0 }; st.longest = { '1': 0, '-1': 0 };
+    st.gl = [[C.groups(st.b, 1).length, C.groups(st.b, -1).length].join('')];
+    st.wins = last && last.wins ? last.wins.slice() : [0, 0, 0]; st.started = Date.now();
+    return st;
+  }
+  function netApply(st, f, t) {
+    if (st.over) return null;
+    var side = st.turn, g0 = C.groups(st.b, -side).length, mv = C.play(st, f, t);
+    if (!mv) return null;
+    if (mv.cap) st.caps[side]++;
+    if (mv.joined > st.bestJoin[side]) st.bestJoin[side] = mv.joined;
+    if (mv.n > st.longest[side]) st.longest[side] = mv.n;
+    st.gl.push([C.groups(st.b, 1).length, C.groups(st.b, -1).length].join(''));
+    if (st.ml.length > 300) st.ml = st.ml.slice(-300);
+    var rk = Object.keys(st.reps); if (rk.length > 260) { var keep = {}; rk.slice(-200).forEach(function (k) { keep[k] = st.reps[k]; }); st.reps = keep; }
+    if (st.over) st.wins[st.win ? netSeatOf(st, st.win) : 2]++;
+    mv.g0 = g0;
+    return { state: st, mv: mv };
+  }
+  function netMove(f, t) { sel = -1; NET.act(function (st) { return netApply(st, f, t); }); }
+  function netStatus() {
+    var p = pl(S.turn), me = NET.seat >= 0 ? S.players[NET.seat] : null;
+    if (S.over) { turnEl.appendChild(el('span', { text: S.win ? (pl(S.win) === me ? 'You win' : pl(S.win).name + ' wins') : 'A draw' })); return; }
+    turnEl.appendChild(el('span', { class: 'dot' }));
+    var txt = p === me ? 'Your turn' : 'Waiting for ' + p.name;
+    if (S.last && S.last.pass != null) { var pp = pl(S.last.pass); txt = (pp === me ? 'You have no move, so ' : pp.name + ' has no move, so ') + (p === me ? 'it’s your turn again' : p.name + ' goes again'); }
+    turnEl.appendChild(el('span', { text: txt }));
+  }
+  function netAgain() { if (!NET) return; if (LEFT) { TurnNet.leave(); TurnNet.open(); } else NET.again(); }
+  function netShow(net, info) {
+    NET = net; cancelThink();
+    if (WINO && (info.again || info.fresh)) { WINO.close(); WINO = null; }
+    S = JSON.parse(JSON.stringify(net.state)); S.busy = false; S.hist = []; sel = -1;
+    LEFT = net.status === 'over' && !S.over && net.result && net.result.left != null ? net.result : null;
+    var tok = ++SHOWN, mv = info.mv && info.mv.f != null && !info.fresh && !info.again ? info.mv : null;
+    if (mv) {
+      render({ mv: mv });
+      var T = moveT(mv);
+      Kit.sfx('whoosh', 0.5);
+      setTimeout(function () { if (tok !== SHOWN) return; Kit.sfx(mv.cap ? 'clash' : 'chip'); Kit.haptic(mv.cap ? 'medium' : 'light'); if (mv.cap) burst(mv.t, -mv.side); }, T - 30);
+      reward(mv, pl(mv.side), isMe(pl(mv.side)), T);
+      if (mv.pass != null && !S.over) setTimeout(function () { if (tok !== SHOWN) return; var pp = pl(mv.pass); Kit.callout(isMe(pp) ? 'You have no move, so you pass' : pp.name + ' has no move and passes'); Kit.sfx('bad'); }, T + 100);
+    } else render(null);
+    if (info.again) { Kit.sfx('deal'); Kit.callout(isMe(pl(BLACK)) ? 'You start' : pl(BLACK).name + ' starts'); }
+    if (S.over || LEFT) setTimeout(function () { if (tok === SHOWN) netEnd(); }, mv ? moveT(mv) + 400 : 150);
+  }
+  function netEnd() {
+    if (!NET || !S) return;
+    var me = NET.seat, left = LEFT;
+    var wi = left ? (left.win && left.win.length ? left.win[0] : -1) : S.win ? netSeatOf(S, S.win) : -1;
+    var w = wi >= 0 ? S.players[wi] : null, key = NET.code + ':' + S.started;
+    var done = NETREC[key]; try { done = done || (JSON.parse(localStorage.getItem('loa_net_rec')) || []).indexOf(key) >= 0; } catch (e) {}
+    var wave = left ? 0 : winWave();
+    if (!done && !left) {
+      NETREC[key] = 1;
+      try { var rl = JSON.parse(localStorage.getItem('loa_net_rec')) || []; rl.push(key); localStorage.setItem('loa_net_rec', JSON.stringify(rl.slice(-30))); } catch (e) {}
+      var hl = highlights(); hl.push('Played online at table ' + NET.code);
+      Kit.record(KEY, {
+        started: S.started, mode: 'Online',
+        players: S.players.map(function (p) { return { name: p.name + ' (' + colorName(p.side) + ')', score: C.pieces(S.b, p.side), cpu: false }; }),
+        winner: w ? w.name + ' (' + colorName(w.side) + ')' : null,
+        highlights: hl, detail: detail()
+      });
+    }
+    if (WINO) WINO.close();
+    setTimeout(function () {
+      if (!NET) return;
+      if (w && !left) { Kit.sfx('sparkle'); if (wi === me) Kit.haptic('success'); }
+      WINO = Kit.win({
+        icon: !w ? 'users' : wi === me ? 'trophy' : 'users',
+        title: left ? left.text : !w ? 'It’s a draw' : wi === me ? 'You win!' : w.name + ' wins',
+        sub: left ? '' : endLine(),
+        rank: left ? null : S.players.slice().sort(function (a, c) { return (S.win === c.side) - (S.win === a.side); }).map(function (p) { var g = C.groups(S.b, p.side).length; return { name: p.name, me: isMe(p), score: g === 1 ? 'Joined' : g + ' groups', color: p.side === BLACK ? '#2a2a30' : '#f1efe9' }; }),
+        notes: left ? null : [S.players[0].name + ' has won ' + S.wins[0] + ' and ' + S.players[1].name + ' has won ' + S.wins[1] + (S.wins[2] ? ', with ' + S.wins[2] + (S.wins[2] === 1 ? ' draw' : ' draws') : '') + '.'], notesTitle: 'Games at this table',
+        lose: !!w && wi !== me, againLabel: left ? 'Back to the lobby' : 'Play again',
+        again: function () { WINO = null; netAgain(); },
+        look: { label: 'Look at the board', onClick: function () { WINO = null; } }
+      });
+    }, wave + 1600);
+  }
+  function netLeave() {
+    NET = null; LEFT = null; SHOWN++; if (WINO) { WINO.close(); WINO = null; }
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.b && sv.players && !sv.over) { S = sv; S.busy = false; S.hist = S.hist || []; render(); maybeCpu(); }
+    else showSetup();
+  }
+
+  window.__loa = {
+    C: C, state: function () { return S; }, sel: function () { return sel; },
+    // (a demo or a test: a fresh game for these players, {mode: '2p' | 'cpu', level, tie, players: [{name, cpu, side}]})
+    start: function (cfg) { cancelThink(); newGame({ mode: cfg.mode || '2p', level: cfg.level || 'normal', tie: cfg.tie || 'draw', players: cfg.players }); },
+    // a position: b is 64 numbers or 8 rows of 'b', 'w' and '.'
+    set: function (b, turn) {
+      cancelThink();
+      if (typeof b[0] === 'string') { var rows = b; b = []; rows.join('').split('').forEach(function (ch) { b.push(ch === 'b' ? 1 : ch === 'w' ? -1 : 0); }); }
+      S.busy = false; S.b = b.slice(); S.turn = turn || BLACK; S.hist = []; S.last = null; S.over = false; S.win = null; S.why = null; S.n = 0; S.reps = {}; sel = -1;
+      S.reps[C.key(S.b, S.turn)] = 1;
+      save(); render(); maybeCpu();
+    },
+    tap: tap, play: function (f, t) { play(typeof f === 'string' ? C.sqOf(f) : f, typeof t === 'string' ? C.sqOf(t) : t); }
+  };
+
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.b && saved.players && !saved.over) { S = saved; S.busy = false; S.hist = S.hist || []; render(); maybeCpu(); }
+  else showSetup();
+
+  TurnNet.setup({
+    game: KEY, title: 'Lines of Action', min: 2, max: 2,
+    opts: netOpts, start: netStart,
+    turn: function (st) { return st.over ? [] : [netSeatOf(st, st.turn)]; },
+    over: function (st) {
+      if (!st.over) return null;
+      var w = st.win ? netSeatOf(st, st.win) : -1;
+      return { win: w >= 0 ? [w] : [], text: w >= 0 ? st.players[w].name + ' joined every piece' : 'A draw' };
+    },
+    show: netShow, leave: netLeave
+  });
+})();
+</script>
+</body>
+</html>
