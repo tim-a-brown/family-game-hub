@@ -1842,6 +1842,69 @@ Underlying principles for everything:
   `ghostAt`, `marble`, `hole`, `at`, `desk`, `pend`). The scratchpad's `newgames/boku/` has the scripts (`pos.js` the
   positions, `shots.js`, `touch.js` the demo with real touch or `--auto`, `online.js`).
 
+## Kamisado (2026-11-24; included with Peter Burley's written permission, Burley Games credited)
+
+- **Credit the designer and publisher**: "Kamisado was designed by Peter Burley and is published by Burley Games." stands
+  under the title in the setup (`.km-credit`, hidden only where it would make the setup scroll) and at the foot of How to
+  play; the condition of the permission (Tim's private family app, not distributed or commercialized). The board and
+  towers are our own drawing (eight lacquer inks in an ebony frame with a gold line, towers as turned black-lacquer and
+  ivory pieces seen from above with a jewel of their color set in the top); never the commercial box art, logo or trade
+  dress.
+- `games/kamisado.html` (catalog id `kamisado`, Board), the rules and the computer in `games/kamisado-core.js`
+  (`KamisadoCore`, plain JSON; the page, the computer's Web Worker, the TurnNet table and Node), history
+  `hist/kamisado.js` (hist-view.js loads the core first: the final board with every tower's rank, a replay of every round
+  through `Core.replay`, the rounds of a match, the numbers side by side), demo `games/demos/kamisado.js`.
+  `node scripts/kamisado-sim.js [matches] [--target=1|3|7|15] [--pairs=easy-normal,normal-hard]` (a `rand` skill plays at
+  random, which turns up pushes and deadlocks) checks every step against a plain reading of the rules written there: the
+  board from the color names (each color once in every row and column, orange in each near right corner, the same board
+  from either side), the moves allowed both ways round, ranges by rank, pushes, blocked towers and deadlocks, promotions
+  and points, the regroup order in the rules' own words, the loser starting, and every round replaying from its record.
+- **The rules are Yucata's rules, adapted from the publisher's** (Huch! / Burley Games; the official Burley Games text may
+  still come and should be checked against these). The board is the published arrangement, row 1 from Black's side
+  brown, green, red, yellow, pink, purple, blue, orange (left to right), White's home row orange to brown (`BOARD`);
+  checked on 2026-11-24 against two independent open implementations (qlurkin's PI2C runner, EveryBoard), which agree
+  square for square, and the Mind Sports Olympiad's note that each player has an orange square in the corner nearest
+  them (Wikipedia gives no layout). Yucata offers four boards at random; the original game has one, and only it is here.
+  Black starts the first round with any tower; a tower moves straight or diagonally forward over empty squares (between
+  two towers that touch corner to corner too), at least one square when it can; after that each player moves the tower of
+  the color of the square the other's last tower landed on. A blocked tower moves zero squares and the other player moves
+  again with the color under it (`resolve`); a loop of blocks is a deadlock, lost by the player who made the last move,
+  and the winner's tower of the color that last move ended on is promoted. A tower on the far home row wins the round and
+  is promoted: Sumo (1 point), Double (3), Triple (7), Quadruple (15, which ends any match). The setup's Match: Single
+  round (first to 1, the default), Standard (3), Long (7), Marathon (15). Sumo ranges are 5, 3 and 1 (`RANGE`). **Sumo
+  push**: a Sumo that must move, with the other player's towers straight in front of it, of a lower rank, no more than
+  its rank (1, 2 or 3) and an empty square behind the last, steps one square on and pushes them one back; the other player
+  misses a turn and the pusher moves again with the color under the last tower pushed (`pushOf`, a move string
+  `d4-d5*`). Not on a round's first move. **Regroup** (`regroup`, the move `fill L` / `fill R` by the round's winner, the
+  Defender): each player gathers their towers row by row from their own home row forward, within a row left to right
+  (fill L) or right to left (fill R) as seen from their own seat, and sets them from the brown square at their left (L)
+  or the orange at their right (R). The loser starts the next round. Ranks carry across rounds (`rk` in the state).
+- Computer (`search`, `LEVELS`): negamax with alpha-beta over the one tower that must move (pushes included), blocks and
+  deadlocks played out exactly; the position weighed by each tower's open lanes to the goal (within its range), Sumo
+  ranks, how far the towers have come and the mobility of the tower to move. Easy depth 2 with noise, Normal depth 5,
+  Hard iterative deepening in 1.8 s (depth 9 to 14 in the opening). The Defender's fill (`chooseFill`) is the set-up whose
+  best first move is worth least to the Challenger. Measured (`kamisado-sim.js 100`, single rounds, seats alternating):
+  Easy beat Normal in 3 of 100; Hard (held to depth 9 in the sim) beat Normal in 100 of 100. Matches to 7 and 15 (with
+  the `rand` skill) turned up pushes, Double and Triple Sumos and deadlocks, all agreeing with the plain reading.
+- The table: the tower that must move glows (`.must`), its moves are dots: gold wins, red sends the other player a tower
+  with a clear way to your home row, a ring leaves their next tower blocked, a chevron is a push. Aiming at a dot (a tap
+  on a touch screen, hover with a mouse, or dragging the tower) shows the path, a faint tower where it lands, and rings the
+  other player's tower that would have to move next with a tag ("Jamie moves this one next", red when it could reach your
+  home row); a second tap or a click moves (Move to c2 in the buttons too). The other side's towers with an open lane have
+  a red dashed line home. A tower glides; a push shoves the towers back with a moment; a blocked tower shakes with a
+  Blocked badge and a moment; a long run (6 or 7 squares) is called out; a win lights the goal row square by square and
+  the tower is promoted (gold rings round its jewel, one a rank, a number from Double up). Between rounds the Defender
+  sees both set-ups as the two home rows and, chosen, as faint towers on the board (`.fill`, `previewFill`), then Play this
+  set-up slides every tower home. Pass and play can hand over with `Kit.handoff` (off by default: nothing is hidden).
+  Layouts as Boku's: upright plates over and under the board, sideways the plates, turn and buttons at the left and the
+  board at the right; **at a desk** (`deskPlan` `w1`, `w2`, `t`; `km-dk`) the board from the window and the room: Last
+  move in words (with any blocks and the tower that must move), the match (points, every Sumo tower, each round's result),
+  this round move by move, past games; whole rows given up (`fitRoom`). Saved in `kamisado_state`; online records once a
+  device in `kamisado_net_rec`; seat 0 plays the setup's color first and each new game at a table swaps colors; the regroup
+  is the Defender seat's turn. Test hook `window.__kamisado` (`start`, `set(rows, turn, req, ranks)`, `play`, `sq`,
+  `tower`, `at`, `fillCard`, `desk`). The scratchpad's `newgames/kamisado/` has `shots.js` and `dd.js` (two search settings
+  against each other).
+
 ## Wax Pack (2026-11-19; Tim: the Sandlot redesign, named "wax pack", the pitch duel "sure i'll try it", scanning "to log a player's deck")
 
 - Catalog id stays `sandlot` (favorites and `gh_sandlot` history carry over); the page is `games/waxpack.html` with

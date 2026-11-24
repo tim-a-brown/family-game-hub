@@ -158,6 +158,11 @@ var GameIcon = (function () {
       [[5, 4.8, '#2f9a4c'], [12, 4.8, '#8a4fd0'], [19, 4.8, Y], [5, 12, R], [12, 12, B], [19, 12, R], [5, 19.2, Y], [12, 19.2, K], [19, 19.2, '#2f9a4c']].forEach(function (q) { s += circ(q[0], q[1], 2.7, q[2]); });
       return s;
     },
+    kamisado: function () {   // a corner of the board's colored squares, with a black tower and a white one, each with its jewel
+      var s = '', ink = ['#dd7a26', '#2a5fb5', '#6a3c9e', '#d0628e', '#b52d2b', '#dd7a26', '#e3b52f', '#2f8a4b', '#2a5fb5'];
+      for (var i = 0; i < 9; i++) s += rect(1.5 + (i % 3) * 7, 1.5 + Math.floor(i / 3) * 7, 6.4, 6.4, 1.2, ink[i]);
+      return s + circ(8.2, 15.2, 4.4, K, ' stroke="#f2c94c" stroke-width="1"') + circ(8.2, 15.2, 1.7, '#b52d2b') + circ(15.2, 8.2, 4.4, W, ' stroke="' + K + '" stroke-width="1"') + circ(15.2, 8.2, 1.7, '#2a5fb5');
+    },
     othello: function () { return circ(8, 13, 7, K) + circ(16, 11, 7, W, ' stroke="' + K + '" stroke-width="1.8"'); },
     backgammon: function (c) { var t = ''; for (var i = 0; i < 4; i++) { var x = 1 + i * 5.6; t += path('M' + x + ' 1h5l-2.5 9.5z', i % 2 ? K : c) + path('M' + x + ' 23h5l-2.5-9.5z', i % 2 ? c : K); } return t + circ(9, 12, 2.2, R) + circ(15, 12, 2.2, W, ' stroke="' + K + '" stroke-width="1.2"'); },
     battleship: function () { return path('M2 13h20l-3 6H5z', K) + rect(8, 9, 8, 4, 1, S) + rect(11, 5.5, 2, 4, .6, K) + line('M2 21.5c2 0 2-1.2 4-1.2s2 1.2 4 1.2 2-1.2 4-1.2 2 1.2 4 1.2 2-1.2 4-1.2', B, 1.6); },

@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kamisado</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
+<script src="kamisado-core.js"></script>
+<style>
+.km-col{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
+.km-credit{margin:-6px 0 2px;text-align:center;font-size:.78rem;font-weight:600;color:var(--text-3);}
+/* the eight inks, shared by the board, the jewels and the room */
+:root{--k0:#dd7a26;--k1:#2a5fb5;--k2:#6a3c9e;--k3:#d0628e;--k4:#e3b52f;--k5:#b52d2b;--k6:#2f8a4b;--k7:#76462a;}
+
+/* A player's plate: their tower, their name and whose turn, their points, and the tower that must move */
+.pbar{display:flex;align-items:center;gap:10px;min-height:52px;padding:6px 12px 6px 10px;border-radius:16px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);transition:box-shadow .2s,background .2s;}
+.pbar.on{background:color-mix(in srgb,var(--lit) 11%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--lit) 65%,transparent),0 0 18px color-mix(in srgb,var(--lit) 18%,transparent);}
+.pbar .who{flex:1;min-width:0;display:flex;flex-direction:column;}
+.pbar .nm{font-weight:800;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;}
+.pbar .nm .ico{width:15px;height:15px;color:var(--text-3);flex:none;}
+.pbar .sub{font-size:.72rem;font-weight:700;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pbar.on .sub{color:var(--lit-ink);}
+.pbar .pts{display:flex;flex-direction:column;align-items:flex-end;flex:none;line-height:1.05;}
+.pbar .pts b{font-size:1.25rem;font-weight:800;font-variant-numeric:tabular-nums;}
+.pbar .pts span{font-size:.66rem;font-weight:700;color:var(--text-3);white-space:nowrap;}
+.pbar.on .pts b{color:var(--lit-ink);}
+.pbar .must{display:flex;align-items:center;gap:6px;flex:none;padding:3px 9px 3px 4px;border-radius:999px;background:rgba(0,0,0,.28);box-shadow:inset 0 0 0 1px var(--gl-line);font-size:.72rem;font-weight:800;white-space:nowrap;}
+.pbar .must .tok{--d:22px;}
+.think i{display:inline-block;width:5px;height:5px;margin:0 1px;border-radius:50%;background:currentColor;animation:th 1s infinite;}
+.think i:nth-child(2){animation-delay:.15s}.think i:nth-child(3){animation-delay:.3s}
+@keyframes th{50%{opacity:.2;transform:translateY(-2px);}}
+
+/* A tower, seen from above: a turned piece of black lacquer or ivory, with a jewel of its color set in the top. A Sumo
+   carries gold rings round its jewel, one for each rank, and a gold rim. */
+.tok{--d:28px;width:var(--d);height:var(--d);border-radius:50%;flex:none;position:relative;}
+.tw,.tok.b,.tok.w{border-radius:50%;}
+.tw.b,.tok.b{background:radial-gradient(circle at 36% 30%,#5d6170 0,#2a2c33 26%,#111216 62%,#030304 100%);box-shadow:inset 0 -3px 5px rgba(0,0,0,.6),inset 0 2px 2px rgba(255,255,255,.12),0 3px 5px rgba(0,0,0,.55);}
+.tw.w,.tok.w{background:radial-gradient(circle at 36% 30%,#fffdf6 0,#f2e8d2 30%,#d8c7a3 70%,#a48d63 100%);box-shadow:inset 0 -3px 5px rgba(90,60,20,.35),inset 0 2px 2px rgba(255,255,255,.7),0 3px 5px rgba(0,0,0,.55);}
+.tok .jw{position:absolute;inset:28%;border-radius:50%;background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.75),var(--jc) 38%,color-mix(in srgb,var(--jc) 60%,#000) 100%);}
+.tw{position:absolute;width:9.4%;aspect-ratio:1;transform:translate(-50%,-50%);z-index:2;transition:left .38s cubic-bezier(.3,.7,.25,1),top .38s cubic-bezier(.3,.7,.25,1),opacity .3s;}
+.tw::before{content:"";position:absolute;inset:11%;border-radius:50%;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.1),inset 0 3px 4px rgba(0,0,0,.35);}
+.tw.w::before{box-shadow:inset 0 0 0 1.5px rgba(120,90,40,.3),inset 0 3px 4px rgba(120,90,40,.18);}
+.tw .jw{position:absolute;inset:27%;border-radius:50%;background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.8) 0,var(--jc) 34%,color-mix(in srgb,var(--jc) 55%,#000) 100%);box-shadow:inset 0 -2px 3px rgba(0,0,0,.4),0 0 0 1.5px rgba(0,0,0,.35);}
+.tw.r1 .jw,.tok.r1 .jw{box-shadow:inset 0 -2px 3px rgba(0,0,0,.4),0 0 0 2px #1a1206,0 0 0 4px #f2c94c;}
+.tw.r2 .jw,.tok.r2 .jw{inset:31%;box-shadow:inset 0 -2px 3px rgba(0,0,0,.4),0 0 0 2px #1a1206,0 0 0 4px #f2c94c,0 0 0 6px #1a1206,0 0 0 8px #f2c94c;}
+.tw.r3 .jw,.tok.r3 .jw,.tw.r4 .jw{inset:34%;box-shadow:inset 0 -2px 3px rgba(0,0,0,.4),0 0 0 2px #1a1206,0 0 0 4px #f2c94c,0 0 0 6px #1a1206,0 0 0 8px #f2c94c,0 0 0 10px #1a1206,0 0 0 12px #f2c94c;}
+.tw.r1,.tw.r2,.tw.r3,.tw.r4{box-shadow:inset 0 -3px 5px rgba(0,0,0,.5),0 0 0 2.5px #d9a93a,0 4px 7px rgba(0,0,0,.6);}
+.tw .rkn{position:absolute;right:-8%;bottom:-8%;min-width:38%;height:38%;padding:0 3%;border-radius:999px;background:linear-gradient(#ffe08a,#c8901f);color:#2a1a02;font-weight:900;font-size:calc(var(--sq,40px) * .2);display:none;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(0,0,0,.6);line-height:1;}
+.tw.r2 .rkn,.tw.r3 .rkn,.tw.r4 .rkn{display:flex;}
+.tw.must{z-index:3;animation:must 1.3s ease-in-out infinite;}
+@keyframes must{0%,100%{filter:drop-shadow(0 0 3px var(--lit)) drop-shadow(0 0 8px var(--litg));}50%{filter:drop-shadow(0 0 6px #fff3c4) drop-shadow(0 0 16px var(--litg));}}
+.tw.pick{cursor:pointer;}
+.tw.sel{z-index:3;filter:drop-shadow(0 0 5px var(--lit)) drop-shadow(0 0 12px var(--litg));}
+.tw.forced{z-index:3;}
+.tw.forced::after{content:"";position:absolute;inset:-14%;border-radius:50%;border:3px dashed var(--fc,#fff);animation:spin 6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.tw.danger::after{border-color:#ff5a3c;box-shadow:0 0 14px rgba(255,80,50,.7);}
+.tw.blocked .bx{display:flex;}
+.tw .bx{position:absolute;left:50%;top:-30%;transform:translateX(-50%);display:none;padding:1px 6px;border-radius:999px;background:rgba(150,30,20,.92);color:#ffe2d8;font-size:calc(var(--sq,40px) * .2);font-weight:800;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.6);}
+.tw.shake{animation:shake .5s ease-in-out;}
+@keyframes shake{20%,60%{transform:translate(-56%,-50%);}40%,80%{transform:translate(-44%,-50%);}}
+.tw.shove{animation:shove .5s cubic-bezier(.3,.7,.3,1.4);}
+@keyframes shove{40%{transform:translate(-50%,-50%) scale(1.14);}}
+.tw.promo{animation:promo 1.1s var(--spring);}
+@keyframes promo{0%{transform:translate(-50%,-50%) scale(1);}35%{transform:translate(-50%,-50%) scale(1.45) rotate(-12deg);}70%{transform:translate(-50%,-50%) scale(.95) rotate(4deg);}100%{transform:translate(-50%,-50%) scale(1);}}
+.tw.ghost{opacity:.45;pointer-events:none;z-index:4;transition:none;}
+.tw.prev{opacity:.6;}
+.tw.win{z-index:4;animation:winp 1.4s ease-in-out infinite;}
+@keyframes winp{0%,100%{filter:drop-shadow(0 0 4px var(--lit)) drop-shadow(0 0 14px var(--litg));}50%{filter:drop-shadow(0 0 8px #fff3c4) drop-shadow(0 0 28px var(--litg));}}
+
+/* The board: eight inks lacquered on wood, in an ebony frame with a gold line */
+.frame{position:relative;aspect-ratio:1;width:100%;touch-action:manipulation;user-select:none;-webkit-user-select:none;view-transition-name:km-board;}
+.frame>svg.bsv{position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 14px 22px rgba(0,0,0,.5));}
+.frame .lay{position:absolute;inset:0;}
+.frame svg.fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;}
+.frame svg.fx2{z-index:5;}
+/* where the tower can go: a dot on each square; gold where it wins, red where it hands the other player a way home,
+   a ring where it leaves the other player's tower nowhere to go; a push is a chevron */
+.dot{position:absolute;width:12.5%;aspect-ratio:1;transform:translate(-50%,-50%);z-index:1;pointer-events:none;display:flex;align-items:center;justify-content:center;}
+.dot::before{content:"";width:26%;aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.9);box-shadow:0 0 0 2px rgba(0,0,0,.45),0 0 8px rgba(255,255,255,.4);}
+.dot.danger::before{width:30%;background:#e8321b;box-shadow:0 0 0 3px #fff,0 0 0 5px rgba(0,0,0,.4),0 0 12px rgba(255,90,60,.7);}
+.dot.block::before{width:40%;background:transparent;box-shadow:inset 0 0 0 3px #fff,0 0 0 2px rgba(0,0,0,.45);}
+.dot.win::before{width:46%;background:radial-gradient(circle,#fff6c9,#f2c94c 60%,#b98317);box-shadow:0 0 0 2px rgba(60,40,0,.55),0 0 16px var(--litg);}
+.dot.lose::before{background:#3a0b05;box-shadow:0 0 0 2px #ff6b4f;}
+.dot.push{z-index:3;}
+.dot.push::before{display:none;}
+.dot.push::after{content:"";width:34%;height:34%;border:solid #fff;border-width:0 5px 5px 0;transform:translateY(var(--py,20%)) rotate(var(--pr,225deg));filter:drop-shadow(0 0 3px rgba(0,0,0,.7));}
+.dot.aim::before{box-shadow:0 0 0 3px var(--lit),0 0 16px var(--litg);}
+.sqlit{position:absolute;width:11.5%;aspect-ratio:1;transform:translate(-50%,-50%);pointer-events:none;z-index:0;border-radius:4px;box-shadow:inset 0 0 0 3px #ffe9a3,0 0 18px var(--litg);background:rgba(255,236,170,.22);animation:sqin .5s ease-out both;}
+@keyframes sqin{from{opacity:0;transform:translate(-50%,-50%) scale(.6);}}
+.lastf{position:absolute;width:11.5%;aspect-ratio:1;transform:translate(-50%,-50%);pointer-events:none;z-index:0;border-radius:4px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.55);}
+.tag{position:absolute;transform:translate(-50%,-100%);z-index:6;pointer-events:none;padding:3px 9px;border-radius:999px;background:rgba(12,14,22,.9);box-shadow:0 0 0 1px var(--gl-line),0 3px 8px rgba(0,0,0,.5);font-size:.72rem;font-weight:800;white-space:nowrap;color:#fff;}
+.tag.bad{background:rgba(120,22,12,.94);}
+.tag.good{background:rgba(70,52,8,.94);color:#ffe9a3;}
+
+.turn{margin:2px 0 0;min-height:34px;}
+.acts{display:flex;gap:10px;justify-content:center;margin-top:2px;flex-wrap:wrap;}
+.acts .btn{flex:1;max-width:200px;}
+/* the Defender's choice between rounds: both set-ups side by side, each as the two home rows */
+.fills{display:flex;gap:10px;width:100%;justify-content:center;}
+.fill{flex:1;max-width:240px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 10px 9px;border-radius:16px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);cursor:pointer;color:inherit;font:inherit;border:0;}
+.fill.on{background:color-mix(in srgb,var(--lit) 14%,transparent);box-shadow:inset 0 0 0 2px var(--lit),0 0 16px color-mix(in srgb,var(--lit) 25%,transparent);}
+.fill b{font-size:.85rem;font-weight:800;}
+.fill .rowp{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;width:100%;}
+.fill .rowp span{aspect-ratio:1;border-radius:3px;display:flex;align-items:center;justify-content:center;}
+.fill .rowp .tok{--d:78%;}
+.fill .rowp .tok .jw{inset:24%;}
+
+/* A layout for each shape (<html data-o>, set by the script, so a turn of the device glides inside Kit.glide) */
+::view-transition-group(*){animation-duration:.45s;animation-timing-function:cubic-bezier(.22,1,.36,1);}
+.km-col>.turn{view-transition-name:km-turn;}
+.km-col>.acts{view-transition-name:km-acts;}
+.km-col>.pbar.top{view-transition-name:km-top;}
+.km-col>.pbar.bot{view-transition-name:km-bot;}
+html[data-o=port] #app.stage.ipl{min-height:calc(100dvh - var(--bar));display:flex;flex-direction:column;justify-content:stretch;
+  padding-left:8px;padding-right:8px;padding-bottom:calc(var(--safe-b) + 18px);}
+html[data-o=port] .km-col{width:100%;gap:10px;flex:1 1 auto;justify-content:space-evenly;}
+html[data-o=port] .km-col>.frame{width:min(100%,calc(100dvh - var(--bar) - 262px));align-self:center;}
+@media (max-width:699px) and (min-height:740px){
+  html[data-o=port] .pbar{padding:10px 14px;min-height:66px;gap:12px;}
+  html[data-o=port] .pbar>.tok{--d:40px;}
+  html[data-o=port] .pbar .nm{font-size:1.08rem;}
+  html[data-o=port] .pbar .sub{font-size:.8rem;}
+  html[data-o=port] .turn{font-size:1.05rem;}
+}
+@media (max-height:600px){ html[data-o=port] .km-col{gap:6px;} html[data-o=port] .pbar{min-height:44px;padding-top:4px;padding-bottom:4px;} html[data-o=port] .km-col>.frame{width:min(100%,calc(100dvh - var(--bar) - 222px));} html[data-o=port] .turn{min-height:24px;font-size:.9rem;} html[data-o=port] .acts .btn{min-height:40px;} html[data-o=port] .pbar .must{display:none;} }
+@media (min-width:700px){
+  html[data-o=port] #app.stage.ipl{max-width:none;padding-left:16px;padding-right:16px;}
+  html[data-o=port] .km-col{max-width:800px;gap:12px;}
+  html[data-o=port] .km-col>.frame{width:min(100%,calc(100dvh - var(--bar) - 300px));}
+  html[data-o=port] .pbar{min-height:64px;padding:8px 16px 8px 12px;}
+  html[data-o=port] .pbar .nm{font-size:1.1rem;}
+  html[data-o=port] .pbar .sub{font-size:.85rem;}
+  html[data-o=port] .pbar>.tok{--d:38px;}
+}
+/* Sideways: the players, whose turn and the buttons at the left to look at; the board, where the taps go, at the right */
+html[data-o=land] #app.stage.ipl{max-width:none;padding:2px max(18px,env(safe-area-inset-right)) calc(var(--safe-b) + 8px) max(18px,env(safe-area-inset-left));}
+html[data-o=land] .km-col{--lc:260px;--cg:clamp(16px,3vw,40px);--bh:calc(100dvh - var(--bar) - 12px - var(--safe-b));--bw:min(var(--bh),calc(100vw - 40px - var(--lc) - var(--cg)));
+  max-width:none;height:var(--bw);display:grid;grid-template-columns:minmax(var(--lc),360px) var(--bw);
+  grid-template-rows:max-content max-content minmax(0,1fr) max-content max-content;
+  grid-template-areas:"t b" "s b" "a b" ". b" "p b";column-gap:var(--cg);row-gap:10px;justify-content:center;align-content:center;}
+html[data-o=land] .km-col>.frame{grid-area:b;width:var(--bw);}
+html[data-o=land] .km-col>.pbar.top{grid-area:t;}
+html[data-o=land] .km-col>.pbar.bot{grid-area:p;}
+html[data-o=land] .km-col>.turn{grid-area:s;justify-self:start;}
+html[data-o=land] .km-col>.acts{grid-area:a;justify-content:flex-start;align-self:start;}
+html[data-o=land] .km-col>.km-room{display:none;}
+/* while the Defender chooses, the two set-ups need room under the board */
+html[data-o=port] .km-col.rg>.frame{width:min(100%,calc(100dvh - var(--bar) - 392px));}
+@media (min-width:700px){ html[data-o=port] .km-col.rg>.frame{width:min(100%,calc(100dvh - var(--bar) - 430px));} }
+@media (max-height:600px){ html[data-o=port] .km-col.rg>.frame{width:min(100%,calc(100dvh - var(--bar) - 290px));} html[data-o=port] .km-col.rg .fill{padding:5px 6px;gap:3px;} html[data-o=port] .km-col.rg .turn{display:none;} }
+html[data-o=land] .fill{padding:6px 8px;}
+@media (min-height:600px){
+  html[data-o=land] .km-col{--lc:300px;}
+  html[data-o=land] .pbar{min-height:62px;}
+  html[data-o=land] .pbar>.tok{--d:34px;}
+}
+@media (max-height:420px){ html[data-o=land] .km-col{row-gap:6px;--lc:240px;} html[data-o=land] .turn{min-height:26px;font-size:.92rem;} html[data-o=land] .pbar{min-height:44px;padding-top:3px;padding-bottom:3px;} html[data-o=land] .pbar .must{display:none;} html[data-o=land] .fill b{font-size:.78rem;} html[data-o=land] .fill{gap:3px;} }
+.km-room{display:none;}
+
+/* ── The desk: a window larger than a phone's or a tablet's (html.km-dk, set by deskPlan) ── */
+html.km-dk #app.stage.ipl{max-width:none;padding:0;min-height:0;}
+html.km-dk .km-col{justify-content:normal;position:fixed;left:var(--x0);top:var(--y0);width:var(--aw);height:var(--ah);max-width:none;margin:0;display:grid;gap:var(--g);
+  grid-template-columns:var(--cols);grid-template-rows:max-content max-content max-content max-content minmax(0,1fr);grid-template-areas:var(--areas);}
+html.km-dk .km-col>.frame{grid-area:b;width:var(--bw);align-self:center;justify-self:center;}
+html.km-dk .km-col>.pbar.top{grid-area:t;}
+html.km-dk .km-col>.pbar.bot{grid-area:p;}
+html.km-dk .km-col>.turn{grid-area:s;justify-self:start;font-size:calc(1rem * var(--dk));}
+html.km-dk .km-col>.acts{grid-area:a;justify-content:flex-start;}
+html.km-dk .km-col>.km-room{grid-area:r;display:flex;flex-direction:column;gap:var(--g);min-height:0;overflow:hidden;view-transition-name:km-room;}
+html.km-dk .km-room.row{flex-direction:row;flex-wrap:wrap;align-items:flex-start;align-content:flex-start;}
+html.km-dk .km-room.row>.pn{flex:1 1 calc(250px * var(--dk));min-width:0;}
+html.km-dk .pbar{min-height:calc(60px * var(--dk));padding:calc(8px * var(--dk)) calc(14px * var(--dk));}
+html.km-dk .pbar .nm{font-size:calc(1.05rem * var(--dk));}
+html.km-dk .pbar .sub{font-size:calc(.82rem * var(--dk));}
+html.km-dk .pbar>.tok{--d:calc(36px * var(--dk));}
+html.km-dk .tag{font-size:calc(.78rem * var(--dk));}
+.pn{background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);border-radius:18px;padding:calc(12px * var(--dk,1)) calc(14px * var(--dk,1));min-height:0;display:flex;flex-direction:column;font-size:calc(.9rem * var(--dk,1));flex:none;}
+.pn h3{margin:0 0 8px;font-size:calc(.82rem * var(--dk,1));font-weight:800;color:var(--text-3);}
+.pn .rows{display:flex;flex-direction:column;gap:2px;min-height:0;overflow:hidden;}
+.pn .ln{font-weight:700;line-height:1.35;}
+.pn .ln+.ln{margin-top:6px;}
+.pn .none{color:var(--text-3);font-weight:600;}
+.mvr{display:grid;grid-template-columns:2.2em 1.25em 1fr auto;align-items:center;gap:8px;padding:3px 4px;border-radius:8px;font-variant-numeric:tabular-nums;}
+.mvr .no{color:var(--text-3);font-weight:700;text-align:right;}
+.mvr .tok{--d:1.2em;}
+.mvr .nt{font-weight:700;white-space:nowrap;}
+.mvr .tg{font-size:.8em;font-weight:800;padding:1px 8px;border-radius:999px;white-space:nowrap;}
+.mvr .tg.x{background:rgba(255,122,89,.18);color:#ffb39f;}
+.mvr .tg.f{background:color-mix(in srgb,var(--lit) 22%,transparent);color:var(--lit-ink);}
+.mvr .tg.t{background:rgba(255,255,255,.1);color:var(--text-2);}
+.mvr.now{background:color-mix(in srgb,var(--lit) 10%,transparent);}
+.mvr.ps{opacity:.8;}
+.scr{display:grid;grid-template-columns:1.4em 1fr auto;gap:4px 10px;align-items:center;}
+.scr .tok{--d:1.3em;}
+.scr .nmx{font-weight:700;}
+.scr .p{font-weight:800;font-variant-numeric:tabular-nums;}
+.scr .p small{font-weight:700;color:var(--text-3);}
+.rdr{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;padding:5px 2px;border-top:1px solid var(--gl-line);}
+.rdr .rn{font-weight:800;color:var(--text-3);}
+.rdr .rt{font-weight:600;line-height:1.3;}
+.sumo{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.sumo .tok{--d:calc(26px * var(--dk,1));}
+.pgr{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:4px 2px;border-top:1px solid var(--gl-line);}
+.pgr:first-child{border-top:0;}
+.pgr .w{font-weight:800;}
+.pgr .sc{font-weight:700;color:var(--text-3);}
+.pgr .dt{grid-column:1/-1;font-size:.82em;color:var(--text-3);font-weight:600;}
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app'), Core = window.KamisadoCore;
+  var SAVE = 'kamisado_state', KEY = 'kamisado', BLACK = 1, WHITE = 2;
+  var SKILL = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  var DEMO = Kit.inDemo && Kit.inDemo();
+  var CREDIT = 'Kamisado was designed by Peter Burley and is published by Burley Games.';
+  var INK = ['#dd7a26', '#2a5fb5', '#6a3c9e', '#d0628e', '#e3b52f', '#b52d2b', '#2f8a4b', '#76462a'];
+  var CN = Core.COLOR_NAMES.map(function (n) { return n.toLowerCase(); });
+  var MATCH = { 1: 'Single round', 3: 'Standard match', 7: 'Long match', 15: 'Marathon' };
+  var CORE_KEYS = ['v', 'b', 'rk', 'turn', 'req', 'phase', 'def', 'n', 'ml', 'last', 'over', 'winner', 'why', 'first', 'blocks', 'pushes', 'long', 'match', 'rounds', 'fill', 'b0', 'rk0'];
+
+  var R = document.documentElement;
+  function shape() { return window.innerWidth > window.innerHeight ? 'land' : 'port'; }
+  R.setAttribute('data-o', shape());
+
+  // ── State ────────────────────────────────────────────────────────────────
+  // S = the core's state and {mode, level, cover, players: [{name, cpu, side}], hist: [undo snapshots], started, busy}
+  var S = null, NET = null, LEFT = null, WINO = null, NETREC = {}, SHOWN = 0;
+  function save() {
+    if (NET) return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S && !S.over) Kit.resume.set(S.match.target > 1 ? 'Round ' + S.match.round + ', ' + S.match.pts[pl(BLACK) === S.players[0] ? 1 : 2] + ' to ' + S.match.pts[pl(BLACK) === S.players[0] ? 2 : 1] : S.n ? 'Move ' + (S.n + 1) : 'Ready');
+  }
+  function clearSave() { if (NET) return; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function pl(side) { return S.players[0].side === side ? S.players[0] : S.players[1]; }
+  function vsCpu() { return S.players.some(function (p) { return p.cpu; }); }
+  function colorName(side) { return side === BLACK ? 'Black' : 'White'; }
+  function isMe(p) { return NET ? NET.seat >= 0 && S.players[NET.seat] === p : !p.cpu; }
+  function nameOf(p) { return NET && isMe(p) ? 'You' : p.name; }
+  function humanTurn() { return S && !S.over && !S.busy && !HOLD && !ANIM && (NET ? !LEFT && NET.myTurn() : !pl(S.turn).cpu); }
+  function poss(n) { return n === 'You' ? 'your' : Kit.poss(n); }
+  function tc(side) { return side === WHITE ? 'w' : 'b'; }
+  function coreOf(st) { var o = {}; CORE_KEYS.forEach(function (k) { if (st[k] !== undefined) o[k] = st[k]; }); return Core.clone(o); }
+  function rankName(r) { return Core.RANKS[r] || 'Tower'; }
+  // a tower in words: "the red tower", "the red Sumo", "the red Double Sumo"
+  function tw(p, rk) { var r = (rk || S.rk)[p] || 0; return 'the ' + CN[Core.colorOf(p)] + ' ' + (r ? rankName(r) : 'tower'); }
+
+  Kit.init({
+    id: 'kamisado', mark: false, snap: '.frame', snapY: 0.5,
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } cancelThink(); clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Kamisado: past games' }); } }]),
+    rules:
+      '<p class="goal">Be the first to move one of your towers onto <b>the other player’s home row</b>, the row they started on.</p>' +
+      '<h3>Moving</h3><ul><li>Each player has eight towers, one of each color, on their home row. <b>Black goes first</b>, with any tower.</li>' +
+      '<li>A tower moves as far as you like straight forward or diagonally forward, never sideways or backward, and never through or onto another tower. It may pass diagonally between two towers that touch at their corners.</li>' +
+      '<li>After the first move, you must move <b>your tower of the color of the square the other player’s tower just landed on</b>. That tower glows, and dots show where it can go.</li>' +
+      '<li>The dots tell you what each move would lead to: gold wins, red lets the other player’s next tower reach your home row, and a ring leaves the other player’s next tower with nowhere to go.</li></ul>' +
+      '<h3>Blocked towers</h3><ul><li>A tower that must move but can’t is blocked. It moves zero squares, and the other player moves again, with their tower of the color of the square the blocked tower stands on.</li>' +
+      '<li>When blocked towers send the turn round and round with nobody able to move, that’s a deadlock. The player whose move caused it loses the round.</li></ul>' +
+      '<h3>Matches and Sumo towers</h3><ul><li>A single round is won by the first tower home. In a match, the tower that wins a round is promoted: it becomes a <b>Sumo</b> (1 point), then a Double Sumo (3 points), a Triple Sumo (7 points) and a Quadruple Sumo (15 points). The first to the match’s points wins: 3 for a standard match, 7 for a long one, 15 for a marathon.</li>' +
+      '<li>After a deadlock, the winner’s tower of the color of the square the last move ended on is promoted.</li>' +
+      '<li>A Sumo moves at most 5 squares, a Double Sumo 3 and a Triple Sumo 1. Gold rings round a tower’s jewel show its rank.</li>' +
+      '<li><b>Sumo push</b>: when your Sumo must move and the other player’s towers stand straight in front of it, it can step one square forward and push them one square back. A Sumo pushes one tower, a Double up to two and a Triple up to three, only towers of a lower rank, and only onto an empty square. The other player then misses a turn, and you move again with your tower of the color of the square the last pushed tower now stands on. A push is your choice, unless it’s the only move you have.</li>' +
+      '<li>The loser of a round starts the next one. Before it, the winner chooses to <b>fill from the left or from the right</b>: each player gathers their towers row by row from their own home row forward, and sets them along the home row in that order, starting from the brown square at their left or the orange square at their right. Both set-ups are shown before the choice.</li></ul>' +
+      '<h3>Online</h3><ul><li><b>Play online</b> opens a table, and the other player joins on their own device. Each new game at the table swaps colors.</li></ul>' +
+      '<h3>Tips</h3><ul><li>Every move you make chooses the other player’s next tower. Look for a square whose color sends them a tower with no way home, or no move at all.</li></ul>' +
+      '<p class="credit">' + CREDIT + '</p>'
+  });
+
+  function showSetup() {
+    S = null; deskOff();
+    app.classList.remove('ipl');
+    Kit.setup(app, {
+      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: '2p', kind: 'local' }]),
+      options: [
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Looks one move past its own and often slips.'], ['normal', 'Normal', 'Looks a few moves ahead at the towers each move sends.'], ['hard', 'Hard', 'Looks ten or more moves ahead and finds forced wins.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'target', label: 'Match', value: '1', choices: [['1', 'Single round\nFirst to 1', 'One round: the first tower home wins.'], ['3', 'Standard\nFirst to 3', 'Rounds until someone has 3 points. Towers that win become Sumo towers.'], ['7', 'Long\nFirst to 7', 'Rounds until someone has 7 points.'], ['15', 'Marathon\nFirst to 15', 'Rounds until someone has 15 points, or a Quadruple Sumo.']] },
+        { id: 'side', label: 'You play', value: 'b', choices: [['b', 'Black\nGoes first', 'Black always starts the first round, so you start.'], ['w', 'White', 'The computer plays Black and starts.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'cover', label: 'Hand over between turns', value: 'off', choices: [['off', 'Off', 'Nothing in Kamisado is hidden, so the device just goes across the table.'], ['on', 'On', 'A cover names whose turn it is before each move.']], when: function (m) { return m === '2p'; } }
+      ],
+      players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
+      onStart: function (cfg) {
+        var cpu = cfg.mode === 'cpu', hs = cpu && cfg.options.side === 'w' ? WHITE : BLACK;
+        S = { mode: cfg.mode, level: cfg.options.level || 'normal', cover: cfg.options.cover === 'on' && !cpu, target: +cfg.options.target || 1,
+          players: cfg.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, side: i === 0 ? hs : 3 - hs }; }) };
+        newGame();
+      }
+    });
+    var hero = app.querySelector('.setup-hero');
+    if (hero && !app.querySelector('.km-credit')) {
+      var cr = el('p', { class: 'km-credit', text: CREDIT });
+      hero.parentNode.insertBefore(cr, hero.nextSibling);
+      requestAnimationFrame(function () { var se = document.scrollingElement; if (se && se.scrollHeight > window.innerHeight + 1 && cr.isConnected) cr.style.display = 'none'; });
+    }
+  }
+  function freshFields(st) {
+    var g = Core.newGame({ target: st.target || 1 }); for (var k in g) st[k] = g[k];
+    st.hist = []; st.started = Date.now(); st.busy = false;
+  }
+  function newGame(swap) {
+    cancelThink();
+    if (swap && !vsCpu()) S.players.forEach(function (p) { p.side = 3 - p.side; });
+    freshFields(S);
+    AIM = null; SEL = -1; FILLP = null; LASTBLK = []; Kit.gameStart(); save(); build(); Kit.sfx('deal');
+    afterTurn();
+  }
+
+  // ── Moves ────────────────────────────────────────────────────────────────
+  var SEL = -1, AIM = null, HOLD = false, ANIM = false, FILLP = null, LASTBLK = [];
+  function snapshot(byCpu) { var o = coreOf(S); o.cpu = !!byCpu; return o; }
+  function playMove(str, byCpu) {
+    if (!S || S.over) return false;
+    if (!Core.check(S, str)) return false;
+    var prevB = S.b.slice(), prevRk = S.rk.slice();
+    S.hist.push(snapshot(byCpu));
+    var res = Core.play(S, str);
+    AIM = null; SEL = -1; FILLP = null;
+    var t = animate(res, prevB, prevRk);
+    save();
+    setTimeout(function () { afterMove(res); }, t + 60);
+    return true;
+  }
+  function afterMove(res) {
+    if (!S) return;
+    if (S.over) { setTimeout(finish, 1500); return; }
+    afterTurn();
+  }
+  function afterTurn() {
+    if (!S || S.over) return;
+    paintAll();
+    if (NET) return;
+    var p = pl(S.turn);
+    if (p.cpu) { maybeCpu(); return; }
+    if (S.cover && S.n > 0 && !DEMO && S.phase === 'play') {
+      HOLD = true; paintAll();
+      Kit.handoff({ name: p.name, color: S.turn === WHITE ? '#efe5cf' : '#2b2d33', msg: 'You play ' + colorName(S.turn) + '.', hint: 'Hold for a moment to take your turn', hold: 700 }).then(function () { HOLD = false; paintAll(); });
+    }
+  }
+  function undo() {
+    if (!S || !S.b) return;
+    if (S.over) return Kit.toast('The game is over');
+    if (AIM) { AIM = null; paintAll(); return; }
+    var cpu = vsCpu();
+    if (!S.hist.some(function (h) { return !h.cpu; })) return Kit.toast('Nothing to undo');
+    cancelThink(); S.busy = false;
+    var snap;
+    while (S.hist.length) { snap = S.hist.pop(); if (!cpu || !snap.cpu) break; }
+    CORE_KEYS.forEach(function (k) { if (snap[k] !== undefined) S[k] = snap[k]; });
+    AIM = null; SEL = -1; FILLP = null; LASTBLK = []; Kit.sfx('whoosh'); save(); build(); afterTurn();
+  }
+
+  // ── The computer ─────────────────────────────────────────────────────────
+  var worker = null, workerOk = true, reqId = 0, pending = null;
+  function local(q) { return q.kind === 'fill' ? { fill: Core.chooseFill(q.b, q.rk, q.side, q.o) } : Core.search(q.b, q.rk, q.side, q.req, q.o); }
+  function getWorker() {
+    if (worker || !workerOk) return worker;
+    try {
+      var url = new URL('kamisado-core.js', location.href).href;
+      var src = 'importScripts(' + JSON.stringify(url) + ');onmessage=function(e){var d=e.data,K=KamisadoCore;postMessage({id:d.id,res:d.kind==="fill"?{fill:K.chooseFill(d.b,d.rk,d.side,d.o)}:K.search(d.b,d.rk,d.side,d.req,d.o)});};';
+      worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+      worker.onmessage = function (e) { if (pending && e.data.id === pending.id) { var p = pending; pending = null; p.cb(e.data.res); } };
+      worker.onerror = function () { workerOk = false; worker = null; if (pending) { var p = pending; pending = null; p.cb(local(p.q)); } };
+    } catch (e) { workerOk = false; worker = null; }
+    return worker;
+  }
+  function think(q, cb) {
+    var id = ++reqId, w = getWorker(); q.id = id;
+    pending = { id: id, cb: cb, q: q };
+    if (w) w.postMessage(q);
+    else setTimeout(function () { if (pending && pending.id === id) { pending = null; cb(local(q)); } }, 30);
+  }
+  function cancelThink() { pending = null; }
+  function maybeCpu() {
+    if (NET || !S || S.over || !pl(S.turn).cpu || S.busy) return;
+    S.busy = true; paintAll();
+    var t0 = Date.now(), myN = S.n, myPh = S.phase, L = Object.assign({}, Core.LEVELS[S.level] || Core.LEVELS.normal);
+    var q = S.phase === 'regroup' ? { kind: 'fill', b: S.b.slice(), rk: S.rk.slice(), side: S.turn, o: { depth: S.level === 'hard' ? 6 : S.level === 'normal' ? 3 : 1, noise: S.level === 'easy' ? 40 : 0 } }
+      : { kind: 'move', b: S.b.slice(), rk: S.rk.slice(), side: S.turn, req: S.req, o: L };
+    think(q, function (res) {
+      if (!S || S.n !== myN || S.phase !== myPh) return;
+      setTimeout(function () {
+        if (!S || S.n !== myN || S.phase !== myPh) return;
+        S.busy = false;
+        if (res && res.fill) { Kit.callout(pl(S.turn).name + ' fills from the ' + (res.fill === 'L' ? 'left' : 'right')); playMove('fill ' + res.fill, true); }
+        else if (res && res.move) playMove(res.move, true);
+      }, Math.max(0, (myPh === 'regroup' ? 1400 : 650) - (Date.now() - t0)));
+    });
+  }
+
+  // ── The board ────────────────────────────────────────────────────────────
+  // Board units: 1000 square; the squares are 115 across inside a frame of 40
+  var VW = 1000, O = 40, SQW = 115, frameEl, layEl, fxEl, fx2El, topBar, botBar, turnEl, actsEl, roomEl, TW = {};
+  function flip() { return S && bottomSide() === WHITE; }
+  function px(sq) { var r = sq >> 3, c = sq & 7; if (flip()) { r = 7 - r; c = 7 - c; } return { x: O + c * SQW + SQW / 2, y: O + r * SQW + SQW / 2 }; }
+  function pos(node, x, y) { node.style.left = x / VW * 100 + '%'; node.style.top = y / VW * 100 + '%'; }
+  function boardSvg() {
+    var s = '<svg class="bsv" viewBox="0 0 ' + VW + ' ' + VW + '" aria-hidden="true"><defs>' +
+      '<linearGradient id="kmf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a2418"/><stop offset=".5" stop-color="#1f130c"/><stop offset="1" stop-color="#120a06"/></linearGradient>' +
+      '<linearGradient id="kml" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".26"/><stop offset=".45" stop-color="#fff" stop-opacity=".05"/><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".22"/></linearGradient>' +
+      '<pattern id="kmg" width="30" height="1000" patternUnits="userSpaceOnUse" patternTransform="rotate(8)"><path d="M6 0v1000M17 0v1000M24 0v1000" stroke="rgba(255,220,180,.05)" stroke-width="2"/></pattern>' +
+      '</defs>';
+    s += '<rect x="2" y="2" width="996" height="996" rx="26" fill="url(#kmf)"/><rect x="2" y="2" width="996" height="996" rx="26" fill="url(#kmg)"/>';
+    s += '<rect x="9" y="9" width="982" height="982" rx="20" fill="none" stroke="rgba(255,230,190,.16)" stroke-width="2"/>';
+    s += '<rect x="' + (O - 9) + '" y="' + (O - 9) + '" width="' + (8 * SQW + 18) + '" height="' + (8 * SQW + 18) + '" rx="5" fill="#0a0604" stroke="#c99a3c" stroke-width="3"/>';
+    for (var sq = 0; sq < 64; sq++) {
+      var r = sq >> 3, c = sq & 7, x = O + c * SQW, y = O + r * SQW, k = Core.SQ[sq];
+      s += '<rect x="' + (x + 2) + '" y="' + (y + 2) + '" width="' + (SQW - 4) + '" height="' + (SQW - 4) + '" rx="4" fill="' + INK[k] + '"/>';
+      s += '<rect x="' + (x + 2) + '" y="' + (y + 2) + '" width="' + (SQW - 4) + '" height="' + (SQW - 4) + '" rx="4" fill="url(#kml)"/>';
+      s += '<rect x="' + (x + 6) + '" y="' + (y + 6) + '" width="' + (SQW - 12) + '" height="' + (SQW - 12) + '" rx="3" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1.5"/>';
+    }
+    return s + '</svg>';
+  }
+  function tower(p) {
+    var n = el('div', { class: 'tw ' + tc(Core.sideOf(p)), 'data-p': p }, [el('span', { class: 'jw' }), el('span', { class: 'rkn' }), el('span', { class: 'bx', text: 'Blocked' })]);
+    n.querySelector('.jw').style.setProperty('--jc', INK[Core.colorOf(p)]);
+    return n;
+  }
+  function tok(side, k, rank) {
+    var t = el('span', { class: 'tok ' + tc(side) + (rank ? ' r' + Math.min(3, rank) : '') }, [el('span', { class: 'jw' })]);
+    if (k != null) t.querySelector('.jw').style.setProperty('--jc', INK[k]); else t.querySelector('.jw').style.display = 'none';
+    return t;
+  }
+  function placeTowers(b, instant) {
+    for (var p = 1; p <= 16; p++) {
+      var n = TW[p], sq = b.indexOf(p); if (!n) continue;
+      if (instant) n.style.transition = 'none';
+      if (sq >= 0) { var q = px(sq); pos(n, q.x, q.y); n.style.display = ''; } else n.style.display = 'none';
+      if (instant) { void n.offsetWidth; n.style.transition = ''; }
+    }
+  }
+  function paintRanks() {
+    for (var p = 1; p <= 16; p++) {
+      var n = TW[p]; if (!n) continue; var r = S.rk[p] || 0;
+      n.classList.remove('r1', 'r2', 'r3', 'r4'); if (r) n.classList.add('r' + r);
+      n.querySelector('.rkn').textContent = r > 1 ? String(r) : '';
+    }
+  }
+  function build() {
+    if (!S || !S.b) return;
+    app.innerHTML = ''; app.classList.add('ipl');
+    var col = el('div', { class: 'km-col' });
+    topBar = el('div', { class: 'pbar top' }); botBar = el('div', { class: 'pbar bot' });
+    frameEl = el('div', { class: 'frame', role: 'grid', 'aria-label': 'Kamisado board', html: boardSvg() });
+    fxEl = svgEl('fx'); frameEl.appendChild(fxEl);
+    layEl = el('div', { class: 'lay' }); frameEl.appendChild(layEl);
+    fx2El = svgEl('fx fx2'); frameEl.appendChild(fx2El);
+    TW = {};
+    for (var p = 1; p <= 16; p++) { TW[p] = tower(p); layEl.appendChild(TW[p]); }
+    placeTowers(S.b, true); paintRanks();
+    hookInput(frameEl);
+    col.appendChild(topBar); col.appendChild(frameEl); col.appendChild(botBar);
+    turnEl = el('div', { class: 'turn' }); col.appendChild(turnEl);
+    actsEl = el('div', { class: 'acts' }); col.appendChild(actsEl);
+    roomEl = el('div', { class: 'km-room' }); col.appendChild(roomEl);
+    app.appendChild(col);
+    deskApply();
+    sizeVar();
+    paintAll();
+  }
+  function svgEl(cls) { var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('class', cls); s.setAttribute('viewBox', '0 0 ' + VW + ' ' + VW); return s; }
+  function sizeVar() { if (frameEl) frameEl.style.setProperty('--sq', Math.round(frameEl.getBoundingClientRect().width * .094) + 'px'); }
+  function paintAll() { paintMarks(); paintStatus(); paintRoom(); }
+
+  // ── What a move does, played out: glides, a shove, a blocked tower's shake, a win's lit row, a regroup ──
+  function animate(res, prevB, prevRk) {
+    ANIM = true; clearMarks();
+    if (res.fill) {
+      // every tower slides back home in the chosen order
+      Kit.sfx('slide'); Kit.haptic('light');
+      for (var p = 1; p <= 16; p++) { var n = TW[p]; if (n) { n.style.transitionDuration = '.7s'; n.style.transitionDelay = ((p - 1) % 8) * 45 + 'ms'; } }
+      placeTowers(S.b); paintRanks();
+      setTimeout(function () { for (var p = 1; p <= 16; p++) if (TW[p]) { TW[p].style.transitionDuration = ''; TW[p].style.transitionDelay = ''; } }, 1200);
+      setTimeout(function () { Kit.callout('Round ' + S.match.round); Kit.sfx('deal'); }, 900);
+      LASTBLK = [];
+      setTimeout(function () { ANIM = false; }, 1300);
+      return 1300;
+    }
+    var mover = TW[prevB[res.f]], dur = Math.min(720, 260 + res.d * 70), t = dur;
+    if (mover) { mover.style.transitionDuration = dur + 'ms'; }
+    if (res.push) {
+      // the Sumo shoves: the pushed towers go back first, with a bump, then the Sumo steps in
+      res.pushed.forEach(function (pp, i) { var q = TW[prevB[pp[0]]]; if (q) { setTimeout(function () { q.classList.remove('shove'); void q.offsetWidth; q.classList.add('shove'); var z = px(pp[1]); pos(q, z.x, z.y); }, 120 + i * 40); } });
+      Kit.sfx('clash'); Kit.haptic('heavy');
+      t = 700;
+    } else Kit.sfx('slide', .8);
+    var m = px(res.t); if (mover) pos(mover, m.x, m.y);
+    setTimeout(function () { if (mover) mover.style.transitionDuration = ''; Kit.sfx('tap'); Kit.haptic('light'); }, dur);
+    LASTBLK = res.passes.map(function (x) { return x.sq; });
+    var extra = 0, who = pl(res.side), them = pl(3 - res.side), me = isMe(who);
+    if (res.push) setTimeout(function () {
+      Kit.moment({ title: 'Sumo push', line: nameOf(who) + '’s ' + CN[res.k] + ' ' + rankName(prevRk[prevB[res.f]]) + ' pushed ' + (res.pushed.length === 1 ? poss(nameOf(them)) + ' tower' : res.pushed.length + ' of ' + poss(nameOf(them)) + ' towers') + ' back. ' + nameOf(them) + ' misses a turn.', chip: res.pushed.length, color: INK[res.k], at: frameEl, ms: 2600 });
+    }, 300);
+    if (!res.win && !res.push && res.d >= 6) setTimeout(function () { Kit.sfx('good'); Kit.callout(res.d === 7 ? 'All the way across!' : 'A long run'); }, dur);
+    if (res.passes.length && !res.deadlock) {
+      extra = 900;
+      setTimeout(function () {
+        res.passes.forEach(function (x, i) { var q = TW[S.b[x.sq]]; if (q) setTimeout(function () { q.classList.remove('shake'); void q.offsetWidth; q.classList.add('shake'); }, i * 300); });
+        var x0 = res.passes[0], bp = pl(x0.side);
+        Kit.sfx('bad'); Kit.haptic(isMe(bp) ? 'error' : 'medium');
+        Kit.moment({ title: 'Blocked', line: Kit.poss(nameOf(bp)).replace(/^your$/, 'Your') + ' ' + CN[Core.colorOf(S.b[x0.sq])] + ' tower has nowhere to go, so it moves zero squares. ' + nameOf(pl(S.turn)) + (S.turn === res.side && !res.push ? ' moves again' : ' moves next') + ', with the ' + CN[S.req] + ' tower.', chip: res.passes.length > 1 ? res.passes.length + '×' : '0', color: INK[Core.SQ[x0.sq]], tone: isMe(bp) ? 'bad' : '', at: frameEl, ms: 3000 });
+      }, dur + 100);
+    }
+    if (res.promo) {
+      var pr = res.promo, ptw = TW[pr.p], wp = pl(pr.side);
+      extra = 1700;
+      setTimeout(function () {
+        if (res.win) lightRow(Core.goalRow(res.side));
+        else if (res.deadlock) { LASTBLK = res.passes.map(function (x) { return x.sq; }); Kit.sfx('bad'); }
+        if (ptw) { ptw.classList.add('win'); setTimeout(function () { paintRanks(); ptw.classList.remove('promo'); void ptw.offsetWidth; ptw.classList.add('promo'); Kit.sfx('sparkle'); Kit.haptic('success'); }, 500); }
+        var single = S.match.target === 1;
+        var title = res.deadlock ? 'Deadlock' : single ? 'Home!' : pr.rk === 1 ? 'Sumo!' : rankName(pr.rk) + '!';
+        var line = res.deadlock ? 'Nobody can move, and ' + nameOf(pl(res.side)) + '’s move caused it, so ' + nameOf(wp) + ' wins the round' + (single ? '.' : ' and ' + tw(pr.p, S.rk).replace('the ', poss(nameOf(wp)) + ' ') + ' is promoted.')
+          : nameOf(wp) + '’s ' + CN[Core.colorOf(pr.p)] + ' tower reached the home row' + (single ? ' and wins.' : ' and becomes ' + (pr.rk === 1 ? 'a Sumo' : 'a ' + rankName(pr.rk)) + '.');
+        if (!S.over || !single) Kit.moment({ big: pr.rk >= 2 || res.deadlock || S.over, title: title, line: line, icon: 'trophy', pts: single ? '' : '+' + pr.pts, color: INK[Core.colorOf(pr.p)] });
+      }, dur + 80);
+    }
+    setTimeout(function () { ANIM = false; }, Math.max(t, dur) + extra);
+    return Math.max(t, dur) + extra;
+  }
+  function lightRow(r) {
+    for (var c = 0; c < 8; c++) (function (c) {
+      setTimeout(function () { var n = el('span', { class: 'sqlit' }), q = px(r * 8 + c); pos(n, q.x, q.y); layEl.appendChild(n); Kit.sfx('tick', .5); setTimeout(function () { n.remove(); }, 2600); }, c * 70);
+    })(flip() ? 7 - c : c);
+  }
+
+  // ── Marks on the board ───────────────────────────────────────────────────
+  function clearMarks() {
+    layEl.querySelectorAll('.dot,.tag,.lastf,.aimg').forEach(function (n) { n.remove(); });
+    [fxEl, fx2El].forEach(function (s) { while (s.firstChild) s.removeChild(s.firstChild); });
+    for (var p = 1; p <= 16; p++) if (TW[p]) TW[p].classList.remove('must', 'pick', 'sel', 'forced', 'danger', 'blocked', 'ghost', 'prev');
+  }
+  function svgLine(svg, a, z, color, w, op, dash) {
+    var l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    l.setAttribute('x1', a.x); l.setAttribute('y1', a.y); l.setAttribute('x2', z.x); l.setAttribute('y2', z.y);
+    l.setAttribute('stroke', color); l.setAttribute('stroke-width', w); l.setAttribute('stroke-linecap', 'round'); l.setAttribute('opacity', op);
+    if (dash) l.setAttribute('stroke-dasharray', dash);
+    svg.appendChild(l); return l;
+  }
+  function tag(sq, text, cls, below) {
+    var n = el('span', { class: 'tag ' + (cls || ''), text: text }), q = px(sq), ax = q.x < 260 ? '-12%' : q.x > 740 ? '-88%' : '-50%';
+    pos(n, q.x, q.y + (below ? SQW * .48 : -SQW * .42)); n.style.transform = 'translate(' + ax + ',' + (below ? '0' : '-100%') + ')'; layEl.appendChild(n); return n;
+  }
+  // what each move from the tower on f would lead to: {key: {m, res, st, cls}}
+  function outcomes(f) {
+    var out = {};
+    Core.movesFrom(S, f).forEach(function (m) {
+      var c = coreOf(S), r = Core.play(c, Core.encode(m.f, m.t, m.push));
+      var cls = '';
+      if (r.win) cls = 'win';
+      else if (r.deadlock) cls = r.promo.side === S.turn ? 'win' : 'lose';
+      else if (c.turn !== S.turn) {
+        var at = Core.find(c.b, Core.piece(c.turn, c.req));
+        if (at >= 0 && Core.lanes(c.b, c.rk, at).length) cls = 'danger';
+        else if (r.passes.length) cls = 'block';
+      } else if (r.passes.length) cls = 'block';
+      out[m.t + (m.push ? '*' : '')] = { m: m, res: r, st: c, cls: cls };
+    });
+    return out;
+  }
+  var OUT = null;
+  function paintMarks() {
+    if (!layEl || !S) return;
+    clearMarks(); OUT = null;
+    if (S.last && S.phase === 'play') { [S.last[0]].forEach(function (sq) { var n = el('span', { class: 'lastf' }), q = px(sq); pos(n, q.x, q.y); layEl.appendChild(n); }); }
+    LASTBLK.forEach(function (sq) { var p = S.b[sq]; if (TW[p]) TW[p].classList.add('blocked'); });
+    if (S.over || S.phase !== 'play') { if (FILLP) previewFill(FILLP); paintActs(); return; }
+    var me = humanTurn(), movers = Core.movers(S);
+    // the other side's towers with a way home: a red line to their goal
+    for (var p = 1; p <= 16; p++) {
+      if (Core.sideOf(p) === S.turn) continue;
+      var sq = S.b.indexOf(p); if (sq < 0) continue;
+      Core.lanes(S.b, S.rk, sq).forEach(function (t) { svgLine(fxEl, px(sq), px(t), 'rgba(255,90,60,.55)', 6, .9, '4 12'); });
+    }
+    if (S.req >= 0 && movers.length) { var mt = TW[S.b[movers[0]]]; if (mt) mt.classList.add('must'); SEL = movers[0]; }
+    else if (me) movers.forEach(function (f) { var t = TW[S.b[f]]; if (t) t.classList.add('pick'); });
+    if (SEL >= 0 && me) {
+      var f = SEL; if (TW[S.b[f]]) TW[S.b[f]].classList.add('sel');
+      OUT = outcomes(f);
+      Object.keys(OUT).forEach(function (k) {
+        var o = OUT[k], d = el('span', { class: 'dot ' + (o.m.push ? 'push ' : '') + o.cls + (AIM === k ? ' aim' : '') }), q = px(o.m.t);
+        if (o.m.push) { var up = (flip() ? -1 : 1) * (S.turn === BLACK ? 1 : -1) > 0; d.style.setProperty('--pr', up ? '225deg' : '45deg'); d.style.setProperty('--py', up ? '20%' : '-20%'); }
+        pos(d, q.x, q.y); layEl.appendChild(d);
+      });
+      if (AIM && OUT[AIM]) aimPreview(OUT[AIM]);
+    }
+    paintActs();
+  }
+  // the move being aimed at: its path, a faint tower where it lands, and the other player's tower it would send next
+  function aimPreview(o) {
+    var m = o.m, c = o.st, r = o.res;
+    svgLine(fx2El, px(m.f), px(m.t), 'rgba(255,233,163,.9)', 8, .85);
+    if (!m.push) { var g = tower(S.b[m.f]); g.classList.add('ghost', 'dot'); if (S.rk[S.b[m.f]]) g.classList.add('r' + S.rk[S.b[m.f]]); var q = px(m.t); pos(g, q.x, q.y); g.classList.remove('dot'); g.classList.add('aimg'); layEl.appendChild(g); }
+    if (r.win) { tag(m.t, 'Home: you win the round', 'good'); return; }
+    if (r.deadlock) { tag(m.t, r.promo.side === S.turn ? 'Deadlock: you win the round' : 'Deadlock: you lose the round', r.promo.side === S.turn ? 'good' : 'bad'); return; }
+    var nx = Core.find(c.b, Core.piece(c.turn, c.req)), nt = TW[c.b[nx]] || TW[Core.piece(c.turn, c.req)];
+    var at = S.b.indexOf(Core.piece(c.turn, c.req));
+    if (nt && at >= 0) {
+      nt.classList.add('forced'); nt.style.setProperty('--fc', INK[c.req]);
+      var mine = c.turn === S.turn, lanes = mine ? [] : Core.lanes(c.b, c.rk, nx);
+      if (lanes.length) { nt.classList.add('danger'); lanes.forEach(function (t) { svgLine(fx2El, px(nx), px(t), '#ff5a3c', 8, .9, '14 10'); }); }
+      var who = mine ? 'You move ' : nameOf(pl(c.turn)) + ' moves ';
+      var txt = r.passes.length ? (r.passes.length === 1 ? 'Blocked: ' : 'Blocked ' + r.passes.length + ' times: ') + who.toLowerCase() + 'the ' + CN[c.req] + ' next' : lanes.length ? 'This one could reach your home row' : who + 'this one next';
+      tag(nx, txt, lanes.length ? 'bad' : r.passes.length ? 'good' : '', px(nx).y < SQW * 1.5);
+    }
+    if (m.push) r.pushed.forEach(function (pp) { svgLine(fx2El, px(pp[0]), px(pp[1]), '#ffe9a3', 6, .8, '6 8'); });
+  }
+  // the Defender's choice, shown on the board: the towers sit faintly where that fill would put them
+  function previewFill(f) {
+    var nb = Core.regroup(S.b, f);
+    for (var p = 1; p <= 16; p++) { var n = TW[p]; if (!n) continue; var q = px(nb.indexOf(p)); pos(n, q.x, q.y); n.classList.add('prev'); }
+  }
+  function paintActs() {
+    if (!actsEl) return;
+    actsEl.innerHTML = '';
+    var colEl = actsEl.parentNode; if (colEl) colEl.classList.toggle('rg', !!S && S.phase === 'regroup' && !S.over && humanTurn());
+    if (NET) { if (S.over || LEFT) { actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: LEFT ? 'Back to the lobby' : 'Play again', onclick: netAgain })); return; } }
+    else if (S.over) { actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Play again', onclick: function () { newGame(true); } })); return; }
+    if (S.phase === 'regroup' && humanTurn()) {
+      var fills = el('div', { class: 'fills' });
+      ['L', 'R'].forEach(function (f) {
+        var nb = Core.regroup(S.b, f), card = el('button', { type: 'button', class: 'fill' + (FILLP === f ? ' on' : ''), onclick: function () { FILLP = f; Kit.sfx('tick', .6); Kit.haptic('light'); paintAll(); } });
+        card.appendChild(el('b', { text: f === 'L' ? 'Fill from the left' : 'Fill from the right' }));
+        var bs = bottomSide();
+        [3 - bs, bs].forEach(function (s) {
+          var row = el('div', { class: 'rowp' }), h = Core.homeRow(s);
+          for (var i = 0; i < 8; i++) {
+            var c = flip() ? 7 - i : i, sq = h * 8 + c, p = nb[sq], cell = el('span'); cell.style.background = INK[Core.SQ[sq]];
+            if (p) cell.appendChild(tok(Core.sideOf(p), Core.colorOf(p), S.rk[p]));
+            row.appendChild(cell);
+          }
+          card.appendChild(row);
+        });
+        fills.appendChild(card);
+      });
+      actsEl.appendChild(fills);
+      if (FILLP) actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Play this set-up', onclick: function () { var f = FILLP; commit('fill ' + f); } }));
+      return;
+    }
+    if (AIM && OUT && OUT[AIM] && humanTurn()) {
+      var o = OUT[AIM];
+      actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm km-go', text: o.m.push ? 'Push' : 'Move to ' + Core.NAMES[o.m.t], onclick: function () { commit(Core.encode(o.m.f, o.m.t, o.m.push)); } }));
+    }
+    if (!NET && S.phase === 'play') actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('undo') + '<span>Undo</span>', onclick: undo }));
+  }
+
+  // ── Input: tap a tower (on a round's first move), tap a dot to aim, tap again to move; a mouse click moves at once;
+  //    or drag the tower onto a dot ──
+  var TOUCH = false, SUPPRESS = 0, DRAG = null;
+  function sqAt(x, y) {
+    var r = frameEl.getBoundingClientRect(), ux = (x - r.left) / r.width * VW, uy = (y - r.top) / r.height * VW;
+    var c = Math.floor((ux - O) / SQW), rr = Math.floor((uy - O) / SQW);
+    if (c < 0 || c > 7 || rr < 0 || rr > 7) return -1;
+    if (flip()) { c = 7 - c; rr = 7 - rr; }
+    return rr * 8 + c;
+  }
+  function keyAt(sq) { if (!OUT) return null; if (OUT[sq]) return String(sq); if (OUT[sq + '*']) return sq + '*'; return null; }
+  function commit(str) {
+    AIM = null; FILLP = null;
+    if (NET) return netMove(str);
+    playMove(str);
+  }
+  function hookInput(f) {
+    f.addEventListener('pointerdown', function (e) {
+      TOUCH = e.pointerType !== 'mouse';
+      if (!S || !humanTurn() || S.phase !== 'play') return;
+      var sq = sqAt(e.clientX, e.clientY);
+      if (sq >= 0 && Core.movers(S).indexOf(sq) >= 0) DRAG = { sq: sq, x: e.clientX, y: e.clientY, on: false, id: e.pointerId };
+    });
+    f.addEventListener('pointermove', function (e) {
+      if (!S || !humanTurn()) return;
+      if (DRAG && e.pointerId === DRAG.id) {
+        if (!DRAG.on && Math.hypot(e.clientX - DRAG.x, e.clientY - DRAG.y) > 10) {
+          DRAG.on = true; if (SEL !== DRAG.sq) { SEL = DRAG.sq; AIM = null; paintMarks(); }
+          try { f.setPointerCapture(e.pointerId); } catch (er) {}
+        }
+        if (DRAG.on) {
+          var n = TW[S.b[DRAG.sq]], r = frameEl.getBoundingClientRect();
+          if (n) { n.style.transition = 'none'; n.style.left = (e.clientX - r.left) / r.width * 100 + '%'; n.style.top = (e.clientY - r.top) / r.height * 100 + '%'; n.style.zIndex = 8; }
+          var k = keyAt(sqAt(e.clientX, e.clientY));
+          if (k !== AIM) { AIM = k; paintMarks(); paintStatus(); }
+          return;
+        }
+      }
+      if (e.pointerType !== 'mouse' || DRAG) return;
+      var k2 = keyAt(sqAt(e.clientX, e.clientY));
+      if (k2 !== AIM) { TOUCH = false; AIM = k2; paintMarks(); paintStatus(); }
+    });
+    f.addEventListener('pointerup', function (e) {
+      if (!DRAG || e.pointerId !== DRAG.id) return;
+      var d = DRAG; DRAG = null;
+      if (!d.on) return;
+      SUPPRESS = Date.now() + 350;
+      var n = TW[S.b[d.sq]]; if (n) { n.style.zIndex = ''; n.style.transition = ''; }
+      var k = keyAt(sqAt(e.clientX, e.clientY));
+      if (k && OUT && OUT[k]) { var o = OUT[k]; Kit.haptic('medium'); commit(Core.encode(o.m.f, o.m.t, o.m.push)); }
+      else { placeTowers(S.b); AIM = null; paintMarks(); paintStatus(); }
+    });
+    f.addEventListener('pointercancel', function () { if (DRAG) { DRAG = null; placeTowers(S.b); } });
+    f.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse' && AIM && !TOUCH && !DRAG) { AIM = null; paintMarks(); paintStatus(); } });
+    f.addEventListener('click', function (e) {
+      if (Date.now() < SUPPRESS || !S) return;
+      if (!humanTurn()) { if (!S.over && NET && !NET.myTurn()) Kit.toast('It’s ' + Kit.poss(pl(S.turn).name) + ' turn'); return; }
+      if (S.phase !== 'play') return;
+      var sq = sqAt(e.clientX, e.clientY), k = keyAt(sq);
+      if (k) {
+        if (!TOUCH || k === AIM) { var o = OUT[k]; Kit.haptic('medium'); commit(Core.encode(o.m.f, o.m.t, o.m.push)); return; }
+        AIM = k; Kit.sfx('tick', .5); Kit.haptic('light'); paintMarks(); paintStatus(); return;
+      }
+      var mv = Core.movers(S);
+      if (S.req < 0 && mv.indexOf(sq) >= 0) { SEL = sq; AIM = null; Kit.sfx('tap'); Kit.haptic('light'); paintMarks(); paintStatus(); return; }
+      if (sq >= 0 && S.b[sq] && Core.sideOf(S.b[sq]) === S.turn && S.req >= 0) { Kit.haptic('error'); Kit.toast('You have to move the ' + CN[S.req] + ' tower: the other player’s tower landed on a ' + CN[S.req] + ' square.'); return; }
+      if (AIM) { AIM = null; paintMarks(); paintStatus(); }
+    });
+  }
+
+  // ── The plates, the turn, the room ───────────────────────────────────────
+  function bottomSide() {
+    if (NET) return NET.seat >= 0 ? S.players[NET.seat].side : BLACK;
+    var hum = S.players.filter(function (p) { return !p.cpu; });
+    return vsCpu() && hum.length === 1 ? hum[0].side : BLACK;
+  }
+  function bar(node, side) {
+    if (!node) return;
+    var p = pl(side), on = !S.over && S.turn === side;
+    node.className = 'pbar ' + (node === topBar ? 'top' : 'bot') + (on ? ' on' : '');
+    var sub = on && p.cpu && S.busy ? '<span class="think">Thinking <i></i><i></i><i></i></span>' : on ? (S.phase === 'regroup' ? 'Chooses the set-up' : NET && isMe(p) ? 'Your turn as ' + colorName(side) : colorName(side) + ' to move') : colorName(side);
+    if (S.over && S.winner === side) sub = S.match.target > 1 ? 'Won the match' : 'Won the game';
+    node.innerHTML = '';
+    node.appendChild(tok(side, null));
+    node.appendChild(el('div', { class: 'who' }, [el('span', { class: 'nm', html: (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(nameOf(p)) + '</span>' }), el('span', { class: 'sub', html: sub })]));
+    if (on && S.phase === 'play' && S.req >= 0) node.appendChild(el('span', { class: 'must', 'aria-label': 'Must move the ' + CN[S.req] + ' tower' }, [tok(side, S.req, S.rk[Core.piece(side, S.req)]), el('span', { text: Core.COLOR_NAMES[S.req] })]));
+    if (S.match.target > 1) node.appendChild(el('span', { class: 'pts' }, [el('b', { text: String(S.match.pts[side]) }), el('span', { text: 'of ' + S.match.target })]));
+  }
+  function paintStatus() {
+    if (!turnEl || !S) return;
+    var bs = bottomSide(); bar(topBar, 3 - bs); bar(botBar, bs);
+    var p = pl(S.turn);
+    turnEl.innerHTML = '';
+    if (NET && LEFT) { turnEl.appendChild(el('span', { text: LEFT.text || 'The other player left' })); paintActs(); return; }
+    if (S.over) {
+      var w = pl(S.winner), rd = S.rounds[S.rounds.length - 1];
+      turnEl.appendChild(el('span', { text: (NET && isMe(w) ? 'You win' : w.name + ' wins') + (S.match.target > 1 ? ' the match, ' + S.match.pts[S.winner] + ' to ' + S.match.pts[3 - S.winner] : rd && rd.why === 'deadlock' ? ' by deadlock' : ' with a tower home') }));
+      paintActs(); return;
+    }
+    turnEl.appendChild(el('span', { class: 'dot' }));
+    var txt, mine = NET ? isMe(p) : !p.cpu, who = NET && isMe(p) ? 'Your' : Kit.poss(p.name);
+    if (S.phase === 'regroup') {
+      var lr = S.rounds[S.rounds.length - 1];
+      txt = (NET && !mine) || (!NET && p.cpu) ? p.name + ' won round ' + S.rounds.length + ' and chooses the set-up' : (NET ? 'You' : p.name) + ' won round ' + S.rounds.length + '. Choose how both sides set up';
+      if (lr && FILLP) txt = 'Fill from the ' + (FILLP === 'L' ? 'left' : 'right') + ': the faint towers show where each one goes';
+    }
+    else if (NET && !mine) txt = 'Waiting for ' + p.name;
+    else if (!NET && p.cpu) txt = p.name + ' is thinking…';
+    else if (HOLD) txt = 'Pass the device to ' + p.name;
+    else if (AIM && OUT && OUT[AIM]) {
+      var o = OUT[AIM];
+      txt = o.res.win ? 'Tap again to go home and win' : o.m.push ? 'Tap again to push' : 'Tap again to move to ' + Core.NAMES[o.m.t];
+      if (!TOUCH) txt = o.res.win ? 'Click to go home and win' : 'Click to move';
+    }
+    else if (S.req < 0) txt = who + ' turn: ' + (SEL >= 0 ? 'tap a dot to move' : 'any tower may start');
+    else txt = who + ' turn: move the ' + CN[S.req] + (S.rk[Core.piece(S.turn, S.req)] ? ' ' + rankName(S.rk[Core.piece(S.turn, S.req)]) : ' tower');
+    turnEl.appendChild(el('span', { text: txt }));
+    paintActs();
+  }
+  // a move in words with the players' names
+  function said(x) {
+    var who = nameOf(pl(x.side)), them = nameOf(pl(3 - x.side));
+    if (x.pass) return Kit.poss(who).replace(/^your$/, 'Your') + ' ' + CN[x.k] + ' tower was blocked and moved zero squares.';
+    var m = Core.parse(x.s), r = x.res;
+    if (m.push) return who + '’s ' + CN[r.k] + ' ' + rankName(x.rk) + ' pushed ' + (r.pushed.length === 1 ? poss(them) + ' tower' : r.pushed.length + ' of ' + poss(them) + ' towers') + ' back from ' + Core.NAMES[r.pushed[0][0]] + '.';
+    return who + ' moved the ' + CN[r.k] + ' ' + (x.rk ? rankName(x.rk) : 'tower') + ' from ' + Core.NAMES[m.f] + ' to ' + Core.NAMES[m.t] + (r.win ? ' and reached home.' : '.');
+  }
+  // this round move by move, passes included
+  function moveList() {
+    var rp = Core.replay(S.b0, S.rk0, S.first, S.ml), list = [];
+    rp.steps.forEach(function (x, i) {
+      // the rank a tower had when it moved: ranks change only when a round ends
+      list.push({ s: x.s, side: x.side, res: x.res, rk: S.rk0[Core.piece(x.side, x.res.k)] || 0, n: i + 1 });
+      x.res.passes.forEach(function (ps) { list.push({ pass: true, side: ps.side, k: Core.colorOf(x.b[ps.sq]) }); });
+    });
+    return list;
+  }
+  // At a desk, the room beside the board: the last move in words, the match (points, Sumo towers, rounds), this
+  // round's moves and past games. Each panel is as tall as what it holds.
+  function paintRoom() {
+    if (!roomEl || !R.classList.contains('km-dk') || !S) return;
+    roomEl.innerHTML = '';
+    var list = S.phase === 'play' || S.over ? moveList() : [], L = null;
+    for (var i = list.length - 1; i >= 0; i--) if (!list[i].pass) { L = list[i]; break; }
+    var lp = el('section', { class: 'pn lastp' }, [el('h3', { text: 'Last move' })]);
+    var line = L ? said(L) : S.phase === 'regroup' ? nameOf(pl(S.def)) + ' won round ' + S.rounds.length + ' and chooses how both sides set up.' : nameOf(pl(S.first)) + ' plays ' + colorName(S.first) + ' and starts' + (S.match.round > 1 ? ' round ' + S.match.round : '') + ', with any tower.';
+    lp.appendChild(el('div', { class: 'ln', text: line }));
+    var afterL = L ? list.slice(list.indexOf(L) + 1).filter(function (x) { return x.pass; }) : [];
+    afterL.forEach(function (x) { lp.appendChild(el('div', { class: 'ln none', text: said(x) })); });
+    if (!S.over && S.phase === 'play' && S.req >= 0) lp.appendChild(el('div', { class: 'ln none', text: nameOf(pl(S.turn)) + ' must move the ' + CN[S.req] + ' tower.' }));
+    roomEl.appendChild(lp);
+    if (S.match.target > 1) {
+      var mp = el('section', { class: 'pn mtp' }, [el('h3', { text: MATCH[S.match.target] + ' to ' + S.match.target + ' points' })]);
+      var sc = el('div', { class: 'scr' });
+      [BLACK, WHITE].forEach(function (sd) { sc.appendChild(tok(sd, null)); sc.appendChild(el('span', { class: 'nmx', text: nameOf(pl(sd)) })); sc.appendChild(el('span', { class: 'p', html: S.match.pts[sd] + ' <small>of ' + S.match.target + '</small>' })); });
+      mp.appendChild(sc);
+      var sumo = el('div', { class: 'sumo' }), any = false;
+      for (var p = 1; p <= 16; p++) if (S.rk[p]) { any = true; sumo.appendChild(tok(Core.sideOf(p), Core.colorOf(p), S.rk[p])); }
+      if (any) mp.appendChild(sumo);
+      var rr = el('div', { class: 'rows' });
+      S.rounds.slice().reverse().forEach(function (rd, j) {
+        var n = S.rounds.length - j, wp = pl(rd.w);
+        rr.appendChild(el('div', { class: 'rdr' }, [el('span', { class: 'rn', text: 'Round ' + n }), el('span', { class: 'rt', text: nameOf(wp) + (rd.why === 'deadlock' ? ' won by deadlock: ' : ' got home: ') + 'the ' + CN[Core.colorOf(rd.p)] + ' tower became ' + (rd.rk === 1 ? 'a Sumo' : 'a ' + rankName(rd.rk)) + ', ' + rd.pts + (rd.pts === 1 ? ' point.' : ' points.') })]));
+      });
+      if (S.rounds.length) mp.appendChild(rr);
+      roomEl.appendChild(mp);
+    }
+    if (list.length) {
+      var mv = el('section', { class: 'pn mvp' }, [el('h3', { text: S.match.target > 1 ? 'Round ' + S.match.round + ', move by move' : 'Moves so far' })]), rows = el('div', { class: 'rows' });
+      list.slice().reverse().slice(0, 60).forEach(function (x, i) {
+        if (x.pass) { rows.appendChild(el('div', { class: 'mvr ps' }, [el('span', { class: 'no', text: '' }), tok(x.side, x.k), el('span', { class: 'nt', text: 'Blocked' }), el('span', { class: 'tg x', text: '0 squares' })])); return; }
+        var m = Core.parse(x.s);
+        rows.appendChild(el('div', { class: 'mvr' + (i === 0 ? ' now' : '') }, [el('span', { class: 'no', text: x.n + '' }), tok(x.side, x.res.k, x.rk),
+          el('span', { class: 'nt', text: Core.NAMES[m.f] + ' to ' + Core.NAMES[m.t] }),
+          x.res.win ? el('span', { class: 'tg f', text: 'Home' }) : m.push ? el('span', { class: 'tg f', text: 'Push' }) : x.res.d >= 6 ? el('span', { class: 'tg t', text: x.res.d + ' squares' }) : el('span')]));
+      });
+      mv.appendChild(rows); roomEl.appendChild(mv);
+    }
+    var past = []; try { past = GameHistory.load(KEY).slice(0, 8); } catch (e) {}
+    if (past.length) {
+      var pg = el('section', { class: 'pn pgp' }, [el('h3', { text: 'Past games' })]), pr = el('div', { class: 'rows' });
+      past.forEach(function (e) {
+        var d = e.dt || e.detail || {};
+        pr.appendChild(el('div', { class: 'pgr' }, [el('span', { class: 'w', text: e.winner ? e.winner.replace(/ \((Black|White)\)$/, '') + ' won' : 'Unfinished' }),
+          el('span', { class: 'sc', text: d.pts ? d.pts[0] + ' to ' + d.pts[1] : '' }), el('span', { class: 'dt', text: Kit.fmtDate ? Kit.fmtDate(e._date || e.started) : '' })]));
+      });
+      pg.appendChild(pr); roomEl.appendChild(pg);
+    }
+    fitRoom();
+  }
+  // Too little room: whole rows go (past games down to two, the oldest moves down to three, the oldest rounds, then the
+  // past games, then the moves), never a cut row.
+  function fitRoom() {
+    if (!roomEl) return;
+    var mv = roomEl.querySelector('.mvp .rows'), pg = roomEl.querySelector('.pgp .rows'), rd = roomEl.querySelector('.mtp .rows'), guard = 0;
+    function over() { return roomEl.scrollHeight > roomEl.clientHeight + 1 || [].some.call(roomEl.children, function (c) { return c.offsetTop + c.offsetHeight > roomEl.offsetTop + roomEl.clientHeight + 1; }); }
+    while (over() && guard++ < 300) {
+      if (pg && pg.children.length > 2) pg.removeChild(pg.lastChild);
+      else if (mv && mv.children.length > 3) mv.removeChild(mv.lastChild);
+      else if (rd && rd.children.length > 1) rd.removeChild(rd.lastChild);
+      else if (pg && pg.parentNode.isConnected) { pg.parentNode.remove(); pg = null; }
+      else if (mv && mv.children.length > 1) mv.removeChild(mv.lastChild);
+      else if (mv && mv.parentNode.isConnected) { mv.parentNode.remove(); mv = null; }
+      else if (rd && rd.isConnected) { rd.remove(); rd = null; }
+      else break;
+    }
+  }
+
+  // ── The desk (a window larger than a phone's or a tablet's) ──────────────
+  function deviceShape(w, h) { var lo = Math.min(w, h), hi = Math.max(w, h); return (lo <= 480 && hi <= 1000) || (lo >= 620 && lo <= 840 && hi >= 900 && hi <= 1200); }
+  var DK = null;
+  function deskPlan() {
+    var W = window.innerWidth, H = window.innerHeight;
+    if (!S || deviceShape(W, H) || W < 640 || H < 500) return null;
+    var gb = document.querySelector('.gbar'), top = (gb ? Math.round(gb.getBoundingClientRect().bottom) : 56) + 6;
+    var g = Math.round(Math.max(14, Math.min(28, W / 90))), x0 = g, y0 = top, aw = W - 2 * g, ah = H - top - g;
+    var dk = Math.max(1, Math.min(1.5, W / 1700, H / 1100));
+    var side = Math.round(Math.max(320, Math.min(460, 320 * dk)));
+    var CAP = 1500, bwWide = Math.min(CAP, ah, aw - side - g), bwTall = Math.min(CAP, aw, ah - 360 * dk - g);
+    if (aw / ah > 1.2 || bwTall < 300) {
+      var bw = Math.floor(bwWide), spare = aw - side - g - bw;
+      if (spare >= side * .9 + g) {
+        var rw = Math.min(spare - g, Math.round(side * 1.4));
+        return { k: 'w2', dk: dk, x0: x0, y0: y0, aw: aw, ah: ah, g: g, bw: bw, cols: side + 'px ' + rw + 'px ' + bw + 'px', areas: '"t r b" "p r b" "s r b" "a r b" ". r b"' };
+      }
+      return { k: 'w1', dk: dk, x0: x0, y0: y0, aw: aw, ah: ah, g: g, bw: bw, cols: Math.max(side, aw - bw - g) + 'px ' + bw + 'px', areas: '"t b" "p b" "s b" "a b" "r b"' };
+    }
+    var bt = Math.floor(bwTall);
+    return { k: 't', dk: dk, x0: x0, y0: y0, aw: aw, ah: ah, g: g, bw: bt, cols: side + 'px ' + (aw - side - g) + 'px', areas: '"b b" "t r" "p r" "s r" "a r" ". r"', rowsT: true };
+  }
+  function deskApply() {
+    var P = deskPlan(), was = DK ? DK.k : null;
+    DK = P;
+    if (!P) { deskOff(); return; }
+    R.classList.add('km-dk');
+    var col = app.querySelector('.km-col'); if (!col) return;
+    col.style.setProperty('--x0', P.x0 + 'px'); col.style.setProperty('--y0', P.y0 + 'px'); col.style.setProperty('--aw', P.aw + 'px'); col.style.setProperty('--ah', P.ah + 'px');
+    col.style.setProperty('--g', P.g + 'px'); col.style.setProperty('--bw', P.bw + 'px'); col.style.setProperty('--cols', P.cols); col.style.setProperty('--areas', P.areas);
+    col.style.setProperty('--dk', P.dk.toFixed(3));
+    col.style.gridTemplateRows = P.rowsT ? (P.bw + 'px max-content max-content max-content max-content minmax(0,1fr)') : '';
+    col.style.gridTemplateAreas = P.k === 't' ? P.areas : '';
+    if (roomEl) roomEl.classList.toggle('row', P.k === 't');
+    if (was !== P.k) setTimeout(paintRoom, 0);
+  }
+  function deskOff() {
+    R.classList.remove('km-dk');
+    var col = app.querySelector('.km-col');
+    if (col) { ['--x0', '--y0', '--aw', '--ah', '--g', '--bw', '--cols', '--areas', '--dk'].forEach(function (k) { col.style.removeProperty(k); }); col.style.gridTemplateRows = ''; col.style.gridTemplateAreas = ''; }
+    DK = null;
+  }
+  var rzT = 0;
+  window.addEventListener('resize', function () {
+    clearTimeout(rzT);
+    rzT = setTimeout(function () {
+      if (!S || !S.b || !frameEl) return;
+      var o = shape(), was = DK ? DK.k : null, P = deskPlan();
+      var go = function () { R.setAttribute('data-o', o); deskApply(); sizeVar(); paintAll(); };
+      if (R.getAttribute('data-o') !== o || was !== (P ? P.k : null)) Kit.glide(go); else go();
+    }, 60);
+  });
+
+  // ── The end ──────────────────────────────────────────────────────────────
+  function highlights(w) {
+    var hl = [];
+    S.rounds.forEach(function (rd, i) {
+      var p = pl(rd.w);
+      hl.push((S.rounds.length > 1 ? 'Round ' + (i + 1) + ': ' : '') + (rd.why === 'deadlock' ? p.name + ' won by deadlock, and the ' + CN[Core.colorOf(rd.p)] + ' tower was promoted' : p.name + '’s ' + CN[Core.colorOf(rd.p)] + ' tower reached the home row') + (S.match.target > 1 ? ' and became ' + (rd.rk === 1 ? 'a Sumo' : 'a ' + rankName(rd.rk)) + ' for ' + rd.pts + (rd.pts === 1 ? ' point.' : ' points.') : '.'));
+    });
+    S.players.forEach(function (p) { var k = S.blocks[p.side]; if (k) hl.push(p.name + ' left the other player’s tower with nowhere to go ' + (k === 1 ? 'once.' : k + ' times.')); });
+    S.players.forEach(function (p) { var k = S.pushes[p.side]; if (k) hl.push(p.name + ' made ' + (k === 1 ? 'a Sumo push.' : k + ' Sumo pushes.')); });
+    S.players.forEach(function (p) { if (S.long[p.side] >= 6) hl.push(p.name + ' moved a tower ' + S.long[p.side] + ' squares in one move.'); });
+    if (vsCpu()) hl.push('The computer played at ' + SKILL[S.level] + '.');
+    return hl;
+  }
+  function detail() {
+    return { target: S.match.target, pts: [S.match.pts[1], S.match.pts[2]], sides: S.players.map(function (p) { return tc(p.side); }).join(''), grid: Core.grid(S.b), rk: S.rk.slice(1).join(''),
+      rounds: S.rounds.map(function (rd) { return { w: tc(rd.w), why: rd.why, c: Core.colorOf(rd.p), rk: rd.rk, pts: rd.pts, n: rd.n, ml: rd.ml, g0: rd.g0, k0: rd.k0, fill: rd.fill || '', first: tc(rd.first) }; }),
+      blocks: [S.blocks[1], S.blocks[2]], pushes: [S.pushes[1], S.pushes[2]], n: S.n };
+  }
+  function finish() {
+    S.over = true; clearSave(); paintAll();
+    var w = pl(S.winner), l = pl(3 - S.winner), single = S.match.target === 1, rd = S.rounds[S.rounds.length - 1];
+    Kit.record(KEY, {
+      started: S.started, mode: vsCpu() ? 'vs Computer (' + SKILL[S.level] + ')' : 'Pass & play',
+      players: S.players.map(function (p) { return { name: p.name + ' (' + colorName(p.side) + ')', score: S.match.pts[p.side], cpu: p.cpu }; }),
+      winner: w.name + ' (' + colorName(w.side) + ')', highlights: highlights(w), detail: detail()
+    });
+    paintRoom();
+    Kit.sfx('sparkle'); Kit.haptic('success');
+    Kit.moment({ big: true, title: single ? (rd.why === 'deadlock' ? 'Deadlock' : 'Home!') : 'Match won', line: single ? (rd.why === 'deadlock' ? 'Nobody could move, and the deadlock goes against the player who caused it. ' + nameOf(w) + ' wins.' : nameOf(w) + '’s ' + CN[Core.colorOf(rd.p)] + ' tower reached the home row first.') : nameOf(w) + ' wins the match, ' + S.match.pts[w.side] + ' points to ' + S.match.pts[l.side] + '.', icon: 'trophy', pts: single ? '' : String(S.match.pts[w.side]) });
+    setTimeout(function () {
+      var lose = w.cpu;
+      Kit.win({
+        icon: lose ? 'bot' : 'trophy',
+        title: lose ? w.name + ' wins this one' : w.name === 'You' ? 'You win!' : w.name + ' wins!',
+        sub: (single ? (rd.why === 'deadlock' ? 'By deadlock' : 'A tower home') : MATCH[S.match.target] + ' · ' + S.rounds.length + ' rounds') + ' · ' + S.n + ' moves',
+        rank: [w, l].map(function (p) { return { name: p.name, me: vsCpu() && !p.cpu, score: S.match.pts[p.side] + (S.match.pts[p.side] === 1 ? ' point' : ' points'), color: p.side === BLACK ? '#2a2a30' : '#efe5cf' }; }),
+        lose: !!lose, again: function () { newGame(true); }, look: true,
+        setup: function () { cancelThink(); clearSave(); showSetup(); }
+      });
+    }, 2800);
+  }
+
+  // ── Online (turnnet.js) ──────────────────────────────────────────────────
+  // Seat 0 plays the color chosen in the setup in the first game; each new game at the table swaps colors.
+  function netSeatOf(st, side) { return st.players[0].side === side ? 0 : 1; }
+  function netOpts() {
+    var o = { side: 'b', target: 1 }; try { var g = JSON.parse(localStorage.getItem('gn_setup_kamisado')); if (g && g.options) { if (g.options.side === 'w') o.side = 'w'; if (+g.options.target) o.target = +g.options.target; } } catch (e) {}
+    return o;
+  }
+  function netStart(players, opts, last) {
+    var s0 = last && last.players ? 3 - last.players[0].side : opts && opts.side === 'w' ? WHITE : BLACK;
+    var st = Core.newGame({ target: (last && last.match && last.match.target) || (opts && opts.target) || 1 });
+    st.mode = 'online'; st.level = 'normal'; st.players = players.map(function (p, i) { return { name: p.name, cpu: false, side: i === 0 ? s0 : 3 - s0 }; });
+    st.wins = last && last.wins ? last.wins.slice() : [0, 0]; st.started = Date.now();
+    return st;
+  }
+  function netApply(st, str) {
+    if (st.over) return null;
+    var side = st.turn, r = Core.play(st, str);
+    if (!r) return null;
+    if (st.over && st.winner) st.wins[netSeatOf(st, st.winner)]++;
+    return { state: st, mv: { s: str, side: side, n: st.n, ph: st.phase } };
+  }
+  function netMove(str) { if (!S || S.over || LEFT || !NET.myTurn()) return; S.busy = true; AIM = null; paintAll(); NET.act(function (st) { return netApply(st, str); }); setTimeout(function () { if (S) { S.busy = false; } }, 4000); }
+  function netAgain() { if (!NET) return; if (LEFT) { TurnNet.leave(); TurnNet.open(); } else NET.again(); }
+  function netShow(net, info) {
+    NET = net; cancelThink();
+    if (WINO && (info.again || info.fresh)) { WINO.close(); WINO = null; }
+    var prev = S, next = JSON.parse(JSON.stringify(net.state));
+    next.busy = false; next.hist = [];
+    LEFT = net.status === 'over' && !next.over && net.result && net.result.left != null ? net.result : null;
+    var tok2 = ++SHOWN, mv = info.mv && info.mv.s && !info.fresh && !info.again ? info.mv : null;
+    if (mv && prev && prev.b && frameEl && frameEl.isConnected && !info.again) {
+      var cp = Core.clone(coreOf(prev)), r = Core.play(cp, mv.s);
+      if (r && cp.n === next.n && cp.phase === next.phase) {
+        var prevB = prev.b.slice(), prevRk = prev.rk.slice();
+        S = next; AIM = null; SEL = -1; FILLP = null;
+        var t = animate(r, prevB, prevRk);
+        setTimeout(function () { if (tok2 !== SHOWN) return; paintAll(); if (S.over || LEFT) netEnd(); else if (!info.mine && net.myTurn()) Kit.haptic('light'); }, t + 80);
+        return;
+      }
+    }
+    S = next; AIM = null; SEL = -1; FILLP = null; LASTBLK = []; build();
+    if (info.again) { Kit.sfx('deal'); Kit.callout(pl(BLACK) === S.players[net.seat] ? 'You start' : pl(BLACK).name + ' starts'); }
+    if (S.over || LEFT) setTimeout(function () { if (tok2 === SHOWN) netEnd(); }, 200);
+  }
+  function netEnd() {
+    if (!NET || !S) return;
+    var me = NET.seat, left = LEFT, wi = left ? (left.win && left.win.length ? left.win[0] : -1) : S.winner ? netSeatOf(S, S.winner) : -1, w = wi >= 0 ? S.players[wi] : null;
+    var key = NET.code + ':' + S.started, done = NETREC[key];
+    try { done = done || (JSON.parse(localStorage.getItem('kamisado_net_rec')) || []).indexOf(key) >= 0; } catch (e) {}
+    if (!done && !left && S.over) {
+      NETREC[key] = 1;
+      try { var rl = JSON.parse(localStorage.getItem('kamisado_net_rec')) || []; rl.push(key); localStorage.setItem('kamisado_net_rec', JSON.stringify(rl.slice(-30))); } catch (e) {}
+      var hl = highlights(w); hl.push('Played online at table ' + NET.code + '.');
+      Kit.record(KEY, { started: S.started, mode: 'Online', players: S.players.map(function (p) { return { name: p.name + ' (' + colorName(p.side) + ')', score: S.match.pts[p.side], cpu: false }; }),
+        winner: w ? w.name + ' (' + colorName(w.side) + ')' : null, highlights: hl, detail: detail() });
+      paintRoom();
+    }
+    if (w && !left) { Kit.sfx('sparkle'); }
+    if (WINO) WINO.close();
+    setTimeout(function () {
+      WINO = Kit.win({
+        icon: w && wi === me ? 'trophy' : 'users',
+        title: left ? left.text : wi === me ? 'You win!' : w.name + ' wins',
+        sub: left ? '' : (S.match.target > 1 ? MATCH[S.match.target] + ' · ' + S.rounds.length + ' rounds' : 'A tower home') + ' · ' + S.n + ' moves',
+        rank: left ? null : S.players.slice().sort(function (x, y) { return S.match.pts[y.side] - S.match.pts[x.side]; }).map(function (p) { return { name: p.name, me: isMe(p), score: S.match.pts[p.side] + (S.match.pts[p.side] === 1 ? ' point' : ' points'), color: p.side === BLACK ? '#2a2a30' : '#efe5cf' }; }),
+        notes: left ? null : [S.players[0].name + ' has won ' + S.wins[0] + ' and ' + S.players[1].name + ' has won ' + S.wins[1] + '.'], notesTitle: 'Games at this table',
+        lose: !!w && wi !== me, againLabel: left ? 'Back to the lobby' : 'Play again',
+        again: function () { WINO = null; netAgain(); },
+        look: { label: 'Look at the board', onClick: function () { WINO = null; } }
+      });
+    }, left ? 100 : 2400);
+  }
+  function netLeave() {
+    NET = null; LEFT = null; SHOWN++; if (WINO) { WINO.close(); WINO = null; }
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.b && sv.rk && sv.players && !sv.over) { S = sv; S.busy = false; build(); afterTurn(); }
+    else showSetup();
+  }
+
+  // ── Test and demo hooks ──────────────────────────────────────────────────
+  window.__kamisado = {
+    core: Core, state: function () { return S; }, get aim() { return AIM; }, get sel() { return SEL; }, get busy() { return ANIM || (S && S.busy); },
+    // a fresh game: {mode: '2p' | 'cpu', level, target, players: [{name, cpu, side}]}
+    start: function (cfg) { cancelThink(); S = { mode: cfg.mode || '2p', level: cfg.level || 'normal', cover: false, target: cfg.target || 1, players: cfg.players }; newGame(); },
+    // set a position: rows like Core.grid's (8 strings, top row first), whose turn, the color that must move (-1 any),
+    // ranks {piece: rank}; the round starts from here
+    set: function (rows, turn, req, ranks) {
+      cancelThink(); S.busy = false; S.b = Core.fromGrid(rows); S.turn = turn || 1; S.req = req == null ? -1 : req;
+      if (ranks) Object.keys(ranks).forEach(function (k) { S.rk[+k] = ranks[k]; });
+      S.phase = 'play'; S.over = false; S.winner = 0; S.n = 0; S.ml = []; S.last = null; S.first = S.turn; S.b0 = S.b.slice(); S.rk0 = S.rk.slice(); S.hist = [];
+      AIM = null; SEL = -1; FILLP = null; LASTBLK = []; save(); build(); afterTurn();
+    },
+    play: function (str) { return playMove(str); },
+    sq: function (name) { return function () { if (!layEl) return null; var s = Core.idx(name), d = layEl.querySelector('.dh[data-s="' + s + '"]'); if (!d) { d = el('span', { class: 'dh', 'data-s': s, style: 'position:absolute;width:11.5%;aspect-ratio:1;transform:translate(-50%,-50%);pointer-events:none' }); layEl.appendChild(d); } var q = px(s); pos(d, q.x, q.y); return d; }; },
+    tower: function (name) { return function () { var s = Core.idx(name); return S && S.b[s] ? TW[S.b[s]] : null; }; },
+    at: function (name) { var r = frameEl.getBoundingClientRect(), q = px(Core.idx(name)); return { x: r.left + q.x / VW * r.width, y: r.top + q.y / VW * r.height }; },
+    fillCard: function (f) { return function () { return actsEl ? actsEl.querySelectorAll('.fill')[f === 'R' ? 1 : 0] : null; }; },
+    desk: function () { return DK; }
+  };
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.b && saved.rk && saved.players && !saved.over) { S = saved; S.busy = false; build(); afterTurn(); }
+  else showSetup();
+
+  TurnNet.setup({
+    game: 'kamisado', title: 'Kamisado', min: 2, max: 2,
+    opts: netOpts, start: netStart,
+    turn: function (st) { return st.over ? [] : [netSeatOf(st, st.turn)]; },
+    over: function (st) { if (!st.over) return null; var w = netSeatOf(st, st.winner); return { win: [w], text: st.players[w].name + ' wins' }; },
+    show: netShow, leave: netLeave
+  });
+})();
+</script>
+</body>
+</html>
