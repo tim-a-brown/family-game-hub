@@ -113,9 +113,13 @@
   function roomy(s, st, rm, ky, g, k, v){
     try{ return st.call(s, k, v); }catch(e){
       if(/^gn_snap_/.test(String(k))) throw e;
-      var pics = [], i, kk, t;
-      for(i = 0; i < s.length; i++){ kk = ky.call(s, i); if(kk && kk.indexOf('gn_snap_') === 0){ t = 0; try{ t = JSON.parse(g.call(s, kk)).ts || 0; }catch(x){} pics.push([t, kk]); } }
+      // Stock Market's and Sportsbook's downloaded caches go first (fetched again on their next visit), then pictures
+      var pics = [], caches = [], i, kk, t;
+      for(i = 0; i < s.length; i++){ kk = ky.call(s, i); if(!kk || kk === k) continue;
+        if(/^(mk_\w*cache|sb_\w*cache)/.test(kk)) caches.push([-1, kk]);
+        else if(kk.indexOf('gn_snap_') === 0){ t = 0; try{ t = JSON.parse(g.call(s, kk)).ts || 0; }catch(x){} pics.push([t, kk]); } }
       pics.sort(function(a, b){ return a[0] - b[0]; });
+      for(i = 0; i < caches.length; i++){ try{ rm.call(s, caches[i][1]); }catch(x){} try{ st.call(s, k, v); roomyLog('Storage was full: ' + (i + 1) + ' download cache' + (i ? 's' : '') + ' let go for ' + k); return; }catch(x){} }
       for(i = 0; i < pics.length; i++){ try{ rm.call(s, pics[i][1]); }catch(x){} try{ st.call(s, k, v); roomyLog('Storage was full: ' + (i + 1) + ' picture' + (i ? 's' : '') + ' let go for ' + k); return; }catch(x){} }
       roomyLog('Storage is full: ' + k + ' (' + String(v).length + ' characters) could not be saved');
       throw e;
