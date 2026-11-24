@@ -2216,6 +2216,13 @@ Underlying principles for everything:
   buzz, a STOP and a solve be judged by when it was pressed on the player's own device, not when it arrived. Guests
   never receive a puzzle's answer. The computer plays any podium nobody takes, and one whose device drops out until it
   joins again.
+- **A finished game's details are their own documents** (Tim, 2026-11-24: his account's one document had reached Firestore's
+  1 MB, and `fitDoc` had been leaving out the details of his 150 oldest games): every history row's `dt` goes up first as
+  `pins/{pin}/gd/{id}` (or `users/{uid}/gd`) `{k, i: ghId, d: the detail as text, ts}` (`gdPush`, 200 a write), and the
+  main document carries the row without it once the cloud has it (`gdStrip`); a device missing a row's detail takes it
+  from gd (`gdPull` after each full sync: only what arrived since its last look, `fgh_gd`). `fitDoc` stays as the
+  fallback. Rules in firestore.rules (`/gd/{id}`, 300,000 characters a detail). The scratchpad's `gdtest/t.js` runs two
+  devices on one PIN against the Firestore emulator.
 - Real-time games (arcade, consoles) use `online.js` (WebRTC); consoles add lockstep in `games/console-net.js`.
 - **Notifications** (the bell on home, the profile menu and every game's menu, `Kit.inbox`): news that came in on this
   device, newest first (`gn_inbox_dev`). Anything new worth looking back at (a turn, a link answer, a request) goes in

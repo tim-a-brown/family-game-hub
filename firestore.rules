@@ -78,6 +78,19 @@ service cloud.firestore {
       allow delete: if pinId.matches('^[0-9]{4}$');
     }
 
+    // A finished game's details (sync.js gdPush): one doc per history row, so the account's own document stays under
+    // Firestore's 1 MB however long the history grows. Read only inside one PIN.
+    match /pins/{pinId}/gd/{id} {
+      allow get, list: if pinId.matches('^[0-9]{4}$');
+      allow create, update: if pinId.matches('^[0-9]{4}$')
+        && request.resource.data.keys().hasOnly(['k', 'i', 'd', 'ts'])
+        && request.resource.data.k is string && request.resource.data.i is string
+        && request.resource.data.d is string && request.resource.data.d.size() <= 300000
+        && request.resource.data.ts == request.time
+        && pinLive(pinId);
+      allow delete: if pinId.matches('^[0-9]{4}$');
+    }
+
     // Accounts signed in with Google: /users/{uid}, the same fields as a PIN's, and its saved games under st. Only
     // that Google sign-in reads or writes them.
     match /users/{uid} {
@@ -93,6 +106,14 @@ service cloud.firestore {
           && request.resource.data.ts == request.time
           && (request.resource.data.v == null || (request.resource.data.v is string && request.resource.data.v.size() <= 1000000))
           && (resource == null || request.resource.data.at >= resource.data.at);
+      }
+      match /gd/{id} {
+        allow get, list, delete: if request.auth != null && request.auth.uid == uid;
+        allow create, update: if request.auth != null && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['k', 'i', 'd', 'ts'])
+          && request.resource.data.k is string && request.resource.data.i is string
+          && request.resource.data.d is string && request.resource.data.d.size() <= 300000
+          && request.resource.data.ts == request.time;
       }
     }
 

@@ -1269,11 +1269,104 @@
   }
   // what this device last saved, part by part (for this PIN only; none yet means the next save sends everything)
   function partSigs(){ var r = lsJSON(PARTS_KEY); return r && r.pin === acctKey() && r.s ? r.s : null; }
+  // ── A finished game's details travel on their own ───────────────────
+  // The account's cloud copy is one document, and Firestore holds 1 MB at most in one (fitDoc, above, used to leave out
+  // the oldest games' details once it came near). Each game's detail view (a history row's dt) is its own document,
+  // pins/{pin}/gd/{id} {k: the game's history key, i: the row's id (ghId), d: the detail as text, ts: server time},
+  // sent before the main document, and the main document carries the row without it once the cloud has it. A device
+  // missing a row's detail takes it from gd (gdPull: only what arrived since its last look). This device keeps fgh_gd
+  // {acct, sent: {doc id: hash of the detail sent or taken}, ts: newest server time read, pend: {doc id: first seen}
+  // (a detail whose row hasn't come yet)}.
+  var GD = 'fgh_gd', GD_MAX = 300000, _gdChain = Promise.resolve();
+  function gdLoad(){
+    var o = lsJSON(GD); if(!o || typeof o !== 'object' || o.acct !== acctKey()) o = { acct: acctKey(), sent: {}, ts: 0, pend: {} };
+    o.sent = o.sent || {}; o.pend = o.pend || {}; o.ts = Number(o.ts) || 0; return o;
+  }
+  function gdSave(o){ try{ LS.setItem(GD, JSON.stringify(o)); }catch(e){} }
+  function gdDoc(key, r){ return String(key).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 60) + '_' + strHash(ghId(key, r)); }
+  function gdCol(){ var p = acctPath(); return p && _fb && _fb.db ? _fb.db.doc(p).collection('gd') : null; }
+  function gdRun(fn){ var p = _gdChain.then(fn); _gdChain = p.catch(function(){}); return p; }
+  // this device's details the cloud doesn't have yet, 200 a write
+  function gdPush(gh){
+    var col = gdCol(); if(!col) return Promise.resolve(0);
+    var o = gdLoad(), todo = [], n = 0, FV = firebase.firestore.FieldValue;
+    Object.keys(gh || {}).forEach(function(key){ (Array.isArray(gh[key]) ? gh[key] : []).forEach(function(r){
+      if(!r || typeof r !== 'object' || r.dt == null) return;
+      var d = JSON.stringify(r.dt); if(!d || d.length > GD_MAX) return;
+      var id = gdDoc(key, r), h = strHash(d);
+      if(o.sent[id] !== h) todo.push({ id: id, k: key, i: ghId(key, r), d: d, h: h });
+    }); });
+    function round(){
+      var part = todo.splice(0, 200); if(!part.length) return Promise.resolve();
+      var b = _fb.db.batch();
+      part.forEach(function(t){ b.set(col.doc(t.id), { k: t.k, i: t.i, d: t.d, ts: FV.serverTimestamp() }); });
+      return b.commit().then(function(){ part.forEach(function(t){ o.sent[t.id] = t.h; delete o.pend[t.id]; }); n += part.length; gdSave(o); return round(); });
+    }
+    return round().then(function(){ if(n){ console.log('[sync] sent ' + n + ' game detail' + (n === 1 ? '' : 's')); dlog('sync', 'Game details out to the cloud: ' + n); } return n; });
+  }
+  // rows whose detail the cloud has: the main document goes up without it
+  function gdStrip(gh){
+    var o = gdLoad();
+    Object.keys(gh || {}).forEach(function(key){ (Array.isArray(gh[key]) ? gh[key] : []).forEach(function(r){
+      if(r && typeof r === 'object' && r.dt != null && o.sent[gdDoc(key, r)] === strHash(JSON.stringify(r.dt))) delete r.dt;
+    }); });
+  }
+  // details that arrived since the last look, into the rows that lack them
+  function gdPull(){
+    if(!gdCol()) return Promise.resolve(0);
+    return gdRun(function(){
+      var col = gdCol(); if(!col) return 0;
+      var o = gdLoad(), TS = firebase.firestore.Timestamp;
+      if(!o.ts){   // first look: only a device with rows missing their detail needs everything the cloud has
+        var missing = false;
+        for(var i = 0; i < LS.length && !missing; i++){
+          var k = LS.key(i); if(!k || k.indexOf('gh_') !== 0) continue;
+          var rows = lsJSON(k); if(Array.isArray(rows)) missing = rows.some(function(r){ return r && typeof r === 'object' && r.dt == null; });
+        }
+        if(!missing){ o.ts = Date.now() - 864e5; gdSave(o); return 0; }
+      }
+      var q = o.ts ? col.where('ts', '>=', TS.fromMillis(o.ts)) : col;
+      var pend = Object.keys(o.pend).slice(0, 30);
+      return Promise.all([q.get(), Promise.all(pend.map(function(id){ return col.doc(id).get().then(function(d){ return d.exists ? d : null; }, function(){ return null; }); }))]).then(function(res){
+        var docs = res[0].docs.concat(res[1].filter(Boolean)), byK = {}, filled = 0, old = Date.now() - 7 * 864e5;
+        docs.forEach(function(d){
+          var x = d.data() || {}; if(!x.k || !x.i || typeof x.d !== 'string') return;
+          var t = x.ts && x.ts.toMillis ? x.ts.toMillis() : 0; if(t > o.ts) o.ts = t;
+          (byK[x.k] || (byK[x.k] = [])).push({ id: d.id, i: x.i, d: x.d });
+        });
+        Object.keys(byK).forEach(function(key){
+          var rows = lsJSON('gh_' + key), at = {}, changed = false;
+          if(Array.isArray(rows)) rows.forEach(function(r){ if(r && typeof r === 'object') at[ghId(key, r)] = r; });
+          byK[key].forEach(function(x){
+            var r = at[x.i];
+            if(!r){ if(!o.pend[x.id]) o.pend[x.id] = Date.now(); return; }
+            delete o.pend[x.id];
+            if(r.dt == null){ try{ r.dt = JSON.parse(x.d); changed = true; filled++; o.sent[x.id] = strHash(x.d); }catch(e){} }
+            else if(JSON.stringify(r.dt) === x.d) o.sent[x.id] = strHash(x.d);
+          });
+          if(changed) try{ LS.setItem('gh_' + key, JSON.stringify(rows)); }catch(e){}
+        });
+        Object.keys(o.pend).forEach(function(id){ if(o.pend[id] < old) delete o.pend[id]; });
+        gdSave(o);
+        if(filled){
+          console.log('[sync] took ' + filled + ' game detail' + (filled === 1 ? '' : 's') + ' from the cloud');
+          dlog('sync', 'Game details in from the cloud: ' + filled);
+          try{ document.dispatchEvent(new CustomEvent('fghsync:updated', { detail: { keys: Object.keys(byK).map(function(k){ return 'gh_' + k; }) } })); }catch(e){}
+        }
+        return filled;
+      });
+    }).catch(function(err){ console.warn('[sync] game details: could not read', err && (err.code || err.message)); return 0; });
+  }
   function pushNow(opts){
     opts = opts || {};
+    if(!cloudRef()) return Promise.resolve();
+    var pushAt = Date.now(), snap = scanLocal();
+    return gdRun(function(){ return gdPush(snap.gh); })
+      .catch(function(err){ console.warn('[sync] game details: could not send', err && (err.code || err.message)); })
+      .then(function(){ gdStrip(snap.gh); return pushMain(opts, snap, pushAt); });
+  }
+  function pushMain(opts, snap, pushAt){
     var ref = cloudRef(); if(!ref) return Promise.resolve();
-    var pushAt = Date.now();
-    var snap = scanLocal();
     var doc = {
       hi: sanitizeForFirestore(hiToFirestore(snap.hi || {})),
       gh: sanitizeForFirestore(snap.gh || {}),
@@ -1647,6 +1740,7 @@
         setStatus('synced');
         try{ document.dispatchEvent(new CustomEvent('fghsync:updated')); }catch(e){}
         linkPoll(!opts.soft);
+        gdPull();
         return { ok: true };
       })
       .catch(function(err){
@@ -1787,6 +1881,7 @@
           try{ document.dispatchEvent(new CustomEvent('fghsync:updated')); }catch(e){}
           notifyReady();
           linkPoll(true);
+          gdPull();
         })
         .catch(function(err){
           runDone(R, err);
