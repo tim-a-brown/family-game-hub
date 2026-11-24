@@ -53,19 +53,20 @@ function openSyncDiagnostics(){
   let errorBanner = '';
   if(syncSt && syncSt.state === 'error' && syncSt.error){
     errorBanner = `<div class="sd-section" style="border-color:rgba(248,113,113,.35);background:rgba(248,113,113,.04);">
-      <div class="sd-section-title" style="color:#fca5a5">⚠ Last sync error</div>
+      <div class="sd-section-title" style="color:#fca5a5">Last sync error</div>
       <div style="font-size:.82rem;color:rgba(255,255,255,.85);word-break:break-word;">${escapeHtml(syncSt.error)}</div>
     </div>`;
   }
 
-  if(mode !== 'pin'){
+  const signedIn = typeof FGHSync !== 'undefined' && (FGHSync.isPin ? FGHSync.isPin() : mode === 'pin');
+  if(!signedIn){
     document.getElementById('sd-content').innerHTML = errorBanner + `
       <div class="sd-section">
         <div class="sd-section-title">Local</div>
         ${formatCounts(local)}
       </div>
       <div class="sd-section" style="color:rgba(255,255,255,.5);font-size:.82rem;">
-        You're in guest mode. Sign in with a PIN to enable cross-device sync.
+        You’re playing as a guest. Sign in with a PIN or your Google account to sync across your devices.
       </div>`;
     return;
   }
@@ -83,11 +84,11 @@ function openSyncDiagnostics(){
     } else if(!result.exists){
       content = errorBanner + `<div class="sd-section" style="border-color:rgba(251,191,36,.3);">
         <div class="sd-section-title" style="color:#fbbf24">Cloud</div>
-        <div style="font-size:.82rem;color:rgba(255,255,255,.75);">No document exists yet for PIN ${pin}. Use "Push to cloud" to create one.</div>
+        <div style="font-size:.82rem;color:rgba(255,255,255,.75);">There’s nothing in the cloud for ${mode === 'google' ? 'this Google account' : 'PIN ' + pin} yet. Push to cloud creates it.</div>
       </div>
       <div class="sd-section"><div class="sd-section-title">Local</div>${formatCounts(local)}</div>
       <div class="sd-actions">
-        <button class="sd-btn primary" id="sd-push">⬆ Push local to cloud</button>
+        <button class="sd-btn primary" id="sd-push">Push to cloud</button>
       </div>`;
     } else {
       const cloud = countCloud(result.data);
@@ -96,10 +97,10 @@ function openSyncDiagnostics(){
         ${compareCounts(local, cloud)}
       </div>
       <div class="sd-actions">
-        <button class="sd-btn primary" id="sd-sync">🔄 Sync now (merge)</button>
-        <button class="sd-btn" id="sd-pull">⬇ Pull from cloud (overwrite local)</button>
-        <button class="sd-btn" id="sd-push">⬆ Push to cloud (overwrite cloud)</button>
-        <button class="sd-btn" id="sd-raw-toggle">🔍 Show raw cloud data</button>
+        <button class="sd-btn primary" id="sd-sync">Sync now</button>
+        <button class="sd-btn" id="sd-pull">Replace this device’s data with the cloud’s</button>
+        <button class="sd-btn" id="sd-push">Replace the cloud’s data with this device’s</button>
+        <button class="sd-btn" id="sd-raw-toggle">Show the cloud’s raw data</button>
       </div>
       <div id="sd-raw-host"></div>`;
     }
