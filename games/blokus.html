@@ -256,7 +256,9 @@
   }
 
   Kit.init({
-    id: KEY, mark: false, snap: '.frame', snapY: 0.5,
+    id: KEY, mark: false, snap: '.frame', snapY: 0.5,   // (Keep playing's picture: centered on the last piece played)
+    snapAt: function () { var l = document.querySelectorAll('.pcs .pz'), b = null; [].forEach.call(l, function (g) { if (!b || +g.dataset.k > +b.dataset.k) b = g; }); return b; },
+   
     onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } cancelThink(); clearSave(); showSetup(); },
     undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
     menu: TurnNet.menu().concat([
