@@ -116,9 +116,19 @@
       var pics = [], i, kk, t;
       for(i = 0; i < s.length; i++){ kk = ky.call(s, i); if(kk && kk.indexOf('gn_snap_') === 0){ t = 0; try{ t = JSON.parse(g.call(s, kk)).ts || 0; }catch(x){} pics.push([t, kk]); } }
       pics.sort(function(a, b){ return a[0] - b[0]; });
-      for(i = 0; i < pics.length; i++){ try{ rm.call(s, pics[i][1]); }catch(x){} try{ return st.call(s, k, v); }catch(x){} }
+      for(i = 0; i < pics.length; i++){ try{ rm.call(s, pics[i][1]); }catch(x){} try{ st.call(s, k, v); roomyLog('Storage was full: ' + (i + 1) + ' picture' + (i ? 's' : '') + ' let go for ' + k); return; }catch(x){} }
+      roomyLog('Storage is full: ' + k + ' (' + String(v).length + ' characters) could not be saved');
       throw e;
     }
+  }
+  var _roomyIn = false;
+  function roomyLog(m){ if(_roomyIn) return; _roomyIn = true; try{ dlog('warn', m); }catch(e){} _roomyIn = false; }
+  // how much of this site's storage is used: characters in all, and the largest keys (the activity log shows it)
+  function storeUse(){
+    var s = window.localStorage, P = Storage.prototype, n = 0, top = [], i, k, v;
+    for(i = 0; i < s.length; i++){ k = P.key.call(s, i); if(k == null) continue; v = P.getItem.call(s, k) || ''; n += k.length + v.length; top.push([k, k.length + v.length]); }
+    top.sort(function(a, b){ return b[1] - a[1]; });
+    return { chars: n, keys: top.length, top: top.slice(0, 12) };
   }
   var LS = (function(){
     var s = window.localStorage, P = Storage.prototype, g = P.getItem, st = P.setItem, rm = P.removeItem, ky = P.key;
@@ -2801,6 +2811,7 @@
     db: function(){ return ensureFirebase().then(function(f){ return f.db; }); },
     // activity log (this device only): add a line, read it, the last sync's timing, clear it
     log: dlog,
+    storeUse: storeUse,
     logGet: function(){ try{ var a = JSON.parse(LS.getItem(DLOG) || '[]'); return Array.isArray(a) ? a : []; }catch(e){ return []; } },
     lastSync: function(){ try{ return JSON.parse(LS.getItem(DLAST) || 'null'); }catch(e){ return null; } },
     logClear: function(){ try{ LS.removeItem(DLOG); }catch(e){} },

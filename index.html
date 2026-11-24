@@ -643,7 +643,7 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
 .al-steps b{font-weight:900;font-variant-numeric:tabular-nums;}
 .al-steps .bad b,.al-steps .bad i{color:#ff8a96;}
 .al-err{margin-top:8px;font-size:.8rem;font-weight:700;color:#ff8a96;word-break:break-word;}
-.al-dev{display:flex;justify-content:space-between;gap:10px;font-size:.75rem;font-weight:700;color:var(--text-3);margin:0 2px;}
+.al-dev{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 10px;font-size:.75rem;font-weight:700;color:var(--text-3);margin:0 2px;}
 .al-acts{display:flex;gap:8px;}
 .al-acts .btn{min-height:44px;}
 .al-acts .btn .ico{width:18px;height:18px;}
@@ -3801,6 +3801,7 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
         'Game Night activity log · ' + stamp(Date.now(), true),
         'Version: ' + ver + ' · ' + (FGHSync.isPin() ? 'signed in with a PIN' : 'guest') + ' · ' + (navigator.onLine ? 'online' : 'offline'),
         'Device: ' + navigator.userAgent + ' · screen ' + screen.width + '×' + screen.height,
+        'Storage: ' + (function () { try { var u = FGHSync.storeUse(); return Math.round(u.chars / 1000) + 'k characters in ' + u.keys + ' keys; largest: ' + u.top.map(function (t) { return t[0] + ' ' + Math.round(t[1] / 1000) + 'k'; }).join(', '); } catch (e) { return '?'; } })(),
         'Last sync: ' + (ls ? stamp(ls.at, true) + ' · ' + ls.what + ' · ' + (ls.ok ? (ls.ms / 1000).toFixed(1) + ' s' : 'failed: ' + ls.err) + ' · ' + (ls.steps || []).join(', ') : 'none'),
         ''];
       FGHSync.logGet().forEach(function (r) { lines.push(stamp(r[0], true) + '  ' + (r[1] + '        ').slice(0, 12) + ' ' + (AL_TAGS[r[2]] || r[2]) + ': ' + r[3]); });
@@ -3814,7 +3815,8 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
         el('div', { class: 'al-steps' }, (ls.steps || []).map(function (st) { var m = /^(.*?) (?:failed after )?([\d.]+) s$/.exec(st) || [0, st, '']; return el('span', { class: /failed/.test(st) ? 'bad' : '' }, [el('i', { text: m[1] }), el('b', { text: m[2] ? m[2] + ' s' : '' })]); })),
         ls.err ? el('div', { class: 'al-err', text: ls.err }) : null
       ] : [el('div', { class: 'al-big' }, [el('b', { text: '–' }), el('span', { text: 'no sync on this device yet' })])]));
-      box.appendChild(el('div', { class: 'al-dev' }, [el('span', { text: 'Version ' + ver }), el('span', { text: navigator.onLine ? 'Online' : 'Offline' })]));
+      var su = null; try { su = FGHSync.storeUse(); } catch (e) {}
+      box.appendChild(el('div', { class: 'al-dev' }, [el('span', { text: 'Version ' + ver }), su ? el('span', { text: 'Storage ' + (su.chars / 1e6).toFixed(2) + ' million characters' }) : null, el('span', { text: navigator.onLine ? 'Online' : 'Offline' })]));
       box.appendChild(el('div', { class: 'al-acts' }, [
         el('button', { type: 'button', class: 'btn btn-primary grow', html: Kit.icon('share') + '<span>Share log</span>', onclick: function () { Kit.sfx('tap'); share(); } }),
         el('button', { type: 'button', class: 'btn btn-soft', text: 'Copy', onclick: function () { Kit.sfx('tap'); copy(); } })
