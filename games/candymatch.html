@@ -1523,11 +1523,12 @@ html.cm-land.cm-short .cm-goal .gi svg{width:22px;height:22px;}
   }
 
   // ═══ Hints: after a few idle seconds, two candies wiggle toward each other ═
-  var hintTimer = 0;
+  // (the setup's Hints: off, no candies wiggle; kept with the saved game, and an older save has hints on)
+  var hintTimer = 0, HON = true;
   function onIdle() { armHint(); }
   function armHint() {
     clearTimeout(hintTimer); hintTimer = 0;
-    if (state !== 'play' || playing || !G || view !== 'game' || hint) return;
+    if (state !== 'play' || playing || !G || view !== 'game' || hint || !HON) return;
     hintTimer = setTimeout(showHint, 5000);
   }
   function showHint() {
@@ -1821,6 +1822,7 @@ html.cm-land.cm-short .cm-goal .gi svg{width:22px;height:22px;}
   function resetFx() { tweens = []; timers = []; parts = []; fxs = []; popups = []; banner = null; shake = 0; playing = false; hint = null; sel = -1; down = null; }
   function startLevel(n, cfg, saved) {
     var def = levelDef(n);
+    if (cfg.hints != null) HON = !!cfg.hints; else if (saved) HON = saved.hints !== false;
     // title: the level; tap it for the level picker
     Kit.titleSwitch((def.name || 'Level ' + n), function () { if (L && view === 'game' && state !== 'done') save(); showSetup(); }, 'Choose another level');
     L = { n: n, def: def, mode: cfg.mode || 'level', who: cfg.who || 'Player', run: cfg.mode === 'run' ? (cfg.run || newRun()) : null, started: (saved && saved.started) || Date.now(), sc: (saved && saved.sc) || [] };
@@ -1849,12 +1851,14 @@ html.cm-land.cm-short .cm-goal .gi svg{width:22px;height:22px;}
   function save() {
     if (!L) return;
     var s = { v: 1, n: L.n, mode: L.mode, who: L.who, run: L.run, started: L.started, g: G ? CM.save(G) : null, sc: L.sc || [] };
+    if (!HON) s.hints = false;
     try { localStorage.setItem(SAVE, JSON.stringify(s)); } catch (e) {}
     Kit.resume.set('Level ' + L.n + ' · ' + G.moves + (G.moves === 1 ? ' move' : ' moves') + ' left', { keys: [SAVE] });
   }
   // Between levels of a run: no board yet, the next level starts when the player comes back
   function saveBetween(next) {
     var s = { v: 1, n: next, mode: 'run', who: L.who, run: L.run, started: Date.now(), g: null };
+    if (!HON) s.hints = false;
     try { localStorage.setItem(SAVE, JSON.stringify(s)); } catch (e) {}
     Kit.resume.set('Level ' + next + ' next · ' + fmt(L.run.total) + ' points', { keys: [SAVE] });
   }
@@ -2058,10 +2062,12 @@ html.cm-land.cm-short .cm-goal .gi svg{width:22px;height:22px;}
       intro: 'Swap candies, match three or more, beat the goal',
       modes: modes, mode: saved ? 'cont' : 'run', modeLocked: true,
       players: { min: 1, max: 1, count: 1, label: 'Player' },
+      options: [{ id: 'hints', label: 'Hints', value: 'on', choices: [['on', 'On', 'After five seconds without a move, two candies that would make a match wiggle toward each other.'], ['off', 'Off', 'No candies wiggle when you stop to think: find every match yourself.']] }],
       start: 'Play',
       onStart: function (cfg) {
         var who = cfg.players[0] ? cfg.players[0].name : 'Player', m = cfg.mode;
-        if (m === 'cont' && saved) { startLevel(saved.n, { mode: saved.mode, who: who, run: saved.run }, saved.g ? saved : null); return; }
+        HON = !(cfg.options && cfg.options.hints === 'off');
+        if (m === 'cont' && saved) { startLevel(saved.n, { mode: saved.mode, who: who, run: saved.run, hints: HON }, saved.g ? saved : null); return; }
         function go() { if (m === 'level') { prog.sel = sel2; saveProg(prog); startLevel(sel2, { mode: 'level', who: who }); } else startLevel(1, { mode: 'run', who: who, run: newRun() }); }
         if (saved && saved.mode === 'run') {
           Kit.confirm('End your current run?', { ok: 'End run', body: 'Your ' + fmt(runTotalOf(saved)) + ' points go on the high score board if they make the top ' + ArcadeHi.max + '.' })
@@ -2170,7 +2176,7 @@ html.cm-land.cm-short .cm-goal .gi svg{width:22px;height:22px;}
   (function boot() {
     var s = loadSave();
     if (s && s.g) startLevel(s.n, { mode: s.mode, who: s.who, run: s.run }, s);
-    else if (s && s.mode === 'run') startLevel(s.n, { mode: 'run', who: s.who, run: s.run });
+    else if (s && s.mode === 'run') startLevel(s.n, { mode: 'run', who: s.who, run: s.run, hints: s.hints !== false });
     else showSetup();
   })();
 })();

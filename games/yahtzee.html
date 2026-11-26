@@ -328,12 +328,13 @@ html.yw .ylay .sc .lbl small{display:none;}
         { id: 'dice', label: 'Dice', value: realLast ? 'real' : 'screen', choices: [
           ['screen', 'On screen', 'You roll the dice on this phone.'],
           ['real', 'Real dice', 'You roll your own dice at the table and keep the score here. Computer players sit this game out.']] },
+        { id: 'hints', label: 'Hints', value: 'on', when: function (m, o) { return !o || o.dice !== 'real'; }, choices: [['on', 'On', 'After each roll, every open box shows what the dice would score there, and the box that scores the most is lit.'], ['off', 'Off', 'The open boxes stay blank, as on a paper pad: work out the score yourself and tap a box to take it.']] },
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }
       ],
       // Real dice is the score card on its own (mode 'card'): only the people at the table get a column
       onStart: function (cfg) {
         cfg.players.forEach(function (p) { if (p.cpu) p.level = lvName(p.level || cfg.options.level); });   // (each robot its own skill)
-        if (cfg.options.dice !== 'real') return start(cfg);
+        if (cfg.options.dice !== 'real') { cfg.hints = cfg.options.hints !== 'off'; return start(cfg); }
         start({ mode: 'card', players: cfg.players.filter(function (p) { return !p.cpu; }) });
       }
     });
@@ -347,6 +348,7 @@ html.yw .ylay .sc .lbl small{display:none;}
       players: cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.cpu && p.level ? lvName(p.level) : undefined, color: p.color, card: {}, yb: 0 }; }),
       started: Date.now()
     };
+    if (cfg.hints === false) S.hints = false;   // (Hints off; an older save without it plays with hints on)
     save(); render(); maybeCpu();
   }
 
@@ -426,7 +428,7 @@ html.yw .ylay .sc .lbl small{display:none;}
       sub: r.pbs.length ? (r.pbs.length === 1 ? (rank.length === 1 ? 'A new personal best!' : r.pbs[0] + ' set a new personal best') : 'New personal bests for ' + r.pbs.join(' and ')) : rank.length === 1 ? (top.score >= 300 ? 'Legendary game!' : top.score >= 250 ? 'Great game!' : 'Nice rolling!') : 'Final scores',
       icon: r.pbs.length && !youLost ? 'trophy' : undefined,
       rank: rank.length > 1 ? rank : null, lose: youLost,
-      again: function () { start({ mode: S.mode, players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level, color: p.color }; }) }); },
+      again: function () { start({ mode: S.mode, hints: S.hints !== false, players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level, color: p.color }; }) }); },
       extra: [{ label: 'Change players', onClick: showSetup }]
     });
   }
@@ -765,12 +767,11 @@ html.yw .ylay .sc .lbl small{display:none;}
         } else if (isCur && S.mode === 'card') {
           td.classList.add('tap'); td.addEventListener('click', function () { enterValue(c.id); });
         } else if (isCur && opts && opts[c.id] != null) {
-          var v = opts[c.id];
-          td.textContent = String(v);
-          td.classList.add('ghost'); if (v > 0) td.classList.add('good');
+          var v = opts[c.id], hint = S.hints !== false || (them && cpuPick === c.id);   // (Hints off: a blank box, as on a paper pad)
+          if (hint) { td.textContent = String(v); td.classList.add('ghost'); if (v > 0) td.classList.add('good'); }
           if (them && cpuPick === c.id) td.classList.add('tap', 'best');
           if (!them && !S.busy) {
-            td.classList.add('tap'); if (c.id === best) td.classList.add('best');
+            td.classList.add('tap'); if (c.id === best && hint) td.classList.add('best');
             td.addEventListener('click', function () {
               if (v === 0) Kit.confirm('Score 0 in ' + c.name + '?', { ok: 'Take 0', body: "You can't use this box again." }).then(function (ok) { if (ok) scoreBox(c.id, 0); });
               else scoreBox(c.id, v);
@@ -834,7 +835,7 @@ html.yw .ylay .sc .lbl small{display:none;}
     var n = players.length, first = last && last.players && last.players.length === n ? ((last.first || 0) + 1) % n : 0;
     return {
       mode: 'online', cur: first, first: first, round: 1, rolls: 0, busy: false, over: false,
-      dice: [0, 0, 0, 0, 0], held: noHold(),
+      dice: [0, 0, 0, 0, 0], held: noHold(), hints: !(opts && opts.hints === false),
       players: players.map(function (p, i) { return { name: p.name, cpu: !!p.bot, color: Kit.color(i), card: {}, yb: 0, log: [] }; }),
       started: Date.now()
     };
@@ -967,6 +968,7 @@ html.yw .ylay .sc .lbl small{display:none;}
     game: 'yahtzee', title: 'Yahtzee', min: 2, max: 8,
     seats: function (n) { return n; },
     start: netStart,
+    opts: function () { var o = {}; try { o = (JSON.parse(localStorage.getItem('gn_setup_yahtzee')) || {}).options || {}; } catch (e) {} return { hints: o.hints !== 'off' }; },
     turn: function (st) { return st.over ? [] : [st.cur]; },
     over: function (st) {
       if (!st.over) return null;

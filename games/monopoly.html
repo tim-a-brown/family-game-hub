@@ -639,6 +639,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
         { id: 'auction', label: 'Auctions', value: 'on', choices: [['on', 'On', 'The official rule: a property no one buys is auctioned to everyone.'], ['off', 'Off', 'House rule: a property no one buys stays with the bank.']] },
         { id: 'fp', label: 'Free Parking jackpot', value: 'off', choices: [['off', 'Off', 'The official rule: Free Parking is just a rest.'], ['on', 'On', 'House rule: taxes and fines pile up in the middle, and landing on Free Parking takes them.']] },
         { id: 'go400', label: 'Landing on Go', value: 'off', choices: [['off', '$200', 'The official rule: $200 for passing or landing on Go.'], ['on', '$400', 'House rule: landing exactly on Go pays $400.']] },
+        { id: 'hints', label: 'Hints', value: 'on', choices: [['on', 'On', 'When you offer a computer player a trade, a meter shows how keen it is to say yes before you send it.'], ['off', 'Off', 'No meter on a trade with a computer player: make your offer and see what it says.']] },
         { id: 'bots', label: 'Computer players', value: '0', when: function (m) { return m === 'online'; }, choices: [['0', 'None', 'Only the people who join play.'], ['1', '1', 'One computer player sits at the table with the people who join.'], ['2', '2', 'Two computer players sit at the table with the people who join.'], ['3', '3', 'Three computer players sit at the table with the people who join.']] },
         { id: 'speed', label: 'Computer speed', value: 'normal', when: function (m) { return m === 'cpu'; }, choices: [['normal', 'Easy to follow'], ['fast', 'Fast']] },
         // (how each computer player plays: games/monopoly/engine.js, "The computer players")
@@ -650,7 +651,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
       onStart: function (cfg) {
         var o = cfg.options;
         if (cfg.mode === 'cpu') { speed = o.speed === 'fast' ? 'fast' : 'normal'; lsSet('mono_speed', speed); }
-        var opts = { len: o.len, noAuction: o.auction === 'off', fp: o.fp === 'on', go400: o.go400 === 'on', level: o.level === 'easy' || o.level === 'hard' ? o.level : 'normal' };
+        var opts = { len: o.len, noAuction: o.auction === 'off', fp: o.fp === 'on', go400: o.go400 === 'on', hints: o.hints !== 'off', level: o.level === 'easy' || o.level === 'hard' ? o.level : 'normal' };
         if (cfg.mode === 'online') {
           var nm = cfg.players[0] && cfg.players[0].name, me = lsGet(NETME, {}) || {};
           opts.bots = Math.max(0, Math.min(3, +o.bots || 0)); me.opts = opts; lsSet(NETME, me);
@@ -2044,7 +2045,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
       node.appendChild(who);
       node.appendChild(el('div', { class: 'tr-cols' }, [col(v, st.give, 'You give'), col(st.to, st.get, S.players[st.to].name + ' gives')]));
       var T2 = { f: v, to: st.to, give: st.give, get: st.get }, err = M.tradeErr(S, v, st.to, T2);
-      if (S.players[st.to].cpu && !err) {
+      if (S.players[st.to].cpu && !err && S.opts.hints !== false) {
         var keen = keenness(T2);
         node.appendChild(el('div', { class: 'meter', 'aria-label': 'How keen ' + S.players[st.to].name + ' is' }, [el('div', { class: 'tr' }, [el('i', { style: { left: Math.round(keen * 100) + '%' } })]), el('div', { class: 'lb' }, [el('span', { text: 'No way' }), el('span', { text: S.players[st.to].name + ' would say yes' })])]));
       }
@@ -2157,7 +2158,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   // keep their seat, out of the game; someone who leaves is played by the computer.
   var NET = null, PK = null, NETREC = 'mono_netrec';
   function clone(o) { return o == null ? o : JSON.parse(JSON.stringify(o)); }
-  function netOpts() { var o = (lsGet(NETME, {}) || {}).opts || {}; return { len: o.len || 'all', noAuction: !!o.noAuction, fp: !!o.fp, go400: !!o.go400, bots: Math.max(0, Math.min(3, +o.bots || 0)) }; }
+  function netOpts() { var o = (lsGet(NETME, {}) || {}).opts || {}; return { len: o.len || 'all', noAuction: !!o.noAuction, fp: !!o.fp, go400: !!o.go400, hints: o.hints !== false, bots: Math.max(0, Math.min(3, +o.bots || 0)) }; }
   // computer players at this table (the host's choice when it opened)
   function netBots() { try { var d = TurnNet._t.d; return Math.max(0, Math.min(3, +JSON.parse(d && d.opts || '{}').bots || 0)); } catch (e) { return 0; } }
   function netStart(players, opts, last) {

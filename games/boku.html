@@ -252,12 +252,13 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
       options: [
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Blocks a line of four, but otherwise often plays a weaker hole than it could.'], ['normal', 'Normal', 'Looks a few moves ahead for lines and for marbles to take.'], ['hard', 'Hard', 'Looks six to eight moves ahead and sets up two ways to win at once.']], when: function (m) { return m === 'cpu'; } },
         { id: 'side', label: 'You play', value: 'b', choices: [['b', 'Black\nGoes first', 'Black always goes first, so you start.'], ['w', 'White', 'The computer plays Black and goes first.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'hints', label: 'Hints', value: 'on', choices: [['on', 'On', 'Dashed rings mark every hole where a player would make five, and a marble you aim shows the lines it would make and the pairs it would trap.'], ['off', 'Off', 'No marks where a player would make five and no lines under the marble you aim: read the board yourself.']] },
         { id: 'cover', label: 'Hand over between turns', value: 'off', choices: [['off', 'Off', 'Nothing in Boku is hidden, so the device just goes across the table.'], ['on', 'On', 'A cover names whose turn it is before each move.']], when: function (m) { return m === '2p'; } }
       ],
       players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       onStart: function (cfg) {
         var cpu = cfg.mode === 'cpu', hs = cpu && cfg.options.side === 'w' ? WHITE : BLACK;
-        S = { mode: cfg.mode, level: cfg.options.level || 'normal', cover: cfg.options.cover === 'on' && !cpu,
+        S = { mode: cfg.mode, level: cfg.options.level || 'normal', cover: cfg.options.cover === 'on' && !cpu, hints: cfg.options.hints !== 'off',
           players: cfg.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, side: i === 0 ? hs : 3 - hs }; }) };
         newGame();
       }
@@ -324,7 +325,7 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
           pts: S.caps[side] === 1 ? '1 taken' : S.caps[side] + ' taken', chip: Core.NAMES[res.x], color: '#c8862f', at: frameEl, ms: 2800 });
       }, t - 200);
     }
-    if (res.threats >= 2) setTimeout(function () { Kit.sfx('good'); Kit.callout(me && !NET ? 'Two ways to win!' : nameOf(who) + ' has two ways to win'); }, t + (res.x >= 0 ? 600 : 100));
+    if (res.threats >= 2 && hintsOn()) setTimeout(function () { Kit.sfx('good'); Kit.callout(me && !NET ? 'Two ways to win!' : nameOf(who) + ' has two ways to win'); }, t + (res.x >= 0 ? 600 : 100));
     else if (res.threats === 1 && res.x < 0) setTimeout(function () { Kit.sfx('tick'); }, t);
   }
   function undo() {
@@ -488,6 +489,8 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
   }
 
   // ── Marks on the board: the ghost, the lines it would make, the marbles it would trap, threats, the blocked hole ──
+  // Hints (the setup's option): an older save without it plays with hints on
+  function hintsOn() { return !S || S.hints !== false; }
   function clearFx() { layEl.querySelectorAll('.ghost,.blk,.thr').forEach(function (n) { n.remove(); }); while (fxEl.firstChild) fxEl.removeChild(fxEl.firstChild); }
   function svgLine(a, z, color, w, op, dash) {
     var l = document.createElementNS('http://www.w3.org/2000/svg', 'line'), p = px(a), q = px(z);
@@ -515,8 +518,8 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
     var me = humanTurn();
     if (!me) { GH = -1; if (PEND) { var pn = MB[PEND.c]; if (pn && pn.dataset.placed) { pn.remove(); delete MB[PEND.c]; } PEND = null; } }
     if (S.over) { if (S.line && S.line.length && !WINANIM) drawWinLineStatic(S.line); paintActs(); return; }
-    // threats: where each player would make five (the side to move can't use the blocked hole)
-    [WHITE, BLACK].forEach(function (sd) {
+    // threats: where each player would make five (the side to move can't use the blocked hole); Hints off leaves them out
+    if (hintsOn()) [WHITE, BLACK].forEach(function (sd) {
       Core.winCells(S.b, sd, sd === S.turn ? S.blk : -1).forEach(function (h) {
         if (h === GH || (PEND && PEND.c === h)) return;
         var t = el('span', { class: 'thr ' + tc(sd) }); var p = px(h); pos(t, p.x, p.y); layEl.appendChild(t);
@@ -527,10 +530,11 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
     if (c >= 0) {
       var side = S.turn, b = S.b.slice(); b[c] = side;
       if (!PEND) { var g = marble(side, c); g.classList.add('ghost'); if (TOUCH) g.classList.add('touch'); layEl.appendChild(g); }
-      var lines = linesAt(b, c, side);
+      var lines = hintsOn() ? linesAt(b, c, side) : [];
       lines.forEach(function (run) { svgLine(run[0], run[run.length - 1], run.length >= 5 ? '#ffd75a' : 'rgba(255,215,90,.8)', run.length >= 5 ? 16 : 9, run.length >= 5 ? .8 : .55); });
       var five = lines.some(function (r) { return r.length >= 5; });
-      if (!five) Core.sandwiches(S.b, c, side).forEach(function (w) {
+      // (with Hints off a placement still rings what it must take once it is down, PEND, since a capture is required)
+      if (!five && (PEND || hintsOn())) Core.sandwiches(S.b, c, side).forEach(function (w) {
         var end = Core.nb(w.p[1], w.d);
         svgLine(c, end, 'rgba(255,106,74,.85)', 5, .8, '10 10');
         w.p.forEach(function (h) { if (MB[h]) { MB[h].classList.add('trap'); if (PEND) MB[h].classList.add('pick'); } });
@@ -669,7 +673,7 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
     lp.appendChild(el('div', { class: 'ln', text: line }));
     if (S.blk >= 0 && !S.over) lp.appendChild(el('div', { class: 'ln none', text: nameOf(pl(S.turn)) + ' can’t use ' + Core.NAMES[S.blk] + ' this turn.' }));
     roomEl.appendChild(lp);
-    // threats
+    // threats (Hints off: no panel)
     var th = el('section', { class: 'pn thp' }, [el('h3', { text: 'Threats on the board' })]), anyT = false;
     [BLACK, WHITE].forEach(function (sd) {
       var w = S.over ? [] : Core.winCells(S.b, sd, sd === S.turn ? S.blk : -1);
@@ -678,7 +682,7 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
       th.appendChild(el('div', { class: 'thl' }, [el('span', { class: 'tok ' + tc(sd) }), el('span', { text: nameOf(pl(sd)) + ' makes five on' }), el('span', { class: 'hs' }, w.map(function (h) { return el('span', { class: 'h', text: Core.NAMES[h] }); }))]));
     });
     if (!anyT) th.appendChild(el('div', { class: 'ln none', text: S.over ? 'The game is over.' : 'Nobody has four in a line with the fifth hole open yet.' }));
-    roomEl.appendChild(th);
+    if (hintsOn()) roomEl.appendChild(th);
     // taken
     var tk = el('section', { class: 'pn tkp' }, [el('h3', { text: 'Marbles taken' })]);
     [BLACK, WHITE].forEach(function (sd) {
@@ -830,13 +834,13 @@ html.bk-dk .tray{--s:calc(24px * var(--dk));gap:calc(4px * var(--dk));}
   // Seat 0 plays the color chosen in the setup in the first game; each new game at the table swaps colors.
   function netSeatOf(st, side) { return st.players[0].side === side ? 0 : 1; }
   function netOpts() {
-    var o = { side: 'b' }; try { var g = JSON.parse(localStorage.getItem('gn_setup_boku')); if (g && g.options && g.options.side === 'w') o.side = 'w'; } catch (e) {}
+    var o = { side: 'b', hints: true }; try { var g = JSON.parse(localStorage.getItem('gn_setup_boku')); if (g && g.options && g.options.side === 'w') o.side = 'w'; if (g && g.options && g.options.hints === 'off') o.hints = false; } catch (e) {}
     return o;
   }
   function netStart(players, opts, last) {
     var s0 = last && last.players ? 3 - last.players[0].side : opts && opts.side === 'w' ? WHITE : BLACK;
     var st = Core.newGame();
-    st.mode = 'online'; st.level = 'normal'; st.players = players.map(function (p, i) { return { name: p.name, cpu: false, side: i === 0 ? s0 : 3 - s0 }; });
+    st.mode = 'online'; st.level = 'normal'; st.hints = last && last.hints != null ? last.hints : !(opts && opts.hints === false); st.players = players.map(function (p, i) { return { name: p.name, cpu: false, side: i === 0 ? s0 : 3 - s0 }; });
     st.wins = last && last.wins ? last.wins.slice() : [0, 0]; st.started = Date.now();
     return st;
   }

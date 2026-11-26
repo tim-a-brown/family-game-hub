@@ -127,7 +127,7 @@
   function newGame(players, opts) {
     opts = opts || {};
     var S = {
-      v: 1, opts: { fp: !!opts.fp, go400: !!opts.go400, noAuction: !!opts.noAuction, len: opts.len || 'all', level: lvName(opts.level) },
+      v: 1, opts: { fp: !!opts.fp, go400: !!opts.go400, noAuction: !!opts.noAuction, len: opts.len || 'all', level: lvName(opts.level), hints: opts.hints !== false },
       players: players.map(function (p, i) {
         return { name: p.name, cpu: !!p.cpu, level: p.level ? lvName(p.level) : undefined, tok: p.tok || TOKENS[i % 8], cash: 1500, pos: 0, jail: false, tries: 0, cards: [], out: false, outAt: 0 };
       }),

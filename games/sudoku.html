@@ -68,6 +68,7 @@ body{overflow-x:hidden;}
 
 /* Tools and number pad: clean chrome */
 .tools{position:relative;display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+.tools.t4{grid-template-columns:repeat(4,1fr);}
 .tool{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:54px;border:0;border-radius:15px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);color:var(--text);font-weight:650;font-size:.76rem;white-space:nowrap;transition:transform .12s var(--spring), background .15s, opacity .15s;}
 .tool .ico{width:22px;height:22px;}
 .tool:active{transform:translateY(1px) scale(.95);background:var(--gl-2);}
@@ -350,7 +351,7 @@ body{overflow-x:hidden;}
     onNew: function () { showSetup(); },
     undo: function () { undo(); },
     menu: [
-      { icon: 'lightbulb', label: 'Hint', onClick: function () { hint(); } },
+      { icon: 'lightbulb', label: 'Hint', when: function () { return aidsOn(); }, onClick: function () { hint(); } },
       { icon: 'eye', label: function () { return 'Show mistakes: ' + (opts.mistakes ? 'on' : 'off'); }, onClick: function () { opts.mistakes = !opts.mistakes; saveOpts(); render(); Kit.toast(opts.mistakes ? 'Wrong numbers show in red' : 'Mistakes hidden'); } },
       { icon: 'sync', label: 'Restart this puzzle', onClick: function () { restart(); } },
       { icon: 'chart', label: 'Best times', onClick: function () { showBests(); } },
@@ -417,10 +418,15 @@ body{overflow-x:hidden;}
         { id: 'expert', icon: 'flame', title: 'Expert', desc: 'Advanced chains' + bt('expert') }
       ],
       mode: 'easy', start: 'Start puzzle',
-      onStart: function (cfg) { newPuzzle(cfg.mode); }
+      options: [{ id: 'hints', label: 'Hints', value: 'on', choices: [['on', 'On', 'A wrong number shows in red, and the Hint button fills in a square you can work out now and says why.'], ['off', 'Off', 'No red for wrong numbers and no Hint button: the puzzle tells you nothing until it is solved.']] }],
+      onStart: function (cfg) {
+        // (Hints folds in Show mistakes: the menu's toggle still changes it for the puzzle in progress)
+        var on = !cfg.options || cfg.options.hints !== 'off';
+        opts.mistakes = on; saveOpts(); newPuzzle(cfg.mode, on);
+      }
     });
   }
-  function newPuzzle(mode) {
+  function newPuzzle(mode, aids) {
     var daily = mode === 'daily', diff = daily ? DAILY_DIFF[new Date().getDay()] : mode;
     var seed = daily ? today() * 7919 + 13 : (Math.random() * 4294967295) >>> 0;
     app.className = 'sdk'; app.innerHTML = '<div class="loading">Printing your puzzle…</div>';
@@ -430,6 +436,7 @@ body{overflow-x:hidden;}
       S = { diff: diff, daily: daily ? today() : 0, no: daily ? today() : 100 + (seed % 9000), given: p.puzzle, sol: p.solution, vals: p.puzzle.slice(),
         notes: p.puzzle.map(function () { return 0; }), hinted: p.puzzle.map(function () { return 0; }),
         time: 0, mistakes: 0, hints: 0, undos: 0, started: Date.now(), done: false, level: p.level };
+      if (aids === false) S.aids = false;   // (Hints off: no Hint button; an older save without it has one)
       Kit.gameStart(); build(); save(); Kit.sfx('flip');
     }, 60);
   }
@@ -496,8 +503,9 @@ body{overflow-x:hidden;}
 
   // ── Hints ─────────────────────────────────────────────────────────────────
   var UNAME = ['row', 'column', 'box'];
+  function aidsOn() { return !S || S.aids !== false; }
   function hint() {
-    if (!S || S.done) return;
+    if (!S || S.done || !aidsOn()) return;
     for (var i = 0; i < 81; i++) if (S.vals[i] && S.vals[i] !== S.sol[i]) {
       sel = i; render(); flash([i]);
       note('This number is not right. Try again here.', true); Kit.sfx('bad'); return;
@@ -619,7 +627,7 @@ body{overflow-x:hidden;}
     var page = el('div', { class: 'page' });
     page.appendChild(el('div', { class: 'ph' }, [el('span', { class: 't', text: label() }), el('span', { class: 'no', text: 'No. ' + S.no }), el('span', { class: 'tm', id: 'tm', text: fmt(S.time) })]));
     var grid = el('div', { class: 'grid', id: 'grid', role: 'grid', 'aria-label': 'Sudoku grid' });
-    cellEls = [];
+    cellEls = []; toolEls = {};
     for (var i = 0; i < 81; i++) (function (i) {
       var r = Math.floor(i / 9), c = i % 9;
       var n = el('div', { class: 'c' + (c === 2 || c === 5 ? ' br' : '') + (r === 2 || r === 5 ? ' bb' : '') + (c === 8 ? ' er' : '') + (r === 8 ? ' eb' : ''), style: { '--d': r + c } });
@@ -629,9 +637,9 @@ body{overflow-x:hidden;}
     page.appendChild(grid);
     page.appendChild(el('div', { class: 'pf' }, [el('span', { id: 'pfL' }), el('span', { id: 'pfM' }), el('span', { id: 'pfR' })]));
     play.appendChild(page);
-    var tools = el('div', { class: 'tools' });
+    var tools = el('div', { class: 'tools' + (aidsOn() ? '' : ' t4') });
     [['undo', 'undo', 'Undo', undo], ['redo', 'undo', 'Redo', redo], ['erase', 'close', 'Erase', function () { input(0); }],
-     ['notes', 'pencil', 'Notes', function () { notesMode = !notesMode; Kit.sfx('tap'); render(); save(); }], ['hint', 'lightbulb', 'Hint', hint]].forEach(function (t) {
+     ['notes', 'pencil', 'Notes', function () { notesMode = !notesMode; Kit.sfx('tap'); render(); save(); }], ['hint', 'lightbulb', 'Hint', hint]].filter(function (t) { return t[0] !== 'hint' || aidsOn(); }).forEach(function (t) {
       var b = el('button', { type: 'button', class: 'tool ' + t[0], 'aria-label': t[2], html: Kit.icon(t[1]) + '<span>' + t[2] + '</span>', onclick: t[3] });
       toolEls[t[0]] = b; tools.appendChild(b);
     });
@@ -681,9 +689,9 @@ body{overflow-x:hidden;}
     toolEls.notes.classList.toggle('on', notesMode);
     toolEls.notes.querySelector('span').textContent = notesMode ? 'Notes on' : 'Notes off';
     toolEls.undo.disabled = !U.length || S.done; toolEls.redo.disabled = !R.length || S.done;
-    toolEls.erase.disabled = toolEls.hint.disabled = toolEls.notes.disabled = S.done;
+    toolEls.erase.disabled = toolEls.notes.disabled = S.done; if (toolEls.hint) toolEls.hint.disabled = S.done;
     document.getElementById('pfL').innerHTML = 'Mistakes <b>' + (opts.mistakes ? S.mistakes : '–') + '</b>';
-    document.getElementById('pfR').innerHTML = 'Hints <b>' + S.hints + '</b>';
+    document.getElementById('pfR').innerHTML = aidsOn() ? 'Hints <b>' + S.hints + '</b>' : '';
   }
 
   // ── Keyboard ──────────────────────────────────────────────────────────────
