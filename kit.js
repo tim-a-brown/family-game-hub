@@ -3677,6 +3677,8 @@
       row.appendChild(dice);
       var kids = [row];
       if (help) kids.push(el('p', { class: 'k-pb-help', text: help }));
+      // (a Hard computer turns Hints off: said here, where Hard is chosen)
+      if (M.hints && bot && chs.length > 1 && cur === String(chs[chs.length - 1][0])) kids.push(el('p', { class: 'k-pb-help k-pb-hint', text: 'Hints turn off while a ' + chs[chs.length - 1][1] + ' computer plays. You can turn them back on under Hints.' }));
       // (just changed, while the other robots play at a different skill: one tap sets them all the same)
       var others = bot && !fixed ? othersBots(i) : [];
       if (M.lv && skLast === i && others.some(function (j) { return String(seatLevel(M, j)) !== cur; })) kids.push(el('button', { type: 'button', class: 'btn btn-soft btn-sm k-pb-all', text: others.length === 1 ? 'Same for both robots' : 'Same for all ' + (others.length + 1) + ' robots', onclick: function () {
@@ -4271,7 +4273,7 @@
       if (!hintOp) return;
       var h = hardSeated();
       if (h !== hardWas) {
-        if (h && state.options.hints !== 'off') { state.options.hints = 'off'; autoOff = true; }
+        if (h && state.options.hints !== 'off') { state.options.hints = 'off'; autoOff = true; if (hardWas === false && !document.querySelector('body > .k-scrim')) toast('Hints are off while a Hard computer plays. You can turn them back on under Hints.', 4200); }
         else if (!h && hardWas && autoOff) { state.options.hints = 'on'; autoOff = false; }
         hardWas = h;
       }
@@ -4420,7 +4422,7 @@
       state.count = keep;
       Object.keys(robots).forEach(function (k) { if (robots[k]) rb[k] = true; }); Object.keys(levels).forEach(function (k) { lv[k] = levels[k]; });
       return { label: P.label || "Who's playing?", lo: r[0], hi: r[1], count: state.count, names: names.slice(), robots: rb, levels: lv, bots: bots.slice(),
-        cpu: cpuAt, teams: tm, merged: merged, together: merged && !localMix, lv: lvOp ? { label: lvOp.label || 'Computer skill', def: state.options[lvOp.id], ch: ch } : null };
+        cpu: cpuAt, teams: tm, hints: !!hintOp, merged: merged, together: merged && !localMix, lv: lvOp ? { label: lvOp.label || 'Computer skill', def: state.options[lvOp.id], ch: ch } : null };
     }
     function seatApply(M) {
       if (!M) return;
