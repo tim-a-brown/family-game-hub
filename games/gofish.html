@@ -538,12 +538,15 @@
           ['pairs', 'Pairs', 'A pair is two cards of a rank, laid down as soon as you have them, so nobody can fish for them in your hand. The most pairs wins.']] },
         { id: 'next', label: 'After a Go fish', help: 'When a player goes fishing and doesn’t draw the rank they asked for, the turn passes. The standard rule passes it to their left; some families give it to the player who said “Go fish!”.',
           value: 'left', choices: [['left', 'Next player\nStandard'], ['asked', 'Whoever\nsaid it']] },
+        { id: 'hints', label: 'Hints', value: 'on',
+          choices: [['on', 'On', 'On a large screen, the last ask stands beside the table: who asked whom, for what, and what happened.'],
+            ['off', 'Off', 'No reminder of the last ask: remember who asked for what, as at a real table.']] },
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }
       ],
       onStart: function (cfg) {
         var o = cfg.options;
         S = Core.newGame({ players: cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu ? (p.level || o.level) : undefined }; }), level: o.level, next: o.next, theme: o.deck, col: o.col });
-        S.mode = cfg.mode; S.me = 0; ME = 0;
+        S.mode = cfg.mode; S.me = 0; ME = 0; S.hints = o.hints !== 'off';
         Kit.gameStart(); startGame();
       }
     });
@@ -780,12 +783,15 @@
   // The panels. Everything on them is public at a real table: the books and pairs lie face up, everyone can count
   // the cards a player holds, and every ask and its answer was said aloud (the game's own list of asks, st.log, which
   // keeps the last 60; a card fished from the pond is named only when it was the one asked for, as it is shown then).
+  // Hints (the setup's choice): the last ask. A game saved before there was a choice has no hints field and plays with
+  // it shown.
+  function hintsOn(X) { X = X || S; return !X || X.hints !== false; }
   function paintDesk() {
     if (!DKS || !S || !PW.isConnected) return;
     paintTally();
     // (the last ask takes the height it needs and the books the rest; with no ask yet, or too little room, the books
     // have the whole column. Side by side along the bottom of a tall window, the books have the larger share)
-    var ask = !!(S.log && S.log.length), row = DKS === 'tall' || app.classList.contains('dk-two');
+    var ask = !!(S.log && S.log.length) && hintsOn(), row = DKS === 'tall' || app.classList.contains('dk-two');
     PG.hidden = !ask; PT.style.flex = '1 1 0'; PG.style.removeProperty('--gkf');
     sizeGrid(false);
     if (ask && row) { PT.style.flex = '3 1 0'; PG.style.flex = '2 1 0'; paintLog(true); }
@@ -1445,7 +1451,7 @@
     if (st._done) return; st._done = 1;
     recordGame(st, st.mode === 'local' ? 'Pass & play' : 'vs Computer');
     clearSave();
-    var cfg = { players: st.players, level: st.level, next: st.next, mode: st.mode, theme: st.theme, col: st.col };
+    var cfg = { players: st.players, level: st.level, next: st.next, mode: st.mode, theme: st.theme, col: st.col, hints: hintsOn(st) };
     var t = token;
     later(500, function () {
       sweepMoment(st, function () {
@@ -1453,7 +1459,7 @@
         var lose = st.winner.every(function (p) { return !person(p); });
         Kit.win({
           title: winTitle(st, ME), sub: winSub(st), pic: winPic(st), rank: rankRows(st, ME), lose: lose, icon: lose ? 'bot' : 'trophy',
-          again: function () { S = Core.newGame(cfg); S.mode = cfg.mode; S.me = 0; ME = 0; Kit.gameStart(); startGame(); },
+          again: function () { S = Core.newGame(cfg); S.mode = cfg.mode; S.me = 0; ME = 0; S.hints = cfg.hints; Kit.gameStart(); startGame(); },
           look: 'Look at the table',
           extra: [{ label: Core.isPairs(st) ? 'Every pair' : 'Every book', onClick: showBooks }],
           setup: function () { clearSave(); showSetup(); }
@@ -1509,11 +1515,11 @@
   function netOpts() {
     var g = {}; try { g = JSON.parse(localStorage.getItem('gn_setup_gofish')) || {}; } catch (e) {}
     var o = g.options || {};
-    return { seats: Math.max(2, Math.min(6, +g.count || 3)), next: o.next === 'asked' ? 'asked' : 'left', level: Core.lv(o.level), theme: Core.theme(o.deck), col: o.col === 'pairs' ? 'pairs' : 'books' };
+    return { seats: Math.max(2, Math.min(6, +g.count || 3)), next: o.next === 'asked' ? 'asked' : 'left', level: Core.lv(o.level), theme: Core.theme(o.deck), col: o.col === 'pairs' ? 'pairs' : 'books', hints: o.hints === 'off' ? 'off' : 'on' };
   }
   function netStart(players, opts) {
     var st = Core.newGame({ players: players.map(function (p) { return { name: p.name, cpu: !!p.bot, level: p.bot ? opts.level : undefined }; }), level: opts.level, next: opts.next, theme: opts.theme, col: opts.col });
-    st.online = 1;
+    st.online = 1; st.hints = opts.hints !== 'off';
     return st;
   }
   function netTurn(st) { var p = Core.turn(st); return p < 0 ? [] : [p]; }

@@ -277,13 +277,16 @@
         { id: 'draw', label: 'When you can’t play', value: 'until', choices: [['until', 'Draw until\nyou can', 'Keep drawing from the stock until you get a card you can play.'], ['one', 'Draw one', 'Draw one card. Play it if you can; otherwise your turn is over.']] },
         { id: 'twos', label: '2s make the next player draw two', value: 'off', choices: [['off', 'Off', 'A 2 is an ordinary card.'], ['on', 'On', 'The next player takes two and misses a turn, unless they play a 2: then the next takes four, and so on.']] },
         { id: 'qs', label: 'The queen of spades skips', value: 'off', choices: [['off', 'Off', 'The queen of spades is an ordinary card.'], ['on', 'On', 'The next player misses their turn.']] },
+        { id: 'hints', label: 'Hints', value: 'on',
+          choices: [['on', 'On', 'When you play an 8, the suit you hold the most of is lit for you.'],
+            ['off', 'Off', 'No suit lit when you play an 8: choose from your hand yourself, as at a real table.']] },
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }
       ],
       onStart: function (cfg) {
         var o = cfg.options;
         S = Core.newGame({ players: cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu ? (p.level || o.level) : undefined }; }),
           target: +o.to, draw: o.draw, twos: o.twos === 'on', qs: o.qs === 'on', level: o.level });
-        S.mode = cfg.mode; S.me = 0; S.seen = 0;
+        S.mode = cfg.mode; S.me = 0; S.seen = 0; S.hints = o.hints !== 'off';
         LME = 0; Kit.gameStart(); undoStack = []; startHand();
       }
     });
@@ -581,7 +584,10 @@
     if (Core.canDraw(X, me())) { move({ k: 'draw' }); return; }
     nudge();
   }
-  // an 8: the four suits as big tiles, the one you hold most lit
+  // Hints (the setup's choice): the suit you hold most, lit when you name a suit. A game saved before there was a
+  // choice has no hints field and plays with them on.
+  function hintsOn(X) { X = X || S; return !X || X.hints !== false; }
+  // an 8: the four suits as big tiles, the one you hold most lit (with Hints on)
   function openPick(id) {
     closePick();
     var X = V(), h = X.hands[me()].filter(function (c) { return c !== id; }), cnt = { s: 0, h: 0, d: 0, c: 0 };
@@ -589,7 +595,7 @@
     var best = 's'; ['s', 'h', 'd', 'c'].forEach(function (s) { if (cnt[s] > cnt[best]) best = s; });
     var g = el('div', { class: 'g' });
     ['s', 'h', 'd', 'c'].forEach(function (s) {
-      g.appendChild(el('button', { type: 'button', class: 't' + (s === 'h' || s === 'd' ? ' red' : '') + (cnt[s] && s === best ? ' best' : ''), 'aria-label': SN[s], onclick: function () {
+      g.appendChild(el('button', { type: 'button', class: 't' + (s === 'h' || s === 'd' ? ' red' : '') + (cnt[s] && s === best && hintsOn(X) ? ' best' : ''), 'aria-label': SN[s], onclick: function () {
         Kit.haptic('medium'); closePick(); move({ k: 'play', c: id, s: s });
       } }, [el('b', { text: GL[s] }), el('span', { text: SN[s] }), el('small', { text: cnt[s] ? 'You hold ' + cnt[s] : 'You hold none' })]));
     });
@@ -878,7 +884,7 @@
   function finish() {
     var st = S, w = st.winner;
     recordGame(st, st.mode === 'local' ? 'Pass & play' : 'vs Computer');
-    var cfg = { players: st.players, target: st.target, draw: st.opts.draw, twos: st.opts.twos, qs: st.opts.qs, level: st.level, mode: st.mode };
+    var cfg = { players: st.players, target: st.target, draw: st.opts.draw, twos: st.opts.twos, qs: st.opts.qs, level: st.level, mode: st.mode, hints: hintsOn(st) };
     var mine = isMe(w), lose = !person(w);
     var rank = st.players.map(function (p, i) { return i; }).sort(function (a, b) { return st.scores[b] - st.scores[a]; });
     clearSave(); S.phase = 'over';
@@ -889,7 +895,7 @@
         sub: (st.hx.length > 1 ? 'Won by ' + (st.scores[w] - st.scores[rank[1]]) + ' · ' + st.hx.length + ' hands' : (mine ? 'You went out first.' : fn(w) + ' went out first.')) + (sweep ? ' · Won every hand' : ''),
         rank: rank.map(function (i) { return { name: st.players[i].name, score: st.scores[i], color: Kit.color(i), cpu: st.players[i].cpu, me: isMe(i) }; }),
         lose: lose && onePerson(), icon: lose ? 'bot' : 'trophy',
-        again: function () { S = Core.newGame(cfg); S.mode = cfg.mode; S.seen = 0; LME = 0; Kit.gameStart(); undoStack = []; startHand(); },
+        again: function () { S = Core.newGame(cfg); S.mode = cfg.mode; S.seen = 0; S.hints = cfg.hints; LME = 0; Kit.gameStart(); undoStack = []; startHand(); },
         look: 'Look at the table',
         extra: st.hx.length > 1 ? [{ label: 'Score pad', onClick: function () { showPad(); } }] : null,
         setup: function () { clearSave(); showSetup(); }
@@ -921,11 +927,11 @@
   function netOpts() {
     var g = {}; try { g = JSON.parse(localStorage.getItem('gn_setup_crazy8s')) || {}; } catch (e) {}
     var o = g.options || {};
-    return { seats: Math.max(2, Math.min(7, +g.count || 2)), to: o.to == null ? 100 : +o.to, draw: o.draw === 'one' ? 'one' : 'until', twos: o.twos === 'on' ? 1 : 0, qs: o.qs === 'on' ? 1 : 0, level: Core.lv(o.level) };
+    return { seats: Math.max(2, Math.min(7, +g.count || 2)), to: o.to == null ? 100 : +o.to, draw: o.draw === 'one' ? 'one' : 'until', twos: o.twos === 'on' ? 1 : 0, qs: o.qs === 'on' ? 1 : 0, level: Core.lv(o.level), hints: o.hints === 'off' ? 'off' : 'on' };
   }
   function netStart(players, opts) {
     var st = Core.newGame({ players: players.map(function (x) { return { name: x.name, cpu: !!x.bot, level: x.bot ? opts.level : undefined }; }), target: opts.to, draw: opts.draw, twos: opts.twos, qs: opts.qs, level: opts.level });
-    st.online = 1; return st;
+    st.online = 1; st.hints = opts.hints !== 'off'; return st;
   }
   function netTurn(st) { var p = Core.turn(st); return p < 0 ? [] : [p]; }
   function netOver(st) { return st && st.phase === 'over' ? { win: [st.winner], text: st.players[st.winner].name + ' wins ' + st.scores[st.winner] } : null; }

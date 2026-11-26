@@ -212,7 +212,7 @@
       '<p><b>Straight</b> = five ranks in a row (A-2-3-4-5 and 10-J-Q-K-A count, but Q-K-A-2-3 does not). <b>Flush</b> = five of one suit. <b>Royal flush</b> = 10-J-Q-K-A of one suit.</p>' +
       '<h3>American or British?</h3><p>American is the classic scoring. British scoring makes <b>straights worth more than flushes</b> (because in a grid, flushes are easier to build) so it changes how you play.</p>' +
       '<h3>Tips</h3><ul><li>Save one column for each suit to build flushes going down.</li><li>Use the rows to collect pairs, three of a kind and full houses.</li>' +
-      '<li>The score boxes show what each line has so far, and if a flush or straight is still possible.</li></ul>'
+      '<li>With Hints on, the score boxes show what each line has so far, and if a flush or straight is still possible.</li></ul>'
   });
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -228,16 +228,22 @@
     var best = bestScore('american');
     Kit.setup(app, {
       players: { min: 1, max: 1, label: "Who's playing?" },
-      options: [{ id: 'system', label: 'Scoring', help: 'Two ways to score the poker hands in your rows and columns.', value: 'american', choices: [['american', 'American', 'Big points for rare hands: a royal flush is 100, a pair is 2.'], ['british', 'British', 'A straight scores more than a flush or full house, so straights are worth chasing.']] }],
+      options: [{ id: 'system', label: 'Scoring', help: 'Two ways to score the poker hands in your rows and columns.', value: 'american', choices: [['american', 'American', 'Big points for rare hands: a royal flush is 100, a pair is 2.'], ['british', 'British', 'A straight scores more than a flush or full house, so straights are worth chasing.']] },
+        { id: 'hints', label: 'Hints', value: 'on',
+          choices: [['on', 'On', 'While a line fills up, its score box shows the hand it has so far and whether a flush or a straight is still possible.'],
+            ['off', 'Off', 'A score box fills in only once its line is complete: read your rows and columns yourself, as with real cards.']] }],
       intro: 'Build ten poker hands on a 5×5 grid.' + (best ? ' Best score so far: ' + best + '.' : ''),
       start: 'Deal the cards',
-      onStart: function (cfg) { start(cfg.players[0].name, cfg.options.system); }
+      onStart: function (cfg) { start(cfg.players[0].name, cfg.options.system, null, cfg.options.hints !== 'off'); }
     });
   }
-  function start(name, system, set) {
+  // Hints (the setup's choice): a line's hand so far and the draws still possible, in its score box. A game saved before
+  // there was a choice has no hints field and plays with them on.
+  function hintsOn() { return !S || S.hints !== false; }
+  function start(name, system, set, hints) {
     var deck = Cards.shuffle(Cards.deck()).slice(0, 25);
     if (set) deck = set.deck.slice();   // (a demo's own 25 cards, in the order they come)
-    S = { name: name || 'You', system: system === 'british' ? 'british' : 'american', deck: deck, grid: [], n: 0, phase: 'play', started: Date.now() };
+    S = { name: name || 'You', system: system === 'british' ? 'british' : 'american', hints: hints !== false, deck: deck, grid: [], n: 0, phase: 'play', started: Date.now() };
     for (var i = 0; i < 25; i++) S.grid.push(null);
     if (set && set.grid) set.grid.forEach(function (sq) { S.grid[sq] = S.deck[S.n++]; });   // (and the squares the first cards already lie in)
     undoStack = []; Kit.gameStart();
@@ -418,7 +424,7 @@
       Kit.win({
         icon: 'trophy', title: total + ' points!',
         sub: rating(total, sys) + ' · ' + sysName(sys) + (isBest ? ' · New best!' : prevBest ? ' · Best: ' + prevBest : ''),
-        againLabel: 'Deal again', again: function () { start(S.name, S.system); },
+        againLabel: 'Deal again', again: function () { start(S.name, S.system, null, hintsOn()); },
         look: 'Look at my grid',
         setup: function () { clearSave(); showSetup(); }, setupLabel: 'Change options',
         scores: function () { showHigh(sys); }
@@ -505,13 +511,15 @@
         cell = el('div', { class: 'lsc done' + (isCol ? ' col' : '') + (a.pts ? '' : ' zero') + (H[a.id].rank <= H.full.rank ? ' big' : '') + (o.hideScores ? ' hide' : '') }, [
           el('b', { text: String(a.pts) }), el('span', { text: H[a.id].short })
         ]);
+      } else if (!hintsOn()) {
+        cell = el('div', { class: 'lsc' + (isCol ? ' col' : '') });
       } else {
         cell = el('div', { class: 'lsc' + (isCol ? ' col' : '') }, [
           el('b', { text: a.n ? String(a.pts) : '' }), el('span', { text: a.made !== 'none' ? H[a.made].short : '' })
         ]);
         if (a.draw) cell.appendChild(el('i', { class: a.draw === 'Straight?' ? 's' : '', text: a.draw }));
       }
-      cell.setAttribute('aria-label', (L < 5 ? 'Row ' + (L + 1) : 'Column ' + (L - 4)) + ': ' + (a.done ? H[a.id].name + ', ' + a.pts + ' points' : (a.made !== 'none' ? H[a.made].name + ' so far' : 'in progress') + (a.draw ? ', ' + a.draw.replace('?', '') + ' still possible' : '')));
+      cell.setAttribute('aria-label', (L < 5 ? 'Row ' + (L + 1) : 'Column ' + (L - 4)) + ': ' + (a.done ? H[a.id].name + ', ' + a.pts + ' points' : !hintsOn() ? 'in progress' : (a.made !== 'none' ? H[a.made].name + ' so far' : 'in progress') + (a.draw ? ', ' + a.draw.replace('?', '') + ' still possible' : '')));
       scoreEls[L] = cell;
       return cell;
     }
@@ -570,7 +578,7 @@
     } else if (kind === 'skip') {
       barEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Skip to the total', onclick: skipReveal }));
     } else if (kind === 'over') {
-      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('shuffle') + '<span>Deal again</span>', onclick: function () { start(S.name, S.system); } }));
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('shuffle') + '<span>Deal again</span>', onclick: function () { start(S.name, S.system, null, hintsOn()); } }));
       barEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft', html: Kit.icon('trophy') + '<span>High scores</span>', onclick: function () { showHigh(S.system); } }));
     }
   }

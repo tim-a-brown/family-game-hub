@@ -236,6 +236,7 @@ html.cdesk-on #app .bidbar > .btn{width:auto;}
 .rk-cs .pcard .ix,.rk-cs .pcard .lbl,.rk-ns .pcard .ix,.rk-ns .pcard .lbl,.rk-ltc .pcard .ix,.rk-ltc .pcard .lbl{display:none;}
 .rk-cs .pcard.rk .big,.rk-ns .pcard.rk .big,.rk-ltc .pcard.rk .big{padding-left:0;font-size:calc(var(--cw) * .56);}
 .rk-cs .none{font-size:.8em;font-weight:600;color:var(--text-3);}
+.rk-cap.tt .rk-cr{min-height:1.9em;} .rk-cap.tt .n{font-size:.85em;font-weight:700;}   /* (Hints off: each side's tricks, no counters) */
 /* (before the play: what each counter is worth, as the cards themselves) */
 .rk-val{display:flex;align-items:center;gap:.6em;min-height:2.75em;font-size:.94em;font-weight:650;color:var(--text-2);}
 .rk-val .rk-cs{flex:none;}
@@ -408,9 +409,12 @@ html.cdesk-on #app .bidbar > .btn{width:auto;}
       players: { min: 4, max: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; }, teams: [[0, 2], [1, 3]] },
       intro: 'You and a computer partner against two computers',
       options: [{ id: 'target', label: 'Play to', help: 'The first team to reach this many points wins.', value: 500, choices: [[300, '300\nQuick'], [500, '500\nStandard']] },
+        { id: 'hints', label: 'Hints', value: 'on',
+          choices: [['on', 'On', 'While a hand is played, the table counts the points each side has taken, shows the counters captured and the points still out, and says when a bid can no longer be made.'],
+            ['off', 'Off', 'No points counted during a hand: the bid, the trump and the tricks taken are shown, and you keep count of the counters yourself, as at a real table.']] },
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }],
       onStart: function (cfg) {
-        S = freshGame(+cfg.options.target || 500, cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu && p.level ? lvName(p.level) : undefined }; }), cfg.mode, cfg.options.level);   // (each robot its own skill at a mixed table)
+        S = freshGame(+cfg.options.target || 500, cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu && p.level ? lvName(p.level) : undefined }; }), cfg.mode, cfg.options.level, cfg.options.hints !== 'off');   // (each robot its own skill at a mixed table)
         ME = 0; undoStack = []; newHand();
       }
     });
@@ -421,9 +425,13 @@ html.cdesk-on #app .bidbar > .btn{width:auto;}
     ['hard', 'Hard', 'Remembers every card played and thinks each play through.']];
   function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
   function lvOf(p) { var pl = S.players && S.players[p]; return lvName((pl && pl.level) || S.level); }
-  function freshGame(target, players, mode, level) {
+  // Hints (the setup's choice): while a hand is played, the points each side has taken (the top bar, the score sheet's
+  // live row, the desk's tug of war and counters), the points still out, and whether the bid can still be made. A game
+  // saved before there was a choice has no hints field and plays with them on.
+  function hintsOn() { return !S || S.hints !== false; }
+  function freshGame(target, players, mode, level, hints) {
     return {
-      mode: mode || 'cpu', me: 0, level: lvName(level), target: target, players: players, scores: [0, 0], round: 0, rounds: [], dealer: 3, started: Date.now(),
+      mode: mode || 'cpu', me: 0, level: lvName(level), hints: hints !== false, target: target, players: players, scores: [0, 0], round: 0, rounds: [], dealer: 3, started: Date.now(),
       events: [], rookCaps: [0, 0, 0, 0], made: [0, 0], set: [0, 0], bestMade: null
     };
   }
@@ -972,7 +980,7 @@ html.cdesk-on #app .bidbar > .btn{width:auto;}
       sub: S.scores[w] + ' to ' + S.scores[1 - w] + (back >= 150 ? ', after being ' + back + ' points behind' : ''),
       rank: [w, 1 - w].map(function (k) { return { name: teamName(k), score: S.scores[k], color: Kit.color(k) }; }),
       lose: lose, icon: lose ? 'bot' : 'trophy',
-      again: function () { S = freshGame(S.target, S.players, S.mode, S.level); ME = 0; undoStack = []; newHand(); },
+      again: function () { S = freshGame(S.target, S.players, S.mode, S.level, hintsOn()); ME = 0; undoStack = []; newHand(); },
       look: 'Look at the table',
       setup: function () { token++; clearSave(); showSetup(); }
     });
@@ -1036,7 +1044,7 @@ html.cdesk-on #app .bidbar > .btn{width:auto;}
       var card = el('div', { class: 'rk-team ' + (k === m ? 'us' : 'them') + (S.bidder >= 0 && team(S.bidder) === k && S.phase !== 'bid' ? ' bidding' : '') }, [
         el('span', { class: 'nm', text: teamName(k) }),
         el('span', { class: 'tot', text: String(S.scores[k]) }),
-        live ? el('span', { class: 'now', text: '+' + sumPts(S.taken[k]) }) : null
+        live && (hintsOn() || S.phase !== 'play') ? el('span', { class: 'now', text: '+' + sumPts(S.taken[k]) }) : null
       ]);
       card.style.borderLeftColor = Kit.color(k);
       topEl.appendChild(card);
@@ -1239,7 +1247,8 @@ html.cdesk-on #app .bidbar > .btn{width:auto;}
     });
     if (playing) body.appendChild(row('live', el('span', { class: 'rl', text: String(S.round) }), bidPlate(S.bidder, S.phase === 'bid' ? S.high : S.bid, S.trump), order.map(function (k) {
       var v = sumPts(S.taken[k]);
-      return el('span', { class: 'cv' + (S.phase === 'play' ? (v ? ' hot' : ' z') : ''), text: S.phase === 'play' ? String(v) : '' });
+      var sh = S.phase === 'play' && hintsOn();
+      return el('span', { class: 'cv' + (sh ? (v ? ' hot' : ' z') : ''), text: sh ? String(v) : '' });
     })));
     deskRounds = R.length;
     pad.appendChild(body);
@@ -1307,7 +1316,17 @@ html.cdesk-on #app .bidbar > .btn{width:auto;}
       A.appendChild(el('div', { class: 'rk-ln' }, S.trump ? [dotOf(S.trump), el('span', { text: CNAME[S.trump] + ' is trump.' })] :
         [el('span', { text: bd === me ? (ph === 'nest' ? 'You have the nest. Put five cards back, then name trump.' : 'Name the trump color.') : bn + ' is looking at the nest.' })]));
     }
-    if (play || ended) {
+    var count = ended || hintsOn();   // (with Hints off nothing is counted for you until the hand is over)
+    if (play && !count) {
+      // the tricks each side has taken, which anyone at the table can see
+      var tt = el('div', { class: 'rk-cap tt' });
+      cg.appendChild(lbl('Tricks taken', done + ' of 10'));
+      [team(S.bidder), 1 - team(S.bidder)].forEach(function (k) {
+        var n = S.tricks[k] + S.tricks[k + 2];
+        tt.appendChild(el('div', { class: 'rk-cr' }, [seatDisc(k), seatDisc(k + 2), el('div', { class: 'rk-cs' }, [el('span', { class: n ? 'n' : 'none', text: n ? n + (n === 1 ? ' trick' : ' tricks') : 'None yet' })])]));
+      });
+      cg.appendChild(tt);
+    } else if (play || ended) {
       // the hand's 180 points: the bidding side's share from the left, the other side's from the right, the bid marked
       var bt = team(S.bidder), a = sumPts(S.taken[bt]), o = sumPts(S.taken[1 - bt]), ours = bt === mt && onePerson(), side = ours ? 'Your team' : teamAnd(bt), say, tone = '';
       A.appendChild(el('div', { class: 'rk-tug' }, [
@@ -1365,7 +1384,7 @@ html.cdesk-on #app .bidbar > .btn{width:auto;}
         ltc.appendChild(cardEl(x.c, { cls: x.p === lt.w ? 'win' : '', trumpRing: false }));
       });
       took.appendChild(seatDisc(lt.w)); took.appendChild(el('span', { text: who(lt.w) + ' took this trick' })); ltc.appendChild(seatDisc(lt.w));
-      if (lt.got) { took.appendChild(el('b', { text: '+' + lt.got })); ltc.appendChild(el('b', { text: '+' + lt.got })); }
+      if (lt.got && count) { took.appendChild(el('b', { text: '+' + lt.got })); ltc.appendChild(el('b', { text: '+' + lt.got })); }
       deskLt = ltKey;
     }
     ltBox.appendChild(ltT); g1.appendChild(ltBox); g1.appendChild(took); g1.appendChild(ltc); B.appendChild(g1);
@@ -1378,7 +1397,7 @@ html.cdesk-on #app .bidbar > .btn{width:auto;}
         el('span', { class: 'n', text: String(k + 1) }),
         w >= 0 ? seatDisc(w) : el('span', { class: 'o', text: k < done ? '' : String(k + 1) }),
         el('span', { class: 'nm', text: w >= 0 ? who(w) : '' }),
-        el('span', { class: 'pt', text: g ? '+' + g : '' })
+        el('span', { class: 'pt', text: g && count ? '+' + g : '' })
       ]));
     }
     g2.appendChild(tlist); if (play || ended) B.appendChild(g2);
@@ -1401,7 +1420,7 @@ html.cdesk-on #app .bidbar > .btn{width:auto;}
   function netOpts() {
     var g = {}; try { g = JSON.parse(localStorage.getItem('gn_setup_rook')) || {}; } catch (e) {}
     var o = g.options || {}, rb = g.robots || [];
-    return { target: +o.target === 300 ? 300 : 500, level: lvName(o.level),
+    return { target: +o.target === 300 ? 300 : 500, level: lvName(o.level), hints: o.hints === 'off' ? 'off' : 'on',
       names: [0, 1, 2, 3].map(function (i) { return String((g.names || [])[i] || ''); }),
       bots: [0, 1, 2, 3].map(function (i) { return rb.indexOf(i) >= 0 || (g.mode === 'cpu' && !rb.length && i > 0); }) };
   }
@@ -1424,7 +1443,7 @@ html.cdesk-on #app .bidbar > .btn{width:auto;}
     opts = opts || {};
     var pos = last && last.pos && last.pos.length === players.length ? last.pos.slice() : netPlaces(players, opts), at = [];
     pos.forEach(function (q, i) { at[q] = i; });
-    var st = freshGame(+opts.target === 300 ? 300 : 500, [0, 1, 2, 3].map(function (q) { var x = players[at[q]]; return { name: x.name, cpu: !!x.bot }; }), 'online', opts.level);
+    var st = freshGame(+opts.target === 300 ? 300 : 500, [0, 1, 2, 3].map(function (q) { var x = players[at[q]]; return { name: x.name, cpu: !!x.bot }; }), 'online', opts.level, opts.hints !== 'off');
     st.online = 1; st.pos = pos; st.at = at; st.series = last && last.series ? last.series.slice() : [0, 0];
     st.dealer = Math.floor(Math.random() * 4);
     nDeal(st);

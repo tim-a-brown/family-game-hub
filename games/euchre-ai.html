@@ -419,9 +419,12 @@ html.cdesk-on #app.stage > .cbar .bidbox .q{font-size:.95rem;line-height:1.25;}
     ['hard', 'Hard', 'Remembers every card played and thinks each call and play through.']];
   function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
   function lvOf(p) { var pl = S.players && S.players[p]; return lvName((pl && pl.level) || S.level); }
+  // Hints: at a desk, the seven trumps highest first with the ones played faded (trumpStrip). A game saved before there
+  // was a choice has no hints field and plays with them on.
+  function hintsOn() { return !S || S.hints !== false; }
   function freshGame(players, o) {
     return {
-      mode: o.mode || 'cpu', me: 0, level: o.level || 'normal', target: o.target, stick: o.stick, players: players, scores: [0, 0], dealer: Math.floor(Math.random() * 4), handNo: 0,
+      mode: o.mode || 'cpu', me: 0, level: o.level || 'normal', target: o.target, stick: o.stick, hints: o.hints !== false, players: players, scores: [0, 0], dealer: Math.floor(Math.random() * 4), handNo: 0,
       rounds: [], log: [], highlights: [], started: Date.now(), throwins: 0, worst: [null, null]
     };
   }
@@ -434,11 +437,14 @@ html.cdesk-on #app.stage > .cbar .bidbox .q{font-size:.95rem;line-height:1.25;}
       options: [
         { id: 'target', label: 'Play to', help: 'The first team to reach this many points wins.', value: 10, choices: [[5, '5\nQuick'], [10, '10\nStandard']] },
         { id: 'stick', label: 'Stick the dealer', help: 'What happens if all four players pass on picking trump twice.', value: 0, choices: [[0, 'Off\nRedeal', 'The cards are thrown in and the next player deals.'], [1, 'On\nDealer must call', 'The dealer is stuck and has to pick a trump suit.']] },
+        { id: 'hints', label: 'Hints', value: 'on',
+          choices: [['on', 'On', 'On a large screen, the seven trumps stand beside the table, highest first, with the ones already played faded.'],
+            ['off', 'Off', 'No list of trumps: remember what has been played, as at a real table.']] },
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }
       ],
       onStart: function (cfg) {
         var players = cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu && p.level ? lvName(p.level) : undefined }; });   // (each robot its own skill at a mixed table)
-        S = freshGame(players, { target: +cfg.options.target || 10, stick: +cfg.options.stick === 1, mode: cfg.mode, level: lvName(cfg.options.level) });
+        S = freshGame(players, { target: +cfg.options.target || 10, stick: +cfg.options.stick === 1, mode: cfg.mode, level: lvName(cfg.options.level), hints: cfg.options.hints !== 'off' });
         hideTeamName(); ME = 0;
         undoStack = []; Kit.gameStart(); newHand();
       }
@@ -1014,7 +1020,7 @@ html.cdesk-on #app.stage > .cbar .bidbox .q{font-size:.95rem;line-height:1.25;}
       rank: [w, 1 - w].map(function (tm) { return { name: team(tm), score: S.scores[tm], color: Kit.color(tm) }; }),
       lose: lose, icon: lose ? 'bot' : 'trophy',
       again: function () {
-        S = freshGame(S.players, { target: S.target, stick: S.stick, mode: S.mode }); ME = 0; Kit.gameStart(); newHand();
+        S = freshGame(S.players, { target: S.target, stick: S.stick, mode: S.mode, level: S.level, hints: hintsOn() }); ME = 0; Kit.gameStart(); newHand();
       },
       look: 'Look at the table',
       setup: function () { token++; clearSave(); showSetup(); }
@@ -1340,7 +1346,7 @@ html.cdesk-on #app.stage > .cbar .bidbox .q{font-size:.95rem;line-height:1.25;}
           el('span', { class: 'c' + (b === 'Pass' ? ' pass' : b ? ' call' : ''), text: b || (turn ? 'Deciding…' : '') })]));
       }
       inner.appendChild(g4);
-      if (S.phase === 'bid1' && S.up && S.up.s) {
+      if (S.phase === 'bid1' && S.up && S.up.s && hintsOn()) {
         var g5a = el('div', { class: 'eu-g5' });
         g5a.appendChild(el('div', { class: 'cdk-lbl' }, [el('span', { text: SNAME[S.up.s] + ' as trump, highest first' })]));
         g5a.appendChild(trumpStrip(S.up.s, false)); inner.appendChild(g5a);
@@ -1363,7 +1369,7 @@ html.cdesk-on #app.stage > .cbar .bidbox .q{font-size:.95rem;line-height:1.25;}
           el('span', { class: 'nm', text: w >= 0 ? (w === ME && onePerson() ? 'You' : S.players[w].name) : '' })]));
       }
       g3.appendChild(list); inner.appendChild(g3);
-      if (play && S.trump) {
+      if (play && S.trump && hintsOn()) {
         var g5 = el('div', { class: 'eu-g5' }), strip = trumpStrip(S.trump, true);
         g5.appendChild(el('div', { class: 'cdk-lbl' }, [el('span', { text: 'Trumps, highest first' }), el('span', { text: strip._out ? strip._out + ' played' : '' })]));
         g5.appendChild(strip); inner.appendChild(g5);
@@ -1393,7 +1399,7 @@ html.cdesk-on #app.stage > .cbar .bidbox .q{font-size:.95rem;line-height:1.25;}
   function setupSaved() { try { return JSON.parse(localStorage.getItem('gn_setup_euchre')) || {}; } catch (e) { return {}; } }
   function netOpts() {
     var g = setupSaved(), o = g.options || {}, rb = g.robots || [];
-    return { target: +o.target === 5 ? 5 : 10, stick: +o.stick === 1, level: lvName(o.level),
+    return { target: +o.target === 5 ? 5 : 10, stick: +o.stick === 1, level: lvName(o.level), hints: o.hints === 'off' ? 'off' : 'on',
       names: [0, 1, 2, 3].map(function (i) { return String((g.names || [])[i] || ''); }),
       bots: [0, 1, 2, 3].map(function (i) { return rb.indexOf(i) >= 0 || (g.mode === 'cpu' && !rb.length && i > 0); }) };
   }
@@ -1417,7 +1423,7 @@ html.cdesk-on #app.stage > .cbar .bidbox .q{font-size:.95rem;line-height:1.25;}
     var pos = last && last.pos && last.pos.length === players.length ? last.pos.slice() : netPlaces(players, opts), at = [];
     pos.forEach(function (q, i) { at[q] = i; });
     var st = freshGame([0, 1, 2, 3].map(function (q) { var x = players[at[q]]; return { name: x.name, cpu: !!x.bot }; }),
-      { target: +opts.target === 5 ? 5 : 10, stick: !!opts.stick, mode: 'online', level: lvName(opts.level) });
+      { target: +opts.target === 5 ? 5 : 10, stick: !!opts.stick, mode: 'online', level: lvName(opts.level), hints: opts.hints !== 'off' });
     st.online = 1; st.pos = pos; st.at = at; st.series = last && last.series ? last.series.slice() : [0, 0];
     st.dealer = Math.floor(Math.random() * 4);
     nDeal(st);

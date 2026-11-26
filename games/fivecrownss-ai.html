@@ -523,16 +523,22 @@ html.rdesk #app .fcd .fc-round.r{left:auto;right:clamp(14px,2cqmin,30px);}
       modes: Kit.modes(['cpu', 'local']),
       players: { min: 2, max: 7, count: 3, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; } },
       options: [{ id: 'len', label: 'Game length', value: 11, choices: [[11, 'Full\n11 rounds', 'The full game: 3 cards in the first round up to 13 in the last.'], [6, 'Quick\n6 rounds', 'Stops after the 8-card round.']] },
+        { id: 'hints', label: 'Hints', value: 'on',
+          choices: [['on', 'On', 'Your hand shows what the cards left over would cost, and the cards that let you go out glow.'],
+            ['off', 'Off', 'No count of what is left over and no glowing cards: find your way out yourself, as at a real table.']] },
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }],
       onStart: function (cfg) {
-        newGame(cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.cpu ? lvName(p.level || cfg.options.level) : undefined }; }), +cfg.options.len || 11, cfg.mode);   // (each robot its own skill)
+        newGame(cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.cpu ? lvName(p.level || cfg.options.level) : undefined }; }), +cfg.options.len || 11, cfg.mode, cfg.options.hints !== 'off');   // (each robot its own skill)
       }
     });
   }
-  function newGame(players, len, mode) {
+  // Hints (the setup's choice): what the cards left over cost, and the cards that let you go out glowing. A game saved
+  // before there was a choice has no hints field and plays with them on.
+  function hintsOn() { return !S || S.hints !== false; }
+  function newGame(players, len, mode, hints) {
     seeWin = null;
     S = {
-      mode: mode || 'cpu', me: 0, len: len, round: 0, started: Date.now(), rounds: [], log: [],
+      mode: mode || 'cpu', me: 0, len: len, hints: hints !== false, round: 0, started: Date.now(), rounds: [], log: [],
       players: players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level, total: 0 }; })
     };
     Kit.gameStart();
@@ -933,13 +939,13 @@ html.rdesk #app .fcd .fc-round.r{left:auto;right:clamp(14px,2cqmin,30px);}
       return sheet;
     }
     clearSave();
-    var players = S.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), len = S.len, mode = S.mode;
+    var players = S.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), len = S.len, mode = S.mode, hints = hintsOn();
     var top = rank[0], youWin = humans() < 2 ? top.i === 0 : !top.cpu;
     function results() {
       Kit.win({
         title: tie ? "It's a tie!" : isYou(top.i) ? 'You win!' : top.name + ' wins',
         sub: 'Lowest score wins', rank: rank, lose: !youWin && !tie, icon: youWin ? 'trophy' : 'bot',
-        again: function () { newGame(players, len, mode); },
+        again: function () { newGame(players, len, mode, hints); },
         look: 'Look at the table',
         setup: function () { token++; clearSave(); showSetup(); }
       });
@@ -1426,13 +1432,13 @@ html.rdesk #app .fcd .fc-round.r{left:auto;right:clamp(14px,2cqmin,30px);}
     var shown = S.sel ? h.filter(function (c) { return c.id !== S.sel; }) : h;
     var a = arrange(shown, w);
     if (S.outBy === me) pts.appendChild(el('span', { class: 'chip-s ok', text: 'Out' }));
-    pts.appendChild(el('span', { class: 'fc-left' + (a.cost ? '' : ' zero'), text: a.cost ? 'Left over: ' + a.cost : 'All in groups!' }));
+    if (hintsOn()) pts.appendChild(el('span', { class: 'fc-left' + (a.cost ? '' : ' zero'), text: a.cost ? 'Left over: ' + a.cost : 'All in groups!' }));
     pts.appendChild(el('span', { class: 'chip-s', text: 'Total ' + S.players[me].total }));
     meEl.appendChild(pts);
 
     // Which discards would let you go out?
     var outIds = {};
-    if (S.turn === me && S.phase === 'discard' && S.outBy < 0) h.forEach(function (c) { if (cost(h.filter(function (x) { return x !== c; }), w) === 0) outIds[c.id] = 1; });
+    if (S.turn === me && S.phase === 'discard' && S.outBy < 0 && hintsOn()) h.forEach(function (c) { if (cost(h.filter(function (x) { return x !== c; }), w) === 0) outIds[c.id] = 1; });
     var canOut = Object.keys(outIds).length > 0;
 
     handEl.innerHTML = '';
@@ -1472,7 +1478,7 @@ html.rdesk #app .fcd .fc-round.r{left:auto;right:clamp(14px,2cqmin,30px);}
       a.groups.forEach(function (g) { add(g.cards, 'meld', groupLabel(g, w)); });
       if (a.left.length) {
         var left = a.left.slice().sort(function (x, y) { return isW(x, w) - isW(y, w) || SUITS.indexOf(x.s) - SUITS.indexOf(y.s) || rn(x) - rn(y); });
-        add(left, 'dead', a.cost + ' left over');
+        add(left, 'dead', hintsOn() ? a.cost + ' left over' : 'Left over');
       }
     }
     if (!h.length) handEl.appendChild(el('div', { class: 'muted', text: 'No cards' }));
@@ -1576,10 +1582,10 @@ html.rdesk #app .fcd .fc-round.r{left:auto;right:clamp(14px,2cqmin,30px);}
   function netSetup() { try { return JSON.parse(localStorage.getItem('gn_setup_five-crowns') || '{}') || {}; } catch (e) { return {}; } }
   function netOpts() {
     var c = netSetup(), o = c.options || {};
-    return { len: +o.len === 6 ? 6 : 11, level: lvName(o.level), seats: Math.max(2, Math.min(7, +c.count || 2)) };
+    return { len: +o.len === 6 ? 6 : 11, level: lvName(o.level), hints: o.hints === 'off' ? 'off' : 'on', seats: Math.max(2, Math.min(7, +c.count || 2)) };
   }
   function netStart(players, opts) {
-    var st = { mode: 'online', me: 0, len: +opts.len === 6 ? 6 : 11, round: 0, started: Date.now(), rounds: [], log: [],
+    var st = { mode: 'online', me: 0, len: +opts.len === 6 ? 6 : 11, hints: opts.hints !== 'off', round: 0, started: Date.now(), rounds: [], log: [],
       players: players.map(function (p) { return { name: p.name, cpu: !!p.bot, level: p.bot ? lvName(opts.level) : undefined, total: 0 }; }) };
     withS(st, dealRound);
     return st;
