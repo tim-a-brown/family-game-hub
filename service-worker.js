@@ -541,6 +541,7 @@ const PRECACHE_URLS = [
   '/games/phase10-ai.html',
   '/games/spanishone.html',
   '/games/spanishone-core.js',
+  '/games/uno-art.js',
   '/hist/spanishone.js',
   '/games/phase10.html',
   '/games/players.html',

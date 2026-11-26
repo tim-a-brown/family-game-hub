@@ -260,7 +260,7 @@ Underlying principles for everything:
   controls step up gently in the largest windows (`--dkc`, 1 to 1.35, still 1 at 1512 by 982: a button stays a
   button), and a game's own parts of its setup can size by `--dkc` too. `Kit.setup`'s `desk: false`, or
   `<html class="k-own-desk">` (Arvela, which lays out its own setup at a desk), keeps the kit out. A page with a layout
-  of its own for the setup on an iPad held sideways (Canasta, Go Fish, Pinochle, Spanish One) lets go of it at a desk:
+  of its own for the setup on an iPad held sideways (Canasta, Go Fish, Pinochle, UNO) lets go of it at a desk:
   the rules for `.setup.k-dk.k-dk` are written to outweigh it. **`Kit.win` at a desk** (`deskWin`): the card a size up
   and, beside the standings (under them in a tall narrow window), This game: the record `Kit.record` has just made,
   drawn by its history view, so a finished game's score sheet, board or hands are on the card. In a short wide window
@@ -629,7 +629,7 @@ Underlying principles for everything:
   with `--base --png --dev`; `flow.js end|resize|mull`; `demo.js`; `measure.js` audit.js's measure with the cards
   routed in; `probe.js`; `padbase/` the starting page padded to the new one's size, which shows the two device
   differences below are the page's own animation timing).
-  **Spanish One at a desk** (`.so.dk` with `dk-wide`, `dk-strip`, `dk-square` or `dk-tall` from `Cards.DESK`, set by
+  **UNO at a desk** (the page says spanishone; `.so.dk` with `dk-wide`, `dk-strip`, `dk-square` or `dk-tall` from `Cards.DESK`, set by
   `applyDesk` only while such a window shows; `deskShape`, `deskCol`, `fitDesk`, `deskCardCap`, `paintDkL`,
   `paintDkR` in spanishone.html; the styles after the comment "At a desk"). The felt is a column of its own, sized
   from the window: the other players' plates across its head in one row or two (`--opw`, `--fz`, to 250px), the draw
@@ -1456,9 +1456,24 @@ Underlying principles for everything:
 - **Canasta** `games/canasta.html`, `canasta-core.js`, `hist/canasta.js`, `scripts/canasta/run.js` (`run.txt`): four in
   partnerships by default, two- and three-handed too; the robots' settings are `LV` in the core; test hooks
   `window.__canasta` and `localStorage.canasta_fast = '1'`.
-- **Spanish One** `games/spanishone.html`, `spanishone-core.js`, `hist/spanishone.js`, `scripts/spanishone-sim.js`: Tim's
-  name for an original game in the genre of UNO; the call is "One Card!" (Tim, 2026-11-15) (UNO's own name, logo and card look are Mattel's and are not used); 2 to
-  10, its own card faces with a shape for each color.
+- **UNO** (built as Spanish One) `games/spanishone.html`, `spanishone-core.js`, `hist/spanishone.js`,
+  `scripts/spanishone-sim.js`, the card art `games/uno-art.js`: 2 to 10. **UNO with Mattel's permission** (2026-11-26:
+  Mattel's licensing team allowed UNO in this private family app, "including the original card artwork, branding and game
+  terminology", as long as it stays for personal family use and isn't publicly distributed or commercialized). It was an
+  original game in the genre until then (Tim's name Spanish One, the call "One Card!"). **Credit the trademark**: "UNO is
+  a trademark of Mattel, Inc., used with permission. UNO was created by Merle Robbins in 1971 and is published by
+  Mattel." stands under the name in the setup (`.so-credit`, hidden only where it would make the setup scroll) and at the
+  foot of How to play (`CREDIT` in the page). **Ids and keys stay `spanishone`**: the catalog id, the file names,
+  `spanishone_*`, `gh_spanishone`, `gn_setup_spanishone`, the TurnNet game id, `window.SpanishCore` and `window.__so`
+  (renaming any of them loses saved games and history); only what a player reads says UNO. The call is UNO! (the button,
+  the bubble, the flag on a plate). The cards are `UnoArt.face(code)` in `games/uno-art.js`, one SVG each (100 by 146):
+  a solid red, yellow, green or blue card in a white border, the tilted white oval, the number or sign in the card's
+  color with a black outline and shadow, the corners (`.ix`, `.ix.bot`); Skip, Reverse and Draw Two signs; the Wild's
+  four-color oval; the Wild Draw Four's four small cards; the back black with the red oval and the name; `UnoArt.mark()`
+  the name on its red oval (the setup's head, the history view). The home tile's mark is in game-icons.js. **Color
+  symbols** (the setup's `sym`, off by default, `local: true`; `S.sym`, an online seat reads this device's setup) puts
+  each color's shape under the corners (red circle, yellow triangle, green square, blue diamond: `.cs`, shown by
+  `html.so-sym`) and on the color badge and chooser; off, those show an oval in the color.
 - **Arrow Jam** `games/arrowjam.html`, levels `games/arrowjam/levels.js` from `scripts/arrowjam/gen.js` (checked by
   `check.js`, table in `levels.txt`), `hist/arrowjam.js` (replays a clear): played from Mazes beside the Labyrinth (Tim:
   "incorporate arrow jam into the mazes"), so its catalog entry is `hidden`.
@@ -2317,7 +2332,7 @@ Underlying principles for everything:
 - **Writing one** (Tim's bar for every game applies): 45 to 90 seconds; the game's real table and real moves, never a
   drawing of them; a position set through a hook (`window.__<game>`: start a game with given players, set the hands or
   the board, draw again, carry on; add a small one if the game has none, as Yahtzee's `rig`, Hearts' `set` and Chess's
-  `start` were added) and robots that choose the same way every time (Spanish One's `Core.C.rng`); one or two real moves
+  `start` were added) and robots that choose the same way every time (UNO's `Core.C.rng`); one or two real moves
   by the player with `D.you`, limited to the move the story needs; the game's own rare moments where they fit (Yahtzee's
   Yahtzee, Chess's checkmate). Captions are Tim's: whole sentences a person would say, one idea each, naming the cards and
   pieces, said from where the player stands ("Bender took that trick, with a heart and the Queen of Spades in it. That’s
@@ -2327,8 +2342,8 @@ Underlying principles for everything:
 - **The pilot** (for Tim to approve the look before the rest): Hearts (pass three, lead the 2 of Clubs, then the last
   four tricks: hearts broken, the Queen of Spades on Bender, following suit, the hand's scores), Yahtzee (holding the
   sixes, the top section's bonus, a Large Straight, a Yahtzee), Chess (pawn, bishop, knight and queen, then the player
-  checkmates with Scholar's mate), Spanish One (a number match, a Draw Two, the player's Wild and color, drawing, One
-  Card! and going out), and Arvela (its quick start).
+  checkmates with Scholar's mate), UNO (then Spanish One: a number match, a Draw Two, the player's Wild and color,
+  drawing, UNO! and going out), and Arvela (its quick start).
 - **Scope for the rest**: 130 catalog entries. No demo for the 6 console entries (emulator games; the cartridges are
   the house library's), the 7 tools (scorecard, dice-roller, randomtools, ranker, players, history, hiscores) and the 2
   hidden entries that play inside another game (arrowjam in Mazes, tetrinet beside Tetris): every one of the other 115

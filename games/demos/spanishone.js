@@ -1,5 +1,5 @@
-// Spanish One's demo (demo.js; CLAUDE.md, Demos): the end of a hand against two computer players. A 5 matched by number,
-// a Draw Two on EVE, your Wild and its color, drawing when nothing matches, and you calling One Card! and going out.
+// UNO's demo (its files say spanishone) (demo.js; CLAUDE.md, Demos): the end of a hand against two computer players. A 5 matched by number,
+// a Draw Two on EVE, your Wild and its color, drawing when nothing matches, and you calling UNO! and going out.
 (function () {
   'use strict';
   var X = window.__so, Core = X.core;
@@ -14,9 +14,9 @@
   function myTurn() { var s = S(); return s && !X.busy && Core.turn(s) === 0; }
 
   Kit.demoScript({
-    intro: 'Here’s the end of a hand of Spanish One. You’ll play your Wild and call One Card! yourself.',
+    intro: 'Here’s the end of a hand of UNO. You’ll play your Wild and call UNO! yourself.',
     beats: 13,
-    end: 'Match the color or the number, keep a Wild for when nothing else works, and call One Card! before your last card.',
+    end: 'Match the color or the number, keep a Wild for when nothing else works, and call UNO! before your last card.',
     start: function () {
       var me = (localStorage.getItem('my_name') || '').trim() || 'You';
       Core.C.rng = function () { return 0.5; };   // (the computer players choose the same way every time)
@@ -54,7 +54,7 @@
       await D.say('Bender played a red 9. EVE had no red card and no 9, so she drew a card. It didn’t match either, so her turn is over.', { at: seat(2) });
       await D.wait(myTurn, 9000);
       await D.say('Now you hold two cards, and you can play one of them.', { at: '.so-hand', wait: 2400, avoid: ['.so-btns'] });
-      await D.you('.so-btns .call', 'Before you play your second-to-last card, tap One Card! If someone catches you without calling it, you draw two cards.', {
+      await D.you('.so-btns .call', 'Before you play your second-to-last card, tap UNO! If someone catches you without calling UNO, you draw two cards.', {
         until: function () { return S().called[0]; }
       });
       await D.wait(500);

@@ -1,4 +1,4 @@
-// Spanish One: plays thousands of computer games with games/spanishone-core.js and checks the rules hold.
+// UNO (spanishone): plays thousands of computer games with games/spanishone-core.js and checks the rules hold.
 //   node scripts/spanishone-sim.js [games=3000] [seed=1]   (RULES=1: the rules check only; DUEL=1: the skill duels only)
 // Checks after every move: all 108 cards are somewhere (draw pile, discard pile, hands) and no card is in two places;
 // whoever's turn it is has a move; every game ends. Then plays the skill levels against each other.

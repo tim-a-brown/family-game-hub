@@ -1,11 +1,12 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Spanish One: the rules and the computer players (window.SpanishCore, or require() in Node for testing).
+// UNO: the rules and the computer players (window.SpanishCore, or require() in Node for testing). UNO is a trademark of
+// Mattel, Inc., used with Mattel's permission (2026-11-26); the game was built as Spanish One, so its files, ids and
+// storage keys say spanishone, and they stay that way so saved games and history carry on.
 //
-// An original game in the oldest family of shedding games (Mau-Mau, Switch, Crazy Eights): colored number cards and
-// action cards, the first player out of cards wins the hand. The rules follow the standard published rules of the
-// genre: match the top card by color, number or symbol; a Wild names a color; a Wild Draw Four may be challenged;
+// Colored number cards and action cards, the first player out of cards wins the hand. The rules follow Mattel's
+// official rules: match the top card by color, number or symbol; a Wild names a color; a Wild Draw Four may be challenged;
 // Reverse acts as a Skip with two players; a player who can't play draws one and may play it at once; going down to
-// one card needs a call of "One Card!", and a player caught without calling before their next turn draws two.
+// one card needs a call of "UNO!", and a player caught without calling before their next turn draws two.
 // The winner of a hand scores what is left in everyone else's hand (numbers at face value, Skip, Reverse and Draw Two
 // 20, Wilds 50); the first to 500 wins, or one hand decides it.
 //
@@ -19,13 +20,13 @@
 //
 // State: plain JSON (the saved game and the online table are the same object): see newGame() and deal().
 // Moves: apply(st, p, a) with a =
-//   {k:'play', id, c?, t?, call?}  c: the color a Wild names; t: the seat a 7 swaps with (7-0); call: One Card! with it
+//   {k:'play', id, c?, t?, call?}  c: the color a Wild names; t: the seat a 7 swaps with (7-0); call: UNO! with it
 //   {k:'draw'}                      draw one (or until you can play), then maybe play it
 //   {k:'keep'}                      keep the card you drew and end your turn
 //   {k:'take'}                      take the Draw cards aimed at you
 //   {k:'challenge'}                 challenge the Wild Draw Four aimed at you
 //   {k:'pick', c}                   the first player names the color when the first card turned is a Wild
-//   {k:'call'}                      One Card! (any time you hold two on your turn, or one you haven't called)
+//   {k:'call'}                      UNO! (any time you hold two on your turn, or one you haven't called)
 //   {k:'catch', t}                  catch t, who holds one card and didn't call (any time before t's next turn)
 // apply returns the move ({k, p, ev: [events to animate]}) or null when it isn't allowed. bot(st, p) gives the
 // computer's move for seat p.

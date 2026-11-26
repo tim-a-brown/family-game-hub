@@ -1,38 +1,21 @@
 'use strict';
-// History view: Spanish One. The race to the target score, every hand (who went out and with which card, drawn as the
+// History view: UNO (its id and files say spanishone). The race to the target score, every hand (who went out and with which card, drawn as the
 // game's own card face, and what everyone else was left holding), the score sheet hand by hand, and the game's numbers:
-// the longest draw stack, the reverses and skips, One Card calls and catches. Recorded by games/spanishone.html
+// the longest draw stack, the reverses and skips, UNO calls and catches. Recorded by games/spanishone.html
 // (Kit.record 'spanishone').
 (function () {
   if (!window.HistView) return;
   function K() { return window.Kit; }
   function el(t, a, k) { return K().el(t, a, k); }
-  var FELT = ['#4f2c86', '#371d60', '#251343'];
+  var FELT = ['#7a1d22', '#541318', '#330b0e'];
   var CN = { r: 'red', y: 'yellow', g: 'green', b: 'blue' };
-  var CCOL = { r: '#ec4a46', y: '#f7b52c', g: '#1fae7a', b: '#3a7ff0' };
   var VNAME = { s: 'Skip', r: 'Reverse', d2: 'Draw Two', w: 'Wild', w4: 'Wild Draw Four' };
-  var SHAPE = { r: '<circle cx="12" cy="12" r="9.5"/>', y: '<path d="M12 2.6 22.2 20.6H1.8z"/>', g: '<rect x="3" y="3" width="18" height="18" rx="2.6"/>', b: '<path d="M12 1.5 22.5 12 12 22.5 1.5 12z"/>' };
-  var SYM = {
-    s: '<svg viewBox="0 0 48 48"><path d="M7 33c3-15 13-22 22-20 6 1.4 9.4 5.6 10.4 11" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><path d="m33 21 7 5 3-8.5" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24" cy="38" r="4.6" fill="currentColor"/></svg>',
-    r: '<svg viewBox="0 0 48 48"><path d="M10 20a14 14 0 0 1 24-7" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><path d="m35.5 5 .6 9.4-9.3.8" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M38 28a14 14 0 0 1-24 7" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><path d="m12.5 43-.6-9.4 9.3-.8" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    d2: '<svg viewBox="0 0 48 48"><text x="24" y="25" text-anchor="middle" dominant-baseline="central" font-family="Schibsted Grotesk,system-ui,sans-serif" font-weight="800" font-size="24" fill="currentColor">+2</text></svg>'
-  };
-  function wildArt(four) {
-    var s = '<svg viewBox="0 0 48 48">';
-    if (four) {
-      s += '<text x="24" y="17" text-anchor="middle" dominant-baseline="central" font-family="Schibsted Grotesk,system-ui,sans-serif" font-weight="800" font-size="19" fill="#fff">+4</text>';
-      [['r', 3], ['y', 14], ['g', 25], ['b', 36]].forEach(function (x) { s += '<g transform="translate(' + x[1] + ' 28) scale(.38)" fill="' + CCOL[x[0]] + '" stroke="#fff" stroke-width="1.6">' + SHAPE[x[0]] + '</g>'; });
-    } else [['r', 5, 5], ['y', 25, 5], ['g', 5, 25], ['b', 25, 25]].forEach(function (x) { s += '<g transform="translate(' + x[1] + ' ' + x[2] + ') scale(.75)" fill="' + CCOL[x[0]] + '" stroke="#fff" stroke-width="1.4">' + SHAPE[x[0]] + '</g>'; });
-    return s + '</svg>';
-  }
-  // a card from its code: color then value ('r7', 'bs', 'gd2', 'ww', 'ww4')
+  // a card from its code: color then value ('r7', 'bs', 'gd2', 'ww', 'ww4'), drawn as the game draws it (games/uno-art.js)
   function face(code, w) {
     var c = String(code || '').charAt(0), v = String(code || '').slice(1);
-    if (!/^[rygbw]$/.test(c)) return null;
-    var num = /^\d$/.test(v), u = v === '6' || v === '9' ? ' u' : '';
-    var body = c === 'w' ? wildArt(v === 'w4') : num ? '<span class="sh-n' + u + '">' + v + '</span>' : SYM[v] || '';
-    var ix = c === 'w' ? '' : '<span class="sh-ix">' + (num ? v : v === 'd2' ? '+2' : '') + '<svg viewBox="0 0 24 24"><g fill="currentColor">' + SHAPE[c] + '</g></svg></span>';
-    return el('span', { class: 'sh-c c-' + c, style: { '--w': (w || 54) + 'px' }, role: 'img', 'aria-label': c === 'w' ? VNAME[v] : CN[c] + ' ' + (num ? v : VNAME[v]), html: ix + '<span class="sh-b">' + body + '</span>' });
+    if (!/^[rygbw]$/.test(c) || !window.UnoArt) return null;
+    var num = /^\d$/.test(v);
+    return el('span', { class: 'sh-c', style: { '--w': (w || 54) + 'px' }, role: 'img', 'aria-label': c === 'w' ? VNAME[v] : CN[c] + ' ' + (num ? v : VNAME[v]), html: window.UnoArt.face(c + v) });
   }
   function cardName(code) {
     var c = String(code || '').charAt(0), v = String(code || '').slice(1);
@@ -45,16 +28,9 @@
   function plural(n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); }
 
   HistView.css('hv-spanishone', [
-    '.sh-c{--w:54px;position:relative;display:inline-block;flex:none;width:var(--w);height:calc(var(--w) * 1.46);border-radius:calc(var(--w) * .12);overflow:hidden;color:#fff;',
-    'background:radial-gradient(130% 80% at 22% 8%,rgba(255,255,255,.34),transparent 46%),linear-gradient(160deg,var(--c1),var(--c2));',
-    'box-shadow:inset 0 0 0 calc(var(--w) * .028) rgba(255,255,255,.55),0 2px 0 rgba(0,0,0,.2),0 6px 14px rgba(0,0,0,.34);font-family:var(--display);font-weight:800;}',
-    '.sh-c.c-r{--c1:#f2594f;--c2:#b9232f;}.sh-c.c-y{--c1:#ffcf4d;--c2:#e08a0c;color:#2b1a02;}.sh-c.c-g{--c1:#2bc48b;--c2:#0b7a53;}.sh-c.c-b{--c1:#4f95ff;--c2:#1d4fc4;}.sh-c.c-w{--c1:#262a4e;--c2:#0b0c1c;}',
-    '.sh-c .sh-b{position:absolute;inset:0;display:grid;place-items:center;}',
-    '.sh-c .sh-b svg{width:68%;height:auto;}',
-    '.sh-c .sh-n{font-size:calc(var(--w) * .74);line-height:1;}',
-    '.sh-c .u{text-decoration:underline;text-decoration-thickness:calc(var(--w) * .05);text-underline-offset:calc(var(--w) * .06);}',
-    '.sh-c .sh-ix{position:absolute;left:7%;top:5%;display:flex;flex-direction:column;align-items:center;gap:1px;font-size:calc(var(--w) * .22);line-height:1;}',
-    '.sh-c .sh-ix svg{width:calc(var(--w) * .17);height:calc(var(--w) * .17);}',
+    '.sh-c{--w:54px;position:relative;display:inline-block;flex:none;width:var(--w);height:calc(var(--w) * 1.46);border-radius:calc(var(--w) * .11);overflow:hidden;background:#fff;box-shadow:0 2px 0 rgba(0,0,0,.2),0 6px 14px rgba(0,0,0,.34);}',
+    '.sh-c svg{position:absolute;inset:0;width:100%;height:100%;display:block;}',
+    '.sh-c .cs{display:none;}',
     '.sh-out{display:flex;align-items:center;gap:14px;}',
     '.sh-out .t b{display:block;font-size:1.05rem;color:#fff;text-wrap:balance;}',
     '.sh-out .t span{display:block;font-size:.8rem;font-weight:700;color:rgba(255,255,255,.8);margin-top:2px;}',
@@ -63,7 +39,7 @@
     '.sh-left .r .nm{display:flex;align-items:center;gap:6px;min-width:0;overflow-wrap:anywhere;line-height:1.1;}',
     '.sh-left .r .nm i{flex:none;width:9px;height:9px;border-radius:50%;background:var(--pc);}',
     '.sh-left .r .bk{display:flex;flex-wrap:wrap;gap:2px;}',
-    '.sh-left .r .bk i{width:8px;height:12px;border-radius:2px;background:linear-gradient(160deg,#2a1f5c,#14183a);box-shadow:inset 0 0 0 1px rgba(255,255,255,.35);}',
+    '.sh-left .r .bk i{width:8px;height:12px;border-radius:2px;background:radial-gradient(40% 46% at 50% 50%,#e3242b 98%,transparent),#141414;box-shadow:inset 0 0 0 1px rgba(255,255,255,.7);}',
     '.sh-left .r b{text-align:right;font-variant-numeric:tabular-nums;color:#fff;}',
     '.sh-left .r.w b{color:#ffd166;}',
     '.sh-left .r .cnt{font-weight:650;color:rgba(255,255,255,.65);margin-left:4px;font-size:.72rem;}',

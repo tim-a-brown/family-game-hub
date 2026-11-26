@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Spanish One</title>
+<title>UNO</title>
 <link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
 <script src="../games.js"></script>
@@ -15,36 +15,27 @@
 <script src="../online.js"></script>
 <script src="../turnnet.js"></script>
 <script src="spanishone-core.js"></script>
+<script src="uno-art.js"></script>
 <style>
-/* ── Spanish One's own printed cards: four colors, each with its own shape (red circle, yellow triangle, green square,
-   blue diamond) so a color can be told by its shape alone; the Wilds on a night-black card ── */
-:root{--so-r1:#f2594f;--so-r2:#b9232f;--so-y1:#ffcf4d;--so-y2:#e08a0c;--so-g1:#2bc48b;--so-g2:#0b7a53;--so-b1:#4f95ff;--so-b2:#1d4fc4;
-  --so-r:#ec4a46;--so-y:#f7b52c;--so-g:#1fae7a;--so-b:#3a7ff0;--back-a:#14183a;--back-b:#2a1f5c;}
-.oc{--ink:#fff;position:relative;flex:none;width:var(--cw,64px);height:calc(var(--cw,64px) * 1.46);border-radius:calc(var(--cw) * .12);
-  overflow:hidden;isolation:isolate;user-select:none;-webkit-user-select:none;color:var(--ink);
-  background:radial-gradient(130% 80% at 22% 8%,rgba(255,255,255,.34),transparent 46%),linear-gradient(160deg,var(--c1),var(--c2));
-  box-shadow:inset 0 0 0 calc(var(--cw) * .028) rgba(255,255,255,.55),inset 0 calc(var(--cw) * -.05) calc(var(--cw) * .12) rgba(0,0,0,.18),0 1px 0 rgba(255,255,255,.2),0 2px 0 rgba(0,0,0,.2),0 6px 14px rgba(0,0,0,.34);
-  font-family:var(--display);font-weight:800;}
-.oc.c-r{--c1:var(--so-r1);--c2:var(--so-r2);} .oc.c-y{--c1:var(--so-y1);--c2:var(--so-y2);--ink:#2b1a02;}
-.oc.c-g{--c1:var(--so-g1);--c2:var(--so-g2);} .oc.c-b{--c1:var(--so-b1);--c2:var(--so-b2);}
-.oc.c-w{--c1:#262a4e;--c2:#0b0c1c;}
-.oc .wm{position:absolute;inset:0;display:grid;place-items:center;z-index:-1;opacity:.2;}
-.oc .wm svg{width:96%;height:auto;rotate:-14deg;}
-.oc .bd{position:absolute;inset:0;display:grid;place-items:center;}
-.oc .bd .num{font-size:calc(var(--cw) * .74);line-height:1;letter-spacing:-.04em;text-shadow:0 calc(var(--cw) * .03) 0 rgba(0,0,0,.22);}
-.oc .bd .u{text-decoration:underline;text-decoration-thickness:calc(var(--cw) * .05);text-underline-offset:calc(var(--cw) * .06);}
-.oc .bd svg{width:68%;height:auto;filter:drop-shadow(0 calc(var(--cw) * .025) 0 rgba(0,0,0,.25));}
-.oc .ix{position:absolute;left:7%;top:5%;display:flex;flex-direction:column;align-items:center;gap:calc(var(--cw) * .02);font-size:calc(var(--cw) * .22);line-height:1;}
-.oc .ix.bot{left:auto;top:auto;right:7%;bottom:5%;rotate:180deg;}
-.oc .ix svg{width:calc(var(--cw) * .17);height:calc(var(--cw) * .17);}
-.oc .ix .ic{width:calc(var(--cw) * .2);height:calc(var(--cw) * .2);}
-.oc .ix .ic svg{width:100%;height:100%;}
-/* the back: night blue with a ring of the four colors and a One in the middle */
-.oc.back{--c1:var(--back-b);--c2:var(--back-a);background:radial-gradient(120% 70% at 25% 10%,rgba(255,255,255,.16),transparent 50%),
-  repeating-linear-gradient(135deg,rgba(255,255,255,.035) 0 2px,transparent 2px 7px),linear-gradient(160deg,var(--c1),var(--c2));}
-.oc.back .bk{position:absolute;inset:0;display:grid;place-items:center;}
-.oc.back .bk svg{width:78%;height:auto;}
-.oc.sm .ix.bot,.oc.xs .ix{display:none;}
+/* ── UNO's cards (games/uno-art.js draws each face as one SVG: the white card, its color, the tilted oval, the corners).
+   With Color symbols on (html.so-sym) each color's shape stands under the corners: red circle, yellow triangle,
+   green square, blue diamond. ── */
+:root{--so-r1:#ec3a40;--so-r2:#c41a22;--so-y1:#fbd332;--so-y2:#e9b20a;--so-g1:#3bb257;--so-g2:#22883a;--so-b1:#2384d8;--so-b2:#075aa6;
+  --so-r:#e3242b;--so-y:#f8c814;--so-g:#2c9f45;--so-b:#0a6ec7;}
+.oc{position:relative;flex:none;width:var(--cw,64px);height:calc(var(--cw,64px) * 1.46);border-radius:calc(var(--cw) * .11);
+  overflow:hidden;isolation:isolate;user-select:none;-webkit-user-select:none;background:#fff;
+  box-shadow:0 1px 0 rgba(255,255,255,.2),0 2px 0 rgba(0,0,0,.2),0 6px 14px rgba(0,0,0,.34);}
+.oc > svg{position:absolute;inset:0;width:100%;height:100%;display:block;}
+.oc .cs{display:none;}
+.so-sym .oc .cs{display:inline;}
+.oc.sm .ix.bot,.oc.sm .cs.bot,.oc.xs .ix,.so-sym .oc.xs .cs.bot{display:none;}
+/* the setup's head: UNO's name in its oval, standing for the title (the h1 stays for screen readers) */
+.setup-hero.so-hero .k-hero-ic{width:auto;height:auto;background:none;box-shadow:none;border-radius:0;}
+.setup-hero.so-hero .k-hero-ic svg{width:clamp(52px,min(32vw,14vh),168px);height:auto;display:block;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35));}
+.setup-hero.so-hero h1{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+/* a phone on its side: six option rows fit the left column (Color symbols made it six) */
+@media (orientation:landscape) and (max-height:440px){.stage .setup .k-opts.k-opts{gap:4px;} .stage .setup .k-opts .k-inrow{min-height:42px;padding-top:0;padding-bottom:0;}}
+.so-credit{margin:-6px auto 2px;max-width:34em;text-align:center;font-size:.78rem;font-weight:600;color:var(--text-3);text-wrap:balance;}
 /* a card you can play on your turn sits up; the rest step back */
 .so-hand .oc{position:absolute;left:0;top:0;transition:transform .34s cubic-bezier(.25,.8,.25,1),filter .2s,box-shadow .2s;cursor:pointer;touch-action:manipulation;}
 .so-hand.mine .oc.no{filter:brightness(.74) saturate(.78);}
@@ -322,51 +313,34 @@
   var Core = window.SpanishCore, el = Kit.el, app = document.getElementById('app');
   var SAVE = 'spanishone_state', HKEY = 'spanishone';
   var CN = { r: 'red', y: 'yellow', g: 'green', b: 'blue' };
-  var CCOL = { r: '#ec4a46', y: '#f7b52c', g: '#1fae7a', b: '#3a7ff0' };
+  var CCOL = { r: '#e3242b', y: '#f8c814', g: '#2c9f45', b: '#0a6ec7' };
   var CARD = {}; Core.deck().forEach(function (c) { CARD[c.id] = c; });
+  var CREDIT = 'UNO is a trademark of Mattel, Inc., used with permission. UNO was created by Merle Robbins in 1971 and is published by Mattel.';
 
-  // ── The printed pieces: shapes and symbols, drawn in SVG ──
+  // ── The printed pieces: UNO's faces and back come from games/uno-art.js ──
   var SHAPE = {
     r: '<circle cx="12" cy="12" r="9.5"/>',
     y: '<path d="M12 2.6 22.2 20.6H1.8z"/>',
     g: '<rect x="3" y="3" width="18" height="18" rx="2.6"/>',
     b: '<path d="M12 1.5 22.5 12 12 22.5 1.5 12z"/>'
   };
-  function shape(c, fill, extra) { return '<svg viewBox="0 0 24 24" aria-hidden="true"' + (extra || '') + '><g fill="' + (fill || 'currentColor') + '">' + SHAPE[c] + '</g></svg>'; }
-  // Skip: a hop over the one it passes; Reverse: two arrows turning back on each other
-  var SYM = {
-    s: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M7 33c3-15 13-22 22-20 6 1.4 9.4 5.6 10.4 11" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><path d="m33 21 7 5 3-8.5" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24" cy="38" r="4.6" fill="currentColor"/></svg>',
-    r: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 20a14 14 0 0 1 24-7" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><path d="m35.5 5 .6 9.4-9.3.8" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M38 28a14 14 0 0 1-24 7" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><path d="m12.5 43-.6-9.4 9.3-.8" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    d2: '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="9" y="7" width="20" height="28" rx="4" fill="none" stroke="currentColor" stroke-width="3.4" opacity=".7"/><rect x="19" y="13" width="20" height="28" rx="4" fill="currentColor" opacity=".25"/><rect x="19" y="13" width="20" height="28" rx="4" fill="none" stroke="currentColor" stroke-width="3.4"/><text x="29" y="28.5" text-anchor="middle" dominant-baseline="central" font-family="Schibsted Grotesk,system-ui,sans-serif" font-weight="800" font-size="15" fill="currentColor">+2</text></svg>'
-  };
-  // the Wilds: the four shapes in their colors
-  function wildArt(four) {
-    var s = '<svg viewBox="0 0 48 48" aria-hidden="true">';
-    if (four) {
-      s += '<text x="24" y="17" text-anchor="middle" dominant-baseline="central" font-family="Schibsted Grotesk,system-ui,sans-serif" font-weight="800" font-size="19" fill="#fff">+4</text>';
-      [['r', 3], ['y', 14], ['g', 25], ['b', 36]].forEach(function (x) { s += '<g transform="translate(' + x[1] + ' 28) scale(.38)" fill="' + CCOL[x[0]] + '" stroke="#fff" stroke-width="1.6">' + SHAPE[x[0]] + '</g>'; });
-    } else {
-      [['r', 5, 5], ['y', 25, 5], ['g', 5, 25], ['b', 25, 25]].forEach(function (x) { s += '<g transform="translate(' + x[1] + ' ' + x[2] + ') scale(.75)" fill="' + CCOL[x[0]] + '" stroke="#fff" stroke-width="1.4">' + SHAPE[x[0]] + '</g>'; });
-    }
-    return s + '</svg>';
+  // a color's mark: its shape with Color symbols on, otherwise a tilted oval in the color, as on the cards
+  function shape(c, fill, extra) {
+    var f = fill || 'currentColor';
+    if (!symOn()) return '<svg viewBox="0 0 24 24" aria-hidden="true"' + (extra || '') + '><ellipse cx="12" cy="12" rx="7" ry="11" transform="rotate(28 12 12)" fill="' + f + '" stroke="rgba(0,0,0,.35)" stroke-width="1"/></svg>';
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"' + (extra || '') + '><g fill="' + f + '">' + SHAPE[c] + '</g></svg>';
   }
-  function wildIx(four) {
-    var s = '<svg viewBox="0 0 24 24" aria-hidden="true">';
-    [['r', 0, 0], ['y', 12, 0], ['g', 0, 12], ['b', 12, 12]].forEach(function (x) { s += '<g transform="translate(' + x[1] + ' ' + x[2] + ') scale(.5)" fill="' + CCOL[x[0]] + '">' + SHAPE[x[0]] + '</g>'; });
-    return s + '</svg>';
+  // Color symbols (a setup option, off by default): kept with the game, or this device's last setup for an online seat
+  function symOn() {
+    if (S && S.sym != null) return !!S.sym;
+    try { var g = JSON.parse(localStorage.getItem('gn_setup_spanishone')) || {}; var o = g.options || g; return +o.sym === 1; } catch (e) { return false; }
   }
-  var BACK = '<svg viewBox="0 0 60 60" aria-hidden="true"><g fill="none" stroke-width="6" stroke-linecap="round">' +
-    '<path d="M30 6a24 24 0 0 1 24 24" stroke="' + CCOL.r + '"/><path d="M54 30a24 24 0 0 1-24 24" stroke="' + CCOL.y + '"/><path d="M30 54A24 24 0 0 1 6 30" stroke="' + CCOL.g + '"/><path d="M6 30A24 24 0 0 1 30 6" stroke="' + CCOL.b + '"/></g>' +
-    '<text x="30" y="31" text-anchor="middle" dominant-baseline="central" font-family="Schibsted Grotesk,system-ui,sans-serif" font-weight="800" font-size="27" fill="#fff">1</text></svg>';
+  function applySym() { document.documentElement.classList.toggle('so-sym', symOn()); }
   function cardEl(c, o) {
     o = o || {};
-    if (!c || o.back) { var b = el('div', { class: 'oc back' + (o.cls ? ' ' + o.cls : ''), 'aria-label': 'A face-down card' }); b.innerHTML = '<span class="bk">' + BACK + '</span>'; return b; }
+    if (!c || o.back) { var b = el('div', { class: 'oc back' + (o.cls ? ' ' + o.cls : ''), 'aria-label': 'A face-down card' }); b.innerHTML = UnoArt.back(); return b; }
     var n = el('div', { class: 'oc c-' + c.c + (o.cls ? ' ' + o.cls : ''), 'data-id': c.id, role: 'img', 'aria-label': Core.name(c) });
-    var num = Core.isNum(c), u = c.v === '6' || c.v === '9' ? ' u' : '';
-    var ix = c.c === 'w' ? '<span class="ic">' + wildIx() + '</span>' + (c.v === 'w4' ? '<span style="font-size:.7em">+4</span>' : '') :
-      num ? '<span class="' + u + '">' + c.v + '</span>' + shape(c.c) : c.v === 'd2' ? '<span>+2</span>' + shape(c.c) : '<span class="ic">' + SYM[c.v] + '</span>' + shape(c.c);
-    var body = c.c === 'w' ? wildArt(c.v === 'w4') : num ? '<span class="num' + u + '">' + c.v + '</span>' : SYM[c.v];
-    n.innerHTML = (c.c !== 'w' ? '<span class="wm">' + shape(c.c, 'rgba(255,255,255,.9)') + '</span>' : '') + '<span class="ix">' + ix + '</span><span class="ix bot">' + ix + '</span><span class="bd">' + body + '</span>';
+    n.innerHTML = UnoArt.face(c.c + c.v);
     return n;
   }
 
@@ -376,18 +350,18 @@
     onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } clearSave(); showSetup(); },
     undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
     menu: TurnNet.menu().concat([
-      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Spanish One: past games' }); } }
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'UNO: past games' }); } }
     ]),
     rules:
       '<p class="goal">Be the first to play every card in your hand. When you go out, you score the cards everyone else is still holding, and the first player to 500 points wins the game.</p>' +
-      '<h3>The cards</h3><p>There are 108 cards. Each of the four colors has its own shape, so you can tell them apart by shape too: red circles, yellow triangles, green squares and blue diamonds. Every color has one 0, two of each number from 1 to 9, and two each of Skip, Reverse and Draw Two. There are also four Wild cards and four Wild Draw Four cards.</p>' +
+      '<h3>The cards</h3><p>There are 108 cards in four colors: red, yellow, green and blue. Every color has one 0, two of each number from 1 to 9, and two each of Skip, Reverse and Draw Two. There are also four Wild cards and four Wild Draw Four cards. With Color symbols on in the setup, each color also has its own shape in the corners of its cards (red circles, yellow triangles, green squares and blue diamonds), so you can tell the colors apart by shape too.</p>' +
       '<h3>Your turn</h3><ul><li>Everyone gets 7 cards, and one card is turned face up to start the pile.</li>' +
       '<li>On your turn, play a card that matches the top card by color, by number or by symbol. A Wild can be played on anything.</li>' +
       '<li>If you can’t play, or don’t want to, draw a card. If you can play the card you drew, you can play it right away. Otherwise your turn is over.</li></ul>' +
       '<h3>Action cards</h3><ul><li><b>Skip:</b> the next player loses their turn.</li><li><b>Reverse:</b> play changes direction. The ring around the pile turns the way play is going. With two players, a Reverse works like a Skip, so you go again.</li>' +
       '<li><b>Draw Two:</b> the next player draws 2 cards and loses their turn.</li><li><b>Wild:</b> you choose the color to play next.</li>' +
       '<li><b>Wild Draw Four:</b> you choose the color, and the next player draws 4 cards and loses their turn. You’re only allowed to play it when you have no card of the color in play. The next player can challenge it: if you did have a card of that color, you draw the 4 instead. If you didn’t, the challenger draws 6.</li></ul>' +
-      '<h3>One Card!</h3><p>When you’re about to play your second-to-last card, tap <b>One Card!</b> If someone catches you holding one card without having called it, before your next turn comes, you draw 2 cards. Tap <b>Catch</b> on a player’s plate to catch them.</p>' +
+      '<h3>UNO!</h3><p>When you’re about to play your second-to-last card, tap <b>UNO!</b> If someone catches you holding one card without having called UNO, before your next turn comes, you draw 2 cards. Tap <b>Catch</b> on a player’s plate to catch them.</p>' +
       '<h3>Scoring</h3><ul><li>When someone goes out, they score the cards left in everyone else’s hand: number cards are worth their number, Skip, Reverse and Draw Two are worth 20, and Wilds are worth 50.</li>' +
       '<li>If the last card played is a Draw Two or a Wild Draw Four, the next player still draws those cards, and they count.</li><li>The first player to reach 500 wins. You can also play a single hand in the setup.</li></ul>' +
       '<h3>The first card</h3><p>If the first card turned up is a Wild Draw Four, it goes back in the deck and another is turned. If it’s a Wild, the first player chooses the color. A Skip, a Reverse or a Draw Two works on the first player just as if the dealer had played it.</p>' +
@@ -395,7 +369,8 @@
       '<li><b>Draw until you can play:</b> instead of drawing one card, you keep drawing until you get a card you can play.</li>' +
       '<li><b>7-0:</b> when you play a 7, you swap hands with a player you choose. When anyone plays a 0, everyone passes their hand to the next player in the direction of play.</li>' +
       '<li><b>No challenges:</b> a Wild Draw Four can be played at any time, and nobody can challenge it.</li></ul>' +
-      '<h3>Online</h3><p><b>Play online</b> in the menu opens a table, and the others join on their own devices. The computer plays any empty seat.</p>'
+      '<h3>Online</h3><p><b>Play online</b> in the menu opens a table, and the others join on their own devices. The computer plays any empty seat.</p>' +
+      '<p class="credit">' + CREDIT + '</p>'
   });
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -424,7 +399,7 @@
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); token++; busy = false; }
 
-  var LEVELS = [['easy', 'Easy', 'Plays the first card it can, and sometimes forgets to call One Card.'],
+  var LEVELS = [['easy', 'Easy', 'Plays the first card it can, and sometimes forgets to call UNO.'],
     ['normal', 'Normal', 'Keeps its Wilds for when nothing else will do, and names the color it holds most of.'],
     ['hard', 'Hard', 'Remembers which colors each player had to draw on, saves its action cards for whoever is about to go out, and will bluff a Wild Draw Four.']];
 
@@ -441,6 +416,7 @@
         { id: 'until', label: 'Drawing', help: 'Standard: when you can’t play, you draw one card. With Draw until you can play, you keep drawing until you get a card you can play.', value: 0, choices: [[0, 'Draw one\nStandard'], [1, 'Until you can play']] },
         { id: 'seven', label: '7-0', help: 'With 7-0 on, playing a 7 swaps your hand with a player you choose, and playing a 0 passes every hand to the next player in the direction of play.', value: 0, choices: [[0, 'Off\nStandard'], [1, 'On']] },
         { id: 'four', label: 'Wild Draw Four', help: 'Standard: you may only play a Wild Draw Four when you have no card of the color in play, and the next player can challenge it. With No challenges, it can be played at any time.', value: 'challenge', choices: [['challenge', 'Can be challenged\nStandard'], ['free', 'No challenges']] },
+        { id: 'sym', local: true, label: 'Color symbols', help: 'With Color symbols on, each color also has its own shape in the corners of its cards: red circles, yellow triangles, green squares and blue diamonds. It helps anyone who finds some of the colors hard to tell apart.', value: 0, choices: [[0, 'Off\nStandard'], [1, 'On']] },
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }
       ],
       onStart: function (cfg) {
@@ -453,10 +429,20 @@
           seen[nm] = 1;
           return { name: nm, cpu: !!p.cpu, level: p.cpu ? (p.level || o.level) : undefined }; }),
           to: +o.to, stack: +o.stack === 1, until: +o.until === 1, seven: +o.seven === 1, four: o.four, level: o.level });
-        S.mode = cfg.mode; S.me = 0; S.seen = S.round;
+        S.mode = cfg.mode; S.me = 0; S.seen = S.round; S.sym = +o.sym === 1 ? 1 : 0;
         LME = 0; Kit.gameStart(); undoStack = []; begin(true);
       }
     });
+    applySym();
+    var hero = app.querySelector('.setup-hero');
+    if (hero) {
+      hero.classList.add('so-hero');
+      var ic = hero.querySelector('.k-hero-ic'); if (ic) ic.innerHTML = UnoArt.mark({ label: true });
+      if (!app.querySelector('.so-credit')) hero.parentNode.insertBefore(el('p', { class: 'so-credit', text: CREDIT }), hero.nextSibling);
+      // (the credit shows only where it doesn't make the setup scroll)
+      var hideC = function () { var c = app.querySelector('.so-credit'); if (c && document.documentElement.scrollHeight > window.innerHeight + 1) c.style.display = 'none'; };
+      requestAnimationFrame(hideC); setTimeout(hideC, 700);
+    }
   }
 
   // ═══ Layout: four shapes, measured from the screen ═════════════════════════════════════════════════
@@ -468,6 +454,7 @@
   }
   function side() { return LAY === 'L-ps' || LAY === 'L-ts'; }
   function build() {
+    applySym();
     closeOverlays();
     app.innerHTML = ''; app.removeAttribute('style');
     applyDesk();
@@ -689,7 +676,7 @@
     ord.forEach(function (p) {
       var ls = ltSay(p), cnt = V.counts[p], st = seatStatus(p);
       list.appendChild(el('div', { class: 'pl' + (V.turn === p && S.phase !== 'over' ? ' turn' : '') }, [dkAv(p),
-        el('span', { class: 'nm' }, [document.createTextNode(you(p) ? 'You' : fn(p)), st === 'called' ? el('span', { class: 'one', text: 'One Card' }) : null]),
+        el('span', { class: 'nm' }, [document.createTextNode(you(p) ? 'You' : fn(p)), st === 'called' ? el('span', { class: 'one', text: 'UNO' }) : null]),
         el('span', { class: 'n' }, [document.createTextNode(String(cnt)), el('small', { text: cnt === 1 ? 'card' : 'cards' })]),
         ls.t ? el('span', { class: 'lt' }, [ls.c ? cardEl(ls.c) : null, el('span', { text: ls.t })]) : null]));
     });
@@ -732,8 +719,8 @@
         el('div', { class: 'ct' }, [fan, el('span', { class: 'n', text: String(n), 'aria-label': n + (n === 1 ? ' card' : ' cards') })])
       ]);
       var stt = seatStatus(p);
-      if (stt === 'called') node.appendChild(el('span', { class: 'so-flag', text: 'One Card' }));
-      if (stt === 'vul' && canCatchNow()) node.appendChild(el('button', { type: 'button', class: 'so-catch', text: 'Catch', 'aria-label': 'Catch ' + fn(p) + ': ' + fn(p) + ' didn’t call One Card', onclick: function (e) { e.stopPropagation(); tapCatch(p); } }));
+      if (stt === 'called') node.appendChild(el('span', { class: 'so-flag', text: 'UNO' }));
+      if (stt === 'vul' && canCatchNow()) node.appendChild(el('button', { type: 'button', class: 'so-catch', text: 'Catch', 'aria-label': 'Catch ' + fn(p) + ': ' + fn(p) + ' didn’t call UNO', onclick: function (e) { e.stopPropagation(); tapCatch(p); } }));
       seatsEl.appendChild(node); opEls[p] = node;
     });
   }
@@ -845,7 +832,7 @@
       }
     } else if (BLIND) cap.textContent = 'Pass the device to ' + fn(t) + '.';
     else if (t >= 0) cap.innerHTML = whose(t) + ' turn.';
-    if (canCallNow()) btns.insertBefore(btn('One Card!', 'call', function () { tapCall(); }), btns.firstChild);
+    if (canCallNow()) btns.insertBefore(btn('UNO!', 'call', function () { tapCall(); }), btns.firstChild);
     fitAct();
   }
   // sideways the sentence and its buttons share the table's row: the sentence eases down until they fit
@@ -1073,8 +1060,8 @@
         await wait(ms(600)); return;
       }
       case 'call': {
-        say(e.p, 'One Card!', 'lit'); Kit.sfx('pop'); Kit.haptic('medium');
-        if (e.p !== m) { var o = opEl(e.p); if (o && !o.querySelector('.so-flag')) o.appendChild(el('span', { class: 'so-flag', text: 'One Card' })); }
+        say(e.p, 'UNO!', 'lit'); Kit.sfx('pop'); Kit.haptic('medium');
+        if (e.p !== m) { var o = opEl(e.p); if (o && !o.querySelector('.so-flag')) o.appendChild(el('span', { class: 'so-flag', text: 'UNO' })); }
         paintAct();
         await wait(ms(300)); return;
       }
@@ -1273,7 +1260,7 @@
     }
     LME = p; BLIND = false; paintAll();
   }
-  // computer players watching for someone who didn't call One Card (between turns too)
+  // computer players watching for someone who didn't call UNO (between turns too)
   function watchCatch() {
     clearTimeout(watchT);
     if (!S || NET || S.phase === 'over') return;
@@ -1337,7 +1324,7 @@
       sub: sub,
       rank: ranks.map(function (p) { return { name: st.players[p].name, score: st.to ? st.scores[p] : (p === w ? 'Out' : st.last.left[p].length + (st.last.left[p].length === 1 ? ' card' : ' cards')), color: color(p), cpu: st.players[p].cpu, me: p === me() && onePerson() }; }),
       lose: lose, icon: lose ? 'bot' : 'trophy',
-      again: function () { S = Core.newGame(cfg); S.mode = st.mode; S.me = 0; LME = 0; Kit.gameStart(); undoStack = []; begin(true); },
+      again: function () { S = Core.newGame(cfg); S.mode = st.mode; S.sym = st.sym; S.me = 0; LME = 0; Kit.gameStart(); undoStack = []; begin(true); },
       look: 'Look at the table',
       setup: function () { clearSave(); showSetup(); }
     });
@@ -1371,7 +1358,7 @@
 
   // ═══ Online (turnnet.js) ═════════════════════════════════════════════════════════════════════════
   // The table holds the whole game, every seat a game seat. Each device draws its own hand face up and everyone
-  // else's as backs. The computer plays any empty seat; One Card and Catch can be pressed by anyone at any time.
+  // else's as backs. The computer plays any empty seat; UNO and Catch can be pressed by anyone at any time.
   var NQ = [], NGEN = 0, NETREC = {}, NOVER = null, NST = null;
   function netOpts() {
     var g = {}; try { g = JSON.parse(localStorage.getItem('gn_setup_spanishone')) || {}; } catch (e) {}
@@ -1464,7 +1451,7 @@
   }
   resumeLocal();
   TurnNet.setup({
-    game: 'spanishone', title: 'Spanish One', min: 2, max: 10, botMs: 1000,
+    game: 'spanishone', title: 'UNO', min: 2, max: 10, botMs: 1000,
     seats: function (n, o) { return Math.max(n, Math.min(10, +(o && o.seats) || 4)); },
     opts: netOpts, start: netStart, turn: netTurn, free: netFree, over: netOver, bot: netBot,
     show: netShow, leave: netLeave
