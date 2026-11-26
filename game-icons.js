@@ -163,6 +163,11 @@ var GameIcon = (function () {
       for (var i = 0; i < 9; i++) s += rect(1.5 + (i % 3) * 7, 1.5 + Math.floor(i / 3) * 7, 6.4, 6.4, 1.2, ink[i]);
       return s + circ(8.2, 15.2, 4.4, K, ' stroke="#f2c94c" stroke-width="1"') + circ(8.2, 15.2, 1.7, '#b52d2b') + circ(15.2, 8.2, 4.4, W, ' stroke="' + K + '" stroke-width="1"') + circ(15.2, 8.2, 1.7, '#2a5fb5');
     },
+    pacru: function () {   // a corner of the board split into borderlands, a red chevron and a black one, and markers
+      var s = rect(1.5, 1.5, 21, 21, 2.4, '#e9dcc0') + line('M12 1.5v21M1.5 12h21', '#4a2c18', 1.6);
+      s += rect(13, 13, 8.5, 8.5, 1.2, 'rgba(210,58,47,.3)') + circ(17.2, 17.2, 2, '#d23a2f') + circ(6.5, 17.5, 2, '#2c2f37');
+      return s + path('M17 3.2l4.2 7.6-1.8.6-2.4-3.2-2.4 3.2-1.8-.6z', '#d23a2f') + path('M3.2 7.5l7.6-4.2.6 1.8-3.2 2.4 3.2 2.4-.6 1.8z', '#2c2f37');
+    },
     othello: function () { return circ(8, 13, 7, K) + circ(16, 11, 7, W, ' stroke="' + K + '" stroke-width="1.8"'); },
     backgammon: function (c) { var t = ''; for (var i = 0; i < 4; i++) { var x = 1 + i * 5.6; t += path('M' + x + ' 1h5l-2.5 9.5z', i % 2 ? K : c) + path('M' + x + ' 23h5l-2.5-9.5z', i % 2 ? c : K); } return t + circ(9, 12, 2.2, R) + circ(15, 12, 2.2, W, ' stroke="' + K + '" stroke-width="1.2"'); },
     battleship: function () { return path('M2 13h20l-3 6H5z', K) + rect(8, 9, 8, 4, 1, S) + rect(11, 5.5, 2, 4, .6, K) + line('M2 21.5c2 0 2-1.2 4-1.2s2 1.2 4 1.2 2-1.2 4-1.2 2 1.2 4 1.2 2-1.2 4-1.2', B, 1.6); },

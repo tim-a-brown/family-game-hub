@@ -1919,6 +1919,77 @@ Underlying principles for everything:
   `tower`, `at`, `fillCard`, `desk`). The scratchpad's `newgames/kamisado/` has `shots.js` and `dd.js` (two search settings
   against each other).
 
+## Pacru (2026-11-26; included with Mike Wellman's written permission, credited)
+
+- **Credit the designer**: "Pacru was designed by Mike Wellman." stands under the title in the setup (`.pc-credit`, hidden
+  only where it would make the setup scroll) and at the foot of How to play; the condition of the permission (a digital
+  version for the family's personal use). The board and pieces are our own drawing (a pale ash field in a walnut rim,
+  inlaid walnut lines between the borderlands, enamel markers in round wells, lacquered arrowhead chevrons); never the
+  commercial board's star-shaped fields, box art, logo or trade dress.
+- `games/pacru.html` (catalog id `pacru`, Board, 1 to 4: you and up to three computers, or pass and play), the rules and
+  the computer in `games/pacru-core.js` (`PacruCore`, plain JSON; the page, the computer's Web Worker, the TurnNet table
+  and Node), history `hist/pacru.js` (hist-view.js loads the core first: the final board, a replay of every turn, each
+  player's markers, pincers and connection fields), demo `games/demos/pacru.js` (a first move across a border and its
+  marker, a connection with the choice of benefit, a pincer). `node scripts/pacru-sim.js [games] [--np=2,3,4]
+  [--pairs=easy-normal,normal-hard] [--rand=N]` checks every turn against a plain reading of the rules written there (its
+  own fields by name, borderlands, headings, power, moves, connections, pincers, border changes, transformations,
+  meetings, reorientations and ends): the moves from every chevron, the choices a move leaves (connection or border, the
+  border fields, a meeting's fields), and after every turn the board, the chevrons, whose turn it is, who is out and who
+  won. Random players (with Easy half the time) bring out the rare actions.
+- **The rules are the Pacru Series 302 booklet's** (R1 to R16, www.pacru.com/rulesUK.pdf, read on 2026-11-26), its rules
+  FAQ (pacruenglishfaq.html, 2009) and the meeting rule as changed on 1 March 2011 (allrules.html): 9 by 9 fields in nine
+  borderlands; two players four chevrons each, three or four players three each, set as the booklet's back page
+  (`STARTS`, `FOURTH`); a chevron moves straight ahead or 45 degrees left or right, in a straight line, 1 to N fields (N its
+  color's markers in the borderland it starts in, at least 1), ending facing the way it went; it may cross other colors'
+  fields but not stop on one, never lands on or jumps a chevron except as below; ending in another borderland puts a
+  marker on a neutral field there no other chevron stands on (the landing field counts), or, with no neutral field at all
+  there, changes any unoccupied field there (transformation); a move of 2 or more from your field to your field (both
+  yours at the start of the turn) is a connection: with no chevron between it changes every field between to your color
+  (other colors' too), jumping chevrons it changes nothing; a connection that changes fields and crosses a border gives
+  one benefit or the other, the mover's choice (`kind` `c` or `b`; asked only when both give something); two or more of
+  your chevrons attacking one chevron at the start of your turn let one move onto it (pincer): it comes off and its field
+  becomes yours, with any border change after; a meeting (your moved chevron and another, adjacent any of the eight ways,
+  pointing at each other, both on your fields) changes any unoccupied field to your color while another player has 9 or
+  more markers (the 2011 rule; the booklet had no condition); instead of moving, turn a chevron 45 degrees for 2 of your
+  markers or 90 for 4, taken from unoccupied fields; no passing; a player who can move no chevron at the start of their
+  turn is out (chevrons off, markers stay), as is one whose last chevron is taken; you win with 42, 28 or 24 markers on
+  the board (two, three, four players) or as the last player with chevrons. Moves are written 'c9-d8+d8' (a marker on
+  d8), 'c3-c7:c' (the connection chosen), 'e3-e5+d5' (a pincer is a move onto the chevron), '*h2' (a meeting's field),
+  'c5>R/a1,b2' (turned 45 degrees right, those markers taken off; L, R, LL, RR).
+- **Not settled by the rules, as built**: the order of play is "a matter of choice"; here two players are Black then Red,
+  three are Yellow (the player in the middle, as the site's starting-positions page says is traditional), Red, Black,
+  four are Black (the FAQ's order), Yellow, Red, Green, clockwise; a game at a table moves the seats round one each game.
+  A player blocked at the start of their turn is taken out at the end of the turn before it (nothing happens in between).
+  The rules have no draw or repetition rule and none is added. The FAQ's "tiles" are markers.
+- Computer (`search`, `LEVELS`): alpha-beta (paranoid with three or four players) over complete moves, each move's choices
+  (where a marker goes, connection or border, a meeting's field, which markers a turn gives up) made by a quick look, at
+  the root by the full evaluation; a position weighed by markers (more near the target), chevrons, each chevron's power
+  and moves, pincers it could make, connection fields in reach, chevrons attacked by two of one color, blocked chevrons.
+  Easy one move deep with noise, Normal two, Hard to four in 1.6 s with narrower beams.
+- **Hints** (the setup's `hints`, On by default, Tim 2026-11-26): with it Off the board shows only where a chevron can go
+  (the dots, a pincer's ring) and nothing that makes the game easier: no number of fields a move would turn, no preview of
+  what a move would change, no red ring round a chevron in danger, no "Choose for me" for a turn's markers, and the
+  caption names the move without what it does. Kept in `gn_setup_pacru`, shown in the online review, and a TurnNet table
+  uses the host's (`st.hints` from `netOpts`/`netStart`).
+- The table: tap a chevron and its borderland is outlined with its power on a tab, its three lines drawn to its reach,
+  every field it can reach lit (gold with a number: the fields that move would turn; a red ring: a pincer); tap a field to
+  see the move (the path, the fields it would change, the chevron as it would stand, a sentence), then tap again or Move
+  (a mouse moves at once, hovering shows it). A move that leaves a choice asks in turn: Fill the line or A marker, then the
+  fields a marker can go on pulse, then a meeting's fields. Turn it round shows four turns (Left or Right, 45 or 90
+  degrees, with what each costs); tap the markers to take off, or Choose for me. Your chevrons attacked by two of one
+  color pulse red. Chevrons glide and turn, markers pop in in order, a taken chevron fades; moments for a pincer, a
+  meeting, a long connection (4 or more), a full borderland, "N to go" near the target, a player out, the winner's
+  fields lighting. The board is turned so this device's player sits at the bottom (`VR`, `vpos`, `fromView`; the labels
+  at a desk follow the fields). The dock shows the last move in words on phones and tablets where it fits (`paintLast`).
+  **At a desk** (`deskWin`, the kit's test, `pc-desk`): `pc-w1` the plates, dock and room at the left of the board the
+  window's height, `pc-w2` the room in a column of its own, `pc-t` (squarer) the board across the top with the plates
+  and dock under it at the left and the room beside them; letters and numbers round the board once a field is 70px. The
+  room: the race to the target (each player's markers and chevrons, a line a player turn by turn from `S.race`), the last
+  move, the moves newest first with Pincer, Meeting, +N and Out tags (from `S.ev`, kept as data and worded on each device
+  from its own seat), past games here; whole parts given up. Saved in `pacru_state`; online records once a device in
+  `pacru_net_rec`. Test hook `window.__pacru` (`start(cfg)`, `set({rows, chev, turn})`, `play`, `tap`, `sq`, `chev`,
+  `sel`). The scratchpad's `shots.js`, `demo.js`, `hist.js` of the session that built it.
+
 ## Wax Pack (2026-11-19; Tim: the Sandlot redesign, named "wax pack", the pitch duel "sure i'll try it", scanning "to log a player's deck")
 
 - Catalog id stays `sandlot` (favorites and `gh_sandlot` history carry over); the page is `games/waxpack.html` with

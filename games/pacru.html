@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pacru</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
+<script src="pacru-core.js"></script>
+<style>
+.pc-credit{margin:-6px 0 2px;text-align:center;font-size:.78rem;font-weight:600;color:var(--text-3);}
+:root{--k1:#2c2f37;--k2:#d23a2f;--k3:#e9b322;--k4:#2f9a4f;}
+
+/* ── The page: the plates (each player's markers toward the target and chevrons left), the board, the dock (whose turn,
+   the choices a move leaves, the buttons), and at a desk the room. fit() picks the composition from the window ── */
+#app.stage.ipl{max-width:none;box-sizing:border-box;height:var(--avh,auto);padding:4px max(10px,var(--corner-x,0px)) max(calc(var(--safe-b) + 10px),18px);display:flex;align-items:stretch;justify-content:center;}
+.pg{display:grid;gap:var(--gp,10px);width:100%;height:100%;min-height:0;}
+.pc-port .pg{grid-template-columns:var(--cw);grid-template-rows:max-content var(--fsz) minmax(0,1fr);grid-template-areas:"p" "b" "d";justify-content:center;align-content:center;}
+.pc-land .pg{grid-template-columns:var(--lw) var(--fsz);grid-template-rows:var(--fsz);grid-template-areas:"l b";justify-content:center;align-content:center;column-gap:var(--cg,16px);}
+.pc-w1 .pg{grid-template-columns:var(--lw) var(--fsz);grid-template-rows:minmax(0,1fr);grid-template-areas:"l b";justify-content:center;align-content:stretch;column-gap:var(--cg,28px);}
+.pc-w2 .pg{grid-template-columns:var(--lw) var(--rw) var(--fsz);grid-template-rows:minmax(0,1fr);grid-template-areas:"l r b";justify-content:center;align-content:stretch;column-gap:var(--cg,28px);}
+.pc-t .pg{grid-template-columns:var(--lw) minmax(0,1fr);grid-template-rows:var(--fsz) minmax(0,1fr);grid-template-areas:"b b" "l r";justify-content:center;column-gap:var(--cg,28px);row-gap:var(--gp,16px);}
+.pg>.lcol{grid-area:l;min-height:0;min-width:0;display:flex;flex-direction:column;gap:var(--lg,10px);}
+.pc-port .pg>.lcol{display:contents;}
+.pc-port .plates{grid-area:p;}
+.pc-port .dock{grid-area:d;}
+.pg>.frame{grid-area:b;align-self:center;justify-self:center;}
+.pg>.room{grid-area:r;}
+.pc-w1 .lcol>.room{flex:1 1 auto;}
+.pc-land .lcol{justify-content:center;}
+.pc-land.pc-short .lcol{justify-content:flex-start;}
+
+/* the plates: a player's chevron in their color, their name, markers toward the target as a number and a meter, and
+   one mark for each chevron they still have */
+.plates{display:grid;gap:8px;align-content:start;}
+.pc-port .plates{grid-template-columns:repeat(var(--pcols,2),minmax(0,1fr));}
+.pc-land .plates,.pc-w1 .plates,.pc-w2 .plates,.pc-t .plates{grid-template-columns:repeat(var(--pcols,1),minmax(0,1fr));}
+.plate{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"s w n" "m m m";align-items:center;column-gap:8px;row-gap:5px;padding:7px 10px 8px 8px;border-radius:14px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);transition:box-shadow .2s,background .2s,opacity .3s;}
+.plate.on{background:color-mix(in srgb,var(--lit) 11%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--lit) 65%,transparent),0 0 18px color-mix(in srgb,var(--lit) 16%,transparent);}
+.plate.out{opacity:.6;}
+.plate .sw{grid-area:s;width:30px;height:30px;display:block;}
+.plate .who{grid-area:w;min-width:0;display:flex;flex-direction:column;line-height:1.15;}
+.plate .nm{font-weight:800;font-size:.92rem;display:flex;align-items:center;gap:5px;min-width:0;}
+.plate .nm>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+.plate .nm .ico{width:14px;height:14px;color:var(--text-3);flex:none;}
+.plate .sub{font-size:.72rem;font-weight:700;color:var(--text-3);display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.plate.on .sub{color:var(--lit-ink);}
+.plate .cvs{display:inline-flex;gap:2px;}
+.plate .cvs i{width:9px;height:9px;display:block;background:var(--pc-l);clip-path:polygon(50% 0,100% 100%,50% 70%,0 100%);opacity:.95;}
+.plate .cvs i.gone{background:rgba(255,255,255,.16);}
+.plate .n{grid-area:n;display:flex;flex-direction:column;align-items:flex-end;line-height:1;}
+.plate .n b{font-family:var(--display);font-size:1.4rem;font-weight:800;font-variant-numeric:tabular-nums;}
+.plate .n small{font-size:.64rem;font-weight:700;color:var(--text-3);margin-top:2px;white-space:nowrap;}
+.plate .n b.bump{animation:pop .45s var(--spring);}
+.plate .mt{grid-area:m;position:relative;height:6px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;}
+.plate .mt i{position:absolute;inset:0 auto 0 0;width:var(--f,0%);border-radius:99px;background:var(--pc-l);transition:width .6s cubic-bezier(.3,.8,.3,1);}
+.plate.k1 .mt i{background:#9aa3b8;}
+.pc-short .plate{padding:5px 8px 6px 6px;row-gap:3px;}
+.pc-short .plate .sw{width:24px;height:24px;}
+.pc-short .plate .n b{font-size:1.15rem;}
+.pc-tiny .plate{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"s n" "m m";padding:4px 7px 5px;}
+.pc-tiny .plate .who{display:none;}
+.pc-tiny .plate .sw{width:22px;height:22px;}
+.pc-tiny .plate .n b{font-size:1.05rem;}
+
+/* the board: a pale ash field in a walnut rim, inlaid walnut lines between the borderlands */
+.frame{--rim:clamp(6px,1.8vmin,16px);position:relative;padding:var(--rim);border-radius:18px;width:var(--fsz);height:var(--fsz);box-sizing:border-box;
+  background:linear-gradient(160deg,#6b4429 0,#4a2c18 45%,#5a3620 100%);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.18),inset 0 -3px 0 rgba(0,0,0,.45),0 18px 36px rgba(0,0,0,.5);view-transition-name:pc-board;}
+.bd{position:relative;width:100%;height:100%;touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}
+.bd>svg{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible;}
+.bd .hz{fill:transparent;cursor:pointer;}
+.bd .ovl,.bd .fx,.bd .tns,.bd .mks{pointer-events:none;}
+.bd .cv{cursor:pointer;}
+.bd .cv{transition:transform .42s cubic-bezier(.3,.9,.3,1);}
+.bd .cv.lift{transition:none;}
+.bd .cv.dead{animation:cvdie .7s ease-in forwards;}
+@keyframes cvdie{40%{opacity:1;}100%{opacity:0;}}
+.bd .mk.pop{animation:mkpop .45s cubic-bezier(.3,1.5,.5,1) both;transform-box:fill-box;transform-origin:center;}
+@keyframes mkpop{0%{transform:scale(0);opacity:0;}100%{transform:none;opacity:1;}}
+.bd .mk.gone{animation:mkgone .5s ease-in both;transform-box:fill-box;transform-origin:center;}
+@keyframes mkgone{to{transform:scale(0);opacity:0;}}
+.bd .tn.pop{animation:tnpop .5s ease-out both;}
+@keyframes tnpop{0%{opacity:0;}100%{opacity:1;}}
+.bd .dest{animation:dpulse 1.8s ease-in-out infinite;}
+@keyframes dpulse{50%{opacity:.55;}}
+.bd .aim{animation:none;}
+.bd .threat{animation:thr 1.2s ease-in-out infinite;transform-box:fill-box;transform-origin:center;}
+@keyframes thr{50%{transform:scale(1.12);opacity:.5;}}
+.bd .cand{animation:cand 1.1s ease-in-out infinite;}
+@keyframes cand{50%{opacity:.45;}}
+.bd .ripple{fill:none;stroke:#ffd75a;stroke-width:.08;animation:rip .8s ease-out forwards;transform-box:fill-box;transform-origin:center;}
+.bd .ripple.bad{stroke:#ff5a3c;}
+@keyframes rip{from{transform:scale(.4);opacity:1;}to{transform:scale(2.8);opacity:0;}}
+.bd .spark{animation:spk 1s ease-out forwards;transform-box:fill-box;transform-origin:center;}
+@keyframes spk{0%{transform:scale(.2);opacity:1;}100%{transform:scale(1.8);opacity:0;}}
+.bd .wonmk{animation:wonmk 1.2s ease-in-out 2;}
+@keyframes wonmk{50%{filter:brightness(1.5);}}
+.bd.shake{animation:shake .4s;}
+
+/* the dock: whose turn and what a move will do, the choices, the buttons */
+.dock{display:flex;flex-direction:column;gap:8px;min-height:0;}
+.dock .say0{margin:0;font-size:.95rem;font-weight:700;line-height:1.32;min-height:2.64em;}
+.dock .say0 .sm{display:block;font-weight:600;font-size:.86em;color:var(--text-3);margin-top:2px;}
+.dock .say0 b{color:var(--lit-ink);}
+.choice{display:flex;flex-wrap:wrap;gap:8px;}
+.choice:empty{display:none;}
+.choice .btn{flex:1 1 0;min-width:0;}
+.choice .btn small{display:block;font-weight:600;font-size:.74em;opacity:.8;margin-top:1px;}
+.choice .btn.on{box-shadow:inset 0 0 0 2px var(--lit);}
+.choice .rot{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%;}
+.choice .rot .btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 4px;font-size:.8rem;line-height:1.15;}
+.choice .rot .btn svg{width:26px;height:26px;flex:none;}
+.choice .rot .btn small{font-size:.68rem;}
+.dock>*{flex:none;}
+.lastmv{display:none;margin:0;padding:9px 12px;border-radius:14px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);font-size:.84rem;font-weight:600;line-height:1.35;color:var(--text-2);}
+.lastmv b{display:block;font-size:.72rem;color:var(--text-3);font-weight:800;margin-bottom:2px;}
+.pc-port:not(.pc-short) .lastmv.has,.pc-land:not(.pc-short) .lastmv.has{display:block;}
+.acts{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:auto;}
+.acts .btn{flex:1 1 0;min-width:0;max-width:220px;}
+.acts .btn .ico{width:18px;height:18px;}
+.pc-land .acts,.pc-w1 .acts,.pc-w2 .acts,.pc-t .acts{margin-top:0;justify-content:flex-start;}
+.pc-land .acts .btn,.pc-w1 .acts .btn,.pc-w2 .acts .btn,.pc-t .acts .btn{max-width:none;}
+.pc-short .dock .say0{font-size:.85rem;min-height:2.5em;}
+.pc-short .choice .rot .btn svg{display:none;}
+.pc-short.pc-port .say0 .sm{display:none;}
+.pc-tiny .acts .btn{font-size:.78rem;padding-left:6px;padding-right:6px;white-space:nowrap;}
+.pc-short.pc-port .plates{gap:6px;}
+.pc-short .choice .rot .btn{padding:5px 4px;}
+.pc-short .choice .rot .btn svg{width:22px;height:22px;}
+.think i{display:inline-block;width:5px;height:5px;margin:0 1px;border-radius:50%;background:currentColor;animation:th 1s infinite;}
+.think i:nth-child(2){animation-delay:.15s}.think i:nth-child(3){animation-delay:.3s}
+@keyframes th{50%{opacity:.2;transform:translateY(-2px);}}
+
+/* at a desk: words a step up, and the room */
+.room{display:none;}
+.pc-desk .plates{gap:12px;}
+.pc-desk .plate{padding:calc(9px * var(--dk,1)) calc(12px * var(--dk,1));border-radius:18px;}
+.pc-desk .plate .nm{font-size:calc(1rem * var(--dk,1));}
+.pc-desk .plate .sub{font-size:calc(.78rem * var(--dk,1));}
+.pc-desk .plate .n b{font-size:calc(1.65rem * var(--dk,1));}
+.pc-desk .plate .n small{font-size:calc(.72rem * var(--dk,1));}
+.pc-desk .plate .sw{width:calc(34px * var(--dk,1));height:calc(34px * var(--dk,1));}
+.pc-desk .plate .cvs i{width:calc(10px * var(--dk,1));height:calc(10px * var(--dk,1));}
+.pc-desk .acts .btn,.pc-desk .choice .btn{font-size:calc(.9rem * var(--dk,1));min-height:calc(42px * var(--dk,1));}
+.pc-desk .dock .say0{font-size:calc(1.02rem * var(--dk,1));}
+.pc-desk .room{display:grid;grid-template-columns:repeat(var(--rc,1),minmax(0,1fr));grid-auto-rows:max-content;gap:12px;align-content:start;align-items:start;min-height:0;overflow:hidden;}
+.room .pn{background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);border-radius:18px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-height:0;font-size:calc(.92rem * var(--dk,1));}
+.room h4{margin:0;font-size:.88em;font-weight:800;color:var(--text-3);}
+.room .say{margin:0;font-weight:600;line-height:1.38;}
+.room .race{display:block;width:100%;height:auto;}
+.room .rk{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;}
+.room .rk .pn2{display:flex;align-items:center;gap:7px;font-weight:700;overflow-wrap:anywhere;}
+.room .rk .pn2 i{width:.95em;height:.95em;flex:none;background:var(--pc);clip-path:polygon(50% 0,100% 100%,50% 70%,0 100%);}
+.room .rk b{font-family:var(--display);font-size:1.3em;font-variant-numeric:tabular-nums;text-align:right;}
+.room .rk b small{font-size:.6em;color:var(--text-3);font-weight:700;margin-left:3px;}
+.room .rk .lead b{color:var(--lit-ink);}
+.room .mvl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;overflow:hidden;min-height:0;}
+.room .mvl li{display:grid;grid-template-columns:2.2em .9em minmax(0,1fr) auto;align-items:center;gap:8px;padding:4px;border-radius:9px;}
+.room .mvl li:first-child{background:color-mix(in srgb,var(--lit) 12%,transparent);}
+.room .mvl li .no{color:var(--text-3);font-variant-numeric:tabular-nums;font-weight:700;text-align:right;}
+.room .mvl li i{width:.9em;height:.9em;background:var(--pc);clip-path:polygon(50% 0,100% 100%,50% 70%,0 100%);}
+.room .mvl li .t{font-weight:600;overflow-wrap:anywhere;}
+.room .mvl li .tag{font-size:.8em;font-weight:800;padding:1px 8px;border-radius:999px;white-space:nowrap;background:color-mix(in srgb,var(--lit) 20%,transparent);color:var(--lit-ink);}
+.room .mvl li .tag.bad{background:rgba(255,122,89,.18);color:#ffb39f;}
+.room .mvl li.none{display:block;color:var(--text-3);}
+.room .wins{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;}
+.room .wins li{display:flex;justify-content:space-between;gap:10px;}
+.room .wins li span{font-weight:700;overflow-wrap:anywhere;}
+.plates{view-transition-name:pc-plates;}
+.dock{view-transition-name:pc-dock;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.7,.25,1);}
+::view-transition-old(root),::view-transition-new(root){animation:none;}
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app'), C = window.PacruCore;
+  var SAVE = 'pacru_state', KEY = 'pacru', N = 9;
+  var CREDIT = 'Pacru was designed by Mike Wellman.';
+  // each color: its lacquer, a dark edge, a light edge, its tint on a field, and the meter's fill
+  var HEX = [null, '#2c2f37', '#d23a2f', '#e9b322', '#2f9a4f'];
+  var DARK = [null, '#0c0d10', '#7c140e', '#8a6200', '#0e5527'];
+  var LIGHT = [null, '#8d93a3', '#ff9c8f', '#fff0a0', '#9be8b3'];
+  var TINT = [null, 'rgba(30,32,40,.34)', 'rgba(210,58,47,.30)', 'rgba(233,179,34,.36)', 'rgba(47,154,79,.30)'];
+  var METER = [null, '#9aa3b8', '#ff6f61', '#f6c94a', '#4cc46f'];
+  var CNAME = C.COLORS;
+  var NUM = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+  function num(n) { return NUM[n] || String(n); }
+  function cap1(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many || one + 's'); }
+
+  // ── The computer thinks in a Web Worker (pacru-core.js again), or on the page where a worker can't start ──
+  var worker = null, workerOk = true, reqId = 0, pending = null;
+  function getWorker() {
+    if (worker || !workerOk) return worker;
+    try {
+      var url = new URL('pacru-core.js', location.href).href;
+      var src = 'importScripts(' + JSON.stringify(url) + ');onmessage=function(e){var d=e.data;postMessage({id:d.id,res:self.PacruCore.search(d.st,d.o)});};';
+      worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+      worker.onmessage = function (e) { if (pending && e.data.id === pending.id) { var p = pending; pending = null; p.cb(e.data.res); } };
+      worker.onerror = function () { workerOk = false; worker = null; if (pending) { var p = pending; pending = null; p.cb(C.search(p.st, p.o)); } };
+    } catch (e) { workerOk = false; worker = null; }
+    return worker;
+  }
+  function think(st, o, cb) {
+    var id = ++reqId, w = getWorker();
+    pending = { id: id, cb: cb, st: st, o: o };
+    if (w) w.postMessage({ id: id, st: st, o: o });
+    else setTimeout(function () { if (pending && pending.id === id) { pending = null; cb(C.search(st, o)); } }, 30);
+  }
+  function cancelThink() { pending = null; }
+  function coreOf(st) { return { np: st.np, b: st.b, ch: st.ch, turn: st.turn, out: st.out, target: st.target }; }
+
+  // ── State ────────────────────────────────────────────────────────────────
+  // S = the core's state (pacru-core.js) and {mode, cover, players: [{name, cpu, level}], hist (undo snapshots),
+  //   started, ev: [{s, t (the move in words), tag, bad}] newest last, rot (online: which seat played first)}
+  // The move being made: SEL (the chevron picked up), AIM (the field aimed at), PM (the choices made so far: kind,
+  // mark, bonus), ROT (a reorientation being paid for: {r, rm})
+  var S = null, SEL = -1, AIM = -1, PM = null, ROT = null;
+  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  var NET = null, LEFT = null, WINO = null, NETREC = {}, SHOWN = 0, HOLD = false, LASTP = -1;
+  function save() {
+    if (NET) return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S && !S.over) Kit.resume.set(S.n ? 'Move ' + (S.n + 1) : 'Ready');
+  }
+  function clearSave() { if (NET) return; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function humans() { return S.players.filter(function (p) { return !p.cpu; }).length; }
+  function vsCpu() { return S.players.some(function (p) { return p.cpu; }); }
+  function solo() { return !NET && humans() === 1; }
+  function isMe(i) { return NET ? NET.seat === i : solo() && !S.players[i].cpu; }
+  function nmI(i) { return isMe(i) ? 'You' : S.players[i].name; }
+  function nmL(i) { return isMe(i) ? 'you' : S.players[i].name; }
+  function possI(i) { return isMe(i) ? 'your' : Kit.poss(S.players[i].name); }
+  function colOf(s) { return S.col[s]; }
+  // Hints (the setup's option, on unless turned off): what each move would turn, what it would change, chevrons in danger
+  // and the markers a turn would best give up. Where a chevron can go is shown either way.
+  function hints() { return !S || S.hints !== false; }
+  function listAnd(a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+
+  // the board is turned so that the player this device belongs to sits at the bottom
+  var VR = 0;
+  function viewSeat() {
+    if (!S) return 0;
+    if (NET) return NET.seat;
+    for (var i = 0; i < S.players.length; i++) if (!S.players[i].cpu) return i;
+    return 0;
+  }
+  function setView() { var side = C.SIDE[S.col[viewSeat()]]; VR = { S: 0, E: 1, N: 2, W: 3 }[side] || 0; }
+  function vpos(x) { var r = C.rowOf(x), c = C.colOf(x); for (var k = 0; k < VR; k++) { var t = r; r = c; c = N - 1 - t; } return [c, r]; }   // [x, y] on the drawing
+  function vdir(d) { return (d + 2 * VR) & 7; }
+  function fromView(vx, vy) { var r = vy, c = vx; for (var k = 0; k < VR; k++) { var t = c; c = r; r = N - 1 - t; } return r * N + c; }
+  // a borderland in words, as the board is drawn: "the top left borderland", "the middle borderland"
+  function blSay(x) {
+    var p = vpos(x), bx = Math.floor(p[0] / 3), by = Math.floor(p[1] / 3);
+    if (bx === 1 && by === 1) return 'the middle borderland';
+    var v = ['top', '', 'bottom'][by], h = ['left', '', 'right'][bx];
+    return 'the ' + (v && h ? v + ' ' + h + ' corner' : v ? v + ' middle' : h + ' middle') + ' borderland';
+  }
+
+  function rulesHtml() {
+    return '<p class="goal">Put <b>your markers</b> on the board until you have the target number down: <b>42</b> with two players, <b>28</b> with three, <b>24</b> with four. You also win if you are the last player with chevrons on the board.</p>' +
+      '<h3>The board</h3><ul><li>The board has 81 fields in nine <b>borderlands</b> of nine fields each, marked off by the thick lines.</li>' +
+      '<li>A field is <b>neutral</b> until a marker goes on it. A field with your marker is <b>your field</b>.</li>' +
+      '<li>Two players have four chevrons each. Three or four players have three each.</li></ul>' +
+      '<h3>Moving a chevron</h3><ul><li>On your turn you move one chevron, or turn one round (below). You can’t pass.</li>' +
+      '<li>A chevron moves <b>straight ahead</b>, or forward at 45 degrees to its <b>left or right</b>, in a straight line. It ends the move pointing the way it went.</li>' +
+      '<li><b>Power of movement:</b> a chevron can move as many fields as you have markers in the borderland where it starts, and always at least one.</li>' +
+      '<li>A chevron can pass over other players’ fields, but it can’t stop on one, or on another chevron, and it can’t jump a chevron except in a connection.</li></ul>' +
+      '<h3>Markers</h3><ul><li><b>Crossing a border:</b> when a chevron ends its move in a different borderland, you put a marker on a neutral field there that no other chevron stands on. The field it lands on counts.</li>' +
+      '<li><b>A full borderland:</b> if that borderland has no neutral fields at all, you change any field there that no chevron stands on to your color instead.</li>' +
+      '<li><b>Connection:</b> a move of two or more fields that starts on your field and ends on your field changes every field in between to your color, other players’ fields too. If it jumps a chevron, nothing in between changes.</li>' +
+      '<li>When a connection that changes fields also crosses a border, you choose one: the fields from the connection, or the marker from the border.</li></ul>' +
+      '<h3>Pincers</h3><ul><li>A chevron <b>attacks</b> another player’s chevron when it could move onto its field this turn with no chevron in between.</li>' +
+      '<li>When two or more of your chevrons attack the same chevron at the start of your turn, one of them can move onto it. That chevron comes off the board, and its field becomes yours, even if it was theirs.</li></ul>' +
+      '<h3>Meetings</h3><ul><li>When your move leaves two of your chevrons on fields of your color, on fields next to each other and pointing at each other, that is a <b>meeting</b>. You change any field that no chevron stands on to your color, as long as another player has 9 or more markers on the board.</li></ul>' +
+      '<h3>Turning a chevron</h3><ul><li>Instead of moving, you can turn one chevron 45 degrees by taking 2 of your markers off the board, or 90 degrees by taking 4. The markers must be on fields no chevron stands on.</li></ul>' +
+      '<h3>Out of the game</h3><ul><li>If none of your chevrons can move at the start of your turn, you are out, and your chevrons come off the board. A player whose last chevron is taken is out too. Their markers stay on the board.</li></ul>' +
+      '<h3>Playing here</h3><ul><li>Tap one of your chevrons. The fields it can reach light up, and the borderland it stands in shows its power of movement.</li>' +
+      '<li>A gold number on a field is how many fields that move would turn your color. A red ring is a chevron you can take with a pincer.</li>' +
+      '<li>Tap a field to see what the move would do, then tap it again, or Move, to make it. With a mouse, one click moves.</li>' +
+      '<li>When a move puts a marker down, the fields it can go on pulse. Tap one.</li>' +
+      '<li>To turn a chevron, tap it, choose how far, then tap the markers you will take off, or let the game choose them.</li>' +
+      '<li>A red pulsing ring round one of your chevrons means two of another player’s chevrons attack it.</li></ul>' +
+      '<h3>Online</h3><ul><li><b>Play online</b> opens a table, and the others join on their own devices. Seats nobody takes are played by the computer.</li></ul>' +
+      '<h3>Tips</h3><ul><li>Markers in a borderland give every chevron there more reach, so build up the borderlands you use.</li>' +
+      '<li>A long connection can turn a whole row your color at once.</li>' +
+      '<li>Watch for two of another player’s chevrons lining up on one of yours.</li></ul>' +
+      '<p class="src">These are the rules of the Pacru booklet and its rules FAQ, with the meeting rule as it was changed in 2011.</p>' +
+      '<p class="credit">' + CREDIT + '</p>';
+  }
+
+  Kit.init({
+    id: KEY, mark: false, snap: '.frame', snapY: 0.5,
+    snapFit: function () { return document.querySelectorAll('.bd .cv'); },   // (Keep playing's picture: round the chevrons)
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } cancelThink(); clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Pacru: past games' }); } }]),
+    rules: rulesHtml()
+  });
+
+  function showSetup() {
+    S = null; SEL = -1; AIM = -1; PM = null; ROT = null;
+    app.className = 'stage';
+    app.style.cssText = '';
+    Kit.setup(app, {
+      modes: Kit.modes([{ id: 'cpu', desc: 'You against 1 to 3 computer players' }, { id: 'pp', kind: 'local' }]),
+      options: [
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Looks one move ahead, and slips now and then.'], ['normal', 'Normal', 'Weighs each move against the best answer to it.'], ['hard', 'Hard', 'Looks several moves ahead and sets up pincers.']] },
+        { id: 'hints', label: 'Hints', value: 'on', choices: [['on', 'On', 'The board shows how many fields each move would turn your color, what a move would change, and your chevrons in danger of a pincer.'], ['off', 'Off', 'The board shows only where a chevron can go. You work out the rest yourself.']] },
+        { id: 'cover', label: 'Hand over between turns', value: 'off', choices: [['off', 'Off', 'Nothing in Pacru is hidden, so the device just goes round the table.'], ['on', 'On', 'A cover names whose turn it is before each move.']], when: function (m) { return m === 'pp'; } }
+      ],
+      players: {
+        min: 2, max: 4,
+        range: function () { return [2, 4]; },
+        cpu: function (m) { return m === 'cpu' ? 'seats' : 'mix'; }
+      },
+      onStart: function (cfg) {
+        var players = cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.level || cfg.options.level || 'normal' }; });
+        newGame({ mode: cfg.mode, cover: cfg.options.cover === 'on' && cfg.mode === 'pp', hints: cfg.options.hints !== 'off', players: players });
+      }
+    });
+    var hero = app.querySelector('.setup-hero');
+    if (hero && !app.querySelector('.pc-credit')) hero.parentNode.insertBefore(el('p', { class: 'pc-credit', text: CREDIT }), hero.nextSibling);
+    // (only where the line doesn't make the setup scroll)
+    var hideC = function () { var c = app.querySelector('.pc-credit'); if (c && document.documentElement.scrollHeight > window.innerHeight + 1) c.style.display = 'none'; };
+    requestAnimationFrame(hideC); setTimeout(hideC, 700);
+  }
+  function freshFields(st) { st.hist = []; st.started = Date.now(); st.busy = false; st.ev = []; }
+  function newGame(o, rotate) {
+    cancelThink();
+    var keep = o || { mode: S.mode, cover: S.cover, hints: S.hints !== false, players: S.players };
+    var players = keep.players.slice();
+    // the next game: the seats move round one, so someone else moves first with another color
+    if (rotate) players = players.slice(1).concat([players[0]]);
+    var st = C.newGame(players.length);
+    st.mode = keep.mode; st.cover = keep.cover; st.hints = keep.hints !== false; st.players = players;
+    freshFields(st);
+    S = st; SEL = -1; AIM = -1; PM = null; ROT = null;
+    Kit.gameStart(); save(); render(); Kit.sfx('deal');
+    afterTurn();
+  }
+
+  // ── Moves ────────────────────────────────────────────────────────────────
+  function snap(byCpu) { var c = JSON.parse(JSON.stringify(S)); delete c.hist; return { s: c, cpu: !!byCpu }; }
+  // a move in words, from the result: the sentence, a tag for the room
+  function sayRes(st, res, short) {
+    var s = res.s, w = nmI(s), out = [];
+    if (res.r != null) {
+      out.push(w + ' turned a chevron ' + (Math.abs(res.r) === 2 ? '90' : '45') + ' degrees to the ' + (res.r < 0 ? 'left' : 'right') + ' on ' + C.NAMES[res.f] + ', taking ' + num(res.rm.length) + ' markers off.');
+      return { t: out.join(' '), tag: 'Turned', bad: true };
+    }
+    var tag = '';
+    if (res.pin) { out.push(w + ' took ' + possI(res.cap) + ' chevron on ' + C.NAMES[res.t] + ' with a pincer.'); tag = 'Pincer'; }
+    else out.push(w + ' moved from ' + C.NAMES[res.f] + ' to ' + C.NAMES[res.t] + '.');
+    if (res.conv.length) { out.push('The connection changed ' + plural(res.conv.length, 'field') + '.'); tag = tag || '+' + res.conv.length; }
+    if (res.mark >= 0) out.push(res.trans ? 'The borderland was full, so ' + C.NAMES[res.mark] + ' changed color.' : 'Crossing the border put a marker on ' + C.NAMES[res.mark] + '.');
+    if (res.meet >= 0) { out.push(res.bonus >= 0 ? 'A meeting changed ' + C.NAMES[res.bonus] + '.' : 'A meeting, though nobody else has 9 markers yet.'); tag = 'Meeting'; }
+    if (short) return { t: out[0], tag: tag };
+    return { t: out.join(' '), tag: tag };
+  }
+  // the moves as data (the words are made on each device, from its own seat): {s, r, f, t, rm, pin, cap, conv, mark,
+  // trans, meet, bonus} or {s, out: 'blk' | 'cap'}
+  function note(st, res) {
+    st.ev = st.ev || [];
+    st.ev.push({ s: res.s, r: res.r != null ? res.r : null, f: res.f, t: res.t, rm: res.rm ? res.rm.length : 0, pin: !!res.pin, cap: res.cap, conv: res.conv ? res.conv.length : 0, mark: res.mark != null ? res.mark : -1, trans: !!res.trans, meet: res.meet != null ? res.meet : -1, bonus: res.bonus != null ? res.bonus : -1 });
+    (res.out || []).forEach(function (o) { st.ev.push({ s: o.s, out: o.why }); });
+    if (st.ev.length > 150) st.ev.splice(0, st.ev.length - 150);
+  }
+  function sayEv(e, short) {
+    if (e.out) return { t: nmI(e.s) + (e.out === 'blk' ? (isMe(e.s) ? ' could not move any chevron, so you are out.' : ' could not move any chevron, and is out.') : (isMe(e.s) ? ' lost your last chevron, and are out.' : ' lost the last chevron, and is out.')), tag: 'Out', bad: true };
+    var w = sayRes(S, { s: e.s, r: e.r, f: e.f, t: e.t, rm: { length: e.rm }, pin: e.pin, cap: e.cap, conv: { length: e.conv }, mark: e.mark, trans: e.trans, meet: e.meet, bonus: e.bonus }, short);
+    return w;
+  }
+  function play(str, byCpu) {
+    if (!S || S.over) return false;
+    var prev = { b: S.b.slice(), ch: S.ch.slice() }, h0 = snap(byCpu);
+    var res = C.play(S, str);
+    if (!res) return false;
+    S.hist.push(h0);
+    if (S.hist.length > 150) S.hist.shift();
+    note(S, res);
+    SEL = -1; AIM = -1; PM = null; ROT = null;
+    save();
+    show(res, prev);
+    return true;
+  }
+  function moveT(res) { return res.r != null ? 650 : 520 + res.conv.length * 90 + (res.mark >= 0 ? 260 : 0) + (res.bonus >= 0 ? 400 : 0); }
+  // Draw the board after a move: the chevron glides, a taken chevron shatters, fields fill in order, then the rewards
+  function show(res, prev, net) {
+    render({ res: res, prev: prev });
+    var T = moveT(res);
+    if (res.r != null) { Kit.sfx('flip'); Kit.haptic('light'); }
+    else { Kit.sfx('whoosh', 0.7); setTimeout(function () { Kit.sfx('tap'); Kit.haptic('light'); }, 380); }
+    reward(res, T);
+    var outs = res.out || [];
+    if (outs.length) setTimeout(function () { outShow(outs); }, T + 200);
+    if (S.over) { setTimeout(function () { if (net) netEnd(); else finish(); }, T + (outs.length ? 2000 : 600)); return; }
+    if (!net) setTimeout(afterTurn, T + (outs.length ? 1500 : 80));
+  }
+  // A good move's reward, where it happens
+  function reward(res, T) {
+    var frame = document.querySelector('.frame'), s = res.s, who = nmI(s), col = HEX[colOf(s)];
+    if (res.r != null) return;
+    var left = S.target - C.markers(S, s);
+    if (res.pin) setTimeout(function () {
+      Kit.sfx('clash'); Kit.haptic('heavy'); shake(); ripple(res.t, true);
+      Kit.moment({ title: 'Pincer', line: (who === 'You' ? 'You' : who) + ' caught ' + possI(res.cap) + ' chevron between two of ' + (who === 'You' ? 'yours' : 'theirs') + ' and took it off the board. ' + C.NAMES[res.t] + ' is ' + (who === 'You' ? 'your' : CNAME[colOf(s)]) + ' field now.', icon: 'target', color: col, at: frame });
+    }, 420);
+    else if (res.meet >= 0) setTimeout(function () {
+      Kit.sfx('sparkle'); Kit.haptic('success'); spark(res.t); spark(res.meet);
+      Kit.moment({ title: 'A meeting', line: res.bonus >= 0 ? 'Two of ' + (who === 'You' ? 'your' : possI(s)) + ' chevrons point at each other on ' + (who === 'You' ? 'your' : 'their') + ' own fields, so ' + C.NAMES[res.bonus] + ' changed color too.' : 'Two of ' + (who === 'You' ? 'your' : possI(s)) + ' chevrons point at each other. A meeting changes a field once another player has 9 markers.', icon: 'sparkle', pts: res.bonus >= 0 ? '+1' : '', color: col, at: frame });
+    }, T - 200);
+    else if (res.conv.length >= 4) setTimeout(function () {
+      Kit.sfx('good'); Kit.haptic('success');
+      Kit.moment({ title: 'A long connection', line: (who === 'You' ? 'Your' : possI(s).replace(/^./, function (c) { return c.toUpperCase(); })) + ' chevron ran from one ' + (who === 'You' ? 'of your' : 'of their') + ' fields to another and turned ' + num(res.conv.length) + ' fields in between.', icon: 'sparkle', pts: '+' + res.conv.length, color: col, at: frame });
+    }, T - 150);
+    else if (res.conv.length >= 2) setTimeout(function () { Kit.sfx('good', 0.7); Kit.haptic('medium'); Kit.callout('+' + res.conv.length); }, T - 150);
+    else if (res.trans && res.mark >= 0) setTimeout(function () { Kit.sfx('good', 0.6); Kit.callout('Full borderland'); }, T - 120);
+    if (!res.pin && !S.over && left > 0 && left <= 5 && res.gain > 0) setTimeout(function () { Kit.callout(left === 1 ? 'One to go' : num(left).replace(/^./, function (c) { return c.toUpperCase(); }) + ' to go', HEX[colOf(s)]); }, T + 600);
+  }
+  function outShow(outs) {
+    var frame = document.querySelector('.frame');
+    Kit.sfx('bad'); Kit.haptic('medium');
+    outs.forEach(function (o) { var pl = document.querySelector('.plate[data-s="' + o.s + '"]'); if (pl) { pl.classList.remove('shake'); void pl.offsetWidth; pl.classList.add('shake'); } });
+    if (S.over && S.why === 'last' && S.np === 2) return;
+    var o = outs[0], w = nmI(o.s);
+    Kit.moment({ title: (w === 'You' ? 'You are' : w + ' is') + ' out', line: o.why === 'blk' ? (w === 'You' ? 'None of your chevrons could move, so they come off the board.' : 'None of ' + Kit.poss(w) + ' chevrons could move, so they come off the board.') + ' The markers stay.' : (w === 'You' ? 'Your' : Kit.poss(w)) + ' last chevron was taken.', icon: 'lock', color: HEX[colOf(o.s)], tone: 'bad', at: frame });
+  }
+  function shake() { var b = document.querySelector('.bd'); if (!b) return; b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); }
+  function fxCircle(x, cls, r) {
+    var g = document.querySelector('.bd .fx'); if (!g || x < 0) return;
+    var p = vpos(x), c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('cx', p[0] + 0.5); c.setAttribute('cy', p[1] + 0.5); c.setAttribute('r', r || '.6');
+    c.setAttribute('class', cls);
+    g.appendChild(c); setTimeout(function () { c.remove(); }, 1100);
+  }
+  function ripple(x, bad) { fxCircle(x, 'ripple' + (bad ? ' bad' : '')); }
+  function spark(x) { var g = document.querySelector('.bd .fx'); if (!g) return; var p = vpos(x); for (var i = 0; i < 8; i++) { var a = i * Math.PI / 4, c = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); c.setAttribute('cx', p[0] + 0.5 + Math.cos(a) * 0.42); c.setAttribute('cy', p[1] + 0.5 + Math.sin(a) * 0.42); c.setAttribute('r', '.07'); c.setAttribute('fill', '#ffe27a'); c.setAttribute('class', 'spark'); g.appendChild(c); (function (c) { setTimeout(function () { c.remove(); }, 1100); })(c); } }
+  // After each turn: the hand-over cover between people, or the computer's move
+  function afterTurn() {
+    if (!S || S.over || NET) return;
+    paintAll();
+    var p = S.players[S.turn];
+    if (p.cpu) return maybeCpu();
+    if (S.cover && humans() > 1 && S.n > 0 && LASTP !== S.turn && !(Kit.inDemo && Kit.inDemo())) {
+      HOLD = true; paintAll();
+      Kit.handoff({ name: p.name, color: HEX[colOf(S.turn)], msg: 'You play ' + CNAME[colOf(S.turn)] + '.', hint: 'Hold for a moment to take your turn', hold: 700 }).then(function () { HOLD = false; LASTP = S.turn; paintAll(); });
+    } else LASTP = S.turn;
+  }
+  function maybeCpu() {
+    if (NET || !S || S.over || !S.players[S.turn].cpu || S.busy) return;
+    S.busy = true; paintAll();
+    var t0 = Date.now(), myN = S.n, p = S.players[S.turn];
+    var L = Object.assign({}, C.LEVELS[p.level] || C.LEVELS.normal, { seed: Math.floor(Math.random() * 1e9) });
+    think(coreOf(S), L, function (res) {
+      if (!S || S.n !== myN) return;
+      setTimeout(function () {
+        if (!S || S.n !== myN) return;
+        S.busy = false;
+        if (res && res.move) play(res.move, true);
+      }, Math.max(0, (S.players.every(function (q) { return q.cpu; }) ? 250 : 700) - (Date.now() - t0)));
+    });
+  }
+  function undo() {
+    if (!S || S.over == null) return;
+    if (S.over) return Kit.toast('The game is over');
+    var cpu = vsCpu();
+    if (!S.hist.some(function (h) { return !h.cpu; })) return Kit.toast('Nothing to undo');
+    cancelThink(); S.busy = false;
+    var h, hist = S.hist;
+    while (hist.length) { h = hist.pop(); if (!cpu || !h.cpu) break; }
+    S = h.s; S.hist = hist; S.busy = false; SEL = -1; AIM = -1; PM = null; ROT = null;
+    Kit.sfx('whoosh'); save(); render(); afterTurn();
+  }
+
+  // ── The end ──────────────────────────────────────────────────────────────
+  function endLine() {
+    var w = S.win, n = C.markers(S, w);
+    if (S.why === 'target') return (isMe(w) ? 'You' : S.players[w].name) + ' put down ' + (isMe(w) ? 'your' : 'their') + ' ' + S.target + (S.target === 42 ? 'nd' : 'th') + ' marker.';
+    if (S.np === 2) { var o = 1 - w; return S.out[o] === 'cap' ? (isMe(o) ? 'Your' : Kit.poss(S.players[o].name)) + ' last chevron was taken.' : (isMe(o) ? 'None of your' : 'None of ' + Kit.poss(S.players[o].name)) + ' chevrons could move.'; }
+    return (isMe(w) ? 'You are' : S.players[w].name + ' is') + ' the last player with chevrons on the board, with ' + plural(n, 'marker') + '.';
+  }
+  function highlights() {
+    var hl = [endLine().replace(/\.$/, '')], st = S.st;
+    S.players.forEach(function (p, i) {
+      if (st.cap[i]) hl.push(p.name + ' made ' + (st.cap[i] === 1 ? 'a pincer' : st.cap[i] + ' pincers'));
+      if (st.meet[i]) hl.push(p.name + ' made ' + (st.meet[i] === 1 ? 'a meeting' : st.meet[i] + ' meetings'));
+      if (st.best[i] >= 4) hl.push(p.name + '’s best move turned ' + st.best[i] + ' fields');
+    });
+    if (vsCpu()) hl.push('Computer skill: ' + S.players.filter(function (p) { return p.cpu; }).map(function (p) { return LEVEL_NAME[p.level] || 'Normal'; }).filter(function (v, i, a) { return a.indexOf(v) === i; }).join(' and '));
+    return hl;
+  }
+  function detail() {
+    return { ml: S.ml.join(' '), np: S.np, mk: S.players.map(function (p, i) { return C.markers(S, i); }), win: S.win, why: S.why,
+      out: S.out.map(function (o) { return o || '-'; }).join(' '), cap: S.st.cap.join(' '), meet: S.st.meet.join(' '), conv: S.st.conv.join(' '), n: S.n };
+  }
+  function recPlayers() { return S.players.map(function (p, i) { return { name: p.name + ' (' + CNAME[colOf(i)] + ')', score: C.markers(S, i), cpu: p.cpu }; }); }
+  // the winner's fields light up, one after another
+  function winWave() {
+    var w = S.win, list = [].slice.call(document.querySelectorAll('.bd .mk[data-s="' + w + '"]'));
+    list.forEach(function (m, j) { setTimeout(function () { m.classList.add('wonmk'); }, j * 22); });
+    if (list.length) Kit.sfx('tick', 0.6);
+    return Math.min(1600, list.length * 22 + 700);
+  }
+  function finish() {
+    save(); clearSave(); SEL = -1; render();
+    var wave = winWave();
+    Kit.record(KEY, {
+      started: S.started, mode: vsCpu() ? (humans() > 1 ? 'Pass & play with the computer' : 'vs Computer') : 'Pass & play',
+      players: recPlayers(), winner: S.players[S.win].name,
+      highlights: highlights(), detail: detail()
+    });
+    endShow(wave, false);
+  }
+  function endShow(wave, net) {
+    setTimeout(function () {
+      var lose = !net && S.players[S.win].cpu && humans() > 0;
+      Kit.sfx(lose ? 'lose' : 'win'); Kit.haptic(lose ? 'heavy' : 'success');
+      if (!lose) Kit.confetti && Kit.confetti();
+      if (net) return netWin();
+      var wn = nmI(S.win);
+      Kit.win({
+        icon: lose ? 'bot' : 'trophy',
+        title: wn === 'You' ? 'You win!' : S.players[S.win].name + ' wins' + (lose ? ' this one' : '!'),
+        sub: endLine(),
+        rank: rankRows(),
+        lose: !!lose,
+        again: function () { newGame(null, true); },
+        look: true,
+        setup: function () { cancelThink(); clearSave(); showSetup(); }
+      });
+    }, wave);
+  }
+  function rankRows() {
+    return S.players.map(function (p, i) { return { i: i, v: C.markers(S, i) + (i === S.win ? 1000 : 0) }; }).sort(function (a, b) { return b.v - a.v; }).map(function (r) {
+      return { name: S.players[r.i].name, me: isMe(r.i), score: C.markers(S, r.i) + ' of ' + S.target, color: HEX[colOf(r.i)] };
+    });
+  }
+
+  // ── The board ────────────────────────────────────────────────────────────
+  var lastEl, bdEl, svgEl, gTn, gMk, gOvl, gCv, gFx, platesEl, frameEl, dockEl, turnEl, choiceEl, actsEl, roomEl, lcolEl, lastMk = {};
+  var M = 0;
+  function defs() {
+    var s = '<defs><linearGradient id="pcAsh" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#efe3cc"/><stop offset=".5" stop-color="#e4d4b6"/><stop offset="1" stop-color="#d9c6a3"/></linearGradient>';
+    for (var c = 1; c <= 4; c++) {
+      s += '<linearGradient id="pcG' + c + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + LIGHT[c] + '"/><stop offset=".4" stop-color="' + HEX[c] + '"/><stop offset="1" stop-color="' + DARK[c] + '"/></linearGradient>';
+      s += '<radialGradient id="pcM' + c + '" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="' + LIGHT[c] + '"/><stop offset=".55" stop-color="' + HEX[c] + '"/><stop offset="1" stop-color="' + DARK[c] + '"/></radialGradient>';
+    }
+    return s + '<filter id="pcSh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy=".05" stdDeviation=".05" flood-color="#000" flood-opacity=".55"/></filter>' +
+      '<pattern id="pcGrain" width="1.7" height=".36" patternUnits="userSpaceOnUse" patternTransform="rotate(-8)"><path d="M0 .18 Q.42 .1 .85 .2 T1.7 .16" fill="none" stroke="rgba(120,84,40,.09)" stroke-width=".04"/></pattern></defs>';
+  }
+  // a chevron, drawn pointing up round its own middle: a lacquered arrowhead with a bevel and a light ridge
+  function chevSvg(c) {
+    return '<g filter="url(#pcSh)"><path d="M0 -.36 L.33 .28 L.2 .32 L0 .1 L-.2 .32 L-.33 .28 Z" fill="url(#pcG' + c + ')" stroke="' + DARK[c] + '" stroke-width=".035" stroke-linejoin="round"/>' +
+      '<path d="M0 -.28 L.22 .16" stroke="rgba(255,255,255,.45)" stroke-width=".035" stroke-linecap="round" fill="none"/><path d="M0 -.28 L-.22 .16" stroke="rgba(255,255,255,.2)" stroke-width=".03" stroke-linecap="round" fill="none"/></g>';
+  }
+  function baseSvg() {
+    var s = defs(), lo = -M, wd = N + 2 * M;
+    s += '<rect x="' + lo + '" y="' + lo + '" width="' + wd + '" height="' + wd + '" rx=".28" fill="#3a2414"/>';
+    s += '<rect x="0" y="0" width="9" height="9" rx=".12" fill="url(#pcAsh)"/><rect x="0" y="0" width="9" height="9" fill="url(#pcGrain)"/>';
+    s += '<g class="tns"></g>';
+    // each field: a shallow round well in the middle, and a fine line between fields
+    var g = '';
+    for (var i = 1; i < N; i++) if (i % 3) g += '<path d="M' + i + ' 0V9M0 ' + i + 'H9"/>';
+    s += '<g stroke="rgba(90,60,30,.28)" stroke-width=".025">' + g + '</g>';
+    var w = '';
+    for (var x = 0; x < N; x++) for (var y = 0; y < N; y++) w += '<circle cx="' + (x + 0.5) + '" cy="' + (y + 0.5) + '" r=".2"/>';
+    s += '<g fill="rgba(110,74,36,.13)" stroke="rgba(255,255,255,.35)" stroke-width=".02">' + w + '</g>';
+    // the borders between borderlands: inlaid walnut with a light edge
+    s += '<g stroke="#4a2c18" stroke-width=".085" stroke-linecap="round"><path d="M3 0V9M6 0V9M0 3H9M0 6H9"/></g><g stroke="rgba(255,255,255,.25)" stroke-width=".02"><path d="M3.05 0V9M6.05 0V9M0 3.05H9M0 6.05H9"/></g>';
+    if (M > 0) {
+      var t = '';
+      // (a turned board's labels follow the fields: the file letters may stand down the side, the ranks along the foot)
+      var lab = function (a, b) { var A = C.NAMES[a], B = C.NAMES[b]; return A.charAt(0) !== B.charAt(0) ? A.charAt(0) : A.slice(1); };
+      for (var q = 0; q < N; q++) {
+        var q2 = q ? q - 1 : 1;
+        t += '<text x="' + (q + 0.5) + '" y="' + (N + M * 0.5) + '">' + lab(fromView(q, N - 1), fromView(q2, N - 1)) + '</text><text x="' + (q + 0.5) + '" y="' + (-M * 0.5) + '">' + lab(fromView(q, 0), fromView(q2, 0)) + '</text>';
+        t += '<text x="' + (-M * 0.5) + '" y="' + (q + 0.5) + '">' + lab(fromView(0, q), fromView(0, q2)) + '</text><text x="' + (N + M * 0.5) + '" y="' + (q + 0.5) + '">' + lab(fromView(N - 1, q), fromView(N - 1, q2)) + '</text>';
+      }
+      s += '<g font-size=".3" font-weight="700" fill="rgba(240,220,190,.6)" text-anchor="middle" dominant-baseline="central" style="font-family:var(--display,system-ui)">' + t + '</g>';
+    }
+    // (the tap zones lie under the chevrons, so a tap on a chevron reaches the chevron itself)
+    var hz = '';
+    for (var h = 0; h < 81; h++) { var p = vpos(h); hz += '<rect class="hz" data-x="' + h + '" x="' + p[0] + '" y="' + p[1] + '" width="1" height="1"/>'; }
+    return s + '<g class="mks"></g><g class="ovl"></g><g class="hzs">' + hz + '</g><g class="cvl"></g><g class="fx"></g>';
+  }
+  function buildBoard() {
+    var vb = (-M) + ' ' + (-M) + ' ' + (N + 2 * M) + ' ' + (N + 2 * M);
+    bdEl.innerHTML = '<svg viewBox="' + vb + '" aria-hidden="true">' + baseSvg() + '</svg>';
+    svgEl = bdEl.firstChild; gTn = svgEl.querySelector('.tns'); gMk = svgEl.querySelector('.mks'); gOvl = svgEl.querySelector('.ovl'); gCv = svgEl.querySelector('.cvl'); gFx = svgEl.querySelector('.fx');
+  }
+  // the markers: each field of a color tinted, with an enamel marker in its well; new ones pop in, in the order they came
+  function paintMarks(anim) {
+    if (!gMk) return;
+    var res = anim && anim.res, prev = anim && anim.prev, order = {};
+    if (res && res.r == null) {
+      var k = 0;
+      if (res.pin) order[res.t] = k++;
+      (res.conv || []).forEach(function (q) { order[q.x] = 2 + k++; });
+      if (res.mark >= 0) order[res.mark] = 3 + k++;
+      if (res.bonus >= 0) order[res.bonus] = 6 + k++;
+    }
+    var tn = '', mk = '', b = S.b;
+    for (var x = 0; x < 81; x++) {
+      var v = b[x], p = vpos(x);
+      var fresh = prev && v && prev.b[x] !== v, gone = prev && !v && prev.b[x];
+      if (v) {
+        var c = colOf(v - 1), dl = fresh ? ((order[x] != null ? order[x] : 0) * 0.09 + 0.3) + 's' : '';
+        tn += '<rect class="tn' + (fresh ? ' pop' : '') + '" x="' + (p[0] + 0.03) + '" y="' + (p[1] + 0.03) + '" width=".94" height=".94" rx=".08" fill="' + TINT[c] + '"' + (dl ? ' style="animation-delay:' + dl + '"' : '') + '/>';
+        mk += '<g class="mk' + (fresh ? ' pop' : '') + '" data-s="' + (v - 1) + '"' + (dl ? ' style="animation-delay:' + dl + '"' : '') + '><circle cx="' + (p[0] + 0.5) + '" cy="' + (p[1] + 0.53) + '" r=".2" fill="rgba(0,0,0,.28)"/><circle cx="' + (p[0] + 0.5) + '" cy="' + (p[1] + 0.5) + '" r=".19" fill="url(#pcM' + c + ')" stroke="' + DARK[c] + '" stroke-width=".03"/><circle cx="' + (p[0] + 0.45) + '" cy="' + (p[1] + 0.44) + '" r=".06" fill="rgba(255,255,255,.4)"/></g>';
+      } else if (gone) {
+        var c2 = colOf(prev.b[x] - 1);
+        mk += '<g class="mk gone"><circle cx="' + (p[0] + 0.5) + '" cy="' + (p[1] + 0.5) + '" r=".19" fill="url(#pcM' + c2 + ')"/></g>';
+      }
+    }
+    gTn.innerHTML = tn; gMk.innerHTML = mk;
+  }
+  function cvTransform(x, d) { var p = vpos(x); return 'translate(' + (p[0] + 0.5) + 'px,' + (p[1] + 0.5) + 'px) rotate(' + (vdir(d) * 45) + 'deg)'; }
+  // the chevrons; the one that moved glides from where it was, a taken one fades where it stood
+  function paintChevrons(anim) {
+    if (!gCv) return;
+    var res = anim && anim.res, prev = anim && anim.prev, s = '', moved = -1;
+    for (var x = 0; x < 81; x++) {
+      var v = S.ch[x]; if (v < 0) continue;
+      var seat = v >> 3, d = v & 7, from = x, fd = d;
+      if (res && res.r == null && x === res.t) { from = res.f; fd = prev.ch[res.f] & 7; moved = x; }
+      if (res && res.r != null && x === res.f) { fd = prev.ch[x] & 7; moved = x; }
+      s += '<g class="cv' + (moved === x ? ' lift' : '') + '" data-x="' + x + '" data-s="' + seat + '" style="transform:' + cvTransform(from, fd) + '">' + chevSvg(colOf(seat)) + '</g>';
+    }
+    if (res && res.pin && prev) {
+      var pv = prev.ch[res.t];
+      s = '<g class="cv dead" style="transform:' + cvTransform(res.t, pv & 7) + '">' + chevSvg(colOf(pv >> 3)) + '</g>' + s;
+    }
+    if (prev) (res && res.out || []).forEach(function () {});
+    gCv.innerHTML = s;
+    if (moved >= 0) {
+      var g = gCv.querySelector('.cv[data-x="' + moved + '"]');
+      // a turn the long way round would spin the wrong way: unwrap the starting angle to the nearest
+      var a1 = vdir(S.ch[moved] & 7) * 45, a0 = vdir((res.r != null ? prev.ch[moved] : prev.ch[res.f]) & 7) * 45;
+      while (a0 - a1 > 180) a0 -= 360; while (a1 - a0 > 180) a0 += 360;
+      var p0 = vpos(res.r != null ? moved : res.f), p1 = vpos(moved);
+      g.style.transform = 'translate(' + (p0[0] + 0.5) + 'px,' + (p0[1] + 0.5) + 'px) rotate(' + a0 + 'deg)';
+      void g.getBoundingClientRect();
+      requestAnimationFrame(function () { g.classList.remove('lift'); g.style.transform = 'translate(' + (p1[0] + 0.5) + 'px,' + (p1[1] + 0.5) + 'px) rotate(' + a1 + 'deg)'; });
+    }
+  }
+
+  // ── Choosing a move ──────────────────────────────────────────────────────
+  function canAct() { return S && !S.over && !S.busy && !HOLD && (NET ? !LEFT && NET.myTurn() : !S.players[S.turn].cpu); }
+  function destsOf(f) { return f >= 0 ? C.dests(S, f) : []; }
+  // what aiming at a destination would do so far: the core's working with the choices made
+  function plan() {
+    if (SEL < 0 || AIM < 0) return null;
+    var w = C.wcopy(S), m = { f: SEL, t: AIM };
+    if (PM) { if (PM.kind) m.kind = PM.kind; if (PM.mark != null) m.mark = PM.mark; if (PM.bonus != null) m.bonus = PM.bonus; }
+    var r = C.work(w, m);
+    r.w = w;
+    return r;
+  }
+  function pickChevron(x) {
+    if (!canAct()) return;
+    if (C.seatOf(S.ch[x]) !== S.turn) return;
+    if (SEL === x && AIM < 0 && !ROT) { SEL = -1; Kit.sfx('tick', 0.4); paintAll(); return; }
+    SEL = x; AIM = -1; PM = null; ROT = null;
+    Kit.sfx('pop', 0.6); Kit.haptic('light');
+    paintAll();
+  }
+  function aimAt(t) {
+    var D = destsOf(SEL).filter(function (q) { return q.t === t; })[0];
+    if (!D) return;
+    if (AIM === t && !PM) { commitBase(); return; }
+    AIM = t; PM = null;
+    Kit.sfx('tick', 0.5); Kit.haptic('tick');
+    paintAll();
+  }
+  // the move is made: any choices it leaves are asked in turn, then it is played
+  function commitBase() {
+    if (SEL < 0 || AIM < 0) return;
+    PM = PM || {};
+    step();
+  }
+  function step() {
+    var r = plan();
+    if (!r || r.err) { PM = null; paintAll(); return; }
+    if (!r.need) return finishMove(r);
+    // a choice with only one way to go is made at once
+    if (r.need !== 'kind' && r.opts.length === 1) { PM[r.need] = r.opts[0]; return step(); }
+    PM.need = r.need; PM.opts = r.opts; PM.r = r;
+    Kit.sfx('pop', 0.5);
+    paintAll();
+  }
+  function choose(kind, v) { if (!PM) return; PM[kind] = v; delete PM.need; Kit.sfx('tap'); Kit.haptic('light'); step(); }
+  function finishMove(r) {
+    var str = C.encode({ f: r.f, t: r.t, kind: r.kind, mark: r.mark, bonus: r.bonus });
+    if (NET) return netMove(str);
+    play(str);
+  }
+  function cancel() { SEL = -1; AIM = -1; PM = null; ROT = null; Kit.sfx('tick', 0.4); paintAll(); }
+  // turning a chevron round: how far, then the markers it costs
+  function rotStart(r) {
+    if (SEL < 0 || !canAct()) return;
+    var need = Math.abs(r) * 2, rc = C.rotCands(S, S.turn);
+    if (rc.length < need) { Kit.toast('Turning ' + (need === 2 ? '45' : '90') + ' degrees takes ' + num(need) + ' of your markers off fields no chevron stands on. You have ' + num(rc.length) + '.'); return; }
+    ROT = { r: r, rm: [] }; AIM = -1; PM = null;
+    Kit.sfx('flip', 0.7); Kit.haptic('light');
+    paintAll();
+  }
+  function rotToggle(x) {
+    if (!ROT) return;
+    var i = ROT.rm.indexOf(x), need = Math.abs(ROT.r) * 2;
+    if (i >= 0) ROT.rm.splice(i, 1);
+    else if (S.b[x] === S.turn + 1 && S.ch[x] < 0) { if (ROT.rm.length >= need) ROT.rm.shift(); ROT.rm.push(x); }
+    else return;
+    Kit.sfx('tick', 0.5); Kit.haptic('tick');
+    paintAll();
+  }
+  // the markers worth least to keep: those in borderlands where you have no chevron, far from your chevrons
+  function rotSuggest() {
+    if (!ROT) return;
+    var s = S.turn, rc = C.rotCands(S, s), cs = C.chevrons(S, s), need = Math.abs(ROT.r) * 2;
+    function worth(x) { var v = 0; cs.forEach(function (f) { if (C.BL[f] === C.BL[x]) v += 10; v += Math.max(0, 6 - Math.max(Math.abs(C.rowOf(f) - C.rowOf(x)), Math.abs(C.colOf(f) - C.colOf(x)))); }); return v; }
+    ROT.rm = rc.sort(function (a, b) { return worth(a) - worth(b); }).slice(0, need);
+    Kit.sfx('pop', 0.5); paintAll();
+  }
+  function rotDo() {
+    if (!ROT || ROT.rm.length !== Math.abs(ROT.r) * 2) return;
+    var str = C.encode({ f: SEL, r: ROT.r, rm: ROT.rm });
+    if (NET) return netMove(str);
+    play(str);
+  }
+
+  // The overlay: the chevron picked up, its borderland with its power, where it can go and what each move gives, the
+  // field aimed at with the path, the fields that would change and the chevron as it would stand; the fields a choice
+  // can go on; your chevrons in danger of a pincer
+  function rect(x, pad, attrs) { var p = vpos(x); return '<rect x="' + (p[0] + pad) + '" y="' + (p[1] + pad) + '" width="' + (1 - 2 * pad) + '" height="' + (1 - 2 * pad) + '" rx=".14" ' + attrs + '/>'; }
+  function ctr(x) { var p = vpos(x); return [p[0] + 0.5, p[1] + 0.5]; }
+  function paintOverlay() {
+    if (!gOvl || !S) return;
+    var s = '', act = canAct();
+    // the last move: where it came from, faintly
+    if (S.last && S.last.f != null && SEL < 0 && !S.over) {
+      var a = ctr(S.last.f), b = ctr(S.last.t);
+      s += '<line x1="' + a[0] + '" y1="' + a[1] + '" x2="' + b[0] + '" y2="' + b[1] + '" stroke="rgba(255,215,90,.55)" stroke-width=".06" stroke-dasharray=".12 .1" stroke-linecap="round"/>';
+      s += rect(S.last.f, 0.1, 'fill="none" stroke="rgba(255,215,90,.55)" stroke-width=".04" stroke-dasharray=".12 .08"');
+    }
+    if (act && !S.over && hints()) {
+      // danger: your chevrons attacked by two or more of one other color
+      C.chevrons(S, S.turn).forEach(function (x) {
+        for (var p = 0; p < S.np; p++) if (p !== S.turn && !S.out[p] && C.attackers(S, x, p).length >= 2) { var c = ctr(x); s += '<circle class="threat" cx="' + c[0] + '" cy="' + c[1] + '" r=".44" fill="none" stroke="#ff4a32" stroke-width=".07"/>'; break; }
+      });
+    }
+    if (SEL >= 0 && act) {
+      var bl = C.BLF[C.BL[SEL]], v0 = vpos(bl[0]), v1 = v0, P = C.power(S, SEL);
+      bl.forEach(function (x) { var q = vpos(x); if (q[0] + q[1] < v0[0] + v0[1]) v0 = q; if (q[0] + q[1] > v1[0] + v1[1]) v1 = q; });
+      s += '<rect x="' + (v0[0] + 0.04) + '" y="' + (v0[1] + 0.04) + '" width="' + (v1[0] - v0[0] + 0.92) + '" height="' + (v1[1] - v0[1] + 0.92) + '" rx=".2" fill="rgba(255,215,90,.07)" stroke="#ffd75a" stroke-width=".05" stroke-dasharray=".18 .1"/>';
+      // the power badge at the borderland's corner
+      var bx = v0[0] - 0.12, by = v0[1] - 0.2;
+      s += '<g><rect x="' + bx + '" y="' + by + '" width=".62" height=".36" rx=".18" fill="#1b1d24" stroke="#ffd75a" stroke-width=".03"/><text x="' + (bx + 0.31) + '" y="' + (by + 0.19) + '" font-size=".24" font-weight="800" fill="#ffd75a" text-anchor="middle" dominant-baseline="central" style="font-family:var(--display,system-ui)">' + P + '</text></g>';
+      var c0 = ctr(SEL);
+      s += '<circle cx="' + c0[0] + '" cy="' + c0[1] + '" r=".46" fill="none" stroke="#ffd75a" stroke-width=".07"/>';
+      if (!ROT) {
+        var ds = destsOf(SEL), pl = plan();
+        // the three lines the chevron can move along, as far as its power
+        C.threeDirs(S.ch[SEL] & 7).forEach(function (d) {
+          var e = -1; for (var k = 1; k <= P; k++) { var t = C.step(SEL, d, k); if (t < 0) break; e = t; }
+          if (e < 0) return; var q = ctr(e);
+          s += '<line x1="' + c0[0] + '" y1="' + c0[1] + '" x2="' + q[0] + '" y2="' + q[1] + '" stroke="rgba(255,215,90,.28)" stroke-width=".05" stroke-linecap="round"/>';
+        });
+        if (!(PM && PM.need)) ds.forEach(function (q) {
+          var c = ctr(q.t), aim = q.t === AIM, g = q.conn === 1 ? q.gain : 0, cross = q.cross, val = hints() ? Math.max(g, cross ? 1 : 0) + (q.pin ? 1 : 0) : 0;
+          if (q.pin) { s += '<g class="dest' + (aim ? ' aim' : '') + '"><circle cx="' + c[0] + '" cy="' + c[1] + '" r=".42" fill="rgba(255,74,50,.16)" stroke="#ff4a32" stroke-width=".07"/><path d="M' + (c[0] - 0.42) + ' ' + c[1] + 'h.2M' + (c[0] + 0.22) + ' ' + c[1] + 'h.2M' + c[0] + ' ' + (c[1] - 0.42) + 'v.2M' + c[0] + ' ' + (c[1] + 0.22) + 'v.2" stroke="#ff4a32" stroke-width=".06"/></g>'; return; }
+          s += '<g class="dest' + (aim ? ' aim' : '') + '"><circle cx="' + c[0] + '" cy="' + c[1] + '" r="' + (aim ? '.34' : '.2') + '" fill="' + (val ? '#ffd75a' : 'rgba(255,255,255,.85)') + '" stroke="' + (val ? '#8a6200' : 'rgba(0,0,0,.45)') + '" stroke-width=".04" opacity="' + (aim ? 1 : .92) + '"/>';
+          if (val) s += '<text x="' + c[0] + '" y="' + (c[1] + 0.01) + '" font-size="' + (aim ? '.3' : '.22') + '" font-weight="800" fill="#2a1d00" text-anchor="middle" dominant-baseline="central" style="font-family:var(--display,system-ui)">' + (g && cross && g > 1 ? g : val) + '</text>';
+          s += '</g>';
+        });
+        if (AIM >= 0 && pl && !pl.err) {
+          var D = ds.filter(function (q) { return q.t === AIM; })[0], ct = ctr(AIM);
+          s += '<line x1="' + c0[0] + '" y1="' + c0[1] + '" x2="' + ct[0] + '" y2="' + ct[1] + '" stroke="#ffd75a" stroke-width=".07" stroke-linecap="round"/>';
+          // the fields this move would change (as far as its choices are made)
+          var w = pl.w, me = S.turn + 1;
+          if (hints() && pl.need === 'kind' && D) for (var k2 = 1; k2 < D.k; k2++) { var y2 = C.step(SEL, D.d, k2); if (S.b[y2] !== me) s += rect(y2, 0.08, 'fill="none" stroke="' + HEX[colOf(S.turn)] + '" stroke-width=".05" stroke-dasharray=".1 .07"'); }
+          if (hints()) for (var x = 0; x < 81; x++) if (w.b[x] === me && S.b[x] !== me) s += rect(x, 0.08, 'fill="' + TINT[colOf(S.turn)] + '" stroke="' + HEX[colOf(S.turn)] + '" stroke-width=".05" stroke-dasharray=".1 .07"');
+          // the chevron as it would stand
+          s += '<g opacity=".6" style="transform:' + cvTransform(AIM, D ? D.d : 0) + '">' + chevSvg(colOf(S.turn)) + '</g>';
+        }
+        // the fields a choice can go on
+        if (PM && PM.need && PM.need !== 'kind') PM.opts.forEach(function (x) { s += rect(x, 0.1, 'class="cand" fill="rgba(255,215,90,.25)" stroke="#ffd75a" stroke-width=".06"'); });
+      } else {
+        // a turn being paid for: the chevron as it would point, and the markers that would come off
+        s += '<g opacity=".6" style="transform:' + cvTransform(SEL, ((S.ch[SEL] & 7) + ROT.r + 8) & 7) + '">' + chevSvg(colOf(S.turn)) + '</g>';
+        C.rotCands(S, S.turn).forEach(function (x) {
+          var on = ROT.rm.indexOf(x) >= 0, c = ctr(x);
+          if (on) s += rect(x, 0.12, 'fill="rgba(255,74,50,.22)" stroke="#ff4a32" stroke-width=".06"') + '<path d="M' + (c[0] - 0.16) + ' ' + (c[1] - 0.16) + 'l.32 .32M' + (c[0] + 0.16) + ' ' + (c[1] - 0.16) + 'l-.32 .32" stroke="#ff4a32" stroke-width=".07" stroke-linecap="round"/>';
+          else s += rect(x, 0.14, 'class="cand" fill="none" stroke="rgba(255,255,255,.7)" stroke-width=".035" stroke-dasharray=".08 .06"');
+        });
+      }
+    }
+    gOvl.innerHTML = s;
+  }
+
+  // ── Taps on the board ────────────────────────────────────────────────────
+  function fieldAt(cx, cy) {
+    var r = svgEl.getBoundingClientRect(), k = (N + 2 * M) / r.width;
+    var u = (cx - r.left) * k - M, v = (cy - r.top) * k - M;
+    if (u < 0 || u >= N || v < 0 || v >= N) return -1;
+    return fromView(Math.floor(u), Math.floor(v));
+  }
+  function tap(x, mouse) {
+    if (!S || S.over) return;
+    if (!canAct()) {
+      if (NET && !NET.myTurn()) { Kit.haptic('error'); Kit.toast('It’s ' + Kit.poss(S.players[S.turn].name) + ' turn'); }
+      return;
+    }
+    if (ROT) { if (S.b[x] === S.turn + 1 && S.ch[x] < 0) return rotToggle(x); if (x === SEL) return; if (C.seatOf(S.ch[x]) === S.turn) return pickChevron(x); return; }
+    if (PM && PM.need && PM.need !== 'kind') { if (PM.opts.indexOf(x) >= 0) return choose(PM.need, x); Kit.haptic('error'); paintTurn(PM.need === 'mark' ? 'Tap one of the pulsing fields for your marker.' : 'Tap one of the pulsing fields to change it.'); return; }
+    if (SEL >= 0 && destsOf(SEL).some(function (q) { return q.t === x; })) {
+      if (mouse) { AIM = x; PM = null; commitBase(); return; }
+      return aimAt(x);
+    }
+    if (C.seatOf(S.ch[x]) === S.turn) return pickChevron(x);
+    if (SEL >= 0) { SEL = -1; AIM = -1; PM = null; paintAll(); return; }
+    Kit.haptic('error'); paintTurn('Tap one of your ' + CNAME[colOf(S.turn)].toLowerCase() + ' chevrons first.');
+  }
+  var HOVER = -1;
+  function wireBoard() {
+    bdEl.addEventListener('click', function (e) { var x = fieldAt(e.clientX, e.clientY); if (x >= 0) tap(x, e.pointerType === 'mouse' || (e.detail > 0 && matchMedia('(pointer: fine)').matches && !('ontouchstart' in window))); });
+    bdEl.addEventListener('pointermove', function (e) {
+      if (e.pointerType !== 'mouse' || !canAct() || SEL < 0 || ROT || (PM && PM.need)) return;
+      var x = fieldAt(e.clientX, e.clientY), ok = x >= 0 && destsOf(SEL).some(function (q) { return q.t === x; });
+      var t = ok ? x : -1; if (t === HOVER) return; HOVER = t;
+      AIM = t; PM = null; paintOverlay(); paintTurn();
+    });
+  }
+  document.addEventListener('keydown', function (e) {
+    if (!S || !canAct() || e.target && /input|textarea/i.test(e.target.tagName)) return;
+    if (e.key === 'Escape') cancel();
+    else if (e.key === 'Enter' && AIM >= 0 && !PM) { commitBase(); e.preventDefault(); }
+  });
+
+  // ── The plates, the turn, the choices and the buttons ────────────────────
+  function chevIcon(c, size) { return '<svg class="sw" viewBox="-.5 -.5 1 1" width="' + size + '" height="' + size + '" aria-hidden="true"><defs><linearGradient id="pcI' + c + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + LIGHT[c] + '"/><stop offset=".4" stop-color="' + HEX[c] + '"/><stop offset="1" stop-color="' + DARK[c] + '"/></linearGradient></defs><path d="M0 -.42 L.38 .32 L.23 .37 L0 .12 L-.23 .37 L-.38 .32 Z" fill="url(#pcI' + c + ')" stroke="' + (c === 1 ? '#8d93a3' : DARK[c]) + '" stroke-width=".04" stroke-linejoin="round"/></svg>'; }
+  function paintPlates() {
+    if (!platesEl || !S) return;
+    if (platesEl.children.length !== S.np) {
+      platesEl.innerHTML = '';
+      for (var s = 0; s < S.np; s++) platesEl.appendChild(el('div', { class: 'plate k' + colOf(s), 'data-s': String(s), style: { '--pc': HEX[colOf(s)], '--pc-l': METER[colOf(s)] } }));
+    }
+    var start = S.np === 2 ? 4 : 3;
+    for (var i = 0; i < S.np; i++) {
+      var pl = platesEl.children[i], c = colOf(i), on = !S.over && S.turn === i, out = !!S.out[i], p = S.players[i];
+      pl.className = 'plate k' + c + (on ? ' on' : '') + (out ? ' out' : '') + (S.over && S.win === i ? ' on' : '');
+      var mk = C.markers(S, i), cv = C.chevrons(S, i).length, cvs = '';
+      for (var k = 0; k < start; k++) cvs += '<i' + (k < cv ? '' : ' class="gone"') + '></i>';
+      var sub = S.over ? (S.win === i ? 'Wins' : out ? 'Out' : CNAME[c]) : out ? (S.out[i] === 'blk' ? 'Out: no moves' : 'Out: no chevrons') :
+        on && p.cpu && S.busy ? '<span class="think">Thinking <i></i><i></i><i></i></span>' : on ? (isMe(i) ? 'Your move' : 'To move') : CNAME[c];
+      var bump = lastMk[i] != null && mk > lastMk[i]; lastMk[i] = mk;
+      pl.innerHTML = chevIcon(c, 30) + '<div class="who"><span class="nm">' + (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(nmI(i)) + '</span></span><span class="sub"><span class="cvs" aria-label="' + plural(cv, 'chevron') + ' left">' + cvs + '</span>' + sub + '</span></div>' +
+        '<div class="n" aria-label="' + mk + ' of ' + S.target + ' markers"><b' + (bump ? ' class="bump"' : '') + '>' + mk + '</b><small>of ' + S.target + '</small></div>' +
+        '<div class="mt"><i style="--f:' + Math.min(100, mk / S.target * 100).toFixed(1) + '%"></i></div>';
+      var ns = pl.querySelector('.nm>span:last-child'); if (ns && Kit.fitText) Kit.fitText(ns, 0.7);
+    }
+  }
+  // the turn in words: what to do, what the chevron picked up can do, what the move aimed at would do
+  function paintTurn(msg) {
+    if (!turnEl || !S) return;
+    var s = S.turn, p = S.players[s], txt = '', sm = '';
+    if (NET && LEFT) txt = LEFT.text || 'A player left';
+    else if (S.over) txt = (isMe(S.win) ? 'You win. ' : S.players[S.win].name + ' wins. ') + endLine();
+    else if (msg) txt = msg;
+    else if (NET && !isMe(s)) txt = p.cpu ? p.name + ' (the computer) is moving for ' + CNAME[colOf(s)] + '.' : 'Waiting for ' + p.name + ' to move.';
+    else if (p.cpu) txt = p.name + ' is thinking…';
+    else if (HOLD) txt = 'Pass the device to ' + p.name + '.';
+    else if (ROT) {
+      var need = Math.abs(ROT.r) * 2, left = need - ROT.rm.length;
+      txt = left ? 'Tap ' + num(left) + (left < need ? ' more' : '') + ' of your markers to take off the board.' : 'Turn the chevron to take these ' + num(need) + ' markers off.';
+      sm = 'Turning ' + (need === 2 ? '45' : '90') + ' degrees costs ' + num(need) + ' markers from fields no chevron stands on.';
+    } else if (PM && PM.need === 'kind') {
+      txt = 'This connection also crosses a border. Choose one benefit.';
+    } else if (PM && PM.need === 'mark') {
+      txt = PM.r.trans ? 'That borderland has no neutral fields, so you change a field there to your color. Tap one.' : 'You crossed into ' + blSay(AIM) + '. Tap a field there for your marker.';
+    } else if (PM && PM.need === 'bonus') {
+      txt = 'A meeting! Tap any field no chevron stands on to change it to your color.';
+    } else if (SEL >= 0 && AIM >= 0) {
+      var D = destsOf(SEL).filter(function (q) { return q.t === AIM; })[0];
+      txt = hints() ? moveSay(D) : D && D.pin ? 'A pincer on ' + C.NAMES[D.t] + '.' : 'Move to ' + C.NAMES[AIM] + '.';
+      sm = matchMedia('(pointer: fine)').matches ? 'Click to make the move.' : 'Tap it again, or tap Move.';
+    } else if (SEL >= 0) {
+      var P = C.power(S, SEL), ds = destsOf(SEL), mk = C.markers(S, s) && 0;
+      void mk;
+      txt = ds.length ? 'This chevron can move up to ' + plural(P, 'field') + ', because you have ' + (P === 1 && !hasMk(SEL) ? 'no markers' : num(P) + (P === 1 ? ' marker' : ' markers')) + ' in its borderland.' : 'This chevron can’t move anywhere now. You can turn it round instead.';
+      sm = ds.length ? 'Tap a lit field.' : '';
+    } else {
+      txt = (solo() || NET ? 'Your turn.' : Kit.poss(p.name) + ' turn, playing ' + CNAME[colOf(s)] + '.') + ' Tap one of your chevrons.';
+      var t = hints() && threatened(s); if (t) sm = 'A red ring: two of another player’s chevrons attack that one.';
+    }
+    turnEl.innerHTML = Kit.esc(txt).replace(/\*(.+?)\*/g, '<b>$1</b>') + (sm ? '<span class="sm">' + Kit.esc(sm) + '</span>' : '');
+  }
+  function hasMk(x) { var me = S.turn + 1; return C.BLF[C.BL[x]].some(function (y) { return S.b[y] === me; }); }
+  function threatened(s) { return C.chevrons(S, s).some(function (x) { for (var p = 0; p < S.np; p++) if (p !== s && !S.out[p] && C.attackers(S, x, p).length >= 2) return true; return false; }); }
+  // what a move would do, in a sentence
+  function moveSay(D) {
+    if (!D) return '';
+    var t = C.NAMES[D.t];
+    if (D.pin) return 'A pincer: your chevron takes ' + possI(C.seatOf(S.ch[D.t])) + ' chevron on ' + t + ', and ' + t + ' becomes your field' + (D.cross ? ', with a marker for crossing the border too.' : '.');
+    var parts = [];
+    if (D.conn === 1 && D.gain && D.cross) return 'A connection to ' + t + ' that also crosses a border: you choose the ' + plural(D.gain, 'field') + ' it would change, or a marker in ' + blSay(D.t) + '.';
+    if (D.conn === 1 && D.gain) parts.push('a connection that changes ' + plural(D.gain, 'field') + ' to your color');
+    else if (D.conn === 1) parts.push('a connection, though the fields between are yours already');
+    if (D.conn === 2) parts.push('a connection that jumps ' + plural(D.jump, 'chevron') + ', so nothing in between changes');
+    if (D.cross && !(D.conn === 1 && D.gain)) parts.push('it crosses into ' + blSay(D.t) + ', so you put a marker down there');
+    if (!parts.length) return 'Move to ' + t + '. It stays in this borderland, so no marker goes down.';
+    return 'Move to ' + t + ': ' + parts.join(', and ') + '.';
+  }
+  function btn(cls, ic, label, fn, dis) { return el('button', { type: 'button', class: 'btn ' + cls + ' btn-sm', html: ic + '<span>' + label + '</span>', onclick: fn, disabled: !!dis }); }
+  function rotIcon(r) {
+    var a = r * 45;
+    return '<svg viewBox="-1 -1 2 2" aria-hidden="true"><path d="M0 -.62 L.42 .38 L0 .12 L-.42 .38 Z" fill="none" stroke="currentColor" stroke-width=".09" stroke-linejoin="round" opacity=".35"/><g transform="rotate(' + a + ')"><path d="M0 -.62 L.42 .38 L0 .12 L-.42 .38 Z" fill="currentColor"/></g><path d="M' + (r < 0 ? '-.35 -.85 A.9 .9 0 0 0 -.85 -.3' : '.35 -.85 A.9 .9 0 0 1 .85 -.3') + '" fill="none" stroke="currentColor" stroke-width=".08" stroke-linecap="round"/></svg>';
+  }
+  function paintChoice() {
+    if (!choiceEl || !S) return;
+    choiceEl.innerHTML = '';
+    if (!canAct() || S.over) return;
+    if (PM && PM.need === 'kind') {
+      var g = PM.r.gain;
+      choiceEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', html: '<span>Fill the line<small>' + plural(g, 'field') + ' change color</small></span>', onclick: function () { choose('kind', 'c'); } }));
+      choiceEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: '<span>A marker<small>in ' + blSay(AIM).replace(/^the /, 'the ') + '</small></span>', onclick: function () { choose('kind', 'b'); } }));
+      return;
+    }
+    if (SEL >= 0 && AIM < 0 && !PM && (ROT || !destsOf(SEL).length || TURNS)) {
+      var rc = C.rotCands(S, S.turn).length, box = el('div', { class: 'rot' });
+      [[-1, 'Left 45°', 2], [1, 'Right 45°', 2], [-2, 'Left 90°', 4], [2, 'Right 90°', 4]].forEach(function (q) {
+        var b = el('button', { type: 'button', class: 'btn btn-soft btn-sm' + (ROT && ROT.r === q[0] ? ' on' : ''), html: rotIcon(q[0]) + '<span>' + q[1] + '<small>' + num(q[2]) + ' markers</small></span>', onclick: function () { rotStart(q[0]); }, disabled: rc < q[2] });
+        box.appendChild(b);
+      });
+      choiceEl.appendChild(box);
+    }
+  }
+  var TURNS = false;
+  function paintActs() {
+    if (!actsEl || !S) return;
+    actsEl.innerHTML = '';
+    if (NET && (S.over || LEFT)) { actsEl.appendChild(btn('btn-primary', '', LEFT ? 'Back to the lobby' : 'Play again', netAgain)); return; }
+    if (S.over) { actsEl.appendChild(btn('btn-primary', '', 'Play again', function () { newGame(null, true); })); return; }
+    if (!canAct()) { if (!NET) actsEl.appendChild(btn('btn-soft', Kit.icon('undo'), 'Undo', undo)); return; }
+    if (ROT) {
+      if (hints()) actsEl.appendChild(btn('btn-soft', '', 'Choose for me', rotSuggest));
+      actsEl.appendChild(btn('btn-soft', Kit.icon('close'), 'Cancel', function () { ROT = null; TURNS = false; paintAll(); }));
+      actsEl.appendChild(btn('btn-primary', '', 'Turn it', rotDo, ROT.rm.length !== Math.abs(ROT.r) * 2));
+      return;
+    }
+    if (PM && PM.need) { actsEl.appendChild(btn('btn-soft', Kit.icon('close'), 'Cancel', cancel)); return; }
+    if (SEL >= 0) {
+      if (AIM >= 0) {
+        actsEl.appendChild(btn('btn-soft', Kit.icon('close'), 'Cancel', cancel));
+        actsEl.appendChild(btn('btn-primary', Kit.icon('check'), 'Move', commitBase));
+        return;
+      }
+      if (destsOf(SEL).length) actsEl.appendChild(btn('btn-soft', '', TURNS ? 'Hide turning' : 'Turn it round', function () { TURNS = !TURNS; Kit.sfx('tick', 0.5); paintAll(); }));
+      actsEl.appendChild(btn('btn-soft', Kit.icon('close'), 'Cancel', function () { TURNS = false; cancel(); }));
+      return;
+    }
+    if (!NET) actsEl.appendChild(btn('btn-soft', Kit.icon('undo'), 'Undo', undo));
+  }
+  function paintAll() { if (SEL < 0) TURNS = false; paintPlates(); paintTurn(); paintChoice(); paintLast(); paintActs(); paintOverlay(); paintRoom(); }
+  // the last move in words (phones and tablets, while nothing is being chosen: at a desk the room has it)
+  function paintLast() {
+    if (!lastEl || !S) return;
+    var ev = S.ev || [], e = ev[ev.length - 1], busy = SEL >= 0 || ROT || S.over;
+    lastEl.classList.toggle('has', !!e && !busy);
+    lastEl.innerHTML = e && !busy ? '<b>Last move</b>' + Kit.esc(sayEv(e).t) : '';
+    // (only where it fits whole)
+    if (lastEl.classList.contains('has') && (dockEl.scrollHeight > dockEl.clientHeight + 1 || lcolEl.scrollHeight > lcolEl.clientHeight + 1 || document.documentElement.scrollHeight > window.innerHeight + 1)) lastEl.classList.remove('has');
+  }
+
+  // ── The room at a desk ───────────────────────────────────────────────────
+  // The race to the target, the last move in words, the moves newest first, past games here
+  function raceSvg(w) {
+    var rows = S.race || [], n = rows.length, H = 120, W = 300, T = S.target, s = '<svg class="race" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true">';
+    s += '<line x1="0" y1="8" x2="' + W + '" y2="8" stroke="rgba(255,215,90,.6)" stroke-width="1.5" stroke-dasharray="5 4"/><text x="' + (W - 2) + '" y="20" font-size="11" font-weight="700" fill="rgba(255,215,90,.8)" text-anchor="end">' + T + '</text>';
+    for (var p = 0; p < S.np; p++) {
+      var pts = rows.map(function (r, i) { return (n < 2 ? 0 : i / (n - 1) * W).toFixed(1) + ',' + (H - 4 - Math.min(T, r[p]) / T * (H - 12)).toFixed(1); }).join(' ');
+      s += '<polyline points="' + pts + '" fill="none" stroke="' + METER[colOf(p)] + '" stroke-width="' + (isMe(p) ? 3 : 2) + '" stroke-linejoin="round" opacity="' + (S.out[p] ? .5 : 1) + '"/>';
+    }
+    return s + '</svg>';
+  }
+  function paintRoom() {
+    if (!roomEl) return;
+    if (!app.classList.contains('pc-desk')) { roomEl.innerHTML = ''; return; }
+    roomEl.innerHTML = '';
+    var rk = el('section', { class: 'pn rkp' }, [el('h4', { text: 'The race to ' + S.target + ' markers' })]), g = el('div', { class: 'rk' });
+    var best = Math.max.apply(null, S.players.map(function (p, i) { return C.markers(S, i); }));
+    S.players.forEach(function (p, i) {
+      var mk = C.markers(S, i), row = el('div', { class: 'pn2', style: { '--pc': METER[colOf(i)] } }, [el('i'), el('span', { text: nmI(i) + (S.out[i] ? ', out' : '') })]);
+      var b = el('b', { html: mk + '<small>' + plural(C.chevrons(S, i).length, 'chevron') + '</small>' });
+      if (mk === best && mk) { row.classList.add('lead'); b.style.color = 'var(--lit-ink)'; }
+      g.appendChild(row); g.appendChild(b);
+    });
+    rk.appendChild(g);
+    if ((S.race || []).length > 2) rk.insertAdjacentHTML('beforeend', raceSvg());
+    roomEl.appendChild(rk);
+    var ev = S.ev || [];
+    if (ev.length) roomEl.appendChild(el('section', { class: 'pn lm' }, [el('h4', { text: 'Last move' }), el('p', { class: 'say', text: sayEv(ev[ev.length - 1]).t })]));
+    var mv = el('section', { class: 'pn mv' }, [el('h4', { text: 'Moves' })]), list = el('ol', { class: 'mvl' });
+    if (!ev.length) list.appendChild(el('li', { class: 'none', text: S.players[S.turn] ? nmI(S.turn) + (isMe(S.turn) ? ' move' : ' moves') + ' first, playing ' + CNAME[colOf(S.turn)] + '.' : '' }));
+    for (var k = ev.length - 1; k >= 0 && list.children.length < 40; k--) {
+      var e = ev[k], w = sayEv(e, true);
+      list.appendChild(el('li', { style: { '--pc': METER[colOf(e.s)] } }, [el('span', { class: 'no', text: String(k + 1) }), el('i'), el('span', { class: 't', text: w.t }), w.tag ? el('span', { class: 'tag' + (w.bad ? ' bad' : ''), text: w.tag }) : el('span')]));
+    }
+    mv.appendChild(list); roomEl.appendChild(mv);
+    var past = []; try { past = (GameHistory.load(KEY) || []).slice(); } catch (x) {}
+    if (past.length) {
+      var wins = {}, names = [];
+      past.forEach(function (gm) { var w = String(gm.winner || ''); if (!w) return; if (!wins[w]) { wins[w] = 0; names.push(w); } wins[w]++; });
+      names.sort(function (a, b) { return wins[b] - wins[a]; });
+      var pg = el('section', { class: 'pn pg' }, [el('h4', { text: 'Past games here' })]), wl = el('ul', { class: 'wins' });
+      names.slice(0, 5).forEach(function (n) { wl.appendChild(el('li', null, [el('span', { text: n }), el('b', { text: wins[n] + (wins[n] === 1 ? ' win' : ' wins') })])); });
+      pg.appendChild(wl); roomEl.appendChild(pg);
+    }
+    // give up whole parts until it fits: the oldest moves down to six, past games, the chart, then the oldest moves
+    var over = function () { var rb = roomEl.getBoundingClientRect().bottom; return roomEl.scrollHeight > roomEl.clientHeight + 1 || list.scrollHeight > list.clientHeight + 1 || [].some.call(roomEl.children, function (k) { return k.getBoundingClientRect().bottom > rb + 1; }); };
+    while (over() && list.children.length > 6) list.removeChild(list.lastChild);
+    if (over()) { var pgE = roomEl.querySelector('.pg'); if (pgE) pgE.remove(); }
+    if (over()) { var rc = roomEl.querySelector('.race'); if (rc) rc.remove(); }
+    while (over() && list.children.length > 1) list.removeChild(list.lastChild);
+    if (over()) { mv.remove(); }
+    if (over()) { var lm = roomEl.querySelector('.lm'); if (lm) lm.remove(); }
+    if (over()) roomEl.innerHTML = '';
+  }
+  function sayShort(e) { return sayEv(e, true); }
+
+  // ── Building the page ────────────────────────────────────────────────────
+  function render(anim) {
+    if (!S || !S.b) return;
+    app.innerHTML = ''; app.classList.add('ipl');
+    setView();
+    var pg = el('div', { class: 'pg' });
+    platesEl = el('div', { class: 'plates' });
+    frameEl = el('div', { class: 'frame' });
+    bdEl = el('div', { class: 'bd', role: 'grid', 'aria-label': 'Pacru board' });
+    frameEl.appendChild(bdEl);
+    dockEl = el('div', { class: 'dock' });
+    turnEl = el('p', { class: 'say0', 'aria-live': 'polite' });
+    choiceEl = el('div', { class: 'choice' });
+    lastEl = el('p', { class: 'lastmv', 'aria-live': 'off' });
+    actsEl = el('div', { class: 'acts' });
+    dockEl.appendChild(turnEl); dockEl.appendChild(choiceEl); dockEl.appendChild(lastEl); dockEl.appendChild(actsEl);
+    roomEl = el('div', { class: 'room', 'aria-label': 'This game and past games' });
+    lcolEl = el('div', { class: 'lcol' });
+    pg.appendChild(lcolEl); lcolEl.appendChild(platesEl); lcolEl.appendChild(dockEl); lcolEl.appendChild(roomEl);
+    pg.appendChild(frameEl);
+    app.appendChild(pg);
+    fit(true);
+    buildBoard();
+    paintMarks(anim); paintChevrons(anim);
+    paintAll();
+    wireBoard();
+    requestAnimationFrame(function () { if (app.classList.contains('ipl')) fit(); });
+  }
+
+  // ── Sizes for the shape of the screen ────────────────────────────────────
+  function deskWin() {
+    if (Kit.inDemo && Kit.inDemo()) return false;
+    var W = window.innerWidth, Hh = window.innerHeight;
+    return W >= 480 && Hh > 520 && (Math.max(W, Hh) > 1024 || Math.min(W, Hh) > 768);
+  }
+  function setV(k, v) { app.style.setProperty(k, v); }
+  function fit(first) {
+    var pg = app.querySelector('.pg'); if (!pg || !app.classList.contains('ipl')) return;
+    var W = window.innerWidth, Hh = window.innerHeight, land = W > Hh, desk = deskWin();
+    if (window.scrollY) window.scrollTo(0, 0);
+    var top = app.getBoundingClientRect().top;
+    setV('--avh', Math.max(300, Hh - top) + 'px');
+    var cs = getComputedStyle(app), iw = app.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), ih = app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    app.classList.remove('pc-port', 'pc-land', 'pc-w1', 'pc-w2', 'pc-t', 'pc-desk', 'pc-short', 'pc-tiny');
+    var cls = [], fsz, np = S.np;
+    // the room lives in the left column, or in a column of its own in the widest windows
+    if (roomEl.parentNode !== lcolEl) lcolEl.appendChild(roomEl);
+    if (desk) {
+      var dk = Math.max(1, Math.min(1.45, W / 1600, Hh / 1050)), gap = Math.round(28 * dk);
+      setV('--dk', dk.toFixed(3)); setV('--cg', gap + 'px'); setV('--gp', Math.round(16 * dk) + 'px'); setV('--lg', Math.round(12 * dk) + 'px');
+      cls.push('pc-desk');
+      var lw = Math.round(Math.min(560, Math.max(320, W * 0.24)));
+      var fw = Math.floor(Math.min(ih, iw - lw - gap));
+      if (iw / ih >= 1.2 && fw >= ih * 0.9) {
+        fsz = Math.min(ih, Math.floor(iw - lw - gap));
+        var spare = iw - fsz - lw - gap;
+        if (spare > 380) {
+          // a column of its own for the room
+          cls.push('pc-w2');
+          var rw = Math.round(Math.min(560, spare - gap)); setV('--rw', rw + 'px'); pg.appendChild(roomEl);
+          setV('--rc', '1'); setV('--pcols', np > 2 && Hh < 900 ? '2' : '1');
+        } else {
+          lw += Math.max(0, Math.min(spare, 240));
+          cls.push('pc-w1'); setV('--rc', lw >= 620 ? '2' : '1'); setV('--pcols', (lw >= 520 || Hh < 900) && np > 2 ? '2' : '1');
+        }
+        setV('--lw', lw + 'px');
+      } else {
+        // squarer or taller: the board across the top, the plates and dock under it at the left, the room beside them
+        cls.push('pc-t');
+        // (under the board: the plates, two to a row with more players, and the dock)
+        var bottom = Math.max(Math.round(((np > 2 ? 2 : np) * 78 + 200) * dk), Math.round(ih * 0.28));
+        fsz = Math.floor(Math.min(iw, ih - bottom - Math.round(16 * dk)));
+        lw = Math.round(Math.min(560, Math.max(np > 2 ? 400 : 320, iw * 0.44)));
+        setV('--lw', lw + 'px'); setV('--rc', iw - lw > 640 ? '2' : '1'); setV('--pcols', np > 2 ? '2' : '1');
+        pg.appendChild(roomEl);
+      }
+    } else if (land) {
+      cls.push('pc-land');
+      var short = Hh < 500; if (short) cls.push('pc-short');
+      var gap2 = short ? 12 : 18;
+      fsz = Math.floor(ih);
+      var lw2 = iw - fsz - gap2;
+      if (lw2 < 230) { fsz = Math.floor(iw - 230 - gap2); lw2 = 230; }
+      lw2 = Math.min(lw2, 420);
+      setV('--lw', lw2 + 'px'); setV('--cg', gap2 + 'px');
+      setV('--pcols', np > 2 && (short || lw2 >= 340) ? '2' : '1');
+      setV('--lg', short ? '6px' : '10px');
+    } else {
+      cls.push('pc-port');
+      var shortP = Hh < 700; if (shortP) cls.push('pc-short');
+      if (shortP && W < 360) cls.push('pc-tiny');
+      setV('--pcols', np === 2 ? '2' : W >= 600 || shortP ? String(np) : '2');
+      setV('--gp', shortP ? '6px' : '10px');
+      fsz = Math.floor(iw);
+    }
+    cls.forEach(function (k) { app.classList.add(k); });
+    setV('--fsz', fsz + 'px');
+    if (!desk && !land) {
+      // the board as wide as the screen, smaller only as far as the dock needs
+      paintPlates();
+      var ph = platesEl.offsetHeight, gp = parseFloat(getComputedStyle(app).getPropertyValue('--gp')) || 10;
+      var dockMin = W >= 600 ? 196 : Hh < 700 ? 166 : 160;
+      var f = Math.min(fsz, Math.floor(ih - ph - 2 * gp - dockMin));
+      fsz = Math.max(220, f);
+      setV('--fsz', fsz + 'px'); setV('--cw', Math.max(fsz, Math.min(iw, 720)) + 'px');
+    }
+    // at a desk the board is large enough for its letters and numbers round the edge
+    var lab = desk && fsz / 10 >= 70;
+    if ((lab ? 0.55 : 0) !== M) { M = lab ? 0.55 : 0; if (svgEl) { buildBoard(); paintMarks(null); paintChevrons(null); } }
+    if (!first) paintAll();
+  }
+  var lastWH = window.innerWidth + 'x' + window.innerHeight, RZT = 0;
+  window.addEventListener('resize', function () {
+    var wh = window.innerWidth + 'x' + window.innerHeight; if (wh === lastWH) return; lastWH = wh;
+    if (!app.classList.contains('ipl')) return;
+    if (!app.classList.contains('pc-desk') && !deskWin()) Kit.glide(function () { fit(); }); else fit();
+    clearTimeout(RZT); RZT = setTimeout(function () { if (app.classList.contains('ipl')) fit(); }, 650);
+  });
+
+  // ── Online ───────────────────────────────────────────────────────────────
+  // Two to four people, each on their own device; the seats nobody takes are the computer's, played from whichever
+  // device has the table open. Each new game at the table moves the seats round one.
+  function netOpts() {
+    var o = { seats: 2, level: 'normal', hints: 'on' };
+    try { var g = JSON.parse(localStorage.getItem('gn_setup_' + KEY)) || {}, op = g.options || {}; if (+g.count >= 2 && +g.count <= 4) o.seats = +g.count; if (LEVEL_NAME[op.level]) o.level = op.level; if (op.hints === 'off') o.hints = 'off'; } catch (e) {}
+    return o;
+  }
+  function netStart(players, opts, last) {
+    var ps = players.map(function (p) { return { name: p.name, cpu: !!p.bot, level: (opts && opts.level) || 'normal' }; });
+    var rot = last && last.rot != null ? (last.rot + 1) % ps.length : 0;
+    // the seats move round one each game: the players' list is turned so a different person moves first
+    var order = ps.map(function (p, i) { return (i + rot) % ps.length; });
+    var st = C.newGame(ps.length);
+    st.mode = 'online'; st.hints = !(opts && opts.hints === 'off'); st.players = order.map(function (i) { return ps[i]; }); st.seatOf = order; st.rot = rot;
+    freshFields(st); delete st.hist; delete st.busy;
+    st.wins = last && last.wins ? last.wins.slice() : ps.map(function () { return 0; });
+    return st;
+  }
+  // (TurnNet's seats are the table's; the game's seats are turned by rot: game seat g is table seat seatOf[g])
+  function tSeat(st, g) { return st.seatOf ? st.seatOf[g] : g; }
+  function gSeat(st, t) { return st.seatOf ? st.seatOf.indexOf(t) : t; }
+  function netApply(st, str) {
+    if (st.over) return null;
+    var res = C.play(st, str);
+    if (!res) return null;
+    note(st, res);
+    if (st.over) st.wins[tSeat(st, st.win)] = (st.wins[tSeat(st, st.win)] || 0) + 1;
+    return { state: st, mv: { m: str } };
+  }
+  function netBot(st, seat) {
+    var g = gSeat(st, seat), p = st.players[g], L = Object.assign({}, C.LEVELS[p.level] || C.LEVELS.normal, { seed: Math.floor(Math.random() * 1e9) });
+    return new Promise(function (res) { think(coreOf(st), L, function (r) { res(r && r.move ? netApply(st, r.move) : null); }); });
+  }
+  function netMove(str) { if (!S || S.over || LEFT || !NET.myTurn()) return; S.busy = true; paintActs(); NET.act(function (st) { return netApply(st, str); }); setTimeout(function () { if (S) S.busy = false; }, 4000); }
+  function netAgain() { if (!NET) return; if (LEFT) { TurnNet.leave(); TurnNet.open(); } else NET.again(); }
+  function netShow(net, info) {
+    var my = { seat: gSeat(net.state, net.seat) };
+    NET = { seat: my.seat, code: net.code, myTurn: function () { return net.myTurn(); }, act: function (f) { return net.act(f); }, again: function () { return net.again(); } };
+    cancelThink();
+    if (WINO && (info.again || info.fresh)) { WINO.close(); WINO = null; }
+    var prev = S;
+    S = JSON.parse(JSON.stringify(net.state)); S.busy = false; S.hist = []; SEL = -1; AIM = -1; PM = null; ROT = null;
+    LEFT = net.status === 'over' && !S.over && net.result && net.result.left != null ? net.result : null;
+    var tok = ++SHOWN, mv = info.mv && info.mv.m && !info.fresh && !info.again ? info.mv : null;
+    if (mv && prev && prev.b && prev.n === S.n - 1) {
+      // play the move out from the state before it, with the animations
+      var pst = JSON.parse(JSON.stringify(prev)), res = C.play(pst, mv.m);
+      if (res) show(res, { b: prev.b.slice(), ch: prev.ch.slice() }, true); else render(null);
+      if (!S.over && !info.mine && net.myTurn()) setTimeout(function () { if (tok === SHOWN) Kit.haptic('light'); }, 600);
+    } else {
+      render(null);
+      if (S.over || LEFT) setTimeout(function () { if (tok === SHOWN) netEnd(); }, 150);
+    }
+    if (info.again) { Kit.sfx('deal'); Kit.callout(isMe(0) ? 'You start' : S.players[0].name + ' starts'); }
+  }
+  function netEnd() {
+    if (!NET || !S) return;
+    var left = LEFT, key = NET.code + ':' + S.started;
+    var done = NETREC[key]; try { done = done || (JSON.parse(localStorage.getItem('pacru_net_rec')) || []).indexOf(key) >= 0; } catch (e) {}
+    if (!done && !left) {
+      NETREC[key] = 1;
+      try { var rl = JSON.parse(localStorage.getItem('pacru_net_rec')) || []; rl.push(key); localStorage.setItem('pacru_net_rec', JSON.stringify(rl.slice(-30))); } catch (e) {}
+      var hl = highlights(); hl.push('Played online at table ' + NET.code);
+      Kit.record(KEY, { started: S.started, mode: 'Online', players: recPlayers(), winner: S.players[S.win].name, highlights: hl, detail: detail() });
+    }
+    if (WINO) WINO.close();
+    if (left) return netWin();
+    endShow(winWave(), true);
+  }
+  function netWin() {
+    if (!NET) return;
+    var me = NET.seat, left = LEFT;
+    WINO = Kit.win({
+      icon: left ? 'users' : S.win === me ? 'trophy' : 'users',
+      title: left ? left.text : S.win === me ? 'You win!' : S.players[S.win].name + ' wins',
+      sub: left ? '' : endLine(),
+      rank: left ? null : rankRows(),
+      notes: left ? null : [S.players.map(function (p, i) { return p.name + ' ' + (S.wins[tSeat(S, i)] || 0); }).join(', ')], notesTitle: 'Games won at this table',
+      lose: !left && S.win !== me, againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { WINO = null; netAgain(); },
+      look: { label: 'Look at the board', onClick: function () { WINO = null; } }
+    });
+  }
+  function netLeave() {
+    NET = null; LEFT = null; SHOWN++; if (WINO) { WINO.close(); WINO = null; }
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.b && sv.players && !sv.over) { S = sv; S.busy = false; S.hist = S.hist || []; render(); afterTurn(); }
+    else showSetup();
+  }
+
+  // ── Test and demo hooks ──────────────────────────────────────────────────
+  window.__pacru = {
+    C: C, state: function () { return S; }, sel: function () { return { f: SEL, t: AIM, pm: PM, rot: ROT }; },
+    // a fresh game for these players: {mode: 'pp' | 'cpu', players: [{name, cpu, level}]}
+    start: function (cfg) { cancelThink(); newGame({ mode: cfg.mode || 'pp', cover: false, hints: cfg.hints !== false, players: cfg.players }); },
+    // a position: {rows: 9 strings from the top (rank 9), '.' neutral or 'a' to 'd' a seat's marker, chev: {field:
+    // 'seat,direction'} with directions N, NE, E, SE, S, SW, W, NW, turn}
+    set: function (pos) {
+      cancelThink();
+      var D8 = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+      var st = C.newGame(S.np);
+      ['mode', 'cover', 'hints', 'players', 'started'].forEach(function (k) { st[k] = S[k]; });
+      freshFields(st);
+      if (pos.rows) for (var x = 0; x < 81; x++) { var ch = pos.rows[Math.floor(x / 9)].charAt(x % 9); st.b[x] = ch === '.' ? 0 : ch.charCodeAt(0) - 96; }
+      if (pos.chev) { st.ch = st.ch.map(function () { return -1; }); Object.keys(pos.chev).forEach(function (n) { var q = pos.chev[n].split(','); st.ch[C.idx(n)] = +q[0] * 8 + D8.indexOf(q[1]); }); }
+      if (pos.turn != null) st.turn = pos.turn;
+      st.race = [st.players.map(function (p, i) { return C.markers(st, i); })];
+      S = st; SEL = -1; AIM = -1; PM = null; ROT = null; save(); render(); afterTurn();
+    },
+    play: function (m) { if (NET) return netMove(m); return play(m); },
+    tap: function (n) { tap(typeof n === 'string' ? C.idx(n) : n); },
+    // the element for a field (its tap zone) and for a chevron, by field name
+    sq: function (n) { return bdEl ? bdEl.querySelector('.hz[data-x="' + (typeof n === 'string' ? C.idx(n) : n) + '"]') : null; },
+    chev: function (n) { return bdEl ? bdEl.querySelector('.cv[data-x="' + (typeof n === 'string' ? C.idx(n) : n) + '"]') : null; },
+    fit: function () { fit(); }
+  };
+
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.b && saved.players && !saved.over) { S = saved; S.busy = false; S.hist = S.hist || []; S.ev = S.ev || []; render(); afterTurn(); }
+  else showSetup();
+
+  TurnNet.setup({
+    game: KEY, title: 'Pacru', min: 2, max: 4, botMs: 600,
+    seats: function (n, o) { return Math.max(n, Math.min(4, o && +o.seats || n)); },
+    opts: netOpts, start: netStart, bot: netBot,
+    turn: function (st) { return st.over ? [] : [tSeat(st, st.turn)]; },
+    over: function (st) {
+      if (!st.over) return null;
+      return { win: [tSeat(st, st.win)], text: st.players[st.win].name + ' wins' };
+    },
+    show: netShow, leave: netLeave
+  });
+})();
+</script>
+</body>
+</html>
