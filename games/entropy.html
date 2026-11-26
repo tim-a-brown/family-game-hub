@@ -115,17 +115,39 @@
 .bd .dst span.neg{background:rgba(255,106,77,.16);box-shadow:0 0 0 2px rgba(255,120,90,.7);color:#ffc2b2;}
 .bd .dst span.give{background:rgba(255,106,77,.12);box-shadow:0 0 0 1.5px rgba(255,120,90,.55);color:#ffc2b2;min-width:40%;height:40%;}
 .bd .dst.hov span{transform:scale(1.15);background:rgba(255,215,90,.32);}
+.bd .dst span.give.hov{transform:scale(1.15);}
+.bd .lyr.dim .dst.hov{z-index:10;}
+.bd .lyr.dim .dst.hov span{box-shadow:0 0 0 2px rgba(255,215,90,.9),0 0 0 4px rgba(10,8,4,.55);background:rgba(58,44,10,.92);color:#ffe9a8;}
+.bd .lyr.dim .dst.hov span.neg{box-shadow:0 0 0 2px rgba(255,120,90,.9),0 0 0 4px rgba(10,8,4,.55);background:rgba(70,20,10,.92);color:#ffc2b2;}
+.bd .lyr.dim .dst:not(.hov) span{opacity:.28;transition:opacity .15s;}
+/* Where a number comes from (paintBreak): each palindrome it counts as a gold bar from chip to chip, nested ones side by
+   side, each with its own points; one a slide would break in red */
+.bd .bk{z-index:8;}
+.bd .bk svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
+.bd .bk .u{stroke:rgba(10,8,4,.62);stroke-width:.17;stroke-linecap:round;fill:none;}
+.bd .bk .l{stroke:#ffd75a;stroke-width:.085;stroke-linecap:round;fill:none;filter:drop-shadow(0 0 .05px #ffd75a);}
+.bd .bk .d{fill:#ffe9a8;stroke:rgba(10,8,4,.62);stroke-width:.035;}
+.bd .bk .neg .l{stroke:#ff8a6b;stroke-dasharray:.13 .09;stroke-linecap:butt;filter:none;}
+.bd .bk .neg .d{fill:#ffc2b2;}
+.bd .bk .t{position:absolute;transform:translate(-50%,-50%);min-width:1.75em;padding:.12em .42em;box-sizing:border-box;border-radius:999px;text-align:center;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums;white-space:nowrap;
+  background:linear-gradient(180deg,#ffe48a,#d9a223);color:#3a2600;box-shadow:0 0 0 1.5px rgba(10,8,4,.55),0 2px 5px rgba(0,0,0,.5);animation:bkin .18s ease-out both;}
+.bd .bk .t.neg{background:linear-gradient(180deg,#ffb4a0,#d9573a);color:#3a0c00;}
+.bd .bk g{animation:bkin .18s ease-out both;}
+@keyframes bkin{from{opacity:0;}}
+.bd .lp.pk{cursor:help;pointer-events:auto;}
+.bd .lp.pk.on{box-shadow:0 0 0 2px #fff3c4,0 2px 8px rgba(0,0,0,.6);}
 @keyframes din{from{opacity:0;transform:scale(.5);}}
 .bd .gf{position:absolute;font-family:var(--display);font-weight:800;font-size:calc(var(--cell) * .5);color:#ffe27a;text-shadow:0 2px 6px rgba(0,0,0,.7),0 0 12px rgba(255,200,60,.6);pointer-events:none;transform:translate(-50%,-50%);animation:gfloat 1.3s ease-out forwards;white-space:nowrap;z-index:6;}
 .bd .gf.neg{color:#ff9b85;text-shadow:0 2px 6px rgba(0,0,0,.7);}
 @keyframes gfloat{0%{opacity:0;transform:translate(-50%,-20%) scale(.6);}20%{opacity:1;transform:translate(-50%,-60%) scale(1.1);}100%{opacity:0;transform:translate(-50%,-170%) scale(1);}}
-.bd .lp{position:absolute;z-index:7;transform:translate(-50%,-50%);min-width:1.9em;padding:2px 7px;border-radius:999px;text-align:center;font-weight:800;font-size:min(calc(var(--cell) * .26),24px);font-variant-numeric:tabular-nums;
+.bd .lp{position:absolute;z-index:9;transform:translate(-50%,-50%);min-width:1.9em;padding:2px 7px;border-radius:999px;text-align:center;font-weight:800;font-size:min(calc(var(--cell) * .26),24px);font-variant-numeric:tabular-nums;
   background:linear-gradient(180deg,#ffe48a,#d9a223);color:#3a2600;box-shadow:0 2px 6px rgba(0,0,0,.5);animation:lpin .35s ease-out;pointer-events:none;}
 @keyframes lpin{from{opacity:0;filter:brightness(1.8);}}
 .bd .lp.z{background:rgba(30,34,40,.85);color:rgba(255,255,255,.55);box-shadow:0 0 0 1px rgba(255,255,255,.15);}
 .bd.shake{animation:shake .4s;}
 .frame .lbl{position:absolute;font-size:calc(var(--cell) * .2);font-weight:800;color:rgba(255,226,180,.55);pointer-events:none;transform:translate(-50%,-50%);font-family:var(--display);}
 .turn{margin:2px 0 0;min-height:34px;}
+.turn .bks{color:var(--lit-ink);font-weight:700;}
 .acts{display:flex;gap:10px;justify-content:center;margin-top:2px;}
 .acts .btn{flex:1;max-width:200px;}
 
@@ -278,11 +300,13 @@
       '<h3>A turn</h3><ul><li><b>Chaos</b> draws a chip from the bag at random, so both players see its color, and puts it on any empty square.</li>' +
       '<li>Then <b>Order</b> may slide any one chip on the board, any number of empty squares along its row or its column, as a rook moves in chess. A chip can’t jump over another chip. Order can also pass.</li>' +
       '<li>Every chip belongs to nobody: Order can slide any chip, wherever it came from.</li>' +
-      '<li>Tap a chip to see where it can slide. Each lit square shows the points that slide would make or lose for Order.</li></ul>' +
+      '<li>Tap a chip to see where it can slide. With Hints on, each lit square shows the points that slide would make or lose for Order, and on Chaos’s turn a number marks each square where the chip would give Order points.</li>' +
+      '<li>Point at a number, or press and hold it, to light each palindrome it counts with its own points.</li></ul>' +
       '<h3>Scoring</h3><ul><li>When Chaos puts the last chip on the board, Order scores every <b>palindrome</b> in every row and every column: two or more chips side by side that read the same in both directions.</li>' +
       '<li>A palindrome scores one point for each chip in it. Red, blue, red scores 3. Red, red scores 2.</li>' +
       '<li>Palindromes inside palindromes count too, and so do ones that overlap. Red, blue, blue, red scores 4 for itself and 2 for the two blues, 6 in all.</li>' +
-      '<li>The gold outlines on the board show the palindromes standing now, and Order’s plate shows the points they make.</li></ul>' +
+      '<li>Three chips of one color in a row score 7: 3 for the whole run and 2 for each pair of two inside it. Four of one color score 4, 3 and 3, and 2 for each of the three pairs, 16 in all.</li>' +
+      '<li>The gold outlines on the board show the palindromes standing now, and Order’s plate shows the points they make. When the board is counted, point at a line’s number to see where its points come from.</li></ul>' +
       '<h3>Two games</h3><ul><li>After the first game, the players change roles and play again on an empty board. The player with more points as Order wins the match. Equal points are a draw.</li>' +
       '<li>The 7 by 7 board has 49 chips, seven of each of seven colors. The 5 by 5 board, the game’s first version, has 25 chips, five of each of five colors.</li></ul>' +
       '<h3>Online</h3><ul><li><b>Play online</b> opens a table, and the other player joins on their own device. Take your turn whenever you like: the home screen shows when it’s your move. Every draw comes from the table’s bag, so both devices see the same chip.</li></ul>' +
@@ -312,6 +336,7 @@
         { id: 'size', label: 'Board', value: '7', choices: [['7', '7 by 7\n49 chips', 'Seven colors, seven chips of each: Hyle7, the larger game.'], ['5', '5 by 5\n25 chips', 'Five colors, five chips of each: the first Entropy, a shorter game.']] },
         { id: 'role', label: 'You start as', value: 'order', choices: [['order', 'Order', 'In the first game you slide chips to make patterns, and the computer is Chaos. Then you change roles.'], ['chaos', 'Chaos', 'In the first game you place the chips to spoil patterns, and the computer is Order. Then you change roles.']], when: function (m) { return m === 'cpu'; } },
         { id: 'role2', label: 'Order in the first game', value: 'p1', choices: [['p1', 'First player', 'The first player on the Players card is Order in the first game, then Chaos.'], ['p2', 'Second player', 'The second player on the Players card is Order in the first game, then Chaos.']], when: function (m) { return m === '2p'; } },
+        { id: 'hints', label: 'Hints', value: 'on', choices: [['on', 'On', 'Each square shows the points a move there would make or lose for Order, and pointing at a number shows the palindromes it counts.'], ['off', 'Off', 'The board shows only where a chip can slide. The palindromes standing, Order’s score and the count at the end still show.']] },
         { id: 'cover', label: 'Hand over between turns', value: 'off', choices: [['off', 'Off', 'Nothing in Entropy is hidden, so the device just goes across the table.'], ['on', 'On', 'A cover names whose turn it is before each move.']], when: function (m) { return m === '2p'; } }
       ],
       players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
@@ -321,7 +346,7 @@
         // vs the computer, seat 0 is the person
         var pls = cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu }; });
         if (cpu && pls[0].cpu && !pls[1].cpu) pls.reverse();
-        newGame({ mode: cfg.mode, level: o.level || 'normal', sz: o.size === '5' ? 5 : 7, first: first, cover: o.cover === 'on' && !cpu, players: pls });
+        newGame({ mode: cfg.mode, level: o.level || 'normal', sz: o.size === '5' ? 5 : 7, first: first, cover: o.cover === 'on' && !cpu, hints: o.hints !== 'off', players: pls });
       }
     });
     var hero = app.querySelector('.setup-hero');
@@ -332,11 +357,11 @@
   function freshFields(st) { st.hist = []; st.started = Date.now(); st.ev = []; st.best = [0, 0]; st.big = [0, 0]; }
   function newGame(o, again) {
     stopAll();
-    var keep = o || { mode: S.mode, level: S.level, sz: S.sz, first: S.ord[0], cover: S.cover, players: S.players };
+    var keep = o || { mode: S.mode, level: S.level, sz: S.sz, first: S.ord[0], cover: S.cover, hints: S.hints !== false, players: S.players };
     // a rematch: the other player is Order first this time
     var first = again ? 1 - keep.first : keep.first;
     S = C.newMatch({ sz: keep.sz, first: first });
-    S.mode = keep.mode; S.level = keep.level; S.cover = keep.cover; S.players = keep.players;
+    S.mode = keep.mode; S.level = keep.level; S.cover = keep.cover; S.hints = keep.hints !== false; S.players = keep.players;
     freshFields(S); VIEW = null; SEL = HOV = -1;
     Kit.gameStart(); save(); render();
     Kit.sfx('deal');
@@ -344,7 +369,7 @@
   }
   var TIMERS = [];
   function later(fn, ms) { var t = setTimeout(function () { TIMERS.splice(TIMERS.indexOf(t), 1); fn(); }, ms); TIMERS.push(t); return t; }
-  function stopAll() { TIMERS.forEach(clearTimeout); TIMERS = []; BUSY = 0; VIEW = null; DRAG = null; }
+  function stopAll() { TIMERS.forEach(clearTimeout); TIMERS = []; BUSY = 0; VIEW = null; DRAG = null; PEEK = LINEPK = -1; }
 
   // ── Moves ────────────────────────────────────────────────────────────────
   function snap(byCpu) { var c = JSON.parse(JSON.stringify(S)); delete c.hist; return { s: c, cpu: !!byCpu }; }
@@ -358,7 +383,7 @@
     if (!res) return false;
     if (res.end) S.hist = []; else { S.hist.push(h0); if (S.hist.length > 200) S.hist.shift(); }
     note(S, res, b0);
-    SEL = HOV = -1;
+    SEL = HOV = PEEK = -1;
     save();
     show(res, b0, trayR);
     return true;
@@ -511,7 +536,11 @@
     COUNTING = { done: done, skip: false };
     function step() {
       if (!COUNTING) return;
-      if (k >= L.length) { var d = COUNTING.done; COUNTING = null; paintStatus(); later(d, 500); return; }
+      if (k >= L.length) {
+        var d = COUNTING.done; COUNTING = null;
+        if (VIEW && VIEW.count) { VIEW.cs = maximal(sc.runs).map(function (r) { return capsule(r, ''); }).join(''); VIEW.bk = null; }
+        paintRuns(); paintStatus(); later(d, 500); return;
+      }
       var pts = sc.lines[k], mine = sc.runs.filter(function (r) { return r[0] === k; });
       paintCount(b, k, mine, pts, sc.lines);
       run += pts;
@@ -594,7 +623,7 @@
   }
 
   // ── The table ────────────────────────────────────────────────────────────
-  var bdEl, wellsEl, chipsEl, runsEl, dstEl, fxEl, bagBox, bagEl, trayEl, countsEl, topBar, botBar, turnEl, actsEl, roomEl;
+  var bdEl, wellsEl, chipsEl, runsEl, dstEl, fxEl, bkEl, bagBox, bagEl, trayEl, countsEl, topBar, botBar, turnEl, actsEl, roomEl;
   function render() {
     if (!S) return;
     app.innerHTML = ''; app.classList.add('ipl');
@@ -607,9 +636,9 @@
     bagBox.appendChild(bagEl); bagBox.appendChild(trayEl); bagBox.appendChild(countsEl);
     var frame = el('div', { class: 'frame' });
     bdEl = el('div', { class: 'bd', role: 'grid', 'aria-label': 'Entropy board' });
-    wellsEl = el('div', { class: 'lyr wls' }); chipsEl = el('div', { class: 'lyr' }); dstEl = el('div', { class: 'lyr' }); fxEl = el('div', { class: 'lyr' });
+    wellsEl = el('div', { class: 'lyr wls' }); chipsEl = el('div', { class: 'lyr' }); dstEl = el('div', { class: 'lyr' }); fxEl = el('div', { class: 'lyr' }); bkEl = el('div', { class: 'lyr bk', 'aria-hidden': 'true' });
     runsEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); runsEl.setAttribute('class', 'runs');
-    bdEl.appendChild(wellsEl); bdEl.appendChild(chipsEl); bdEl.appendChild(runsEl); bdEl.appendChild(dstEl); bdEl.appendChild(fxEl);
+    bdEl.appendChild(wellsEl); bdEl.appendChild(chipsEl); bdEl.appendChild(runsEl); bdEl.appendChild(dstEl); bdEl.appendChild(bkEl); bdEl.appendChild(fxEl);
     frame.appendChild(bdEl);
     col.appendChild(topBar); col.appendChild(bagBox); col.appendChild(frame); col.appendChild(botBar);
     turnEl = el('div', { class: 'turn' }); col.appendChild(turnEl);
@@ -660,13 +689,14 @@
     chipsEl.innerHTML = s;
     paintRuns();
     paintDst();
+    if (BRK) paintBreak(BRK);   // (again, clear of the number now drawn)
     // the empty wells Chaos can fill glow faintly on a person's turn
     var lit = canAct() && S.ph === 'place';
     Array.prototype.forEach.call(wellsEl.children, function (w, i) { w.classList.toggle('lit', lit && !b[i]); });
   }
   function ghost() {
     if (!canAct()) return null;
-    var h = DRAG && DRAG.on ? DRAG.over : HOV;
+    var h = pointed();
     if (h < 0) return null;
     if (S.ph === 'place') return S.b[h] ? null : { i: h, c: S.chip };
     if (SEL >= 0 && C.canSlide(S.b, S.sz, SEL, h)) return { i: h, c: S.b[SEL] };
@@ -693,13 +723,21 @@
   function paintRuns() {
     if (!runsEl) return;
     var s = '';
-    if (VIEW && VIEW.count) { runsEl.innerHTML = VIEW.cs || ''; return; }
-    var b = curB(), sc = C.score(b, S.sz), hb = hypo();
-    if (hb) {
-      var nr = newRuns(S.b, hb), keys = {}; nr.forEach(function (r) { keys[r.join(',')] = 1; });
-      maximal(C.score(hb, S.sz).runs).forEach(function (r) { s += capsule(r, keys[r.join(',')] ? 'pv' : 'dim'); });
+    if (VIEW && VIEW.count) {
+      runsEl.innerHTML = VIEW.cs || '';
+      // the line being counted, or a line's number pointed at once the count is over
+      setBreak(LINEPK >= 0 && !COUNTING ? lineBreak(curB(), LINEPK) : VIEW.bk || null);
+      return;
+    }
+    var b = curB(), sc = C.score(b, S.sz), hb = hintsOn() ? hypo() : null, bl = hb ? diffRuns(S.b, hb) : null, brk = null;
+    if (bl && bl.length) {
+      // a number pointed at: the palindromes standing dimmed, and each palindrome it counts lit with its own points
+      maximal(sc.runs).forEach(function (r) { s += capsule(r, 'dim'); });
+      var g = ghost(), xy = cellXY(g.i);
+      brk = { list: bl, avoid: [[xy[0] + 0.5, xy[1] + 0.5, 0.34, 0.27]], say: breakSay(bl, g) };
     } else maximal(sc.runs).forEach(function (r) { s += capsule(r, FLASH[r.join(',')] ? 'new' : ''); });
     runsEl.innerHTML = s;
+    setBreak(brk);
   }
   function flashRuns(list) {
     FLASH = {}; list.forEach(function (r) { FLASH[r.join(',')] = 1; });
@@ -711,8 +749,14 @@
   function paintDst() {
     if (!dstEl) return;
     var s = '', n = S.sz;
-    if (canAct()) {
-      var base = C.total(S.b, n), hv = DRAG && DRAG.on ? DRAG.over : HOV;
+    if (canAct() && !hintsOn()) {
+      // Hints off: only where the chosen chip can slide, each square a plain mark
+      if (S.ph === 'slide' && SEL >= 0) C.slides(S.b, n).forEach(function (m) {
+        if (m[0] !== SEL) return;
+        var xy = cellXY(m[1]); s += '<div class="dst" style="left:' + xy[0] * 100 / n + '%;top:' + xy[1] * 100 / n + '%"><span class="z"></span></div>';
+      });
+    } else if (canAct()) {
+      var base = C.total(S.b, n), hv = pointed();
       if (S.ph === 'slide' && SEL >= 0) {
         C.slides(S.b, n).forEach(function (m) {
           if (m[0] !== SEL) return;
@@ -725,11 +769,118 @@
           if (S.b[i]) continue;
           var b2 = S.b.slice(); b2[i] = S.chip;
           var g2 = C.total(b2, n) - base;
-          if (g2 > 0) { var xy2 = cellXY(i); s += '<div class="dst" style="left:' + xy2[0] * 100 / n + '%;top:' + xy2[1] * 100 / n + '%"><span class="give">+' + g2 + '</span></div>'; }
+          if (g2 > 0) { var xy2 = cellXY(i); s += '<div class="dst' + (i === hv ? ' hov' : '') + '" style="left:' + xy2[0] * 100 / n + '%;top:' + xy2[1] * 100 / n + '%"><span class="give">+' + g2 + '</span></div>'; }
         }
       }
     }
     dstEl.innerHTML = s;
+    dstEl.classList.toggle('dim', !!BRK);
+  }
+  // ── Where a number comes from ────────────────────────────────────────────
+  // Pointing at a number (a mouse over it, a finger held on it, a chip dragged over it) lights every palindrome it
+  // counts, each with its own points, worked out by the core's own count (C.score), so the parts always add up to it.
+  var PEEK = -1, LINEPK = -1, BRK = null, NOCLICK = false;
+  function hintsOn() { return !S || S.hints !== false; }
+  function pointed() { return DRAG && DRAG.on && !DRAG.peek0 ? DRAG.over : PEEK >= 0 ? PEEK : HOV; }
+  // the palindromes a move makes (+ their length) and breaks (- their length)
+  function diffRuns(b0, b1) {
+    var a = runsKey(b0), b = runsKey(b1), out = [];
+    Object.keys(b).forEach(function (k) { if (!a[k]) out.push({ r: b[k], v: b[k][2] }); });
+    Object.keys(a).forEach(function (k) { if (!b[k]) out.push({ r: a[k], v: -a[k][2] }); });
+    return out;
+  }
+  function eqOf(list) {
+    var l = list.slice().sort(function (x, y) { return (y.v > 0) - (x.v > 0) || Math.abs(y.v) - Math.abs(x.v); });
+    // (no-break spaces, so the sum never splits across lines)
+    return l.map(function (x, j) { return j ? (x.v > 0 ? ' + ' + x.v : ' − ' + (-x.v)) : (x.v > 0 ? String(x.v) : '−' + (-x.v)); }).join('');
+  }
+  function ptsW(v) { return v + (Math.abs(v) === 1 ? ' point' : ' points'); }
+  function breakSay(list, g) {
+    var t = 0; list.forEach(function (x) { t += x.v; });
+    var eq = list.length > 1 ? ': ' + eqOf(list) : '', nm = C.name(g.i, S.sz);
+    if (S.ph === 'place') return 'The ' + CNAME[g.c] + ' chip on ' + nm + ' would give Order ' + ptsW(t) + eq + '.';
+    var head = 'Sliding the ' + CNAME[g.c] + ' chip to ' + nm;
+    if (t > 0) return head + ' would make ' + ptsW(t) + ' for Order' + eq + '.';
+    if (t < 0) return head + ' would cost Order ' + ptsW(-t) + eq + '.';
+    return head + ' would make as many points as it breaks' + eq + '.';
+  }
+  // a counted line: its palindromes, with its number on the pill at its end kept clear
+  function lineBreak(b, k) {
+    var n = S.sz, list = [];
+    C.score(b, n).runs.forEach(function (r) { if (r[0] === k) list.push({ r: r, v: r[2] }); });
+    if (!list.length) return null;
+    var t = 0; list.forEach(function (x) { t += x.v; });
+    return { list: list, avoid: [k < n ? [n - 0.35, k + 0.5, 0.45, 0.3] : [k - n + 0.5, n - 0.3, 0.45, 0.3]],
+      say: cap1(C.lineName(k, n)) + ' scores ' + ptsW(t) + (list.length > 1 ? ': ' + eqOf(list) : '') + '.' };
+  }
+  function setBreak(brk) {
+    var key = brk ? brk.say + '|' + brk.list.map(function (x) { return x.r.join(','); }).join(';') : '';
+    var was = BRK ? BRK.key : '';
+    BRK = brk; if (brk) brk.key = key;
+    if (key === was && (!brk || bkEl.firstChild)) return;
+    paintBreak(brk);
+    if ((brk ? brk.say : '') !== (was ? was.split('|')[0] : '')) paintTurn();
+  }
+  // Each palindrome is a bar from its first chip's middle to its last's, in a lane of its own where palindromes of one
+  // line share a square (the longest in the middle lane), with its points on a tag along it, clear of the number
+  // pointed at and of the other tags
+  function paintBreak(brk) {
+    if (!bkEl) return;
+    if (!brk) { bkEl.innerHTML = ''; return; }
+    var n = S.sz, cellPx = (bdEl.getBoundingClientRect().width / n) || 40;
+    var fs = Math.max(11, Math.min(21, cellPx * 0.25)), hw = fs * 0.98 / cellPx, hh = fs * 0.72 / cellPx;
+    var byLine = {}, svg = '', tags = '';
+    var boxes = brk.avoid.map(function (a) { return { x: a[0], y: a[1], w: a[2], h: a[3] }; });
+    // the number pointed at as it is drawn (a small board's number is larger than its square's share)
+    var hs = dstEl && dstEl.querySelector('.dst.hov span'), br0 = bdEl.getBoundingClientRect();
+    if (hs && br0.width) {
+      // (its laid-out size, raised as hovering raises it; a rectangle on screen may still be growing in)
+      var u = br0.width / n;
+      boxes[0] = { x: boxes[0].x, y: boxes[0].y, w: hs.offsetWidth * 1.15 / 2 / u, h: hs.offsetHeight * 1.15 / 2 / u };
+    }
+    var nAvoid = boxes.length;
+    brk.list.slice().sort(function (x, y) { return y.r[2] - x.r[2] || x.r[1] - y.r[1]; }).forEach(function (it) { (byLine[it.r[0]] = byLine[it.r[0]] || []).push(it); });
+    var items = [];
+    Object.keys(byLine).forEach(function (kk) {
+      var k = +kk, its = byLine[k], lanes = [];
+      its.forEach(function (it) {
+        var a = it.r[1], e = a + it.r[2] - 1, L = 0;
+        while (lanes[L] && lanes[L].some(function (q) { return !(e < q[0] || a > q[1]); })) L++;
+        (lanes[L] = lanes[L] || []).push([a, e]); it.lane = L;
+      });
+      var m = lanes.length, d = m > 1 ? Math.min(0.25, 0.6 / (m - 1)) : 0, offs = [];
+      for (var j = 0; j < m; j++) offs.push((j - (m - 1) / 2) * d);
+      offs.sort(function (x, y) { return Math.abs(x) - Math.abs(y) || x - y; });
+      its.forEach(function (it) {
+        var row = k < n, c = (row ? k : k - n) + 0.5 + offs[it.lane], a = it.r[1] + 0.5, e = it.r[1] + it.r[2] - 0.5;
+        it.P = function (t) { return row ? [t, c] : [c, t]; }; it.a = a; it.e = e;
+        var p0 = it.P(a), p1 = it.P(e), neg = it.v < 0 ? ' class="neg"' : '';
+        svg += '<g' + neg + '><line class="u" x1="' + p0[0] + '" y1="' + p0[1] + '" x2="' + p1[0] + '" y2="' + p1[1] + '"/><line class="l" x1="' + p0[0] + '" y1="' + p0[1] + '" x2="' + p1[0] + '" y2="' + p1[1] + '"/>' +
+          '<circle class="d" cx="' + p0[0] + '" cy="' + p0[1] + '" r=".085"/><circle class="d" cx="' + p1[0] + '" cy="' + p1[1] + '" r=".085"/></g>';
+        items.push(it);
+      });
+    });
+    // the tags: the shortest bars choose first (they have the fewest places), each the free place nearest its middle
+    items.sort(function (x, y) { return x.r[2] - y.r[2]; }).forEach(function (it) {
+      // places along the bar first, then just beside it; the one that covers least (the number pointed at counts most),
+      // then the nearest the bar's middle
+      var mid = (it.a + it.e) / 2, at = null, best = Infinity, row = it.r[0] < n;
+      [0, 0.42, -0.42].forEach(function (side, si) {
+        for (var t = it.a; t <= it.e + 1e-6; t += 0.25) {
+          var p = it.P(t); if (side) p = row ? [p[0], p[1] + side] : [p[0] + side, p[1]];
+          var cost = si * 0.05 + Math.abs(t - mid) * 0.01;
+          if (p[0] - hw < -0.15 || p[0] + hw > n + 0.15 || p[1] - hh < -0.15 || p[1] + hh > n + 0.15) cost += 5;
+          boxes.forEach(function (q, qi) {
+            var ox = hw + q.w + 0.03 - Math.abs(p[0] - q.x), oy = hh + q.h + 0.03 - Math.abs(p[1] - q.y);
+            if (ox > 0 && oy > 0) cost += ox * oy * (qi < nAvoid ? 40 : 10);
+          });
+          if (cost < best - 1e-9) { best = cost; at = p; }
+        }
+      });
+      boxes.push({ x: at[0], y: at[1], w: hw, h: hh });
+      tags += '<div class="t' + (it.v < 0 ? ' neg' : '') + '" style="left:' + (at[0] * 100 / n) + '%;top:' + (at[1] * 100 / n) + '%;font-size:' + fs.toFixed(1) + 'px">' + (it.v > 0 ? it.v : '−' + (-it.v)) + '</div>';
+    });
+    bkEl.innerHTML = '<svg viewBox="0 0 ' + n + ' ' + n + '">' + svg + '</svg>' + tags;
   }
   function paintCount(b, k, mine, pts, per) {
     var n = S.sz, s = '';
@@ -738,11 +889,11 @@
     s += '<rect class="lnhl" x="' + (x + 0.02) + '" y="' + (y + 0.02) + '" width="' + (w - 0.04) + '" height="' + (h - 0.04) + '" rx=".46"/>';
     var sc = C.score(b, n);
     maximal(sc.runs.filter(function (r) { return r[0] < k; })).forEach(function (r) { s += capsule(r, 'dim'); });
-    maximal(mine).forEach(function (r) { s += capsule(r, 'cnt'); });
-    VIEW.cs = s; paintRuns();
+    maximal(mine).forEach(function (r) { s += capsule(r, 'cnt dim'); });
+    VIEW.cs = s; VIEW.bk = pts ? lineBreak(b, k) : null; paintRuns();
     // the line's points on a gold pill at its end
     var cell = bdEl.getBoundingClientRect().width / n;
-    var pill = el('div', { class: 'lp' + (pts ? '' : ' z'), text: String(pts) });
+    var pill = el('div', { class: 'lp' + (pts ? ' pk' : ' z'), text: String(pts), 'data-k': k });
     // (over the line's last chip's outer edge, so it stays on the frame at every size)
     if (k < n) { pill.style.left = 'calc(100% - 3px)'; pill.style.top = ((k + 0.5) * 100 / n) + '%'; pill.style.transform = 'translate(-100%,-50%)'; }
     else { pill.style.left = ((k - n + 0.5) * 100 / n) + '%'; pill.style.top = 'calc(100% - 3px)'; pill.style.transform = 'translate(-50%,-100%)'; }
@@ -791,7 +942,7 @@
   function sweepBack(cb) {
     var br = bagEl.getBoundingClientRect(), list = chipsEl.querySelectorAll('.ch');
     Kit.sfx('roll'); Kit.haptic('medium');
-    runsEl.innerHTML = ''; fxEl.innerHTML = '';
+    runsEl.innerHTML = ''; fxEl.innerHTML = ''; LINEPK = -1; setBreak(null);
     Array.prototype.forEach.call(list, function (c, j) {
       var r = c.getBoundingClientRect(), dx = br.left + br.width / 2 - (r.left + r.width / 2), dy = br.top + br.height * 0.45 - (r.top + r.height / 2);
       c.style.transition = 'transform .55s cubic-bezier(.5,0,.75,.4) ' + (j * 9) + 'ms, opacity .25s ease ' + (j * 9 + 380) + 'ms';
@@ -849,7 +1000,21 @@
     if (!turnEl || !S) return;
     var bs = bottomSeat(), cnt = o && o.count;
     bar(topBar, 1 - bs, cnt); bar(botBar, bs, cnt);
-    turnEl.innerHTML = '';
+    LASTCNT = cnt || null;
+    if (paintTurn()) paintRoom();
+  }
+  var LASTCNT = null;
+  function paintTurn() {
+    if (!turnEl || !S) return;
+    var cnt = LASTCNT, h0 = turnEl.offsetHeight;
+    turnEl.innerHTML = ''; turnEl.style.fontSize = '';
+    if (BRK && BRK.say && !(cnt && COUNTING)) {
+      // the sentence takes the line's own height, a step smaller where it would need more, so nothing on the table moves
+      turnEl.appendChild(el('span', { class: 'bks', text: BRK.say }));
+      var f0 = parseFloat(getComputedStyle(turnEl).fontSize) || 16;
+      for (var f = 0.95; turnEl.offsetHeight > h0 + 1 && f >= 0.7; f -= 0.05) turnEl.style.fontSize = Math.max(11, f0 * f) + 'px';
+      return true;
+    }
     if (NET && LEFT) { turnEl.appendChild(el('span', { text: LEFT.text || 'The other player left' })); return; }
     if (cnt) { turnEl.appendChild(el('span', { text: 'Game ' + (S.gm.length) + ': counting ' + C.lineName(cnt.line, S.sz) + (cnt.pts ? ', ' + cnt.pts + (cnt.pts === 1 ? ' point' : ' points') : ', no palindromes') })); return; }
     if (S.over) { turnEl.appendChild(el('span', { text: S.win >= 0 ? (isMe(S.win) ? 'You win the match' : S.players[S.win].name + ' wins the match') : 'The match is a draw' })); return; }
@@ -863,7 +1028,7 @@
     else if (SEL >= 0) txt = 'Tap a lit square to slide the ' + CNAME[S.b[SEL]] + ' chip there';
     else txt = (solo ? 'Your turn as Order: ' : Kit.poss(p.name) + ' turn as Order: ') + 'slide a chip, or pass';
     turnEl.appendChild(el('span', { text: txt }));
-    paintRoom();
+    return true;
   }
   function paintActs() {
     if (!actsEl || !S) return;
@@ -893,7 +1058,24 @@
     return rr * n + c;
   }
   function wireBoard() {
+    // a press held still on a number shows where it comes from (a quick tap still plays)
+    var HOLDMS = 380;
+    function holdOn(d, i) {
+      d.ht = setTimeout(function () { if (DRAG !== d || d.on) return; d.peek = true; PEEK = i; Kit.haptic('tick'); paintBoard(); }, HOLDMS);
+    }
+    function holdOff(d) { if (d && d.ht) { clearTimeout(d.ht); d.ht = 0; } if (PEEK >= 0) { PEEK = -1; return true; } return false; }
+    // a counted line's number: a mouse over it, or a finger on it
+    function linePeek(k) { if (k === LINEPK) return; LINEPK = k; fxEl.querySelectorAll('.lp.pk').forEach(function (p) { p.classList.toggle('on', +p.dataset.k === k); }); paintRuns(); }
+    bdEl.addEventListener('pointerover', function (e) { var p = e.target.closest && e.target.closest('.lp.pk'); if (p && e.pointerType === 'mouse' && !COUNTING) linePeek(+p.dataset.k); });
+    bdEl.addEventListener('pointerout', function (e) { var p = e.target.closest && e.target.closest('.lp.pk'); if (p && e.pointerType === 'mouse' && !(e.relatedTarget && p.contains(e.relatedTarget))) linePeek(-1); });
     bdEl.addEventListener('pointerdown', function (e) {
+      var lp = !COUNTING && e.target.closest && e.target.closest('.lp.pk');
+      if (lp) {
+        e.preventDefault(); linePeek(+lp.dataset.k);
+        var off = function () { linePeek(-1); window.removeEventListener('pointerup', off); window.removeEventListener('pointercancel', off); };
+        if (e.pointerType !== 'mouse') { window.addEventListener('pointerup', off); window.addEventListener('pointercancel', off); }
+        return;
+      }
       if (COUNTING) { COUNTING.skip = true; return; }
       if (!canAct()) { if (S && !S.over && NET && !NET.myTurn() && !VIEW) { Kit.haptic('error'); Kit.toast('It’s ' + Kit.poss(S.players[C.seatToMove(S)].name) + ' turn'); } return; }
       var i = cellAt(e.clientX, e.clientY); if (i < 0) return;
@@ -905,12 +1087,21 @@
       } else if (S.ph === 'place' && !S.b[i] && e.pointerType !== 'mouse') {
         try { bdEl.setPointerCapture(e.pointerId); } catch (x) {}
         DRAG = { id: e.pointerId, place: true, x: e.clientX, y: e.clientY, on: false, over: i };
+        if (hintsOn()) holdOn(DRAG, i);
+      } else if (S.ph === 'slide' && !S.b[i] && SEL >= 0 && e.pointerType !== 'mouse' && hintsOn() && C.canSlide(S.b, S.sz, SEL, i)) {
+        // a finger on a lit square: held, it shows what the slide counts; a tap still slides (the click below)
+        DRAG = { id: e.pointerId, peek0: true, x: e.clientX, y: e.clientY, on: false, over: i };
+        holdOn(DRAG, i);
       }
     });
     bdEl.addEventListener('pointermove', function (e) {
       if (!S || COUNTING) return;
       if (DRAG && e.pointerId === DRAG.id) {
-        if (!DRAG.on && Math.hypot(e.clientX - DRAG.x, e.clientY - DRAG.y) > 8) { DRAG.on = true; }
+        if (!DRAG.on && Math.hypot(e.clientX - DRAG.x, e.clientY - DRAG.y) > 8) {
+          // moving on: a placement becomes a drag (what it would count follows the finger); a held lit square lets go
+          if (DRAG.peek0) { if (holdOff(DRAG)) paintBoard(); DRAG = null; return; }
+          DRAG.on = true; DRAG.peek = false; holdOff(DRAG);
+        }
         if (!DRAG.on) return;
         var o = cellAt(e.clientX, e.clientY);
         if (o !== DRAG.over) { DRAG.over = o; if (o >= 0) Kit.haptic('tick'); paintBoard(); }
@@ -923,7 +1114,11 @@
     function up(e) {
       if (!DRAG || e.pointerId !== DRAG.id) return;
       var d = DRAG; DRAG = null; dragFollow(null);
+      var peeked = !!d.peek; holdOff(d);
+      if (d.peek0) { if (peeked) { NOCLICK = true; setTimeout(function () { NOCLICK = false; }, 400); paintBoard(); } return; }
       if (e.type === 'pointercancel') { paintBoard(); return; }
+      // a finger held still to read a number only looks: the chip stays in the tray until a tap or a drag
+      if (d.place && peeked && !d.on) { NOCLICK = true; setTimeout(function () { NOCLICK = false; }, 400); paintBoard(); return; }
       var i = cellAt(e.clientX, e.clientY);
       if (d.place) { if (i >= 0 && !S.b[i]) placeAt(i); else paintBoard(); return; }
       if (d.on) {
@@ -936,6 +1131,7 @@
     bdEl.addEventListener('pointerup', up); bdEl.addEventListener('pointercancel', up);
     // a tap on an empty square: a slide there for the chosen chip, or Chaos's placement (a mouse)
     bdEl.addEventListener('click', function (e) {
+      if (NOCLICK) { NOCLICK = false; return; }
       if (!canAct()) return;
       var i = cellAt(e.clientX, e.clientY); if (i < 0) return;
       if (S.ph === 'place') { if (e.pointerType === 'mouse' || e.detail === 0 || !e.pointerType) { if (!S.b[i]) placeAt(i); } return; }
@@ -1129,6 +1325,7 @@
     if (bw && bhNow > bw * 0.5 / 1.6) app.style.setProperty('--bh', Math.max(52, Math.floor(bw * 0.5 / 1.6)) + 'px');
     var cell = (bsz - 20) / S.sz;
     bdEl.style.setProperty('--cell', cell + 'px');
+    if (BRK) paintBreak(BRK);
     paintRoom();
   }
   var lastWH = window.innerWidth + 'x' + window.innerHeight;
@@ -1141,14 +1338,16 @@
   // Seat 0 is Order in the first game when the host chose Order (or First player); each new match at the table starts
   // the other way round. The bag's random state is in the table's state, so every device draws the same chip.
   function netOpts() {
-    var o = { size: '7', first: 0 };
-    try { var g = JSON.parse(localStorage.getItem('gn_setup_' + KEY)); if (g && g.options) { if (g.options.size === '5') o.size = '5'; if (g.mode === 'cpu' ? g.options.role === 'chaos' : g.options.role2 === 'p2') o.first = 1; } } catch (e) {}
+    var o = { size: '7', first: 0, hints: 'on' };
+    try { var g = JSON.parse(localStorage.getItem('gn_setup_' + KEY)); if (g && g.options) { if (g.options.size === '5') o.size = '5'; if (g.options.hints === 'off') o.hints = 'off'; if (g.mode === 'cpu' ? g.options.role === 'chaos' : g.options.role2 === 'p2') o.first = 1; } } catch (e) {}
     return o;
   }
   function netStart(players, opts, last) {
     var first = last && last.ord ? 1 - last.ord[0] : opts && opts.first ? 1 : 0;
     var st = C.newMatch({ sz: last && last.sz ? last.sz : opts && opts.size === '5' ? 5 : 7, first: first });
     st.mode = 'online'; st.level = 'normal';
+    // the host's Hints (a rematch keeps the table's)
+    st.hints = last && last.hints != null ? last.hints !== false : !(opts && opts.hints === 'off');
     st.players = players.map(function (p) { return { name: p.name, cpu: false }; });
     freshFields(st); delete st.hist;
     st.wins = last && last.wins ? last.wins.slice() : [0, 0, 0];
@@ -1233,7 +1432,7 @@
     start: function (cfg) {
       stopAll();
       S = C.newMatch({ sz: cfg.sz || 7, first: cfg.first || 0, seed: cfg.seed });
-      S.mode = cfg.mode || '2p'; S.level = cfg.level || 'normal'; S.cover = false; S.players = cfg.players;
+      S.mode = cfg.mode || '2p'; S.level = cfg.level || 'normal'; S.cover = false; S.hints = cfg.hints !== false; S.players = cfg.players;
       freshFields(S); VIEW = null; SEL = HOV = -1;
       Kit.gameStart(); save(); render(); afterTurn();
     },

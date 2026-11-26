@@ -1771,7 +1771,21 @@ Underlying principles for everything:
   standing are outlined in gold (the longest in each place), a move's new ones lit and its points rising from the chip
   (`floatGain`). A tap on a chip lights the squares it can slide to, each with the points that slide would make or lose;
   on Chaos's turn the squares where the chip would make a palindrome show what it would give Order; a chip can also be
-  dragged (from the board, or from the tray), with the ghost and the would-be palindromes dashed. Moments: a run of
+  dragged (from the board, or from the tray), with the ghost and what it would count. **Where a number comes from**
+  (Tim, 2026-11-26: "why does between the blacks have +7 in entropy? not clear from the rules"): pointing at a number
+  (a mouse over the square, a finger held still on it 380 ms, `holdOn`/`PEEK`, or a chip dragged over it) dims the
+  standing outlines and lights every palindrome the number counts as a gold bar from chip to chip with its own points
+  on a tag (three blacks: the run 3, each pair 2), the crossing row's too, and a palindrome a slide would break as a red
+  dashed bar with its minus; nested ones in a line take lanes of their own, the longest in the middle, and the tags
+  keep clear of the number and each other (`diffRuns` from the core's `C.score`, so the parts always add up;
+  `paintBreak`, `setBreak`, `BRK`); the turn line says it as a sentence with the sum (`breakSay`, "The black chip on d4
+  would give Order 7 points: 3 + 2 + 2."). A held finger only looks (a quick tap still places or slides; `NOCLICK`).
+  During the count each line's palindromes are drawn the same way, and afterwards a line's gold pill pointed at shows
+  its breakdown (`lineBreak`, `linePeek`, `LINEPK`). **Hints** (the setup's option `hints`, On by default; `S.hints`,
+  a save without it is On; an online table carries the host's, `netOpts`/`netStart`): Off shows no points on Chaos's
+  squares or Order's slides (plain marks where the chosen chip can slide), no would-be palindromes and no breakdown
+  while choosing (`hintsOn`); what happened stays (the outlines, the points rising, Order's score, the count and its
+  pills' breakdown). Moments: a run of
   five or more, a big slide (8 points or more), a new best as Order on this device, the role swap (a big moment, then
   the chips sweep back into the bag). At the end of each game every line is counted in turn (`countLines`), its
   palindromes lit and its points on a gold pill at its end, Order's plate counting up; a tap speeds it. Layouts:
