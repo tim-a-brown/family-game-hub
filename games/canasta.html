@@ -312,12 +312,15 @@
       players: { min: 2, max: 4, count: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : 'mix'; }, teams: function (n) { return n === 4 ? [[0, 2], [1, 3]] : null; } },
       options: [
         { id: 'to', label: 'Play to', help: 'The first side to reach this score wins.', value: 5000, choices: [[2500, '2,500\nShorter'], [5000, '5,000\nStandard']] },
+        { id: 'hints', label: 'Hints', value: 'on',
+          choices: [['on', 'On', 'Before you draw, the table says what taking the pile would meld from your hand.'],
+            ['off', 'Off', 'No word on what the pile would meld: look for it in your hand yourself, as at a real table.']] },
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }
       ],
       onStart: function (cfg) {
         var n = cfg.players.length, o = cfg.options;
         S = Core.newGame({ kind: kindFor(n), players: cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu ? (p.level || o.level) : undefined }; }), target: +o.to || 5000, level: o.level });
-        S.mode = cfg.mode; S.me = 0; S.seen = 0;
+        S.mode = cfg.mode; S.me = 0; S.seen = 0; S.hints = o.hints !== 'off';
         LME = 0; Kit.gameStart(); undoStack = []; startHand();
       }
     });
@@ -699,6 +702,9 @@
   var goingOut = null;   // (the card to discard after Go out's melds)
 
   // ── The action bar ──
+  // Hints (the setup's choice): what taking the pile would meld. A game saved before there was a choice has no hints
+  // field and plays with them on.
+  function hintsOn(X) { X = X || S; return !X || X.hints !== false; }
   function hint(t, sub) { actEl.appendChild(el('span', { class: 'hint', text: t })); if (sub) actEl.appendChild(el('span', { class: 'sub', text: sub })); }
   function btn(label, cls, onClick, sub, dis) {
     var b = el('button', { type: 'button', class: 'btn ' + cls, disabled: dis ? true : null, onclick: function () { Kit.sfx('tap'); onClick(); } });
@@ -743,7 +749,7 @@
         row.appendChild(btn('Take the pile', 'btn-primary', tapPile, null, !tk));
         if (!Core.mustTake(S, m)) row.appendChild(btn('End the hand', 'btn-soft', function () { move({ k: 'end' }); }));
       } else {
-        hint(tk ? 'Draw from the stock, or take the pile.' : pileWhy(), sel.length || staged.length ? '' : tk && tk.ids.length ? 'Taking it melds the ' + Core.rname(t) + ' with ' + tk.ids.length + ' from your hand.' : '');
+        hint(tk ? 'Draw from the stock, or take the pile.' : pileWhy(), sel.length || staged.length || !hintsOn() ? '' : tk && tk.ids.length ? 'Taking it melds the ' + Core.rname(t) + ' with ' + tk.ids.length + ' from your hand.' : '');
         row.appendChild(btn('Draw', tk ? 'btn-soft' : 'btn-primary', tapStock));
         row.appendChild(btn(S.pile.length > 1 ? 'Take the pile of ' + S.pile.length : 'Take the pile', tk ? 'btn-primary' : 'btn-soft', tapPile, null, !tk));
       }
@@ -1190,7 +1196,7 @@
   function finish() {
     var st = S, w = st.winner;
     recordGame(st, modeName(st) + ' · ' + (st.mode === 'local' ? 'Pass & play' : 'Against the computer'));
-    var cfg = { players: st.players, target: st.target, level: st.level, mode: st.mode, kind: st.kind };
+    var cfg = { players: st.players, target: st.target, level: st.level, mode: st.mode, kind: st.kind, hints: hintsOn(st) };
     var mine = w === MS() && onePerson(), lose = Core.seatsOf(st, w).every(function (p) { return !person(p); });
     var ranks = []; for (var s = 0; s < Core.nSides(st); s++) ranks.push(s);
     ranks.sort(function (a, b) { return st.scores[b] - st.scores[a]; });
@@ -1203,7 +1209,7 @@
         sub: (mine ? (st.kind === 'part' ? 'You and ' + fn((me() + 2) % 4) + ' won by ' : 'You won by ') : 'Won by ') + fmt(st.scores[w] - st.scores[ranks[1]]) + ' · ' + st.hx.length + (st.hx.length === 1 ? ' hand' : ' hands') + (back ? ' · Came back from ' + fmt(back) + ' behind' : ''),
         rank: ranks.map(function (s) { return { name: sideName(s), score: st.scores[s], color: sideColor(s), cpu: Core.seatsOf(st, s).every(function (p) { return st.players[p].cpu; }), me: s === MS() && onePerson() }; }),
         lose: lose, icon: lose ? 'bot' : 'trophy',
-        again: function () { S = Core.newGame(cfg); S.mode = cfg.mode; S.seen = 0; LME = 0; Kit.gameStart(); undoStack = []; startHand(); },
+        again: function () { S = Core.newGame(cfg); S.mode = cfg.mode; S.seen = 0; S.hints = cfg.hints; LME = 0; Kit.gameStart(); undoStack = []; startHand(); },
         look: 'Look at the table',
         extra: [{ label: 'Score pad', onClick: function () { showPad(); } }],
         setup: function () { clearSave(); showSetup(); }
@@ -1232,13 +1238,13 @@
   function netOpts() {
     var g = {}; try { g = JSON.parse(localStorage.getItem('gn_setup_canasta')) || {}; } catch (e) {}
     var o = g.options || {}, n = Math.max(2, Math.min(4, +g.count || 4));
-    return { seats: n, to: +o.to || 5000, level: Core.lv(o.level) };
+    return { seats: n, to: +o.to || 5000, level: Core.lv(o.level), hints: o.hints === 'off' ? 'off' : 'on' };
   }
   function netStart(players, opts, last) {
     var n = players.length, pl = [];
     for (var p = 0; p < n; p++) { var x = players[PS({ n: n }, p)] || { name: 'Robot', bot: true }; pl.push({ name: x.name, cpu: !!x.bot, level: x.bot ? opts.level : undefined }); }
     var st = Core.newGame({ kind: kindFor(n), players: pl, target: opts.to, level: opts.level });
-    st.online = 1;
+    st.online = 1; st.hints = opts.hints !== 'off';
     return st;
   }
   function netTurn(st) { var p = Core.turn(st); return p < 0 ? [] : [PS(st, p)]; }

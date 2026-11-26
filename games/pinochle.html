@@ -431,13 +431,16 @@
         { id: 'to', label: 'Play to', help: 'The first side to reach this score wins.', value: 1500, choices: [[1000, '1,000\nShorter'], [1500, '1,500\nStandard']], when: function (m, o, n) { return n !== 2; } },
         { id: 'to2', label: 'Play to', help: 'Two-handed Pinochle is usually played to 1,000.', value: 1000, choices: [[500, '500\nShorter'], [1000, '1,000\nStandard']], when: function (m, o, n) { return n === 2; } },
         { id: 'pass', label: 'Cards passed', help: 'After trump is named, the bidder’s partner passes the bidder this many cards, and the bidder passes the same number back.', value: 4, choices: [[3, '3'], [4, '4']], when: function (m, o, n) { return n === 4; } },
+        { id: 'hints', label: 'Hints', value: 'on',
+          choices: [['on', 'On', 'While you bid, you see your meld with each suit as trump, with the best suit lit, and the table calls it as soon as a bid can no longer be made.'],
+            ['off', 'Off', 'No meld counted for you and no early call: work out your hand and the points still out yourself, as at a real table.']] },
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }
       ],
       onStart: function (cfg) {
         var n = cfg.players.length, o = cfg.options;
         S = Core.newGame({ kind: kindFor(n), players: cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu ? (p.level || o.level) : undefined }; }),
           target: n === 2 ? +o.to2 || 1000 : +o.to || 1500, passN: +o.pass || 4, level: o.level });
-        S.mode = cfg.mode; S.me = 0; S.seen = 0;
+        S.mode = cfg.mode; S.me = 0; S.seen = 0; S.hints = o.hints !== 'off';
         LME = 0; Kit.gameStart(); undoStack = []; startHand(true);
       }
     });
@@ -574,7 +577,7 @@
     var auc = S.kind !== 'two' && S.auction && S.auction.length && (S.phase === 'bid' || S.phase === 'trump' || S.phase === 'pass' || S.phase === 'passback' || S.phase === 'bury' || S.phase === 'meld');
     var ps = LAY === 'L-ps';   // (a phone on its side has room for one thing: your meld by suit, then the last trick)
     if ((S.kind !== 'two' && S.phase === 'bid' || auc) && !ps) infoEl.appendChild(aucBlock());
-    if (S.kind !== 'two' && (S.phase === 'bid' || S.phase === 'trump' && S.bidder === me()) && !BLIND && me() >= 0 && !(NET && MYSEAT < 0)) infoEl.appendChild(suitBlock());
+    if (S.kind !== 'two' && (S.phase === 'bid' || S.phase === 'trump' && S.bidder === me()) && !BLIND && me() >= 0 && !(NET && MYSEAT < 0) && hintsOn()) infoEl.appendChild(suitBlock());
     if (S.phase === 'play' || S.phase === 'stock' || S.phase === 'smeld') {
       if (S.lastTrick && S.lastTrick.cards) infoEl.appendChild(lastBlock());
       var mb = ps && S.lastTrick ? null : meldBlock(); if (mb) infoEl.appendChild(mb);
@@ -596,6 +599,9 @@
     if (!rows.length) t.appendChild(el('tr', null, ord.map(function () { return el('td', { class: 'p', text: '' }); })));
     return el('div', { class: 'ib' }, [el('div', { class: 'ib-h' }, [el('span', { text: 'The bidding' }), S.high ? el('b', { text: String(S.high) }) : null]), t]);
   }
+  // Hints (the setup's choice): your meld by suit while bidding, the best suit lit, and the Set! call. A game saved
+  // before there was a choice has no hints field and plays with them on.
+  function hintsOn(X) { X = X || S; return !X || X.hints !== false; }
   // your hand as each suit would make it: the meld and how many trumps (what a player works out before bidding)
   function suitBlock() {
     var h = S.hands[me()].concat(S.kind === 'cut' && S.phase === 'trump' ? S.widow : []), best = Core.bestTrump(h, 'normal').s;
@@ -919,15 +925,15 @@
     var passB = el('button', { type: 'button', class: 'btn btn-soft', text: 'Pass', disabled: stuck, onclick: function () { Kit.haptic('light'); move({ k: 'bid', b: 0 }); } });
     actEl.appendChild(el('div', { class: 'bidbar' }, [passB, el('div', { class: 'amt' }, [dn, out, up]), bidB]));
     var bt = Core.bestTrump(S.hands[m], 'normal'), mv = Core.meldOf(S.hands[m], bt.s).pts;
-    actEl.appendChild(el('span', { class: 'sub', text: stuck ? 'Everyone else passed, so the dealer has to bid.' : (mv ? 'You have ' + mv + ' in meld with ' + SN[bt.s].toLowerCase() + ' as trump.' : 'You have no meld yet, whatever is trump.') }));
+    if (stuck || hintsOn()) actEl.appendChild(el('span', { class: 'sub', text: stuck ? 'Everyone else passed, so the dealer has to bid.' : (mv ? 'You have ' + mv + ' in meld with ' + SN[bt.s].toLowerCase() + ' as trump.' : 'You have no meld yet, whatever is trump.') }));
   }
   function trumpBox() {
-    var m = me(), h = S.hands[m].concat(S.kind === 'cut' ? S.widow : []), best = Core.bestTrump(h, 'normal').s;
+    var m = me(), h = S.hands[m].concat(S.kind === 'cut' ? S.widow : []), best = hintsOn() ? Core.bestTrump(h, 'normal').s : '';
     var g = el('div', { class: 'trumps' });
     Core.SUITS.forEach(function (s) {
       var mp = Core.meldOf(h, s).pts, n = h.filter(function (c) { return c.s === s; }).length;
       g.appendChild(el('button', { type: 'button', class: (s === 'h' || s === 'd' ? 'red' : '') + (s === best ? ' best' : ''), 'aria-label': SN[s] + ' as trump', onclick: function () { Kit.haptic('medium'); move({ k: 'trump', s: s }); } },
-        [el('span', { class: 'g', text: GL[s] }), el('small', { text: 'Meld ' + mp }), el('small', { text: n + ' cards' })]));
+        [el('span', { class: 'g', text: GL[s] }), best ? el('small', { text: 'Meld ' + mp }) : null, el('small', { text: n + ' cards' })].filter(Boolean)));
     });
     actEl.appendChild(el('span', { class: 'hint', text: S.kind === 'cut' ? 'The widow is yours. Name trump.' : 'Name trump' }));
     actEl.appendChild(g);
@@ -1289,7 +1295,7 @@
     // what is left to take: every counter still out and the last trick
     var left = 0; X.hands.forEach(function (h) { h.forEach(function (c) { left += Core.cval(c); }); });
     var most = (X.won[bs] || left > 0 ? meldB : 0) + X.cpts[bs] + left + 10 + (X.kind === 'cut' ? X.buriedPts || 0 : 0);
-    if (most < X.high && !setShown[r]) {
+    if (most < X.high && !setShown[r] && hintsOn(X)) {
       setShown[r] = 1;
       later(function () {
         if (mineB) { Kit.moment({ chip: X.high, title: 'Set!', line: 'There aren’t enough points left to make ' + X.high + '.', tone: 'bad', at: tblBg }); Kit.sfx('bad'); Kit.haptic('error'); }
@@ -1485,7 +1491,7 @@
   function finish() {
     var st = S, w = st.winner;
     recordGame(st, (st.kind === 'part' ? 'Partnership' : st.kind === 'cut' ? 'Cutthroat' : 'Two-handed') + ' · ' + (st.mode === 'local' ? 'Pass & play' : 'Against the computer'));
-    var cfg = { players: st.players, target: st.target, passN: st.passN, level: st.level, mode: st.mode, kind: st.kind };
+    var cfg = { players: st.players, target: st.target, passN: st.passN, level: st.level, mode: st.mode, kind: st.kind, hints: hintsOn(st) };
     var mine = w === MS() && onePerson(), lose = Core.seatsOf(st, w).every(function (p) { return !person(p); });
     var ranks = []; for (var s = 0; s < Core.nSides(st); s++) ranks.push(s);
     ranks.sort(function (a, b) { return st.scores[b] - st.scores[a]; });
@@ -1496,7 +1502,7 @@
       sub: (mine ? (st.kind === 'part' ? 'You and ' + fn((me() + 2) % 4) + ' won by ' : 'You won by ') : 'Won by ') + (st.scores[w] - st.scores[second]) + ' · ' + st.hx.length + ' hands',
       rank: ranks.map(function (s) { return { name: sideName(s), score: st.scores[s], color: sideColor(s), cpu: Core.seatsOf(st, s).every(function (p) { return st.players[p].cpu; }), me: s === MS() && onePerson() }; }),
       lose: lose, icon: lose ? 'bot' : 'trophy',
-      again: function () { S = Core.newGame(cfg); S.mode = cfg.mode; S.seen = 0; LME = 0; Kit.gameStart(); undoStack = []; startHand(true); },
+      again: function () { S = Core.newGame(cfg); S.mode = cfg.mode; S.seen = 0; S.hints = cfg.hints; LME = 0; Kit.gameStart(); undoStack = []; startHand(true); },
       look: 'Look at the table',
       extra: [{ label: 'Score pad', onClick: function () { showPad(); } }],
       setup: function () { clearSave(); showSetup(); }
@@ -1525,13 +1531,13 @@
   function netOpts() {
     var g = {}; try { g = JSON.parse(localStorage.getItem('gn_setup_pinochle')) || {}; } catch (e) {}
     var o = g.options || {}, n = Math.max(2, Math.min(4, +g.count || 4));
-    return { seats: n, to: n === 2 ? +o.to2 || 1000 : +o.to || 1500, pass: +o.pass || 4, level: Core.lv(o.level) };
+    return { seats: n, to: n === 2 ? +o.to2 || 1000 : +o.to || 1500, pass: +o.pass || 4, level: Core.lv(o.level), hints: o.hints === 'off' ? 'off' : 'on' };
   }
   function netStart(players, opts, last) {
     var n = players.length, pl = [];
     for (var p = 0; p < n; p++) { var x = players[PS({ n: n }, p)] || { name: 'Robot', bot: true }; pl.push({ name: x.name, cpu: !!x.bot, level: x.bot ? opts.level : undefined }); }
     var st = Core.newGame({ kind: kindFor(n), players: pl, target: opts.to, passN: opts.pass, level: opts.level });
-    st.online = 1; st.series = last && last.series && last.series.length === Core.nSides(st) ? last.series.slice() : [0, 0, 0].slice(0, Core.nSides(st));
+    st.online = 1; st.hints = opts.hints !== 'off'; st.series = last && last.series && last.series.length === Core.nSides(st) ? last.series.slice() : [0, 0, 0].slice(0, Core.nSides(st));
     return st;
   }
   function netTurn(st) { var p = Core.turn(st); return p < 0 ? [] : [PS(st, p)]; }

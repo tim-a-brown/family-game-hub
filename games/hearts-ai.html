@@ -329,10 +329,11 @@ html.cdesk-on #app .cseat.s .tag > span:last-child{max-width:none;}
       modes: Kit.modes(['cpu', 'local']),
       players: { min: 3, max: 6, count: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; } },
       options: [{ id: 'target', label: 'Play to', help: 'The game ends when someone reaches this score, and the lowest score wins.', value: 100, choices: [[50, '50\nQuick'], [100, '100\nStandard']] },
+        HINTS_OPT,
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }],
       onStart: function (cfg) {
         S = {
-          mode: cfg.mode, me: 0, target: +cfg.options.target || 100, level: lvName(cfg.options.level), round: 0, rounds: [], highlights: [], started: Date.now(), qs: zeros(cfg.players.length), moons: zeros(cfg.players.length),
+          mode: cfg.mode, me: 0, target: +cfg.options.target || 100, level: lvName(cfg.options.level), hints: cfg.options.hints !== 'off', round: 0, rounds: [], highlights: [], started: Date.now(), qs: zeros(cfg.players.length), moons: zeros(cfg.players.length),
           players: cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu && p.level ? lvName(p.level) : undefined, total: 0 }; })   // (each robot its own skill at a mixed table)
         };
         undoStack = []; newHand();
@@ -340,6 +341,12 @@ html.cdesk-on #app .cseat.s .tag > span:last-child{max-width:none;}
     });
   }
 
+  // Hints: the points each seat has taken this hand, on its chip (and on the desk's score sheet). A game saved before there
+  // was a choice has no hints field and plays with them on.
+  var HINTS_OPT = { id: 'hints', label: 'Hints', value: 'on',
+    choices: [['on', 'On', 'Each player’s chip shows the points they have taken so far this hand.'],
+      ['off', 'Off', 'No points shown during a hand: keep count yourself, as at a real table.']] };
+  function hintsOn(X) { X = X || S; return !X || X.hints !== false; }
   // The computer's skill. Normal is how it has always played; a game saved or opened before there were levels plays Normal.
   var LEVELS = [['easy', 'Easy', 'Takes tricks it could have ducked and holds on to its dangerous cards.'],
     ['normal', 'Normal', 'Ducks tricks when it can and gets rid of its dangerous cards.'],
@@ -673,7 +680,7 @@ html.cdesk-on #app .cseat.s .tag > span:last-child{max-width:none;}
       title: tie ? "It's a tie!" : solo && rank[0].i === 0 ? 'You win!' : rank[0].name + ' wins',
       sub: 'Lowest score wins', rank: rank, lose: rank[0].cpu && !tie, icon: rank[0].cpu ? 'bot' : 'trophy',
       again: function () {
-        S = { mode: S.mode, me: S.me, target: S.target, level: S.level, round: 0, rounds: [], highlights: [], started: Date.now(), qs: zeros(NN()), moons: zeros(NN()), players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level, total: 0 }; }) };
+        S = { mode: S.mode, me: S.me, target: S.target, level: S.level, hints: hintsOn(), round: 0, rounds: [], highlights: [], started: Date.now(), qs: zeros(NN()), moons: zeros(NN()), players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level, total: 0 }; }) };
         newHand();
       },
       look: 'Look at the table',
@@ -738,9 +745,9 @@ html.cdesk-on #app .cseat.s .tag > span:last-child{max-width:none;}
         el('span', { text: NN() >= 5 && p !== mySeat() && innerWidth < 700 ? firstWord(pl.name) : pl.name })
       ]);
       var info = el('div', { class: 'info' }, [
-        el('span', { class: 'chip-s' + (S.taken && S.taken[p] ? ' hot' : ''), html: '<span class="handpts"><span class="h">♥</span>' + (S.taken ? S.taken[p] : 0) + '</span>' }),
+        hintsOn() ? el('span', { class: 'chip-s' + (S.taken && S.taken[p] ? ' hot' : ''), html: '<span class="handpts"><span class="h">♥</span>' + (S.taken ? S.taken[p] : 0) + '</span>' }) : null,
         el('span', { class: 'chip-s', text: String(pl.total) })
-      ]);
+      ].filter(Boolean));
       if (p === ME) { s.appendChild(info); s.appendChild(tag); }
       else {
         s.appendChild(tag); s.appendChild(info);
@@ -876,7 +883,7 @@ html.cdesk-on #app .cseat.s .tag > span:last-child{max-width:none;}
         var h = hx[i] || {};
         return { label: i + 1, cells: r.map(function (v, p) { return { v: v, zero: !v, mark: h.m === p ? Kit.icon('moon') : !(h.m >= 0) && h.q === p ? qm : '' }; }) };
       }),
-      live: playing ? { label: S.round, cells: S.taken.map(function (v, p) { return { v: S.phase === 'pass' ? '' : v, zero: !v, hot: v > 0, mark: S.tookQS === p ? qm : '' }; }) } : null,
+      live: playing ? { label: S.round, cells: S.taken.map(function (v, p) { return { v: S.phase === 'pass' || !hintsOn() ? '' : v, zero: !v, hot: v > 0 && hintsOn(), mark: S.tookQS === p ? qm : '' }; }) } : null,
       total: S.players.map(function (pl) { return { v: pl.total, lead: S.rounds.length > 0 && pl.total === low, pct: pl.total / S.target, warn: pl.total >= S.target * .8 }; }),
       meter: 'to ' + S.target,
       just: deskRounds >= 0 && S.rounds.length === deskRounds + 1
@@ -945,10 +952,11 @@ html.cdesk-on #app .cseat.s .tag > span:last-child{max-width:none;}
     var lv = S && S.level && !NET ? S.level : '';
     if (!lv) { try { lv = ((JSON.parse(localStorage.getItem('gn_setup_hearts') || '{}') || {}).options || {}).level; } catch (e) {} }
     var seats = 4; try { seats = +((JSON.parse(localStorage.getItem('gn_setup_hearts') || '{}') || {}).count) || 4; } catch (e) {}
-    return { target: +t === 50 ? 50 : 100, level: lvName(lv), seats: Math.max(3, Math.min(6, seats)) };
+    var hv = 'on'; try { hv = ((JSON.parse(localStorage.getItem('gn_setup_hearts') || '{}') || {}).options || {}).hints === 'off' ? 'off' : 'on'; } catch (e) {}
+    return { target: +t === 50 ? 50 : 100, level: lvName(lv), hints: hv, seats: Math.max(3, Math.min(6, seats)) };
   }
   function netStart(players, opts, last) {
-    var st = { online: 1, target: opts && +opts.target === 50 ? 50 : 100, level: lvName(opts && opts.level), round: 0, rounds: [], highlights: [], hx: [], started: Date.now(),
+    var st = { online: 1, target: opts && +opts.target === 50 ? 50 : 100, level: lvName(opts && opts.level), hints: !(opts && opts.hints === 'off'), round: 0, rounds: [], highlights: [], hx: [], started: Date.now(),
       qs: zeros(players.length), moons: zeros(players.length), wins: last && last.wins && last.wins.length === players.length ? last.wins.slice() : zeros(players.length),
       players: players.map(function (p) { return { name: p.name, cpu: !!p.bot, total: 0 }; }) };
     netDeal(st);
@@ -1259,7 +1267,7 @@ html.cdesk-on #app .cseat.s .tag > span:last-child{max-width:none;}
     state: function () { return S; },
     start: function (cfg) {
       token++; ME = 0; BLIND = false;
-      S = { mode: cfg.mode || 'cpu', me: 0, target: cfg.target || 100, level: lvName(cfg.level), round: 0, rounds: [], highlights: [], started: Date.now(), qs: zeros(cfg.players.length), moons: zeros(cfg.players.length),
+      S = { mode: cfg.mode || 'cpu', me: 0, target: cfg.target || 100, level: lvName(cfg.level), hints: cfg.hints !== false, round: 0, rounds: [], highlights: [], started: Date.now(), qs: zeros(cfg.players.length), moons: zeros(cfg.players.length),
         players: cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu ? lvName(p.level || cfg.level) : undefined, total: p.total || 0 }; }) };
       undoStack = []; newHand();
     },

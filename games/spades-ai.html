@@ -418,9 +418,15 @@ html.cdesk-on #app.stage > .cbar .blindbox .btn{flex:1 1 9.5em;width:auto;}
     ['hard', 'Hard', 'Remembers every card played and thinks each play through.']];
   function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
   function lvOf(p) { var pl = S.players && S.players[p]; return lvName((pl && pl.level) || S.level); }
-  function freshGame(players, target, blindOpt, bagsOpt, mode, level) {
+  // Hints: a suggested bid outlined in the bidding box, with "The tip is N" over it. A game saved before there was a
+  // choice has no hints field and plays with them on.
+  var HINTS_OPT = { id: 'hints', label: 'Hints', value: 'on',
+    choices: [['on', 'On', 'The bidding box outlines a suggested bid for your hand and says what it is.'],
+      ['off', 'Off', 'No suggested bid: count your own tricks, as at a real table.']] };
+  function hintsOn() { return !S || S.hints !== false; }
+  function freshGame(players, target, blindOpt, bagsOpt, mode, level, hints) {
     return {
-      mode: mode || 'cpu', me: 0, target: target, level: lvName(level), blindOpt: !!blindOpt, bagsOff: bagsOpt === false, round: 0, dealer: Math.floor(Math.random() * 4),
+      mode: mode || 'cpu', me: 0, target: target, level: lvName(level), hints: hints !== false, blindOpt: !!blindOpt, bagsOff: bagsOpt === false, round: 0, dealer: Math.floor(Math.random() * 4),
       scores: [0, 0], bags: [0, 0], rounds: [], highlights: [], started: Date.now(),
       tricksAll: [0, 0, 0, 0], sets: [0, 0], nilsMade: [0, 0, 0, 0],
       players: players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu && p.level ? lvName(p.level) : undefined }; })   // (each robot its own skill at a mixed table)
@@ -436,10 +442,11 @@ html.cdesk-on #app.stage > .cbar .blindbox .btn{flex:1 1 9.5em;width:auto;}
         { id: 'target', label: 'Play to', help: 'The first team to reach this many points wins.', value: 500, choices: [[300, '300\nQuicker'], [500, '500\nStandard']] },
         { id: 'bags', label: 'Sandbags', help: 'Tricks a team takes beyond its bid are bags.', value: 1, choices: [[1, 'On', 'Every 10 bags costs the team 100 points.'], [0, 'Off', 'Extra tricks are just 1 point each.']] },
         { id: 'blind', label: 'Blind Nil', help: 'Bidding to take zero tricks before you look at your cards, for 200 points (or minus 200).', value: 0, choices: [[0, 'Off', 'No Blind Nil bids.'], [1, 'On', 'A team that is behind by 100 or more can bid Blind Nil.']] },
+        HINTS_OPT,
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }
       ],
       onStart: function (cfg) {
-        S = freshGame(cfg.players, +cfg.options.target || 500, +cfg.options.blind === 1, +cfg.options.bags !== 0, cfg.mode, cfg.options.level);
+        S = freshGame(cfg.players, +cfg.options.target || 500, +cfg.options.blind === 1, +cfg.options.bags !== 0, cfg.mode, cfg.options.level, cfg.options.hints !== 'off');
         LME = 0; Kit.gameStart(); undoStack = []; newHand();
       }
     });
@@ -911,7 +918,7 @@ html.cdesk-on #app.stage > .cbar .blindbox .btn{flex:1 1 9.5em;width:auto;}
       highlights: hl,
       detail: { names: S.players.map(function (p) { return p.name; }), hx: S.hx || [], bags: S.bags, sets: S.sets, nils: S.nilsMade, tricks: S.tricksAll, hand: S.dtHand || null, to: S.target }
     });
-    var players = S.players, target = S.target, blind = S.blindOpt, bagsOn = !S.bagsOff, mode = S.mode;
+    var players = S.players, target = S.target, blind = S.blindOpt, bagsOn = !S.bagsOff, mode = S.mode, level = S.level, hints = hintsOn();
     var lose = !person(w) && !person(w + 2), mine = w === MT() && onePerson();
     clearSave(); S.phase = 'over';
     paintDesk();   // (a desk: the last hand is on the score sheet behind the results)
@@ -920,7 +927,7 @@ html.cdesk-on #app.stage > .cbar .blindbox .btn{flex:1 1 9.5em;width:auto;}
       sub: (mine ? 'You and ' + players[partnerOf(me())].name + ' won by ' : onePerson() ? 'They won by ' : 'Won by ') + (S.scores[w] - S.scores[l]),
       rank: [w, l].map(function (t) { return { name: teamShort(t), score: S.scores[t], color: Kit.color(t) }; }),
       lose: lose, icon: lose ? 'bot' : 'trophy',
-      again: function () { S = freshGame(players, target, blind, bagsOn, mode); LME = 0; Kit.gameStart(); undoStack = []; newHand(); },
+      again: function () { S = freshGame(players, target, blind, bagsOn, mode, level, hints); LME = 0; Kit.gameStart(); undoStack = []; newHand(); },
       look: 'Look at the table',
       setup: function () { clearSave(); showSetup(); }
     });
@@ -1076,7 +1083,7 @@ html.cdesk-on #app.stage > .cbar .blindbox .btn{flex:1 1 9.5em;width:auto;}
   }
   // The bid buttons (0 = Nil); the suggested bid is outlined
   function bidBox(pick) {
-    var e = estimate(S.hands[me()]), sug = Math.max(1, Math.min(13, Math.round(e.est)));
+    var e = estimate(S.hands[me()]), sug = hintsOn() ? Math.max(1, Math.min(13, Math.round(e.est))) : -1;
     var mate = S.bids[partnerOf(me())];
     var grid = el('div', { class: 'bidgrid' });
     for (var b = 0; b <= 13; b++) (function (b) {
@@ -1084,7 +1091,7 @@ html.cdesk-on #app.stage > .cbar .blindbox .btn{flex:1 1 9.5em;width:auto;}
         onclick: function () { pick(b); } }));
     })(b);
     return el('div', { class: 'bidbox' }, [
-      el('div', { class: 'bh' }, [el('span', { text: 'Your bid: how many tricks?' }), Kit.facts(el('small'), (mate != null ? 'Your partner bid ' + (mate === 0 ? 'Nil' : mate) + ' \u00b7 ' : '') + 'The tip is ' + sug)]),
+      el('div', { class: 'bh' }, [el('span', { text: 'Your bid: how many tricks?' }), sug < 0 && mate == null ? null : Kit.facts(el('small'), (mate != null ? 'Your partner bid ' + (mate === 0 ? 'Nil' : mate) + (sug < 0 ? '' : ' \u00b7 ') : '') + (sug < 0 ? '' : 'The tip is ' + sug))].filter(Boolean)),
       grid
     ]);
   }
@@ -1305,11 +1312,11 @@ html.cdesk-on #app.stage > .cbar .blindbox .btn{flex:1 1 9.5em;width:auto;}
   function withS(st, f) { var keep = S; S = st; try { return f(); } finally { S = keep; } }
   function netOpts() {
     var o = {}; try { o = (JSON.parse(localStorage.getItem('gn_setup_spades')) || {}).options || {}; } catch (e) {}
-    return { target: +o.target === 300 ? 300 : 500, blind: +o.blind === 1, bags: +o.bags !== 0, level: lvName(o.level) };
+    return { target: +o.target === 300 ? 300 : 500, blind: +o.blind === 1, bags: +o.bags !== 0, level: lvName(o.level), hints: o.hints === 'off' ? 'off' : 'on' };
   }
   function netStart(players, opts, last) {
     var pl = [0, 1, 2, 3].map(function (p) { var x = players[PS[p]] || { name: 'Robot', bot: true }; return { name: x.name, cpu: !!x.bot }; });
-    var st = freshGame(pl, +opts.target || 500, !!opts.blind, opts.bags !== false, null, opts.level);
+    var st = freshGame(pl, +opts.target || 500, !!opts.blind, opts.bags !== false, null, opts.level, opts.hints !== 'off');
     st.series = last && last.series ? last.series.slice() : [0, 0];
     nDeal(st);
     return st;
