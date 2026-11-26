@@ -7230,7 +7230,6 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
       { icon: 'play', label: 'Fast mode', toggle: function () { return !!lsGet('lorc_fast', false); }, onClick: function () { var on = !lsGet('lorc_fast', false); lsSet('lorc_fast', on); Kit.sfx('tap'); Kit.toast(on ? 'Fast mode on: the computer’s moves show as banners' : 'Fast mode off: you’ll see each of the computer’s moves'); } },
       { icon: 'sparkle', label: 'Playmat', when: function () { return !!S && ui.screen === 'game'; }, onClick: function () { matPicker(); } },
       { icon: 'battery', label: 'Battery saver', toggle: function () { return saverOn(); }, onClick: function () { var on = !saverOn(); lsSet(SAVER, on); applySaver(); Kit.sfx('tap'); Kit.toast(on ? 'Battery saver on: no motion effects or looping shimmer, and the screen can dim' : 'Battery saver off'); } },
-      { icon: 'lightbulb', label: 'Gameplay hints', toggle: function () { return hintsOn(); }, onClick: function () { var on = !hintsOn(); lsSet('lorc_hints', on); if (S && ui.screen === 'game') render(); Kit.sfx('tap'); Kit.toast(on ? 'Hints on: challenge previews, end-of-turn check, and a glow on characters that can still act' : 'Hints off'); } },
       { icon: 'swap', label: 'Flip opponents’ cards', toggle: function () { return !!flipOpp; }, onClick: function () { flipOpp = !flipOpp; lsSet(FLIP, flipOpp); if (S && ui.screen === 'game') render(); Kit.sfx('flip'); Kit.toast(flipOpp ? 'Opponent’s cards now face across the table' : 'Opponent’s cards face you again'); } }
     ],
     rules:
@@ -7311,6 +7310,10 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
           ['20', '20', 'The standard game.'], ['50', '50', 'A long game: more turns, bigger boards, more of your deck in play.']] },
         { id: 'hand', label: 'Opening hand', help: 'How many cards each player draws to start. The real game is 7.', value: '7', choices: [
           ['7', '7 cards', 'The standard game.'], ['10', '10 cards', 'House rule: everyone starts with 10, so there’s more to choose from on the first turns.']] },
+        // Hints (it was the menu's Gameplay hints, lorc_hints, whose choice is where a new setup starts)
+        { id: 'hints', label: 'Hints', value: lsGet('lorc_hints', true) === false ? 'off' : 'on', choices: [
+          ['on', 'On', 'Before a challenge the game shows what it would do to both characters, your characters that can still act glow, and you’re asked before ending a turn with lore left to quest for.'],
+          ['off', 'Off', 'You work out each challenge yourself and end your turn when you like, as at a real table.']] },
         { id: 'decks', label: 'Casual decks', help: 'Casual decks use more than two inks. They’re fun, but not allowed in standard play.', value: 'yes', choices: [
           ['yes', 'Allowed', 'Any saved deck can be played.'], ['no', 'Not allowed', 'Only standard decks (one or two inks).']] }
       ],
@@ -9921,7 +9924,7 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
   function chalHover(d, t) {
     if (d.cl) { d.cl.remove(); d.cl = null; } if (d.ct) { d.ct.remove(); d.ct = null; }
     if (d.g) d.g.classList.toggle('on-tgt', !!(t && t.chal));   // see-through over the target, so the target shows under it
-    if (!t || !t.chal || !S.cards[t.chal] || !S.cards[d.u]) return;
+    if (!t || !t.chal || !S.cards[t.chal] || !S.cards[d.u] || !hintsOn()) return;   // (Hints off: no outcome shown)
     var p = chalSay(d.u, t.chal), a = d.s.getBoundingClientRect(), b = t.node.getBoundingClientRect();
     var ax = a.left + a.width / 2, ay = a.top + a.height / 2, bx = b.left + b.width / 2, by = b.top + b.height / 2;
     var ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg');
@@ -10548,7 +10551,7 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
       }
       over += ui.fitExtra || 0;
       // and for the one with the most challenge targets listed over its buttons (chalList)
-      var ctN = function (x) { return S.cards[x] && isChar(x) && C(x).o === S.cur && canAct() && canChallenger(x) ? defenders(x).length : 0; };
+      var ctN = function (x) { return hintsOn() && S.cards[x] && isChar(x) && C(x).o === S.cur && canAct() && canChallenger(x) ? defenders(x).length : 0; };
       var ctMax = 0; ov._fitList.forEach(function (x) { ctMax = Math.max(ctMax, chalListH(ctN(x))); }); ctMax0 = ctMax;
       over += Math.max(0, ctMax - chalListH(ctN(ov._fitU)));
     }
@@ -11232,7 +11235,9 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
         // One target: the button names it and challenges it. Several: each target is a row of its own over the buttons
         // (chalRows, below), saying what the challenge would do, and a tap on a row challenges that card
         else if (ds.length === 1) add('Challenge ' + DD(ds[0]).n + (cTax ? ' · pay ' + cTax + ' ink' : ''), canChallenger(u), '', function () { runAction({ k: 'chal', u: u, t: ds[0] }); });
-        if (ds.length) chalRows = { u: u, ds: ds };
+        if (ds.length && hintsOn()) chalRows = { u: u, ds: ds };
+        // (Hints off: no rows saying what each challenge would do; with several targets one Challenge button picks on the table)
+        else if (ds.length > 1) add('Challenge' + (cTax ? ' · pay ' + cTax + ' ink' : ''), canChallenger(u), '', function () { humanChallenge(u); });
         if (cTax && inkReady(pi) < cTax && !c.ex && c.dry) acts.push({ label: 'Challenge', off: { ink: cTax, have: inkReady(pi), tip: 'Needs ' + cTax + ' ink to challenge.' } });
         if (S.P[pi].board.some(isLoc)) add('Move to a location', S.P[pi].board.some(function (l) { return canMove(u, l); }), '', function () { humanMove(u); });
         if (d.K.boost) add('Boost · ' + d.K.boost + ' ink', canBoost(u), '', function () { runAction({ k: 'boost', u: u }); });
@@ -11450,7 +11455,7 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
   // The computer's card, big, with what it just did across the top and a Continue button below
   // How the computer's moves are shown: a card to acknowledge, or a passing banner (fast mode / skip this turn)
   var FAST = 'lorc_fast';
-  // Gameplay hints (on unless turned off in the menu): the challenge preview, the end-of-turn check and the glow on
+  // Gameplay hints (the setup's Hints, on unless turned off): the challenge preview, the end-of-turn check and the glow on
   // characters that can still act
   function listNames(a) { return a.length < 2 ? esc(a[0] || '') : a.slice(0, -1).map(esc).join(', ') + ' and ' + esc(a[a.length - 1]); }
   // Can this card be used right now (played, inked, quested, challenged with)? Drives the gold edges
@@ -11460,7 +11465,9 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
     if (ctx !== 'board') return false;
     return C(u).o === S.cur && hintsOn() && (canQuest(u) || (canChallenger(u) && defenders(u).length > 0));
   }
-  function hintsOn() { return lsGet('lorc_hints', true) !== false; }
+  // Hints: the game's own choice from its setup (online, the host's); a game saved before the choice, and anything shown
+  // outside a game, follow the menu setting it replaced (lorc_hints)
+  function hintsOn() { var o = S && S.cfg && S.cfg.options; if (o && o.hints) return o.hints !== 'off'; return lsGet('lorc_hints', true) !== false; }
   // Battery saver (menu): the motion sensor is off (card tilt and table light rest), the looping shimmer is still, and
   // the screen may dim. Play, its animations, sounds and haptics are unchanged
   var SAVER = 'lorc_saver';
@@ -13825,6 +13832,13 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
   function netDb() { return window.FGHSync && FGHSync.db ? FGHSync.db() : Promise.reject(new Error('Sync isn’t loaded')); }
   function roomCol(db) { return db.collection('lorcanaRooms'); }
   // Your name and deck for online play
+  // a table you open plays with your Hints choice: the lobby's own, else the setup's, else the old menu setting
+  function netHints(me) {
+    if (me && (me.hints === 'on' || me.hints === 'off')) return me.hints;
+    var g = {}; ['gn_setup_lorcana', 'gn_setup_lorcana-play'].forEach(function (k) { if (g.hints) return; try { g = (JSON.parse(localStorage.getItem(k) || '{}') || {}).options || {}; } catch (e) {} });
+    if (g.hints === 'on' || g.hints === 'off') return g.hints;
+    return lsGet('lorc_hints', true) === false ? 'off' : 'on';
+  }
   function netMe() { var m = lsGet(NETME, null) || {}; if (!m.name) m.name = (function () { try { return (localStorage.getItem('my_name') || '').trim(); } catch (e) { return ''; } })() || (Kit.knownNames && Kit.knownNames()[0]) || ''; if (!m.deck) m.deck = (lsGet(LAST, {}) || {}).s0 || { kind: 'random' }; return m; }
   function netDeck(me) {
     if (DB.status !== 'ready') { Kit.toast(DB.status === 'error' ? 'The card library isn’t downloaded yet' : 'Still loading the cards…'); return null; }
@@ -13852,7 +13866,7 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
             if (++tries < 8) return attempt();
             throw new Error('Couldn’t find a free table code. Try again.');
           }
-          var host = { name: me.name, dev: NET.dev, deck: JSON.stringify(dk), mat: myMat(), goal: me.goal === 50 ? 50 : 20, hand: me.hand === 10 ? 10 : 7, casual: me.casual === 'no' ? 'no' : 'yes' };
+          var host = { name: me.name, dev: NET.dev, deck: JSON.stringify(dk), mat: myMat(), goal: me.goal === 50 ? 50 : 20, hand: me.hand === 10 ? 10 : 7, casual: me.casual === 'no' ? 'no' : 'yes', hints: netHints(me) };
           if (tags[0]) host.lk = tags[0];   // so the people linked to you see it's your table
           if (tags[1]) host.acct = tags[1];   // so your other devices find it
           var saved = ref.set({ host: host, guest: null, status: 'waiting', at: Date.now(), seq: 0, owner: 0, st: null, defs: null, pr: null, an: null, w: null, by: NET.dev });
@@ -14050,7 +14064,7 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
     }
     NET.dealt = true;
     var hd = JSON.parse(d.host.deck), gd = JSON.parse(d.guest.deck);
-    var cfg = { mode: 'online', players: [{ name: d.host.name, color: Kit.color(0) }, { name: d.guest.name, color: Kit.color(1) }], options: { first: 'random', goal: String(d.host.goal || 20), hand: String(d.host.hand || 7), decks: d.host.casual === 'no' ? 'no' : 'yes' } };
+    var cfg = { mode: 'online', players: [{ name: d.host.name, color: Kit.color(0) }, { name: d.guest.name, color: Kit.color(1) }], options: { first: 'random', goal: String(d.host.goal || 20), hand: String(d.host.hand || 7), decks: d.host.casual === 'no' ? 'no' : 'yes', hints: d.host.hints === 'off' ? 'off' : 'on' } };
     NET.owner = true; NET.synced = true; NET.seq = d.seq || 0;
     newGame(cfg, [{ kind: 'inline', name: hd.name, cards: hd.cards }, { kind: 'inline', name: gd.name, cards: gd.cards }]);
     NET.defs = S.defs;
@@ -14234,6 +14248,8 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
       seg([['7', '7'], ['10', '10']], String(me.hand || 7), function (v) { me.hand = +v; keep(); })]));
     wrap.appendChild(el('div', { class: 'dk-seat net-goal' }, [el('div', { class: 'grow' }, [el('b', { text: 'Casual decks' }), el('small', { text: 'More than two inks, at a table you open' })]),
       seg([['yes', 'Allowed'], ['no', 'Not allowed']], me.casual === 'no' ? 'no' : 'yes', function (v) { me.casual = v; keep(); })]));
+    wrap.appendChild(el('div', { class: 'dk-seat net-goal' }, [el('div', { class: 'grow' }, [el('b', { text: 'Hints' }), el('small', { text: 'Challenge previews and the end-of-turn check, at a table you open' })]),
+      seg([['on', 'On'], ['off', 'Off']], netHints(me), function (v) { me.hints = v; keep(); })]));
     var sub = function () { if (!seats.isConnected) { DB.subs.splice(DB.subs.indexOf(sub), 1); return; } paint(); };
     DB.subs.push(sub);
     wrap.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: 'Open a table', onclick: function (e) { var b = e.currentTarget; netAct(b, 'Opening…', function () { return netHost(me); }); } }));
