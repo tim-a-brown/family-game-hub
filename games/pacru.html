@@ -27,13 +27,13 @@
 .pc-w1 .pg{grid-template-columns:var(--lw) var(--fsz);grid-template-rows:minmax(0,1fr);grid-template-areas:"l b";justify-content:center;align-content:stretch;column-gap:var(--cg,28px);}
 .pc-w2 .pg{grid-template-columns:var(--lw) var(--rw) var(--fsz);grid-template-rows:minmax(0,1fr);grid-template-areas:"l r b";justify-content:center;align-content:stretch;column-gap:var(--cg,28px);}
 .pc-t .pg{grid-template-columns:var(--lw) minmax(0,1fr);grid-template-rows:var(--fsz) minmax(0,1fr);grid-template-areas:"b b" "l r";justify-content:center;column-gap:var(--cg,28px);row-gap:var(--gp,16px);}
+.pc-t1 .pg{grid-template-columns:var(--lw);grid-template-rows:var(--fsz) max-content minmax(0,1fr);grid-template-areas:"b" "l" "r";}
 .pg>.lcol{grid-area:l;min-height:0;min-width:0;display:flex;flex-direction:column;gap:var(--lg,10px);}
 .pc-port .pg>.lcol{display:contents;}
 .pc-port .plates{grid-area:p;}
 .pc-port .dock{grid-area:d;}
 .pg>.frame{grid-area:b;align-self:center;justify-self:center;}
 .pg>.room{grid-area:r;}
-.pc-w1 .lcol>.room{flex:1 1 auto;}
 .pc-land .lcol{justify-content:center;}
 .pc-land.pc-short .lcol{justify-content:flex-start;}
 
@@ -151,11 +151,27 @@
 .pc-desk .plate .cvs i{width:calc(10px * var(--dk,1));height:calc(10px * var(--dk,1));}
 .pc-desk .acts .btn,.pc-desk .choice .btn{font-size:calc(.9rem * var(--dk,1));min-height:calc(42px * var(--dk,1));}
 .pc-desk .dock .say0{font-size:calc(1.02rem * var(--dk,1));}
-.pc-desk .room{display:grid;grid-template-columns:repeat(var(--rc,1),minmax(0,1fr));grid-auto-rows:max-content;gap:12px;align-content:start;align-items:start;min-height:0;overflow:hidden;}
-.room .pn{background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);border-radius:18px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-height:0;font-size:calc(.92rem * var(--dk,1));}
+/* the room: columns of glass panels, each as tall as what it holds; the moves take what a column has left */
+.pc-desk .room{display:flex;gap:var(--lg,12px);align-items:stretch;min-height:0;min-width:0;overflow:hidden;view-transition-name:pc-room;}
+.pc-w1 .lcol>.room{flex:1 1 0;}
+.room .rcol{flex:1 1 0;min-width:0;min-height:0;display:flex;flex-direction:column;gap:var(--lg,12px);overflow:hidden;}
+.room .pn{flex:none;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);border-radius:18px;padding:calc(12px * var(--dk,1)) calc(14px * var(--dk,1));display:flex;flex-direction:column;gap:8px;min-height:0;font-size:calc(.92rem * var(--dk,1));}
+.room .pn.mv{flex:0 1 auto;}
 .room h4{margin:0;font-size:.88em;font-weight:800;color:var(--text-3);}
 .room .say{margin:0;font-weight:600;line-height:1.38;}
-.room .race{display:block;width:100%;height:auto;}
+.room .chart{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:8px;}
+.room .chart .ax{display:flex;flex-direction:column;justify-content:space-between;font-size:.74em;font-weight:700;color:var(--text-3);font-variant-numeric:tabular-nums;text-align:right;line-height:1;}
+.room .chart .ax b{color:rgba(255,215,90,.85);font-weight:800;}
+.room .race{display:block;width:100%;height:var(--ch,110px);}
+.room .chart .tx{grid-column:2;display:flex;justify-content:space-between;font-size:.74em;font-weight:700;color:var(--text-3);margin-top:3px;}
+/* the markers in each borderland, laid out as the board is drawn: a chevron starting there moves that many fields */
+.room .bls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;}
+.room .bls>div{min-height:2.3em;border-radius:9px;background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:1px 8px;padding:3px 4px;}
+.room .bls span{display:inline-flex;align-items:center;gap:3px;font-family:var(--display);font-weight:800;font-variant-numeric:tabular-nums;font-size:1.05em;}
+.room .bls span i{width:.75em;height:.75em;background:var(--pc);clip-path:polygon(50% 0,100% 100%,50% 70%,0 100%);}
+.room .bls span.me{color:var(--lit-ink);}
+.room .bls em{font-style:normal;color:var(--text-3);font-size:.85em;}
+.room .note{margin:0;font-size:.82em;font-weight:600;color:var(--text-3);line-height:1.35;}
 .room .rk{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;}
 .room .rk .pn2{display:flex;align-items:center;gap:7px;font-weight:700;overflow-wrap:anywhere;}
 .room .rk .pn2 i{width:.95em;height:.95em;flex:none;background:var(--pc);clip-path:polygon(50% 0,100% 100%,50% 70%,0 100%);}
@@ -320,7 +336,7 @@
       options: [
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Looks one move ahead, and slips now and then.'], ['normal', 'Normal', 'Weighs each move against the best answer to it.'], ['hard', 'Hard', 'Looks several moves ahead and sets up pincers.']] },
         { id: 'hints', label: 'Hints', value: 'on', choices: [['on', 'On', 'The board shows how many fields each move would turn your color, what a move would change, and your chevrons in danger of a pincer.'], ['off', 'Off', 'The board shows only where a chevron can go. You work out the rest yourself.']] },
-        { id: 'cover', label: 'Hand over between turns', value: 'off', choices: [['off', 'Off', 'Nothing in Pacru is hidden, so the device just goes round the table.'], ['on', 'On', 'A cover names whose turn it is before each move.']], when: function (m) { return m === 'pp'; } }
+        { id: 'cover', local: true, label: 'Hand over between turns', value: 'off', choices: [['off', 'Off', 'Nothing in Pacru is hidden, so the device just goes round the table.'], ['on', 'On', 'A cover names whose turn it is before each move.']], when: function (m) { return m === 'pp'; } }
       ],
       players: {
         min: 2, max: 4,
@@ -986,20 +1002,55 @@
   }
 
   // ── The room at a desk ───────────────────────────────────────────────────
-  // The race to the target, the last move in words, the moves newest first, past games here
-  function raceSvg(w) {
-    var rows = S.race || [], n = rows.length, H = 120, W = 300, T = S.target, s = '<svg class="race" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true">';
-    s += '<line x1="0" y1="8" x2="' + W + '" y2="8" stroke="rgba(255,215,90,.6)" stroke-width="1.5" stroke-dasharray="5 4"/><text x="' + (W - 2) + '" y="20" font-size="11" font-weight="700" fill="rgba(255,215,90,.8)" text-anchor="end">' + T + '</text>';
+  // The race to the target (each player's markers and chevrons, and the race turn by turn as a chart), the markers in
+  // each borderland (a chevron's power), the last move in words, the moves newest first, past games here. The panels
+  // stand in columns (--rc), each as tall as what it holds; the moves take what their column has left, and a column too
+  // short gives up whole rows and whole parts, never a cut one.
+  function raceSvg() {
+    var rows = S.race || [], n = rows.length, H = 100, W = 300, T = raceTop(), s ='<svg class="race" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">';
+    for (var q = 1; q < 4; q++) s += '<line x1="0" x2="' + W + '" y1="' + (H - q / 4 * (H - 4)).toFixed(1) + '" y2="' + (H - q / 4 * (H - 4)).toFixed(1) + '" stroke="rgba(255,255,255,.07)" stroke-width="1" vector-effect="non-scaling-stroke"/>';
+    if (T === S.target) s += '<line x1="0" y1="4" x2="' + W + '" y2="4" stroke="rgba(255,215,90,.65)" stroke-width="1.5" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"/>';
     for (var p = 0; p < S.np; p++) {
-      var pts = rows.map(function (r, i) { return (n < 2 ? 0 : i / (n - 1) * W).toFixed(1) + ',' + (H - 4 - Math.min(T, r[p]) / T * (H - 12)).toFixed(1); }).join(' ');
-      s += '<polyline points="' + pts + '" fill="none" stroke="' + METER[colOf(p)] + '" stroke-width="' + (isMe(p) ? 3 : 2) + '" stroke-linejoin="round" opacity="' + (S.out[p] ? .5 : 1) + '"/>';
+      var pts = rows.map(function (r, i) { return (n < 2 ? 0 : i / (n - 1) * W).toFixed(1) + ',' + (H - Math.min(T, r[p]) / T * (H - 4)).toFixed(1); }).join(' ');
+      s += '<polyline points="' + pts + '" fill="none" stroke="' + METER[colOf(p)] + '" stroke-width="' + (isMe(p) ? 3 : 2) + '" stroke-linejoin="round" vector-effect="non-scaling-stroke" opacity="' + (S.out[p] ? .5 : 1) + '"/>';
     }
     return s + '</svg>';
+  }
+  // the chart's top: the target once someone is near it, otherwise a little over the leader, so the lines have room
+  function raceTop() {
+    var m = 0; (S.race || []).forEach(function (r) { r.forEach(function (v) { if (v > m) m = v; }); });
+    var t = Math.ceil(Math.max(12, m * 1.35) / 6) * 6;
+    return t >= S.target ? S.target : t;
+  }
+  function chartEl() {
+    var n = (S.race || []).length, top = raceTop();
+    var c = el('div', { class: 'chart' }, [el('div', { class: 'ax', html: (top === S.target ? '<b>' + top + '</b>' : '<span>' + top + '</span>') + '<span>0</span>' })]);
+    c.insertAdjacentHTML('beforeend', raceSvg());
+    c.appendChild(el('div', { class: 'tx', html: '<span>Start</span><span>' + plural(n - 1, 'turn') + '</span>' }));
+    return c;
+  }
+  // the nine borderlands as the board is drawn, each with every color's markers there
+  function blEl() {
+    var g = el('div', { class: 'bls' }), cells = [];
+    for (var b = 0; b < 9; b++) {
+      var p = vpos(C.BLF[b][4]), at = Math.floor(p[1] / 3) * 3 + Math.floor(p[0] / 3), d = el('div');
+      for (var s = 0; s < S.np; s++) {
+        var k = 0; C.BLF[b].forEach(function (x) { if (S.b[x] === s + 1) k++; });
+        if (k) d.appendChild(el('span', { class: isMe(s) ? 'me' : '', style: { '--pc': METER[colOf(s)] } }, [el('i'), document.createTextNode(String(k))]));
+      }
+      if (!d.children.length) d.appendChild(el('em', { text: 'None' }));
+      cells[at] = d;
+    }
+    cells.forEach(function (d) { g.appendChild(d); });
+    return el('section', { class: 'pn bl' }, [el('h4', { text: 'Markers by borderland' }), g, el('p', { class: 'note', text: 'A chevron moves as many fields as its color has markers in the borderland it starts in.' })]);
   }
   function paintRoom() {
     if (!roomEl) return;
     if (!app.classList.contains('pc-desk')) { roomEl.innerHTML = ''; return; }
     roomEl.innerHTML = '';
+    var rc = Math.max(1, Math.min(3, parseInt(getComputedStyle(app).getPropertyValue('--rc'), 10) || 1)), dk = parseFloat(getComputedStyle(app).getPropertyValue('--dk')) || 1;
+    var cols = []; for (var c = 0; c < rc; c++) { cols.push(el('div', { class: 'rcol' })); roomEl.appendChild(cols[c]); }
+    // the race
     var rk = el('section', { class: 'pn rkp' }, [el('h4', { text: 'The race to ' + S.target + ' markers' })]), g = el('div', { class: 'rk' });
     var best = Math.max.apply(null, S.players.map(function (p, i) { return C.markers(S, i); }));
     S.players.forEach(function (p, i) {
@@ -1009,35 +1060,57 @@
       g.appendChild(row); g.appendChild(b);
     });
     rk.appendChild(g);
-    if ((S.race || []).length > 2) rk.insertAdjacentHTML('beforeend', raceSvg());
-    roomEl.appendChild(rk);
+    if ((S.race || []).length > 2) rk.appendChild(chartEl());
+    // the last move and the moves
     var ev = S.ev || [];
-    if (ev.length) roomEl.appendChild(el('section', { class: 'pn lm' }, [el('h4', { text: 'Last move' }), el('p', { class: 'say', text: sayEv(ev[ev.length - 1]).t })]));
+    var lm = ev.length ? el('section', { class: 'pn lm' }, [el('h4', { text: 'Last move' }), el('p', { class: 'say', text: sayEv(ev[ev.length - 1]).t })]) : null;
     var mv = el('section', { class: 'pn mv' }, [el('h4', { text: 'Moves' })]), list = el('ol', { class: 'mvl' });
     if (!ev.length) list.appendChild(el('li', { class: 'none', text: S.players[S.turn] ? nmI(S.turn) + (isMe(S.turn) ? ' move' : ' moves') + ' first, playing ' + CNAME[colOf(S.turn)] + '.' : '' }));
-    for (var k = ev.length - 1; k >= 0 && list.children.length < 40; k--) {
+    for (var k = ev.length - 1; k >= 0 && list.children.length < 80; k--) {
       var e = ev[k], w = sayEv(e, true);
       list.appendChild(el('li', { style: { '--pc': METER[colOf(e.s)] } }, [el('span', { class: 'no', text: String(k + 1) }), el('i'), el('span', { class: 't', text: w.t }), w.tag ? el('span', { class: 'tag' + (w.bad ? ' bad' : ''), text: w.tag }) : el('span')]));
     }
-    mv.appendChild(list); roomEl.appendChild(mv);
-    var past = []; try { past = (GameHistory.load(KEY) || []).slice(); } catch (x) {}
+    mv.appendChild(list);
+    // past games here: wins by name, and the last game
+    var past = [], pst = null; try { past = (GameHistory.load(KEY) || []).slice(); } catch (x) {}
     if (past.length) {
       var wins = {}, names = [];
       past.forEach(function (gm) { var w = String(gm.winner || ''); if (!w) return; if (!wins[w]) { wins[w] = 0; names.push(w); } wins[w]++; });
       names.sort(function (a, b) { return wins[b] - wins[a]; });
-      var pg = el('section', { class: 'pn pg' }, [el('h4', { text: 'Past games here' })]), wl = el('ul', { class: 'wins' });
-      names.slice(0, 5).forEach(function (n) { wl.appendChild(el('li', null, [el('span', { text: n }), el('b', { text: wins[n] + (wins[n] === 1 ? ' win' : ' wins') })])); });
-      pg.appendChild(wl); roomEl.appendChild(pg);
+      pst = el('section', { class: 'pn pst' }, [el('h4', { text: 'Past games here' })]);
+      var wl = el('ul', { class: 'wins' });
+      names.slice(0, 6).forEach(function (n) { wl.appendChild(el('li', null, [el('span', { text: n }), el('b', { text: wins[n] + (wins[n] === 1 ? ' win' : ' wins') })])); });
+      pst.appendChild(wl);
+      var lg = past[0], ps = (lg && lg.players || []).slice().sort(function (a, b) { return (b.score || 0) - (a.score || 0); });
+      if (lg && lg.winner && ps.length > 1) pst.appendChild(el('p', { class: 'note', text: 'Last game, ' + lg.winner + ' won with ' + (ps[0].score || 0) + ' markers to ' + ps.slice(1).map(function (p) { return p.score || 0; }).join(', ') + '.' }));
     }
-    // give up whole parts until it fits: the oldest moves down to six, past games, the chart, then the oldest moves
-    var over = function () { var rb = roomEl.getBoundingClientRect().bottom; return roomEl.scrollHeight > roomEl.clientHeight + 1 || list.scrollHeight > list.clientHeight + 1 || [].some.call(roomEl.children, function (k) { return k.getBoundingClientRect().bottom > rb + 1; }); };
-    while (over() && list.children.length > 6) list.removeChild(list.lastChild);
-    if (over()) { var pgE = roomEl.querySelector('.pg'); if (pgE) pgE.remove(); }
-    if (over()) { var rc = roomEl.querySelector('.race'); if (rc) rc.remove(); }
-    while (over() && list.children.length > 1) list.removeChild(list.lastChild);
-    if (over()) { mv.remove(); }
-    if (over()) { var lm = roomEl.querySelector('.lm'); if (lm) lm.remove(); }
-    if (over()) roomEl.innerHTML = '';
+    var blp = blEl();
+    var plan = rc === 1 ? [[rk, blp, lm, mv, pst]] : rc === 2 ? [[rk, blp, pst], [lm, mv]] : [[rk], [lm, mv], [blp, pst]];
+    plan.forEach(function (col, i) { col.forEach(function (p) { if (p) cols[i].appendChild(p); }); });
+    // the chart as tall as its column's width allows
+    var cw = cols[0].clientWidth;
+    rk.style.setProperty('--ch', Math.round(Math.max(80, Math.min(220 * dk, cw * 0.42))) + 'px');
+    var over = function (col) { return col.scrollHeight > col.clientHeight + 1 || list.scrollHeight > list.clientHeight + 1 && col.contains(list); };
+    var C0 = null, rm = function (sel) { var x = C0.querySelector(sel); if (x) { x.remove(); return true; } return false; };
+    var steps = [
+      function () { return C0.contains(list) && list.children.length > 6 && list.removeChild(list.lastChild); },
+      function () { var w = C0.querySelector('.pst .wins'); return w && w.children.length > 2 && w.removeChild(w.lastChild); },
+      function () { return rm('.pst'); },
+      function () { var h = parseFloat(rk.style.getPropertyValue('--ch')); if (h > 80 && C0.contains(rk) && rk.querySelector('.chart')) { rk.style.setProperty('--ch', Math.max(80, h - 30) + 'px'); return true; } return false; },
+      function () { return rm('.bl .note'); },
+      function () { return rm('.chart'); },
+      function () { return rm('.bl'); },
+      function () { return C0.contains(list) && list.children.length > 1 && list.removeChild(list.lastChild); },
+      function () { return rm('.lm'); },
+      function () { return rm('.mv'); },
+      function () { return rm('.rkp'); }
+    ];
+    cols.forEach(function (col) {
+      C0 = col;
+      for (var i = 0; i < steps.length && over(col);) { if (!steps[i]()) i++; }
+    });
+    // the moves end on a whole row
+    while (list.isConnected && list.children.length > 1 && list.scrollHeight > list.clientHeight + 1) list.removeChild(list.lastChild);
   }
   function sayShort(e) { return sayEv(e, true); }
 
@@ -1084,37 +1157,49 @@
     var top = app.getBoundingClientRect().top;
     setV('--avh', Math.max(300, Hh - top) + 'px');
     var cs = getComputedStyle(app), iw = app.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), ih = app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-    app.classList.remove('pc-port', 'pc-land', 'pc-w1', 'pc-w2', 'pc-t', 'pc-desk', 'pc-short', 'pc-tiny');
+    app.classList.remove('pc-port', 'pc-land', 'pc-w1', 'pc-w2', 'pc-t', 'pc-t1', 'pc-desk', 'pc-short', 'pc-tiny');
     var cls = [], fsz, np = S.np;
     // the room lives in the left column, or in a column of its own in the widest windows
     if (roomEl.parentNode !== lcolEl) lcolEl.appendChild(roomEl);
     if (desk) {
-      var dk = Math.max(1, Math.min(1.45, W / 1600, Hh / 1050)), gap = Math.round(28 * dk);
-      setV('--dk', dk.toFixed(3)); setV('--cg', gap + 'px'); setV('--gp', Math.round(16 * dk) + 'px'); setV('--lg', Math.round(12 * dk) + 'px');
+      // Two ways to lay out a desk, whichever gives the larger board (Boku's and Abalone's): wide, the board the
+      // window's height at the right with a column at the left for the plates, the dock and the room (the room in a
+      // column of its own where there is width to spare); tall, the board across the top with the plates and dock under
+      // it at the left and the room's panels side by side beside them (under them in a narrow window)
+      var dk = Math.max(1, Math.min(1.45, W / 1600, Hh / 1050)), gap = Math.round(28 * dk), gp = Math.round(16 * dk);
+      setV('--dk', dk.toFixed(3)); setV('--cg', gap + 'px'); setV('--gp', gp + 'px'); setV('--lg', Math.round(12 * dk) + 'px');
       cls.push('pc-desk');
-      var lw = Math.round(Math.min(560, Math.max(320, W * 0.24)));
-      var fw = Math.floor(Math.min(ih, iw - lw - gap));
-      if (iw / ih >= 1.2 && fw >= ih * 0.9) {
-        fsz = Math.min(ih, Math.floor(iw - lw - gap));
-        var spare = iw - fsz - lw - gap;
-        if (spare > 380) {
+      var side = Math.round(Math.max(320, Math.min(460, 300 * dk)));
+      var bW = Math.floor(Math.min(ih, iw - side - gap));
+      // under the board: a row of plates (two to a row with more players), whose turn and a choice, the buttons
+      var strip = Math.round((np > 2 ? 375 : 355) * dk);
+      // (a window under 900 wide stacks the room under the plates too, so it keeps room for at least the race)
+      var bT = Math.floor(Math.min(iw, ih - strip - gp - (iw < 900 ? Math.round(200 * dk) + gp : 0)));
+      if (bW >= bT) {
+        fsz = bW;
+        var lw = iw - fsz - gap;
+        if (lw >= 2 * side + gap) {
           // a column of its own for the room
           cls.push('pc-w2');
-          var rw = Math.round(Math.min(560, spare - gap)); setV('--rw', rw + 'px'); pg.appendChild(roomEl);
-          setV('--rc', '1'); setV('--pcols', np > 2 && Hh < 900 ? '2' : '1');
+          var lw1 = Math.round(Math.min(side * 1.2, lw * 0.45)), rw = Math.min(Math.round(side * 1.9), lw - lw1 - gap);
+          setV('--lw', lw1 + 'px'); setV('--rw', rw + 'px'); pg.appendChild(roomEl);
+          setV('--rc', rw >= 560 * dk ? '2' : '1'); setV('--pcols', np > 2 && Hh < 900 ? '2' : '1');
         } else {
-          lw += Math.max(0, Math.min(spare, 240));
-          cls.push('pc-w1'); setV('--rc', lw >= 620 ? '2' : '1'); setV('--pcols', (lw >= 520 || Hh < 900) && np > 2 ? '2' : '1');
+          cls.push('pc-w1'); setV('--lw', lw + 'px');
+          setV('--rc', lw >= 520 * dk ? '2' : '1'); setV('--pcols', (lw >= 520 || Hh < 900) && np > 2 ? '2' : '1');
         }
-        setV('--lw', lw + 'px');
       } else {
-        // squarer or taller: the board across the top, the plates and dock under it at the left, the room beside them
+        fsz = bT;
         cls.push('pc-t');
-        // (under the board: the plates, two to a row with more players, and the dock)
-        var bottom = Math.max(Math.round(((np > 2 ? 2 : np) * 78 + 200) * dk), Math.round(ih * 0.28));
-        fsz = Math.floor(Math.min(iw, ih - bottom - Math.round(16 * dk)));
-        lw = Math.round(Math.min(560, Math.max(np > 2 ? 400 : 320, iw * 0.44)));
-        setV('--lw', lw + 'px'); setV('--rc', iw - lw > 640 ? '2' : '1'); setV('--pcols', np > 2 ? '2' : '1');
+        if (iw < 900) {
+          // narrow and tall: the plates and dock the window's width under the board, the room under them
+          cls.push('pc-t1'); setV('--lw', iw + 'px'); setV('--pcols', '2');
+          setV('--rc', iw >= 600 * dk ? '2' : '1');
+        } else {
+          var lwT = Math.round(Math.min(560 * dk, Math.max(np > 2 ? 400 : 340, iw * 0.36)));
+          setV('--lw', lwT + 'px'); setV('--pcols', np > 2 ? '2' : '1');
+          setV('--rc', String(Math.max(1, Math.min(3, Math.floor((iw - lwT - gap) / (320 * dk))))));
+        }
         pg.appendChild(roomEl);
       }
     } else if (land) {

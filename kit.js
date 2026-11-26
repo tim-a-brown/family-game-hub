@@ -4309,6 +4309,7 @@
     // op.choices can be a function of (player count, mode), e.g. "who goes first" offering each seat
     // op.when(mode, options, count) and op.choices(count, mode, options) can depend on the other options' values
     // op.onPick(value, options): a choice that sets other options too (a preset); it may change options in place
+    // op.local: true for an option that only matters with everyone at one device (Hand over between turns): the online review leaves it out
     function choicesOf(op) { return typeof op.choices === 'function' ? op.choices(state.count, state.mode, state.options) : op.choices; }
     // A setup that would not fit the screen folds its options into one-line rows (each its name and what it is set to;
     // a tap opens its choices), the way the home screen's sheet shows them, so the start button and the Players card
@@ -4711,7 +4712,7 @@
       var revHelp = {};
       var only = MK.online ? (o.options || []).filter(function (op) { return op.when && !op.render && op.when(MK.online, state.options, state.count) && !op.when(resolved(), state.options, state.count); }) : [];
       var box = el('div', { class: 'k-rev' }), sh;
-      function shown(op) { return (!op.render || (op.summary && (op.label || op.reviewLabel))) && !op.robot && only.indexOf(op) < 0 && (!op.when || op.when(om, state.options, state.count)); }
+      function shown(op) { return (!op.render || (op.summary && (op.label || op.reviewLabel))) && !op.robot && !op.local && only.indexOf(op) < 0 && (!op.when || op.when(om, state.options, state.count)); }
       function valueOf(op) { if (op.render) return op.summary(state.options[op.id]); var ch = typeof op.choices === 'function' ? op.choices(state.count, om, state.options) : op.choices; var c = (ch || []).filter(function (x) { return String(x[0]) === String(state.options[op.id]); })[0]; return c ? chText(c) : ''; }
       function paint() {
         box.innerHTML = '';

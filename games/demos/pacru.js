@@ -21,7 +21,7 @@
   Kit.demoScript({
     intro: 'Here’s how chevrons move, how markers go down, how a connection fills a line, and how a pincer takes a chevron.',
     beats: 13,
-    end: 'Cross borders to put markers down, build up the borderlands you use, connect your fields, and pincer the chevrons that come close.',
+    end: 'Cross borders to put markers down, build up the borderlands you use, connect your fields, and pincer the chevrons that come close. A chevron that can’t move can turn round for two of your markers.',
     start: function () {
       var me = (localStorage.getItem('my_name') || '').trim() || 'You';
       T.start({ mode: 'cpu', players: [{ name: me, cpu: false }, { name: me === 'Jamie' ? 'Pat' : 'Jamie', cpu: true, level: 'normal' }] });
@@ -37,19 +37,16 @@
       await D.wait(function () { return S().n >= 2; }, 8000);
       await D.wait(900);
       await D.set(function () { T.set(CONN); });
-      await D.say('Later in the game. You have four markers in this corner borderland, so the chevron on c3 can move up to four fields.', { at: chev('c3') });
-      await D.you(chev('c3'), 'Tap the chevron.', { until: function () { return T.sel().f === T.C.idx('c3'); } });
+      await D.you(chev('c3'), 'Later in the game. You have four markers in this corner borderland, so the chevron on c3 can move up to four fields. Tap it.', { until: function () { return T.sel().f === T.C.idx('c3'); } });
       await D.you(sq('c7'), 'A move from one of your fields to another is a connection. It turns every field in between your color, even a red one. Tap the gold 3.', { until: function () { return T.sel().t === T.C.idx('c7'); } });
       await D.you(btn(/^Move/), 'Tap Move.', { until: function () { var p = T.sel().pm; return !!(p && p.need === 'kind') || S().n > 2; } });
       await D.you(btn(/Fill the line/), 'This connection also crosses a border, so you choose one benefit: the line, or one marker. Fill the line.', { until: function () { return S().n > 0 && S().ml.length && /c3-c7/.test(S().ml[S().ml.length - 1]); } });
       await D.wait(1600);
       await D.set(function () { T.set(PIN); });
-      await D.say('A pincer. Your chevrons on e3 and c5 can both reach the red chevron on e5. Two attackers let one of them take it.', { at: chev('e5') });
-      await D.you(chev('e3'), 'Tap the chevron on e3.', { until: function () { return T.sel().f === T.C.idx('e3'); } });
+      await D.you(chev('e3'), 'A pincer. Your chevrons on e3 and c5 can both reach the red chevron on e5, and two attackers let one of them take it. Tap the chevron on e3.', { until: function () { return T.sel().f === T.C.idx('e3'); } });
       await D.you(chev('e5'), 'The red ring is the pincer. Tap it, then Move.', { allow: '.bd, .acts', until: function () { var p = T.sel().pm; return !!(p && p.need) || S().ml.some(function (m) { return /^e3-e5/.test(m); }); } });
-      await D.you(sq('d5'), 'The red chevron is off the board and e5 is yours. You crossed into the middle borderland too, so put a marker there.', { allow: '.bd', until: function () { return S().ml.some(function (m) { return /^e3-e5/.test(m); }); } });
-      await D.wait(1800);
-      await D.say('Two more things: a chevron that can’t move can turn round for two of your markers, and a player with no chevron that can move is out.', { pos: 'center' });
+      await D.you(sq('d5'), 'The red chevron is off the board and e5 is yours. You crossed into the middle borderland too, so put a marker there.', { allow: '.bd', avoid: '.frame', until: function () { return S().ml.some(function (m) { return /^e3-e5/.test(m); }); } });
+      await D.wait(1500);
     }
   });
 })();
