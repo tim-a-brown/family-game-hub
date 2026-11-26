@@ -1246,7 +1246,9 @@ Underlying principles for everything:
   row) and the start button stand at the right; a part the game adds after its options goes under them at the left
   (Trivia's categories). A game's own sideways layout for its table must not apply while the setup shows
   (`.stage:not(:has(> .setup))`). **A score keeper held sideways** from 700 wide has its sheet at the left and its note and
-  buttons in a column of their own at the right (cards.js). Sheets' buttons and the Kit keyboard's bottom row stand clear
+  buttons in a column of their own at the right (cards.js). On a phone on its side the Players card closes up round the count's 124px dial (2px under the title, no empty
+  row under it), so a setup whose count can change fits 874 by 402 (it scrolled by 8px: Pacru, Continuo, Blokus,
+  Yahtzee, War, Go Fish and the rest). Sheets' buttons and the Kit keyboard's bottom row stand clear
   of a phone's rounded corners when the browser reports no safe area (18px and 26px). Most games that were locked upright
   on a phone now play sideways (the card tables, the casino tables, Rook, Phase 10, Marbles, the arcade games); Mazes
   plays sideways too (Tim, 2026-11-15: "allow all"; its counters at the left and tools at the right), Pinball stays upright
@@ -1352,7 +1354,8 @@ Underlying principles for everything:
   tapped again; several can be open at once: Tim, 2026-11-16, "keep the game options visible until the user collapses it
   back manually"; `scOpen`), with the same ? at its end when the setting has words about it, which come up
   only from the ? (Tim, 2026-11-16: "found some rules with explanations but no question mark"; `.k-scrw`). The online
-  review's choices that only matter online have a ? beside their name too. A setting where only some choices have
+  review's choices that only matter online have a ? beside their name too. An option that only matters with everyone at one device says `local:
+  true` and the review leaves it out (Hand over between turns in the board games: Tim, 2026-11-26, of Continuo). A setting where only some choices have
   words keeps its ? whichever is chosen (it then says what the others mean), so give every choice its words.
   `Kit.win`'s rank rows take `me: true`: your row is ringed in your color and shows your own name, never "You".
   An online.js game whose table takes the setup's robots says `players.onlineBots: true`, and its review shows them.
@@ -1947,7 +1950,7 @@ Underlying principles for everything:
   the computer in `games/pacru-core.js` (`PacruCore`, plain JSON; the page, the computer's Web Worker, the TurnNet table
   and Node), history `hist/pacru.js` (hist-view.js loads the core first: the final board, a replay of every turn, each
   player's markers, pincers and connection fields), demo `games/demos/pacru.js` (a first move across a border and its
-  marker, a connection with the choice of benefit, a pincer). `node scripts/pacru-sim.js [games] [--np=2,3,4]
+  marker, a connection with the choice of benefit, a pincer; about 73 s, the turning round on its end card). `node scripts/pacru-sim.js [games] [--np=2,3,4]
   [--pairs=easy-normal,normal-hard] [--rand=N]` checks every turn against a plain reading of the rules written there (its
   own fields by name, borderlands, headings, power, moves, connections, pincers, border changes, transformations,
   meetings, reorientations and ends): the moves from every chevron, the choices a move leaves (connection or border, the
@@ -1998,12 +2001,27 @@ Underlying principles for everything:
   meeting, a long connection (4 or more), a full borderland, "N to go" near the target, a player out, the winner's
   fields lighting. The board is turned so this device's player sits at the bottom (`VR`, `vpos`, `fromView`; the labels
   at a desk follow the fields). The dock shows the last move in words on phones and tablets where it fits (`paintLast`).
-  **At a desk** (`deskWin`, the kit's test, `pc-desk`): `pc-w1` the plates, dock and room at the left of the board the
-  window's height, `pc-w2` the room in a column of its own, `pc-t` (squarer) the board across the top with the plates
-  and dock under it at the left and the room beside them; letters and numbers round the board once a field is 70px. The
-  room: the race to the target (each player's markers and chevrons, a line a player turn by turn from `S.race`), the last
-  move, the moves newest first with Pincer, Meeting, +N and Out tags (from `S.ev`, kept as data and worded on each device
-  from its own seat), past games here; whole parts given up. Saved in `pacru_state`; online records once a device in
+  **At a desk** (`deskWin`, the kit's test, `pc-desk`; `fit`'s desk branch, Boku's and Abalone's way): of two
+  compositions the one with the larger board, nothing scaled: wide, the board the window's height at the right (`bW`, with
+  a column at the left at least `side`, 320 to 460 by `--dk`), as `pc-w1` (the plates, dock and room in that column) or,
+  with width for two columns, `pc-w2` (the room in a column of its own); tall, `pc-t`, the board across the top (`bT`,
+  less a strip for the plates and dock that holds the Turn it round choice, `strip`) with the plates and dock under it at
+  the left and the room's panels in columns beside them, or under 900 wide `pc-t1`, the plates, dock and room one under
+  another the window's width (room for the race kept, so the board gives a little). 2100 by 1860 and 3024 by 1964 are
+  wide (boards of 1,649 and 1,876, from 1,255 and 1,876); 720 by 1700 is `pc-t1`; 1000 by 1000 wide (632, from 540).
+  Letters and numbers round the board once a field is 70px. **The room** (`paintRoom`, `--rc` columns of glass panels
+  `.rcol`, each panel as tall as what it holds, the moves taking what their column has left): The race to the target
+  (each player's markers and chevrons, and the race turn by turn as a chart from `S.race`, `chartEl`, scaled to a little
+  over the leader until someone nears the target, `raceTop`, the target dashed once it is the top), Markers by
+  borderland (the nine borderlands laid out as the board is drawn from this seat, each color's markers there, which is
+  each chevron's power, `blEl`), the last move, the moves newest first with Pincer, Meeting, +N and Out tags (from
+  `S.ev`, kept as data and worded on each device from its own seat), past games here (wins by name and the last game's
+  score). A column too short gives up whole parts in order (the moves down to six, past games' rows, then the panel, the
+  chart shorter, the borderlands' note, the chart, the borderlands, then the moves to one), never a cut row. The
+  scratchpad's `polish/` has the scripts: `gen.js` (saved games, `states.json`), `shots.js <sizes> <two,four,early,setup>`
+  (a picture and a scan: scroll, the board's size, each panel, anything cut), `rz.js` (one game through 12 window sizes),
+  `turn.js` (the Turn it round choice open at each composition), `proof.js pacru two,four,early` (the devices before and
+  after, pixel by pixel, `base/` the starting files). Saved in `pacru_state`; online records once a device in
   `pacru_net_rec`. Test hook `window.__pacru` (`start(cfg)`, `set({rows, chev, turn})`, `play`, `tap`, `sq`, `chev`,
   `sel`). The scratchpad's `shots.js`, `demo.js`, `hist.js` of the session that built it.
 
@@ -2419,6 +2437,10 @@ Underlying principles for everything:
   in `games/axisallies-classic.js`. Classic is converted from TripleA's World War II Classic map by
   `scripts/build-aa-classic.py <clone of github.com/triplea-maps/world_war_ii_classic>`; the page swaps the board in
   place (`useBoard`) and Classic's rule differences hang off the `CLASSIC` flag.
+- The setup sideways (2026-11-26, with the Hints row it ran under the start button): on an iPad (900 or more wide, 521
+  to 800 tall) two columns, the options open at the left, the title, the Players card, the countries and the start
+  button at the right; on a phone the two switches (Hints, First turn) share a row and the countries stand under the
+  options in the start button's row, so 2 to 5 players fit 874 by 402 (Adjust's eleven options still scroll there).
 
 ## Goblin Defenders art (Blender)
 
