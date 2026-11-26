@@ -2443,6 +2443,9 @@ function canHurtK(F, T) {
     return T.some(function (y) { if (x.k === 'sub' && U[y.k === 'bbd' ? 'bb' : y.k].dom === 'A') return false; if (U[x.k].dom === 'A' && y.k === 'sub' && !dd) return false; return true; });
   });
 }
+// Hints: the chance to win shown for a battle (the battle list, the attack's preview, the battle itself). A game saved
+// before there was a choice has no hints field and shows them.
+function hintsOn() { return !S || !S.opt || S.opt.hints !== false; }
 function oddsClass(w) { return w >= 0.7 ? 'g' : w >= 0.4 ? 'm' : 'b'; }
 function pct(w) { var n = Math.round(w * 100); if (n >= 100 && w < 1) n = 99; if (n <= 0 && w > 0) n = 1; return n + '%'; }
 function battleOdds(t, extraIds) {
@@ -3825,7 +3828,7 @@ function battleRow(b, onclick, o) {
     el('span', { class: 'tx' }, [el('b', { text: tname(b.t) }), el('small', { html: status === 'done' ? esc(battleResult(b)) : status === 'lock' ? 'After the sea battle' : Kit.icon(kic) + '<span>' + kind + '</span>' })])
   ];
   if (status !== 'done') {
-    var odds = b.k === 'sbr' ? null : battleOdds(b.t);
+    var odds = b.k === 'sbr' || !hintsOn() ? null : battleOdds(b.t);
     if (odds && !odds.empty) kids.push(el('span', { class: 'odds ' + oddsClass(odds.win) }, [el('b', { text: pct(odds.win) }), el('small', { text: 'to win' })]));
     var sd = battleSides(b);
     if (sd.a.length || sd.d.length) kids.push(el('span', { class: 'vs' }, [vsChips(sd.a), el('i', { text: 'vs' }), vsChips(sd.d)]));
@@ -3845,6 +3848,7 @@ function previewCard(sh) {
   // the mission, as two cards to choose between when both are possible
   function battleBody(box) {
     var o = battleOdds(t, pv.ids);
+    if (!o.empty && !hintsOn()) return;   // (Hints off: no chances worked out)
     if (o.empty) { box.appendChild(el('small', { text: isSea(t) ? 'No ships to fight here.' : 'Nobody defends it. Your units take it right away.' })); return; }
     box.appendChild(el('div', { class: 'oddsbar' }, [el('i', { style: { width: pct(o.win) } })]));
     box.appendChild(el('div', { class: 'pv-odds' }, [el('b', { text: pct(o.win) }), el('span', { text: 'chance to win' })]));
@@ -3854,7 +3858,7 @@ function previewCard(sh) {
     var n = bombers.length, room = maxDmg - dmgNow;
     var expect = Math.min(room, Math.round(n * (5 / 6) * 3.5));
     box.appendChild(factoryMeter(t, 0));
-    box.appendChild(el('div', { class: 'pv-odds' }, [el('b', { text: 'about ' + expect }), el('span', { text: 'damage expected' })]));
+    if (hintsOn()) box.appendChild(el('div', { class: 'pv-odds' }, [el('b', { text: 'about ' + expect }), el('span', { text: 'damage expected' })]));
     box.appendChild(el('ol', { class: 'pv-steps' }, [
       el('li', { html: '<b>AA fire</b><span>The factory shoots once at each bomber. A 1 brings it down.</span>' }),
       el('li', { html: '<b>Bombs away</b><span>Each bomber that gets through rolls a die: that much damage, up to ' + maxDmg + '.</span>' }),
@@ -3873,7 +3877,7 @@ function previewCard(sh) {
   }
   var body = el('div', { class: 'pv-body' });
   if (pv.sbr) bombBody(body); else battleBody(body);
-  card.appendChild(body);
+  if (body.childNodes.length) card.appendChild(body);
   if (!pv.sbr) {
     var def = fighting(enemiesAt(t, p)).filter(function (u) { return u.on == null; });
     if (def.length) { card.appendChild(el('div', { class: 'aa-sec', text: 'Defenders' })); card.appendChild(unitList(t, function (g) { return foe(g.o, p) && !g.cargo; })); }
@@ -4550,7 +4554,7 @@ function renderBattle(B, anim) {
     NET && !NET.myTurn() ? el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Watch the map', style: { color: '#fff' }, html: Kit.icon('close'), onclick: function () { Kit.sfx('tap'); netHideBattle(); } }) : null]));
   var sc = el('div', { class: 'bscroll' });
   felt.appendChild(sc);
-  var o = (B.step === 'pre' || B.step === 'decide' || B.step === 'dive') ? liveOdds(B) : null;
+  var o = (B.step === 'pre' || B.step === 'decide' || B.step === 'dive') && hintsOn() ? liveOdds(B) : null;
   if (o) sc.appendChild(el('div', { class: 'bodds' }, [el('span', { text: PW[B.att].short + ' has a ' + pct(o.win) + ' chance to win from here' }), el('div', { class: 'oddsbar' }, [el('i', { style: { width: pct(o.win) } })])]));
   sc.appendChild(battleBoard(B, anim));
   var cur0 = B.vols[B.vi], vt = B.step === 'vol' || B.step === 'cas' ? cur0 && cur0.rolled ? cur0 : B.vi > 0 ? B.vols[B.vi - 1] : null : null;
@@ -5144,7 +5148,7 @@ function initGame(cfg) {
   var powers = cfg.map === 'skirm' ? ['su', 'de', 'uk'] : ORDERS[cfg.order === 'su' ? 'su' : 'de'].slice();
   if (cfg.map === 'skirm' && cfg.order !== 'su') powers = ['de', 'su', 'uk'];
   if (cfg.map === 'classic' && !CLASSIC) cfg.map = 'full';   // (the Classic board didn't load)
-  S = { v: 1, mode: cfg.map, opt: { vc: cfg.vc, cas: cfg.cas, speed: cfg.speed, limit: cfg.limit == null && cfg.map === 'skirm' ? 10 : +cfg.limit || 0, order: cfg.order, tech: cfg.tech === 'on' || (cfg.tech == null && cfg.map === 'classic') ? 'on' : 'off', neu: cfg.neu === 'on' || (cfg.neu == null && cfg.map === 'classic') ? 'on' : 'off', guide: !!cfg.guide && cfg.seats.some(function (s) { return !s.cpu; }) },
+  S = { v: 1, mode: cfg.map, opt: { vc: cfg.vc, cas: cfg.cas, speed: cfg.speed, limit: cfg.limit == null && cfg.map === 'skirm' ? 10 : +cfg.limit || 0, order: cfg.order, tech: cfg.tech === 'on' || (cfg.tech == null && cfg.map === 'classic') ? 'on' : 'off', neu: cfg.neu === 'on' || (cfg.neu == null && cfg.map === 'classic') ? 'on' : 'off', guide: !!cfg.guide && cfg.seats.some(function (s) { return !s.cpu; }), hints: cfg.hints !== 'off' },
     seats: cfg.seats, ctl: {}, powers: powers, round: 1, pi: 0, phase: 'buy', own: [], turnOwn: [], ic: {}, dmg: {},
     units: [], nid: 1, ipc: {}, buy: {}, rep: {}, bank: {}, placed: {}, capt: [], bl: [], B: null, hl: [], stats: {}, log: [], cityTaken: {}, tech: {}, rt: {},
     started: Date.now(), over: null };
@@ -5478,7 +5482,7 @@ function gameOver(side, why) {
 function rematch() {
   if (!S) return showSetup();
   var o = S.opt || {};
-  newGame({ map: S.mode, vc: o.vc || 'std', cas: o.cas || 'ask', speed: o.speed || 'normal', limit: String(o.limit || 0), order: o.order || 'de', guide: !!o.guide,
+  newGame({ map: S.mode, vc: o.vc || 'std', cas: o.cas || 'ask', speed: o.speed || 'normal', limit: String(o.limit || 0), order: o.order || 'de', guide: !!o.guide, hints: hintsOn() ? 'on' : 'off',
     seats: S.seats.map(function (x) { return { name: x.name, cpu: !!x.cpu, powers: x.powers.slice() }; }) });
 }
 // The game's history record (mode: how it was played); returns the winning seats
@@ -5560,7 +5564,7 @@ var RULES =
   '<li><b>Noncombat move.</b> Units that didn’t fight can move to friendly places. Planes must land.</li>' +
   '<li><b>Mobilize new units:</b> put the units you bought at your factories (ships go in the sea next to a factory). A factory places as many units as its territory’s IPC value, minus any damage.</li>' +
   '<li><b>Collect income:</b> the IPC value of every territory you control. No income while an enemy holds your capital.</li></ol>' +
-  '<h3>How to move on this map</h3><ul><li>Pinch or scroll to zoom, drag to pan. Tap a place to see what’s there; tap any unit for its card.</li><li>Places that can act <b>glow</b> at the start of a step. Tap one, pick units with + and − (tap a row to take them all), then tap a glowing destination. Red outlines are attacks; before each attack you see your <b>chance to win</b>.</li><li><b>Transports:</b> pick land units and tap a sea zone with your transport to board. Then move the transport. To land, tap the sea zone, pick the troops aboard, and tap the coast.</li><li><b>Undo</b> takes back moves and buys in the current step (not dice rolls).</li></ul>' +
+  '<h3>How to move on this map</h3><ul><li>Pinch or scroll to zoom, drag to pan. Tap a place to see what’s there; tap any unit for its card.</li><li>Places that can act <b>glow</b> at the start of a step. Tap one, pick units with + and − (tap a row to take them all), then tap a glowing destination. Red outlines are attacks; before each attack you see your <b>chance to win</b> (unless Hints is off in the setup).</li><li><b>Transports:</b> pick land units and tap a sea zone with your transport to board. Then move the transport. To land, tap the sea zone, pick the troops aboard, and tap the coast.</li><li><b>Undo</b> takes back moves and buys in the current step (not dice rolls).</li></ul>' +
   '<h3>Battles</h3><ul><li>Each unit rolls one die. A roll <b>at or under</b> its attack (or defense) number is a hit. "Tanks hit on 3 or less" means a 1, 2 or 3 hits.</li>' +
   '<li>Both sides fire, then each side chooses its own losses (cheapest are picked for you; you can change them).</li>' +
   '<li>After each round the attacker can keep fighting or <b>retreat</b> to a place the attackers came from. Troops landed from the sea can’t retreat.</li>' +
@@ -5749,6 +5753,7 @@ function showSetup() {
       { id: 'tech', label: 'Research', value: 'off', when: adjusting, help: 'Weapons development: spend IPCs on dice for a chance at new weapons.', choices: ruleChoices('tech') },
       { id: 'neu', label: 'Neutrals', value: 'off', when: adjusting, help: 'Whether the neutral countries (striped on the map) can be invaded.', choices: ruleChoices('neu') },
       { id: 'cas', label: 'Your losses', value: 'ask', help: 'Who picks which of your units are lost in battle.', choices: [['ask', 'I choose', 'The cheapest units are picked for you; you can change them before they go.'], ['auto', 'Automatic', 'Always lose the cheapest units first. Faster.']] },
+      { id: 'hints', label: 'Hints', value: 'on', help: 'Whether the game works out each battle’s chances for you.', choices: [['on', 'On', 'Before and during every battle, the game shows the attacker’s chance to win and how many units you can expect to keep.'], ['off', 'Off', 'No chances shown: you weigh each battle up yourself, as at a real table.']] },
       { id: 'speed', label: 'Computer speed', value: 'normal', help: 'How fast computer generals move and roll.', choices: [['normal', 'Normal', 'Easy to follow along: each computer battle waits for you at the end, and each computer turn ends with a summary of what it did.'], ['fast', 'Fast', 'Quick moves and dice, no stops.']] },
       { id: 'guide', label: 'First turn', value: (function () { try { return localStorage.getItem('aa_guide_seen') ? 'off' : 'on'; } catch (e) { return 'on'; } })(), help: 'Short pointers through the six steps of your first turn. They switch off by themselves once you have played a turn.', choices: [['on', 'Guided', 'One pointer per step, the first time through.'], ['off', 'No pointers', 'You know the game.']] }
     ],
@@ -5770,7 +5775,7 @@ function showSetup() {
         var p = cfg.players[i];
         return { name: p.name, cpu: !!p.cpu, powers: g };
       });
-      newGame({ map: map, vc: o.vc || 'std', cas: o.cas || 'ask', speed: o.speed || 'normal', limit: o.limit || '0', order: o.order || 'su', tech: o.tech || 'off', neu: o.neu || 'off', guide: o.guide === 'on', seats: seats });
+      newGame({ map: map, vc: o.vc || 'std', cas: o.cas || 'ask', speed: o.speed || 'normal', limit: o.limit || '0', order: o.order || 'su', tech: o.tech || 'off', neu: o.neu || 'off', guide: o.guide === 'on', hints: o.hints === 'off' ? 'off' : 'on', seats: seats });
     }
   });
   // Under who's playing, the powers each seat commands. Tap one to pick another: the seat that had those powers
@@ -5868,7 +5873,7 @@ function later(ms, fn) { var n = netN; netTimers.push(setTimeout(function () { i
 function netOptsNow() {
   var g = {}; try { g = JSON.parse(localStorage.getItem('gn_setup_' + KEY) || '{}') || {}; } catch (e) {}
   var o = withRules(g.options || {});
-  NETOPTS = { map: o.map === 'skirm' || o.map === 'classic' ? o.map : 'full', vc: o.vc || 'std', limit: o.limit || '0', order: o.order || 'su', cas: o.cas || 'ask', speed: o.speed || 'normal', tech: o.tech === 'on' ? 'on' : 'off', neu: o.neu === 'on' ? 'on' : 'off', gen: Math.max(2, Math.min(5, +g.count || 2)) };
+  NETOPTS = { map: o.map === 'skirm' || o.map === 'classic' ? o.map : 'full', vc: o.vc || 'std', limit: o.limit || '0', order: o.order || 'su', cas: o.cas || 'ask', speed: o.speed || 'normal', tech: o.tech === 'on' ? 'on' : 'off', neu: o.neu === 'on' ? 'on' : 'off', hints: o.hints === 'off' ? 'off' : 'on', gen: Math.max(2, Math.min(5, +g.count || 2)) };
   return NETOPTS;
 }
 function tableOpts() {
@@ -5883,7 +5888,7 @@ function netStart(players, opts, last) {
     // a rematch at the same table hands the powers round, so the generals swap sides
     var rot = last ? ((last.rot || 0) + 1) % nG : 0;
     var seats = players.map(function (p, i) { return { name: p.name, cpu: !!p.bot, powers: i < nG ? groups[(i + rot) % nG].slice() : [] }; });
-    initGame({ map: map, vc: opts.vc || 'std', cas: opts.cas === 'auto' ? 'auto' : 'ask', speed: opts.speed === 'fast' ? 'fast' : 'normal', limit: opts.limit || '0', order: opts.order || 'su', tech: opts.tech === 'on' ? 'on' : 'off', neu: opts.neu === 'on' ? 'on' : 'off', guide: false, seats: seats });
+    initGame({ map: map, vc: opts.vc || 'std', cas: opts.cas === 'auto' ? 'auto' : 'ask', speed: opts.speed === 'fast' ? 'fast' : 'normal', limit: opts.limit || '0', order: opts.order || 'su', tech: opts.tech === 'on' ? 'on' : 'off', neu: opts.neu === 'on' ? 'on' : 'off', guide: false, hints: opts.hints === 'off' ? 'off' : 'on', seats: seats });
     S.rot = rot;
     return compact(S);
   });

@@ -1149,6 +1149,12 @@
   }
   // the Might a clash would start with: the attacker's (with Phalanx or an Ambush where it adds) and the defender's
   // (rk: a Volley, Mysore Rockets: reckoned at the target's Domain)
+  // Hints (the setup's choice, G.hints; online the host's): the totals a move would leave, whether it would take a Domain,
+  // and both Mights before a clash, on the road, in the face-off and on a card being dragged. Off, a move shows the
+  // totals as they stand and a clash says Clash. A game saved before there was a choice has none and plays with them on.
+  function hintsOn() { return !G || G.hints !== false; }
+  const vsTx = m => (m && hintsOn() ? m[0] + ' vs ' + m[1] : 'Clash');
+  const vsSay = m => (m && hintsOn() ? ', ' + m[0] + ' against ' + m[1] : '');
   function clashMights(u, v, add, rk) { const f = E.byU(S, u), g = E.byU(S, v); if (!f || !g) return null; const m = E.clashM(S, f, g, rk); return [Math.floor(m[0] + (add || 0)), Math.floor(m[1])]; }
   // the totals at a Domain: [the strongest other side's, yours] (Ms: E.mights of some state)
   const sidesOf = (Ms, o) => { let t = 0; Ms.forEach((m, q) => { if (q !== o && !E.ally(S, q, o)) t = Math.max(t, m); }); return [t, Ms[o]]; };
@@ -1205,10 +1211,10 @@
     // (what each lit Domain would look like after the move: your total there, and whether you would hold it)
     const cs = {};
     Object.keys(R.lit).forEach(p => { const a = R.lit[p][0], i = +p; let Ms = V.tot[i], h = V.hold[i];
-      if (a.t !== 'deed') { const T = simulate(a); Ms = E.mights(T, i); h = E.holder(T, i); }
-      const sd = sidesOf(Ms, o), take = (h === o || (h >= 0 && E.ally(S, h, o))) && !(V.hold[i] === o || (V.hold[i] >= 0 && E.ally(S, V.hold[i], o)));
+      if (a.t !== 'deed' && hintsOn()) { const T = simulate(a); Ms = E.mights(T, i); h = E.holder(T, i); }   // (Hints off: the totals as they stand)
+      const sd = sidesOf(Ms, o), take = hintsOn() && (h === o || (h >= 0 && E.ally(S, h, o))) && !(V.hold[i] === o || (V.hold[i] >= 0 && E.ally(S, V.hold[i], o)));
       const verb = a.t === 'walk' || a.t === 'rail' ? 'Walk' : a.t === 'antik' ? 'Jump' : a.t === 'tub' ? 'Step' : 'Play';
-      R.after[i] = { m: sd, word: take ? 'Take it' : verb, take: take, cost: cost(a) }; if (cost(a) != null) cs[cost(a)] = 1; });
+      R.after[i] = { m: sd, word: take ? 'Take it' : verb, take: take, cost: cost(a), now: !hintsOn() }; if (cost(a) != null) cs[cost(a)] = 1; });
     R.costly = Object.keys(cs).length > 1;   // (a Domain where the card costs less, Timbuktu: each lit tile says its cost)
     if (table) R.btns.push({ label: R.btns.length || R.chips.length || Object.keys(R.lit).length ? 'More: choose on the table' : 'Choose on the table', soft: true, run: () => { if (idle()) { closeView(); select(sel); } } });
     if (!R.btns.length && !R.chips.length && !Object.keys(R.lit).length && !(R.slots && R.slots.some(x => x.acts.length))) {
@@ -1294,7 +1300,7 @@
         'aria-label': (full ? cap1(theName('@' + S.places[p])) : C.PLACES[S.places[p]].n) + (lit ? ': ' + af.word + (af.cost != null && R.costly ? ', for ' + af.cost + ' Spark' : '') + ', your Might there ' + m[1] + ' against ' + m[0] : here ? ', where this card is' : full ? ' is full. ' + fullSay(p, o) : '') });
       b.appendChild(miniTile(p));
       b.appendChild(el('span', { class: 'rd-m L' + (m[0] ? '' : ' zero'), style: { '--tc': 'var(--pc' + (many() ? (rivalAt(p) >= 0 ? rivalAt(p) : 1 - me) : 1 - me) + ')' } }, [el('b', { text: String(m[0]) })]));
-      b.appendChild(el('span', { class: 'rd-m R' + (m[1] ? '' : ' zero') + (af ? ' up' : ''), style: { '--tc': 'var(--pc' + me + ')' } }, [el('b', { text: String(m[1]) })]));
+      b.appendChild(el('span', { class: 'rd-m R' + (m[1] ? '' : ' zero') + (af && !af.now ? ' up' : ''), style: { '--tc': 'var(--pc' + me + ')' } }, [el('b', { text: String(m[1]) })]));
       if (lit) { b.appendChild(el('span', { class: 'rd-g' }, [el('span', { text: af.word }), af.cost != null && R.costly ? el('span', { class: 'sc-cost' }, [el('b', { text: String(af.cost) })]) : null]));
         b.addEventListener('click', e => { e.stopPropagation(); runActs(lit, info(it.key).n + ' to ' + theName('@' + S.places[p])); }); }
       else if (here) b.appendChild(el('span', { class: 'rd-g here', text: 'Here' }));
@@ -1308,9 +1314,9 @@
       const pic = k => { const s = el('span', { class: 'rd-pic' }), im = artImg(k, true, true) || mono(k); if (im) s.appendChild(im); return s; };
       let b;
       if (c.kind === 'clash') { const f = E.byU(S, c.u), g = E.byU(S, c.v);
-        b = el('button', { type: 'button', class: 'rd-c clash', 'aria-label': 'Clash: ' + CARDS[f.c].n + ' with ' + c.m[0] + ' Might against ' + CARDS[g.c].n + ' with ' + c.m[1] },
-          [c.pair ? pic(f.c) : null, el('span', { class: 'rd-x', html: c.rk ? SVG.rocket : SVG.swords }), pic(g.c), el('b', { text: c.m[0] + ' vs ' + c.m[1] }), c.rk ? el('span', { class: 'rd-far', text: 'at ' + domShort(C.PLACES[S.places[g.p]].n) }) : null]);
-        if (c.rk) { b.classList.add('rk'); b.setAttribute('aria-label', 'Fire ' + theName(E.relicOf(S, S.P[o], 'rockets') || 'rockets') + ' at ' + CARDS[g.c].n + ' at ' + C.PLACES[S.places[g.p]].n + ': ' + c.m[0] + ' Might against ' + c.m[1]); } }
+        b = el('button', { type: 'button', class: 'rd-c clash', 'aria-label': hintsOn() ? 'Clash: ' + CARDS[f.c].n + ' with ' + c.m[0] + ' Might against ' + CARDS[g.c].n + ' with ' + c.m[1] : 'Clash: ' + CARDS[f.c].n + ' against ' + CARDS[g.c].n },
+          [c.pair ? pic(f.c) : null, el('span', { class: 'rd-x', html: c.rk ? SVG.rocket : SVG.swords }), pic(g.c), el('b', { text: vsTx(c.m) }), c.rk ? el('span', { class: 'rd-far', text: 'at ' + domShort(C.PLACES[S.places[g.p]].n) }) : null]);
+        if (c.rk) { b.classList.add('rk'); b.setAttribute('aria-label', 'Fire ' + theName(E.relicOf(S, S.P[o], 'rockets') || 'rockets') + ' at ' + CARDS[g.c].n + ' at ' + C.PLACES[S.places[g.p]].n + (hintsOn() ? ': ' + c.m[0] + ' Might against ' + c.m[1] : '')); } }
       else if (c.kind === 'who') b = el('button', { type: 'button', class: 'rd-c who', style: { '--pc': 'var(--pc' + c.o + ')' } }, [el('i', { class: 'rd-dot' }), el('span', { text: c.label })]);
       else { const f = E.byU(S, c.v); b = el('button', { type: 'button', class: 'rd-c fig' }, [f ? pic(f.c) : null, el('span', { text: c.label })]); }
       b.addEventListener('click', e => { e.stopPropagation(); runActs(c.acts, info(it.key).n); });
@@ -1382,13 +1388,13 @@
       if (!on) return null; const ms = moves(f.u); if (!ms.length) return null;
       const n = el('div', { class: 'fo-chips' }), cl = ms.filter(a => a.t === 'clash' && !a.rk), foes = cl.map(a => a.v).filter((v, k, s) => s.indexOf(v) === k);
       if (foes.length === 1) { const m = clashMights(f.u, foes[0]);
-        n.appendChild(el('button', { type: 'button', class: 'rd-c clash', 'aria-label': 'Clash with ' + CARDS[E.byU(S, foes[0]).c].n + ', ' + m[0] + ' against ' + m[1], onclick: e => { e.stopPropagation(); runActs(cl, CARDS[f.c].n); } }, [el('span', { class: 'rd-x', html: SVG.swords }), el('b', { text: m[0] + ' vs ' + m[1] })])); }
+        n.appendChild(el('button', { type: 'button', class: 'rd-c clash', 'aria-label': 'Clash with ' + CARDS[E.byU(S, foes[0]).c].n + vsSay(m), onclick: e => { e.stopPropagation(); runActs(cl, CARDS[f.c].n); } }, [el('span', { class: 'rd-x', html: SVG.swords }), el('b', { text: vsTx(m) })])); }
       else if (foes.length > 1) n.appendChild(el('button', { type: 'button', class: 'rd-c clash' + (h.armed === f.u ? ' on' : ''), 'aria-pressed': String(h.armed === f.u), onclick: e => { e.stopPropagation(); Kit.sfx('tap'); h.arm(h.armed === f.u ? null : f.u); } }, [el('span', { class: 'rd-x', html: SVG.swords }), el('b', { text: 'Clash' })]));
       // (Mysore Rockets, Volley: a chip for each enemy at a Domain next to this one, its picture, where it stands and both Mights)
       const vl = ms.filter(a => a.t === 'clash' && a.rk), vf = vl.map(a => a.v).filter((v, k, s) => s.indexOf(v) === k);
       vf.forEach(v => { const g = E.byU(S, v), m = clashMights(f.u, v, 0, 1), as = vl.filter(a => a.v === v), s0 = el('span', { class: 'rd-pic' }), im = artImg(g.c, true, true) || mono(g.c); if (im) s0.appendChild(im);
-        n.appendChild(el('button', { type: 'button', class: 'rd-c clash rk', 'aria-label': 'Fire ' + theName(E.relicOf(S, S.P[f.o], 'rockets') || 'rockets') + ' at ' + CARDS[g.c].n + ' at ' + C.PLACES[S.places[g.p]].n + ', ' + m[0] + ' against ' + m[1], onclick: e => { e.stopPropagation(); runActs(as, CARDS[f.c].n); } },
-          [el('span', { class: 'rd-x', html: SVG.rocket }), s0, el('b', { text: m[0] + ' vs ' + m[1] }), el('span', { class: 'rd-far', text: 'at ' + domShort(C.PLACES[S.places[g.p]].n) })])); });
+        n.appendChild(el('button', { type: 'button', class: 'rd-c clash rk', 'aria-label': 'Fire ' + theName(E.relicOf(S, S.P[f.o], 'rockets') || 'rockets') + ' at ' + CARDS[g.c].n + ' at ' + C.PLACES[S.places[g.p]].n + vsSay(m), onclick: e => { e.stopPropagation(); runActs(as, CARDS[f.c].n); } },
+          [el('span', { class: 'rd-x', html: SVG.rocket }), s0, el('b', { text: hintsOn() ? vsTx(m) : 'Fire' }), el('span', { class: 'rd-far', text: 'at ' + domShort(C.PLACES[S.places[g.p]].n) })])); });
       const walk = q => { for (const t of ['walk', 'rail', 'tub', 'antik']) { const as = ms.filter(a => a.p === q && a.t === t); if (as.length) return as; } return null; };   // (a plain walk first; a Jump to the same place is on the Figure's road)
       const wp = prev != null ? walk(prev) : null, wn = next != null ? walk(next) : null;
       if (wp) n.appendChild(el('button', { type: 'button', class: 'rd-c mv', 'aria-label': 'Walk ' + CARDS[f.c].n + ' to ' + theName('@' + S.places[prev]), onclick: e => { e.stopPropagation(); runActs(wp, CARDS[f.c].n + ' to ' + theName('@' + S.places[prev])); } }, [el('span', { class: 'ar', text: '←' }), el('span', { class: 'rd-st', html: SVG.steps }), el('span', { text: domShort(C.PLACES[S.places[prev]].n) })]));
@@ -1407,7 +1413,7 @@
         if (who === 'me') { const c = chipsFor(f); if (c) cell.appendChild(c); }
         else if (h.armed != null) { const a = ui.acts.filter(x => x.t === 'clash' && !x.rk && x.u === h.armed && x.v === f.u);
           if (a.length) { cell.classList.add('tgt'); const m = clashMights(h.armed, f.u);
-            cell.appendChild(el('div', { class: 'fo-chips' }, [el('button', { type: 'button', class: 'rd-c clash', onclick: e => { e.stopPropagation(); runActs(a, CARDS[E.byU(S, h.armed).c].n); } }, [el('span', { class: 'rd-x', html: SVG.swords }), el('b', { text: m[0] + ' vs ' + m[1] })])])); } }
+            cell.appendChild(el('div', { class: 'fo-chips' }, [el('button', { type: 'button', class: 'rd-c clash', onclick: e => { e.stopPropagation(); runActs(a, CARDS[E.byU(S, h.armed).c].n); } }, [el('span', { class: 'rd-x', html: SVG.swords }), el('b', { text: vsTx(m) })])])); } }
         s.appendChild(cell);
       });
       return s;
@@ -1736,11 +1742,13 @@
   // what letting go there would do, in a few words and a number: your total there after it, or the clash's two Mights
   function dragSay(t) {
     const o = S.turn, me = o;
+    if (t.k === 'f' && !hintsOn()) return { tx: 'Clash' };   // (Hints off: nothing worked out for you)
     if (t.k === 'f') { const pv = clashPreview(t.acts); return pv ? { m: pv[0] + ' vs ' + pv[1], tx: pv[0] > pv[1] ? 'You are stronger' : pv[0] < pv[1] ? 'They are stronger' : 'Even' } : { tx: 'Clash' }; }
     if (t.k === 'done') return { tx: 'Play ' + theName(drag.key) };
     if (t.k === 'r') return { tx: 'Replace ' + theName(S.P[o].relics[t.v]) };   // (it goes over that Relic, which goes to your discard pile)
     const a = t.acts[0], moves = a.t === 'fig' || a.t === 'walk' || a.t === 'antik' || a.t === 'tub' || a.t === 'rail';
     if (!moves) return { tx: 'Play here' };
+    if (!hintsOn()) return { tx: a.t === 'fig' ? 'Play here' : a.t === 'antik' ? 'Jump here' : a.t === 'tub' ? 'Step here' : 'Walk here' };
     const T2 = simulate(a), sd = sidesOf(E.mights(T2, t.v), me), h = E.holder(T2, t.v), was = V.hold[t.v], mine = q => q >= 0 && (q === me || E.ally(S, q, me));
     return { m: sd[1], tx: mine(h) ? (mine(was) ? 'You keep it' : 'You take it') : h < 0 ? (sd[0] === sd[1] && sd[1] ? 'Tied' : 'Nobody holds it') : pname(h) + (mine(was) ? ' takes it' : ' keeps it') };
   }
@@ -2255,8 +2263,10 @@
     // than the screen, Arvela's own parts draw in as well (an-tight in ui.css), so the setup fits as it did before it had
     // the option for Figures at a Domain. Not while a folded row is open: that is the player's choice to read more)
     const tight = () => { const s = app.querySelector(':scope > .setup'); if (!s) return; const se = document.scrollingElement || document.documentElement, open = !!s.querySelector('.k-opt.k-hon, .k-opt.k-scopen, .k-opt.help-on');
-      if (open) return; s.classList.remove('an-tight');
-      if (window.innerWidth <= 520 && window.innerHeight > window.innerWidth && s.classList.contains('k-snug') && se.scrollHeight > se.clientHeight + 1) s.classList.add('an-tight'); };
+      if (open) return; s.classList.remove('an-tight', 'an-tight2');
+      if (window.innerWidth <= 520 && window.innerHeight > window.innerWidth && s.classList.contains('k-snug') && se.scrollHeight > se.clientHeight + 1) s.classList.add('an-tight');
+      // (still taller than the screen, as on an iPhone with the Hints row: your deck says only its Guide, beside Cards)
+      if (s.classList.contains('an-tight') && se.scrollHeight > se.clientHeight + 1) s.classList.add('an-tight2'); };
     let tightT = 0; const tightSoon = () => { cancelAnimationFrame(tightT); tightT = requestAnimationFrame(tight); };
     if (!app._nameObs && window.MutationObserver) { app._nameObs = new MutationObserver(() => { sdGone(); nameHead(); tightSoon(); }); app._nameObs.observe(app, { childList: true, subtree: true }); window.addEventListener('resize', tightSoon); }
     const st = Kit.setup(app, {
@@ -2275,6 +2285,9 @@
         // (how many of one player's Figures can stand at a Domain: no limit unless the players choose one. Tim, 2026-11-17:
         // "give game options to cap domains at 4-6 cards apiece". The game keeps the choice as G.cap: capOf, cfgOf)
         { id: 'cap', label: 'Figures at a Domain', value: 'none', choices: [['none', 'No limit', capRule(0)]].concat([4, 5, 6].map(n => [String(n), String(n), capRule(n)])) },
+        // (Hints: what a move or a clash would come to, worked out for you: hintsOn)
+        { id: 'hints', label: 'Hints', value: 'on', choices: [['on', 'On', 'When you move a card or a Figure, the game shows the Might it would leave at each Domain, whether you would take the Domain, and both Mights before a clash.'],
+          ['off', 'Off', 'You see the Might as it stands and work out what a move or a clash would do yourself, as at a real table.']] },
         { id: 'level', robot: true, label: 'Computer skill', value: Coll.load().wins ? 'normal' : 'easy', choices: [['easy', 'Easy', 'The computer stops early and misses things, which makes for a good first game.'], ['normal', 'Normal', DW('The computer plays to hold Places, with the odd slip.')], ['hard', 'Hard', 'The computer plays its best, and comes for your Gate and your Seals.']] }
       ]),
       players: { range: () => [2, 6], count: 2, cpu: m => m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false, teams: (n, v) => teamsFor(n, v.teams) },
@@ -2284,7 +2297,7 @@
         // (the computer players' decks: the one chosen for all of them, or a different ready deck for each while there are enough)
         const pool = E.shuffle(Object.keys(C.GUIDES), Math.random); let k = 0;
         const theirs = () => { const id = deckChoice(cfg.options.decks, 'cpu'); return readyDeck(id === 'any' ? pool[(k++) % pool.length] : id.slice(6)); };
-        newGame({ mode: cpu ? 'cpu' : 'local', level: LEVEL[cfg.options.level] ? cfg.options.level : 'normal', teams: teams, cap: capOf(cfg.options.cap),
+        newGame({ mode: cpu ? 'cpu' : 'local', level: LEVEL[cfg.options.level] ? cfg.options.level : 'normal', teams: teams, cap: capOf(cfg.options.cap), hints: cfg.options.hints !== 'off',
           players: cfg.players.map((p, i) => { const d = p.cpu ? theirs() : Coll.deck(deckChoice(cfg.options['deck' + i], 'me'));
             return Object.assign({ name: p.name, cpu: !!p.cpu, level: p.cpu && LEVEL[p.level] ? p.level : undefined, color: cols[i], deck: d.n, deckId: d.id, built: !!d.built, guide: d.guide, cards: d.cards.slice() }, p.cpu ? { stack: Coll.guideStack(d.guide) } : {}); }) });
       }
@@ -2367,7 +2380,7 @@
     // game saved when that was 30 has none, and still ends at 30. teams: who plays together, or none.)
     // (ord: the turns of this round in order, E.order(S); k: whose turn it is among them)
     const N = cfg.players.length, seats = () => cfg.players.map(() => ({ ko: 0, lines: 0, seals: 0, held: 0 }));
-    G = { mode: cfg.mode, level: cfg.level, sc: 2, tg: S.cfg.target, rfx: S.cfg.rfx, cap: S.cfg.cap, teams: cfg.teams || null, players: cfg.players, S: S, ord: E.order(S), k: 0, ph: 'start', started: Date.now(), n: 0,
+    G = { mode: cfg.mode, level: cfg.level, sc: 2, tg: S.cfg.target, rfx: S.cfg.rfx, cap: S.cfg.cap, hints: cfg.hints !== false, teams: cfg.teams || null, players: cfg.players, S: S, ord: E.order(S), k: 0, ph: 'start', started: Date.now(), n: 0,
       stats: seats(), hist: [], seen: {}, tale: { links: [], seals: [], hold: [], tot: [], ko: cfg.players.map(() => ({})), outs: [] }, cl: Coll.trackStart(), cv: Coll.VER };   // (cl: what the game did, for the callings)
     S.turn = G.ord[0]; setCols(N > 2 || cfg.teams ? cfg.players.map(p => p.color) : null);
     ui.view = G.mode === 'cpu' ? 0 : human(S.turn) ? S.turn : firstHuman(); ui.viewer = G.mode === 'cpu' ? 0 : -1; ui.banner = 0;
@@ -3193,7 +3206,7 @@
     }
     if (f.stun) n.appendChild(el('span', { class: 'fp-stun' }));
     if (f.hush) n.appendChild(hushMark(f.c, ui.fresh[f.u] === 'hushin'));   // (the Walk to Canossa: its skills switched off until the count)
-    if (tg) { const pv = clashPreview(tg); if (pv) n.appendChild(el('span', { class: 'pv-x', html: '<span class="a">' + pv[0] + '</span><i>v</i><span>' + pv[1] + '</span>', 'aria-label': 'Your ' + pv[0] + ' against ' + pv[1] })); }
+    if (tg && hintsOn()) { const pv = clashPreview(tg); if (pv) n.appendChild(el('span', { class: 'pv-x', html: '<span class="a">' + pv[0] + '</span><i>v</i><span>' + pv[1] + '</span>', 'aria-label': 'Your ' + pv[0] + ' against ' + pv[1] })); }
     if (window.AnoriaEd && !G.demo && !asCard) window.AnoriaEd.piece(n, f.c);   // (the piece's frame takes the card's edition; a card wears its own)
     return n;
   }
@@ -4530,7 +4543,7 @@
     if (!moves) return null;
     const T = simulate(a), f = t === 'fig' || carries(ui.sel.key) ? E.byU(T, S.uid) : E.byU(T, a.u);
     const via = acts.every(x => x.t === 'antik') ? (E.relicOf(S, S.P[o], 'balloon') || 'balloon') : acts.every(x => x.t === 'rail') ? (E.relicOf(S, S.P[o], 'locomotive') || 'locomotive') : acts.every(x => x.t === 'tub') ? S.P[o].guide : null;
-    return { cost: t === 'fig' ? E.costOf(S, o, ui.sel.key, a.p) : null, m: f ? E.might(T, f, 0) : null, via: via };
+    return { cost: t === 'fig' ? E.costOf(S, o, ui.sel.key, a.p) : null, m: f && hintsOn() ? E.might(T, f, 0) : null, via: via };   // (Hints off: where it lands and what it costs, not the Might it would have)
   }
   function clashPreview(acts) {
     const a = acts.filter(x => !x.ph)[0] || acts[0], s = ui.sel;
@@ -5668,7 +5681,7 @@
     Kit.win(netWin({ quiet: quiet, icon: w < 0 ? 'users' : lose ? 'bot' : 'trophy', lose: !!lose,
       title: w < 0 ? 'A draw' : T ? (mine ? 'Your team wins!' : winName(w) + ' win!') : lose ? pname(w) + ' wins this one' : pname(w) === 'You' ? 'You win!' : pname(w) + ' wins!',
       sub: guideSaid(w) || 'Round ' + S.round + ', ' + (S.how === 'seals' ? 'when the Seals ran out' : 'on Renown'), pic: racePic(), notes: notes, notesTitle: 'How it ended', rank: rank,
-      again: () => newGame({ mode: G.mode, level: G.level, teams: G.teams, players: G.players }), look: 'Look at the table', setup: showSetup, setupLabel: 'Change decks or players',
+      again: () => newGame({ mode: G.mode, level: G.level, teams: G.teams, cap: G.cap, hints: hintsOn(), players: G.players }), look: 'Look at the table', setup: showSetup, setupLabel: 'Change decks or players',
       show: q => { winLayout(T ? null : order, earned); return R && window.AnoriaRewards ? window.AnoriaRewards.endPanel(R, q) : null; },
       extra: earned.length ? [{ label: earnedLabel(earned), onClick: () => { window.AnoriaPacks.earned(unmet(R), showSetup); } }] : null }));
   }
@@ -5823,7 +5836,7 @@
       title: w < 0 ? 'A draw' : lose ? W + ' wins this one' : W === 'You' ? 'You win!' : W + ' wins!',
       sub: guideSaid(w) || 'After ' + S.round + (S.round === 1 ? ' round' : ' rounds'), pic: racePic(), notes: notes, notesTitle: 'How it ended',
       rank: order.map(i => ({ name: pname(i), score: S.P[i].renown, color: G.players[i].color, cpu: G.players[i].cpu })),
-      again: () => newGame({ mode: G.mode, level: G.level, players: G.players }), look: 'Look at the table', setup: showSetup, setupLabel: 'Change decks or players',
+      again: () => newGame({ mode: G.mode, level: G.level, cap: G.cap, hints: hintsOn(), players: G.players }), look: 'Look at the table', setup: showSetup, setupLabel: 'Change decks or players',
       show: q => { winLayout(order, earned); return R && window.AnoriaRewards ? window.AnoriaRewards.endPanel(R, q) : null; },
       extra: earned.length ? [{ label: earnedLabel(earned), onClick: () => { window.AnoriaPacks.earned(unmet(R), showSetup); } }] : null }));
   }
