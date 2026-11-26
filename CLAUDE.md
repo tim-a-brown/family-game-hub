@@ -1950,8 +1950,9 @@ Underlying principles for everything:
   of the card joins the chains it touches, parts linked through a chain counted together); `fits` every place it fits.
 - Robots (`LEVELS`): Easy plays at random among the places scoring at least 0.6 of the most; Normal takes the most points
   now; Hard weighs its 12 best places by points minus 0.8 of the most the next player could score with a sample of 14
-  unseen cards (1.5 s). Measured (2 players, seats alternating): Easy beat Normal in 20 of 100; Hard beat Normal in about
-  55 to 57 of 100 (the draw decides much of Continuo); games come to about 250 points a player.
+  unseen cards (1.5 s). Measured (`continuo-sim.js 100`, 2 players, seats alternating): Easy beat Normal in 19 of 100 and Hard
+  in 19; Hard beat Normal in 58 of 100, with 2 ties (the draw decides much of Continuo); games come to about 260
+  points a player (192 to 312), and about one card in two games goes under the deck.
 - The table (`build`, `paintTiles`, `fitView`): an SVG of the cards on a walnut table, viewed round every card down with a
   card's room on each side, as large as the table allows (a square at most 56px, 78 at a desk), the view gliding as the
   table grows. The card in hand lies on the table as a ghost where it fits nearest the last card (never where it scores
