@@ -94,6 +94,7 @@ var GAMES = [
   { id: 'twixt',       name: 'Twixt',        color: '#b4322a', cat: 'board', min: 1, max: 2, tag: 'Peg a chain from border to border', play: 'twixt', demo: 1 },
   { id: 'blokus',      name: 'Blokus',       color: '#2f74e0', cat: 'board', min: 1, max: 4, tag: 'Fit your pieces in corner to corner', play: 'blokus', demo: 1 },
   { id: 'boku',        name: 'Boku',         color: '#c8862f', cat: 'board', min: 1, max: 2, tag: 'Five marbles in a row, and take in pairs', play: 'boku', demo: 1 },
+  { id: 'continuo',    name: 'Continuo',     color: '#2f62c8', cat: 'board', min: 1, max: 5, tag: 'Match the colors and grow the chains', play: 'continuo', demo: 1 },
   { id: 'kamisado',    name: 'Kamisado',     color: '#b52d2b', cat: 'board', min: 1, max: 2, tag: 'Your move picks the tower they must move', play: 'kamisado', demo: 1 },
   { id: 'entropy',     name: 'Entropy',      color: '#6a3fb0', cat: 'board', min: 1, max: 2, tag: 'Order makes patterns, Chaos spoils them', play: 'entropy', demo: 1 },
   { id: 'othello',     name: 'Othello',      color: '#15803d', cat: 'board', min: 1, max: 2, tag: 'Flip discs, own the board', play: 'othello', demo: 1 },

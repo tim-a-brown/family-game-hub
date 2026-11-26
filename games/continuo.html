@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Continuo</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
+<script src="continuo-core.js"></script>
+<style>
+.ct-credit{margin:-6px 0 2px;text-align:center;font-size:.78rem;font-weight:600;color:var(--text-3);}
+/* the four enamel colors, shared by the cards, the plates and the room */
+:root{--c0:#d9363e;--c1:#f2c12e;--c2:#2e9a57;--c3:#2f62c8;}
+
+/* ── The column: plates, the table, the dock ── */
+#app.stage.ipl{max-width:none;padding:4px 10px calc(var(--safe-b) + 18px);height:calc(100dvh - var(--bar));min-height:0;display:flex;flex-direction:column;box-sizing:border-box;}
+.ct-col{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:8px;width:100%;max-width:900px;margin:0 auto;}
+.ct-plates{display:flex;flex-wrap:wrap;gap:6px;view-transition-name:ct-plates;}
+.pl{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:8px;min-height:48px;padding:5px 10px 5px 7px;border-radius:15px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);transition:box-shadow .2s,background .2s;}
+.pl.on{background:color-mix(in srgb,var(--lit) 11%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--lit) 65%,transparent),0 0 18px color-mix(in srgb,var(--lit) 18%,transparent);}
+.pl .av{width:28px;height:28px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem;color:#fff;background:var(--pc);box-shadow:inset 0 -2px 3px rgba(0,0,0,.3),0 0 0 2px rgba(255,255,255,.14);}
+.pl .av .ico{width:16px;height:16px;}
+.pl .who{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.15;}
+.pl .nm{font-weight:800;font-size:.9rem;white-space:nowrap;overflow:hidden;}
+.pl .sub{font-size:.7rem;font-weight:700;color:var(--text-3);white-space:nowrap;overflow:hidden;}
+.pl.on .sub{color:var(--lit-ink);}
+.pl .pts{font-size:1.3rem;font-weight:800;font-variant-numeric:tabular-nums;flex:none;}
+.pl.on .pts{color:var(--lit-ink);}
+.pl .gain{position:absolute;pointer-events:none;}
+.pl.bump .pts{animation:bump .5s var(--spring,cubic-bezier(.3,1.6,.5,1));}
+@keyframes bump{40%{transform:scale(1.35);}}
+.ct-plates.many .pl{flex:1 1 calc(33% - 6px);}
+/* many players in a narrow row: the name across the top of the plate, the avatar and the points under it */
+.ct-plates.tight .pl{display:grid;grid-template-columns:auto 1fr;grid-template-areas:"who who" "av pts";gap:2px 6px;padding:5px 9px 5px 7px;align-items:center;}
+.ct-plates.tight .pl .who{grid-area:who;}
+.ct-plates.tight .pl .sub{display:none;}
+.ct-plates.tight .pl .av{grid-area:av;width:22px;height:22px;font-size:.72rem;}
+.ct-plates.tight .pl .av .ico{width:13px;height:13px;}
+.ct-plates.tight .pl .pts{grid-area:pts;text-align:right;font-size:1.15rem;line-height:1;}
+.ct-plates.tight .pl .nm{font-size:.8rem;}
+.ct-plates.four .pl{flex:1 1 calc(50% - 6px);}
+.think i{display:inline-block;width:4px;height:4px;margin:0 1px;border-radius:50%;background:currentColor;animation:th 1s infinite;}
+.think i:nth-child(2){animation-delay:.15s}.think i:nth-child(3){animation-delay:.3s}
+@keyframes th{50%{opacity:.2;transform:translateY(-2px);}}
+
+/* ── The table: a walnut tabletop, the cards lying on it ── */
+.frame{position:relative;flex:1 1 auto;min-height:160px;border-radius:22px;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;view-transition-name:ct-board;
+  background:
+    radial-gradient(120% 90% at 50% 40%,rgba(255,214,160,.10),transparent 60%),
+    repeating-linear-gradient(97deg,rgba(0,0,0,.0) 0 7px,rgba(0,0,0,.09) 7px 8px,rgba(255,220,170,.03) 8px 15px,rgba(0,0,0,.05) 15px 17px),
+    repeating-linear-gradient(93deg,rgba(255,230,190,.035) 0 31px,rgba(0,0,0,.08) 31px 33px,rgba(0,0,0,0) 33px 61px),
+    linear-gradient(160deg,#5a3720,#3c2212 45%,#2a170b);
+  box-shadow:inset 0 0 0 2px rgba(255,220,170,.10),inset 0 0 0 7px rgba(0,0,0,.25),inset 0 0 60px rgba(0,0,0,.55),0 14px 28px rgba(0,0,0,.45);}
+.frame>svg.bd{position:absolute;inset:0;width:100%;height:100%;display:block;}
+.frame .lay{position:absolute;inset:0;pointer-events:none;}
+.frame.mouse{cursor:crosshair;}
+.zm{position:absolute;right:10px;top:10px;z-index:8;width:44px;height:44px;border-radius:50%;border:0;display:flex;align-items:center;justify-content:center;background:rgba(14,16,26,.82);color:#fff;box-shadow:0 0 0 1.5px var(--gl-line),0 3px 10px rgba(0,0,0,.5);cursor:pointer;}
+.zm svg{width:22px;height:22px;}
+.zm.on{background:color-mix(in srgb,var(--lit) 30%,rgba(14,16,26,.9));box-shadow:0 0 0 1.5px var(--lit);}
+.zm[hidden]{display:none;}
+.tl .in{transform-box:fill-box;transform-origin:center;}
+.tl .in.drop{animation:drop .42s cubic-bezier(.2,.9,.3,1.15) both;}
+@keyframes drop{0%{transform:scale(1.22) translateY(-6%);opacity:.0;}60%{opacity:1;}100%{transform:none;opacity:1;}}
+.tl.last .edge{stroke:#ffe9a3;stroke-width:.07;}
+.gh{pointer-events:none;}
+.gh .in{opacity:.93;}
+.gh .ring{fill:none;stroke-width:.12;stroke:#fff6d0;filter:drop-shadow(0 0 .25px #ffd34d);}
+.gh.bad .ring{stroke:#ff5a3c;stroke-dasharray:.35 .22;filter:none;}
+.gh.bad .in{opacity:.6;}
+.gh.lift{transition:none;}
+.mk .ok{fill:#ffe9a3;stroke:#3b2a00;stroke-width:.035;}
+.mk .no{stroke:#ff4a2e;stroke-width:.11;stroke-linecap:round;filter:drop-shadow(0 0 .12px #000);}
+.hl rect{fill:rgba(255,248,215,.20);stroke:#fff4c4;stroke-width:.06;pointer-events:none;}
+.hl.on rect{fill:rgba(255,248,215,.42);stroke-width:.09;}
+.fl rect{fill:#fff7d8;opacity:0;animation:flash .9s ease-out both;}
+@keyframes flash{25%{opacity:.85;}100%{opacity:0;}}
+.won rect.cel{animation:wonp 1.4s ease-in-out infinite;}
+@keyframes wonp{50%{filter:brightness(1.35);}}
+.tag{position:absolute;transform:translate(-50%,-100%);z-index:6;pointer-events:none;padding:4px 11px;border-radius:999px;background:rgba(12,14,22,.92);box-shadow:0 0 0 1px var(--gl-line),0 3px 8px rgba(0,0,0,.5);font-size:.8rem;font-weight:800;white-space:nowrap;color:#fff;}
+.tag.good{background:rgba(70,52,8,.95);color:#ffe9a3;box-shadow:0 0 0 1.5px #c99a3c,0 3px 10px rgba(0,0,0,.5);}
+.tag.bad{background:rgba(120,22,12,.95);}
+.tag.pt{pointer-events:auto;cursor:help;font-size:.95rem;padding:4px 12px;}
+.tag.pt small{font-size:.72em;font-weight:700;opacity:.8;margin-left:2px;}
+.tag.chn{font-size:.72rem;padding:2px 8px;transform:translate(-50%,-50%);background:rgba(25,18,2,.92);color:#ffe9a3;box-shadow:0 0 0 1.5px var(--cc,#c99a3c);}
+.gain{position:absolute;z-index:7;pointer-events:none;transform:translate(-50%,-50%);font-weight:900;font-size:1.6rem;color:#ffe9a3;text-shadow:0 2px 0 #3b2a00,0 0 16px rgba(255,211,77,.8);animation:gain 1.5s ease-out forwards;}
+@keyframes gain{0%{opacity:0;transform:translate(-50%,-30%) scale(.6);}20%{opacity:1;transform:translate(-50%,-60%) scale(1.15);}100%{opacity:0;transform:translate(-50%,-170%) scale(1);}}
+
+/* ── The dock: the card in hand, whose turn, the buttons ── */
+.ct-dock{display:flex;gap:12px;align-items:center;flex:none;view-transition-name:ct-dock;}
+.ct-hand{display:flex;gap:8px;align-items:center;flex:none;}
+.hc{position:relative;width:var(--hcw,92px);aspect-ratio:1;border:0;padding:0;background:none;cursor:pointer;border-radius:12px;transition:transform .25s cubic-bezier(.3,1.4,.5,1);touch-action:none;}
+.hc svg{width:100%;height:100%;display:block;filter:drop-shadow(0 6px 8px rgba(0,0,0,.5));transition:transform .32s cubic-bezier(.3,1.3,.5,1);}
+.hc.sel{transform:translateY(-4px);}
+.hc.sel::after{content:"";position:absolute;inset:-4px;border-radius:14px;box-shadow:0 0 0 2.5px var(--lit),0 0 16px var(--litg);pointer-events:none;}
+.hc .rot{position:absolute;right:-8px;bottom:-8px;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(14,16,26,.92);box-shadow:0 0 0 1.5px var(--gl-line),0 3px 8px rgba(0,0,0,.5);color:#fff;}
+.hc .rot svg{width:18px;height:18px;filter:none;}
+.hc.dim{opacity:.45;}
+html .ct-hand .hc.mini{--hcw:calc(var(--hcw0,92px) * .64);}
+/* three cards in hand: on a phone held upright they have a row of their own over the buttons */
+html[data-o=port]:not(.ct-dk) .ct-dock.h3{flex-wrap:wrap;row-gap:6px;}
+html[data-o=port]:not(.ct-dk) .ct-dock.h3 .ct-hand{width:100%;justify-content:center;}
+.deck{position:relative;width:46px;height:56px;flex:none;display:flex;align-items:flex-end;justify-content:center;}
+.deck i{position:absolute;left:4px;width:38px;height:38px;border-radius:6px;background:linear-gradient(135deg,#2a2c38,#0c0d12);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.12),0 2px 3px rgba(0,0,0,.5);}
+.deck i::after{content:"";position:absolute;inset:7px;border-radius:3px;background:conic-gradient(var(--c0) 0 25%,var(--c1) 0 50%,var(--c2) 0 75%,var(--c3) 0);opacity:.55;}
+.deck b{position:relative;z-index:2;font-size:.68rem;font-weight:800;color:var(--text-2);white-space:nowrap;}
+.ct-side{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:6px;}
+.turn{font-weight:700;font-size:.9rem;line-height:1.3;min-height:2.6em;display:flex;align-items:center;gap:7px;}
+.turn .dot{width:9px;height:9px;border-radius:50%;background:var(--lit);flex:none;box-shadow:0 0 8px var(--litg);}
+.acts{display:flex;gap:8px;flex-wrap:wrap;}
+.acts .btn{flex:1 1 auto;min-height:44px;}
+.acts .btn .ico{width:18px;height:18px;}
+.acts .btn-soft.sq{flex:0 0 auto;padding:0 14px;}
+
+/* a phone held upright: the dock under the table */
+html[data-o=port] .ct-dock{min-height:110px;}
+@media (max-height:620px){ html[data-o=port] .hc{--hcw:72px;--hcw0:72px;} html[data-o=port] .ct-dock{min-height:86px;} html[data-o=port] .pl{min-height:40px;padding-top:3px;padding-bottom:3px;} html[data-o=port] .turn{min-height:2.2em;font-size:.84rem;} }
+@media (max-width:420px){ .acts .ct-rot span{display:none;} .acts .ct-rot{padding:0 12px;} .acts{flex-wrap:nowrap;} .acts .btn{min-width:0;} }
+@media (max-width:360px){ .pl .sub{font-size:.66rem;} .pl .pts{font-size:1.1rem;} .pl .av{width:24px;height:24px;} .pl{gap:6px;padding-left:5px;padding-right:7px;} .deck{display:none;} }
+@media (min-width:700px){
+  html[data-o=port] #app.stage.ipl{padding-left:18px;padding-right:18px;}
+  html[data-o=port] .ct-col{gap:12px;}
+  html[data-o=port] .pl{min-height:60px;padding:8px 14px 8px 10px;}
+  html[data-o=port] .pl .nm{font-size:1.05rem;}
+  html[data-o=port] .pl .sub{font-size:.82rem;}
+  html[data-o=port] .pl .av{width:36px;height:36px;}
+  html[data-o=port] .pl .pts{font-size:1.6rem;}
+  html[data-o=port] .hc{--hcw:124px;--hcw0:124px;}
+  html[data-o=port] .turn{font-size:1.05rem;}
+  html[data-o=port] .deck{transform:scale(1.25);margin:0 8px;}
+}
+/* sideways: the players, the card in hand and the buttons at the left; the table, where the taps go, at the right */
+html[data-o=land] #app.stage.ipl{padding:2px max(14px,env(safe-area-inset-right)) calc(var(--safe-b) + 10px) max(14px,env(safe-area-inset-left));}
+html[data-o=land] .ct-col{max-width:none;display:grid;grid-template-columns:var(--lc,270px) minmax(0,1fr);grid-template-rows:max-content minmax(0,1fr) max-content;grid-template-areas:"p b" ". b" "d b";column-gap:16px;row-gap:8px;}
+html[data-o=land] .ct-plates{grid-area:p;flex-direction:column;flex-wrap:nowrap;}
+html[data-o=land] .ct-plates .pl{flex:none;}
+html[data-o=land] .ct-plates.many{display:grid;grid-template-columns:1fr 1fr;}
+html[data-o=land] .frame{grid-area:b;min-height:0;}
+html[data-o=land] .ct-dock{grid-area:d;flex-direction:column;align-items:stretch;gap:8px;}
+html[data-o=land] .ct-hand{justify-content:flex-start;}
+html[data-o=land] .ct-room{display:none;}
+@media (max-height:440px){ html[data-o=land] .pl{min-height:36px;padding:2px 8px 2px 5px;} html[data-o=land] .pl .av{width:22px;height:22px;font-size:.72rem;} html[data-o=land] .pl .pts{font-size:1.05rem;} html[data-o=land] .pl .sub{display:none;} html[data-o=land] .hc{--hcw:70px;--hcw0:70px;} html[data-o=land] .turn{min-height:0;font-size:.8rem;} html[data-o=land] .acts .btn{min-height:38px;} html[data-o=land] .ct-col{row-gap:6px;} }
+@media (min-height:600px){ html[data-o=land] .ct-col{--lc:310px;} html[data-o=land] .hc{--hcw:120px;--hcw0:120px;} html[data-o=land] .pl{min-height:58px;} html[data-o=land] .pl .av{width:34px;height:34px;} html[data-o=land] .pl .pts{font-size:1.5rem;} html[data-o=land] .turn{font-size:1rem;} }
+.ct-room{display:none;}
+::view-transition-group(*){animation-duration:.45s;animation-timing-function:cubic-bezier(.22,1,.36,1);}
+
+/* ── The desk: a window larger than a phone's or a tablet's (html.ct-dk, set by deskPlan) ── */
+html.ct-dk #app.stage.ipl{padding:0;height:auto;}
+html.ct-dk .ct-col{position:fixed;left:var(--x0);top:var(--y0);width:var(--aw);height:var(--ah);max-width:none;margin:0;display:grid;gap:var(--g);
+  grid-template-columns:var(--cols);grid-template-rows:max-content max-content minmax(0,1fr);grid-template-areas:var(--areas);}
+html.ct-dk .ct-plates{grid-area:p;flex-direction:column;flex-wrap:nowrap;}
+html.ct-dk .ct-plates .pl{flex:none;}
+html.ct-dk .ct-plates.many{display:flex;}
+html.ct-dk .frame{grid-area:b;min-height:0;}
+html.ct-dk .ct-dock{grid-area:d;flex-direction:column;align-items:stretch;}
+html.ct-dk .ct-room{grid-area:r;display:flex;flex-direction:column;gap:var(--g);min-height:0;overflow:hidden;view-transition-name:ct-room;}
+html.ct-dk .ct-room.row{flex-direction:row;align-items:stretch;}
+html.ct-dk .ct-room.row>.pn{flex:1 1 0;min-width:0;}
+html.ct-dk .pl{min-height:calc(58px * var(--dk));padding:calc(7px * var(--dk)) calc(14px * var(--dk));}
+html.ct-dk .pl .nm{font-size:calc(1.02rem * var(--dk));}
+html.ct-dk .pl .sub{font-size:calc(.8rem * var(--dk));}
+html.ct-dk .pl .av{width:calc(34px * var(--dk));height:calc(34px * var(--dk));}
+html.ct-dk .pl .pts{font-size:calc(1.5rem * var(--dk));}
+html.ct-dk .hc{--hcw:calc(132px * var(--dk));--hcw0:calc(132px * var(--dk));}
+html.ct-dk .turn{font-size:calc(1rem * var(--dk));}
+html.ct-dk .tag{font-size:calc(.82rem * var(--dk));}
+html.ct-dk .tag.pt{font-size:calc(1rem * var(--dk));}
+.pn{background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);border-radius:18px;padding:calc(12px * var(--dk,1)) calc(14px * var(--dk,1));min-height:0;display:flex;flex-direction:column;font-size:calc(.88rem * var(--dk,1));flex:none;}
+.pn h3{margin:0 0 8px;font-size:calc(.8rem * var(--dk,1));font-weight:800;color:var(--text-3);}
+.pn .rows{display:flex;flex-direction:column;gap:2px;min-height:0;overflow:hidden;}
+.pn .ln{font-weight:700;line-height:1.35;}
+.pn .ln+.ln{margin-top:5px;}
+.pn .none{color:var(--text-3);font-weight:600;}
+.pn.grow{flex:1 1 auto;}
+.scr{display:grid;grid-template-columns:auto 1fr auto auto;gap:5px 10px;align-items:center;}
+.scr .d{width:.85em;height:.85em;border-radius:50%;}
+.scr .n{font-weight:700;white-space:nowrap;}
+.scr .v{font-weight:800;font-variant-numeric:tabular-nums;text-align:right;}
+.scr .l{font-weight:700;color:var(--text-3);font-variant-numeric:tabular-nums;text-align:right;font-size:.85em;}
+.scr .me .v{color:var(--lit-ink);}
+.race{margin-top:8px;}
+.race svg{width:100%;height:auto;display:block;}
+.mvr{display:grid;grid-template-columns:2.4em 1.7em 1fr auto;align-items:center;gap:8px;padding:3px 4px;border-radius:8px;font-variant-numeric:tabular-nums;}
+.mvr .no{color:var(--text-3);font-weight:700;text-align:right;}
+.mvr svg{width:1.7em;height:1.7em;display:block;}
+.mvr .nt{font-weight:700;white-space:nowrap;overflow:hidden;}
+.mvr .tg{font-size:.82em;font-weight:800;padding:1px 8px;border-radius:999px;white-space:nowrap;}
+.mvr .tg.f{background:color-mix(in srgb,var(--lit) 22%,transparent);color:var(--lit-ink);}
+.mvr .tg.t{background:rgba(255,255,255,.1);color:var(--text-2);}
+.mvr .tg.x{background:rgba(255,122,89,.18);color:#ffb39f;}
+.mvr.now{background:color-mix(in srgb,var(--lit) 10%,transparent);}
+.left{display:grid;grid-template-columns:repeat(auto-fill,minmax(calc(30px * var(--dk,1)),1fr));gap:6px;}
+.left svg{width:100%;height:auto;display:block;filter:drop-shadow(0 2px 2px rgba(0,0,0,.4));}
+.left .hand svg{outline:2px solid var(--lit);outline-offset:1px;border-radius:3px;}
+.pgr{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:4px 2px;border-top:1px solid var(--gl-line);}
+.pgr:first-child{border-top:0;}
+.pgr .w{font-weight:800;}
+.pgr .sc{font-weight:700;color:var(--text-3);}
+.pgr .dt{grid-column:1/-1;font-size:.82em;color:var(--text-3);font-weight:600;}
+.chs{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.chs span{display:inline-flex;align-items:center;gap:5px;padding:2px 9px 2px 4px;border-radius:999px;background:rgba(255,255,255,.07);font-weight:800;font-size:.86em;}
+.chs span i{width:.9em;height:.9em;border-radius:3px;background:var(--cc);}
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app'), C = window.ContinuoCore;
+  var SAVE = 'continuo_state', KEY = 'continuo';
+  var SKILL = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  var DEMO = Kit.inDemo && Kit.inDemo();
+  var CREDIT = 'Continuo was designed by Maureen Hiron and is published by David Westnedge Ltd.';
+  var INK = ['#d9363e', '#f2c12e', '#2e9a57', '#2f62c8'], LIGHT = ['#f2707a', '#ffe48a', '#5fc985', '#6c95ec'], DARK = ['#8f1820', '#b8860f', '#176135', '#1a3a85'];
+  var CN = ['red', 'yellow', 'green', 'blue'];
+  var R = document.documentElement;
+  function shape() { return window.innerWidth > window.innerHeight ? 'land' : 'port'; }
+  R.setAttribute('data-o', shape());
+
+  // ── State ────────────────────────────────────────────────────────────────
+  // S = the core's state and {mode, cover, hints, players: [{name, cpu, level}], hist (undo snapshots), started, busy}
+  var S = null, NET = null, LEFT = null, WINO = null, NETREC = {}, SHOWN = 0, HOLD = false, ANIM = false, LASTP = -1;
+  var BRD = null;   // the table as the core's Board, for the cards down now
+  function save() {
+    if (NET) return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S && !S.over) Kit.resume.set(S.np === 1 ? S.sc[0] + ' points, ' + left() + ' cards left' : 'Card ' + (S.pl.length + 1) + ' of 42');
+  }
+  function clearSave() { if (NET) return; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function left() { var n = S.deck.length; S.hands.forEach(function (h) { n += h.length; }); return n; }
+  function humans() { return S.players.filter(function (p) { return !p.cpu; }).length; }
+  function vsCpu() { return S.players.some(function (p) { return p.cpu; }); }
+  function solo() { return S.np === 1; }
+  function isMe(i) { return NET ? NET.seat === i : (humans() === 1 && !S.players[i].cpu); }
+  function nm(i) { return isMe(i) && (NET || vsCpu() || solo()) ? 'You' : S.players[i].name; }
+  function pc(i) { return Kit.color(i); }
+  function hintsOn() { return !S || S.hints !== false; }
+  function humanTurn() { return S && !S.over && !S.busy && !HOLD && !ANIM && (NET ? !LEFT && NET.myTurn() : !S.players[S.turn].cpu); }
+  function brd() { if (!BRD) BRD = C.boardOf(S.pl); return BRD; }
+  function fresh() { BRD = null; LEG = {}; }
+  function listAnd(a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+  function pts(n) { return n + (n === 1 ? ' point' : ' points'); }
+
+  function rulesHtml() {
+    return '<p class="goal">Lay the cards so their colors run on in <b>chains</b>, and score the length of every chain your card makes longer.</p>' +
+      '<h3>The cards</h3><ul><li>There are 42 cards, each a grid of 16 small squares in red, yellow, green and blue. Every card has the same pattern in its own mix of two or three colors, and no two cards are alike.</li>' +
+      '<li>The first card of the shuffled deck is turned up in the middle of the table.</li></ul>' +
+      '<h3>Your turn</h3><ul><li>Take the top card of the deck and put it down so it touches at least one card on the table, its squares lined up with theirs.</li>' +
+      '<li>Wherever its squares touch squares of other cards along a side, <b>the colors must match</b>. That is the one rule.</li>' +
+      '<li>The card can be slid along the cards it touches, so the cards need not line up in rows, and it can touch by just one square.</li>' +
+      '<li>You can turn the card before you put it down: tap the card in your hand, tap the turn button, or press R.</li>' +
+      '<li>A card that fits nowhere goes under the deck and you take the next one.</li></ul>' +
+      '<h3>Scoring</h3><ul><li>A chain is a run of squares of one color that touch along their sides, from card to card.</li>' +
+      '<li>For every chain your card makes longer, you score <b>the whole chain’s length</b>, counting the squares on your card. A chain that stays on your card alone scores nothing.</li>' +
+      '<li>When your card joins two chains of one color, they become one chain and score once, at their new length.</li>' +
+      '<li>For example: your card’s red corner touches a red chain of 5 squares, making it 6, and its blue L of 3 squares joins a blue chain of 3 to a blue chain of 4, making one chain of 10. You score 6 and 10, 16 points.</li>' +
+      '<li>With hints on, the points your card would score stand over it; point at the number, or press and hold it, and each chain it counts lights with its own length.</li></ul>' +
+      '<h3>The end</h3><ul><li>The game ends when the last card is down. The highest score wins, and equal scores share the win.</li>' +
+      '<li>Playing alone, try to beat your best score.</li></ul>' +
+      '<h3>Online</h3><ul><li><b>Play online</b> opens a table, and the others join on their own devices. Seats nobody takes are played by the computer.</li></ul>' +
+      '<h3>Tips</h3><ul><li>Join chains: two chains of 8 joined by one card score 16 or more at once.</li><li>Think about what you leave the next player: a long chain left open at its end is points for whoever extends it.</li></ul>' +
+      '<p class="src">These are the rules in the published game. Two details here come from no rule sheet that could be read: a card that fits nowhere goes under the deck, and the Cards in hand choice of three is a house rule.</p>' +
+      '<p class="credit">' + CREDIT + '</p>';
+  }
+
+  Kit.init({
+    id: KEY, mark: false, snap: '.frame', snapY: 0.5, snapFit: '.frame .tiles .tl',   // (Keep playing's picture: round the cards down)
+    snapHide: function () { return S && !NET && S.hand > 1 && humans() > 1 ? '.ct-hand' : null; },   // (three cards in hand are a hand: never in the picture in pass and play)
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } cancelThink(); clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Continuo: past games' }); } }]),
+    rules: rulesHtml()
+  });
+
+  function showSetup() {
+    S = null; deskOff(); BRD = null;
+    app.className = 'stage';
+    Kit.setup(app, {
+      modes: Kit.modes([{ id: 'cpu', desc: 'You against 1 to 4 computer players' }, { id: 'pp', kind: 'local' }]),
+      options: [
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Puts its card where it scores, not always where it scores most.'], ['normal', 'Normal', 'Puts its card where it scores the most points now.'], ['hard', 'Hard', 'Weighs its points against what the next player could score after it.']] },
+        { id: 'hints', label: 'Hints', value: 'on', choices: [['on', 'On', 'The points a card would score stand over it, and the chains they come from light up, with every match and mismatch marked.'], ['off', 'Off', 'Only whether a card fits is shown. You count the chains yourself.']] },
+        { id: 'hand', label: 'Cards in hand', value: '1', choices: [['1', 'One\nStandard', 'Take the top card and put it down, as the published rules have it.'], ['3', 'Three\nHouse rule', 'Hold three cards, put one down and draw back up: more choice each turn.']] },
+        { id: 'cover', label: 'Hand over between turns', value: 'off', choices: [['off', 'Off', 'Nothing on the table is hidden, so the device just goes round.'], ['on', 'On', 'A cover names whose turn it is before each card.']], when: function (m) { return m === 'pp'; } }
+      ],
+      players: {
+        range: function (m) { return m === 'cpu' ? [2, 5] : [1, 5]; },
+        cpu: function (m) { return m === 'cpu' ? 'seats' : 'mix'; },
+        count: 2
+      },
+      onStart: function (cfg) {
+        var players = cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.level || cfg.options.level || 'normal' }; });
+        newGame({ mode: cfg.mode, cover: cfg.options.cover === 'on' && cfg.mode === 'pp', hints: cfg.options.hints !== 'off', hand: +cfg.options.hand || 1, players: players });
+      }
+    });
+    var hero = app.querySelector('.setup-hero');
+    if (hero && !app.querySelector('.ct-credit')) hero.parentNode.insertBefore(el('p', { class: 'ct-credit', text: CREDIT }), hero.nextSibling);
+    var hideC = function () { var c = app.querySelector('.ct-credit'); if (c && document.documentElement.scrollHeight > window.innerHeight + 1) c.style.display = 'none'; };
+    requestAnimationFrame(hideC); setTimeout(hideC, 700);
+  }
+  function freshFields(st) { st.hist = []; st.started = Date.now(); st.busy = false; }
+  function newGame(o, rotate) {
+    cancelThink();
+    var keep = o || { mode: S.mode, cover: S.cover, hints: S.hints, hand: S.hand, players: S.players };
+    var players = keep.players.slice();
+    if (rotate && players.length > 1) players = players.slice(1).concat([players[0]]);
+    var st = C.newGame({ np: players.length, hand: keep.hand || 1, seed: o && o.seed, deck: o && o.deck });
+    st.mode = keep.mode; st.cover = keep.cover; st.hints = keep.hints !== false; st.players = players;
+    freshFields(st);
+    S = st; fresh(); SEL = 0; AIMK = null;
+    Kit.gameStart(); save(); build(); Kit.sfx('deal');
+    afterTurn();
+  }
+
+  // ── Moves ────────────────────────────────────────────────────────────────
+  function snap(byCpu) { var c = JSON.parse(JSON.stringify(S)); delete c.hist; return { s: c, cpu: !!byCpu }; }
+  function playMove(str, byCpu) {
+    if (!S || S.over) return false;
+    var h0 = snap(byCpu), prevSc = S.sc.slice();
+    var res = C.play(S, str);
+    if (!res) return false;
+    S.hist.push(h0); if (S.hist.length > 60) S.hist.shift();
+    fresh(); SEL = 0; AIMK = null; GH = null;
+    save();
+    var t = show(res, prevSc);
+    setTimeout(function () { afterMove(); }, t);
+    return true;
+  }
+  function afterMove() {
+    if (!S) return;
+    if (S.over) { finish(); return; }
+    afterTurn();
+  }
+  function afterTurn() {
+    if (!S || S.over) return;
+    if (NET) { startAim(); paintAll(); return; }
+    var p = S.players[S.turn];
+    if (p.cpu) { paintAll(); maybeCpu(); return; }
+    if (S.cover && humans() > 1 && S.n > 0 && LASTP !== S.turn && !DEMO) {
+      HOLD = true; paintAll();
+      Kit.handoff({ name: p.name, color: pc(S.turn), msg: 'Your card is ready.', hint: 'Hold for a moment to take your turn', hold: 700 }).then(function () { HOLD = false; LASTP = S.turn; startAim(); paintAll(); });
+      return;
+    }
+    LASTP = S.turn; startAim(); paintAll();
+  }
+  function undo() {
+    if (!S || S.over == null) return;
+    if (S.over) return Kit.toast('The game is over');
+    var cpu = vsCpu();
+    if (!S.hist.some(function (h) { return !h.cpu; })) return Kit.toast('Nothing to undo');
+    cancelThink(); S.busy = false;
+    var h, hist = S.hist;
+    while (hist.length) { h = hist.pop(); if (!cpu || !h.cpu) break; }
+    S = h.s; S.hist = hist; S.busy = false; fresh(); SEL = 0; AIMK = null; GH = null;
+    Kit.sfx('whoosh'); save(); build(); afterTurn();
+  }
+
+  // ── The computer ─────────────────────────────────────────────────────────
+  var worker = null, workerOk = true, reqId = 0, pending = null;
+  function coreOf(st) { return { np: st.np, hand: st.hand, deck: st.deck, hands: st.hands, pl: st.pl, turn: st.turn, n: st.n, sc: st.sc, over: st.over }; }
+  function getWorker() {
+    if (worker || !workerOk) return worker;
+    try {
+      var url = new URL('continuo-core.js', location.href).href;
+      var src = 'importScripts(' + JSON.stringify(url) + ');onmessage=function(e){var d=e.data;postMessage({id:d.id,res:ContinuoCore.search(d.st,d.o)});};';
+      worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+      worker.onmessage = function (e) { if (pending && e.data.id === pending.id) { var p = pending; pending = null; p.cb(e.data.res); } };
+      worker.onerror = function () { workerOk = false; worker = null; if (pending) { var p = pending; pending = null; p.cb(C.search(p.st, p.o)); } };
+    } catch (e) { workerOk = false; worker = null; }
+    return worker;
+  }
+  function think(st, o, cb) {
+    var id = ++reqId, w = getWorker();
+    pending = { id: id, cb: cb, st: st, o: o };
+    if (w) w.postMessage({ id: id, st: st, o: o });
+    else setTimeout(function () { if (pending && pending.id === id) { pending = null; cb(C.search(st, o)); } }, 30);
+  }
+  function cancelThink() { pending = null; }
+  function maybeCpu() {
+    if (NET || !S || S.over || !S.players[S.turn].cpu || S.busy) return;
+    S.busy = true; paintAll();
+    var t0 = Date.now(), myN = S.ml.length, p = S.players[S.turn];
+    think(coreOf(S), { level: p.level || 'normal', seed: Math.floor(Math.random() * 1e9) }, function (res) {
+      if (!S || S.ml.length !== myN) return;
+      setTimeout(function () {
+        if (!S || S.ml.length !== myN) return;
+        S.busy = false;
+        if (res && res.move) playMove(res.move, true);
+      }, Math.max(0, (S.players.every(function (q) { return q.cpu; }) ? 250 : 700) - (Date.now() - t0)));
+    });
+  }
+
+  // ── Drawing a card ───────────────────────────────────────────────────────
+  // A card is a lacquered black card with 16 enamel squares; units are squares (a card is 4 across)
+  var NS = 'http://www.w3.org/2000/svg';
+  function sv(tag, a) { var n = document.createElementNS(NS, tag); if (a) for (var k in a) n.setAttribute(k, a[k]); return n; }
+  function defs() {
+    var s = '<defs>';
+    for (var c = 0; c < 4; c++) s += '<linearGradient id="ctc' + c + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' + LIGHT[c] + '"/><stop offset=".42" stop-color="' + INK[c] + '"/><stop offset="1" stop-color="' + DARK[c] + '"/></linearGradient>';
+    s += '<linearGradient id="ctg" x1="0" y1="0" x2=".7" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".38" stop-color="#fff" stop-opacity=".04"/><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".18"/></linearGradient>';
+    s += '<linearGradient id="cte" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a3d4a"/><stop offset=".5" stop-color="#15161d"/><stop offset="1" stop-color="#050507"/></linearGradient>';
+    return s + '</defs>';
+  }
+  // a card as SVG markup at (x, y) (squares); o.shadow, o.cls
+  function cardMarkup(t, o, x, y, opt) {
+    opt = opt || {};
+    var cl = C.cells(t, o), s = '';
+    if (opt.shadow !== false) s += '<rect x=".1" y=".16" width="4" height="4" rx=".26" fill="rgba(0,0,0,.42)"/>';
+    s += '<rect class="edge" x="0" y="0" width="4" height="4" rx=".24" fill="url(#cte)"/>';
+    for (var i = 0; i < 16; i++) s += '<rect class="cel" x="' + ((i & 3) + .085) + '" y="' + ((i >> 2) + .085) + '" width=".83" height=".83" rx=".1" fill="url(#ctc' + cl[i] + ')"/>';
+    s += '<rect x=".03" y=".03" width="3.94" height="3.94" rx=".22" fill="url(#ctg)" pointer-events="none"/>';
+    return '<g transform="translate(' + x + ' ' + y + ')"' + (opt.attrs || '') + '><g class="in' + (opt.drop ? ' drop' : '') + '">' + s + '</g></g>';
+  }
+  // a small card on its own (the hand, the room)
+  function cardSvg(t, o, cls) {
+    return '<svg viewBox="-0.15 -0.15 4.4 4.45" class="' + (cls || '') + '" aria-hidden="true">' + defs().replace(/id="ct/g, 'id="cs' + t + o + (cls || '') + '_').replace(/url\(#ct/g, 'url(#cs' + t + o + (cls || '') + '_') + cardMarkup(t, o, 0, 0).replace(/url\(#ct/g, 'url(#cs' + t + o + (cls || '') + '_') + '</svg>';
+  }
+  // a tiny flat card (the room's lists): no gradients
+  function flatCard(t, o) {
+    var cl = C.cells(t, o || 0), s = '<svg viewBox="0 0 4 4" aria-hidden="true"><rect width="4" height="4" rx=".3" fill="#0c0d12"/>';
+    for (var i = 0; i < 16; i++) s += '<rect x="' + ((i & 3) + .1) + '" y="' + ((i >> 2) + .1) + '" width=".8" height=".8" rx=".12" fill="' + INK[cl[i]] + '"/>';
+    return s + '</svg>';
+  }
+
+  // ── The table ────────────────────────────────────────────────────────────
+  var zoomEl, colEl, platesEl, frameEl, svgEl, gTiles, gHl, gGh, gMk, gFl, layEl, dockEl, handEl, turnEl, actsEl, roomEl;
+  var VB = { x: -6, y: -6, w: 16, h: 16 }, VBT = null;
+  function build() {
+    if (!S || !S.pl) return;
+    app.innerHTML = ''; app.className = 'stage ipl';
+    colEl = el('div', { class: 'ct-col' });
+    platesEl = el('div', { class: 'ct-plates' });
+    frameEl = el('div', { class: 'frame', role: 'img', 'aria-label': 'The table' });
+    svgEl = sv('svg', { class: 'bd' }); svgEl.innerHTML = defs();
+    gTiles = sv('g', { class: 'tiles' }); gHl = sv('g', { class: 'hl' }); gFl = sv('g', { class: 'fl' }); gGh = sv('g', { class: 'gh' }); gMk = sv('g', { class: 'mk' });
+    [gTiles, gHl, gFl, gGh, gMk].forEach(function (g) { svgEl.appendChild(g); });
+    frameEl.appendChild(svgEl);
+    layEl = el('div', { class: 'lay' }); frameEl.appendChild(layEl);
+    zoomEl = el('button', { type: 'button', class: 'zm', hidden: true, onclick: function (e) { e.stopPropagation(); setZoom(!ZOOM); } });
+    zoomEl.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+    frameEl.appendChild(zoomEl);
+    dockEl = el('div', { class: 'ct-dock' });
+    handEl = el('div', { class: 'ct-hand' });
+    var side = el('div', { class: 'ct-side' });
+    turnEl = el('div', { class: 'turn' }); actsEl = el('div', { class: 'acts' });
+    side.appendChild(turnEl); side.appendChild(actsEl);
+    dockEl.appendChild(handEl); dockEl.appendChild(side);
+    roomEl = el('div', { class: 'ct-room' });
+    colEl.appendChild(platesEl); colEl.appendChild(frameEl); colEl.appendChild(dockEl); colEl.appendChild(roomEl);
+    app.appendChild(colEl);
+    hookInput();
+    deskApply();
+    paintTiles();
+    requestAnimationFrame(function () { fitView(false); paintAll(); });
+    fitView(false);
+  }
+  function paintTiles(dropLast) {
+    var s = '';
+    S.pl.forEach(function (p, k) {
+      var last = k === S.pl.length - 1 && k > 0;
+      s += cardMarkup(p[0], p[1], p[2], p[3], { drop: dropLast && last, attrs: ' class="tl' + (last ? ' last' : '') + '" data-k="' + k + '"' });
+    });
+    gTiles.innerHTML = s;
+  }
+  // The view: every card down with room round it for a card, as large as the table allows (a square at most --cap)
+  function bbox() {
+    var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    S.pl.forEach(function (p) { x0 = Math.min(x0, p[2]); y0 = Math.min(y0, p[3]); x1 = Math.max(x1, p[2] + 4); y1 = Math.max(y1, p[3] + 4); });
+    return { x0: x0, y0: y0, x1: x1, y1: y1 };
+  }
+  // ZOOM: a closer look round the card in hand (the magnifier, or a pinch), the view following it
+  var ZOOM = false, ZSC = 30, ZFOCUS = null;   // (ZFOCUS: a point to look at instead of the card, for the demo)
+  function viewFor() {
+    var r = frameEl.getBoundingClientRect(), W = Math.max(50, r.width), H = Math.max(50, r.height), b = bbox(), M = 4.6;
+    var bw = b.x1 - b.x0 + 2 * M, bh = b.y1 - b.y0 + 2 * M;
+    var cap = Math.min(DK ? 78 : 56, Math.max(W, H) / 10), fit = Math.min(W / bw, H / bh, cap), sc = fit;
+    var cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
+    if (ZOOM && fit < ZSC * .85) {
+      sc = ZSC;
+      var f = ZFOCUS ? ZFOCUS : GH ? { x: GH.x + 2, y: GH.y + 2 } : (function () { var lp = S.pl[S.pl.length - 1]; return { x: lp[2] + 2, y: lp[3] + 2 }; })();
+      var hw = W / sc / 2, hh = H / sc / 2;
+      // the card in the middle, but no farther out than the table's own edge allows
+      cx = Math.max(b.x0 - M + hw, Math.min(b.x1 + M - hw, f.x)); cy = Math.max(b.y0 - M + hh, Math.min(b.y1 + M - hh, f.y));
+      if (b.x1 - b.x0 + 2 * M < 2 * hw) cx = (b.x0 + b.x1) / 2;
+      if (b.y1 - b.y0 + 2 * M < 2 * hh) cy = (b.y0 + b.y1) / 2;
+    }
+    var w = W / sc, h = H / sc;
+    return { x: cx - w / 2, y: cy - h / 2, w: w, h: h, sc: sc, fit: fit };
+  }
+  function paintZoom() {
+    if (!zoomEl) return;
+    var v = viewFor(), need = v.fit < ZSC * .7 && !!S && !S.over;
+    zoomEl.hidden = !need && !ZOOM;
+    zoomEl.classList.toggle('on', ZOOM);
+    zoomEl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.8-4.8"/><path d="M7.5 10.5h6"/>' + (ZOOM ? '' : '<path d="M10.5 7.5v6"/>') + '</svg>';
+    zoomEl.setAttribute('aria-label', ZOOM ? 'See the whole table' : 'Look closer');
+  }
+  function setZoom(on) { if (ZOOM === on) return; ZOOM = on; Kit.sfx('whoosh', .4); Kit.haptic('light'); fitView(true); paintZoom(); }
+  function setVB(v) { VB = v; svgEl.setAttribute('viewBox', v.x.toFixed(3) + ' ' + v.y.toFixed(3) + ' ' + v.w.toFixed(3) + ' ' + v.h.toFixed(3)); }
+  function fitView(anim) {
+    if (!frameEl || !S) return;
+    var to = viewFor();
+    if (VBT) cancelAnimationFrame(VBT.raf);
+    paintZoom();
+    if (!anim || !VB || matchMedia('(prefers-reduced-motion: reduce)').matches) { setVB(to); VBT = null; placeTags(); return; }
+    var from = { x: VB.x, y: VB.y, w: VB.w, h: VB.h }, t0 = performance.now(), D = 520;
+    VBT = { raf: 0 };
+    (function step(now) {
+      var k = Math.min(1, (now - t0) / D), e = 1 - Math.pow(1 - k, 3);
+      setVB({ x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e, w: from.w + (to.w - from.w) * e, h: from.h + (to.h - from.h) * e, sc: to.sc });
+      placeTags();
+      if (k < 1) VBT.raf = requestAnimationFrame(step); else VBT = null;
+    })(t0);
+  }
+  // board squares to and from the screen
+  function toPx(x, y) { var r = frameEl.getBoundingClientRect(); return { x: (x - VB.x) / VB.w * r.width, y: (y - VB.y) / VB.h * r.height }; }
+  function fromClient(cx, cy) { var r = frameEl.getBoundingClientRect(); return { x: VB.x + (cx - r.left) / r.width * VB.w, y: VB.y + (cy - r.top) / r.height * VB.h }; }
+
+  // ── Aiming: the card in hand as a ghost on the table ─────────────────────
+  // SEL: which card in hand; ORI: 0 or 1 (a quarter turn); GH: {x, y} the ghost's top left; FREE: dragged off the fits
+  var SEL = 0, ORI = 0, GH = null, LEG = {}, AIMK = null, PEEK = false;
+  function card() { var h = S && S.hands[S.turn]; return h && h.length ? h[Math.min(SEL, h.length - 1)] : -1; }
+  function fitsOf(t, o) { var k = t + ':' + o; if (!LEG[k]) LEG[k] = C.fits(brd(), t, o); return LEG[k]; }
+  function anyFit() { var h = S.hands[S.turn] || []; return h.some(function (t) { return fitsOf(t, 0).length || fitsOf(t, 1).length; }); }
+  function nearest(t, o, px, py) {
+    var best = null, bd = 1e9;
+    fitsOf(t, o).forEach(function (f) { var d = Math.hypot(f.x + 2 - px, f.y + 2 - py); if (d < bd - 1e-6) { bd = d; best = f; } });
+    return best ? { x: best.x, y: best.y, d: bd } : null;
+  }
+  // a new turn: the ghost lies where the card fits nearest the last card down (not where it scores most)
+  function startAim() {
+    GH = null; PEEK = false;
+    if (!S || S.over || !humanTurn()) return;
+    var h = S.hands[S.turn]; if (!h.length) return;
+    SEL = Math.min(SEL, h.length - 1);
+    var lp = S.pl[S.pl.length - 1], cx = lp[2] + 2, cy = lp[3] + 2, t = card();
+    var a = nearest(t, ORI, cx, cy), b = nearest(t, 1 - ORI, cx, cy);
+    if (!a && b) { ORI = 1 - ORI; a = b; }
+    if (a) GH = { x: a.x, y: a.y };
+    else { var bb = bbox(); GH = { x: Math.round(bb.x1 + 1), y: Math.round((bb.y0 + bb.y1) / 2 - 2) }; }
+    if (ZOOM && frameEl) fitView(true);
+  }
+  function judgeGhost() {
+    if (!GH || card() < 0) return null;
+    return C.judge(brd(), card(), ORI, GH.x, GH.y, { marks: true, sq: true });
+  }
+  function aimAt(px, py, free) {
+    var t = card(); if (t < 0) return;
+    var g = free ? { x: Math.round(px - 2), y: Math.round(py - 2) } : nearest(t, ORI, px, py);
+    if (!g) g = { x: Math.round(px - 2), y: Math.round(py - 2) };
+    if (GH && GH.x === g.x && GH.y === g.y) return false;
+    GH = { x: g.x, y: g.y }; PEEK = false; ZFOCUS = null;
+    return true;
+  }
+  function rotate() {
+    if (!humanTurn() || card() < 0) return;
+    ORI = 1 - ORI; Kit.sfx('flip', .7); Kit.haptic('light');
+    if (GH) { var n = nearest(card(), ORI, GH.x + 2, GH.y + 2); if (n && n.d <= 4.5) GH = { x: n.x, y: n.y }; }
+    var svgH = handEl && handEl.querySelector('.hc.sel svg');
+    if (svgH) { svgH.style.transition = 'none'; svgH.style.transform = 'rotate(-90deg)'; void svgH.offsetWidth; svgH.style.transition = ''; svgH.style.transform = ''; }
+    paintAll();
+  }
+  function pickCard(i) {
+    if (!humanTurn()) return;
+    if (i === SEL) { rotate(); return; }
+    SEL = i; Kit.sfx('tick', .6); Kit.haptic('light');
+    if (GH) { var n = nearest(card(), ORI, GH.x + 2, GH.y + 2) || nearest(card(), 1 - ORI, GH.x + 2, GH.y + 2); if (n) GH = { x: n.x, y: n.y }; }
+    paintAll();
+  }
+  function placeNow() {
+    if (!humanTurn()) return;
+    var t = card(); if (t < 0) return;
+    if (!anyFit()) { commit(t + '-'); return; }
+    var j = judgeGhost();
+    if (!j || !j.ok) { Kit.haptic('error'); Kit.toast(j && j.why === 'over' ? 'The card can’t lie on top of another card' : j && j.why === 'alone' ? 'The card has to touch a card on the table' : 'Where the squares touch, the colors have to match'); return; }
+    Kit.haptic('medium');
+    commit(C.encode(t, GH.x, GH.y, ORI));
+  }
+  function commit(str) { PEEK = false; if (NET) return netMove(str); playMove(str); }
+
+  function paintGhost() {
+    gGh.innerHTML = ''; gMk.innerHTML = ''; gHl.innerHTML = ''; gHl.classList.remove('on');
+    layEl.querySelectorAll('.tag').forEach(function (n) { n.remove(); });
+    gGh.classList.remove('bad');
+    if (!GH || !humanTurn() || card() < 0 || !anyFit()) return;
+    var j = judgeGhost(), hint = hintsOn();
+    gGh.innerHTML = cardMarkup(card(), ORI, GH.x, GH.y, { shadow: true }) + '<rect class="ring" x="' + (GH.x - .1) + '" y="' + (GH.y - .1) + '" width="4.2" height="4.2" rx=".3"/>';
+    if (!j.ok) gGh.classList.add('bad');
+    // the marks: a gold dot where the colors match, a red cross where they don't (hints only)
+    if (hint) {
+      var s = '';
+      (j.good || []).forEach(function (pr) { var a = C.xy(pr[0]), b = C.xy(pr[1]); s += '<circle class="ok" cx="' + ((a.x + b.x) / 2 + .5) + '" cy="' + ((a.y + b.y) / 2 + .5) + '" r=".13"/>'; });
+      (j.bad || []).forEach(function (pr) { var a = C.xy(pr[0]), b = C.xy(pr[1]), mx = (a.x + b.x) / 2 + .5, my = (a.y + b.y) / 2 + .5, d = .2; s += '<path class="no" d="M' + (mx - d) + ' ' + (my - d) + 'L' + (mx + d) + ' ' + (my + d) + 'M' + (mx + d) + ' ' + (my - d) + 'L' + (mx - d) + ' ' + (my + d) + '"/>'; });
+      gMk.innerHTML = s;
+    }
+    if (j.ok && hint) {
+      // the chains the card would score, lightly outlined; the points over the card
+      paintChains(j.groups, false);
+      var tg = el('span', { class: 'tag pt good', html: '+' + j.score + (j.groups.length > 1 ? '<small> from ' + j.groups.length + ' chains</small>' : j.groups.length ? '' : '') });
+      if (!j.score) tg.innerHTML = '+0<small> no chain made longer</small>';
+      tg.dataset.gx = GH.x + 2; tg.dataset.gy = GH.y - .2;
+      tg.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse') { PEEK = true; paintPeek(); } });
+      tg.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') { PEEK = false; paintPeek(); } });
+      tg.addEventListener('pointerdown', function (e) { e.stopPropagation(); PEEK = !PEEK; paintPeek(); Kit.haptic('light'); });
+      layEl.appendChild(tg);
+      if (PEEK) paintPeek();
+    } else if (!j.ok) {
+      var why = j.why === 'over' ? 'Lies on a card' : j.why === 'alone' ? 'Touches no card' : hint ? (j.bad.length === 1 ? 'One color doesn’t match' : j.bad.length + ' colors don’t match') : 'Doesn’t fit';
+      var tb = el('span', { class: 'tag bad', text: why }); tb.dataset.gx = GH.x + 2; tb.dataset.gy = GH.y - .2; layEl.appendChild(tb);
+    }
+    placeTags();
+  }
+  // the chains a card would score: outlined; when peeked, lit with each chain's length beside it
+  function paintChains(groups, on) {
+    var s = '';
+    groups.forEach(function (g) { (g.sq || []).forEach(function (j) { var p = C.xy(j); s += '<rect x="' + (p.x + .06) + '" y="' + (p.y + .06) + '" width=".88" height=".88" rx=".12"/>'; }); });
+    gHl.innerHTML = s; gHl.classList.toggle('on', !!on);
+  }
+  function paintPeek() {
+    layEl.querySelectorAll('.tag.chn').forEach(function (n) { n.remove(); });
+    var j = judgeGhost(); if (!j || !j.ok) return;
+    paintChains(j.groups, PEEK);
+    if (!PEEK) return;
+    j.groups.forEach(function (g) {
+      // the label sits on the chain's square farthest from the card, so it reads beside the chain
+      var far = null, fd = -1, cx = GH.x + 2, cy = GH.y + 2;
+      (g.sq || []).forEach(function (q) { var p = C.xy(q), d = Math.hypot(p.x + .5 - cx, p.y + .5 - cy); if (d > fd) { fd = d; far = p; } });
+      if (!far) return;
+      var t = el('span', { class: 'tag chn', text: g.len + ' ' + CN[g.c] + (g.n > 1 ? ', ' + g.n + ' joined' : '') });
+      t.style.setProperty('--cc', INK[g.c]); t.dataset.gx = far.x + .5; t.dataset.gy = far.y + .5; t.dataset.mid = 1;
+      layEl.appendChild(t);
+    });
+    placeTags();
+  }
+  function placeTags() {
+    if (!layEl) return;
+    var r = frameEl.getBoundingClientRect();
+    layEl.querySelectorAll('[data-gx]').forEach(function (n) {
+      var p = toPx(+n.dataset.gx, +n.dataset.gy), w = n.offsetWidth / 2 + 6;
+      var x = Math.max(w, Math.min(r.width - w, p.x)), y = n.dataset.mid ? p.y : Math.max(n.offsetHeight + 6, p.y);
+      n.style.left = x + 'px'; n.style.top = y + 'px';
+    });
+    // the chains' labels never lie on each other or on the points: each steps down (or up) until it is clear
+    var main = layEl.querySelector('.tag.pt'), done = main ? [main.getBoundingClientRect()] : [];
+    layEl.querySelectorAll('.tag.chn').forEach(function (n) {
+      var y0 = parseFloat(n.style.top), k = 0, rr;
+      function hit() { rr = n.getBoundingClientRect(); return done.some(function (q) { return !(rr.right + 3 < q.left || rr.left - 3 > q.right || rr.bottom + 3 < q.top || rr.top - 3 > q.bottom); }); }
+      while (hit() && k < 12) { k++; var step = Math.ceil(k / 2) * (rr.height + 4) * (k % 2 ? 1 : -1); n.style.top = Math.max(rr.height / 2 + 2, Math.min(r.height - rr.height / 2 - 2, y0 + step)) + 'px'; }
+      done.push(n.getBoundingClientRect());
+    });
+  }
+
+  // ── Input ────────────────────────────────────────────────────────────────
+  // Touch: a tap on the table moves the card to where it fits nearest the tap; a drag carries it (lifted above the
+  // finger) and it settles where it fits nearest when let go; a tap on the card where it fits puts it down.
+  // Mouse: the card follows the pointer, settling where it fits nearest; a click puts it down; the right button or R
+  // turns it. A card in hand can also be dragged onto the table.
+  var PD = null, SUPPRESS = 0;
+  function inGhost(p) { return GH && p.x >= GH.x - .3 && p.x <= GH.x + 4.3 && p.y >= GH.y - .3 && p.y <= GH.y + 4.3; }
+  function hookInput() {
+    var TP = {}, PINCH = null;
+    frameEl.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'touch') {
+        TP[e.pointerId] = { x: e.clientX, y: e.clientY };
+        var ids = Object.keys(TP);
+        if (ids.length === 2) { var a = TP[ids[0]], b = TP[ids[1]]; PINCH = { d: Math.hypot(a.x - b.x, a.y - b.y), done: false }; PD = null; return; }
+      }
+      if (!S || !humanTurn() || card() < 0) return;
+      if (e.button === 2) return;
+      PD = { id: e.pointerId, x: e.clientX, y: e.clientY, on: false, touch: e.pointerType !== 'mouse', from: 'board' };
+      try { frameEl.setPointerCapture(e.pointerId); } catch (er) {}
+    });
+    frameEl.addEventListener('pointermove', function (e) {
+      if (TP[e.pointerId]) { TP[e.pointerId] = { x: e.clientX, y: e.clientY }; }
+      if (PINCH) {
+        var ids = Object.keys(TP); if (ids.length < 2) return;
+        var a = TP[ids[0]], b = TP[ids[1]], d = Math.hypot(a.x - b.x, a.y - b.y);
+        if (!PINCH.done && d > PINCH.d * 1.25) { PINCH.done = true; setZoom(true); }
+        if (!PINCH.done && d < PINCH.d * .8) { PINCH.done = true; setZoom(false); }
+        return;
+      }
+      if (!S || !humanTurn() || card() < 0) return;
+      if (PD && PD.id === e.pointerId) {
+        if (!PD.on && Math.hypot(e.clientX - PD.x, e.clientY - PD.y) > 8) PD.on = true;
+        if (PD.on) { dragTo(e.clientX, e.clientY, PD.touch); return; }
+        return;
+      }
+      if (e.pointerType === 'mouse') { frameEl.classList.add('mouse'); hoverTo(e.clientX, e.clientY); }
+    });
+    function end(e) {
+      delete TP[e.pointerId]; if (PINCH) { if (!Object.keys(TP).length) PINCH = null; return; }
+      if (!PD || PD.id !== e.pointerId) return;
+      var d = PD; PD = null;
+      if (d.on) { settle(); SUPPRESS = Date.now() + 300; return; }
+      if (!humanTurn()) return;
+      var p = fromClient(e.clientX, e.clientY);
+      if (!d.touch) { // a click
+        var j = judgeGhost(); if (j && j.ok && inGhost(p)) placeNow(); else { aimAt(p.x, p.y); paintAll(); }
+        return;
+      }
+      if (inGhost(p)) { var j2 = judgeGhost(); if (j2 && j2.ok) { placeNow(); return; } }
+      if (aimAt(p.x, p.y)) { Kit.sfx('tick', .5); Kit.haptic('light'); if (ZOOM) setTimeout(function () { fitView(true); }, 120); }
+      paintAll();
+    }
+    frameEl.addEventListener('pointerup', end);
+    frameEl.addEventListener('pointercancel', function (e) { delete TP[e.pointerId]; if (!Object.keys(TP).length) PINCH = null; if (PD) { PD = null; settle(); } });
+    frameEl.addEventListener('contextmenu', function (e) { e.preventDefault(); if (humanTurn()) rotate(); });
+    frameEl.addEventListener('wheel', function (e) { if (humanTurn() && Math.abs(e.deltaY) > 30) { e.preventDefault(); rotate(); } }, { passive: false });
+  }
+  var LASTHOV = 0;
+  function hoverTo(cx, cy) {
+    var p = fromClient(cx, cy), t = card(); if (t < 0) return;
+    var n = nearest(t, ORI, p.x, p.y);
+    var ch = n && n.d <= 3.2 ? aimAt(p.x, p.y) : aimAt(p.x, p.y, true);
+    if (ch) { if (Date.now() - LASTHOV > 60) { Kit.sfx('tick', .25); LASTHOV = Date.now(); } paintGhost(); paintActs(); paintStatus(); }
+  }
+  function dragTo(cx, cy, touch) {
+    var p = fromClient(cx, cy - (touch ? Math.min(90, VB.sc * 3) : 0));
+    if (aimAt(p.x, p.y, true)) { paintGhost(); paintActs(); }
+  }
+  // let go: the card stays where it fits, or settles where it fits nearest
+  function settle() {
+    if (!GH || card() < 0) return;
+    var j = judgeGhost();
+    if (!j || !j.ok) { var n = nearest(card(), ORI, GH.x + 2, GH.y + 2); if (n) { GH = { x: n.x, y: n.y }; Kit.sfx('tick', .6); } }
+    else Kit.sfx('tap', .5);
+    Kit.haptic('light'); paintAll(); if (ZOOM) fitView(true);
+  }
+  document.addEventListener('keydown', function (e) {
+    if (!S || !frameEl || !frameEl.isConnected || !humanTurn() || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (document.querySelector('.k-scrim')) return;
+    var k = e.key;
+    if (k === 'r' || k === 'R' || k === ' ') { e.preventDefault(); rotate(); }
+    else if (k === 'Enter') { e.preventDefault(); placeNow(); }
+    else if (k === 'Tab' && S.hands[S.turn].length > 1) { e.preventDefault(); pickCard((SEL + 1) % S.hands[S.turn].length); }
+    else if (/^Arrow/.test(k) && GH) {
+      e.preventDefault();
+      var dx = k === 'ArrowLeft' ? -1 : k === 'ArrowRight' ? 1 : 0, dy = k === 'ArrowUp' ? -1 : k === 'ArrowDown' ? 1 : 0, best = null, bd = 1e9;
+      fitsOf(card(), ORI).forEach(function (f) { var ex = f.x - GH.x, ey = f.y - GH.y, along = ex * dx + ey * dy; if (along <= 0) return; var d = along + 2 * Math.abs(ex * dy + ey * dx); if (d < bd) { bd = d; best = f; } });
+      if (best) { GH = { x: best.x, y: best.y }; Kit.sfx('tick', .4); paintAll(); }
+    }
+  });
+
+  // ── Placing a card, played out: it drops in, the chains it made longer light up from the card outward, the
+  //    points rise from it and count up on the player's plate ──
+  function show(res, prevSc, net) {
+    var p = res.p;
+    if (res.under || res.aside) {
+      paintAll();
+      Kit.sfx('whoosh'); Kit.haptic('medium');
+      Kit.callout(res.under ? (nm(p) === 'You' ? 'That card fits nowhere: it goes under the deck' : nm(p) + '’s card fits nowhere: it goes under the deck') : 'That card fits nowhere, and neither does any card left: it is set aside');
+      return 1100;
+    }
+    ANIM = true;
+    paintTiles(true); gGh.innerHTML = ''; gMk.innerHTML = ''; gHl.innerHTML = '';
+    layEl.querySelectorAll('.tag').forEach(function (n) { n.remove(); });
+    Kit.sfx('tap'); Kit.haptic('light');
+    setTimeout(function () { Kit.sfx('chip', .85); }, 180);
+    fitView(true);
+    paintPlates(prevSc); paintHand(); paintStatus(); paintActs();
+    var T = 420;
+    // light the chains: the squares of each chain flash outward from the card
+    var sqs = chainsOfLast(brd());
+    var delay = 0;
+    sqs.forEach(function (g, gi) {
+      setTimeout(function () {
+        var s = '';
+        g.order.forEach(function (o2) { s += '<rect x="' + (o2.x + .06) + '" y="' + (o2.y + .06) + '" width=".88" height=".88" rx=".12" style="animation-delay:' + Math.min(500, o2.d * 22) + 'ms"/>'; });
+        var gg = sv('g'); gg.innerHTML = s; gFl.appendChild(gg);
+        Kit.sfx('tick', .45 + Math.min(.4, g.len / 60));
+        setTimeout(function () { gg.remove(); }, 1600);
+      }, T + delay);
+      delay += 260;
+    });
+    var tot = res.s, tEnd = T + delay + 150;
+    setTimeout(function () {
+      if (tot > 0) {
+        var q = toPx(res.x + 2, res.y + 1), g = el('span', { class: 'gain', text: '+' + tot });
+        g.style.left = q.x + 'px'; g.style.top = q.y + 'px'; layEl.appendChild(g); setTimeout(function () { g.remove(); }, 1600);
+        Kit.sfx(tot >= 20 ? 'good' : 'pop', tot >= 20 ? .8 : .6);
+      }
+      paintPlates(null, p);
+      reward(res);
+    }, tEnd);
+    var done = tEnd + (bigOf(res) ? 1500 : 450);
+    setTimeout(function () { ANIM = false; if (net) paintAll(); }, done - 30);
+    return done;
+  }
+  // each chain the last card made longer, its squares in order of distance from the card
+  function chainsOfLast(B) {
+    var lp = S.pl[S.pl.length - 1]; if (!lp || lp[4] < 0) return [];
+    B.chains();
+    var mine = {}, out = [];
+    for (var i = 0; i < 16; i++) { var j = C.at(lp[2] + (i & 3), lp[3] + (i >> 2)); mine[j] = 1; }
+    var ids = {};
+    Object.keys(mine).forEach(function (j) { ids[B.comp[+j]] = 1; });
+    Object.keys(ids).forEach(function (id) {
+      id = +id;
+      var sq = B.occ.filter(function (j) { return B.comp[j] === id; });
+      if (!sq.some(function (j) { return !mine[j]; })) return;
+      // distance in steps from the card (a breadth-first walk)
+      var dist = {}, q = sq.filter(function (j) { return mine[j]; }), set = {}; sq.forEach(function (j) { set[j] = 1; });
+      q.forEach(function (j) { dist[j] = 0; });
+      for (var h = 0; h < q.length; h++) [1, -1, C.N, -C.N].forEach(function (d) { var v = q[h] + d; if (set[v] && dist[v] == null) { dist[v] = dist[q[h]] + 1; q.push(v); } });
+      out.push({ len: sq.length, c: B.col[sq[0]], order: q.map(function (j) { var p = C.xy(j); return { x: p.x, y: p.y, d: dist[j] }; }) });
+    });
+    out.sort(function (a, b) { return b.len - a.len; });
+    return out;
+  }
+  function bigOf(res) { return res.s >= 25 || (res.groups || []).some(function (g) { return g.n >= 3 || g.len >= 18; }); }
+  // A good card's reward, where it happens
+  function reward(res) {
+    var who = nm(res.p), g0 = (res.groups || [])[0], joined = (res.groups || []).filter(function (g) { return g.n >= 2; });
+    var me = isMe(res.p) || (!NET && !S.players[res.p].cpu);
+    if (res.s >= 30) {
+      Kit.sfx('sparkle'); Kit.haptic('success'); if (me) Kit.confetti();
+      Kit.moment({ big: true, title: res.s >= 45 ? 'A huge card' : 'A big card', line: (who === 'You' ? 'You' : who) + ' scored ' + res.s + ' with one card' + (joined.length ? ', joining ' + joined[0].n + ' ' + CN[joined[0].c] + ' chains into one of ' + joined[0].len + '.' : ', ' + listAnd(res.groups.map(function (g) { return 'a ' + CN[g.c] + ' chain of ' + g.len; })) + '.'), icon: 'trophy', pts: '+' + res.s, color: INK[g0.c] });
+    } else if (joined.length) {
+      Kit.sfx('good', .7); Kit.haptic('medium');
+      Kit.moment({ title: joined[0].n >= 3 ? 'Three chains joined' : 'Chains joined', line: (who === 'You' ? 'You' : who) + ' joined ' + (joined[0].n === 2 ? 'two' : joined[0].n) + ' ' + CN[joined[0].c] + ' chains into one of ' + joined[0].len + ' squares.', chip: String(joined[0].len), pts: '+' + res.s, color: INK[joined[0].c], at: frameEl, ms: 2400 });
+    } else if (res.cards >= 3) {
+      Kit.sfx('good', .55); Kit.haptic('light');
+      Kit.callout(res.cards >= 4 ? 'Four cards matched!' : 'Three cards matched');
+    } else if (g0 && g0.len >= 15) { Kit.sfx('good', .5); Kit.callout('A chain of ' + g0.len); }
+  }
+
+  // ── The plates, the hand, the turn, the buttons ──────────────────────────
+  function paintAll() { if (!S || !colEl) return; paintPlates(); paintHand(); paintGhost(); paintStatus(); paintActs(); paintRoom(); }
+  function paintPlates(prevSc, bump) {
+    if (!platesEl) return;
+    platesEl.innerHTML = '';
+    platesEl.classList.toggle('many', S.np >= 5); platesEl.classList.toggle('four', S.np === 4);
+    var port = R.getAttribute('data-o') === 'port' && !DK, perRow = DK ? 1 : port ? (S.np >= 5 ? 3 : S.np === 4 ? 2 : S.np) : S.np >= 5 ? 2 : 1;
+    platesEl.classList.toggle('tight', S.np >= 3 && (platesEl.clientWidth || window.innerWidth) / perRow < 190);
+    S.players.forEach(function (p, i) {
+      var on = !S.over && S.turn === i, v = prevSc ? prevSc[i] : S.sc[i];
+      var sub = on && p.cpu && S.busy ? '<span class="think">Thinking <i></i><i></i><i></i></span>' : on ? (NET && isMe(i) || (!NET && !p.cpu && humans() === 1) ? 'Your turn' : 'To play') : S.over && S.win.indexOf(i) >= 0 ? (S.win.length > 1 ? 'Shares the win' : 'Wins') : lastPts(i);
+      if (solo() && !S.over && !on) sub = bestLine();
+      if (solo() && on && !S.busy) sub = bestLine() || 'Your turn';
+      var node = el('div', { class: 'pl' + (on ? ' on' : '') + (bump === i ? ' bump' : ''), style: { '--pc': pc(i) } }, [
+        el('span', { class: 'av', html: p.cpu ? Kit.icon('bot') : Kit.esc(String(p.name || '?').charAt(0).toUpperCase()) }),
+        el('div', { class: 'who' }, [el('span', { class: 'nm', text: shortName(nm(i)) }), el('span', { class: 'sub', html: sub || '&nbsp;' })]),
+        el('span', { class: 'pts', text: String(v) })]);
+      platesEl.appendChild(node);
+    });
+  }
+  function shortName(n) { return S.np >= 4 && R.getAttribute('data-o') === 'port' && window.innerWidth < 500 ? String(n).split(/\s+/)[0] : n; }
+  function lastPts(i) {
+    for (var k = S.pl.length - 1; k > 0; k--) if (S.pl[k][4] === i) return (window.innerWidth < 380 ? 'Last +' : 'Last card +') + S.pl[k][5];
+    return S.np > 1 ? 'No card yet' : '';
+  }
+  var BEST = null;
+  function bestLine() {
+    if (BEST == null) { BEST = 0; try { GameHistory.load(KEY).forEach(function (e) { var d = e.dt || e.detail || {}; if (d.np === 1 && (d.hand || 1) === S.hand && d.sc && d.sc[0] > BEST) BEST = d.sc[0]; }); } catch (e) {} }
+    return BEST ? 'Best ' + BEST : '';
+  }
+  var ROT_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.6 6"/><path d="M20 4v7h-7"/></svg>';
+  function paintHand() {
+    if (!handEl) return;
+    handEl.innerHTML = ''; dockEl.classList.toggle('h3', S.hand > 1);
+    var turn = S.turn, h = S.over ? [] : S.hands[turn] || [], mine = humanTurn() || (NET && NET.myTurn());
+    var showCards = !S.over && (mine || !S.players[turn].cpu || S.hand === 1);
+    if (showCards) h.forEach(function (t, i) {
+      var sel = i === Math.min(SEL, h.length - 1), b = el('button', { type: 'button', class: 'hc' + (sel ? ' sel' : '') + (h.length > 1 && !sel ? ' mini' : '') + (mine && !(fitsOf(t, 0).length || fitsOf(t, 1).length) ? ' dim' : ''), 'aria-label': sel ? 'Turn the card' : 'Choose this card',
+        html: cardSvg(t, sel ? ORI : 0, 'h' + i) + (sel && mine ? '<span class="rot">' + ROT_IC + '</span>' : '') });
+      b.addEventListener('pointerdown', function (e) { handDown(e, i); });
+      b.addEventListener('click', function () { if (Date.now() < SUPPRESS) return; if (mine) pickCard(i); });
+      handEl.appendChild(b);
+    });
+    if (S.over) return;
+    var dk = el('div', { class: 'deck', title: 'Cards left in the deck' }, []);
+    var n = Math.min(4, Math.ceil(S.deck.length / 8));
+    for (var k = 0; k < n; k++) { var c = el('i'); c.style.bottom = (16 + k * 3) + 'px'; dk.appendChild(c); }
+    dk.appendChild(el('b', { text: S.deck.length + ' left' }));
+    handEl.appendChild(dk);
+  }
+  // a card in hand dragged onto the table
+  function handDown(e, i) {
+    if (!humanTurn()) return;
+    var start = { x: e.clientX, y: e.clientY }, id = e.pointerId, on = false, touch = e.pointerType !== 'mouse';
+    function mv(ev) {
+      if (ev.pointerId !== id) return;
+      if (!on && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) > 10) { on = true; if (i !== SEL) { SEL = i; paintHand(); } }
+      if (!on) return;
+      var r = frameEl.getBoundingClientRect();
+      if (ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top - 40 && ev.clientY <= r.bottom + 60) dragTo(ev.clientX, Math.min(ev.clientY, r.bottom), touch);
+    }
+    function up(ev) {
+      if (ev.pointerId !== id) return;
+      window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+      if (on) { SUPPRESS = Date.now() + 300; settle(); }
+    }
+    window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+  }
+  function paintStatus() {
+    if (!turnEl) return;
+    turnEl.innerHTML = '';
+    if (NET && LEFT) { turnEl.appendChild(el('span', { text: LEFT.text || 'A player left' })); return; }
+    if (S.over) { turnEl.appendChild(el('span', { text: endLine() })); return; }
+    var p = S.players[S.turn], txt, mine = humanTurn();
+    if (NET && !NET.myTurn()) txt = 'Waiting for ' + p.name;
+    else if (!NET && p.cpu) txt = p.name + ' is thinking';
+    else if (HOLD) txt = 'Pass the device to ' + p.name;
+    else if (ANIM) txt = '';
+    else if (mine && !anyFit()) txt = S.hand > 1 ? 'None of your cards fits anywhere. One goes under the deck.' : 'This card fits nowhere. It goes under the deck.';
+    else if (mine) {
+      var j = judgeGhost(), who = solo() || NET || vsCpu() ? 'Your turn' : p.name + ', your turn';
+      if (j && j.ok) txt = who + ': ' + (TOUCHED() ? 'tap the card to put it down, or tap elsewhere to move it' : 'click to put the card down');
+      else txt = who + ': ' + (TOUCHED() ? 'tap the table where your card should go' : 'move the card where it fits');
+    }
+    if (txt) { turnEl.appendChild(el('span', { class: 'dot' })); turnEl.appendChild(el('span', { text: txt })); }
+  }
+  function TOUCHED() { return !frameEl.classList.contains('mouse'); }
+  function paintActs() {
+    if (!actsEl) return;
+    actsEl.innerHTML = '';
+    if (NET && (S.over || LEFT)) { actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: LEFT ? 'Back to the lobby' : 'Play again', onclick: netAgain })); return; }
+    if (!NET && S.over) { actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Play again', onclick: function () { newGame(null, true); } })); return; }
+    var mine = humanTurn();
+    if (mine && card() >= 0) {
+      if (!anyFit()) actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm ct-go', text: 'Under the deck', onclick: placeNow }));
+      else {
+        var j = judgeGhost(), ok = j && j.ok;
+        actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm ct-go', disabled: !ok, text: ok ? (hintsOn() ? 'Place for ' + pts(j.score) : 'Place the card') : 'Doesn’t fit', onclick: placeNow }));
+        actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm sq ct-rot', 'aria-label': 'Turn the card', html: ROT_IC.replace('<svg', '<svg class="ico"') + '<span>Turn</span>', onclick: rotate }));
+      }
+    }
+    if (!NET && !S.over && S.hist && S.hist.some(function (h) { return !h.cpu; })) actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm sq', 'aria-label': 'Undo', html: Kit.icon('undo'), onclick: undo }));
+  }
+
+  // ── The room (at a desk): the scores and their race, the last card in words, every card so far, the cards still
+  //    to come, past games ──
+  function said(k) {
+    var p = S.pl[k];
+    if (p[4] < 0) return 'The first card was turned up to start.';
+    var who = nm(p[4]);
+    var B = C.boardOf(S.pl.slice(0, k)), j = C.judge(B, p[0], p[1], p[2], p[3]);
+    var gs = (j.groups || []).map(function (g) { return (g.n > 1 ? g.n + ' ' + CN[g.c] + ' chains joined into one of ' + g.len : 'a ' + CN[g.c] + ' chain of ' + g.len); });
+    return (who === 'You' ? 'You' : who) + ' put down a card touching ' + (j.cards === 1 ? 'one card' : j.cards + ' cards') + (p[5] ? ' and scored ' + p[5] + ': ' + listAnd(gs) + '.' : ', making no chain longer.');
+  }
+  function raceSvg(w) {
+    var np = S.np, run = S.players.map(function () { return [0]; }), tot = S.players.map(function () { return 0; });
+    S.pl.forEach(function (p) { if (p[4] < 0) return; tot[p[4]] += p[5]; run.forEach(function (r, i) { r.push(tot[i]); }); });
+    var n = run[0].length - 1; if (n < 1) return null;
+    var mx = Math.max(10, Math.max.apply(null, tot)), H = 90, W = 300, s = '<svg viewBox="0 0 ' + W + ' ' + H + '" aria-label="The scores card by card">';
+    s += '<line x1="0" y1="' + (H - 1) + '" x2="' + W + '" y2="' + (H - 1) + '" stroke="rgba(255,255,255,.15)"/>';
+    run.forEach(function (r, i) {
+      var d = r.map(function (v, k) { return (k ? 'L' : 'M') + (k / n * (W - 6) + 3).toFixed(1) + ' ' + (H - 3 - v / mx * (H - 8)).toFixed(1); }).join('');
+      s += '<path d="' + d + '" fill="none" stroke="' + pc(i) + '" stroke-width="' + (isMe(i) ? 3 : 2) + '" stroke-linejoin="round" stroke-linecap="round"/>';
+    });
+    return el('div', { class: 'race', html: s + '</svg>' });
+  }
+  function paintRoom() {
+    if (!roomEl || !R.classList.contains('ct-dk') || !S) return;
+    roomEl.innerHTML = '';
+    var sp = el('section', { class: 'pn scp' }, [el('h3', { text: solo() ? 'Your score' : 'Scores' })]), sc = el('div', { class: 'scr' });
+    S.players.map(function (p, i) { return i; }).sort(function (a, b) { return S.sc[b] - S.sc[a]; }).forEach(function (i) {
+      var row = [el('span', { class: 'd', style: { background: pc(i) } }), el('span', { class: 'n', text: nm(i) }), el('span', { class: 'l', text: lastPts(i).replace(/^Last (card )?/, '').replace('No card yet', '') }), el('span', { class: 'v', text: String(S.sc[i]) })];
+      var w = el('div', { class: isMe(i) ? 'me' : '', style: { display: 'contents' } }, row); sc.appendChild(w);
+    });
+    sp.appendChild(sc);
+    if (solo() && bestLine()) sp.appendChild(el('div', { class: 'ln none', text: 'Your best with ' + (S.hand === 1 ? 'one card' : 'three cards') + ' in hand is ' + BEST + '.' }));
+    var rc = raceSvg(); if (rc) sp.appendChild(rc);
+    var lg = C.longest(brd());
+    if (lg.len > 1) sp.appendChild(el('div', { class: 'chs' }, [el('span', { style: { '--cc': INK[lg.c] }, html: '<i></i>Longest chain on the table: ' + lg.len + ' ' + CN[lg.c] })]));
+    roomEl.appendChild(sp);
+    var lp = el('section', { class: 'pn lastp' }, [el('h3', { text: 'Last card' })]);
+    lp.appendChild(el('div', { class: 'ln', text: said(S.pl.length - 1) }));
+    if (!S.over && S.players[S.turn]) lp.appendChild(el('div', { class: 'ln none', text: (S.np === 1 ? 'Your turn. ' : nm(S.turn) + (nm(S.turn) === 'You' ? ' have' : ' has') + ' the next card. ') + S.deck.length + ' cards are left in the deck.' }));
+    roomEl.appendChild(lp);
+    if (S.pl.length > 1) {
+      var mv = el('section', { class: 'pn mvp grow' }, [el('h3', { text: 'Cards so far' })]), rows = el('div', { class: 'rows' });
+      for (var k = S.pl.length - 1; k >= 1; k--) {
+        var p = S.pl[k], B = C.boardOf(S.pl.slice(0, k)), j = C.judge(B, p[0], p[1], p[2], p[3]), jn = (j.groups || []).filter(function (g) { return g.n > 1; })[0];
+        rows.appendChild(el('div', { class: 'mvr' + (k === S.pl.length - 1 ? ' now' : '') }, [el('span', { class: 'no', text: String(k) }), el('span', { html: flatCard(p[0], p[1]) }),
+          el('span', { class: 'nt', html: '<span style="color:' + pc(p[4]) + '">●</span> ' + Kit.esc(nm(p[4])) }),
+          p[5] >= 20 ? el('span', { class: 'tg f', text: '+' + p[5] }) : jn ? el('span', { class: 'tg f', text: '+' + p[5] + ' joined' }) : el('span', { class: 'tg t', text: '+' + p[5] })]));
+        if (rows.children.length >= 40) break;
+      }
+      mv.appendChild(rows); roomEl.appendChild(mv);
+    }
+    var lf = el('section', { class: 'pn lfp' }, [el('h3', { text: 'Cards not yet down: ' + left() })]), grid = el('div', { class: 'left' });
+    var down = {}; S.pl.forEach(function (p) { down[p[0]] = 1; }); (S.aside || []).forEach(function (t) { down[t] = 1; });
+    var myHand = (NET ? S.hands[NET.seat] : humanTurn() ? S.hands[S.turn] : []) || [];
+    C.TILES.forEach(function (_, t) { if (!down[t]) grid.appendChild(el('span', { class: myHand.indexOf(t) >= 0 ? 'hand' : '', html: flatCard(t, 0) })); });
+    lf.appendChild(grid); roomEl.appendChild(lf);
+    var past = []; try { past = GameHistory.load(KEY).slice(0, 8); } catch (e) {}
+    if (past.length) {
+      var pg = el('section', { class: 'pn pgp' }, [el('h3', { text: 'Past games' })]), pr = el('div', { class: 'rows' });
+      past.forEach(function (e) {
+        var d = e.dt || e.detail || {};
+        pr.appendChild(el('div', { class: 'pgr' }, [el('span', { class: 'w', text: d.np === 1 ? 'Alone' : e.winner ? e.winner + (/ and /.test(e.winner) ? ' tied' : ' won') : 'Unfinished' }),
+          el('span', { class: 'sc', text: d.sc ? d.sc.join(' to ') : '' }), el('span', { class: 'dt', text: Kit.fmtDate ? Kit.fmtDate(e._date || e.started) : '' })]));
+      });
+      pg.appendChild(pr); roomEl.appendChild(pg);
+    }
+    fitRoom();
+  }
+  // Too little room: whole rows go (past games down to two, the cards so far down to four, the cards to come, then the
+  // past games, the race, the cards so far), never a cut row
+  function fitRoom() {
+    var mv = roomEl.querySelector('.mvp .rows'), pg = roomEl.querySelector('.pgp .rows'), lf = roomEl.querySelector('.lfp'), rc = roomEl.querySelector('.race'), guard = 0;
+    function over() { return roomEl.scrollHeight > roomEl.clientHeight + 1 || [].some.call(roomEl.children, function (c) { return c.offsetTop + c.offsetHeight > roomEl.offsetTop + roomEl.clientHeight + 1 && !roomEl.classList.contains('row'); }); }
+    var row = roomEl.classList.contains('row');
+    function overRow() { return [].some.call(roomEl.children, function (c) { return c.scrollHeight > c.clientHeight + 1; }); }
+    var test = row ? overRow : over;
+    while (test() && guard++ < 300) {
+      if (pg && pg.children.length > 2) pg.removeChild(pg.lastChild);
+      else if (mv && mv.children.length > 4) mv.removeChild(mv.lastChild);
+      else if (lf && lf.isConnected) { lf.remove(); lf = null; }
+      else if (pg && pg.parentNode && pg.parentNode.isConnected) { pg.parentNode.remove(); pg = null; }
+      else if (rc && rc.isConnected) { rc.remove(); rc = null; }
+      else if (mv && mv.children.length > 1) mv.removeChild(mv.lastChild);
+      else if (mv && mv.parentNode && mv.parentNode.isConnected) { mv.parentNode.remove(); mv = null; }
+      else if (roomEl.querySelector('.lastp .ln.none')) roomEl.querySelector('.lastp .ln.none').remove();
+      else if (roomEl.querySelector('.lastp')) roomEl.querySelector('.lastp').remove();
+      else if (roomEl.querySelector('.scp .chs')) roomEl.querySelector('.scp .chs').remove();
+      else break;
+    }
+  }
+
+  // ── The desk (a window larger than a phone's or a tablet's) ──────────────
+  function deviceShape(w, h) { var lo = Math.min(w, h), hi = Math.max(w, h); return (lo <= 480 && hi <= 1000) || (lo >= 620 && lo <= 840 && hi >= 900 && hi <= 1200); }
+  var DK = null;
+  function deskPlan() {
+    var W = window.innerWidth, H = window.innerHeight;
+    if (!S || deviceShape(W, H) || W < 640 || H < 500) return null;
+    var gb = document.querySelector('.gbar'), top = (gb ? Math.round(gb.getBoundingClientRect().bottom) : 56) + 6;
+    var g = Math.round(Math.max(14, Math.min(28, W / 90))), x0 = g, y0 = top, aw = W - 2 * g, ah = H - top - g;
+    var dk = Math.max(1, Math.min(1.5, W / 1700, H / 1100));
+    var side = Math.round(Math.max(300, Math.min(440, 300 * dk)));
+    if (aw / ah > 1.15) {
+      var room = Math.round(Math.max(300, Math.min(480, 330 * dk))), bw = aw - side - room - 2 * g;
+      if (bw >= ah * .9 && bw >= 600) return { k: 'w2', dk: dk, x0: x0, y0: y0, aw: aw, ah: ah, g: g, cols: side + 'px ' + room + 'px minmax(0,1fr)', areas: '"p r b" "d r b" ". r b"' };
+      return { k: 'w1', dk: dk, x0: x0, y0: y0, aw: aw, ah: ah, g: g, cols: side + 'px minmax(0,1fr)', areas: '"p b" "d b" "r b"' };
+    }
+    // a squarer window: the table across the top; under it the players, the card in hand with the buttons, and the room
+    var low = Math.round(Math.max(270, (S.np > 3 ? 64 * S.np : 260)) * dk), bh = ah - low - g;
+    return { k: 't', dk: dk, x0: x0, y0: y0, aw: aw, ah: ah, g: g, cols: side + 'px ' + side + 'px minmax(0,1fr)', areas: '"b b b" "p d r"', rows: bh + 'px minmax(0,1fr)' };
+  }
+  function deskApply() {
+    var P = deskPlan(), was = DK ? DK.k : null;
+    DK = P;
+    if (!P) { deskOff(); return; }
+    R.classList.add('ct-dk');
+    if (!colEl) return;
+    var st = colEl.style;
+    st.setProperty('--x0', P.x0 + 'px'); st.setProperty('--y0', P.y0 + 'px'); st.setProperty('--aw', P.aw + 'px'); st.setProperty('--ah', P.ah + 'px');
+    st.setProperty('--g', P.g + 'px'); st.setProperty('--cols', P.cols); st.setProperty('--areas', P.areas); st.setProperty('--dk', P.dk.toFixed(3));
+    st.gridTemplateRows = P.rows || ''; st.gridTemplateAreas = P.areas;
+    if (was !== P.k) setTimeout(paintRoom, 0);
+  }
+  function deskOff() {
+    R.classList.remove('ct-dk');
+    if (colEl) { ['--x0', '--y0', '--aw', '--ah', '--g', '--cols', '--areas', '--dk'].forEach(function (k) { colEl.style.removeProperty(k); }); colEl.style.gridTemplateRows = ''; colEl.style.gridTemplateAreas = ''; }
+    DK = null;
+  }
+  var rzT = 0;
+  window.addEventListener('resize', function () {
+    clearTimeout(rzT);
+    rzT = setTimeout(function () {
+      if (!S || !S.pl || !frameEl || !frameEl.isConnected) return;
+      var o = shape(), was = DK ? DK.k : null, P = deskPlan();
+      var go = function () { R.setAttribute('data-o', o); deskApply(); fitView(false); paintAll(); };
+      if (R.getAttribute('data-o') !== o || was !== (P ? P.k : null)) Kit.glide(go); else go();
+    }, 60);
+  });
+  if (window.ResizeObserver) new ResizeObserver(function () { if (frameEl && frameEl.isConnected && !VBT) { setVB(viewFor()); placeTags(); } }).observe(app);
+
+  // ── The end ──────────────────────────────────────────────────────────────
+  function endLine() {
+    if (solo()) return 'You scored ' + S.sc[0] + ' points with ' + (S.pl.length - 1) + ' cards.';
+    var w = S.win.map(function (i) { return nm(i); });
+    if (w.length > 1) return listAnd(w) + ' tie with ' + S.sc[S.win[0]] + ' points.';
+    return (w[0] === 'You' ? 'You win' : w[0] + ' wins') + ' with ' + S.sc[S.win[0]] + ' points.';
+  }
+  // the results card's line: facts under the title, not the title again
+  function subLine() {
+    var lg = C.longest(brd()), b = bestMove(), f = [(S.pl.length - 1) + ' cards down'];
+    if (b) f.push('Best card ' + pts(b.p[5]) + (S.np > 1 ? ' by ' + S.players[b.p[4]].name : ''));
+    if (lg.len) f.push('Longest chain ' + lg.len + ' ' + CN[lg.c]);
+    return f.join(' · ');
+  }
+  function bestMove() { var b = null; S.pl.forEach(function (p, k) { if (p[4] >= 0 && (!b || p[5] > b.p[5])) b = { p: p, k: k }; }); return b; }
+  function highlights() {
+    var hl = [solo() ? S.players[0].name + ' scored ' + S.sc[0] + ' points alone' : S.win.length > 1 ? listAnd(S.win.map(function (i) { return S.players[i].name; })) + ' tied with ' + S.sc[S.win[0]] + ' points' : S.players[S.win[0]].name + ' won with ' + S.sc[S.win[0]] + ' points'], b = bestMove();
+    if (b) hl.push(S.players[b.p[4]].name + ' scored the most with one card: ' + b.p[5] + ' points');
+    var lg = C.longest(brd()); if (lg.len >= 10) hl.push('The longest chain on the table was ' + lg.len + ' ' + CN[lg.c] + ' squares');
+    var under = S.ml.filter(function (m) { return /-$/.test(m); }).length; if (under) hl.push(under === 1 ? 'One card fit nowhere and went under the deck' : under + ' cards fit nowhere and went under the deck');
+    if (S.hand > 1) hl.push('Played with three cards in hand');
+    if (!S.hints) hl.push('Played without hints');
+    if (vsCpu()) hl.push('Computer skill: ' + S.players.filter(function (p) { return p.cpu; }).map(function (p) { return SKILL[p.level] || 'Normal'; }).filter(function (v, i, a) { return a.indexOf(v) === i; }).join(' and '));
+    return hl;
+  }
+  function detail() {
+    var lg = C.longest(brd());
+    return { np: S.np, hand: S.hand, pl: C.packPl(S.pl), sc: S.sc.slice(), win: S.win.slice(), lc: lg.len, lcc: lg.c, n: S.n, hints: S.hints ? 1 : 0, under: S.ml.filter(function (m) { return /-$/.test(m); }).length };
+  }
+  function recPlayers() { return S.players.map(function (p, i) { return { name: p.name, score: S.sc[i], cpu: p.cpu }; }); }
+  function winWave() {
+    var tl = svgEl.querySelectorAll('.tl'), list = [];
+    S.pl.forEach(function (p, k) { if (S.win.indexOf(p[4]) >= 0) list.push(tl[k]); });
+    list.forEach(function (g, i) { setTimeout(function () { if (g) g.classList.add('won'); if (i % 3 === 0) Kit.sfx('tick', .4); }, i * 70); });
+    return list.length * 70 + 900;
+  }
+  function finish() {
+    save(); clearSave(); GH = null; paintAll();
+    var prevBest = BEST; BEST = null;
+    Kit.record(KEY, { started: S.started, mode: solo() ? 'Just me' : vsCpu() ? (humans() > 1 ? 'Pass & play with the computer' : 'vs Computer') : 'Pass & play',
+      players: recPlayers(), winner: solo() ? S.players[0].name : S.win.map(function (i) { return S.players[i].name; }).join(' and '), highlights: highlights(), detail: detail() });
+    var wave = winWave(), newBest = solo() && prevBest != null && S.sc[0] > prevBest && prevBest > 0;
+    paintRoom();
+    if (newBest) setTimeout(function () { Kit.moment({ big: true, title: 'A new best', line: 'You scored ' + S.sc[0] + ' points, beating your best of ' + prevBest + '.', icon: 'trophy', pts: String(S.sc[0]), color: INK[1] }); Kit.confetti(); }, 300);
+    endShow(wave + (newBest ? 2600 : 0), false);
+  }
+  function endShow(wave, net) {
+    setTimeout(function () {
+      if (net) return netWin();
+      var lose = !solo() && S.win.every(function (i) { return S.players[i].cpu; }) && humans() > 0;
+      Kit.sfx(lose ? 'lose' : 'sparkle'); Kit.haptic(lose ? 'heavy' : 'success');
+      var one = S.win.length === 1, w = S.players[S.win[0]], wn = nm(S.win[0]);
+      Kit.win({
+        icon: solo() ? 'star' : !one ? 'users' : lose ? 'bot' : 'trophy',
+        title: solo() ? S.sc[0] + ' points' : !one ? 'A tie' : wn === 'You' ? 'You win!' : w.name + ' wins' + (lose ? ' this one' : '!'),
+        sub: subLine(),
+        rank: rankRows(), lose: !!lose,
+        again: function () { newGame(null, true); }, look: true,
+        setup: function () { cancelThink(); clearSave(); showSetup(); }
+      });
+    }, wave);
+  }
+  function rankRows() {
+    return S.players.map(function (p, i) { return i; }).sort(function (a, b) { return S.sc[b] - S.sc[a]; }).map(function (i) {
+      return { name: S.players[i].name, me: isMe(i), score: pts(S.sc[i]), color: pc(i) };
+    });
+  }
+
+  // ── Online (turnnet.js) ──────────────────────────────────────────────────
+  // Two to five people, each on their own device; the seats nobody takes are the computer's, played from whichever
+  // device has the table open. Each new game at the table moves the seats round one. The host's Hints and Cards in
+  // hand go for everyone at the table.
+  function netOpts() {
+    var o = { seats: 2, level: 'normal', hints: 'on', hand: 1 };
+    try { var g = JSON.parse(localStorage.getItem('gn_setup_' + KEY)) || {}, op = g.options || {}; if (+g.count >= 2 && +g.count <= 5) o.seats = +g.count; if (SKILL[op.level]) o.level = op.level; if (op.hints === 'off') o.hints = 'off'; if (+op.hand === 3) o.hand = 3; } catch (e) {}
+    return o;
+  }
+  function netStart(players, opts, last) {
+    var ps = players.map(function (p) { return { name: p.name, cpu: !!p.bot, level: (opts && opts.level) || 'normal' }; });
+    var rot = last && last.rot != null ? (last.rot + 1) % ps.length : 0;
+    var st = C.newGame({ np: ps.length, hand: (opts && +opts.hand) || 1, first: rot });
+    st.mode = 'online'; st.players = ps; st.rot = rot; st.hints = !(opts && opts.hints === 'off'); st.started = Date.now();
+    st.wins = last && last.wins ? last.wins.slice() : ps.map(function () { return 0; });
+    return st;
+  }
+  function netApply(st, m) {
+    if (st.over) return null;
+    var prev = st.sc.slice(), res = C.play(st, m);
+    if (!res) return null;
+    if (st.over) st.win.forEach(function (i) { st.wins[i] = (st.wins[i] || 0) + 1; });
+    return { state: st, mv: { m: m, p: res.p, n: st.ml.length } };
+  }
+  function netBot(st, seat) {
+    var p = st.players[seat];
+    return new Promise(function (res) {
+      think(coreOf(st), { level: p.level || 'normal', seed: Math.floor(Math.random() * 1e9) }, function (r) { res(r && r.move ? netApply(st, r.move) : null); });
+    });
+  }
+  function netMove(m) { if (!S || S.over || LEFT || !NET.myTurn()) return; S.busy = true; paintActs(); NET.act(function (st) { return netApply(st, m); }); setTimeout(function () { if (S) S.busy = false; }, 4000); }
+  function netAgain() { if (!NET) return; if (LEFT) { TurnNet.leave(); TurnNet.open(); } else NET.again(); }
+  function netShow(net, info) {
+    NET = net; cancelThink();
+    if (WINO && (info.again || info.fresh)) { WINO.close(); WINO = null; }
+    var prev = S;
+    S = JSON.parse(JSON.stringify(net.state)); S.busy = false; S.hist = []; fresh(); AIMK = null; GH = null; SEL = 0;
+    LEFT = net.status === 'over' && !S.over && net.result && net.result.left != null ? net.result : null;
+    var tok = ++SHOWN, mv = info.mv && info.mv.m && !info.fresh && !info.again ? info.mv : null;
+    if (mv && prev && prev.pl && prev.ml && prev.ml.length === S.ml.length - 1 && frameEl && frameEl.isConnected) {
+      var cp = C.clone(prev), res = C.play(cp, mv.m);
+      if (res) {
+        var t = show(res, prev.sc, true);
+        setTimeout(function () { if (tok !== SHOWN) return; if (S.over || LEFT) netEnd(); else { startAim(); paintAll(); if (!info.mine && net.myTurn()) Kit.haptic('light'); } }, t);
+        return;
+      }
+    }
+    build(); startAim(); paintAll();
+    if (info.again) { Kit.sfx('deal'); Kit.callout(isMe(S.turn) ? 'You start' : S.players[S.turn].name + ' starts'); }
+    if (S.over || LEFT) setTimeout(function () { if (tok === SHOWN) netEnd(); }, 150);
+  }
+  function netEnd() {
+    if (!NET || !S) return;
+    var left = LEFT, key = NET.code + ':' + S.started;
+    var done = NETREC[key]; try { done = done || (JSON.parse(localStorage.getItem('continuo_net_rec')) || []).indexOf(key) >= 0; } catch (e) {}
+    if (!done && !left) {
+      NETREC[key] = 1;
+      try { var rl = JSON.parse(localStorage.getItem('continuo_net_rec')) || []; rl.push(key); localStorage.setItem('continuo_net_rec', JSON.stringify(rl.slice(-30))); } catch (e) {}
+      var hl = highlights(); hl.push('Played online at table ' + NET.code);
+      Kit.record(KEY, { started: S.started, mode: 'Online', players: recPlayers(), winner: S.win.map(function (i) { return S.players[i].name; }).join(' and '), highlights: hl, detail: detail() });
+    }
+    if (WINO) WINO.close();
+    paintAll();
+    if (left) return netWin();
+    endShow(winWave(), true);
+  }
+  function netWin() {
+    if (!NET) return;
+    var me = NET.seat, left = LEFT, one = S.win && S.win.length === 1;
+    WINO = Kit.win({
+      icon: left || !one ? 'users' : S.win[0] === me ? 'trophy' : 'users',
+      title: left ? left.text : !one ? 'A tie' : S.win[0] === me ? 'You win!' : S.players[S.win[0]].name + ' wins',
+      sub: left ? '' : subLine(), rank: left ? null : rankRows(),
+      notes: left ? null : [S.players.map(function (p, i) { return p.name + ' ' + (S.wins[i] || 0); }).join(', ')], notesTitle: 'Games won at this table',
+      lose: !left && one && S.win[0] !== me, againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { WINO = null; netAgain(); },
+      look: { label: 'Look at the table', onClick: function () { WINO = null; } }
+    });
+  }
+  function netLeave() {
+    NET = null; LEFT = null; SHOWN++; if (WINO) { WINO.close(); WINO = null; }
+    var sv2 = null; try { sv2 = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv2 && sv2.pl && sv2.players && !sv2.over) { S = sv2; S.busy = false; S.hist = S.hist || []; fresh(); build(); afterTurn(); }
+    else showSetup();
+  }
+
+  // ── Test and demo hooks ──────────────────────────────────────────────────
+  window.__continuo = {
+    C: C, state: function () { return S; }, get busy() { return ANIM || !!(S && S.busy) || !!pending; },
+    aim: function () { return GH ? { x: GH.x, y: GH.y, o: ORI, t: card(), j: judgeGhost() } : null; },
+    // a fresh game: {mode: 'pp' | 'cpu', hints, hand, players: [{name, cpu, level}], deck: [card order], seed}
+    start: function (cfg) { cancelThink(); newGame({ mode: cfg.mode || 'pp', cover: false, hints: cfg.hints !== false, hand: cfg.hand || 1, players: cfg.players, deck: cfg.deck, seed: cfg.seed }); },
+    // put cards down without the animations: a list of move strings, played in turn
+    set: function (list) { cancelThink(); (list || []).forEach(function (m) { C.play(S, m); }); S.hist = []; fresh(); GH = null; save(); build(); afterTurn(); },
+    play: function (m) { if (NET) return netMove(m); return playMove(m); },
+    to: function (x, y, o) { if (o != null) ORI = o; GH = { x: x, y: y }; PEEK = false; paintAll(); },
+    rotate: rotate, place: placeNow, peek: function (on) { PEEK = !!on; paintPeek(); },
+    // where a square of the table is on the screen (for the demo's finger): an element over it
+    sq: function (x, y) { return function () { if (!layEl) return null; var d = layEl.querySelector('.dh[data-x="' + x + '"][data-y="' + y + '"]'); if (!d) { d = el('span', { class: 'dh', 'data-x': x, 'data-y': y, style: 'position:absolute;pointer-events:none;transform:translate(-50%,-50%)' }); layEl.appendChild(d); } var p = toPx(x + .5, y + .5), s = VB.sc; d.style.left = p.x + 'px'; d.style.top = p.y + 'px'; d.style.width = s + 'px'; d.style.height = s + 'px'; return d; }; },
+    // an element the size of a card lying at (x, y): where the demo's finger taps to move the card there
+    spot: function (x, y) { return function () { if (!layEl) return null; var d = layEl.querySelector('.dsp[data-x="' + x + '"][data-y="' + y + '"]'); if (!d) { d = el('span', { class: 'dsp', 'data-x': x, 'data-y': y, style: 'position:absolute;pointer-events:none;transform:translate(-50%,-50%)' }); layEl.appendChild(d); } var p = toPx(x + 2, y + 2), w = VB.sc * 4; d.style.left = p.x + 'px'; d.style.top = p.y + 'px'; d.style.width = w + 'px'; d.style.height = w + 'px'; return d; }; },
+    orient: function (o) { ORI = o ? 1 : 0; if (GH && card() >= 0) { var n = nearest(card(), ORI, GH.x + 2, GH.y + 2); if (n) GH = { x: n.x, y: n.y }; } paintAll(); }, get peeked() { return PEEK; },
+    zoom: function (on, x, y) { ZOOM = !!on; ZFOCUS = x != null ? { x: x, y: y } : null; fitView(false); },
+    ghostTag: function () { return layEl ? layEl.querySelector('.tag.pt') : null; },
+    hand: function (i) { return handEl ? handEl.querySelectorAll('.hc')[i || 0] : null; },
+    fitView: function () { fitView(false); }, desk: function () { return DK; }, view: function () { return VB; }
+  };
+
+  var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+  if (saved && saved.pl && saved.players && !saved.over) { S = saved; S.busy = false; S.hist = S.hist || []; build(); afterTurn(); }
+  else showSetup();
+
+  TurnNet.setup({
+    game: KEY, title: 'Continuo', min: 2, max: 5, botMs: 600,
+    seats: function (n, o) { return Math.max(n, Math.min(5, o && +o.seats || n)); },
+    opts: netOpts, start: netStart, bot: netBot,
+    turn: function (st) { return st.over ? [] : [st.turn]; },
+    over: function (st) {
+      if (!st.over) return null;
+      return { win: st.win.slice(), text: st.win.length > 1 ? 'A tie' : st.players[st.win[0]].name + ' wins with ' + st.sc[st.win[0]] };
+    },
+    show: netShow, leave: netLeave
+  });
+})();
+</script>
+</body>
+</html>

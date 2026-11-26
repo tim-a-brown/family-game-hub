@@ -163,6 +163,11 @@ var GameIcon = (function () {
       for (var i = 0; i < 9; i++) s += rect(1.5 + (i % 3) * 7, 1.5 + Math.floor(i / 3) * 7, 6.4, 6.4, 1.2, ink[i]);
       return s + circ(8.2, 15.2, 4.4, K, ' stroke="#f2c94c" stroke-width="1"') + circ(8.2, 15.2, 1.7, '#b52d2b') + circ(15.2, 8.2, 4.4, W, ' stroke="' + K + '" stroke-width="1"') + circ(15.2, 8.2, 1.7, '#2a5fb5');
     },
+    continuo: function () {   // one card's 4 by 4 squares: red corners, yellow and blue Ls, green corners
+      var g = [0, 1, 3, 2, 1, 1, 3, 3, 3, 3, 1, 1, 2, 3, 1, 0], ink = ['#d9363e', '#f2c12e', '#2e9a57', '#2f62c8'], s = rect(1, 1, 22, 22, 3, K);
+      for (var i = 0; i < 16; i++) s += rect(2 + (i % 4) * 5.1, 2 + Math.floor(i / 4) * 5.1, 4.6, 4.6, 1, ink[g[i]]);
+      return s;
+    },
     othello: function () { return circ(8, 13, 7, K) + circ(16, 11, 7, W, ' stroke="' + K + '" stroke-width="1.8"'); },
     backgammon: function (c) { var t = ''; for (var i = 0; i < 4; i++) { var x = 1 + i * 5.6; t += path('M' + x + ' 1h5l-2.5 9.5z', i % 2 ? K : c) + path('M' + x + ' 23h5l-2.5-9.5z', i % 2 ? c : K); } return t + circ(9, 12, 2.2, R) + circ(15, 12, 2.2, W, ' stroke="' + K + '" stroke-width="1.2"'); },
     battleship: function () { return path('M2 13h20l-3 6H5z', K) + rect(8, 9, 8, 4, 1, S) + rect(11, 5.5, 2, 4, .6, K) + line('M2 21.5c2 0 2-1.2 4-1.2s2 1.2 4 1.2 2-1.2 4-1.2 2 1.2 4 1.2 2-1.2 4-1.2', B, 1.6); },
