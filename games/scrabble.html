@@ -700,7 +700,7 @@
     menu: TurnNet.menu().concat([
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Scrabble: past games' }); } },
       { icon: 'rows', label: 'Moves so far', when: function () { return !!(S && V.root); }, onClick: function () { logSheet(); } },
-      { icon: 'tiles', label: 'Tiles left', sub: 'Letters you haven’t seen yet', when: function () { return !!(S && V.root); }, onClick: function () { unseenSheet(); } }
+      { icon: 'tiles', label: 'Tiles left', sub: 'Letters you haven’t seen yet', when: function () { return !!(S && V.root) && hintsOn(); }, onClick: function () { unseenSheet(); } }
     ]),
     rules:
       '<p class="goal">Build words on the board, crossword style, and score the most points.</p>' +
@@ -719,7 +719,7 @@
       '<li>A premium square counts only on the turn a tile is first played on it. Letter bonuses are added before word bonuses. A word across two word squares is doubled twice (×4) or tripled twice (×9).</li>' +
       '<li>When one new tile makes two words, a premium square under it counts for both.</li>' +
       '<li><b>Bingo:</b> use all 7 of your tiles in one turn for <b>50 bonus points</b>.</li></ul>' +
-      '<h3>Checking words</h3><p>Like most Scrabble apps, the game checks words for you. As you lay down tiles it shows every word they make and what they’d score. A play with a word that isn’t in the dictionary is refused, so you can fix it and try again: there are no challenges and no lost turns. Proper names, abbreviations and words with apostrophes or hyphens don’t count. The dictionary is ENABLE, a large free word list used by many word games, with slurs taken out and newer Scrabble words such as QI, ZA, KI and OK added.</p>' +
+      '<h3>Checking words</h3><p>Like most Scrabble apps, the game checks words for you. As you lay down tiles it shows every word they make and what they’d score. A play with a word that isn’t in the dictionary is refused, so you can fix it and try again: there are no challenges and no lost turns. With Hints off in the setup, the words are checked only when you press Play, the score isn’t shown before you play, and the bag shows only how many tiles are in it. Proper names, abbreviations and words with apostrophes or hyphens don’t count. The dictionary is ENABLE, a large free word list used by many word games, with slurs taken out and newer Scrabble words such as QI, ZA, KI and OK added.</p>' +
       '<h3>The end</h3><ul>' +
       '<li>The game ends when the bag is empty and someone plays their last tile, or after <b>six scoreless turns in a row</b> (passes, swaps or plays worth 0).</li>' +
       '<li>Everyone loses the points of the tiles still on their rack. If someone went out, they add everyone else’s leftover points to their score.</li>' +
@@ -728,7 +728,7 @@
       '<li>Drag tiles onto the board, or tap a tile and then a square. Tap a tile you’ve put down to take it back. <b>Recall</b> brings them all back and <b>Shuffle</b> mixes up your rack. Drag tiles along the rack to put them in any order.</li>' +
       '<li>On a phone, pinch the board or use the magnifier to zoom in.</li>' +
       '<li>With a keyboard: click a square and type. Space switches between across and down, Backspace takes a tile back, Enter plays. Letters you don’t have use a blank if you have one.</li>' +
-      '<li>Tap the bag to see which tiles you haven’t seen yet.</li>' +
+      '<li>Tap the bag to see which tiles you haven’t seen yet (with Hints on).</li>' +
       '<li><b>vs Computer:</b> 1 to 3 robots, Easy, Normal or Hard. <b>Pass and play:</b> 2 to 4 players on one device; each rack stays hidden until its player holds the button. <b>Online:</b> 2 to 4 players, each on their own phone or tablet.</li></ul>' +
       '<h3>Online</h3><ul>' +
       '<li><b>Play online</b> in the menu: one player opens a table and the others join from the list or with its 4-letter code. Everyone sees only their own tiles.</li>' +
@@ -736,6 +736,18 @@
       '<li>Moves can’t be taken back online. If someone leaves mid-game, a robot plays their tiles.</li></ul>'
   });
 
+  // Hints: the bubble with a play's score on the board, the words checked against the dictionary as tiles go down (each
+  // with its points), the score on the Play button, and Tiles left (the letters you haven't seen). Off, the words are
+  // checked only when you press Play, as at a table where a play is challenged, and the bag shows only how many tiles
+  // are in it. A game saved before there was a choice has no hints field and plays with them on.
+  var HINTS_OPT = { id: 'hints', label: 'Hints', value: 'on',
+    choices: [['on', 'On', 'As you lay tiles down, the game shows what they score and checks every word, and the bag shows the letters you haven’t seen yet.'],
+      ['off', 'Off', 'You add up your own score and keep track of the letters yourself. Words are checked only when you press Play.']] };
+  function hintsOn(X) { X = X || S; return !X || X.hints !== false; }
+  function netOpts() {
+    var o = {}; try { o = (JSON.parse(localStorage.getItem('gn_setup_scrabble') || '{}') || {}).options || {}; } catch (e) {}
+    return { hints: o.hints === 'off' ? 'off' : 'on' };
+  }
   function showSetup() {
     teardownView(); S = null;
     app.className = 'stage';
@@ -743,7 +755,7 @@
       intro: 'Build words, hit the bonus squares, and score big.',
       modes: Kit.modes([{ id: 'cpu', desc: 'You against 1 to 3 robots' }, { id: 'pp', kind: 'local' }, { id: 'online', desc: '2 to 4 players, each on their own device' }]),
       players: { min: 2, max: 4, count: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'pp' ? 'mix' : false; }, range: function (m) { return m === 'online' ? [1, 1] : [2, 4]; } },
-      options: [{ id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS, when: function (m) { return m !== 'online'; } }],
+      options: [HINTS_OPT, { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS, when: function (m) { return m !== 'online'; } }],
       start: "Let's play!",
       onStart: function (cfg) {
         if (cfg.mode === 'online') { var nm0 = cfg.players[0] && cfg.players[0].name; if (nm0 && nm0 !== 'Player 1') lsSet('tn_me', { name: nm0 }); TurnNet.open(); return; }
@@ -762,7 +774,7 @@
     loading();
     loadDict().then(function () {
       var players = cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.cpu ? p.level || cfg.options.level || 'normal' : null, score: 0, rack: [] }; });
-      newGame({ mode: cfg.mode, level: cfg.options.level || 'normal', players: players });
+      newGame({ mode: cfg.mode, level: cfg.options.level || 'normal', hints: cfg.options.hints !== 'off', players: players });
     }).catch(function (e) { Kit.toast(e.message); showSetup(); });
   }
   // A fresh game: draw for first turn, deal 7 each
@@ -776,7 +788,7 @@
   }
   // (pure: also builds an online table's first state)
   function freshState(o) {
-    var S = { v: 1, mode: o.mode, level: o.level || 'normal', players: o.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.level || null, score: 0, rack: [] }; }),
+    var S = { v: 1, mode: o.mode, level: o.level || 'normal', hints: o.hints !== false, players: o.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.level || null, score: 0, rack: [] }; }),
       board: [], bag: [], turn: 0, scoreless: 0, n: 0, tid: 0, log: [], last: [], lastWords: [], over: false, result: null, started: Date.now(), hist: [] };
     for (var i = 0; i < 225; i++) S.board.push('');
     // who goes first: each draws a tile, closest to A starts (a blank beats all); a tie draws again
@@ -1182,7 +1194,7 @@
   }
   function paintBubble() {
     var old = V.fx.querySelector('.bub'); if (old) old.remove();
-    if (!pend.length) return;
+    if (!pend.length || !hintsOn()) return;   // (Hints off: no score shown before the play)
     var r = check();
     var at = pend.map(function (q) { return q.i; }).sort(function (a, b) { return b - a; })[0];
     // placed in squares (CSS sizes), so it stays on its square when the board is resized
@@ -1220,6 +1232,12 @@
       return;
     }
     if (S.over) { var w = S.result.winner; m.appendChild(el('span', { class: 'tot', text: w < 0 ? 'It’s a tie!' : (nm(w) === 'You' ? 'You win!' : nm(w) + ' wins!') })); return; }
+    if (pend.length && !hintsOn()) {   // (Hints off: the words the tiles make, unscored and unchecked; only where tiles can't go is said)
+      var r0 = check();
+      if (r0.words && r0.words.length) r0.words.forEach(function (x) { m.appendChild(el('span', { class: 'ww', text: x.w })); });
+      if (r0.err && r0.err.indexOf('Not a') !== 0) m.appendChild(el('span', { class: 'err', text: r0.err }));
+      return;
+    }
     if (pend.length) {
       var r = check();
       if (r.words && r.words.length) {
@@ -1247,6 +1265,7 @@
       return;
     }
     var mine = myTurn(), r = pend.length ? check() : null;
+    if (r && !hintsOn()) r = { ok: !r.err || r.err.indexOf('Not a') === 0, score: null };   // (Hints off: Play doesn't give the score or the check away)
     var b1 = pend.length
       ? el('button', { type: 'button', class: 'btn btn-soft sm', html: Kit.icon('undo') + '<span>Recall</span>', onclick: function () { recall(); } })
       : el('button', { type: 'button', class: 'btn btn-soft sm', html: Kit.icon('shuffle') + '<span>Shuffle</span>', onclick: function () { shuffleRack(); } });
@@ -1255,7 +1274,7 @@
     b2.disabled = !mine;
     var b3 = el('button', { type: 'button', class: 'btn btn-soft sm', html: Kit.icon('right') + '<span>Pass</span>', onclick: function () { passAsk(); } });
     b3.disabled = !mine;
-    var b4 = el('button', { type: 'button', class: 'btn ' + (pend.length && !(r && r.ok) ? 'btn-soft' : 'btn-primary') + ' play', html: Kit.icon('check') + '<span>' + (r && r.ok ? 'Play ' + r.score : 'Play') + '</span>', onclick: function () { submit(); } });
+    var b4 = el('button', { type: 'button', class: 'btn ' + (pend.length && !(r && r.ok) ? 'btn-soft' : 'btn-primary') + ' play', html: Kit.icon('check') + '<span>' + (r && r.ok && r.score != null ? 'Play ' + r.score : 'Play') + '</span>', onclick: function () { submit(); } });
     b4.disabled = !mine || !pend.length;
     [b1, b2, b3, b4].forEach(function (b) { a.appendChild(b); });
   }
@@ -1288,6 +1307,7 @@
   function logSheet() { if (!S) return; Kit.sheet({ title: 'Moves so far', node: S.log.length > 1 ? logList(true) : el('p', { class: 'muted', text: 'No moves yet.' }), actions: [{ label: 'Close', cls: 'btn-soft' }] }); }
   function unseenSheet() {
     if (!S) return;
+    if (!hintsOn()) { var bn0 = bagN(); Kit.toast(bn0 ? (bn0 === 1 ? 'There is 1 tile in the bag.' : 'There are ' + bn0 + ' tiles in the bag.') : 'The bag is empty.'); return; }   // (Hints off: no tile tracker)
     var c = {}; Object.keys(E.DIST).forEach(function (l) { c[l] = E.DIST[l]; });
     S.board.forEach(function (ch) { if (ch) c[E.isBlank(ch) ? '?' : ch]--; });
     if (!veil) myRack().forEach(function (t) { c[t.l]--; });
@@ -1785,7 +1805,7 @@
       if (res && res.left != null) { TurnNet.leave(); TurnNet.open(); } else NET.again();
       return;
     }
-    var o = { mode: S.mode, level: S.level, players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level }; }) };
+    var o = { mode: S.mode, level: S.level, hints: hintsOn(), players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level }; }) };
     newGame(o);
   }
   // Every turn for the history replay: 'seat:WORD:score:cells' (cells: the row and column letters of each tile laid, then
@@ -1853,8 +1873,8 @@
     var known = p.rack.filter(function (t) { return pos[t.id] != null; }).sort(function (x, y) { return pos[x.id] - pos[y.id]; });
     p.rack = known.concat(p.rack.filter(function (t) { return pos[t.id] == null; }));
   }
-  function netStart(players) {
-    return freshState({ mode: 'online', players: players.map(function (p) { return { name: p.name, cpu: !!p.bot, level: p.bot ? 'normal' : null }; }) });
+  function netStart(players, opts) {
+    return freshState({ mode: 'online', hints: !(opts && opts.hints === 'off'), players: players.map(function (p) { return { name: p.name, cpu: !!p.bot, level: p.bot ? 'normal' : null }; }) });
   }
   // a move on a table's state: m = {k:'play', tiles} | {k:'swap', ids} | {k:'pass'}; n0: the turn it was made on
   function netApply(st, seat, m, n0) {
@@ -2055,7 +2075,7 @@
   TurnNet.setup({
     game: 'scrabble', title: 'Scrabble', min: 2, max: 4,
     botTakeover: true, botMs: 1400,
-    start: netStart,
+    opts: netOpts, start: netStart,
     turn: function (st) { return st.over ? [] : [st.turn]; },
     over: function (st) {
       if (!st.over || !st.result) return null;

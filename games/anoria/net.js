@@ -7,7 +7,7 @@
 //   seed    the table's own seed: every die and every shuffle comes from it (E.rng(seed, mi) in each move), never from a
 //           device's own random, so the game is the same game whichever device makes the move
 //   lv      the computer players' skill; teams, who plays together (ui.js teamsFor, as the setup offers them); cap, the
-//           most of one player's Figures at a Domain (4, 5 or 6 from the host's setup, 0 for no limit)
+//           most of one player's Figures at a Domain (4, 5 or 6 from the host's setup, 0 for no limit); hints, the host's Hints (on or off)
 //   pl      [{name, cpu, d}] in seat order: d is the deck the person brought from their own collection on their own
 //           device ({n, id, guide, cards, stack, built, mat}); null until they have chosen it (ph 'decks')
 //   ph      'decks' while someone still has to choose a deck, then 'game'
@@ -73,7 +73,7 @@
     const S = E.newGame(players.map(p => p.cards.slice()), players.map(p => p.guide), ecfg, E.rng(st.seed >>> 0), dmOn ? players.map(p => p.stack.slice()) : null, { wait: dmOn });
     S.st = null; S.ev = [];
     const seats = () => players.map(() => ({ ko: 0, lines: 0, seals: 0, held: 0 }));
-    const g = { mode: 'net', level: st.lv, sc: 2, tg: S.cfg.target, rfx: S.cfg.rfx, cap: S.cfg.cap, teams: teams, players: players, S: S, ord: E.order(S), k: 0, ph: 'start', started: Date.now(), n: 0,
+    const g = { mode: 'net', level: st.lv, sc: 2, tg: S.cfg.target, rfx: S.cfg.rfx, cap: S.cfg.cap, hints: st.hints !== 'off', teams: teams, players: players, S: S, ord: E.order(S), k: 0, ph: 'start', started: Date.now(), n: 0,
       stats: seats(), hist: [], seen: {}, tale: { links: [], seals: [], hold: [], tot: [], ko: players.map(() => ({})), outs: [] }, cl: null, cls: players.map(p => (p.cpu ? null : Coll.trackStart())), cv: Coll.VER, log: [] };
     S.turn = g.ord[0];
     if (S.su && S.su.step !== 'done') { g.ph = 'setup'; players.forEach((p, o) => { if (p.cpu) E.setupLay(S, o, E.setupPick(S, o, H.profOf(p, g.level), R)); }); }
@@ -526,11 +526,11 @@
     const d = Coll.deck(H.deckChoice(op.deck0, 'me')) || Coll.deck(H.starterId());
     let mat = null; try { mat = localStorage.getItem(H.matKey); } catch (e) {}
     const host = d ? { n: d.n, id: d.id, guide: d.guide, cards: d.cards.slice(), stack: H.stackOf({ deckId: d.id, deck: d.n, cpu: false }), built: !!d.built, mat: mat } : null;
-    return { n: n, teams: (n === 4 || n === 6) ? H.teamsFor(n, op.teams) || null : null, lv: H.LEVEL[op.level] ? op.level : 'normal', cap: H.capOf(op.cap), d: host };   // (cap: the host's limit on Figures at a Domain, or none)
+    return { n: n, teams: (n === 4 || n === 6) ? H.teamsFor(n, op.teams) || null : null, lv: H.LEVEL[op.level] ? op.level : 'normal', cap: H.capOf(op.cap), hints: op.hints === 'off' ? 'off' : 'on', d: host };   // (cap: the host's limit on Figures at a Domain, or none)
   }
   function start(players, o, last) {
     o = o || {};
-    const st = { v: 1, mi: 0, seed: (Math.random() * 4294967296) >>> 0, lv: o.lv || 'normal', teams: null, cap: H.capOf(o.cap), ph: 'decks', G: null,
+    const st = { v: 1, mi: 0, seed: (Math.random() * 4294967296) >>> 0, lv: o.lv || 'normal', teams: null, cap: H.capOf(o.cap), hints: o.hints === 'off' ? 'off' : 'on', ph: 'decks', G: null,
       pl: players.map(p => ({ name: p.name, cpu: !!p.bot, d: null })) };
     const N = st.pl.length;
     if (o.teams && o.teams.every(t => t.every(x => x < N)) && (N === 4 || N === 6)) st.teams = o.teams;

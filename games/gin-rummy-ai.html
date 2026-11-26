@@ -331,7 +331,7 @@ html.cdesk-on #app.stage > .cbar .hint{font-size:1.02rem;}
       '<h3>Melds</h3><ul><li><b>Set:</b> 3 or 4 cards of the same rank, like 8♠ 8♥ 8♦.</li>' +
       '<li><b>Run:</b> 3 or more cards in a row of the same suit, like 4♥ 5♥ 6♥. Ace is low only (A-2-3 is a run, Q-K-A is not).</li>' +
       '<li>A card can only be in one meld at a time.</li></ul>' +
-      '<h3>Deadwood</h3><p>Cards that are not in a meld are <b>deadwood</b>. They count against you: Ace = 1, number cards = their number, J, Q, K = 10. Your hand shows your melds and deadwood count all the time.</p>' +
+      '<h3>Deadwood</h3><p>Cards that are not in a meld are <b>deadwood</b>. They count against you: Ace = 1, number cards = their number, J, Q, K = 10. With Hints on, your hand shows your melds and deadwood count all the time.</p>' +
       '<h3>Your turn</h3><ul><li><b>Draw</b> one card: the top of the face-down <b>stock</b>, or the top card of the <b>discard pile</b>.</li>' +
       '<li><b>Discard</b> one card face up. You can\'t throw back a card you just picked up from the discard pile.</li>' +
       '<li>First turn: the player who didn\'t deal may take the first upcard. If they pass, the dealer may take it. If both pass, the non-dealer draws from the stock.</li></ul>' +
@@ -343,7 +343,7 @@ html.cdesk-on #app.stage > .cbar .hint{font-size:1.02rem;}
       '<h3>End of the game</h3><ul><li>If only 2 cards are left in the stock and nobody has knocked, the hand is a draw and the same dealer deals again.</li>' +
       '<li>The deal takes turns each hand.</li>' +
       '<li>When someone reaches the target, they get a <b>100 game bonus</b>, and each player gets a <b>25 line bonus</b> for every hand they won.</li></ul>' +
-      '<h3>Arranging your hand</h3><p>Your melds are found for you and grouped with a colored bracket. Drag cards to move them around. The switch above your hand sorts it by <b>Melds</b>, <b>Suit</b> or <b>Rank</b> (tap it again to tidy up after dragging).</p>' +
+      '<h3>Arranging your hand</h3><p>Your melds are found for you and grouped with a colored bracket. Drag cards to move them around. The switch above your hand sorts it by <b>Melds</b>, <b>Suit</b> or <b>Rank</b> (tap it again to tidy up after dragging). With Hints off in the setup, the melds aren’t found for you: sort by Suit or Rank, count your own deadwood, and Knock is offered with every discard.</p>' +
       '<h3>Online</h3><ul><li><b>Play online</b>, beside the start button, opens a table that the other player joins on their own device. If someone leaves in the middle of a game, the computer takes their seat.</li>' +
       '<li>Draw and discard whenever it’s your turn. The home screen shows when it’s your move, and each new hand deals itself.</li></ul>'
   });
@@ -364,13 +364,22 @@ html.cdesk-on #app.stage > .cbar .hint{font-size:1.02rem;}
       modes: Kit.modes(['cpu', 'local']),
       players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       options: [{ id: 'target', label: 'Play to', help: 'The game ends when someone reaches this many points; then bonuses are added.', value: 100, choices: [[100, '100\nStandard'], [50, '50\nQuick']] },
+        HINTS_OPT,
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }],
       onStart: function (cfg) {
-        S = freshGame(cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.cpu ? lvName(p.level || cfg.options.level) : undefined }; }), +cfg.options.target || 100, cfg.mode);
+        S = freshGame(cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.cpu ? lvName(p.level || cfg.options.level) : undefined }; }), +cfg.options.target || 100, cfg.mode, cfg.options.hints !== 'off');
         undoStack = []; Kit.gameStart(); newHand();
       }
     });
   }
+  // Hints: your deadwood counted on your seat (and at a desk, how your hand counts), the bar saying you can knock or have
+  // gin, the Knock button's count, and the Melds sort that finds your melds and brackets them. Off, you sort by Suit or Rank
+  // and count your own deadwood; Knock is offered with every discard and refuses a hand over 10. A game saved before there
+  // was a choice has no hints field and plays with them on.
+  var HINTS_OPT = { id: 'hints', label: 'Hints', value: 'on',
+    choices: [['on', 'On', 'Your melds are found and bracketed, your deadwood is counted for you, and the game tells you when you can knock.'],
+      ['off', 'Off', 'You sort your own hand by suit or rank, count your own deadwood and decide when to knock, as at a real table.']] };
+  function hintsOn(X) { X = X || S; return !X || X.hints !== false; }
   // The computer's skill. Normal is how it has always played; a game saved before there were levels plays Normal.
   // (Two levels for now: a Hard that beats Normal needs more than sharper numbers. Knocking sooner or later, a
   // heavier hand on what it throws you and looking one draw ahead were each tried and none of them won more.)
@@ -378,9 +387,9 @@ html.cdesk-on #app.stage > .cbar .hint{font-size:1.02rem;}
     ['normal', 'Normal', 'Keeps cards that can still become melds and picks its moment to knock.']];
   function lvName(v) { return v === 'easy' ? v : 'normal'; }
   function lvOf(p) { var pl = S && S.players && S.players[p]; return lvName(pl && pl.level); }
-  function freshGame(players, target, mode) {
+  function freshGame(players, target, mode, hints) {
     return {
-      mode: mode || 'cpu', me: 0, target: target, hand: 0, dealer: Math.random() < 0.5 ? 0 : 1, sameDealer: true, rounds: [], labels: [], log: [], highlights: [], started: Date.now(),
+      mode: mode || 'cpu', me: 0, target: target, hints: hints !== false, hand: 0, dealer: Math.random() < 0.5 ? 0 : 1, sameDealer: true, rounds: [], labels: [], log: [], highlights: [], started: Date.now(),
       players: players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level, total: 0, wins: 0 }; })
     };
   }
@@ -516,6 +525,7 @@ html.cdesk-on #app.stage > .cbar .hint{font-size:1.02rem;}
   });
   function orderFor(h) {
     var m = sortT.get();
+    if (m === 'melds' && !hintsOn()) m = 'suit';   // (Hints off: no melds found for you)
     if (m === 'melds') return arrange(h);
     return h.slice().sort(m === 'rank' ? function (a, b) { return RV[a.r] - RV[b.r] || SUIT_ORDER.indexOf(a.s) - SUIT_ORDER.indexOf(b.s); } : suitRank)
       .map(function (c) { return c.id; });
@@ -852,7 +862,7 @@ html.cdesk-on #app.stage > .cbar .hint{font-size:1.02rem;}
     Kit.win({
       title: isYou(w) ? 'You win!' : P[w].name + ' wins', icon: P[w].cpu ? 'bot' : 'trophy', lose: !!P[w].cpu,
       sub: 'Hands ' + P[w].total + ' + game bonus 100 + ' + P[w].wins + ' × 25 line bonus', rank: rank,
-      again: function () { S = freshGame(S.players, S.target, S.mode); undoStack = []; laid = false; Kit.gameStart(); newHand(); },
+      again: function () { S = freshGame(S.players, S.target, S.mode, hintsOn()); undoStack = []; laid = false; Kit.gameStart(); newHand(); },
       look: 'Look at the table',
       setup: function () { token++; clearSave(); showSetup(); }
     });
@@ -954,7 +964,7 @@ html.cdesk-on #app.stage > .cbar .hint{font-size:1.02rem;}
         S.dealer === p ? el('span', { class: 'dealer', title: 'Dealer', text: 'D' }) : null
       ]);
       var info = el('div', { class: 'info' }, [el('span', { class: 'chip-s', text: pl.total + ' pts' })]);
-      if (isMe(p) && S.hands && !S.cover) {
+      if (isMe(p) && S.hands && !S.cover && hintsOn()) {
         var dwv = liveDeadwood();
         info.appendChild(el('span', { class: 'chip-s dw' + (dwv === 0 ? ' gin' : dwv <= 10 ? ' ok' : ''), text: 'Deadwood ' + dwv }));
       }
@@ -981,6 +991,7 @@ html.cdesk-on #app.stage > .cbar .hint{font-size:1.02rem;}
     handEl.innerHTML = '';
     if (handEl.hidden !== laid) { handEl.hidden = laid; sortRow.hidden = laid; }   // (laid down on the felt: nothing left to hold)
     if (laid) return;
+    sortHints();
     var h = S.hands[S.me];
     if (S.cover) {   // between two people's turns: card backs only
       h.forEach(function (c, i) { var n = Kit.card('', '', { back: true }); n.style.setProperty('--i', String(i)); handEl.appendChild(n); });
@@ -991,7 +1002,7 @@ html.cdesk-on #app.stage > .cbar .hint{font-size:1.02rem;}
     S.order = S.order.filter(function (id) { return have[id]; });
     h.forEach(function (c) { if (S.order.indexOf(c.id) < 0) S.order.push(c.id); });
     var b = best(h), grp = {};
-    b.melds.forEach(function (m, gi) { m.forEach(function (c) { grp[c.id] = gi; }); });
+    if (hintsOn()) b.melds.forEach(function (m, gi) { m.forEach(function (c) { grp[c.id] = gi; }); });   // (Hints off: no melds marked)
     // Brackets and gaps only for melds that sit together (3+ cards in a row);
     // in Suit or Rank order a set's cards can be spread out.
     var gs = S.order.map(function (id) { return grp[id] != null ? grp[id] : -1; });
@@ -1016,6 +1027,12 @@ html.cdesk-on #app.stage > .cbar .hint{font-size:1.02rem;}
     handEl.classList.toggle('deal', !!S.dealAnim);
     if (S.dealAnim) { S.dealAnim = false; setTimeout(function () { if (handEl) handEl.classList.remove('deal'); }, 1100); }
     requestAnimationFrame(function () { fanHand(); brackets(b); });
+  }
+  // (Hints off: the switch offers Suit and Rank only, and while Melds is the remembered choice Suit shows as chosen)
+  function sortHints() {
+    var bs = sortT.el.children, on = hintsOn(); if (bs.length < 3) return;
+    bs[0].style.display = on ? '' : 'none';
+    if (sortT.get() === 'melds') { bs[0].setAttribute('aria-pressed', on ? 'true' : 'false'); bs[1].setAttribute('aria-pressed', on ? 'false' : 'true'); }
   }
   function fanHand() {
     var cards = handEl.querySelectorAll('.pcard'); if (!cards.length) return;
@@ -1065,6 +1082,7 @@ html.cdesk-on #app.stage > .cbar .hint{font-size:1.02rem;}
       return;
     }
     if (myTurn('discard')) {
+      if (!S.sel && !hintsOn()) { barEl.appendChild(el('span', { class: 'hint', text: 'Tap a card to discard or knock with' })); return; }
       if (!S.sel) {
         var any = S.hands[S.me].some(function (c) { return c.id !== S.took && canKnockWith(c.id) <= 10; });
         var g = S.hands[S.me].some(function (c) { return c.id !== S.took && canKnockWith(c.id) === 0; });
@@ -1073,7 +1091,12 @@ html.cdesk-on #app.stage > .cbar .hint{font-size:1.02rem;}
       }
       var c = byId(S.hands[S.me], S.sel), dw = canKnockWith(S.sel);
       barEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Discard ' + lab(c), onclick: function () { snapshot(); discardCard(S.me, S.sel, false); } }));
-      if (dw <= 10) barEl.appendChild(el('button', { type: 'button', class: 'btn ' + (dw === 0 ? 'btn-yellow' : 'btn-primary'), html: dw === 0 ? Kit.icon('star') + '<span>Gin!</span>' : '<span>Knock with ' + dw + '</span>', onclick: function () { var id = S.sel; snapshot(); discardCard(S.me, id, true); } }));
+      if (!hintsOn()) barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Knock', onclick: function () {
+        var id = S.sel;
+        if (canKnockWith(id) > 10) { Kit.haptic('error'); Kit.toast('Throwing the ' + lab(byId(S.hands[S.me], id)) + ' leaves more than 10 points of deadwood, so you can’t knock with it.', 3200); return; }
+        snapshot(); discardCard(S.me, id, true);
+      } }));
+      else if (dw <= 10) barEl.appendChild(el('button', { type: 'button', class: 'btn ' + (dw === 0 ? 'btn-yellow' : 'btn-primary'), html: dw === 0 ? Kit.icon('star') + '<span>Gin!</span>' : '<span>Knock with ' + dw + '</span>', onclick: function () { var id = S.sel; snapshot(); discardCard(S.me, id, true); } }));
       return;
     }
     barEl.appendChild(el('span', { class: 'hint', text: S.turn >= 0 && (S.players[S.turn].cpu || NET) ? S.players[S.turn].name + ' is thinking…' : '' }));
@@ -1276,7 +1299,7 @@ html.cdesk-on #app.stage > .cbar .hint{font-size:1.02rem;}
       if (ul.childNodes.length) groups[0].push(part(9, [ul]));
     } else {
       // how the hand you can see counts: what its loose cards cost, and the 10 a knock needs
-      var h = S.hands[S.me], shown = !S.cover && h && h.length && h[0].r;
+      var h = S.hands[S.me], shown = !S.cover && h && h.length && h[0].r && hintsOn();   // (Hints off: no count of your hand)
       if (shown) {
         var rest = h.length > 10 && S.sel ? h.filter(function (c) { return c.id !== S.sel; }) : h, b = best(rest), dwv = liveDeadwood();
         var scale = Math.max(40, dwv), tick = el('u', { style: { '--at': Math.round(10 / scale * 100) + '%' } }); tick.dataset.n = '10';
@@ -1353,11 +1376,11 @@ html.cdesk-on #app.stage > .cbar .hint{font-size:1.02rem;}
   function netOpts() {
     var g = {}; try { g = JSON.parse(localStorage.getItem('gn_setup_gin-rummy')) || {}; } catch (e) {}
     var o = g.options || {};
-    return { target: +o.target === 50 ? 50 : 100, level: lvName(o.level) };
+    return { target: +o.target === 50 ? 50 : 100, level: lvName(o.level), hints: o.hints === 'off' ? 'off' : 'on' };
   }
   function netStart(players, opts, last) {
     opts = opts || {};
-    var st = freshGame(players.map(function (p) { return { name: p.name, cpu: !!p.bot, level: lvName(opts.level) }; }), +opts.target === 50 ? 50 : 100, 'online');
+    var st = freshGame(players.map(function (p) { return { name: p.name, cpu: !!p.bot, level: lvName(opts.level) }; }), +opts.target === 50 ? 50 : 100, 'online', opts.hints !== 'off');
     st.online = 1; st.series = last && last.series ? last.series.slice() : [0, 0];
     if (last && last.winner != null) st.dealer = last.winner;   // (the last game's winner deals the first hand)
     nDeal(st);
@@ -1651,7 +1674,7 @@ html.cdesk-on #app.stage > .cbar .hint{font-size:1.02rem;}
       token++; Kit.handoff.close();
       var deck = Cards.deck(), used = {};
       function card(x) { for (var i = 0; i < deck.length; i++) if (!used[i] && deck[i].r === x.r && deck[i].s === x.s) { used[i] = 1; return deck[i]; } return null; }
-      S = freshGame(o.players, o.target || 100, 'cpu');
+      S = freshGame(o.players, o.target || 100, 'cpu', o.hints !== false);
       S.hand = 1; S.dealer = o.dealer != null ? o.dealer : 1; S.sameDealer = false;
       S.hands = o.hands.map(function (h) { return h.map(card); });
       S.discard = o.discard.map(card); S.stock = o.stock.map(card);
