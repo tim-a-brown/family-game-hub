@@ -4257,6 +4257,26 @@
       if (v != null && cs.some(function (c) { return String(c[0]) === String(v); })) return v;
       return state.options[lvOp.id];
     }
+    // A Hard computer at the table turns Hints off (Tim, 2026-11-26: "I want hints off against hard automatically").
+    // Only a change of whether a Hard computer sits acts, so a player can still turn Hints back on by hand.
+    var hintOp = (o.options || []).filter(function (op) { return op.id === 'hints'; })[0] || null, hardWas = null;
+    function hardSeated() {
+      if (!lvOp || !P) return false;
+      var cs = lvChoices(); if (!cs || cs.length < 2) return false;
+      var top = String(cs[cs.length - 1][0]), cpu = cpuFor(); if (!cpu) return false;
+      for (var i = 1; i < state.count; i++) if (seatCpu(i) && String(levelOf(i)) === top) return true;
+      return false;
+    }
+    function autoHints() {
+      if (!hintOp) return;
+      var h = hardSeated();
+      if (h !== hardWas) {
+        if (h && state.options.hints !== 'off') { state.options.hints = 'off'; autoOff = true; }
+        else if (!h && hardWas && autoOff) { state.options.hints = 'on'; autoOff = false; }
+        hardWas = h;
+      }
+    }
+    var autoOff = false;
     // a mode card's words: the game's own, else its kind's (Pass & play says computers can join when seats can be robots)
     function modeDesc(m) {
       if (m.desc != null) return m.desc;
@@ -4465,7 +4485,7 @@
       if (!state.count) state.count = Math.min(r[1], Math.max(r[0], saved.count || P.count || r[0]));
       state.count = Math.min(r[1], Math.max(r[0], state.count));
       if (merged) { state.mode = resolved(); if (!robotsOk(state.count)) robots = {}; cpu = cpuFor(); }
-      renderOptions();
+      autoHints(); renderOptions();
       if (r[1] === 0) { dropKeep(); tellWho(null); return; }   // a mode with nobody to seat (Bingo's caller)
       var label = el('div', { class: 'label grow', style: { margin: 0 }, text: P.label || "Who's playing?" });
       if (P.names === false) {   // nobody is named: just how many
@@ -4672,6 +4692,7 @@
         // (a game with one skill for all its robots plays the first robot's)
         var firstBot = players.filter(function (q) { return q.level != null; })[0];
         if (firstBot && lvOp) state.options[lvOp.id] = firstBot.level;
+        autoHints();
         curPlayers = players.filter(function (p) { return !p.cpu; }).map(function (p) { return p.name; });
         saveSetup();
         sfx('pop'); haptic('medium');
