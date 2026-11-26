@@ -1990,6 +1990,76 @@ Underlying principles for everything:
   `pacru_net_rec`. Test hook `window.__pacru` (`start(cfg)`, `set({rows, chev, turn})`, `play`, `tap`, `sq`, `chev`,
   `sel`). The scratchpad's `shots.js`, `demo.js`, `hist.js` of the session that built it.
 
+## Continuo (2026-11-26; included with David Westnedge Ltd's written permission, Maureen Hiron credited)
+
+- **Credit the designer and publisher**: "Continuo was designed by Maureen Hiron and is published by David Westnedge Ltd."
+  stands under the title in the setup (`.ct-credit`, hidden only where it would make the setup scroll) and at the foot of
+  How to play; the condition of the permission ("a private digital version ... for personal family use and isn't
+  distributed"). Wikipedia names Maureen Hiron, 1982, and David Westnedge Ltd as its UK publisher (U.S. Games Systems in
+  the US). The cards and table are our own drawing (black lacquered cards with enamel squares on a walnut tabletop);
+  never the commercial box art, logo or trade dress.
+- `games/continuo.html` (catalog id `continuo`, Board, 1 to 5), the rules and the robots in `games/continuo-core.js`
+  (`ContinuoCore`, plain JSON; the page, the robots' Web Worker, the TurnNet table and Node), history `hist/continuo.js`
+  (hist-view.js loads the core first: the table at the end, a replay card by card, the race, each player's points,
+  cards, best card and chains joined), demo `games/demos/continuo.js` (seed 1080: turn a card, move it, place it; a few
+  cards later join two green chains, the points peeked first). `node scripts/continuo-sim.js [games]
+  [--pairs=easy-normal,...] [--np=2] [--hand=1] [--check=40]` checks the cards (every coloring of the motif, two grids
+  the same card when a quarter turn takes one to the other: 42, the core's 42, each lying two ways), every place a card
+  fits against a plain reading (no square covered, a side touching, every touching square the same color), every score
+  against a flood fill of its own, the 42 cards always accounted for, the totals and the winner.
+- **The rules** (Wikipedia; the review in Jeux & Stratégie 21, June 1983, archive.org, with its photograph of a game,
+  which is where the card's pattern was read from): 42 cards of 4 by 4 squares in red, yellow, green and blue, one motif
+  in two or three colors and no two alike: each corner square has an L of three round it, the top left and bottom right
+  corners one color (a) with their Ls another (b), the other two Ls a third (c) and their corners a fourth (d), a ≠ b,
+  b ≠ c, c ≠ d (`TILES`, `REG`; that count is exactly 42). A card lies two ways (a quarter turn reads it d c b a). The
+  top card of the shuffled deck is turned up in the middle; in turn each player takes the top card and puts it down
+  touching the table, squares lined up, every square touching another card along a side the same color; it may be
+  offset and touch by one square. Each chain (one color joined along sides, across cards) with squares on the new card
+  and on another card scores its whole length; chains the card joins are one chain and score once. The game ends when
+  the last card is down; the highest score wins, equal scores share. **Not confirmed from a rule sheet** (none could be
+  read here: BoardGameGeek, the MSO's page and the other rule sites are outside this session's network): what happens to
+  a card that fits nowhere (here it goes under the deck and the player draws again; once every card left has been tried
+  that turn, it is set aside, `'card-'` moves, `st.ut`); whether the published solo game is more than playing alone for
+  a best score (the 1983 review says the solitaire game is "choosing the cards"; here Just me is the same draw, with a
+  best score); Cards in hand, Three, is a house rule (`hand` 1 or 3: hold three, put one down, draw back up).
+- **Hints** (Tim, 2026-11-26; the setup's `hints`, on by default, kept in `gn_setup_continuo`, shown in the online review
+  and used by a TurnNet table from the host's `opts`; `S.hints`): on, the card in hand shows gold dots where its squares
+  match, red crosses where they don't, the chains it would score outlined and its points over it (`+14 from 2 chains`),
+  and Place says the points; pointing at the points (hover, or a tap or press on a touch screen, `PEEK`, `paintPeek`)
+  lights each chain with its length and color, labels stepped clear of each other (`placeTags`). Off, only whether the
+  card fits shows (a white or a red outline, "Doesn't fit"), and Place says Place the card. How to play has a worked
+  example of the scoring.
+- Moves are `card@x,y` (top left square, `/` for a quarter turn) or `card-`. State: `deck`, `hands`, `pl` [[card, o, x, y,
+  player, points]] (the first card's player is -1), `sc`, `turn`, `win`, `ml`, `aside`, `best`. The core's `Board` is a
+  400 by 400 grid (Int8Array colors, chains found by `chains()`); `judge` gives a card's fit, marks and score (each part
+  of the card joins the chains it touches, parts linked through a chain counted together); `fits` every place it fits.
+- Robots (`LEVELS`): Easy plays at random among the places scoring at least 0.6 of the most; Normal takes the most points
+  now; Hard weighs its 12 best places by points minus 0.8 of the most the next player could score with a sample of 14
+  unseen cards (1.5 s). Measured (`continuo-sim.js 100`, 2 players, seats alternating): Easy beat Normal in 19 of 100 and Hard
+  in 19; Hard beat Normal in 58 of 100, with 2 ties (the draw decides much of Continuo); games come to about 260
+  points a player (192 to 312), and about one card in two games goes under the deck.
+- The table (`build`, `paintTiles`, `fitView`): an SVG of the cards on a walnut table, viewed round every card down with a
+  card's room on each side, as large as the table allows (a square at most 56px, 78 at a desk), the view gliding as the
+  table grows. The card in hand lies on the table as a ghost where it fits nearest the last card (never where it scores
+  most); a tap moves it to where it fits nearest the tap, a drag carries it (lifted over the finger) and it settles where
+  it fits nearest; a tap on it, Place, or Enter puts it down; Turn, a tap on the card in hand, R, the right button or the
+  wheel turns it; the arrow keys step to the next fit; a mouse's ghost follows the pointer, snapping to fits within three
+  squares, and a click places. A card in hand can be dragged onto the table. A magnifier (`.zm`, or a pinch) looks closer
+  round the card (`ZOOM`, 30px squares, the view following the card); it shows only when the table is drawn small. When
+  a card goes down it drops in, each chain it made longer flashes from the card outward, the points rise and the plate
+  counts up; moments: Chains joined, a big card (30 or more, confetti), three or four cards matched, a chain of 15, a new
+  best alone, the winners' cards lighting at the end. Layouts: upright the plates (two lines a plate with three or more
+  players in a narrow row, `.tight`) over the table and the dock (the card in hand with its turn button, the deck, whose
+  turn, Place, Turn, Undo; three cards in hand have a row of their own); sideways the plates and dock at the left, the
+  table at the right. **At a desk** (`deskPlan` `w2`, `w1`, `t`, Kamisado's; `ct-dk`): the room (`paintRoom`): Scores
+  with the race card by card and the longest chain on the table, Last card in words, Cards so far newest first, Cards not
+  yet down (the 42 less those on the table, the one in your hand ringed), Past games; whole rows given up (`fitRoom`).
+  Saved in `continuo_state`; online seats 2 to 5 with the computer in seats nobody takes, each game at a table starting
+  one seat on (`rot`), records once a device in `continuo_net_rec`. Test hook `window.__continuo` (`start`, `set(moves)`,
+  `play`, `to(x, y, o)`, `rotate`, `place`, `peek`, `orient`, `zoom`, `spot(x, y)`, `ghostTag`, `aim`, `desk`, `view`).
+  The scratchpad's `newgames/continuo/` has `shots.js` (scenes setup, start, mid, peek, bad, nohint, zoom, over, solo,
+  five, three at any window), `tune.js` (two skills head to head) and `finddemo.js`.
+
 ## Wax Pack (2026-11-19; Tim: the Sandlot redesign, named "wax pack", the pitch duel "sure i'll try it", scanning "to log a player's deck")
 
 - Catalog id stays `sandlot` (favorites and `gh_sandlot` history carry over); the page is `games/waxpack.html` with
