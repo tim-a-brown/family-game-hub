@@ -1360,6 +1360,23 @@ Underlying principles for everything:
   than hand-rolled buttons, so every game offers the same things in the same order. Reference:
   `games/othello.html`.
 
+## Hints (2026-11-26; Tim: "have an option to turn off scoring hints ... do similar for other games that have options that make it easier (not length based)", then "I want hints off against hard automatically")
+
+- A game with aids that make it easier (would-be scores, suggested bids, threat rings, odds, deadwood counts, a Hint
+  button) has the setup option `{ id: 'hints', label: 'Hints', value: 'on', choices: [['on','On',...],['off','Off',...]] }`,
+  each choice a whole sentence naming that game's aids. Saved with the game; a save from before it plays as On; Play
+  again keeps it; an online table plays by the host's choice (TurnNet `opts`/`netStart`, as Bridge's `aids`), and the
+  online review lists it by itself. Off leaves the aid undrawn with no gap; legal-move marks and what has already
+  happened (scores, records, reward moments) stay. Games with it: the card tables (Hearts, Spades, Pinochle, Euchre,
+  Go Fish, Canasta, Crazy Eights, Five Crowns, Rook, Gin Rummy, Poker Squares), Boku, Kamisado, Entropy, Pacru,
+  Continuo, Mahjong, Monopoly, Yahtzee, Farkle, Sudoku (saved as `S.aids`; it folds in Show mistakes), Connect Four,
+  Tic-Tac-Toe, Deal or No Deal, Backgammon, Candy Match, Scrabble, Axis & Allies, Lorcana (it replaced the menu's
+  `lorc_hints`, read as the default) and Arvela (`G.hints`). Bridge keeps its own `aids`.
+- **A Hard computer at the table turns Hints off** (`autoHints` in kit.js): when a seat's skill becomes the hardest
+  of the game's choices, Hints goes to Off, and back to On when no Hard computer is left if the kit had turned it off.
+  Only a change acts, so a player can turn Hints back on by hand. The players sheet says so under the skill's words
+  when Hard is chosen (`.k-pb-hint`); a Hard computer seated any other way gets a toast.
+
 ## Player counts added 2026-11-14 (Tim: "add missing game modes")
 
 - **Hearts** plays 3 to 6 (`COUNTS` in hearts-ai.html: the cards taken out, the club that leads, the pass cycle; 3 and 5
