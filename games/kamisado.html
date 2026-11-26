@@ -291,12 +291,13 @@ html.km-dk .tag{font-size:calc(.78rem * var(--dk));}
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Looks one move past its own and often slips.'], ['normal', 'Normal', 'Looks a few moves ahead at the towers each move sends.'], ['hard', 'Hard', 'Looks ten or more moves ahead and finds forced wins.']], when: function (m) { return m === 'cpu'; } },
         { id: 'target', label: 'Match', value: '1', choices: [['1', 'Single round\nFirst to 1', 'One round: the first tower home wins.'], ['3', 'Standard\nFirst to 3', 'Rounds until someone has 3 points. Towers that win become Sumo towers.'], ['7', 'Long\nFirst to 7', 'Rounds until someone has 7 points.'], ['15', 'Marathon\nFirst to 15', 'Rounds until someone has 15 points, or a Quadruple Sumo.']] },
         { id: 'side', label: 'You play', value: 'b', choices: [['b', 'Black\nGoes first', 'Black always starts the first round, so you start.'], ['w', 'White', 'The computer plays Black and starts.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'hints', label: 'Hints', value: 'on', choices: [['on', 'On', 'Each square a tower can reach is marked gold for a win, red where it hands the other player a way home and with a ring where it leaves their next tower blocked, and red dashed lines show the other player\'s towers with a clear way home.'], ['off', 'Off', 'Every square a tower can reach is marked the same, with no warnings: read the board yourself.']] },
         { id: 'cover', label: 'Hand over between turns', value: 'off', choices: [['off', 'Off', 'Nothing in Kamisado is hidden, so the device just goes across the table.'], ['on', 'On', 'A cover names whose turn it is before each move.']], when: function (m) { return m === '2p'; } }
       ],
       players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       onStart: function (cfg) {
         var cpu = cfg.mode === 'cpu', hs = cpu && cfg.options.side === 'w' ? WHITE : BLACK;
-        S = { mode: cfg.mode, level: cfg.options.level || 'normal', cover: cfg.options.cover === 'on' && !cpu, target: +cfg.options.target || 1,
+        S = { mode: cfg.mode, level: cfg.options.level || 'normal', cover: cfg.options.cover === 'on' && !cpu, target: +cfg.options.target || 1, hints: cfg.options.hints !== 'off',
           players: cfg.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, side: i === 0 ? hs : 3 - hs }; }) };
         newGame();
       }
@@ -568,11 +569,13 @@ html.km-dk .tag{font-size:calc(.78rem * var(--dk));}
         if (at >= 0 && Core.lanes(c.b, c.rk, at).length) cls = 'danger';
         else if (r.passes.length) cls = 'block';
       } else if (r.passes.length) cls = 'block';
-      out[m.t + (m.push ? '*' : '')] = { m: m, res: r, st: c, cls: cls };
+      out[m.t + (m.push ? '*' : '')] = { m: m, res: r, st: c, cls: hintsOn() ? cls : '' };
     });
     return out;
   }
   var OUT = null;
+  // Hints (the setup's option): an older save without it plays with hints on
+  function hintsOn() { return !S || S.hints !== false; }
   function paintMarks() {
     if (!layEl || !S) return;
     clearMarks(); OUT = null;
@@ -581,7 +584,7 @@ html.km-dk .tag{font-size:calc(.78rem * var(--dk));}
     if (S.over || S.phase !== 'play') { if (FILLP) previewFill(FILLP); paintActs(); return; }
     var me = humanTurn(), movers = Core.movers(S);
     // the other side's towers with a way home: a red line to their goal
-    for (var p = 1; p <= 16; p++) {
+    for (var p = 1; p <= 16 && hintsOn(); p++) {
       if (Core.sideOf(p) === S.turn) continue;
       var sq = S.b.indexOf(p); if (sq < 0) continue;
       Core.lanes(S.b, S.rk, sq).forEach(function (t) { svgLine(fxEl, px(sq), px(t), 'rgba(255,90,60,.55)', 6, .9, '4 12'); });
@@ -606,16 +609,16 @@ html.km-dk .tag{font-size:calc(.78rem * var(--dk));}
     svgLine(fx2El, px(m.f), px(m.t), 'rgba(255,233,163,.9)', 8, .85);
     if (!m.push) { var g = tower(S.b[m.f]); g.classList.add('ghost', 'dot'); if (S.rk[S.b[m.f]]) g.classList.add('r' + S.rk[S.b[m.f]]); var q = px(m.t); pos(g, q.x, q.y); g.classList.remove('dot'); g.classList.add('aimg'); layEl.appendChild(g); }
     if (r.win) { tag(m.t, 'Home: you win the round', 'good'); return; }
-    if (r.deadlock) { tag(m.t, r.promo.side === S.turn ? 'Deadlock: you win the round' : 'Deadlock: you lose the round', r.promo.side === S.turn ? 'good' : 'bad'); return; }
+    if (r.deadlock && hintsOn()) { tag(m.t, r.promo.side === S.turn ? 'Deadlock: you win the round' : 'Deadlock: you lose the round', r.promo.side === S.turn ? 'good' : 'bad'); return; }
     var nx = Core.find(c.b, Core.piece(c.turn, c.req)), nt = TW[c.b[nx]] || TW[Core.piece(c.turn, c.req)];
     var at = S.b.indexOf(Core.piece(c.turn, c.req));
     if (nt && at >= 0) {
       nt.classList.add('forced'); nt.style.setProperty('--fc', INK[c.req]);
-      var mine = c.turn === S.turn, lanes = mine ? [] : Core.lanes(c.b, c.rk, nx);
+      var mine = c.turn === S.turn, lanes = mine || !hintsOn() ? [] : Core.lanes(c.b, c.rk, nx);
       if (lanes.length) { nt.classList.add('danger'); lanes.forEach(function (t) { svgLine(fx2El, px(nx), px(t), '#ff5a3c', 8, .9, '14 10'); }); }
       var who = mine ? 'You move ' : nameOf(pl(c.turn)) + ' moves ';
-      var txt = r.passes.length ? (r.passes.length === 1 ? 'Blocked: ' : 'Blocked ' + r.passes.length + ' times: ') + who.toLowerCase() + 'the ' + CN[c.req] + ' next' : lanes.length ? 'This one could reach your home row' : who + 'this one next';
-      tag(nx, txt, lanes.length ? 'bad' : r.passes.length ? 'good' : '', px(nx).y < SQW * 1.5);
+      var txt = r.passes.length && hintsOn() ? (r.passes.length === 1 ? 'Blocked: ' : 'Blocked ' + r.passes.length + ' times: ') + who.toLowerCase() + 'the ' + CN[c.req] + ' next' : lanes.length ? 'This one could reach your home row' : who + 'this one next';
+      tag(nx, txt, lanes.length ? 'bad' : r.passes.length && hintsOn() ? 'good' : '', px(nx).y < SQW * 1.5);
     }
     if (m.push) r.pushed.forEach(function (pp) { svgLine(fx2El, px(pp[0]), px(pp[1]), '#ffe9a3', 6, .8, '6 8'); });
   }
@@ -965,13 +968,13 @@ html.km-dk .tag{font-size:calc(.78rem * var(--dk));}
   // Seat 0 plays the color chosen in the setup in the first game; each new game at the table swaps colors.
   function netSeatOf(st, side) { return st.players[0].side === side ? 0 : 1; }
   function netOpts() {
-    var o = { side: 'b', target: 1 }; try { var g = JSON.parse(localStorage.getItem('gn_setup_kamisado')); if (g && g.options) { if (g.options.side === 'w') o.side = 'w'; if (+g.options.target) o.target = +g.options.target; } } catch (e) {}
+    var o = { side: 'b', target: 1, hints: true }; try { var g = JSON.parse(localStorage.getItem('gn_setup_kamisado')); if (g && g.options) { if (g.options.side === 'w') o.side = 'w'; if (+g.options.target) o.target = +g.options.target; if (g.options.hints === 'off') o.hints = false; } } catch (e) {}
     return o;
   }
   function netStart(players, opts, last) {
     var s0 = last && last.players ? 3 - last.players[0].side : opts && opts.side === 'w' ? WHITE : BLACK;
     var st = Core.newGame({ target: (last && last.match && last.match.target) || (opts && opts.target) || 1 });
-    st.mode = 'online'; st.level = 'normal'; st.players = players.map(function (p, i) { return { name: p.name, cpu: false, side: i === 0 ? s0 : 3 - s0 }; });
+    st.mode = 'online'; st.level = 'normal'; st.hints = last && last.hints != null ? last.hints : !(opts && opts.hints === false); st.players = players.map(function (p, i) { return { name: p.name, cpu: false, side: i === 0 ? s0 : 3 - s0 }; });
     st.wins = last && last.wins ? last.wins.slice() : [0, 0]; st.started = Date.now();
     return st;
   }

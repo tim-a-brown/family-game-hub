@@ -123,13 +123,15 @@
     app.classList.remove('ipl', 'c4-land', 'c4-tall', 'c4-low');
     Kit.setup(app, {
       modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Medium or Hard' }, { id: '2p', kind: 'local' }]),
-      options: [{ id: 'level', robot: true, label: 'Computer skill', value: 'med', choices: [['easy', 'Easy', 'Looks a little ahead and sometimes drops a disc anywhere.'], ['med', 'Medium', 'Looks a few moves ahead.'], ['hard', 'Hard', 'Looks far ahead and rarely misses a threat.']], when: function (m) { return m === 'cpu'; } }],
+      options: [{ id: 'level', robot: true, label: 'Computer skill', value: 'med', choices: [['easy', 'Easy', 'Looks a little ahead and sometimes drops a disc anywhere.'], ['med', 'Medium', 'Looks a few moves ahead.'], ['hard', 'Hard', 'Looks far ahead and rarely misses a threat.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'hints', label: 'Hints', value: 'on', choices: [['on', 'On', 'A disc that blocks four lights up as it lands, and a move that leaves two places to finish four is called out.'], ['off', 'Off', 'No light on a block and no call when someone has two ways to win: read the board yourself.']] }],
       players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       onStart: function (cfg) {
         S = {
           players: cfg.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, disc: i === 0 ? 'r' : 'y' }; }),
           level: cfg.options.level || 'med', wins: [0, 0, 0], first: 0
         };
+        if (cfg.options.hints === 'off') S.hints = false;   // (an older save without it plays with hints on)
         newRound();
       }
     });
@@ -265,8 +267,9 @@
     else { S.cur = 1 - S.cur; paintTurn(); }
     save();
     fallDisc(d, r, c, function () {
-      if (blocked) { d.classList.add('block'); Kit.sfx('good', 0.6); if (!mover.cpu) Kit.haptic('light'); }
-      if (trap) {
+      var hon = S.hints !== false;
+      if (blocked && hon) { d.classList.add('block'); Kit.sfx('good', 0.6); if (!mover.cpu) Kit.haptic('light'); }
+      if (trap && hon) {
         var meH = !mover.cpu;
         Kit.moment({ title: 'Two ways to win', line: meH ? (mover.name === 'You' ? 'You have' : mover.name + ' has') + ' two places to finish four, and only one can be blocked.' : mover.name + ' has two places to finish four. You can only block one.',
           icon: 'sparkle', color: mover.disc === 'r' ? 'var(--red-disc)' : 'var(--yel-disc)', tone: meH ? '' : 'bad', at: boardEl, ms: 2200 });
@@ -274,7 +277,7 @@
       }
       if (line) { paintWin(); var big = winMoment(me, r, c); setTimeout(function () { S.busy = false; endGame(me); }, big ? 2300 : 1000); }
       else if (S.over) setTimeout(function () { S.busy = false; endGame(-1); }, 500);
-      else setTimeout(maybeCpu, trap ? 500 : 120);
+      else setTimeout(maybeCpu, trap && hon ? 500 : 120);
     });
   }
   // The rarer wins get their moment on the board before the results: five in a row, two lines with one disc,
@@ -533,7 +536,7 @@
     var wins = last && last.wins ? last.wins.slice() : [0, 0, 0], first = last ? 1 - (last.firstWas || 0) : 0, g = [];
     for (var r = 0; r < ROWS; r++) g.push([0, 0, 0, 0, 0, 0, 0]);
     return { players: players.map(function (p, i) { return { name: p.name, disc: i === 0 ? 'r' : 'y' }; }), grid: g, cur: first, first: first, firstWas: first,
-      moves: [], over: false, line: null, wins: wins, started: Date.now() };
+      moves: [], over: false, line: null, wins: wins, started: Date.now(), hints: !(opts && opts.hints === false) };
   }
   function netDrop(c) {
     if (!S || S.over || S.busy) return;
@@ -591,6 +594,7 @@
   TurnNet.setup({
     game: 'connectfour', title: 'Connect Four', min: 2, max: 2,
     start: netStart,
+    opts: function () { var o = {}; try { o = (JSON.parse(localStorage.getItem('gn_setup_connectfour')) || {}).options || {}; } catch (e) {} return { hints: o.hints !== 'off' }; },
     turn: function (st) { return st.over ? [] : [st.cur]; },
     over: function (st) { if (!st.over) return null; var w = st.line ? st.grid[st.line[0][0]][st.line[0][1]] - 1 : -1; return { win: w >= 0 ? [w] : [], text: w >= 0 ? st.players[w].name + ' connected four' : 'Draw' }; },
     show: netShow, leave: netLeave

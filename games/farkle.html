@@ -374,6 +374,7 @@
           choices: [['std', '1,000 / 2,000 / 3,000', 'Four of a kind is 1,000, five is 2,000, six is 3,000. Two triplets score 2,500.'], ['dbl', 'Classic doubling', 'Each extra matching die doubles the three of a kind: four 3s = 600, five 3s = 1,200.']], value: 'std' },
         { id: 'pen', label: 'Three farkles in a row', help: 'What happens if you farkle three turns in a row.',
           choices: [['on', 'Lose 1,000', 'Your third farkle in a row takes 1,000 points off your score.'], ['off', 'No penalty', 'Farkles only cost you the points from that turn.']], value: 'on' },
+        { id: 'hints', label: 'Hints', value: 'on', choices: [['on', 'On', 'The dice you pick show what they score as you set them aside, and dice that can\'t score this roll sit back, dimmed.'], ['off', 'Off', 'No score for the dice you pick until you bank, and no dimmed dice: count them yourself.']] },
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }
       ],
       onStart: function (cfg) { start(cfg); }
@@ -393,6 +394,7 @@
       cur: 0, round: 1, phase: 'start', dice: freshDice(), turn: 0, sets: [], hot: 0, rolls: 0,
       final: null, finalLeft: 0, rounds: [cfg.players.map(function () { return 0; })], ev: [], started: Date.now()
     };
+    if (o.hints === 'off') S.hints = false;   // (Hints off; an older save without it plays with hints on)
     Kit.gameStart();
     save(); render(); maybeCpu();
   }
@@ -674,7 +676,7 @@
       sub: rank.length === 1 ? 'Can you do it in fewer?' : 'Final scores',
       rank: rank.length > 1 ? rank.map(function (r) { return { name: r.name, score: fmt(r.score), color: r.color }; }) : null,
       lose: youLost,
-      again: function () { start({ mode: last.mode, players: last.players, options: { target: last.rules.target, entry: last.rules.entry, scoring: last.rules.dbl ? 'dbl' : 'std', pen: last.rules.pen ? 'on' : 'off' } }); },
+      again: function () { start({ mode: last.mode, players: last.players, options: { target: last.rules.target, entry: last.rules.entry, scoring: last.rules.dbl ? 'dbl' : 'std', pen: last.rules.pen ? 'on' : 'off', hints: last.hints === false ? 'off' : 'on' } }); },
       extra: [{ label: 'Change players', onClick: showSetup }]
     });
   }
@@ -846,7 +848,8 @@
     var cup = el('button', { type: 'button', class: 'cup' + (mine && (S.phase === 'start' || (S.phase === 'pick' && selScore() > 0)) ? ' ready' : ''), 'aria-label': 'Roll the dice', onclick: function () { roll(); } },
       [el('span', { class: 'body' }), el('span', { class: 'rim' })]);
     zone.appendChild(cup);
-    var sel = S.phase === 'pick' ? selIdx() : [], dead = sel.length ? deadIdx(sel) : [], tinfo = S.phase === 'pick' ? tableInfo() : null;
+    var hon = S.hints !== false;   // (Hints off: no red rings, no dimmed dice, no score for the dice picked)
+    var sel = S.phase === 'pick' ? selIdx() : [], dead = sel.length && hon ? deadIdx(sel) : [], tinfo = S.phase === 'pick' && hon ? tableInfo() : null;
     var anyLive = false;
     S.dice.forEach(function (d, i) {
       if (d.kept || !d.v) return;
@@ -888,19 +891,20 @@
       else if (S.phase === 'pick') {
         var restN = liveIdx().length - sel.length;
         why = !sel.length ? 'Tap the dice to keep: 1s, 5s or three of a kind'
+          : !hon ? 'Roll the rest to push your luck, or bank your points'
           : ss > 0 ? (restN ? 'Roll the other ' + restN + ' to push your luck, or bank your points' : 'Hot dice! Roll all six again, or bank')
           : 'Tap a die again to put it back';
       }
     }
-    if (live && S.rules.entry && !p.on && S.phase === 'pick' && ss > 0 && S.turn + ss < S.rules.entry) why = 'Need ' + fmt(S.rules.entry) + ' in one turn to get on the board';
-    var em = el('em', { text: ss > 0 ? '+' + fmt(ss) + ' kept' : '' });
-    if (sel.length && ss <= 0) em.classList.add('no');
+    if (live && hon && S.rules.entry && !p.on && S.phase === 'pick' && ss > 0 && S.turn + ss < S.rules.entry) why = 'Need ' + fmt(S.rules.entry) + ' in one turn to get on the board';
+    var em = el('em', { text: ss > 0 && hon ? '+' + fmt(ss) + ' kept' : '' });
+    if (sel.length && ss <= 0 && hon) em.classList.add('no');
     app.appendChild(el('div', { class: 'readout' }, [
       el('div', { style: { minWidth: 0 } }, [
         el('div', { class: 'who', style: { '--c': p.color }, html: '<span class="dot"></span><span>' + Kit.esc(whoTxt) + '</span>' + (p.cpu && live && S.phase !== 'farkle' ? ' <span class="think"><i></i><i></i><i></i></span>' : '') }),
         el('div', { class: 'why', text: why })
       ]),
-      el('div', { class: 'tscore' }, [el('small', { text: 'This turn' }), el('b', { text: fmt(S.turn + Math.max(0, ss)) }), em])
+      el('div', { class: 'tscore' }, [el('small', { text: 'This turn' }), el('b', { text: fmt(S.turn + (hon ? Math.max(0, ss) : 0)) }), em])
     ]));
 
     // Buttons
@@ -910,8 +914,8 @@
     var rb = el('button', { type: 'button', class: 'btn btn-primary', onclick: function () { roll(); } }, [el('span', { text: rollLbl }), rollSub ? el('small', { text: rollSub }) : null]);
     var need = S.rules.entry && !p.on && S.turn + ss < S.rules.entry;
     var bb = el('button', { type: 'button', class: 'btn btn-green bank', onclick: function () { bank(); } }, [
-      el('span', { text: S.phase === 'pick' && ss > 0 ? 'Bank ' + fmt(S.turn + ss) : 'Bank' }),
-      need && S.phase === 'pick' ? el('small', { text: 'need ' + fmt(S.rules.entry) }) : null
+      el('span', { text: S.phase === 'pick' && ss > 0 && hon ? 'Bank ' + fmt(S.turn + ss) : 'Bank' }),
+      need && S.phase === 'pick' && hon ? el('small', { text: 'need ' + fmt(S.rules.entry) }) : null
     ]);
     rb.disabled = !mine || !canRoll(); bb.disabled = !mine || !canBank();
     if (live) app.appendChild(el('div', { class: 'acts' }, [rb, bb]));
@@ -1068,7 +1072,7 @@
   function netOpts() {
     var s = setupSaved(), o = s.options || {}, n = +s.count || 0;
     return { target: +o.target || 10000, entry: o.entry == null ? 500 : +o.entry, scoring: o.scoring === 'dbl' ? 'dbl' : 'std', pen: o.pen === 'off' ? 'off' : 'on',
-      level: lvName(o.level), bots: (s.robots || []).filter(function (i) { return i > 0 && i < n; }).length };
+      hints: o.hints === 'off' ? 'off' : 'on', level: lvName(o.level), bots: (s.robots || []).filter(function (i) { return i > 0 && i < n; }).length };
   }
   function netStart(players, o, last) {
     o = o || {};
@@ -1080,7 +1084,7 @@
           st: { farkles: 0, best: 0, hot: 0, maxHotTurn: 0, lostMax: 0, banks: 0 } };
       }),
       cur: first, first: first, round: 1, phase: 'start', dice: freshDice(), turn: 0, sets: [], hot: 0, rolls: 0,
-      final: null, finalLeft: 0, rounds: [players.map(function () { return 0; })], ev: [], started: Date.now()
+      final: null, finalLeft: 0, rounds: [players.map(function () { return 0; })], ev: [], started: Date.now(), hints: o.hints !== 'off'
     };
   }
   function withS(st, fn) { var k = S; S = st; try { return fn(); } finally { S = k; } }

@@ -511,7 +511,8 @@ html.dn-big .tl-c .b{max-width:calc(26px * var(--du,1));}
       // one seat is a game against the Banker; with 2 to 4 seats everyone plays a game and the most money wins
       modes: Kit.modes(['solo', { id: 'pass', kind: 'local' }]),
       players: { range: function (m) { return m === 'pass' ? [2, 4] : [1, 1]; }, count: 1 },
-      options: [{ id: 'pace', label: 'Case reveals', choices: [['tv', 'TV drama', 'Slower reveals and more suspense, like the TV show.'], ['quick', 'Quick', 'Cases open fast with less waiting.']], value: 'tv' }],
+      options: [{ id: 'pace', label: 'Case reveals', choices: [['tv', 'TV drama', 'Slower reveals and more suspense, like the TV show.'], ['quick', 'Quick', 'Cases open fast with less waiting.']], value: 'tv' },
+        { id: 'hints', label: 'Hints', value: 'on', choices: [['on', 'On', 'Each offer from the Banker says what share it is of the average of the amounts still in play.'], ['off', 'Off', 'The Banker\'s offer comes with no math beside it: weigh it up yourself.']] }],
       start: 'Start the game',
       onStart: start
     });
@@ -520,7 +521,7 @@ html.dn-big .tl-c .b{max-width:calc(26px * var(--du,1));}
     gen++; undoStack = []; busy = false;
     var solo = cfg.mode !== 'pass';
     S = {
-      v: 2, mode: solo ? 'solo' : 'pass', pace: (cfg.options && cfg.options.pace) || 'tv', started: Date.now(), cur: 0,
+      v: 2, mode: solo ? 'solo' : 'pass', pace: (cfg.options && cfg.options.pace) || 'tv', hints: !(cfg.options && cfg.options.hints === 'off'), started: Date.now(), cur: 0,
       players: cfg.players.map(function (p, i) {
         var n = p.name; if (solo && /^Player \d$/.test(n)) n = 'You';
         return { name: n, color: p.color, g: i === 0 ? newGame() : null };
@@ -706,7 +707,7 @@ html.dn-big .tl-c .b{max-width:calc(26px * var(--du,1));}
     if (mx === 1000000) bits.push('The $1M is still out there.');
     else if (mx >= 300000) bits.push(fmtK(mx) + ' still in play.');
     else bits.push('The big money is gone.');
-    bits.push(pct + '% of the ' + fmtK(ev) + ' average.');
+    if (S.hints !== false) bits.push(pct + '% of the ' + fmtK(ev) + ' average.');   // (Hints off leaves the math out)
     return bits.join(' ');
   }
   function armDeal(btn) {
@@ -915,9 +916,9 @@ html.dn-big .tl-c .b{max-width:calc(26px * var(--du,1));}
       }) },
       meta: solo ? { games: games, how: me.deal ? 'deal' : me.swapped ? 'swap' : 'kept', won: me.result.won, myCase: me.my + 1, myValue: me.vals[me.my] } : { games: games }
     });
-    var players = S.players.map(function (p) { return { name: p.name, color: p.color }; }), mode = S.mode, pace = S.pace;
+    var players = S.players.map(function (p) { return { name: p.name, color: p.color }; }), mode = S.mode, pace = S.pace, hints = S.hints !== false;
     clearSave();
-    var again = function () { start({ mode: mode, players: players, options: { pace: pace } }); };
+    var again = function () { start({ mode: mode, players: players, options: { pace: pace, hints: hints ? 'on' : 'off' } }); };
     if (solo) {
       var w = me.result.won, mv = me.vals[me.my];
       var sub = me.deal ? 'You took the deal. Case ' + (me.my + 1) + ' held ' + fmt(mv) + (mv <= me.deal.amt ? '. Smart move!' : '. Ouch!')

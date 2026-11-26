@@ -192,12 +192,13 @@
       options: [
         { id: 'target', label: 'Match length', help: 'A win scores 1 point, a gammon 2 and a backgammon 3 (times the cube); first to this many points wins.', value: '1', choices: [['1', 'One game'], ['3', 'To 3'], ['5', 'To 5'], ['7', 'To 7']] },
         { id: 'cube', label: 'Doubling cube', value: 'on', choices: [['on', 'On', 'Before rolling, you can double the stakes; the other player must take it or give up the game.'], ['off', 'Off', 'No doubling: each game is worth its normal points.']] },
+        { id: 'hints', label: 'Hints', value: 'on', choices: [['on', 'On', 'Each player\'s plate shows their pip count, how far their checkers still have to go to bear off, so you can see who is ahead in the race.'], ['off', 'Off', 'No pip counts on the plates: count the race yourself.']] },
         { id: 'level', robot: true, label: 'Computer skill', value: 'med', choices: [['easy', 'Easy', 'Makes plenty of loose moves. Good for learning.'], ['med', 'Medium', 'Plays solid moves with the odd slip.'], ['hard', 'Hard', 'Picks the best move it can find almost every time.']], when: function (m) { return m === 'cpu'; } }
       ],
       players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       onStart: function (cfg) {
         S = {
-          mode: cfg.mode, level: cfg.options.level || 'med', cubeOn: cfg.options.cube !== 'off', target: +cfg.options.target || 1,
+          mode: cfg.mode, level: cfg.options.level || 'med', cubeOn: cfg.options.cube !== 'off', target: +cfg.options.target || 1, hints: cfg.options.hints !== 'off',
           players: cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }),
           score: [0, 0], games: [], gameNo: 0, crawfordUsed: false, started: Date.now(),
           ms: { hits: [0, 0], doubles: [0, 0], maxCube: 1, drops: [], gammons: [] }
@@ -929,7 +930,7 @@
       p.cpu ? (S.phase === 'roll' ? 'Thinking…' : 'Moving…') : net ? (S.phase === 'roll' ? 'Rolling next' : 'Moving') : S.phase === 'roll' ? 'Your roll' : 'Your move';
     if (S.phase === 'double' && S.doubler !== pl) st = p.cpu ? 'Deciding…' : net ? 'Deciding' : 'Take or drop?';
     var nums = el('span', { class: 'nums' }, [
-      el('span', { class: 'num' }, [el('b', { text: String(pips(S.pos, pl)) }), el('small', { text: 'pips' })]),
+      S.hints !== false ? el('span', { class: 'num' }, [el('b', { text: String(pips(S.pos, pl)) }), el('small', { text: 'pips' })]) : null,   // (Hints off: no pip count; an older save has hints on)
       el('span', { class: 'num' }, [el('b', { text: S.pos.off[pl] + '' }), el('small', { text: 'off' })])
     ]);
     if (S.target > 1) nums.appendChild(el('span', { class: 'num' }, [el('b', { text: String(S.score[pl]) }), el('small', { text: 'of ' + S.target })]));
@@ -1003,8 +1004,8 @@
   // the setup's. Each roll, each checker moved, a double and its answer are moves at the table; a turn ends by
   // itself when no die can be played. Between the games of a match either player starts the next one.
   function netOpts() {
-    var o = { target: 1, cube: true };
-    try { var g = JSON.parse(localStorage.getItem('gn_setup_backgammon')) || {}, op = g.options || {}; if ([1, 3, 5, 7].indexOf(+op.target) >= 0) o.target = +op.target; o.cube = op.cube !== 'off'; } catch (e) {}
+    var o = { target: 1, cube: true, hints: true };
+    try { var g = JSON.parse(localStorage.getItem('gn_setup_backgammon')) || {}, op = g.options || {}; if ([1, 3, 5, 7].indexOf(+op.target) >= 0) o.target = +op.target; o.cube = op.cube !== 'off'; o.hints = op.hints !== 'off'; } catch (e) {}
     return o;
   }
   function netFreshGame(st) {
@@ -1022,7 +1023,7 @@
     return st;
   }
   function netStart(players, opts, last) {
-    var st = { mode: 'online', level: 'med', cubeOn: !(opts && opts.cube === false), target: opts && +opts.target || 1,
+    var st = { mode: 'online', level: 'med', cubeOn: !(opts && opts.cube === false), target: opts && +opts.target || 1, hints: !(opts && opts.hints === false),
       players: players.map(function (p) { return { name: p.name, cpu: false }; }), score: [0, 0], games: [], gameNo: 0, crawfordUsed: false, started: Date.now(),
       ms: { hits: [0, 0], doubles: [0, 0], maxCube: 1, drops: [], gammons: [] }, matchOver: false };
     return netFreshGame(st);

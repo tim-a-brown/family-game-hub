@@ -136,7 +136,7 @@
     onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } tok++; clearSave(); undoStack = []; showSetup(); },
     undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
     menu: TurnNet.menu().concat([
-      { icon: 'lightbulb', label: 'Hint: what to discard', onClick: function () { hint(); } },
+      { icon: 'lightbulb', label: 'Hint: what to discard', when: function () { return hintsOn(); }, onClick: function () { hint(); } },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Mahjong: past games' }); } }
     ]),
     rules:
@@ -390,13 +390,14 @@
     Kit.setup(app, {
       modes: Kit.modes(['cpu', 'local']),
       options: [{ id: 'len', label: 'Game length', value: 'quick', choices: [['quick', 'Quick: 4 hands', 'Four hands, one deal each. A quick taste of the game.'], ['east', 'East round', 'Play until every player has been dealer once in the East wind round.'], ['full', 'Full game', 'All four wind rounds: East, South, West and North. This takes a while.']] },
+        { id: 'hints', label: 'Hints', value: 'on', choices: [['on', 'On', 'A Hint button suggests what to discard, and once your hand is one tile from Mahjong the tiles that would finish it show under your rack.'], ['off', 'Off', 'No suggested discards and no list of the tiles you are waiting on: read your hand yourself.']] },
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }],
       players: { min: 4, max: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; } },
       onStart: function (cfg) {
         cfg.players.forEach(function (p) { if (p.cpu) p.level = lvName(p.level || cfg.options.level); });   // (each robot its own skill)
         S = {
           mode: cfg.mode || 'cpu', me: 0,
-          len: cfg.options.len || 'quick',
+          len: cfg.options.len || 'quick', hints: cfg.options.hints !== 'off',
           players: cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level }; }),
           scores: [0, 0, 0, 0], log: [], handNo: 0, wind: 0, dealer: 0, startDealer: 0, started: Date.now(),
           stats: { kongs: [0, 0, 0, 0], claims: [0, 0, 0, 0] }
@@ -665,7 +666,10 @@
     }
     execClaim(q, type, pair);
   }
+  // Hints (the setup's option): an older save without it plays with hints on
+  function hintsOn() { return !S || S.hints !== false; }
   function hint() {
+    if (!hintsOn()) return;
     if (!myTurn()) return Kit.toast('Hints are for your turn to discard');
     if (canWin(S.hands[S.me], S.melds[S.me].length)) return Kit.toast('You can win! Tap Mahjong');
     sel = bestDiscard(S.me); render();
@@ -821,7 +825,7 @@
     Kit.win({
       icon: lose ? 'bot' : 'trophy', title: tie ? 'A tie at the top!' : !top.cpu && humans() < 2 ? 'You win!' : top.name + ' wins!',
       sub: S.log.length + ' hands played', rank: rank, lose: !!lose,
-      again: function () { var keep = S; S = { mode: keep.mode, me: 0, len: keep.len, players: keep.players, scores: [0, 0, 0, 0], log: [], handNo: 0, wind: 0, dealer: 0, startDealer: 0, started: Date.now(), stats: { kongs: [0, 0, 0, 0], claims: [0, 0, 0, 0] } }; startHand(); },
+      again: function () { var keep = S; S = { mode: keep.mode, me: 0, len: keep.len, hints: keep.hints, players: keep.players, scores: [0, 0, 0, 0], log: [], handNo: 0, wind: 0, dealer: 0, startDealer: 0, started: Date.now(), stats: { kongs: [0, 0, 0, 0], claims: [0, 0, 0, 0] } }; startHand(); },
       look: 'Look at the table',
       setup: function () { tok++; clearSave(); undoStack = []; showSetup(); }
     });
@@ -989,7 +993,7 @@
       rack.appendChild(t);
     });
     wrap.appendChild(rack);
-    if (wt.length) {
+    if (wt.length && hintsOn()) {
       var wbox = el('div', { class: 'waits' }, [el('span', { text: 'Ready! Waiting on' })]);
       wt.forEach(function (k) { wbox.appendChild(tile(k * 4, 16)); });
       wrap.appendChild(wbox);
@@ -1053,7 +1057,7 @@
         b.addEventListener('click', function () { humanKong(k); });
         a.appendChild(b);
       });
-      a.appendChild(el('button', { type: 'button', class: 'btn btn-soft hintb', 'aria-label': 'Hint', html: Kit.icon('lightbulb') + (a.children.length ? '' : '<span>Hint</span>'), onclick: hint }));
+      if (hintsOn()) a.appendChild(el('button', { type: 'button', class: 'btn btn-soft hintb', 'aria-label': 'Hint', html: Kit.icon('lightbulb') + (a.children.length ? '' : '<span>Hint</span>'), onclick: hint }));
       var d = el('button', { type: 'button', class: 'btn btn-primary', text: 'Discard', onclick: function () { if (sel != null) { if (NET) { netYou({ t: 'disc', id: sel }); return; } snapshot(); discard(S.me, sel); } } });
       d.disabled = sel == null; a.appendChild(d);
     } else if (NET) {
@@ -1075,9 +1079,9 @@
   function withS(st, f) { var k = S; S = st; try { return f(); } finally { S = k; } }
   function ev() { if (EVX) EVX.push([].slice.call(arguments)); }
   function netSetup() { try { return JSON.parse(localStorage.getItem('gn_setup_mahjong4') || '{}') || {}; } catch (e) { return {}; } }
-  function netOpts() { var o = netSetup().options || {}; return { len: o.len === 'east' || o.len === 'full' ? o.len : 'quick', level: lvName(o.level) }; }
+  function netOpts() { var o = netSetup().options || {}; return { len: o.len === 'east' || o.len === 'full' ? o.len : 'quick', level: lvName(o.level), hints: o.hints !== 'off' }; }
   function netStart(players, opts) {
-    var st = { mode: 'online', me: 0, len: opts.len === 'east' || opts.len === 'full' ? opts.len : 'quick',
+    var st = { mode: 'online', me: 0, len: opts.len === 'east' || opts.len === 'full' ? opts.len : 'quick', hints: opts.hints !== false,
       players: players.map(function (p) { return { name: p.name, cpu: !!p.bot, level: p.bot ? lvName(opts.level) : undefined }; }),
       scores: [0, 0, 0, 0], log: [], handNo: 0, wind: 0, dealer: 0, startDealer: 0, started: Date.now(), stats: { kongs: [0, 0, 0, 0], claims: [0, 0, 0, 0] } };
     withS(st, nStartHand);

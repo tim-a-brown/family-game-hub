@@ -221,7 +221,8 @@ html[data-o=land] .slate{padding:12px 12px 22px;}
           if (m === '2p') [2, 3, 4, 5].forEach(function (k) { c.push(['m' + k, k + ' boards', k + ' boards at once. Win the most boards to win.']); });
           return c;
         } },
-        { id: 'level', robot: true, label: 'Computer skill', value: 'med', choices: [['easy', 'Easy', 'Often misses wins and blocks. Good for little kids.'], ['med', 'Medium', 'Always wins or blocks when it can, but sometimes slips up.'], ['hard', 'Hard', 'Plays perfectly on the classic board. The best you can do is a tie.']], when: function (m) { return m === 'cpu'; } }
+        { id: 'level', robot: true, label: 'Computer skill', value: 'med', choices: [['easy', 'Easy', 'Often misses wins and blocks. Good for little kids.'], ['med', 'Medium', 'Always wins or blocks when it can, but sometimes slips up.'], ['hard', 'Hard', 'Plays perfectly on the classic board. The best you can do is a tie.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'hints', label: 'Hints', value: 'on', choices: [['on', 'On', 'A move that makes two ways to win at once, so the other player can block only one, is called out as a fork.'], ['off', 'Off', 'No call when someone sets up two ways to win: spot the fork yourself.']] }
       ],
       players: {
         min: 2, max: 3,
@@ -237,6 +238,7 @@ html[data-o=land] .slate{padding:12px 12px 22px;}
           players: cfg.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, sym: ['X', 'O', 'T'][i] }; }),
           wins: cfg.players.map(function () { return 0; }), draws: 0, first: 0
         };
+        if (cfg.options.hints === 'off') S.hints = false;   // (an older save without it plays with hints on)
         if (S.variant === 'ultimate') S.nboards = 9;
         newGame(true);
       }
@@ -344,14 +346,14 @@ html[data-o=land] .slate{padding:12px 12px 22px;}
   var glowAt = null;
   function goodMove(G, b, i, p, blocked) {
     var mine = !p.cpu && !(NET && NET.seat >= 0 && S.players[NET.seat] !== p);
-    var fork = threats(G.boards[b], p.sym).length >= 2;
+    var fork0 = threats(G.boards[b], p.sym).length >= 2, fork = fork0 && S.hints !== false;   // (Hints off: no call for a fork)
+    if (fork0) { G.fk = G.fk || []; G.fk.push(G.cur); }
     if (!fork && !blocked) return;
     glowAt = { b: b, i: i, n: G.moves.length };
     setTimeout(function () {
       if (fork) { Kit.callout('A fork!', COL[p.sym]); Kit.sfx('good'); if (mine) Kit.haptic('medium'); }
       else { Kit.callout('Blocked!', COL[p.sym]); Kit.sfx('chip'); if (mine) Kit.haptic('light'); }
     }, 420);
-    if (fork) { G.fk = G.fk || []; G.fk.push(G.cur); }
   }
   // ── Undo ──────────────────────────────────────────────────────────────────
   function snapshot() { undoStack.push(JSON.stringify(S.G)); if (undoStack.length > 60) undoStack.shift(); }
@@ -714,14 +716,15 @@ html[data-o=land] .slate{padding:12px 12px 22px;}
   // three-board game). The table holds S itself; each new game at the table moves the first turn along.
   function netOpts() {
     var v = 'classic'; try { var g = JSON.parse(localStorage.getItem('gn_setup_tictactoe')); if (g && g.options && g.options.variant) v = String(g.options.variant); } catch (e) {}
-    return { variant: /^(classic|ultimate|m[2-5])$/.test(v) ? v : 'classic' };
+    var h = true; try { var g2 = JSON.parse(localStorage.getItem('gn_setup_tictactoe')); if (g2 && g2.options && g2.options.hints === 'off') h = false; } catch (e) {}
+    return { variant: /^(classic|ultimate|m[2-5])$/.test(v) ? v : 'classic', hints: h };
   }
   function netStart(players, opts, last) {
     var o = opts && opts.variant || 'classic', v = players.length === 3 ? '3p' : /^m\d$/.test(o) ? 'multi' : o === 'ultimate' ? 'ultimate' : 'classic';
     var keep = last && last.players && last.players.length === players.length;
     var st = { mode: 'online', variant: v, level: 'med', nboards: v === 'multi' ? (+o[1] || 3) : v === '3p' ? 3 : v === 'ultimate' ? 9 : 1,
       players: players.map(function (p, i) { return { name: p.name, cpu: false, sym: ['X', 'O', 'T'][i] }; }),
-      wins: keep ? last.wins.slice() : players.map(function () { return 0; }), draws: keep ? last.draws : 0, first: keep ? last.first : 0, started: Date.now() };
+      wins: keep ? last.wins.slice() : players.map(function () { return 0; }), draws: keep ? last.draws : 0, first: keep ? last.first : 0, started: Date.now(), hints: !(opts && opts.hints === false) };
     var boards = [], meta = [];
     for (var b = 0; b < st.nboards; b++) { boards.push(['', '', '', '', '', '', '', '', '']); meta.push(''); }
     st.G = { boards: boards, meta: meta, lines: {}, cur: st.first, next: -1, moves: [], over: false, winner: null, metaLine: null,
