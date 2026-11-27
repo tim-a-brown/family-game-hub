@@ -42,6 +42,8 @@ function play(cfg) {
   if (S.winner < 0) fail('no winner', S);
   return { S, moves, hands };
 }
+// (Expert's look ahead is cut to a few deals for the rules check, and put back for its own duel)
+const XR = Object.assign({}, Core.C.xr); Core.C.xr.min = 4; Core.C.xr.ms = 0;
 const OPTS = [
   { draw: 'until', twos: 0, qs: 0 }, { draw: 'one', twos: 0, qs: 0 }, { draw: 'until', twos: 1, qs: 1 }, { draw: 'one', twos: 1, qs: 1 }, { draw: 'until', twos: 1, qs: 0 }
 ];
@@ -88,7 +90,9 @@ for (const o of [OPTS[0], OPTS[2]]) {
   console.log('  easy vs normal: ' + duel(['easy', 'normal'], o, N));
   console.log('  normal vs hard: ' + duel(['normal', 'hard'], o, N));
   console.log('  easy vs hard:   ' + duel(['easy', 'hard'], o, N));
-  console.log('  hard vs expert: ' + duel(['hard', 'expert'], o, Math.min(N, 1000)));
+  Object.assign(Core.C.xr, XR, { ms: 0 });
+  console.log('  hard vs expert: ' + duel(['hard', 'expert'], o, Math.min(N, 600)));
+  Core.C.xr.min = 4;
   console.log('  three, one of each: ' + duel(['easy', 'normal', 'hard'], o, N));
 }
 console.log('\n' + ((Date.now() - t0) / 1000).toFixed(1) + ' s');
