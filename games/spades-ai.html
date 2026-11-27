@@ -413,10 +413,11 @@ html.cdesk-on #app.stage > .cbar .blindbox .btn{flex:1 1 9.5em;width:auto;}
 
   // bagsOpt false: sandbags off (an extra trick is just a point; nothing carries over)
   // The computer's skill. Normal is how it has always played; a game saved or opened before there were levels plays Normal.
-  var LEVELS = [['easy', 'Easy', 'Bids by guesswork and forgets which cards have gone.'],
+  var LEVELS = [['easy', 'Easy', 'Bids by guesswork, forgets which cards have gone and often plays any card at all.'],
     ['normal', 'Normal', 'Bids what its hand is worth and keeps track of the high cards.'],
-    ['hard', 'Hard', 'Remembers every card played and thinks each play through.']];
-  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+    ['hard', 'Hard', 'Remembers every card played and thinks each play through.'],
+    ['expert', 'Expert', 'Remembers every card and who is out of which suit, and thinks each play through four times as thoroughly as Hard.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' || v === 'expert' ? v : 'normal'; }
   function lvOf(p) { var pl = S.players && S.players[p]; return lvName((pl && pl.level) || S.level); }
   // Hints: a suggested bid outlined in the bidding box, with "The tip is N" over it. A game saved before there was a
   // choice has no hints field and plays with them on.
@@ -545,10 +546,10 @@ html.cdesk-on #app.stage > .cbar .blindbox .btn{flex:1 1 9.5em;width:auto;}
   function cpuBid(p) {
     var e = estimate(S.hands[p]), pb = S.bids[partnerOf(p)], lv = lvOf(p);
     // Easy guesses: it can be out by a trick either way, and it doesn't think about Nil
-    if (lv === 'easy') return Math.max(1, Math.min(13, Math.round(e.est + (Math.random() - 0.5) * 1.8)));
+    if (lv === 'easy') return Math.max(1, Math.min(13, Math.round(e.est + (Math.random() - 0.5) * 2.6)));
     if (e.nilOk && pb !== 0 && (pb == null || pb >= 3) && Math.random() < 0.75) return 0;
-    // (Hard bids exactly what it counts; Normal can be a little out)
-    var b = Math.round(e.est + (lv === 'hard' ? 0 : (Math.random() - 0.5) * 0.6));
+    // (Hard and Expert bid exactly what they count; Normal can be a little out)
+    var b = Math.round(e.est + (lv === 'hard' || lv === 'expert' ? 0 : (Math.random() - 0.5) * 0.6));
     b = Math.max(1, Math.min(13, b));
     if (pb != null && pb + b > 13) b = Math.max(1, 13 - pb);
     return b;
@@ -597,26 +598,29 @@ html.cdesk-on #app.stage > .cbar .blindbox .btn{flex:1 1 9.5em;width:auto;}
   // ── Computer play: uses only its own hand and what's been seen on the table ──
   function cpuChoose(p) {
     var lv = lvOf(p), opts;
+    if (lv === 'expert') return hardChoose(p, EXPERT_DEALS, EXPERT_MS);
     if (lv === 'hard') return hardChoose(p);
     if (lv === 'easy') {
-      // Easy: one play in four is any card it is allowed to play, and the rest are played without remembering
+      // Easy: nearly half its plays are any card it is allowed to play, and the rest are played without remembering
       // which cards have gone or who is out of a suit
       opts = legal(p);
-      return Math.random() < 0.25 ? opts[Math.floor(Math.random() * opts.length)] : normalChoose(p, true);
+      return Math.random() < 0.45 ? opts[Math.floor(Math.random() * opts.length)] : normalChoose(p, true);
     }
     return normalChoose(p);
   }
   // Hard counts cards. It knows which cards are still out and who has shown they are out of a suit. It deals the
   // cards still out to the other three in ways that fit, plays each card it could play through to the end of the
   // hand with everyone playing as Normal does, and keeps the card that leaves its team best off on the score sheet.
-  var HARD_DEALS = 24, HARD_MS = 400;   // (as many deals as fit in the time, and never fewer than 8)
-  function hardChoose(p) {
+  // Expert does the same with about four times the deals.
+  var HARD_DEALS = 24, HARD_MS = 400, EXPERT_DEALS = 100, EXPERT_MS = 1500;   // (as many deals as fit in the time, and never fewer than 8)
+  function hardChoose(p, deals, ms) {
+    deals = deals || HARD_DEALS; ms = ms || HARD_MS;
     var opts = legal(p); if (opts.length < 2) return opts[0];
     var X = S, out = [], need = [0, 0, 0, 0], q, n, i, tot = opts.map(function () { return 0; });
     for (q = 0; q < 4; q++) if (q !== p) { need[q] = X.hands[q].length; out = out.concat(X.hands[q]); }
     var t0 = Date.now();
     try {
-      for (n = 0; n < HARD_DEALS && (n < 8 || Date.now() - t0 < HARD_MS); n++) {
+      for (n = 0; n < deals && (n < 8 || Date.now() - t0 < ms); n++) {
         var hands = dealOut(out, need, X.voids || [{}, {}, {}, {}]); hands[p] = X.hands[p];
         for (i = 0; i < opts.length; i++) tot[i] += playOut(X, hands, p, opts[i]);
       }

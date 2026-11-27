@@ -763,10 +763,11 @@ html.rdesk #app .pd .builder .pcard.p10.mini.wild .ov b{font-size:calc(var(--cw)
 
   // ── Computer players ──────────────────────────────────────────────────────
   // Their skill. Normal is how they have always played; a game saved before there were levels plays Normal.
-  var LEVELS = [['easy', 'Easy', 'Often misses a discard it could have used, and throws away cards that go together.'],
+  var LEVELS = [['easy', 'Easy', 'Usually misses a discard it could have used, and throws away cards that go together.'],
     ['normal', 'Normal', 'Picks up discards that bring its phase closer and keeps cards that go together.'],
-    ['hard', 'Hard', 'Counts the cards it hasn’t seen and keeps the ones with the most chances left to finish its phase.']];
-  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+    ['hard', 'Hard', 'Counts the cards it hasn’t seen and keeps the ones with the most chances left to finish its phase.'],
+    ['expert', 'Expert', 'Counts the cards it hasn’t seen, keeps the ones with the most chances left, and picks up a discard whenever that leaves it more ways to finish its phase.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' || v === 'expert' ? v : 'normal'; }
   function lvOf(p) { var pl = S && S.players[p]; return lvName(pl && pl.level); }
   // Hard counts cards: two of every number in every colour, 8 Wilds and 4 Skips, less its own hand, the discard
   // pile and every card laid on the table. chances() is how many of the cards still to come would bring this
@@ -828,11 +829,21 @@ html.rdesk #app .pd .builder .pcard.p10.mini.wild .ov b{font-size:calc(var(--cw)
     var h = S.hands[p], ph = S.players[p].ph - 1, top = S.discard[S.discard.length - 1], take = false;
     if (top && !isS(top)) {
       if (isW(top)) take = true;
-      else if (lvOf(p) === 'easy') take = !S.laid[p] && need(h.concat([top]), ph) < need(h, ph) && Math.random() < .35;   // (Easy mostly doesn't look at the discard)
+      else if (lvOf(p) === 'easy') take = !S.laid[p] && need(h.concat([top]), ph) < need(h, ph) && Math.random() < .2;   // (Easy mostly doesn't look at the discard)
+      else if (lvOf(p) === 'expert' && !S.laid[p]) take = expertTake(p, h, ph, top);
       else if (!S.laid[p]) take = need(h.concat([top]), ph) < need(h, ph) && (lvOf(p) === 'hard' || Math.random() < .92);
       else take = S.laid.some(function (gs) { return gs && gs.some(function (g) { return canHit(top, g); }); });
     }
     return take;
+  }
+  // Expert takes the discard when it brings the phase closer, and also when, after the card it would throw back, its
+  // hand has clearly more ways left to come closer than it has now (the cards still to come, counted as Hard counts)
+  function expertTake(p, h, ph, top) {
+    var now = need(h, ph), w = h.concat([top]);
+    if (need(w, ph) < now) return true;
+    var pool = unseen(p), base = chances(h, ph, pool), best = -1;
+    w.forEach(function (c) { if (c === top || isW(c)) return; var r = w.filter(function (x) { return x !== c; }); if (need(r, ph) === now) best = Math.max(best, chances(r, ph, pool)); });
+    return best > base + 3;
   }
   function findSpot(c) {
     // prefer own groups, then anyone's
@@ -843,7 +854,7 @@ html.rdesk #app .pd .builder .pcard.p10.mini.wild .ov b{font-size:calc(var(--cw)
     return null;
   }
   function cpuDiscard(p) {
-    var h = S.hands[p], ph = S.players[p].ph - 1, lv = lvOf(p), pool = lv === 'hard' && !S.laid[p] ? unseen(p) : null;
+    var h = S.hands[p], ph = S.players[p].ph - 1, lv = lvOf(p), pool = (lv === 'hard' || lv === 'expert') && !S.laid[p] ? unseen(p) : null;
     var skip = h.filter(isS)[0]; if (skip && others(p).some(function (o) { return !S.skipNext[o]; })) return skip;
     var best = null, bestScore = Infinity, least = Infinity;
     // (Hard: of the cards it can throw without setting its phase back, the one that leaves the most cards that help)
@@ -852,7 +863,7 @@ html.rdesk #app .pd .builder .pcard.p10.mini.wild .ov b{font-size:calc(var(--cw)
       var rest = h.filter(function (x) { return x !== c; }), sc;
       if (!S.laid[p]) {
         if (isW(c)) sc = 1e6;
-        else if (lv === 'easy') sc = need(rest, ph) * 100 - pts(c) / 2 + Math.random() * 70;   // (Easy doesn't see which of its loose cards go together)
+        else if (lv === 'easy') sc = need(rest, ph) * 100 - pts(c) / 2 + Math.random() * 120;   // (Easy doesn't see which of its loose cards go together)
         else if (pool) { sc = need(rest, ph); sc = sc * 100 - (sc === least ? chances(rest, ph, pool) * 3 : 0) - pts(c) / 2; }
         else {
           var kin = h.filter(function (x) { return isN(x) && x !== c && (x.n === c.n || (PH[ph].req.some(function (r) { return r[0] === 'run'; }) && Math.abs(x.n - c.n) <= 2) || (PH[ph].req[0][0] === 'color' && x.c === c.c)); }).length;
@@ -860,7 +871,7 @@ html.rdesk #app .pd .builder .pcard.p10.mini.wild .ov b{font-size:calc(var(--cw)
         }
       } else sc = (isW(c) ? 1e5 : 0) - pts(c) * 2;
       if (feeds(p, c) && lv !== 'easy') sc += 40;
-      if (lv !== 'hard') sc += Math.random() * 4;
+      if (lv !== 'hard' && lv !== 'expert') sc += Math.random() * 4;
       if (sc < bestScore) { bestScore = sc; best = c; }
     });
     return best || h[0];

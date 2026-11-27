@@ -17,10 +17,11 @@
   function tw(f, ms) { return setTimeout(f, FAST ? (ms || 0) / 6 : ms); }
   var SAVE = 'bridge_state', HKEY = 'bridge', SLOT = ['b', 'l', 't', 'r'];
   var SEATN = E.SEAT, GL = E.GLYPH, SUITS = E.SUITS;
-  var LEVELS = [['easy', 'Easy', 'Bids by the book but misjudges its hand, and often plays the wrong card.'],
+  var LEVELS = [['easy', 'Easy', 'Bids by the book but misjudges its hand badly, and often plays the wrong card.'],
     ['normal', 'Normal', 'Bids by the system and plays the way a good club player does.'],
-    ['hard', 'Hard', 'Thinks every card through, counting what the bidding and the play have shown.']];
-  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+    ['hard', 'Hard', 'Thinks every card through, counting what the bidding and the play have shown.'],
+    ['expert', 'Expert', 'Thinks every card through on three times as many layouts as Hard, and works out the last four tricks exactly.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' || v === 'expert' ? v : 'normal'; }
 
   Kit.init({
     id: 'bridge',

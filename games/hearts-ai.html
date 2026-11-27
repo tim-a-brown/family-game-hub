@@ -348,10 +348,11 @@ html.cdesk-on #app .cseat.s .tag > span:last-child{max-width:none;}
       ['off', 'Off', 'No points shown during a hand: keep count yourself, as at a real table.']] };
   function hintsOn(X) { X = X || S; return !X || X.hints !== false; }
   // The computer's skill. Normal is how it has always played; a game saved or opened before there were levels plays Normal.
-  var LEVELS = [['easy', 'Easy', 'Takes tricks it could have ducked and holds on to its dangerous cards.'],
+  var LEVELS = [['easy', 'Easy', 'Plays almost any card it can, takes tricks it could have ducked and holds on to its dangerous cards.'],
     ['normal', 'Normal', 'Ducks tricks when it can and gets rid of its dangerous cards.'],
-    ['hard', 'Hard', 'Remembers every card played and thinks each play through.']];
-  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+    ['hard', 'Hard', 'Remembers every card played and thinks each play through.'],
+    ['expert', 'Expert', 'Remembers every card and who is out of which suit, and thinks each play through four times as thoroughly as Hard.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' || v === 'expert' ? v : 'normal'; }
   function lvOf(p, X) { var pl = X.players && X.players[p]; return lvName((pl && pl.level) || X.level); }
 
   // ── Card helpers ──────────────────────────────────────────────────────────
@@ -395,7 +396,8 @@ html.cdesk-on #app .cseat.s .tag > span:last-child{max-width:none;}
   function cpuPass(p, X) {
     var h = (X || S).hands[p], count = { s: 0, h: 0, d: 0, c: 0 };
     // Easy passes its three highest cards, whatever they are
-    if (lvOf(p, X || S) === 'easy') return h.slice().sort(function (a, b) { return RANK[b.r] - RANK[a.r]; }).slice(0, 3).map(function (c) { return c.id; });
+    // (Easy passes three cards picked at random)
+    if (lvOf(p, X || S) === 'easy') return Cards.shuffle(h.slice()).slice(0, 3).map(function (c) { return c.id; });
     h.forEach(function (c) { count[c.s]++; });
     var scored = h.map(function (c) {
       var v = RANK[c.r];
@@ -476,28 +478,30 @@ html.cdesk-on #app .cseat.s .tag > span:last-child{max-width:none;}
   function cpuChoose(p, X) {
     X = X || S;
     var lv = lvOf(p, X);
-    return lv === 'hard' ? hardChoose(p, X) : lv === 'easy' ? easyChoose(p, X) : normalChoose(p, X);
+    return lv === 'expert' ? hardChoose(p, X, EXPERT_DEALS, EXPERT_MS) : lv === 'hard' ? hardChoose(p, X) : lv === 'easy' ? easyChoose(p, X) : normalChoose(p, X);
   }
-  // Easy: it leads its lowest card whatever the suit, it follows suit with any card at all (so it takes tricks
-  // it could have ducked), and when it can't follow it throws its highest card, which is often not the Queen of
-  // Spades or a heart.
+  // Easy: half the time it leads its lowest card whatever the suit and otherwise any card, it follows suit with any
+  // card at all (so it takes tricks it could have ducked), and when it can't follow it throws its highest card or any
+  // card, which is often not the Queen of Spades or a heart.
   function easyChoose(p, X) {
     var opts = legal(p, X), byRank = opts.slice().sort(function (x, y) { return RANK[x.r] - RANK[y.r]; });
-    if (!X.trick.length) return byRank[0];
-    return opts[0].s === X.trick[0].c.s ? opts[Math.floor(Math.random() * opts.length)] : byRank[byRank.length - 1];
+    if (!X.trick.length) return Math.random() < 0.5 ? byRank[0] : opts[Math.floor(Math.random() * opts.length)];
+    return opts[0].s === X.trick[0].c.s || Math.random() < 0.5 ? opts[Math.floor(Math.random() * opts.length)] : byRank[byRank.length - 1];
   }
   // Hard counts cards. It knows which cards are still out (everything it hasn't seen played and doesn't hold) and
   // who has shown they are out of a suit. It deals the cards still out to the other three in ways that fit, plays
   // each card it could play through to the end of the hand with everyone ducking and dumping sensibly, and keeps
   // the card that costs it the fewest points on average.
-  var HARD_DEALS = 24, HARD_MS = 400;   // (as many deals as fit in the time, and never fewer than 8)
-  function hardChoose(p, X) {
+  // Expert does the same with about four times the deals.
+  var HARD_DEALS = 24, HARD_MS = 400, EXPERT_DEALS = 100, EXPERT_MS = 1500;   // (as many deals as fit in the time, and never fewer than 8)
+  function hardChoose(p, X, deals, ms) {
+    deals = deals || HARD_DEALS; ms = ms || HARD_MS;
     var opts = legal(p, X); if (opts.length < 2) return opts[0];
     var N = NN(X), out = [], need = zeros(N), vd = X.vd || zeros(N, ''), q, n, i;
     for (q = 0; q < N; q++) if (q !== p) { need[q] = X.hands[q].length; out = out.concat(X.hands[q]); }
     var tot = opts.map(function () { return 0; });
     var t0 = Date.now();
-    for (n = 0; n < HARD_DEALS && (n < 8 || Date.now() - t0 < HARD_MS); n++) {
+    for (n = 0; n < deals && (n < 8 || Date.now() - t0 < ms); n++) {
       var hands = dealOut(out, need, vd); hands[p] = X.hands[p];
       for (i = 0; i < opts.length; i++) tot[i] += playOut(X, hands, p, opts[i]);
     }

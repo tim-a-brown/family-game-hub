@@ -637,10 +637,11 @@ html.cbd-tall #app.stage > .cdk-panel{margin-top:8px;}
   // Pick 2 of 6 to throw: expected hand value over every possible starter,
   // plus (dealer) or minus (non-dealer) the expected crib value from sampling.
   // The computer's skill. Normal is how it has always played; a game saved before there were levels plays Normal.
-  var LEVELS = [['easy', 'Easy', 'Keeps the cards that look best and gives no thought to the crib.'],
+  var LEVELS = [['easy', 'Easy', 'Keeps cards that look good, gives no thought to the crib and often pegs any card.'],
     ['normal', 'Normal', 'Weighs its hand against the crib and pegs carefully.'],
-    ['hard', 'Hard', 'Remembers every card played and thinks the pegging through to the last card.']];
-  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+    ['hard', 'Hard', 'Remembers every card played and thinks the pegging through to the last card.'],
+    ['expert', 'Expert', 'Weighs every throw against more than twice as many cribs as Hard, and thinks the pegging through three times as thoroughly.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' || v === 'expert' ? v : 'normal'; }
   function lvOf(p) { var pl = S && S.players && S.players[p]; return lvName((pl && pl.level) || (S && S.level)); }
   function cpuDiscard(hand, p, lv) {
     // Pick the cards to throw (2 of 6 with two players, 1 of 5 with three or four): the hand's value over every
@@ -648,16 +649,16 @@ html.cbd-tall #app.stage > .cdk-panel{margin-top:8px;}
     // (with three players a crib belongs to one of the two others, so it counts half). The crib is sampled: the
     // thrown cards, the others' unknown cards and a starter.
     var k = tossN(), mine = sideOf(S.dealer) === sideOf(p), w = mine ? 1 : NP() === 3 ? -0.5 : -1, dealer = S.dealer === p;
-    var unk = unknownTo(hand), best = null, N = lv === 'hard' ? 250 : 70, need = 5 - k, draws = null, s;
+    var unk = unknownTo(hand), best = null, N = lv === 'expert' ? 600 : lv === 'hard' ? 250 : 70, need = 5 - k, draws = null, s, fixed = lv === 'hard' || lv === 'expert';
     function draw() { var idx = []; while (idx.length < need) { var x = Math.floor(Math.random() * unk.length); if (idx.indexOf(x) < 0) idx.push(x); } return idx; }
-    // Hard judges every throw against the same cribs, so luck in the sample doesn't pick for it
-    if (lv === 'hard') for (draws = [], s = 0; s < N; s++) draws.push(draw());
+    // Hard and Expert judge every throw against the same cribs, so luck in the sample doesn't pick for them
+    if (fixed) for (draws = [], s = 0; s < N; s++) draws.push(draw());
     combos(hand.length, k).forEach(function (pick) {
       var toss = pick.map(function (i) { return hand[i]; }), keep = hand.filter(function (c, i) { return pick.indexOf(i) < 0; });
       var hv = 0; unk.forEach(function (st) { hv += handTotal(keep, st, false); }); hv /= unk.length;
       var ids = toss.map(function (c) { return c.id; });
-      // Easy keeps the four cards that look best together, give or take, and doesn't think about the crib
-      if (lv === 'easy') { var e = hv + Math.random() * 3; if (!best || e > best.ev) best = { ev: e, ids: ids }; return; }
+      // Easy keeps four cards that look good together, give or take a lot, and doesn't think about the crib
+      if (lv === 'easy') { var e = hv + Math.random() * 5; if (!best || e > best.ev) best = { ev: e, ids: ids }; return; }
       var cv = 0;
       for (s = 0; s < N; s++) {
         var idx = draws ? draws[s] : draw(), crib = toss.slice();
@@ -668,7 +669,7 @@ html.cbd-tall #app.stage > .cdk-panel{margin-top:8px;}
       // a little pegging sense: low cards and pairs help in the play
       var pegBonus = keep.filter(function (c) { return val(c) <= 4; }).length * 0.12;
       if (!mine && toss.some(function (c) { return c.r === '5'; })) cv += 0.6;
-      var ev = hv + w * cv + pegBonus + (lv === 'hard' ? 0 : Math.random() * 0.15);
+      var ev = hv + w * cv + pegBonus + (fixed ? 0 : Math.random() * 0.15);
       if (!best || ev > best.ev) best = { ev: ev, ids: ids };
     });
     return best.ids;
@@ -683,9 +684,12 @@ html.cbd-tall #app.stage > .cdk-panel{margin-top:8px;}
     var P = S.peg, hand = P.hand[p], count = P.count, pile = P.pile.map(function (x) { return x.c; });
     var opts = hand.filter(function (c) { return count + val(c) <= 31; }), lv = lvOf(p);
     if (opts.length === 1) return opts[0];
+    if (lv === 'expert') return NP() === 2 ? hardPeg(p, opts, 3 * HARD_PEG_DEALS) : hardPegN(p, opts, 3 * HARD_PEG_N);
     if (lv === 'hard') return NP() === 2 ? hardPeg(p, opts) : hardPegN(p, opts);
     if (lv === 'easy') {
-      // Easy plays the card that scores the most right now, and any card at all when none scores
+      // Easy plays the card that scores the most right now, and any card at all when none scores (and now and then
+      // any card at all, even when one would score)
+      if (Math.random() < 0.3) return opts[Math.floor(Math.random() * opts.length)];
       var top = 0, pick = [];
       opts.forEach(function (c) { var m = pegScore(pile.concat([c])).pts; if (m > top) { top = m; pick = [c]; } else if (m === top) pick.push(c); });
       return pick[Math.floor(Math.random() * pick.length)];
@@ -716,7 +720,8 @@ html.cbd-tall #app.stage > .cdk-panel{margin-top:8px;}
   // ways, plays every line of the rest of the play out to the last card for each (the other player answering as
   // well as they can), and plays the card that comes out furthest ahead on average.
   var HARD_PEG_DEALS = 40;
-  function hardPeg(p, opts) {
+  function hardPeg(p, opts, deals) {
+    deals = deals || HARD_PEG_DEALS;
     var P = S.peg, pile = P.pile.map(function (x) { return x.c; });
     var seen = S.keep[p].concat(S.tossed[p], [S.starter], P.played.map(function (x) { return x.c; }));
     var unk = unknownTo(seen), n = P.hand[1 - p].length, tot = opts.map(function () { return 0; }), i, d;
@@ -737,7 +742,7 @@ html.cbd-tall #app.stage > .cdk-panel{margin-top:8px;}
       });
       return best;
     }
-    for (d = 0; d < (n ? HARD_PEG_DEALS : 1); d++) {
+    for (d = 0; d < (n ? deals : 1); d++) {
       var opp = Cards.shuffle(unk.slice()).slice(0, n);
       for (i = 0; i < opts.length; i++) {
         var c = opts[i], pl2 = pile.concat([c]), sc = pegScore(pl2), mine = P.hand[p].filter(function (x) { return x !== c; });
@@ -752,7 +757,8 @@ html.cbd-tall #app.stage > .cdk-panel{margin-top:8px;}
   // the play out for each with everyone taking the most points they can on each card, and keeps the card that
   // leaves its side furthest ahead (a partner's points are its own).
   var HARD_PEG_N = 60;
-  function hardPegN(p, opts) {
+  function hardPegN(p, opts, deals) {
+    deals = deals || HARD_PEG_N;
     var P = S.peg, n = NP(), pile0 = P.pile.map(function (x) { return x.c; });
     var seen = S.keep[p].concat(S.tossed[p], [S.starter], P.played.map(function (x) { return x.c; }));
     var unk = unknownTo(seen), tot = opts.map(function () { return 0; }), d, i;
@@ -779,7 +785,7 @@ html.cbd-tall #app.stage > .cdk-panel{margin-top:8px;}
         pile = []; count = 0; turn = nxt(last); while (!hands[turn].length && hands.some(function (h) { return h.length; })) turn = nxt(turn);
       }
     }
-    for (d = 0; d < HARD_PEG_N; d++) {
+    for (d = 0; d < deals; d++) {
       var sh = Cards.shuffle(unk.slice()), at = 0, hands = [];
       for (var q = 0; q < n; q++) { if (q === p) { hands.push(null); continue; } hands.push(sh.slice(at, at + P.hand[q].length)); at += P.hand[q].length; }
       for (i = 0; i < opts.length; i++) {

@@ -2064,7 +2064,7 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
         { id: 'nseats', label: 'Empty seats', value: '6', when: function (m) { return m === 'net'; }, help: 'Computer players fill the table up to this many seats. More people than that can still join, up to 10.', choices: [['0', 'People only'], ['6', 'Fill to 6'], ['9', 'Fill to 9']] },
         { id: 'fmt', label: 'Format', value: 'cash', when: function (m) { return m === 'he'; }, choices: [['cash', 'Cash game', 'Buy in with money from your casino bank and leave whenever you like.'], ['tourn', 'Tournament', 'Everyone starts with 1,500 chips, the blinds go up every 10 hands, and the last player left wins.'], ['turbo', 'Turbo', 'A faster tournament: the blinds go up every 5 hands.']] },
         { id: 'rebuy', label: 'Rebuys', value: '0', when: function (m, o) { o = o || {}; return m === 'net' ? o.nspeed !== 'cash' : (m === 'he' || m === 'om') && o.fmt !== 'cash'; }, help: 'Whether a player who runs out of chips can buy back in for a new stack.', choices: [['0', 'No rebuys'], ['4', 'First 4 levels', 'Run out of chips before level 5 and you can rebuy for 1,500 new chips.']] },
-        { id: 'ai', robot: true, label: 'Computer players', value: 'regular', when: function (m) { return m === 'he' || m === 'om' || m === 'net'; }, choices: [['casual', 'Casual', 'Play loose, call too much and make mistakes.'], ['regular', 'Regular', 'Solid players who read the table now and then.'], ['sharp', 'Sharp', 'Pros: they read your likely hand, play their seat, bluff in balance and learn how you play.']] },
+        { id: 'ai', robot: true, label: 'Computer players', value: 'regular', when: function (m) { return m === 'he' || m === 'om' || m === 'net'; }, choices: [['casual', 'Casual', 'Play loose, call too much and make plenty of mistakes.'], ['regular', 'Regular', 'Solid players who read the table now and then.'], ['sharp', 'Sharp', 'Pros: they read your likely hand, play their seat, bluff in balance and learn how you play.'], ['expert', 'Expert', 'World-class pros: they read every range as closely as they can, work out their odds more carefully and never slip.']] },
         { id: 'denom', label: 'Coin size', help: 'How much each coin is worth. You bet 1 to 5 coins a hand.', value: 1, when: function (m) { return m === 'vp'; }, choices: [[1, '$1'], [5, '$5'], [25, '$25']] },
         Coach.option({ on: 'A “best move” tag at your turn: which cards to hold, or whether to fold, call or raise. Tap it for the odds behind it.' })
       ],
@@ -2863,7 +2863,7 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
     return false;
   }
   // Skill (0..1) for a computer seat: 0.15 plays like a beginner, 1 like a seasoned pro
-  var SKILLS = { casual: 0.2, regular: 0.5, sharp: 0.85 };
+  var SKILLS = { casual: 0.12, regular: 0.5, sharp: 0.85, expert: 1 };
   function skillOf(p) { if (p.skOff != null && S && S.circ) return Math.max(0.05, Math.min(1, aiNow() + p.skOff)); return p.sk != null ? p.sk : 0.5; }
 
   function newTable(cfg) {
@@ -2883,7 +2883,7 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
       }),
       st: { rows: [], big: null, best: null, beats: [], kos: [], won: cfg.players.map(function () { return 0; }), allins: 0 }
     };
-    var tough = { casual: 0, regular: 0.25, sharp: 0.6 }[cfg.options.ai] || 0.25;
+    var tough = { casual: 0, regular: 0.25, sharp: 0.6, expert: 0.85 }[cfg.options.ai] || 0.25;
     S.players.forEach(function (p) { if (!p.cpu) return; var x = persona(tough, 0.05, tableNames()); p.name = x.name; p.pr = x.pr || null; });
     if (!tourn) Casino.bet(stack);
     Kit.gameStart(); undoStack = []; R = {};

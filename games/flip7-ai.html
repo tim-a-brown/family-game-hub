@@ -625,22 +625,27 @@
     return m;
   }
   // Its skill. Normal is how it has always played; a game saved before there were levels plays Normal.
-  // (Two levels: Normal already counts the cards. Robots that took more or less risk on the same count were
-  // measured against it and none won more than its even share of games.)
-  var LEVELS = [['easy', 'Easy', 'Stays as soon as it has 20 points, whatever cards are left.'],
-    ['normal', 'Normal', 'Counts the cards that are left and weighs what another card could win against what it could lose.']];
-  function lvName(v) { return v === 'easy' ? v : 'normal'; }
+  // (Counting the cards is most of the skill: robots that took more or less risk on the same count were measured
+  // against the one that is now Hard and none won more than its even share of games. So the levels are spread round
+  // it: Normal counts but forgets the Flip 7 bonus and hands out its action cards carelessly, Hard is that robot, and
+  // Expert counts without its mood of the moment and weighs how far it is behind.)
+  var LEVELS = [['easy', 'Easy', 'Stays as soon as it has 15 points, whatever cards are left.'],
+    ['normal', 'Normal', 'Counts the cards that are left, but forgets the Flip 7 bonus and hands out Freezes carelessly.'],
+    ['hard', 'Hard', 'Counts the cards that are left and weighs what another card could win against what it could lose.'],
+    ['expert', 'Expert', 'Counts the cards every time without taking chances on a whim, and pushes harder the further behind it is.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' || v === 'expert' ? v : 'normal'; }
   function cpuHit(p) {
     var c = calc(p), s = c.pts, tot = S.players[p].total, o = odds(p), lv = lvName(S.players[p].level);
     if (s === 0 && !c.x2) return true;
     var others = bestOther(p);
     if (tot + s >= S.target && tot + s > others) return false;          // stay and win
-    // Easy doesn't count cards: it stops at 20 points (at 35 while it holds a Second Chance)
-    if (lv === 'easy') return s < (hasSC(p) ? 35 : 20);
+    // Easy doesn't count cards: it stops at 15 points (at 30 while it holds a Second Chance)
+    if (lv === 'easy') return s < (hasSC(p) ? 30 : 15);
     if (hasSC(p)) return s < 55 || c.uniq >= 6;
-    var bold = S.players[p].bold * (0.9 + Math.random() * 0.2);
-    if (others >= S.target - 15 && tot + s <= others) bold *= 1.6;       // must catch up
-    var f7 = c.uniq === 6 ? (1 - o.pb) * (BONUS + s * 0.3) : c.uniq === 5 ? (1 - o.pb) * 4 : 0;
+    var bold = lv === 'expert' ? 1.15 : S.players[p].bold * (0.9 + Math.random() * 0.2);
+    if (lv === 'expert') { var gap = others - (tot + s); if (others >= S.target - 40 && gap > 0) bold *= 1 + Math.min(0.8, gap / 60); }
+    else if (others >= S.target - 15 && tot + s <= others) bold *= 1.6;       // must catch up
+    var f7 = lv === 'normal' ? 0 : c.uniq === 6 ? (1 - o.pb) * (BONUS + s * 0.3) : c.uniq === 5 ? (1 - o.pb) * 4 : 0;
     return (o.gain * 1.25 + f7) * bold > o.pb * s;
   }
   function cpuTarget(ch) {
@@ -650,8 +655,9 @@
     if (ch.kind === 'sc') {    // hand it to whoever is furthest behind
       return tg.slice().sort(function (a, b) { return S.players[a].total - S.players[b].total; })[0];
     }
-    // (Easy hands a Freeze or a Flip Three to anyone at all half the time)
-    if (others.length && Math.random() < (lvName(S.players[p].level) === 'easy' ? 0.5 : 0.12)) return others[Math.floor(Math.random() * others.length)];
+    // (Easy hands a Freeze or a Flip Three to anyone at all more than half the time, Normal now and then, Expert never)
+    var lvT = lvName(S.players[p].level);
+    if (others.length && Math.random() < (lvT === 'easy' ? 0.6 : lvT === 'normal' ? 0.25 : lvT === 'hard' ? 0.12 : 0)) return others[Math.floor(Math.random() * others.length)];
     if (ch.kind === 'fz') {
       var me = calc(p);
       if (tg.indexOf(p) >= 0 && me.pts >= 12 && !cpuHit(p)) return p;  // bank my points

@@ -235,9 +235,9 @@
     h.lp = 0; SUITS.forEach(function (s) { h.lp += Math.max(0, h.len[s] - 4); });
     h.r20 = h.hcp + L[0] + L[1];
     h.raw = h.hcp;
-    // The computer's skill: Easy misjudges its hand by up to two points either way
-    if (lv === 'easy') { h.hcp = Math.max(0, h.hcp + Math.round((R() - 0.5) * 4)); h.r20 = h.hcp + L[0] + L[1]; }
-    h.lv = lv || 'hard';
+    // The computer's skill: Easy misjudges its hand by up to three points either way; Expert bids as Hard does
+    if (lv === 'easy') { h.hcp = Math.max(0, h.hcp + Math.round((R() - 0.5) * 6)); h.r20 = h.hcp + L[0] + L[1]; }
+    h.lv = lv === 'expert' ? 'hard' : lv || 'hard'; h.ex = lv === 'expert';
     return h;
   }
   function has(h, s, r) { return h.cards[s].indexOf(r) >= 0; }
@@ -1259,7 +1259,7 @@
     return o;
   }
 
-  // The computer's call. lv: 'easy' | 'normal' | 'hard'. Returns {call, say}
+  // The computer's call. lv: 'easy' | 'normal' | 'hard' | 'expert'. Returns {call, say}
   function chooseCall(hand, calls, dealer, lv) {
     var A = analyze(calls, dealer), X = context(calls, dealer, A.pics), h = feat(hand, lv);
     h.hand = hand;
@@ -1272,7 +1272,7 @@
     }
     if (!pick) pick = { call: 'P', say: 'Nothing more to say.' };
     // Hard: a game bid from the book (3NT opposite partner's opening, say) gets the same look at a slam first
-    if (lv === 'hard' && !h.looked && isBid(pick.call)) {
+    if ((lv === 'hard' || lv === 'expert') && !h.looked && isBid(pick.call)) {
       var gl0 = lvOf(pick.call), gs0 = stOf(pick.call), pd0 = X.pdPic;
       if (gl0 < 6 && gl0 >= gameLvl(gs0) && X.pdBids.length && h.hcp + Math.min(mid(pd0), pd0.lo + 2) >= 30) {
         var od0 = slamOdds(X, h, gs0, null), six = mkBid(6, gs0);
@@ -1280,7 +1280,7 @@
       }
     }
     // Easy forgets to compete now and then
-    if (lv === 'easy' && pick.call !== 'P' && X.a.last && R() < 0.12) pick = { call: 'P', say: 'Nothing more to say.' };
+    if (lv === 'easy' && pick.call !== 'P' && X.a.last && R() < 0.2) pick = { call: 'P', say: 'Nothing more to say.' };
     return pick;
   }
   // What a call means where it was made (the auction table's explanations)
@@ -1336,7 +1336,7 @@
     var pd = partner(p), decl = G.k.decl, dummy = G.dummy;
     var bidSuits = {}; (G.calls || []).forEach(function (c, i) { if (isBid(c) && stOf(c) < 4) { var by = (G.dealer + i) % 4; (bidSuits[by] = bidSuits[by] || {})[SUITS[stOf(c)]] = 1; } });
     var pdSuits = bidSuits[pd] || {}, theirs = Object.assign({}, bidSuits[decl] || {}, bidSuits[dummy] || {});
-    if (lv === 'easy' && R() < 0.35) return h[Math.floor(R() * h.length)];
+    if (lv === 'easy' && R() < 0.5) return h[Math.floor(R() * h.length)];
     // partner's suit: high from a doubleton, top of a sequence, low from three or more with an honor
     var ps = SUITS.filter(function (s) { return pdSuits[s] && S[s].length && s !== t; });
     if (ps.length) { var s0 = ps[ps.length - 1]; return leadFrom(S[s0], true); }
@@ -1387,12 +1387,13 @@
     return cs[0];   // top of nothing
   }
 
-  // The computer's card. lv: 'easy' | 'normal' | 'hard'
+  // The computer's card. lv: 'easy' | 'normal' | 'hard' | 'expert'
   function chooseCard(G, p, lv) {
     var h = G.hands[p], opts = legalPlays(h, G.trick);
     if (opts.length === 1) return opts[0];
     if (!G.played.length) return openingLead(G, p, lv);
-    if (lv === 'easy' && R() < 0.15) return opts[Math.floor(R() * opts.length)];
+    if (lv === 'easy' && R() < 0.3) return opts[Math.floor(R() * opts.length)];
+    if (lv === 'expert') return hardCard(G, p, opts, true);
     if (lv === 'hard') return hardCard(G, p, opts);
     return normalCard(G, p, opts, lv === 'easy');
   }
@@ -1580,14 +1581,16 @@
   // out of, and what the bidding showed: points and suit lengths), plays each candidate card out to the end of the
   // deal on every one of those layouts, and keeps the card that wins the most tricks for its side. The last few
   // tricks are worked out exactly (double dummy).
-  var HARD_DEALS = 60, HARD_MS = 450, DD_AT = 3;
+  // Expert does the same with three times the layouts, and works out the last four tricks exactly.
+  var HARD_DEALS = 60, HARD_MS = 450, DD_AT = 3, EXPERT_DEALS = 180, EXPERT_MS = 1500, EXPERT_DD = 4;
   // Hard bids a slam when its open-handed playouts average this many tricks or more. The quick playouts count
   // about 0.6 of a trick under what Hard robots really take; 10.6 (with twelve tricks in at least 3 of 10
   // playouts) was set by playing about 17,000 Hard auctions out: 73% of the slams bid made, against 62% before, and
   // more slams made in all. A grand slam needs 12.6.
   var SLAM6 = 10.6, SLAM7 = 12.6, LAST_ODDS = null, SIM_DD = 3;
   function slamGo(od, ease) { return od.avg >= SLAM6 - (ease || 0) && od.p12 >= 0.3; }
-  function hardCard(G, p, opts) {
+  function hardCard(G, p, opts, ex) {
+    if (ex) { var dd0 = DD_AT, nd0 = HARD_DEALS, ms0 = HARD_MS; DD_AT = EXPERT_DD; HARD_DEALS = EXPERT_DEALS; HARD_MS = EXPERT_MS; try { return hardCard(G, p, opts); } finally { DD_AT = dd0; HARD_DEALS = nd0; HARD_MS = ms0; } }
     var me = whoControls(G, p), vis = knownTo(G, p);
     var groups = groupEq(G, opts, me, vis); if (groups.length === 1) return groups[0];
     var pics = pictures(G.calls, G.dealer), tot = groups.map(function () { return 0; });
