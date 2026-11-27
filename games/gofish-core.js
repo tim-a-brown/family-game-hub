@@ -244,8 +244,9 @@
   // and then it remembers the ask just made.
   function easyAsk(st, p, mine, tg) {
     var last = st.log[st.log.length - 1];
-    if (last && last.p !== p && rnd() < 0.15 && mine.indexOf(last.r) >= 0 && tg.indexOf(last.p) >= 0) return { to: last.p, r: last.r };
-    if (last && last.p === p && !last.n && rnd() < 0.35 && mine.indexOf(last.r) >= 0 && tg.indexOf(last.to) >= 0) return { to: last.to, r: last.r };
+    if (last && last.p !== p && rnd() < 0.05 && mine.indexOf(last.r) >= 0 && tg.indexOf(last.p) >= 0) return { to: last.p, r: last.r };
+    var own = null; for (var i = st.log.length - 1; i >= 0 && !own; i--) if (st.log[i].p === p) own = st.log[i];
+    if (own && !own.n && rnd() < 0.5 && mine.indexOf(own.r) >= 0 && tg.indexOf(own.to) >= 0) return { to: own.to, r: own.r };
     return { to: pick(tg), r: pick(mine) };
   }
   // What the asks of the last two rounds say: who has shown they hold a rank, and who has said "Go fish" for it

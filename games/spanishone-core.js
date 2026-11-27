@@ -401,7 +401,7 @@
   function bestColor(st, p, skipId, lvl) {
     var h = st.hands[p].filter(function (c) { return c.id !== skipId; }), cn = counts(h), pv = { r: 0, y: 0, g: 0, b: 0 };
     h.forEach(function (c) { if (pv[c.c] != null) pv[c.c] += pts(c); });
-    if (lvl === 'easy') { var held = COLORS.filter(function (c) { return cn[c] > 0; }); return (held.length ? held : COLORS)[Math.floor(rnd() * (held.length || 4))]; }
+    if (lvl === 'easy') { var held = COLORS.filter(function (c) { return cn[c] > 0; }); if (!held.length || rnd() < 0.5) held = COLORS; return held[Math.floor(rnd() * held.length)]; }
     var nx = nextSeat(st, p, 1), best = null, bs = -1e9;
     COLORS.forEach(function (c) {
       var s = cn[c] * 10 + pv[c] * 0.2;
