@@ -180,6 +180,8 @@ html[data-o=land] .cb-col>.acts{grid-area:a;justify-content:flex-start;}
       // the exact solve of the last moves has most of the time; if it can't finish, a normal search has what is left
       if (exact) limit = budget * 0.65;
       function tick() { if ((++nodes & 511) === 0 && Date.now() - t0 > limit) throw STOP; }
+      // Expert (o.memory) tries first the squares that cut the search short before: the same search, ordered better
+      var HI = o.memory ? {} : null;
       function final(bd, sd) { var d = 0; for (var i = 0; i < 64; i++) d += bd[i]; d *= sd; return d > 0 ? WIN + d : d < 0 ? -WIN + d : 0; }
       function ab(bd, sd, depth, alpha, beta, passed) {
         tick();
@@ -189,13 +191,14 @@ html[data-o=land] .cb-col>.acts{grid-area:a;justify-content:flex-start;}
           return -ab(bd, -sd, depth, -beta, -alpha, true);
         }
         if (depth <= 0) return evaluate(bd, sd);
-        ms.sort(function (a, c) { return W[c.s] - W[a.s]; });
+        if (HI) ms.sort(function (a, c) { return (W[c.s] + (HI[c.s] || 0)) - (W[a.s] + (HI[a.s] || 0)); });
+        else ms.sort(function (a, c) { return W[c.s] - W[a.s]; });
         var best = -Infinity;
         for (var i = 0; i < ms.length; i++) {
           var v = -ab(apply(bd, ms[i], sd), -sd, depth - 1, -beta, -alpha, false);
           if (v > best) best = v;
           if (v > alpha) alpha = v;
-          if (alpha >= beta) break;
+          if (alpha >= beta) { if (HI) HI[ms[i].s] = Math.min(400, (HI[ms[i].s] || 0) + depth * depth); break; }
         }
         return best;
       }
@@ -255,7 +258,7 @@ html[data-o=land] .cb-col>.acts{grid-area:a;justify-content:flex-start;}
   // S = {mode, level, players:[{name,cpu,side}], b, turn, last, n, passes:{'1':0,'-1':0},
   //      best:{'1':{n,move},'-1':..}, hist:[], over, started}
   var S = null;
-  var LEVELS = { easy: { depth: 1, time: 300, noise: 75, exact: 0 }, normal: { depth: 4, time: 1200, noise: 6, exact: 8 }, hard: { depth: 8, time: 1800, noise: 3, exact: 12 }, expert: { depth: 14, time: 2800, noise: 0, exact: 13 } };
+  var LEVELS = { easy: { depth: 1, time: 300, noise: 75, exact: 0 }, normal: { depth: 4, time: 1200, noise: 6, exact: 8 }, hard: { depth: 8, time: 1800, noise: 3, exact: 12 }, expert: { depth: 14, time: 2800, noise: 0, exact: 13, memory: true } };
   var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard', expert: 'Expert' };
   // Online (turnnet.js): NET is the table while playing at one; S is then the table's state (never saved here)
   var NET = null, LEFT = null, WINO = null, NETREC = {}, SHOWN = 0;
