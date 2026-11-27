@@ -359,7 +359,7 @@
   var LEVELS = {
     easy: { level: 'easy', depth: 1, time: 400, noise: 240, root: 30 },
     normal: { level: 'normal', depth: 3, time: 1400, noise: 12, root: 50, wide: 9, inner: 7 },
-    hard: { level: 'hard', depth: 5, time: 2000, noise: 4, root: 60, wide: 12, inner: 8 },
+    hard: { level: 'hard', depth: 5, time: 2000, noise: 6, root: 60, wide: 12, inner: 8 },
     expert: { level: 'expert', depth: 7, time: 3000, noise: 0, root: 60, wide: 12, inner: 8 }
   };
 

@@ -373,9 +373,9 @@
   }
   // The four skills differ in how far ahead they look and how much they slip, never in what they can see
   var LEVELS = {
-    easy: { depth: 2, time: 0, noise: 50, slip: 0.3 },
+    easy: { depth: 2, time: 0, noise: 70, slip: 0.5 },
     normal: { depth: 5, time: 0, noise: 4 },
-    hard: { depth: 30, time: 1500, noise: 0 },
+    hard: { depth: 30, time: 1500, noise: 3 },
     expert: { depth: 40, time: 2700, noise: 0 }
   };
 

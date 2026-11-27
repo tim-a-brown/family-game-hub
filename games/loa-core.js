@@ -289,7 +289,7 @@
     return { move: { f: best.f, t: best.t }, score: bestS, depth: done, nodes: nodes };
   }
   var LEVELS = {
-    easy: { depth: 1, time: 300, noise: 70 },
+    easy: { depth: 1, time: 300, noise: 120 },
     normal: { depth: 3, time: 900, noise: 10 },
     hard: { depth: 6, time: 2000, noise: 0 },
     expert: { depth: 10, time: 2700, noise: 0, memory: true }
