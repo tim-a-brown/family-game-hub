@@ -296,7 +296,7 @@ function callsCheck(s, out) {
 
 // ── Playing earns ───────────────────────────────────────────────────────────────────────────────────────────
 // After a finished game, however it was played (Tim: "a game earns the same however it's played"). o = {win (you won),
-// how ('seals' | 'renown'), level ('easy' | 'normal' | 'hard', against the computer), built (you played a deck you
+// how ('seals' | 'renown'), level ('easy' | 'normal' | 'hard' | 'expert', against the computer), built (you played a deck you
 // built), seen: [card keys the other side showed], m: the game's measures (trackEnd)}.
 // Returns {lit: [{n, why}] (the signs this game lit, in order), from (signs lit before), turns (full turns it made),
 // signs (lit now), list: [{t: 'guide', g, why: 'sphere' | 'call'} | {t: 'pack', pack}] (what it earned, in the order to
@@ -311,7 +311,7 @@ function gameOver(o) {
   if (o.win) { s.wins++; R.lit.push({ n: LIGHT.win, why: 'win' }); const today = dayKey(); if (s.day !== today) { s.day = today; R.lit.push({ n: LIGHT.daily, why: 'daily' }); } }
   // the firsts
   const first = (id, ok) => { if (ok && !s.firsts[id]) { s.firsts[id] = 1; R.list.push({ t: 'pack', pack: addPack(s, 'first', FIRSTS[id], PACK) }); } };
-  if (o.win) { first('win', true); first('normal', o.level === 'normal' || o.level === 'hard'); first('hard', o.level === 'hard'); first('built', !!o.built); }
+  if (o.win) { first('win', true); first('normal', o.level === 'normal' || o.level === 'hard' || o.level === 'expert'); first('hard', o.level === 'hard' || o.level === 'expert'); first('built', !!o.built); }
   // the callings
   const m = o.m || {};
   GKEYS.forEach(g => { if (s.guides.indexOf(g) >= 0) return; const c = CALLS[g]; if (c.per === 'packs') return; const was = s.calls[g] || 0, add = c.per === 'count' ? (+m[c.m] || 0) : m[c.m] ? 1 : 0;

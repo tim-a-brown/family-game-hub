@@ -572,11 +572,15 @@
   // often and scored about the same. One went for one-suit hands; it won fewer than half as many hands, bigger ones,
   // finished first more often and last more often, and placed worse on average. Neither was a clear step up.)
   // (Four levels, 2026-11-27: Hard is Normal that also plays safe once another player has shown two sets or the wall
-  // runs low and its own hand is still far off; Expert also looks two draws ahead, and plays safe sooner and better.)
+  // runs low and its own hand is still far off; Expert keeps the hand with the most chances without Normal's slips, and
+  // plays safe sooner: from one set shown in the second half of the wall, with an honor nobody can wait on when no thrown
+  // tile is safe. Looking two draws ahead was built and measured too: in 250 hands played alone it went Mahjong no sooner
+  // than Normal's count and took ten times as long, so it was left out. Alone, Easy went Mahjong in 18 of 250 hands,
+  // Normal in 166, Hard in 183 and Expert in 182: the levels part on how they defend, which only a table of four shows.)
   var LEVELS = [['easy', 'Easy', 'Keeps the tiles that go together, throws the rest without counting what could still come, and now and then throws a tile it needed.'],
     ['normal', 'Normal', 'Counts the tiles that can still help and keeps the hand with the most chances.'],
     ['hard', 'Hard', 'Also throws tiles other players have already thrown once someone looks close to going Mahjong.'],
-    ['expert', 'Expert', 'Also looks two draws ahead, and reads who is close to going Mahjong from what they have thrown and claimed.']];
+    ['expert', 'Expert', 'Never slips on which tile keeps the most chances, and starts playing safe as soon as anyone shows a set late in the hand.']];
   function lvName(v) { return v === 'easy' || v === 'hard' || v === 'expert' ? v : 'normal'; }
   function lvOf(p) { var pl = S && S.players[p]; return lvName(pl && pl.level); }
   function bestDiscard(p) {
@@ -614,30 +618,6 @@
       x.v = v;
     });
     cand.sort(function (a, b) { return b.v - a.v; });
-    // Expert: of the best few, the one whose next draw leaves the most chances after that (two draws ahead)
-    if (lvl === 'expert' && bestS >= 1 && cand.length > 1) {
-      cand.slice(0, 4).forEach(function (x) {
-        c[x.k]--;
-        var u2 = 0;
-        for (var t = 0; t < 34; t++) {
-          if (!left[t]) continue;
-          c[t]++;
-          if (shanten(c, m) < bestS) {   // a useful draw: then the best discard's chances
-            var top = 0;
-            for (var d2 = 0; d2 < 34; d2++) {
-              if (!c[d2]) continue; c[d2]--;
-              if (shanten(c, m) < bestS) { var w = 0; for (var t2 = 0; t2 < 34; t2++) { if (!left[t2] || (t2 === t && left[t2] < 2)) continue; c[t2]++; if (shanten(c, m) < bestS - 1) w += left[t2]; c[t2]--; } if (w > top) top = w; }
-              c[d2]++;
-            }
-            u2 += left[t] * top;
-          }
-          c[t]--;
-        }
-        c[x.k]++;
-        x.v += u2 / 40;
-      });
-      cand.sort(function (a, b) { return b.v - a.v; });
-    }
     // Hard and Expert: once someone looks close and its own hand is still far, a tile that player has already thrown
     if ((lvl === 'hard' || lvl === 'expert') && all.length) {
       var wl = wallLeft(), threat = -1, tsc = 0;
@@ -648,7 +628,7 @@
         else if (wl < 20) tsc1 += 1;
         if (tsc1 > tsc) { tsc = tsc1; threat = q; }
       }
-      if (threat >= 0 && tsc >= 2 && bestS >= (lvl === 'expert' ? 2 : 2)) {
+      if (threat >= 0 && tsc >= 2 && bestS >= 2) {
         var safeK = {}; S.ponds[threat].forEach(function (id) { safeK[kindOf(id)] = 1; });
         var safe = all.filter(function (x) { return safeK[x.k] && x.s <= bestS + 1; });
         if (lvl === 'expert' && !safe.length) safe = all.filter(function (x) { return x.k >= 27 && left[x.k] === 0 && x.s <= bestS + 1; });   // (an honor with none left can't be waited on)

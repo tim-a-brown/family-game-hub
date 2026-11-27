@@ -1140,11 +1140,14 @@ const PROF = {
   raider: { pos: [0.8, 0.8, 1, 1.4, 2.5], wRen: 1, wSeal: 5, wFig: 0.3, wLine: 0.3, noise: 0 },
   keeper: { pos: [1.3, 1.2, 1, 0.6, 0.5], wRen: 1.2, wSeal: 1, wFig: 0.3, wLine: 1.5, noise: 0 },
   brawler: { pos: [1, 1, 1.1, 1, 1], wRen: 1, wSeal: 2, wFig: 0.9, wLine: 0.3, noise: 0 },
-  // The three robots you can play. noise: how unclearly it judges a move; quit: its chance, at each step, of calling the
-  // turn early with Spark still to spend (the big one: 0.15 loses about three games in four to Normal).
-  novice: { pos: [1, 1, 1, 1, 1], wRen: 1, wSeal: 2, wFig: 0.3, wLine: 0.5, noise: 3, quit: 0.15 },      // Easy
+  // The four robots you can play. noise: how unclearly it judges a move; quit: its chance, at each step, of calling the
+  // turn early with Spark still to spend (the big one: 0.15 loses about three games in four to Normal; Easy has 0.2 since
+  // 2026-11-27); look: how many of its best steps Expert weighs by the best step each one leads to (lb: how much that
+  // next step counts), with scripts/anoria/skill.js.
+  novice: { pos: [1, 1, 1, 1, 1], wRen: 1, wSeal: 2, wFig: 0.3, wLine: 0.5, noise: 3.5, quit: 0.2 },     // Easy
   normal: { pos: [1, 1, 1.2, 1, 1], wRen: 1, wSeal: 2, wFig: 0.3, wLine: 0.5, noise: 1.5, quit: 0.03 },  // Normal
   hard: { pos: [0.8, 0.8, 1, 1.4, 2.5], wRen: 1, wSeal: 5, wFig: 0.3, wLine: 0.3, noise: 0 },            // Hard (the raider, playing its best)
+  expert: { pos: [0.8, 0.8, 1, 1.4, 2.5], wRen: 1, wSeal: 5, wFig: 0.3, wLine: 0.3, noise: 0, look: 6, lb: 1 },   // Expert (Hard, and it weighs its best few steps by the step each leads to, look)
 };
 // A robot weighing a card that turns up a Domain it can't see yet (it knows what is in a stack, not the order)
 // shuffles the stacks in its head a few times and takes the average, so it never peeks at the top card.
@@ -1193,7 +1196,24 @@ function aiPick(S, prof, R) {
   if (S.pend) return pendPick(S, prof, R);   // (a Domain to choose)
   let best = null, bv = evalS(S, me, prof) + 0.02;
   if (prof.quit && R() < prof.quit) return null;   // (calls it a turn early)
-  for (const a of actions(S)) { if (a.q != null && a.q < a.p) continue; if (a.t === 'relic' && a.over != null && !S.cfg.overAll && !overWorth(S, me, a)) continue; let v = valueOf(S, a, me, prof); if (prof.noise) v += (R() - 0.5) * prof.noise; if (v > bv) { bv = v; best = a; } }
+  const top = [];
+  for (const a of actions(S)) { if (a.q != null && a.q < a.p) continue; if (a.t === 'relic' && a.over != null && !S.cfg.overAll && !overWorth(S, me, a)) continue; let v = valueOf(S, a, me, prof); if (prof.noise) v += (R() - 0.5) * prof.noise; if (prof.look) top.push([v, a]); if (v > bv) { bv = v; best = a; } }
+  if (prof.look && top.length > 1) {
+    // Expert: its best few steps (those with no dice in them) are each weighed with the best step it could take after
+    // them this turn, so a step that sets up a better one beats one that only looks good alone
+    top.sort((x, y) => y[0] - x[0]);
+    const end = evalS(S, me, prof) + 0.02;
+    let bv2 = Math.max(end, top[0][0]), best2 = top[0][0] > end ? top[0][1] : null;
+    for (const [v, a] of top.slice(0, prof.look)) {
+      if (a.t === 'clash' || (a.t === 'deed' && (fxOf(S.P[me].hand[a.h]) === 'ambush' || fxOf(S.P[me].hand[a.h]) === 'congress')) || (S.dm && hidden(S, a))) { if (v > bv2) { bv2 = v; best2 = a; } continue; }
+      const T = clone(S); apply(T, a, 0, 0); if (T.pend) settle(T, prof);
+      let nx = v;
+      if (T.turn === me && !T.over) for (const b of actions(T)) { if (b.q != null && b.q < b.p) continue; if (b.t === 'end' || b.t === 'pass') continue; const w = valueOf(T, b, me, prof); if (w > nx) nx = w; }
+      const lb = prof.lb == null ? 0.4 : prof.lb, tot = (1 - lb) * v + lb * nx;
+      if (tot > bv2) { bv2 = tot; best2 = a; }
+    }
+    return best2;
+  }
   return best;
 }
 // Who goes first this round: the leader (so whoever is behind has the last word); level, take turns. With Domains,

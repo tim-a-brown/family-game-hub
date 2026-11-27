@@ -400,7 +400,7 @@
   // Pong's Tunnel (games/paddleball/tunnel.js): one player against the computer. The picture is the run level by level,
   // a neon column for the points each level earned in that level's own colors, a red ball under it for each miss
   var TUN = [['#ff3df2', '#2ef6ff'], ['#9dff2e', '#ff2e88'], ['#ff8a1a', '#3a8bff'], ['#b14dff', '#ffd23a'], ['#7af0ff', '#ff7ad9'], ['#ff5ab0', '#5affd8']];
-  var TDN = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  var TDN = { easy: 'Easy', normal: 'Normal', hard: 'Hard', expert: 'Expert' };
   function tunnelView(e, ui) {
     var d = e.dt, lp = String(d.lp || '').split(',').filter(function (x) { return x !== ''; }).map(Number), lm = String(d.lm || '').split('').map(Number), pic = null;
     if (lp.length) {

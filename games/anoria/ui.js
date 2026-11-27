@@ -101,7 +101,7 @@
     starchart: n => 'Your discard pile holds the cards you have played, discarded or lost. With ' + n + ', once a turn you can pay 1 Spark to take one of them back into your hand.',
     paiza: n => 'Eclipse, the Lisbon Earthquake and some Figures make a Figure miss its next turn. With ' + n + ' in play, none of that touches your Figures.'
   };
-  const LEVEL = { easy: 'novice', normal: 'normal', hard: 'hard' }, LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  const LEVEL = { easy: 'novice', normal: 'normal', hard: 'hard', expert: 'expert' }, LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard', expert: 'Expert' };
   // The players' colours. Two players are bronze and sky (Gallery stone: the first seat is the light itself). With more, each seat has a colour of its own, chosen
   // to read apart from every other one on the dark table and in red-green colour blindness (the nearest two still
   // differ by a clear step of lightness or hue: scratchpad np/cvd.py). With teams, each team is one family of colours
@@ -2288,7 +2288,7 @@
         // (Hints: what a move or a clash would come to, worked out for you: hintsOn)
         { id: 'hints', label: 'Hints', value: 'on', choices: [['on', 'On', 'When you move a card or a Figure, the game shows the Might it would leave at each Domain, whether you would take the Domain, and both Mights before a clash.'],
           ['off', 'Off', 'You see the Might as it stands and work out what a move or a clash would do yourself, as at a real table.']] },
-        { id: 'level', robot: true, label: 'Computer skill', value: Coll.load().wins ? 'normal' : 'easy', choices: [['easy', 'Easy', 'The computer stops early and misses things, which makes for a good first game.'], ['normal', 'Normal', DW('The computer plays to hold Places, with the odd slip.')], ['hard', 'Hard', 'The computer plays its best, and comes for your Gate and your Seals.']] }
+        { id: 'level', robot: true, label: 'Computer skill', value: Coll.load().wins ? 'normal' : 'easy', choices: [['easy', 'Easy', 'The computer often stops early and misses things, which makes for a good first game.'], ['normal', 'Normal', DW('The computer plays to hold Places, with the odd slip.')], ['hard', 'Hard', 'The computer plays its best, and comes for your Gate and your Seals.'], ['expert', 'Expert', 'The computer comes for your Gate and your Seals as Hard does, and plans each move with the next one in mind.']] }
       ]),
       players: { range: () => [2, 6], count: 2, cpu: m => m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false, teams: (n, v) => teamsFor(n, v.teams) },
       start: 'Deal the cards',

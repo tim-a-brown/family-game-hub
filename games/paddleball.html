@@ -128,9 +128,10 @@ html.pd-land .ar-pbtn{width:100%;height:44px;}
   var TOUCH = (window.matchMedia && matchMedia('(pointer:coarse), (hover:none)').matches) || navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
   var PC = ['#38e1ff', '#ff4fa3'];
   var DIFF = {
-    easy: { name: 'Easy', react: 0.32, speed: 280, accel: 1600, err: 40, settle: 0.85, aim: 0, hesitate: 0.25 },
+    easy: { name: 'Easy', react: 0.4, speed: 240, accel: 1300, err: 52, settle: 0.9, aim: 0, hesitate: 0.35 },
     normal: { name: 'Normal', react: 0.18, speed: 440, accel: 2600, err: 26, settle: 0.72, aim: 0.3, hesitate: 0.1 },
-    hard: { name: 'Hard', react: 0.14, speed: 520, accel: 3600, err: 24, settle: 0.7, aim: 0.5, hesitate: 0.04 }
+    hard: { name: 'Hard', react: 0.14, speed: 520, accel: 3600, err: 24, settle: 0.7, aim: 0.5, hesitate: 0.04 },
+    expert: { name: 'Expert', react: 0.12, speed: 570, accel: 4000, err: 20, settle: 0.66, aim: 0.6, hesitate: 0.03, fool: 0.025 }
   };
   var POWERS = { big: { name: 'Big paddle', c: '#ffd24a' }, multi: { name: 'Multi-ball', c: '#7dff9a' }, curve: { name: 'Curve', c: '#c49bff' } };
 
@@ -457,7 +458,7 @@ html.pd-land .ar-pbtn{width:100%;height:44px;}
     c = x + R;
     if (A.forBall !== best || A.forHit !== G.hits[0] + G.hits[1]) { A.forBall = best; A.forHit = G.hits[0] + G.hits[1]; A.err = D.err * (0.4 + best.speed / 500) * randn(); A.aimSide = Math.random() < 0.7 ? 1 : 0; }
     var err = A.err;
-    if (best.spin) err += best.spin * 0.04;
+    if (best.spin) err += best.spin * (D.fool != null ? D.fool : 0.04);   // (a curving ball fools it; Expert reads most of the curve)
     var aim = 0;
     if (D.aim && A.aimSide) { var opp = pads[0].c; aim = (opp < FC / 2 ? -1 : 1) * P.hw * D.aim; }
     A.target = clamp(c + err + aim, 0, FC);
@@ -537,9 +538,10 @@ html.pd-land .ar-pbtn{width:100%;height:44px;}
       onPick: function (v, o) { if (v !== now) { keepOptions(o); setTimeout(showSetup, 0); } } };
   }
   var DIFF_CHOICES = [
-    ['easy', 'Easy', 'Slow to react and often misjudges the ball.'],
+    ['easy', 'Easy', 'Slow to react, slow to move and often misjudges the ball.'],
     ['normal', 'Normal', 'A fair game: quick, but makes mistakes.'],
-    ['hard', 'Hard', 'Fast and sharp, and aims away from you.']];
+    ['hard', 'Hard', 'Fast and sharp, and aims away from you.'],
+    ['expert', 'Expert', 'Faster still, hardly ever misjudges the ball, reads a curve and aims away from you.']];
   function startTunnel(o) {
     whenTunnel(function () { PongTunnel.start(Object.assign({ host: app, onSetup: showSetup }, o)); });
   }
@@ -553,9 +555,10 @@ html.pd-land .ar-pbtn{width:100%;height:44px;}
         modes: Kit.modes(['cpu']), mode: 'cpu', modeLocked: true,
         options: [tableOption('tunnel'),
           { id: 'diff', robot: true, label: 'Computer skill', value: 'normal', choices: [
-            ['easy', 'Easy', 'Slow to react, and a curving ball fools it. Points count once.'],
+            ['easy', 'Easy', 'Slow to react and slow to move, and a curving ball fools it. Points count once.'],
             ['normal', 'Normal', 'Quick, reads some curve and puts curve on its own shots from level 2. Points count double.'],
-            ['hard', 'Hard', 'Fast and sharp, aims away from your paddle and curves the ball often. Points count triple.']] }],
+            ['hard', 'Hard', 'Fast and sharp, aims away from your paddle and curves the ball often. Points count triple.'],
+            ['expert', 'Expert', 'Faster still, reads most of your curve and curves the ball more often. Points count four times.']] }],
         players: { min: 2, max: 2, count: 2, cpu: 'seats' },
         start: 'Play',
         onStart: function (cfg) {

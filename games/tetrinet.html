@@ -377,10 +377,27 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
 
   // ── Computer players: pick a spot for each piece (holes, height, bumps, lines), then steer to it
   var SKILL = {
-    easy: { step: 0.32, noise: 0.9, think: [2.4, 5], slip: 0.12 },
+    easy: { step: 0.36, noise: 1.1, think: [2.8, 5.5], slip: 0.15 },
     normal: { step: 0.14, noise: 0.25, think: [1.2, 3], slip: 0.03 },
-    hard: { step: 0.06, noise: 0.02, think: [0.5, 1.6], slip: 0 }
+    hard: { step: 0.06, noise: 0.02, think: [0.5, 1.6], slip: 0 },
+    expert: { step: 0.045, noise: 0, think: [0.35, 1.1], slip: 0, look: 1 }   // (look: it plans the next block too)
   };
+  // every place block t can come to rest on board b (from the top), with the board after its lines clear
+  function restsOn(b, t) {
+    var out = [];
+    function fitsB(r, x, y) { var cs = CELLS[t][r]; for (var i = 0; i < cs.length; i++) { var cx = x + cs[i][0], cy = y + cs[i][1]; if (cx < 0 || cx >= COLS || cy >= ROWS) return false; if (cy >= 0 && b[cy][cx]) return false; } return true; }
+    for (var r = 0; r < 4; r++) for (var x = -2; x < COLS; x++) {
+      if (!fitsB(r, x, 0)) continue;
+      var y = 0; while (fitsB(r, x, y + 1)) y++;
+      var nb = copyB(b), cs = CELLS[t][r], bad = false;
+      for (var i = 0; i < cs.length; i++) { var cy = y + cs[i][1]; if (cy < 0) { bad = true; break; } nb[cy][x + cs[i][0]] = 'X'; }
+      if (bad) continue;
+      var lines = 0; nb = nb.filter(function (row) { var f = row.every(Boolean); if (f) lines++; return !f; });
+      while (nb.length < ROWS) nb.unshift(new Array(COLS).fill(''));
+      out.push({ r: r, x: x, b: nb, lines: lines });
+    }
+    return out;
+  }
   function evalBoard(b, lines) {
     var hs = [], holes = 0, agg = 0, bump = 0, top = 0;
     for (var x = 0; x < COLS; x++) {
@@ -405,6 +422,12 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
         var lines = 0, nb = b.filter(function (row) { var f = row.every(Boolean); if (f) lines++; return !f; });
         while (nb.length < ROWS) nb.unshift(new Array(COLS).fill(''));
         var sc = evalBoard(nb, lines) + (Math.random() - 0.5) * sk.noise * 4;
+        if (sk.look && this.next) {
+          // Expert: this block's place counts its lines, and the board after the next block's best place
+          var nx = restsOn(nb, this.next), b2 = -1e9;
+          for (var k = 0; k < nx.length; k++) { var v2 = evalBoard(nx[k].b, nx[k].lines); if (v2 > b2) b2 = v2; }
+          if (nx.length) sc = 0.76 * lines * 0.5 + b2; else sc -= 50;
+        }
         if (!best || sc > best.sc) best = { r: r, x: x, sc: sc };
       }
     }
@@ -699,7 +722,7 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
       players: { min: 1, max: 6, count: 4, range: function (m) { return m === 'online' ? [1, 1] : [2, 6]; }, cpu: function (m) { return m === 'online' ? false : 'seats'; }, label: 'Who’s playing?' },
       options: [
         { id: 'skill', robot: true, label: 'Computer players', value: 'normal', when: function (m) { return m !== 'online'; },
-          choices: [['easy', 'Easy', 'Slow and a bit careless.'], ['normal', 'Normal', 'A steady player who uses specials well.'], ['hard', 'Hard', 'Fast and sharp.']] },
+          choices: [['easy', 'Easy', 'Slow and careless, and saves its specials too long.'], ['normal', 'Normal', 'A steady player who uses specials well.'], ['hard', 'Hard', 'Fast and sharp.'], ['expert', 'Expert', 'Faster still, and plans where the next block goes before it places this one.']] },
         { id: 'shadow', label: 'Landing shadow', value: 'on', help: 'The original TetriNET had no shadow. Turn it on to see where the block will land.',
           choices: [['on', 'On'], ['off', 'Off\nLike the original']] }
       ],

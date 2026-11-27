@@ -222,7 +222,7 @@
       modes: Kit.modes([{ id: 'cpu', desc: 'Draft against the computer' }, { id: 'local', kind: 'local' }]),
       options: [
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', when: function (m) { return m === 'cpu'; },
-          choices: [['easy', 'Easy', 'Throws and looks for pitches at random, and drafts loosely.'], ['normal', 'Normal', 'Plays the matchups: it throws what its pitcher does best and looks for it too.'], ['hard', 'Hard', 'Plays the matchups and remembers what you’ve been doing this game.']] },
+          choices: [['easy', 'Easy', 'Throws and looks for pitches at random, and drafts very loosely.'], ['normal', 'Normal', 'Plays the matchups: it throws what its pitcher does best and looks for it too.'], ['hard', 'Hard', 'Plays the matchups and remembers what you’ve been doing this game.'], ['expert', 'Expert', 'Drafts the best team it can, and reads your pitches and guesses sooner and harder than Hard.']] },
         { id: 'inn', label: 'Innings', value: 5, choices: [[3, '3\nQuick', 'About 12 minutes.'], [5, '5\nStandard', 'About 20 minutes.'], [9, '9\nFull game', 'About 35 minutes, the way the big leagues play.']] },
         { id: 'size', label: 'Cards each', value: 12, choices: [[10, '10\nNo bench', 'Nine hitters and a pitcher. Every pick plays.'], [12, '12\nTwo extras', 'Room for a reliever or a pinch hitter, or an odd card.'], [15, '15\nFull bench', 'A bench, a bullpen and a hand of odd cards. Needs a bigger stack.']] },
         { id: 'vals', label: 'Player values', value: 'league', choices: [['league', 'League labels', 'The app measures each player against his own league that year, so cards from any decade play fair. Print a label for each card’s sleeve from the menu.'], ['shoe', 'Shoebox rules', 'Every value is read straight off the back of the card with one printed chart, so a game needs no labels and no app.']] }
@@ -1059,7 +1059,7 @@
       else { v = 5 + r.bat * 1.15 + (CW[r.card] || 0) * .5; if (hitters >= 9) v *= .5; if (c.pos && c.pos[0] && !posHave[c.pos[0]]) v *= 1.15; if (c.pos && c.pos[0] === 'C' && !posHave.C) v *= 1.1; }
       return v;
     }
-    var best = null, noise = S.level === 'easy' ? 4 : S.level === 'normal' ? 1.2 : .3;
+    var best = null, noise = S.level === 'easy' ? 5.5 : S.level === 'normal' ? 1.2 : S.level === 'expert' ? 0 : .3;
     left.forEach(function (id) { var w = worth(S.C[id]) + (R() - .5) * noise; if (!best || w > best.w) best = { id: id, w: w }; });
     var btn = app.querySelector('.wp-cbtn[aria-label="Take ' + CSS.escape(S.C[best.id].name) + '"]');
     if (btn) btn.classList.add('cpu-pick');
@@ -2326,7 +2326,7 @@
     var hl = g.hl.slice(0, 10);
     hl.push('Batters guessed the pitch ' + g.duels[0] + ' times and were fooled ' + g.duels[1] + ' times.');
     Kit.record(HKEY, {
-      started: S.started, mode: S.mode === 'cpu' ? 'vs Computer (' + ({ easy: 'Easy', normal: 'Normal', hard: 'Hard' })[S.level] + ')' : 'Pass & play',
+      started: S.started, mode: S.mode === 'cpu' ? 'vs Computer (' + ({ easy: 'Easy', normal: 'Normal', hard: 'Hard', expert: 'Expert' })[S.level] + ')' : 'Pass & play',
       players: S.T.map(function (T, t) { return { name: T.name, score: g.R[t], cpu: T.cpu }; }), winner: S.T[win].name,
       highlights: hl, detail: detail
     });
