@@ -41,13 +41,13 @@ function play(cfg, opt) {
   return { st, moves, tally };
 }
 
-const LV = ['easy', 'normal', 'hard'];
+const LV = ['easy', 'normal', 'hard', 'expert'];
 const DUEL = !!process.env.DUEL;
 const tot = { games: 0, hands: 0, moves: 0 };
 const sum = {};
 for (let g = 0; g < (DUEL ? 0 : N); g++) {
   const n = 2 + Math.floor(rng() * 9);
-  const players = []; for (let i = 0; i < n; i++) players.push({ name: 'P' + i, cpu: true, level: LV[Math.floor(rng() * 3)] });
+  const players = []; for (let i = 0; i < n; i++) players.push({ name: 'P' + i, cpu: true, level: LV[Math.floor(rng() * 4)] });
   const cfg = { players, to: rng() < 0.25 ? 0 : 500, stack: rng() < 0.5, until: rng() < 0.3, seven: rng() < 0.4, four: rng() < 0.3 ? 'free' : 'challenge' };
   const r = play(cfg);
   tot.games++; tot.hands += r.st.round; tot.moves += r.moves;
@@ -80,5 +80,5 @@ function table(lvl, games) {
 }
 if (process.env.RULES) process.exit(0);
 const D = Math.max(200, Math.round(N / 5));
-console.log('Two players, games to 500 (' + D + ' each): Normal beats Easy ' + (duel('normal', 'easy', D) * 100).toFixed(1) + '%, Hard beats Normal ' + (duel('hard', 'normal', D) * 100).toFixed(1) + '%, Hard beats Easy ' + (duel('hard', 'easy', D) * 100).toFixed(1) + '%');
-console.log('Four players, one robot against three Normal (25% is even): Easy ' + (table('easy', D) * 100).toFixed(1) + '%, Normal ' + (table('normal', D) * 100).toFixed(1) + '%, Hard ' + (table('hard', D) * 100).toFixed(1) + '%');
+console.log('Two players, games to 500 (' + D + ' each): Normal beats Easy ' + (duel('normal', 'easy', D) * 100).toFixed(1) + '%, Hard beats Normal ' + (duel('hard', 'normal', D) * 100).toFixed(1) + '%, Hard beats Easy ' + (duel('hard', 'easy', D) * 100).toFixed(1) + '%, Expert beats Hard ' + (duel('expert', 'hard', D) * 100).toFixed(1) + '%');
+console.log('Four players, one robot against three Normal (25% is even): Easy ' + (table('easy', D) * 100).toFixed(1) + '%, Normal ' + (table('normal', D) * 100).toFixed(1) + '%, Hard ' + (table('hard', D) * 100).toFixed(1) + '%, Expert ' + (table('expert', D) * 100).toFixed(1) + '%');

@@ -62,15 +62,15 @@ function play(levels, next, theme) {
   return { st, moves, m };
 }
 
-const LV = ['easy', 'normal', 'hard'];
-const wins = { easy: 0, normal: 0, hard: 0 }, games = { easy: 0, normal: 0, hard: 0 };
+const LV = ['easy', 'normal', 'hard', 'expert'];
+const wins = { easy: 0, normal: 0, hard: 0, expert: 0 }, games = { easy: 0, normal: 0, hard: 0, expert: 0 };
 const tot = { lucky: 0, big: 0, streak4: 0, sweep: 0, dealt: 0, dry: 0, refill: 0, moves: 0 };
 const head = {};   // head to head, two players
 let n2 = 0;
 for (let g = 0; g < N; g++) {
   const n = 2 + (g % 5);
   const levels = [];
-  for (let i = 0; i < n; i++) levels.push(LV[(g + i) % 3]);
+  for (let i = 0; i < n; i++) levels.push(LV[(g + i) % 4]);
   const r = play(levels, g % 4 === 3 ? 'asked' : 'left', THEMES[g % THEMES.length]);
   tot.moves += r.moves;
   Object.keys(r.m).forEach(k => { tot[k] += r.m[k]; });
@@ -152,13 +152,13 @@ function playP(levels, next, theme) {
   return { st, moves, m, hl: Core.highlights(st).length };
 }
 {
-  const wins = { easy: 0, normal: 0, hard: 0 }, games = { easy: 0, normal: 0, hard: 0 };
+  const wins = { easy: 0, normal: 0, hard: 0, expert: 0 }, games = { easy: 0, normal: 0, hard: 0, expert: 0 };
   const tot = { lucky: 0, pond: 0, both: 0, streak4: 0, dealtAll: 0, opening: 0, dry: 0, refill: 0, moves: 0, bothHl: 0 };
   const head = {}, byN = {};
   for (let g = 0; g < N; g++) {
     const n = 2 + (g % 5);
     const levels = [];
-    for (let i = 0; i < n; i++) levels.push(LV[(g + i) % 3]);
+    for (let i = 0; i < n; i++) levels.push(LV[(g + i) % 4]);
     const r = playP(levels, g % 4 === 3 ? 'asked' : 'left', THEMES[g % THEMES.length]);
     tot.moves += r.moves;
     Object.keys(r.m).forEach(k => { tot[k] += r.m[k]; });

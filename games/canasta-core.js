@@ -113,7 +113,7 @@
     deal(st);
     return st;
   }
-  function lv(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+  function lv(v) { return v === 'easy' || v === 'hard' || v === 'expert' ? v : 'normal'; }
   function zeros(n) { var a = []; for (var i = 0; i < n; i++) a.push(0); return a; }
   function deal(st) {
     st.round++; st.dealer = (st.dealer + 1) % st.n;
@@ -427,7 +427,8 @@
   // ═══ The computer players ════════════════════════════════════════════════════════════════════════
   // Easy melds what it sees and discards with little thought; Normal reaches its first meld as soon as it can, builds
   // canastas with its wild cards and watches what the next player could take; Hard also keeps natural pairs for a
-  // frozen pile, freezes a big pile against a threat and remembers the discards. None of them sees a hidden card.
+  // frozen pile, freezes a big pile against a threat and remembers the last dozen discards; Expert plays as Hard does and
+  // remembers every discard of the hand. None of them sees a hidden card.
   function lvOf(st, p) { return lv(st.players[p] && st.players[p].level || st.level); }
   // What each level does (tuned with scripts/canasta/run.js)
   //   skipMeld/skipSet/skipOut: how often it misses its first meld, a new set, going out; take0/takeW: the smallest pile
@@ -438,9 +439,10 @@
   //   discard is, how many of the pile's cards it remembers; hiPen: weighs a high card's cost in the hand; freeze: a 2
   //   to freeze a big pile; ask: asks a person partner "may I go out?"; answerYes: answers by chance
   var LV = {
-    easy: { skipMeld: 0.25, skipSet: 0.2, skipOut: 0.3, take0: 2, takeW: 2, takeP: 0.75, keep: 2, eager: 2, endEager: 2, pairWild: false, dump: false, holdSets: 0, dangerW: 0.25, noise: 40, memory: 1, hiPen: 8, pairKeep: 24, freeze: false, ask: false, answerYes: 0.85 },
+    easy: { skipMeld: 0.35, skipSet: 0.3, skipOut: 0.4, take0: 2, takeW: 2, takeP: 0.6, keep: 2, eager: 2, endEager: 2, pairWild: false, dump: false, holdSets: 0, dangerW: 0, noise: 60, memory: 1, hiPen: 8, pairKeep: 24, freeze: false, ask: false, answerYes: 0.85 },
     normal: { skipMeld: 0, skipSet: 0, skipOut: 0, take0: 2, takeW: 3, takeP: 0, keep: 2, eager: 1, endEager: 3, pairWild: false, dump: true, holdSets: 0, dangerW: 1, noise: 6, memory: 6, hiPen: 4, pairKeep: 24, freeze: false, ask: true, answerYes: 0 },
-    hard: { skipMeld: 0, skipSet: 0, skipOut: 0, take0: 2, takeW: 2, takeP: 0, keep: 2, eager: 2, endEager: 3, pairWild: false, dump: true, holdSets: 0, dangerW: 2, noise: 0, memory: 200, hiPen: 4, pairKeep: 32, freeze: true, ask: true, answerYes: 0 }
+    hard: { skipMeld: 0, skipSet: 0, skipOut: 0, take0: 2, takeW: 2, takeP: 0, keep: 2, eager: 2, endEager: 3, pairWild: false, dump: true, holdSets: 0, dangerW: 2, noise: 0, memory: 12, hiPen: 4, pairKeep: 32, freeze: true, ask: true, answerYes: 0 },
+    expert: { skipMeld: 0, skipSet: 0, skipOut: 0, take0: 2, takeW: 2, takeP: 0, keep: 2, eager: 2, endEager: 3, pairWild: false, dump: true, holdSets: 0, dangerW: 2, noise: 0, memory: 200, hiPen: 4, pairKeep: 32, freeze: true, ask: true, answerYes: 0 }
   };
   function P(st, p) { return LV[lvOf(st, p)]; }
   function byRank(h) { var by = {}; h.forEach(function (c) { if (!isWild(c) && c.r !== '3') (by[c.r] = by[c.r] || []).push(c); }); return by; }

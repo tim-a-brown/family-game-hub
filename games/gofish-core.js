@@ -59,7 +59,7 @@
   function countOf(h, r) { var n = 0; for (var i = 0; i < h.length; i++) if (h[i].r === r) n++; return n; }
   function ranksIn(h) { var o = []; h.forEach(function (c) { if (o.indexOf(c.r) < 0) o.push(c.r); }); return o.sort(function (a, b) { return rankIx(a) - rankIx(b); }); }
   function dealCount(n) { return n <= 3 ? 7 : 5; }
-  function lv(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+  function lv(v) { return v === 'easy' || v === 'hard' || v === 'expert' ? v : 'normal'; }
   function lvOf(st, p) { var pl = st.players[p]; return lv(pl && pl.level || st.level); }
   function zeros(n, v) { var a = []; for (var i = 0; i < n; i++) a.push(v === undefined ? 0 : (typeof v === 'object' ? clone(v) : v)); return a; }
 
@@ -237,14 +237,16 @@
     if (st.phase === 'fish') return botFish(st);
     var L = lvOf(st, p), mine = ranksIn(st.hands[p]), tg = targets(st, p);
     if (!mine.length || !tg.length) return null;
-    var c = L === 'hard' ? hardAsk(st, p, mine, tg) : L === 'easy' ? easyAsk(st, p, mine, tg) : normalAsk(st, p, mine, tg);
+    var c = L === 'hard' ? hardAsk(st, p, mine, tg) : L === 'expert' ? hardAsk(st, p, mine, tg, st.n === 2 ? C.xw : C.xwn) : L === 'easy' ? easyAsk(st, p, mine, tg) : normalAsk(st, p, mine, tg);
     return { k: 'ask', to: c.to, r: c.r };
   }
-  // Easy forgets: a rank it holds, anyone at all. Now and then it remembers the ask just made.
+  // Easy forgets: a rank it holds, anyone at all, and it may well ask again for what it was just told to fish for. Now
+  // and then it remembers the ask just made.
   function easyAsk(st, p, mine, tg) {
     var last = st.log[st.log.length - 1];
-    if (last && last.p !== p && rnd() < 0.3 && mine.indexOf(last.r) >= 0 && tg.indexOf(last.p) >= 0) return { to: last.p, r: last.r };
-    return { to: pick(tg), r: pick(st.hands[p]).r };
+    if (last && last.p !== p && rnd() < 0.15 && mine.indexOf(last.r) >= 0 && tg.indexOf(last.p) >= 0) return { to: last.p, r: last.r };
+    if (last && last.p === p && !last.n && rnd() < 0.35 && mine.indexOf(last.r) >= 0 && tg.indexOf(last.to) >= 0) return { to: last.to, r: last.r };
+    return { to: pick(tg), r: pick(mine) };
   }
   // What the asks of the last two rounds say: who has shown they hold a rank, and who has said "Go fish" for it
   // (with pairs, an ask that got the card, or a fish that brought it, made the asker's pair: they hold none of it now)
@@ -285,7 +287,11 @@
   // Hard remembers every ask and every card shown (st.kn: the fewest of a rank each player is known to hold; st.no:
   // when they last said "Go fish" to it, counted in the unseen cards they have drawn since). A known card is asked for
   // first; otherwise it weighs how likely each player is to hold each rank from the cards it hasn't seen.
-  function hardAsk(st, p, mine, tg) {
+  // Expert (W, C.xw) weighs the same odds and also what an ask gives away: asking for a rank shows the table you hold
+  // it, so it would rather ask for a rank it has already shown, or one it holds three of, than show a lone card the
+  // others could then ask it for.
+  C.xw = { shown: 0.12, lone: 0.1, three: 0.3 }, C.xwn = { shown: 0.1, lone: 0, three: 0.5 };   // (two players, more: measured with robot games)
+  function hardAsk(st, p, mine, tg, W) {
     var best = null, bv = -1;
     var unknown = st.pond.length, uq = {};
     tg.forEach(function (q) { var k = 0; for (var r in st.kn[q]) k += st.kn[q][r] || 0; uq[q] = Math.max(0, st.hands[q].length - k); unknown += uq[q]; });
@@ -302,6 +308,7 @@
           v = slots > 0 ? (1 - Math.pow(1 - pr, slots)) * (isPairs(st) ? 1 : (1 - out * 0.2 + have * 0.5)) : 0;
         }
         v += have * 0.04 + (st.kn[p][r] ? 0.02 : 0) + rnd() * 0.001;   // (closer to a book, and a rank it has already shown)
+        if (W && !known) v += (st.kn[p][r] ? W.shown : have === 1 ? -W.lone : 0) + (have === 3 ? W.three : 0);
         if (v > bv) { bv = v; best = { to: q, r: r }; }
       });
     });

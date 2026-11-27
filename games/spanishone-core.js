@@ -64,7 +64,8 @@
 
   // ── A new game ──
   // cfg: {players: [{name, cpu, level}], to: 500 | 0 (one hand), stack, until, seven, four: 'challenge' | 'free', level}
-  function lv(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+  function lv(v) { return v === 'easy' || v === 'hard' || v === 'expert' ? v : 'normal'; }
+  function hardish(l) { return l === 'hard' || l === 'expert'; }
   function zeros(n, v) { var a = []; for (var i = 0; i < n; i++) a.push(v === undefined ? 0 : v); return a; }
   function newGame(cfg) {
     var n = cfg.players.length;
@@ -387,9 +388,13 @@
   }
 
   // ═══ The computer players ═══════════════════════════════════════════════════════════════════════
-  // Easy plays the first card it can. Normal keeps its Wilds for when nothing else will do, and names its strongest
+  // Easy plays any card it can. Normal keeps its Wilds for when nothing else will do, and names its strongest
   // color. Hard remembers which colors each player had to draw on, steers the color away from the next player, keeps
   // its action cards for whoever is about to go out or is leading, and will bluff a Wild Draw Four when it matters.
+  // Expert does all Hard does without its lapses (Hard now and then forgets who drew on which color, and misses a
+  // player who didn't call UNO), and counts the cards gone too: of each color, how many are still out in other hands
+  // or the draw pile, so it turns play to the color the others are least likely to hold, and it sheds its points
+  // when the next player is about to go out.
   // None of them looks at anyone else's cards: they see only what anyone at the table could see.
   function lvOf(st, p) { var pl = st.players[p]; return lv((pl && pl.level) || st.level); }
   function counts(h) { var o = { r: 0, y: 0, g: 0, b: 0 }; h.forEach(function (c) { if (o[c.c] != null) o[c.c]++; }); return o; }
@@ -400,14 +405,26 @@
     var nx = nextSeat(st, p, 1), best = null, bs = -1e9;
     COLORS.forEach(function (c) {
       var s = cn[c] * 10 + pv[c] * 0.2;
-      if (lvl === 'hard') {
-        if (st.voids[nx][c]) s += 6;   // the next player had to draw on this color
+      if (hardish(lvl)) {
+        if (st.voids[nx][c] && sees(lvl)) s += 6;   // the next player had to draw on this color
         for (var q = 0; q < st.n; q++) if (q !== p && q !== nx && st.voids[q][c]) s += 2;
       }
-      s += rnd() * 0.5;
+      if (lvl === 'expert') s -= unseen(st, p)[c] * (threat(st, nx) >= 3 ? C.xu[0] : C.xu[1]);
+      s += rnd() * (lvl === 'expert' ? 0.1 : 0.5);
       if (s > bs) { bs = s; best = c; }
     });
     return best;
+  }
+  // how many of each color are still unseen by p: 25 of each, less those on the discard pile and in p's own hand
+  C.xu = [0.5, 0.2, 0.5, 0.1, 0.2, 0.6, 0];   // (Expert's weights: the colors still out when choosing a color, close to the end and before; when changing color by a play, the same; its noise)
+  // (Hard now and then forgets who had to draw on which color; Expert never does)
+  C.hv = 0.3; C.hc = 0.7;   // (how often Hard remembers a color someone drew on, and notices a missed UNO; measured with robot games)
+  function sees(lvl) { return lvl === 'expert' || rnd() < C.hv; }
+  function unseen(st, p) {
+    var o = { r: 25, y: 25, g: 25, b: 25 };
+    st.pile.forEach(function (c) { if (o[c.c] != null) o[c.c]--; });
+    st.hands[p].forEach(function (c) { if (o[c.c] != null) o[c.c]--; });
+    return o;
   }
   // how dangerous a player is: about to go out, or leading the scores near the end
   function threat(st, q) {
@@ -423,8 +440,8 @@
     if (lvl === 'easy') { var o = []; for (var q = 0; q < st.n; q++) if (q !== p) o.push(q); return o[Math.floor(rnd() * o.length)]; }
     return minOther(st, p);
   }
-  function botCatchChance(lvl) { return lvl === 'hard' ? 1 : lvl === 'normal' ? 0.7 : 0.35; }
-  function botCallChance(lvl) { return lvl === 'hard' ? 1 : lvl === 'normal' ? 0.95 : 0.75; }
+  function botCatchChance(lvl) { return lvl === 'expert' ? 1 : lvl === 'hard' ? C.hc : lvl === 'normal' ? 0.7 : 0.25; }
+  function botCallChance(lvl) { return hardish(lvl) ? 1 : lvl === 'normal' ? 0.95 : 0.6; }
   // a computer player looking around the table for someone holding one card who didn't call
   function botCatch(st, p) {
     var lvl = lvOf(st, p);
@@ -437,33 +454,35 @@
     if (lvl === 'easy') return 0;
     if (c.c === 'w') {
       s = left <= 1 ? 30 : -40;   // keep Wilds for later (a last card that is a Wild is a sure way out)
-      if (c.v === 'w4') s += thr * (lvl === 'hard' ? 5 : 3) - 6;
+      if (c.v === 'w4') s += thr * (hardish(lvl) ? 5 : 3) - 6;
       return s;
     }
     s += pts(c) * 0.6 + cn[c.c] * 3;   // shed points, stay in a color you hold
     if (c.c !== st.color) s += (cn[c.c] - (cn[st.color] || 0)) * 2;   // changing to a stronger color
     var action = c.v === 's' || c.v === 'r' || c.v === 'd2';
     if (action) {
-      if (lvl === 'hard') {
+      if (hardish(lvl)) {
         if (st.n === 2 && c.v !== 'd2') s += 12;   // with two players a Skip or a Reverse is a free extra turn
         else if (thr >= 3) s += thr * 4 + (c.v === 'd2' ? 8 : 4);
         else if (left > 3) s -= 6;   // save it for someone who's about to go out
         if (c.v === 'r' && st.n > 2) { var pv = nextSeat(st, p, -1); s += (thr - threat(st, pv)) * 3; }
       } else s += thr * 2 + (c.v === 'd2' ? 3 : 1);
     }
-    if (lvl === 'hard') {
-      if (st.voids[nx][c.c]) s += 9;   // the next player couldn't play this color last time
+    if (hardish(lvl)) {
+      if (st.voids[nx][c.c] && sees(lvl)) s += 9;   // the next player couldn't play this color last time
       if (left === 1 && h.some(function (x) { return x.c === 'w' && x.id !== c.id; })) s += 25;   // finish with the Wild
     }
+    if (lvl === 'expert') s += pts(c) * (thr >= 6 ? C.xu[5] : thr >= 3 ? C.xu[6] : 0);   // (shed points when the next player is close to going out)
+    if (lvl === 'expert' && c.c !== st.color) { var u = unseen(st, p); s += (u[st.color] - u[c.c]) * (thr >= 3 ? C.xu[2] : C.xu[3]); }
     if (st.opts.seven && c.v === '7' && left > 0) { var mo = minOther(st, p); s += (left - st.hands[mo].length) * 4; }
     if (st.opts.seven && c.v === '0' && left > 0) { var giver = nextSeat(st, p, -1); s += (left - st.hands[giver].length) * 3; }
     return s;
   }
   function choose(st, p, opts, lvl) {
     if (!opts.length) return null;
-    if (lvl === 'easy') return opts[0];
+    if (lvl === 'easy') return opts[Math.floor(rnd() * opts.length)];
     var best = null, bs = -1e9;
-    opts.forEach(function (c) { var s = scorePlay(st, p, c, lvl) + rnd() * 1.5; if (s > bs) { bs = s; best = c; } });
+    opts.forEach(function (c) { var s = scorePlay(st, p, c, lvl) + rnd() * (lvl === 'expert' ? C.xu[4] : 1.5); if (s > bs) { bs = s; best = c; } });
     return best;
   }
   function playMove(st, p, c, lvl) {
@@ -503,7 +522,7 @@
       var dc = st.hands[p][find(st.hands[p], st.drawn)];
       if (dc && canPlay(st, dc)) {
         if (dc.c === 'w' && lvl !== 'easy' && st.hands[p].length > 3 && threat(st, nextSeat(st, p, 1)) < 3) return { k: 'keep' };
-        if (dc.v === 'w4' && lvl !== 'hard' && st.opts.four === 'challenge' && !honest(st, p, dc.id)) return { k: 'keep' };
+        if (dc.v === 'w4' && !hardish(lvl) && st.opts.four === 'challenge' && !honest(st, p, dc.id)) return { k: 'keep' };
         return playMove(st, p, dc, lvl);
       }
       return { k: 'keep' };
@@ -512,7 +531,7 @@
     // the challenge rule: Easy and Normal play a Wild Draw Four only when they hold nothing of the color; Hard bluffs
     // when the next player is about to go out
     if (st.opts.four === 'challenge') {
-      var nx = nextSeat(st, p, 1), bluffOk = lvl === 'hard' && st.hands[nx].length <= 2 && st.hands[p].length >= 3;
+      var nx = nextSeat(st, p, 1), bluffOk = hardish(lvl) && st.hands[nx].length <= 2 && st.hands[p].length >= 3;
       opts = opts.filter(function (c) { return c.v !== 'w4' || honest(st, p, c.id) || bluffOk; });
     }
     var c = choose(st, p, opts, lvl);

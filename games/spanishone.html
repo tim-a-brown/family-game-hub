@@ -399,9 +399,10 @@
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); token++; busy = false; }
 
-  var LEVELS = [['easy', 'Easy', 'Plays the first card it can, and sometimes forgets to call UNO.'],
+  var LEVELS = [['easy', 'Easy', 'Plays any card it can, and often forgets to call UNO.'],
     ['normal', 'Normal', 'Keeps its Wilds for when nothing else will do, and names the color it holds most of.'],
-    ['hard', 'Hard', 'Remembers which colors each player had to draw on, saves its action cards for whoever is about to go out, and will bluff a Wild Draw Four.']];
+    ['hard', 'Hard', 'Usually remembers which colors each player had to draw on, saves its action cards for whoever is about to go out, and will bluff a Wild Draw Four.'],
+    ['expert', 'Expert', 'Does all Hard does without a slip, counts the cards gone to turn play to the color the others are least likely to hold, and never misses a forgotten UNO.']];
 
   // ── Setup ─────────────────────────────────────────────────────────────────
   function showSetup() {
@@ -1267,7 +1268,7 @@
     var vul = -1; for (var q = 0; q < N(); q++) if (Core.vulnerable(S, q)) vul = q;
     if (vul < 0) return;
     var best = null;
-    S.players.forEach(function (pl, q) { if (!pl.cpu || q === vul) return; var lv = Core.lvOf(S, q), d = lv === 'hard' ? 1300 : lv === 'normal' ? 2300 : 3800; if (!best || d < best.d) best = { q: q, d: d }; });
+    S.players.forEach(function (pl, q) { if (!pl.cpu || q === vul) return; var lv = Core.lvOf(S, q), d = lv === 'hard' || lv === 'expert' ? 1300 : lv === 'normal' ? 2300 : 3800; if (!best || d < best.d) best = { q: q, d: d }; });
     if (!best) return;
     var t = token;
     watchT = setTimeout(function () {

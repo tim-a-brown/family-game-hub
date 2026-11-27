@@ -51,9 +51,9 @@ for (let n = 2; n <= 7; n++) {
   for (const o of OPTS) {
     let mv = 0, hs = 0;
     for (let g = 0; g < Math.ceil(N / OPTS.length); g++) {
-      const lvls = ['easy', 'normal', 'hard'];
+      const lvls = ['easy', 'normal', 'hard', 'expert'];
       const players = [];
-      for (let i = 0; i < n; i++) players.push({ name: 'P' + i, cpu: true, level: lvls[(g + i) % 3] });
+      for (let i = 0; i < n; i++) players.push({ name: 'P' + i, cpu: true, level: lvls[(g + i) % 4] });
       const r = play(Object.assign({ players, target: g % 4 === 0 ? 0 : 100 }, o));
       games++; mv += r.moves; hs += r.hands; stat.hands += r.hands;
       stat.eights += r.S.stats.eights.reduce((a, b) => a + b, 0);
@@ -88,6 +88,7 @@ for (const o of [OPTS[0], OPTS[2]]) {
   console.log('  easy vs normal: ' + duel(['easy', 'normal'], o, N));
   console.log('  normal vs hard: ' + duel(['normal', 'hard'], o, N));
   console.log('  easy vs hard:   ' + duel(['easy', 'hard'], o, N));
+  console.log('  hard vs expert: ' + duel(['hard', 'expert'], o, Math.min(N, 1000)));
   console.log('  three, one of each: ' + duel(['easy', 'normal', 'hard'], o, N));
 }
 console.log('\n' + ((Date.now() - t0) / 1000).toFixed(1) + ' s');

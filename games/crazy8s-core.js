@@ -46,7 +46,7 @@
   function deck() { var d = []; SUITS.forEach(function (s) { RANKS.forEach(function (r) { d.push(r + s); }); }); return d; }
   function name(c) { return (RNAME[rk(c)] || rk(c)) + ' of ' + SNAME[su(c)]; }
   function label(c) { return (rk(c) === 'T' ? '10' : rk(c)) + GLYPH[su(c)]; }
-  function lv(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+  function lv(v) { return v === 'easy' || v === 'hard' || v === 'expert' ? v : 'normal'; }
   function nextOf(S, p) { return (p + 1) % S.n; }
   function top(S) { return S.disc[S.disc.length - 1]; }
   function handSize(n) { return n === 2 ? 7 : 5; }
@@ -232,9 +232,16 @@
     var L = lv(S.players[p].level || S.level), h = S.hands[p], opts = legal(S, p);
     if (S.pend > 0) return opts.length ? { k: 'play', c: L === 'easy' ? opts[0] : pick2(S, p, opts) } : { k: 'take' };
     if (!opts.length) return canDraw(S, p) ? { k: 'draw' } : { k: 'pass' };
-    if (L === 'easy') { var c0 = opts[0]; return { k: 'play', c: c0, s: rk(c0) === '8' ? SUITS[Math.floor(C.rng() * 4)] : undefined }; }
+    if (L === 'easy') return easyPlay(S, p, opts);
     if (L === 'normal') return normalPlay(S, p, opts);
+    if (L === 'expert' && !S.sim) return expertPlay(S, p, opts);
     return hardPlay(S, p, opts);
+  }
+  // Easy plays any card it can, an 8 as soon as it has one, and names any suit for it.
+  function easyPlay(S, p, opts) {
+    var e = opts.filter(function (c) { return rk(c) === '8'; });
+    var c0 = e.length && C.rng() < 0.7 ? e[0] : opts[Math.floor(C.rng() * opts.length)];
+    return { k: 'play', c: c0, s: rk(c0) === '8' ? SUITS[Math.floor(C.rng() * 4)] : undefined };
   }
   function pick2(S, p, opts) { return opts.slice().sort(function (a, b) { return pts(b) - pts(a); })[0]; }
   function bySuit(h, skip) { var n = { s: 0, h: 0, d: 0, c: 0 }; h.forEach(function (c) { if (c !== skip && rk(c) !== '8') n[su(c)]++; }); return n; }
@@ -289,7 +296,58 @@
     });
     return { k: 'play', c: best.c, s: best.s };
   }
-
+  // Expert weighs its plays as Hard does, and when a hand is close to its end (someone holds three cards or fewer) it
+  // plays each card it could (an 8 with each suit) through to the end of the hand many times over. Each time it deals the
+  // cards it can't see to the other hands and the stock in a way that fits what the table has seen (a player who drew
+  // holds none of the suit they couldn't follow, and no 8), and everyone plays on as Hard would. It keeps the play that
+  // goes out first most often. It sees nothing a player at the table couldn't.
+  C.xr = { ms: 700, min: 40, max: 300, at: 3 };
+  function expertPlay(S, p, opts) {
+    var usual = hardPlay(S, p, opts), close = 99;
+    for (var q = 0; q < S.n; q++) close = Math.min(close, S.hands[q].length);
+    if (close > C.xr.at) return usual;
+    var cands = [];
+    opts.forEach(function (c) { if (rk(c) === '8' && S.hands[p].length > 1) SUITS.forEach(function (s) { cands.push({ k: 'play', c: c, s: s }); }); else cands.push({ k: 'play', c: c }); });
+    if (cands.length < 2) return usual;
+    var gone = seen(S, p), pool = [];
+    deck().forEach(function (c) { if (!gone[c]) pool.push(c); });
+    var tot = cands.map(function () { return 0; }), t0 = Date.now(), k, i;
+    for (k = 0; k < C.xr.max && (k < C.xr.min || Date.now() - t0 < C.xr.ms); k++) {
+      var W = world(S, p, pool);
+      for (i = 0; i < cands.length; i++) tot[i] += rollout(S, W, p, cands[i]);
+    }
+    var bi = -1; for (i = 0; i < cands.length; i++) if (cands[i].c === usual.c && cands[i].s === usual.s) bi = i;
+    for (i = 0; i < cands.length; i++) if (bi < 0 || tot[i] > tot[bi] + 1) bi = i;
+    return cands[bi];
+  }
+  // one way the unseen cards could lie: dealt to the other hands and the stock, the hardest cards to place first
+  function world(S, p, pool) {
+    var n = S.n, hands = [], left = [], q;
+    for (q = 0; q < n; q++) { hands.push(q === p ? S.hands[p].slice() : []); left.push(q === p ? 0 : S.hands[q].length); }
+    left.push(S.deck.length); hands.push([]);   // (the stock is the last "hand", and can take any card)
+    function can(c) { var l = []; for (var q = 0; q <= n; q++) { if (left[q] <= 0) continue; if (q < n) { var v = S.vd[q]; if (rk(c) === '8' ? v.indexOf('8') >= 0 : v.indexOf(su(c)) >= 0) continue; } l.push(q); } return l; }
+    var cards = shuffle(pool.slice()).map(function (c) { return { c: c, k: can(c).length }; });
+    cards.sort(function (x, y) { return x.k - y.k; });
+    cards.forEach(function (x) {
+      var ok = can(x.c); if (!ok.length) for (q = 0; q <= n; q++) if (left[q] > 0) ok.push(q);
+      var t = 0; ok.forEach(function (q) { t += left[q]; }); var r = C.rng() * t, w = ok[0];
+      for (var i = 0; i < ok.length; i++) { r -= left[ok[i]]; if (r < 0) { w = ok[i]; break; } }
+      hands[w].push(x.c); left[w]--;
+    });
+    return { hands: hands.slice(0, n), deck: hands[n] };
+  }
+  // the hand played out in that world from seat p's play a, everyone playing as Hard: 1 if p goes out first
+  function rollout(S, W, p, a) {
+    var X = {};
+    for (var key in S) X[key] = S[key];
+    X.sim = 1; X.done = 0; X.w = -1;
+    X.hands = W.hands.map(function (h) { return h.slice(); }); X.deck = W.deck.slice(); X.disc = S.disc.slice();
+    X.vd = S.vd.slice(); X.played = { s: S.played.s, h: S.played.h, d: S.played.d, c: S.played.c }; X.plays = S.plays.slice(); X.draws = S.draws.slice();
+    X.players = S.players.map(function (pl) { return { name: pl.name, cpu: true, level: 'expert' }; });
+    if (!move(X, p, a)) return 0;
+    for (var g = 0; !X.done && g < 400; g++) { var q = X.turn, b = bot(X, q); if (!b || !move(X, q, b)) break; }
+    return X.done && X.w === p ? 1 : 0;
+  }
   var api = { RANKS: RANKS, SUITS: SUITS, SNAME: SNAME, GLYPH: GLYPH, C: C, rk: rk, su: su, pts: pts, count: count, name: name, label: label, lv: lv,
     newGame: newGame, deal: deal, legal: legal, playable: playable, canDraw: canDraw, canPass: canPass, stockLeft: stockLeft, apply: apply,
     turn: turn, bot: bot, top: top, nextOf: nextOf, handSize: handSize };

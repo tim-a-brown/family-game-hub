@@ -82,7 +82,7 @@ const t0 = Date.now();
 console.log('Canasta robot runs, ' + N + ' games each, seed ' + SEED + '\n');
 // 1. Every kind with every level, as a rules check
 for (const kind of ['part', 'two', 'three']) {
-  for (const lvl of ['easy', 'normal', 'hard']) {
+  for (const lvl of ['easy', 'normal', 'hard', 'expert']) {
     const n = Core.KINDS[kind].n, games = [];
     for (let g = 0; g < Math.max(20, N / 4); g++) games.push(play(kind, Array(n).fill(lvl)));
     const A = agg(games);
@@ -107,5 +107,5 @@ function vs(kind, a, b) {
   }
   console.log(kind.padEnd(5), (a + ' vs ' + b).padEnd(16), a, 'wins', pct(wa, games), ' average margin', Math.round(margin / games));
 }
-for (const kind of ['part', 'two']) { vs(kind, 'normal', 'easy'); vs(kind, 'hard', 'normal'); vs(kind, 'hard', 'easy'); }
+for (const kind of ['part', 'two']) { vs(kind, 'normal', 'easy'); vs(kind, 'hard', 'normal'); vs(kind, 'hard', 'easy'); vs(kind, 'expert', 'hard'); vs(kind, 'expert', 'normal'); }
 console.log('\n' + ((Date.now() - t0) / 1000).toFixed(1) + ' s');
