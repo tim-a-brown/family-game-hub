@@ -528,7 +528,7 @@
       return left;
     }
     // Everyday words (from data/words-en.js): Easy and Normal play only these, so they sound like a person at the table.
-    // Hard uses the whole tournament list.
+    // Hard and Expert use the whole tournament list.
     var COMMON = null;
     function loadCommon(arr) {
       COMMON = {}; for (var c = 0; c < arr.length; c++) COMMON[String(arr[c]).toUpperCase()] = 1;
@@ -542,26 +542,62 @@
       var n = 0; for (var w = 0; w < r.words.length; w++) if (!COMMON[r.words[w].w]) n++;
       return n;
     }
-    // A computer's turn. level: 'easy' | 'normal' | 'hard'. Returns {type:'play', tiles, score} | {type:'exch', tiles:[letters]} | {type:'pass'}
+    // Expert: the tiles it can't see (the bag and the other racks, worked out from the full set less the board and its
+    // own rack), and the best the next player could score after a play, over a few racks drawn from them.
+    function unseenTiles(board, rack) {
+      var c = {}; Object.keys(DIST).forEach(function (l) { c[l] = DIST[l]; });
+      for (var i = 0; i < NN; i++) { var t = board[i]; if (!t) continue; var l = isBlankCh(t) ? '?' : t; if (c[l]) c[l]--; }
+      rack.forEach(function (l) { if (c[l]) c[l]--; });
+      var out = []; Object.keys(c).forEach(function (l) { for (var k = 0; k < c[l]; k++) out.push(l); });
+      return out;
+    }
+    function replyBest(board, tiles, racks) {
+      var b = board.slice(); tiles.forEach(function (t) { b[t.i] = t.ch; });
+      var tot = 0;
+      racks.forEach(function (r) { var mx = 0; generate(b, r, function (tl, sc) { if (sc > mx) mx = sc; }, {}); tot += mx; });
+      return tot / racks.length;
+    }
+    // A computer's turn. level: 'easy' | 'normal' | 'hard' | 'expert'. Returns {type:'play', tiles, score} | {type:'exch', tiles:[letters]} | {type:'pass'}
     function choose(board, rack, level, bagN, rnd) {
       rnd = rnd || Math.random;
       var empty = true; for (var e = 0; e < NN; e++) if (board[e]) { empty = false; break; }
-      var best = null, bestV = -1e9, list = [], seen = {}, max = 0;
+      var best = null, bestV = -1e9, list = [], seen = {}, max = 0, top = [], deep = level === 'hard' || level === 'expert';
       generate(board, rack, function (tiles, score) {
-        if (level === 'hard') {
+        if (deep) {
           var left = rackLeft(rack, tiles), v = score;
           if (bagN > 0) v += leaveValue(left, bagN);
           else { var pts = 0; left.forEach(function (l) { pts += value(l); }); v += left.length ? -pts * 2 : 12; }
           if (v > bestV) { bestV = v; best = { tiles: tiles, score: score }; }
+          if (level === 'expert') {   // (the best 8 by score and leave, for the look at the reply)
+            if (top.length < 8 || v > top[top.length - 1].v) {
+              top.push({ tiles: tiles, score: score, v: v }); top.sort(function (a, b) { return b.v - a.v; }); if (top.length > 8) top.pop();
+            }
+          }
         } else {
           var key = tiles.map(function (t) { return t.i + t.ch; }).join(','); if (seen[key]) return; seen[key] = 1;
           list.push({ tiles: tiles, score: score, v: score + (bagN > 0 ? leaveValue(rackLeft(rack, tiles), bagN) * 0.5 : 0) });
           if (score > max) max = score;
         }
       }, { oneDir: empty });
-      if (level !== 'hard' && list.length) {
+      if (level === 'expert' && top.length > 1) {
+        // Expert: each of its best plays less what it opens up, as the best the next player could score in reply
+        // averaged over 3 racks drawn from the tiles it can't see (not near the end, where the leave decides)
+        var un = unseenTiles(board, rack), t0 = Date.now();
+        if (un.length >= 7) {
+          var racks = [];
+          for (var rr = 0; rr < 3; rr++) { var pool3 = un.slice(), rk = []; for (var d3 = 0; d3 < 7 && pool3.length; d3++) rk.push(pool3.splice(Math.floor(rnd() * pool3.length), 1)[0]); racks.push(rk); }
+          var base = replyBest(board, [], racks), bv2 = -1e9, pickE = null;
+          for (var ti = 0; ti < top.length; ti++) {
+            if (ti > 1 && Date.now() - t0 > 2200) break;
+            var x = top[ti], v2 = x.v - 0.7 * Math.max(0, replyBest(board, x.tiles, racks) - base * 0.6);
+            if (v2 > bv2) { bv2 = v2; pickE = x; }
+          }
+          if (pickE) { best = { tiles: pickE.tiles, score: pickE.score }; bestV = pickE.v; }
+        }
+      }
+      if (!deep && list.length) {
         // pick a play near a target: Normal goes for good plays but misses the best; Easy plays short, modest words
-        var target = level === 'easy' ? max * (0.22 + rnd() * 0.3) : max * (0.62 + rnd() * 0.28);
+        var target = level === 'easy' ? max * (0.15 + rnd() * 0.25) : max * (0.62 + rnd() * 0.28);
         var pool = list;
         if (level === 'easy') { var short = list.filter(function (m) { return m.tiles.length <= 4; }); if (short.length) pool = short; }
         pool.sort(function (a, b) { return Math.abs(a.score - target) - Math.abs(b.score - target) || b.v - a.v; });
@@ -577,12 +613,12 @@
         var pick = pool[Math.floor(rnd() * Math.min(3, pool.length))];
         best = { tiles: pick.tiles, score: pick.score }; bestV = pick.v;
       }
-      if (level === 'hard' && best && bagN >= 7 && bestV < 8 && best.score < 14) best = null;   // a poor rack: swap instead
+      if (deep && best && bagN >= 7 && bestV < 8 && best.score < 14) best = null;   // a poor rack: swap instead
       if (best) return { type: 'play', tiles: best.tiles, score: best.score };
       if (bagN >= 7) {
         // keep the best few tiles, swap the rest
         var keep = [], pool2 = rack.slice().sort(function (a, b) { return (KEEP[b] || 0) - (KEEP[a] || 0); });
-        pool2.forEach(function (l) { if (keep.length < (level === 'hard' ? 3 : 2) && (KEEP[l] || 0) > 0.5 && keep.indexOf(l) < 0) keep.push(l); });
+        pool2.forEach(function (l) { if (keep.length < (deep ? 3 : 2) && (KEEP[l] || 0) > 0.5 && keep.indexOf(l) < 0) keep.push(l); });
         var out = rack.slice(); keep.forEach(function (l) { out.splice(out.indexOf(l), 1); });
         if (!out.length) out = rack.slice();
         return { type: 'exch', tiles: out };
@@ -600,8 +636,9 @@
   var PREM_LONG = { TW: 'TRIPLE<br>WORD<br>SCORE', DW: 'DOUBLE<br>WORD<br>SCORE', TL: 'TRIPLE<br>LETTER<br>SCORE', DL: 'DOUBLE<br>LETTER<br>SCORE' };
   var STAR = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.2l2.95 6.3 6.85.8-5.08 4.68 1.36 6.77L12 17.3l-6.08 3.45 1.36-6.77L2.2 9.3l6.85-.8z"/></svg>';
   var BAG = '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M17 11c-1-2 0-4 2-4h10c2 0 3 2 2 4l-2 3h-10z" fill="#7a4a22"/><path d="M15.5 14.5h17c6 4 10 11 10 18 0 7-6 11-18.5 11S5.5 39.5 5.5 32.5c0-7 4-14 10-18z" fill="#b8844c"/><path d="M15.5 14.5h17c6 4 10 11 10 18 0 7-6 11-18.5 11S5.5 39.5 5.5 32.5c0-7 4-14 10-18z" fill="url(#bgsh)"/><path d="M14 14.5c3 1.4 6.6 2 10 2s7-.6 10-2" fill="none" stroke="#6a3e18" stroke-width="2" stroke-linecap="round"/><circle cx="33.5" cy="15.5" r="2.2" fill="#e8c46a"/><defs><radialGradient id="bgsh" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></radialGradient></defs></svg>';
-  var LEVELS = [['easy', 'Easy', 'Plays short, modest words and misses a lot.'], ['normal', 'Normal', 'Finds good words, but not always the best one.'], ['hard', 'Hard', 'Checks every possible play and keeps its best tiles for next turn. Tough to beat.']];
-  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  var LEVELS = [['easy', 'Easy', 'Plays short, modest words for small scores and misses a lot.'], ['normal', 'Normal', 'Finds good words, but not always the best one.'], ['hard', 'Hard', 'Checks every possible play and keeps its best tiles for next turn. Tough to beat.'],
+    ['expert', 'Expert', 'Also counts the tiles it can’t see, and stays away from plays that open a big score for you.']];
+  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard', expert: 'Expert' };
 
   // ── Word list: loaded once, then words are checked straight from the trie ──
   var dictP = null;

@@ -567,13 +567,17 @@
     return seen.map(function (s) { return Math.max(0, 4 - s); });
   }
   // Their skill. Normal is how they have always played; a game saved before there were levels plays Normal.
-  // (Two levels: two kinds of Hard were built and measured against Normal over 120 full games each. One held back
-  // tiles that players close to winning could want; it threw the winning tile a little less often and scored about
-  // the same. One went for one-suit hands; it won fewer than half as many hands, bigger ones, finished first more
-  // often and last more often, and placed worse on average. Neither was a clear step up.)
-  var LEVELS = [['easy', 'Easy', 'Keeps the tiles that go together and throws the rest without counting what could still come.'],
-    ['normal', 'Normal', 'Counts the tiles that can still help and keeps the hand with the most chances.']];
-  function lvName(v) { return v === 'easy' ? v : 'normal'; }
+  // (Before 2026-11-27 there were two levels: two kinds of Hard were built and measured against Normal over 120 full
+  // games each. One held back tiles that players close to winning could want; it threw the winning tile a little less
+  // often and scored about the same. One went for one-suit hands; it won fewer than half as many hands, bigger ones,
+  // finished first more often and last more often, and placed worse on average. Neither was a clear step up.)
+  // (Four levels, 2026-11-27: Hard is Normal that also plays safe once another player has shown two sets or the wall
+  // runs low and its own hand is still far off; Expert also looks two draws ahead, and plays safe sooner and better.)
+  var LEVELS = [['easy', 'Easy', 'Keeps the tiles that go together, throws the rest without counting what could still come, and now and then throws a tile it needed.'],
+    ['normal', 'Normal', 'Counts the tiles that can still help and keeps the hand with the most chances.'],
+    ['hard', 'Hard', 'Also throws tiles other players have already thrown once someone looks close to going Mahjong.'],
+    ['expert', 'Expert', 'Also looks two draws ahead, and reads who is close to going Mahjong from what they have thrown and claimed.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' || v === 'expert' ? v : 'normal'; }
   function lvOf(p) { var pl = S && S.players[p]; return lvName(pl && pl.level); }
   function bestDiscard(p) {
     var h = S.hands[p], c = counts(h), m = S.melds[p].length, left = visibleLeft(p), seen = {};
@@ -583,9 +587,16 @@
       c[k]--; var s = shanten(c, m); c[k]++;
       cand.push({ k: k, s: s }); if (s < bestS) bestS = s;
     });
+    var lvl = lvOf(p);
+    // Easy: now and then a tile that sets its hand back one step (a third of the time, while it is still far off)
+    if (lvl === 'easy' && bestS >= 1 && Math.random() < 0.33) {
+      var loose = cand.filter(function (x) { return x.s === bestS + 1; });
+      if (loose.length) { var lk = loose[Math.floor(Math.random() * loose.length)].k; for (var e0 = h.length - 1; e0 >= 0; e0--) if (kindOf(h[e0]) === lk) return h[e0]; }
+    }
+    var all = cand.slice();
     cand = cand.filter(function (x) { return x.s === bestS; });
     // Easy: any tile that doesn't set its hand back, without counting which would leave the most chances
-    if (lvOf(p) === 'easy') {
+    if (lvl === 'easy') {
       var ek = cand[Math.floor(Math.random() * cand.length)].k;
       for (var e = h.length - 1; e >= 0; e--) if (kindOf(h[e]) === ek) return h[e];
     }
@@ -599,10 +610,51 @@
       if (x.k >= 27) v += (x.k === sw || x.k === rw || x.k >= 31) ? 0.5 : 1.5;     // lone honors go early, value honors a bit later
       else if (num(x.k) === 1 || num(x.k) === 9) v += 0.8;
       v += Math.min(discarded[x.k], 3) * 0.4;                                   // tiles others threw are safer
-      v += Math.random() * 0.6;
+      v += Math.random() * (lvl === 'expert' ? 0.1 : 0.6);
       x.v = v;
     });
     cand.sort(function (a, b) { return b.v - a.v; });
+    // Expert: of the best few, the one whose next draw leaves the most chances after that (two draws ahead)
+    if (lvl === 'expert' && bestS >= 1 && cand.length > 1) {
+      cand.slice(0, 4).forEach(function (x) {
+        c[x.k]--;
+        var u2 = 0;
+        for (var t = 0; t < 34; t++) {
+          if (!left[t]) continue;
+          c[t]++;
+          if (shanten(c, m) < bestS) {   // a useful draw: then the best discard's chances
+            var top = 0;
+            for (var d2 = 0; d2 < 34; d2++) {
+              if (!c[d2]) continue; c[d2]--;
+              if (shanten(c, m) < bestS) { var w = 0; for (var t2 = 0; t2 < 34; t2++) { if (!left[t2] || (t2 === t && left[t2] < 2)) continue; c[t2]++; if (shanten(c, m) < bestS - 1) w += left[t2]; c[t2]--; } if (w > top) top = w; }
+              c[d2]++;
+            }
+            u2 += left[t] * top;
+          }
+          c[t]--;
+        }
+        c[x.k]++;
+        x.v += u2 / 40;
+      });
+      cand.sort(function (a, b) { return b.v - a.v; });
+    }
+    // Hard and Expert: once someone looks close and its own hand is still far, a tile that player has already thrown
+    if ((lvl === 'hard' || lvl === 'expert') && all.length) {
+      var wl = wallLeft(), threat = -1, tsc = 0;
+      for (var q = 0; q < 4; q++) {
+        if (q === p) continue;
+        var ms = S.melds[q].length, tsc1 = ms >= 2 ? ms : 0;
+        if (lvl === 'expert') { if (ms >= 1 && wl < 40) tsc1 += 1; if (wl < 24) tsc1 += 1; }
+        else if (wl < 20) tsc1 += 1;
+        if (tsc1 > tsc) { tsc = tsc1; threat = q; }
+      }
+      if (threat >= 0 && tsc >= 2 && bestS >= (lvl === 'expert' ? 2 : 2)) {
+        var safeK = {}; S.ponds[threat].forEach(function (id) { safeK[kindOf(id)] = 1; });
+        var safe = all.filter(function (x) { return safeK[x.k] && x.s <= bestS + 1; });
+        if (lvl === 'expert' && !safe.length) safe = all.filter(function (x) { return x.k >= 27 && left[x.k] === 0 && x.s <= bestS + 1; });   // (an honor with none left can't be waited on)
+        if (safe.length) { safe.sort(function (a, b) { return a.s - b.s; }); cand = [safe[0]]; }
+      }
+    }
     var k = cand[0].k, pick = null;
     for (var i = h.length - 1; i >= 0; i--) if (kindOf(h[i]) === k) { pick = h[i]; break; }
     return pick;

@@ -152,10 +152,10 @@
     S = null; app.innerHTML = '';
     app.classList.remove('ipl');
     Kit.setup(app, {
-      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Medium or Hard' }, { id: '2p', kind: 'local' }]),
+      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Medium, Hard or Expert' }, { id: '2p', kind: 'local' }]),
       options: [
         { id: 'stones', label: 'Stones per pit', help: 'How many stones start in each small pit. More stones make a longer game.', value: '4', choices: [['4', '4 stones'], ['6', '6 stones']] },
-        { id: 'level', robot: true, label: 'Computer skill', value: 'med', choices: [['easy', 'Easy', 'Looks only one move ahead and often picks a pit at random.'], ['med', 'Medium', 'Looks a few moves ahead.'], ['hard', 'Hard', 'Looks far ahead and plays its best move. Tough to beat.']], when: function (m) { return m === 'cpu'; } }
+        { id: 'level', robot: true, label: 'Computer skill', value: 'med', choices: [['easy', 'Easy', 'Picks a pit at random more often than not, and only sometimes grabs a capture.'], ['med', 'Medium', 'Looks a few moves ahead.'], ['hard', 'Hard', 'Looks far ahead and plays a strong move. Tough to beat.'], ['expert', 'Expert', 'Looks as far ahead as it can in two seconds and never makes a careless move.']], when: function (m) { return m === 'cpu'; } }
       ],
       players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       onStart: function (cfg) {
@@ -203,10 +203,13 @@
   function legal(b, pl) { var o = []; for (var i = 0; i < 6; i++) { var p = pl ? i + 7 : i; if (b[p]) o.push(p); } return o; }
 
   // ── Computer: alpha-beta search (extra turns keep the same side to move) ──
-  function evalB(b, me) { var s = b[storeOf(me)] - b[storeOf(1 - me)], side = 0; for (var i = 0; i < 6; i++) side += b[me ? i + 7 : i] - b[me ? i : i + 7]; return s + side * 0.25; }
+  var SIDE_W = 0.25;
+  function evalB(b, me) { var s = b[storeOf(me)] - b[storeOf(1 - me)], side = 0; for (var i = 0; i < 6; i++) side += b[me ? i + 7 : i] - b[me ? i : i + 7]; return s + side * SIDE_W; }
+  var DEADLINE = 0, TIMEUP = false;
   function search(b, pl, me, depth, a, bt) {
     var moves = legal(b, pl);
-    if (depth === 0 || !moves.length) return evalB(b, me);
+    if (DEADLINE && Date.now() > DEADLINE) TIMEUP = true;
+    if (depth === 0 || !moves.length || TIMEUP) return evalB(b, me);
     var maxing = pl === me, best = maxing ? -Infinity : Infinity;
     for (var i = 0; i < moves.length; i++) {
       var r = simulate(b, pl, moves[i]), v;
@@ -217,16 +220,34 @@
     }
     return best;
   }
-  function cpuPick() {
-    var b = counts(), me = S.cur, moves = legal(b, me);
-    if (S.level === 'easy' && Math.random() < 0.4) return moves[Math.floor(Math.random() * moves.length)];
-    var depth = S.level === 'easy' ? 1 : S.level === 'med' ? 4 : 9, best = moves[0], bv = -Infinity;
+  // Easy plays at random 65% of the time and otherwise looks one move ahead; Medium 4 deep, Hard 9 with a little noise;
+  // Expert counts the stores alone, deepens from 9 until 2 s are up (to 22 deep) and keeps the deepest search it
+  // finished, with no noise.
+  function rootPick(b, me, moves, depth, noise) {
+    var best = moves[0], bv = -Infinity;
     moves.forEach(function (m) {
       var r = simulate(b, me, m), v = r.end ? (r.b[storeOf(me)] - r.b[storeOf(1 - me)]) * 100 : search(r.b, r.extra ? me : 1 - me, me, depth - 1, -Infinity, Infinity);
-      v += Math.random() * (S.level === 'hard' ? 0.05 : 0.6);
+      v += Math.random() * noise;
       if (v > bv) { bv = v; best = m; }
     });
     return best;
+  }
+  function cpuPick() {
+    var b = counts(), me = S.cur, moves = legal(b, me);
+    if (S.level === 'easy' && Math.random() < 0.65) return moves[Math.floor(Math.random() * moves.length)];
+    if (S.level === 'expert') {
+      SIDE_W = 0;   // (counting the stores alone, measured better than counting the stones on each side too)
+      var best = rootPick(b, me, moves, 9, 0), t0 = Date.now();
+      DEADLINE = t0 + 2000;
+      for (var d = 10; d <= 22 && Date.now() - t0 < 700; d++) {
+        TIMEUP = false; var m = rootPick(b, me, moves, d, 0);
+        if (TIMEUP) break; best = m;
+      }
+      DEADLINE = 0; TIMEUP = false; SIDE_W = 0.25;
+      return best;
+    }
+    var depth = S.level === 'easy' ? 1 : S.level === 'med' ? 4 : 9;
+    return rootPick(b, me, moves, depth, S.level === 'hard' ? 0.05 : 0.6);
   }
   function maybeCpu() {
     if (NET || !S || S.over || !S.players[S.cur].cpu || HOLD) return;
@@ -360,7 +381,7 @@
       Kit.moment({ title: 'A comeback', line: (P[w].name === 'You' ? 'You were' : P[w].name + ' was') + ' ' + back + ' stones behind and still won.', icon: 'trophy', color: P[w].color });
       Kit.sfx('sparkle'); Kit.haptic('success');
     }
-    hl.push(S.per + ' stones per pit' + (S.mode === 'cpu' ? ', ' + ({ easy: 'Easy', med: 'Medium', hard: 'Hard' }[S.level]) + ' computer' : ''));
+    hl.push(S.per + ' stones per pit' + (S.mode === 'cpu' ? ', ' + ({ easy: 'Easy', med: 'Medium', hard: 'Hard', expert: 'Expert' }[S.level]) + ' computer' : ''));
     Kit.record(KEY, {
       started: S.started, mode: S.mode === 'cpu' ? 'vs Computer' : 'Two players',
       players: P.map(function (p, i) { return { name: p.name, score: i ? s1 : s0, cpu: p.cpu }; }),

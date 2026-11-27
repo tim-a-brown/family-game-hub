@@ -256,8 +256,11 @@
   //   Hard plans the longest train it can build from its hand on its own train and keeps those tiles for it; it plays
   //   the tiles that aren't part of that plan on the Mexican Train and the open trains first, heaviest first, plays a
   //   double only when it holds a tile to follow it, and dumps its heaviest tiles anywhere once someone is about to go out.
+  //   Expert takes Hard's few best plays and plays each one out to the end of the round many times, the tiles it hasn't
+  //   seen dealt out afresh each time (the other hands and the boneyard), and keeps the play that leaves it the fewest dots
+  //   against the others. It sees only its own hand and the table.
   // ═════════════════════════════════════════════════════════════════════════
-  function lvOf(S, p) { var l = S.players[p].level; return l === 'easy' || l === 'hard' ? l : 'normal'; }
+  function lvOf(S, p) { var l = S.players[p].level; return l === 'easy' || l === 'hard' || l === 'expert' ? l : 'normal'; }
   // the longest chain from value v through hand h (doubles count as tiles): [tile, ...] in order of play
   function chain(h, v, budget) {
     var best = [], bestDots = -1, used = [], path = [], calls = 0;
@@ -290,14 +293,15 @@
       var m = easyPick(S, p, ms);
       return { k: 'play', id: m.id, tr: m.tr };
     }
+    if (lv === 'expert') return expertMove(S, p, ms);
     var c = lv === 'hard' ? hardPick(S, p, ms) : normalPick(S, p, ms);
     return c ? { k: 'play', id: c.id, tr: c.tr } : { k: 'done' };
   }
   // Easy: any tile that fits, but a little more than half the time it looks first: its own train when its
   // marker is out, a double it holds a tile to follow, a heavy tile to get rid of.
-  // (sense: how often it looks; heavy and noise weigh the look. Measured with scripts/mexicantrain-sim.js: about 1 match
-  // in 5 won against Normal head to head, 1 in 16 against Hard.)
-  var EZ = { stop: 0.4, sense: 0.6, heavy: 0.3, noise: 10 };
+  // (sense: how often it looks; heavy and noise weigh the look; stop: how often it ends a first-turn run early.
+  // Measured with scripts/mexicantrain-sim.js: see the four skills' results there.)
+  var EZ = { stop: 0.5, sense: 0.45, heavy: 0.3, noise: 10 };
   function easyPick(S, p, ms) {
     if (Math.random() >= EZ.sense) return ms[Math.floor(Math.random() * ms.length)];
     var h = S.hands[p], own = S.trains[p], best = null, bs = -1e9;
@@ -364,6 +368,49 @@
     return best;
   }
 
+  // Expert (see above). EXP: the most deals for each play, the fewest, and the time for the whole choice.
+  var EXP = { deals: 30, min: 12, ms: 1500, cand: 3, roll: 'hard', margin: 8 };
+  function expertMove(S, p, ms) {
+    var cands = [], seenC = {}, i;
+    function add(m) { if (!m) return; var k = m.k === 'done' ? 'done' : m.id + '@' + m.tr; if (seenC[k]) return; seenC[k] = 1; cands.push(m.k ? m : { k: 'play', id: m.id, tr: m.tr }); }
+    // Hard's choice first, then the others by Hard's own order of preference (its noise taken out by asking a few times)
+    add(hardPick(S, p, ms) || (canDone(S) ? { k: 'done' } : null));
+    for (i = 0; i < 6 && cands.length < EXP.cand; i++) add(normalPick(S, p, ms));
+    ms.forEach(function (m) { if (cands.length < EXP.cand) add(m); });
+    if (canDone(S)) add({ k: 'done' });
+    if (cands.length < 2) return cands[0] || { k: 'done' };
+    var known = {}, h = S.hands[p];
+    h.forEach(function (t) { known[tid(t)] = 1; });
+    S.trains.forEach(function (T) { T.t.forEach(function (t) { known[tid(t)] = 1; }); });
+    known[tid([S.eng, S.eng])] = 1;
+    var unseen = fullSet().filter(function (t) { return !known[tid(t)]; });
+    var tot = cands.map(function () { return 0; }), cnt = 0, t0 = Date.now();
+    var base = clone(S);
+    base.players.forEach(function (P) { P.level = EXP.roll; });
+    base.hl = { outs: {}, zero: {}, blank: [], long: null, run: null, covers: {}, mex: null, first1: [], bigLoss: null };
+    base.pl = ''; base.prev = null;
+    for (var d = 0; d < EXP.deals && (d < EXP.min || Date.now() - t0 < EXP.ms); d++) {
+      var pool = unseen.slice();
+      for (var a = pool.length - 1; a > 0; a--) { var b = Math.floor(Math.random() * (a + 1)), x = pool[a]; pool[a] = pool[b]; pool[b] = x; }
+      var deal0 = clone(base), q;
+      for (q = 0; q < S.n; q++) if (q !== p) deal0.hands[q] = pool.splice(0, S.hands[q].length);
+      deal0.bone = pool;
+      for (i = 0; i < cands.length; i++) {
+        var X = i === cands.length - 1 ? deal0 : clone(deal0), r0 = X.rr.length;
+        if (!apply(X, p, cands[i])) { tot[i] += 1e6; continue; }
+        for (var g = 0; g < 3000 && X.rr.length === r0 && X.phase !== 'over'; g++) { var c = X.cur; if (!apply(X, c, botMove(X, c))) break; }
+        var row = X.rr[r0], mine, rest = 0;
+        if (!row) { tot[i] += handDots(X.hands[p]); continue; }
+        mine = row[p]; for (q = 0; q < S.n; q++) if (q !== p) rest += row[q];
+        tot[i] += mine - rest / Math.max(1, S.n - 1);
+      }
+      cnt++;
+    }
+    // (Hard's own choice stands unless another play comes out clearly better on average)
+    var best = 0; for (i = 1; i < cands.length; i++) if (tot[i] < tot[best] - (best === 0 ? EXP.margin * cnt : 1e-9)) best = i;
+    return cands[best];
+  }
+
   // ═════════════════════════════════════════════════════════════════════════
   // History: what the record keeps (small: no arrays inside arrays)
   // ═════════════════════════════════════════════════════════════════════════
@@ -386,7 +433,7 @@
     TOP: TOP, NUMW: NUMW, newGame: newGame, deal: deal, legal: legal, targets: targets, endOf: endOf, canDraw: canDraw, canPass: canPass,
     canDone: canDone, apply: apply, botMove: botMove, chain: chain, standings: standings, winners: winners, detail: detail,
     tid: tid, fromId: fromId, isDbl: isDbl, dots: dots, handDots: handDots, tname: tname, perHand: perHand, opts: opts, clone: clone, mex: mex,
-    sortHand: sortHand, fullSet: fullSet
+    sortHand: sortHand, fullSet: fullSet, EXP: EXP
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else root.MTCore = API;

@@ -644,14 +644,15 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
         { id: 'speed', label: 'Computer speed', value: 'normal', when: function (m) { return m === 'cpu'; }, choices: [['normal', 'Easy to follow'], ['fast', 'Fast']] },
         // (how each computer player plays: games/monopoly/engine.js, "The computer players")
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [
-          ['easy', 'Easy', 'Slow to build houses, and never offers a trade.'],
+          ['easy', 'Easy', 'Very slow to build houses, and never offers a trade.'],
           ['normal', 'Normal', 'Builds when it has cash to spare and trades for the last lot of a group.'],
-          ['hard', 'Hard', 'Builds fast, mortgaging its spare property to get three houses on every lot.']] }
+          ['hard', 'Hard', 'Builds fast, mortgaging its spare property to get three houses on every lot.'],
+          ['expert', 'Expert', 'Builds as fast as Hard, bids steadily, and offers the trades that finish its groups even when they help you too.']] }
       ],
       onStart: function (cfg) {
         var o = cfg.options;
         if (cfg.mode === 'cpu') { speed = o.speed === 'fast' ? 'fast' : 'normal'; lsSet('mono_speed', speed); }
-        var opts = { len: o.len, noAuction: o.auction === 'off', fp: o.fp === 'on', go400: o.go400 === 'on', hints: o.hints !== 'off', level: o.level === 'easy' || o.level === 'hard' ? o.level : 'normal' };
+        var opts = { len: o.len, noAuction: o.auction === 'off', fp: o.fp === 'on', go400: o.go400 === 'on', hints: o.hints !== 'off', level: o.level === 'easy' || o.level === 'hard' || o.level === 'expert' ? o.level : 'normal' };
         if (cfg.mode === 'online') {
           var nm = cfg.players[0] && cfg.players[0].name, me = lsGet(NETME, {}) || {};
           opts.bots = Math.max(0, Math.min(3, +o.bots || 0)); me.opts = opts; lsSet(NETME, me);
