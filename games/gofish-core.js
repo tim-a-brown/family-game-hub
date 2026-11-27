@@ -237,7 +237,7 @@
     if (st.phase === 'fish') return botFish(st);
     var L = lvOf(st, p), mine = ranksIn(st.hands[p]), tg = targets(st, p);
     if (!mine.length || !tg.length) return null;
-    var c = L === 'hard' ? hardAsk(st, p, mine, tg) : L === 'expert' ? hardAsk(st, p, mine, tg, st.n === 2 ? C.xw : C.xwn) : L === 'easy' ? easyAsk(st, p, mine, tg) : normalAsk(st, p, mine, tg);
+    var c = L === 'hard' ? hardAsk(st, p, mine, tg) : L === 'expert' ? hardAsk(st, p, mine, tg, isPairs(st) ? C.xwp : st.n === 2 ? C.xw : C.xwn) : L === 'easy' ? easyAsk(st, p, mine, tg) : normalAsk(st, p, mine, tg);
     return { k: 'ask', to: c.to, r: c.r };
   }
   // Easy forgets: a rank it holds, anyone at all, and it may well ask again for what it was just told to fish for. Now
@@ -290,8 +290,8 @@
   // first; otherwise it weighs how likely each player is to hold each rank from the cards it hasn't seen.
   // Expert (W, C.xw) weighs the same odds and also what an ask gives away: asking for a rank shows the table you hold
   // it, so it would rather ask for a rank it has already shown, or one it holds three of, than show a lone card the
-  // others could then ask it for.
-  C.xw = { shown: 0.12, lone: 0.1, three: 0.3 }, C.xwn = { shown: 0.1, lone: 0, three: 0.5 };   // (two players, more: measured with robot games)
+  // others could then ask it for. (With pairs every card in a hand is a lone one, and Expert plays the odds as Hard does.)
+  C.xw = { shown: 0.12, lone: 0.1, three: 0.3 }, C.xwn = { shown: 0.1, lone: 0, three: 0.5 }, C.xwp = null;   // (two players, more, pairs: measured with robot games)
   function hardAsk(st, p, mine, tg, W) {
     var best = null, bv = -1;
     var unknown = st.pond.length, uq = {};
