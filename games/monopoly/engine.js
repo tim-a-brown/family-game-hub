@@ -812,14 +812,20 @@
   }
 
   // ═══ The computer players ════════════════════════════════════════════════
-  // Their skill: 'easy', 'normal' (how they have always played; a game saved before there were levels) or 'hard'.
+  // Their skill: 'easy', 'normal' (how they have always played; a game saved before there were levels), 'hard' or 'expert'.
   // A player's own level comes first, then the game's (opts.level, which is what an online table's robots play at).
   //   Easy is slow to build: it wants three times the usual cash in hand before it puts up a house, and it
   //   never proposes a trade. (Turning property down and bidding low were tried for Easy and dropped: against
   //   one other player a robot that lets property go to auction wins more, not less.)
   //   Hard builds like a landlord: it keeps a fifth of the usual cushion when it builds, mortgages property
   //   outside its complete groups to get three houses on each lot, and sits in jail once rents are dangerous.
-  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+  //   Expert builds as Hard does, bids steadily in an auction, and offers the trades that finish its groups even when they
+  //   help the other side too, so more of them are taken (XP; robot games: Expert won 51.7% of 2,500 two-player games
+  //   against Hard and 51.7% of 600 four-player games; Hard won 59% against Normal, Normal 68% against Easy). Monopoly's
+  //   dice decide most games: settings that refused trades, built faster or bid higher all measured worse than Hard.
+  //   (Easy, since 2026-11-27, waits for five times the usual cash in hand before it builds.)
+  var XP = { res: 0.2, jail: 60, bid: 0.85, tr: 0.5, buy: 1 };   // (Expert's settings, measured with robot games)
+  function lvName(v) { return v === 'easy' || v === 'hard' || v === 'expert' ? v : 'normal'; }
   function lv(S, p) { return lvName((S.players[p] && S.players[p].level) || (S.opts && S.opts.level)); }
   // A position's value to player p: cash, property (complete groups are worth much more), less the danger of
   // the other players' complete groups. Used for buying, bidding and trading.
@@ -879,11 +885,12 @@
     var left = me.cash - s.p, res = reserve(S, p) * (unownedLeft(S) > 14 ? 0.35 : 0.8);
     var want = wantFor(S, p, sq);
     if (want > s.p * 1.4 && left >= 20) return true;   // completes a group or blocks one
+    if (lv(S, p) === 'expert') res *= XP.buy;
     return left >= res;
   }
   function botMaxBid(S, p, sq) {
     var me = S.players[p], w = wantFor(S, p, sq), cap = me.cash - reserve(S, p) * 0.5;
-    var mx = Math.min(w * (0.85 + (p % 3) * 0.05), cap);
+    var mx = Math.min(w * (lv(S, p) === 'expert' ? XP.bid : 0.85 + (p % 3) * 0.05), cap);
     if (w > SQ[sq].p * 1.4) mx = Math.min(w, me.cash - 20);
     return Math.max(0, Math.floor(mx));
   }
@@ -906,7 +913,7 @@
   // building and paying off mortgages when there's money to spare
   function botManage(S, p) {
     var me = S.players[p], res = reserve(S, p), L = lv(S, p);
-    if (L === 'easy') res *= 3; else if (L === 'hard') res *= 0.2;
+    if (L === 'easy') res *= 5; else if (L === 'hard') res *= 0.2; else if (L === 'expert') res *= XP.res;
     // pay off mortgages on complete groups first (so they can be built on)
     var best = null;
     for (var g = 0; g < 8; g++) {
@@ -920,7 +927,7 @@
       });
     }
     if (best && me.cash - SQ[best.sq].h >= res) return { t: 'build', p: p, sq: best.sq };
-    if (best && L === 'hard' && S.hs[best.sq] < 3) {
+    if (best && (L === 'hard' || L === 'expert') && S.hs[best.sq] < 3) {
       // Hard: three houses a lot is where the rent jumps, so property outside its complete groups is mortgaged to get there
       var loose = []; S.own.forEach(function (o, i) { if (o === p && !S.mort[i] && !(SQ[i].k === 'st' && ownsGroup(S, p, SQ[i].g)) && !canMort(S, p, i)) loose.push(i); });
       loose.sort(function (a, b) { return SQ[a].m - SQ[b].m; });
@@ -967,7 +974,8 @@
         if (r.mine < 80 || r.theirs <= 25) return;
         var key = p + '>' + q + ':' + JSON.stringify([r.T.give, r.T.get]);
         if ((bm.no || []).indexOf(key) >= 0) return;
-        if (!best || r.mine - r.theirs > best.score) best = { T: r.T, score: r.mine - r.theirs };
+        var sc = r.mine - (lv(S, p) === 'expert' ? XP.tr : 1) * r.theirs;
+        if (!best || sc > best.score) best = { T: r.T, score: sc };
       });
     }
     if (!best) return null;
@@ -986,7 +994,7 @@
         var mg = botManage(S, p); if (mg) return mg;
         var tr = botTrade(S, p); if (tr) return tr;
         if (me.jail) {
-          var early = unownedLeft(S) > 8, dng = danger(S, p) > (lv(S, p) === 'hard' ? 60 : 300);
+          var early = unownedLeft(S) > 8, dng = danger(S, p) > (lv(S, p) === 'expert' ? XP.jail : lv(S, p) === 'hard' ? 60 : 300);
           if (!dng || early) {
             if (me.cards.length) return { t: 'useCard', p: p };
             if (me.cash >= 50 + reserve(S, p) * 0.5 && early) return { t: 'payJail', p: p };
@@ -1027,7 +1035,7 @@
     newGame: newGame, act: act, needs: needs, bot: bot, rent: rent, worth: worth, liquid: liquid, unmortCost: unmortCost, interest: interest,
     canBuild: canBuild, canSell: canSell, canSellDown: canSellDown, planBuild: planBuild, canMort: canMort, tradeErr: tradeErr, tradeText: tradeText, sideText: sideText, ownsGroup: ownsGroup,
     countOwned: countOwned, houses: houses, evalP: evalP, money: money, active: active, richest: richest, limitHit: limitHit,
-    setRandom: function (f) { rand = f || Math.random; }, forceDice: function (list) { forced = forced.concat(list); }, clearDice: function () { forced = []; }
+    XP: XP, setRandom: function (f) { rand = f || Math.random; }, forceDice: function (list) { forced = forced.concat(list); }, clearDice: function () { forced = []; }
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.MonoEngine = api;
 })(this);

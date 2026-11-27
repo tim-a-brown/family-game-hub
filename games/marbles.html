@@ -573,10 +573,11 @@ html[data-o=land] .tray-in{flex-wrap:wrap;}
     return d;
   }
   // The computer's skill. Normal is how it has always played; a game saved before there were levels plays Normal.
-  var LEVELS = [['easy', 'Easy', 'Makes any move it is allowed to about half the time.'],
+  var LEVELS = [['easy', 'Easy', 'Makes any move it is allowed to most of the time, and throws away any card.'],
     ['normal', 'Normal', 'Sends rivals home, keeps its marbles out of danger and heads for home.'],
-    ['hard', 'Hard', 'Also thinks about what its next card or roll could do after this one.']];
-  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+    ['hard', 'Hard', 'Also thinks about what its next card or roll could do after this one.'],
+    ['expert', 'Expert', 'Also works out what the next player could roll or play in reply, and keeps its marbles out of reach.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' || v === 'expert' ? v : 'normal'; }
   function lvNow() { return lvName(S.players[S.cur].level); }
   var HARD_NEXT = 0.5;
   function cpuScore(m, plain) {
@@ -600,14 +601,33 @@ html[data-o=land] .tray-in{flex-wrap:wrap;}
   // the move the computer makes with the die it rolled (null: none)
   function cpuPickDice() {
     var ms = legal(); if (!ms.length) return null;
-    var best = ms[0], bs = -1e9, lv = lvNow();
-    if (lv === 'easy' && Math.random() < 0.5) return ms[Math.floor(Math.random() * ms.length)];
+    var best = ms[0], bs = -1e9, lv = lvNow(), deep = lv === 'hard' || lv === 'expert';
+    if (lv === 'easy' && Math.random() < 0.7) return ms[Math.floor(Math.random() * ms.length)];
     ms.forEach(function (m) {
-      var v = cpuScore(m, lv === 'hard');
-      if (lv === 'hard') v += HARD_NEXT * nextRoll(m);
+      var v = cpuScore(m, deep);
+      if (deep) v += HARD_NEXT * nextRoll(m);
+      if (lv === 'expert') v -= 0.6 * replyRisk(m);
       if (v > bs) { bs = v; best = m; }
     });
     return best;
+  }
+  // Expert: after move m, what the next player's roll could do to this side's marbles, averaged over the six faces
+  // (the next player picks the way Normal would; a 6 rolled now means another turn, so nothing to fear yet)
+  function replyRisk(m) {
+    if (S.die === 6 || S.players.length < 2) return 0;
+    var owner = S.players[m.o], was = owner.m[m.mi], victim = m.cap ? S.players[m.cap.pi] : null, vwas = victim ? victim.m[m.cap.mi] : 0, tot = 0, n = N();
+    owner.m[m.mi] = m.to; if (victim) victim.m[m.cap.mi] = -1;
+    var np = (S.cur + 1) % S.players.length, cur = S.cur;
+    if (!friendly(np, cur)) for (var d = 1; d <= 6; d++) {
+      var top = -1e9, pick = null;
+      S.cur = np;
+      gen(mover(np), d).forEach(function (m2) { var v = cpuScore(m2, true); if (v > top) { top = v; pick = m2; } });
+      S.cur = cur;
+      if (pick && pick.cap && friendly(pick.cap.pi, cur)) { var vp = S.players[pick.cap.pi].m[pick.cap.mi]; tot += 110 + (vp === CEN ? n / 2 : vp) * 1.3; }
+    }
+    S.cur = cur;
+    owner.m[m.mi] = was; if (victim) victim.m[m.cap.mi] = vwas;
+    return tot / 6;
   }
   // Hard: what the next roll could do after move m, the best move's worth averaged over the six faces
   function nextRoll(m) {
@@ -996,19 +1016,20 @@ html[data-o=land] .tray-in{flex-wrap:wrap;}
       if (lv === 'easy' && h.length) h = [h[Math.floor(Math.random() * h.length)]];   // (Easy throws away any card)
       return h.length ? { disc: h[0] } : null;
     }
-    if (lv === 'easy' && Math.random() < 0.5) return { mv: plays[Math.floor(Math.random() * plays.length)] };
+    if (lv === 'easy' && Math.random() < 0.7) return { mv: plays[Math.floor(Math.random() * plays.length)] };
+    var deep = lv === 'hard' || lv === 'expert';
     var base = evalPl(S.players, S.cur), best = null, bs = -1e9, list = [];
     plays.forEach(function (mv) {
       var pl = copyPl(S.players);
       mv.steps.forEach(function (st) { applyStep(pl, st); });
-      var after = evalPl(pl, S.cur), v = after - base - cardCost(mv.c, mv, S.players) + (lv === 'hard' ? 0 : Math.random() * 3);
+      var after = evalPl(pl, S.cur), v = after - base - cardCost(mv.c, mv, S.players) + (deep ? 0 : Math.random() * 3);
       list.push({ mv: mv, pl: pl, after: after, v: v });
       if (v > bs) { bs = v; best = mv; }
     });
-    if (lv === 'hard') {
-      // Hard: for its better plays, what the best of its other cards could then do (as if nothing else moved)
+    if (deep) {
+      // Hard: for its better plays (Expert: more of them, and the rest of its hand counts for more), what the best of its other cards could then do (as if nothing else moved)
       var mine = hand(); bs = -1e9;
-      list.sort(function (a, b) { return b.v - a.v; }).slice(0, 12).forEach(function (x) {
+      list.sort(function (a, b) { return b.v - a.v; }).slice(0, lv === 'expert' ? 24 : 12).forEach(function (x) {
         var next = 0;
         mine.forEach(function (c2) {
           if (c2 === x.mv.c) return;
@@ -1017,7 +1038,7 @@ html[data-o=land] .tray-in{flex-wrap:wrap;}
             var g = evalPl(pl2, S.cur) - x.after - cardCost(c2, m2, x.pl); if (g > next) next = g;
           });
         });
-        var v = x.v + HARD_NEXT * next;
+        var v = x.v + (lv === 'expert' ? 0.75 : HARD_NEXT) * next;
         if (v > bs) { bs = v; best = x.mv; }
       });
     }

@@ -184,7 +184,7 @@
   var SAVE = 'battleship_state', KEY = 'battleship', N = 10;
   var SHIPS = [{ n: 'Carrier', s: 5 }, { n: 'Battleship', s: 4 }, { n: 'Cruiser', s: 3 }, { n: 'Submarine', s: 3 }, { n: 'Destroyer', s: 2 }];
   var ROWS = 'ABCDEFGHIJ';
-  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard', expert: 'Expert' };
 
   Kit.init({
     id: 'battleship',
@@ -232,7 +232,7 @@
     app.classList.remove('bsx', 'bs-land', 'bs-low', 'bs-short', 'bs-place', 'bs-battle');
     Kit.setup(app, {
       modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: '2p', kind: 'local', desc: 'Take turns on this phone, no peeking' }]),
-      options: [{ id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Fires mostly at random and only sometimes follows up a hit.'], ['normal', 'Normal', 'Keeps firing around a hit until the ship sinks.'], ['hard', 'Hard', 'Works out where ships are most likely hiding and aims there.']], when: function (m) { return m === 'cpu'; } }],
+      options: [{ id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Fires mostly at random and often forgets to follow up a hit.'], ['normal', 'Normal', 'Keeps firing around a hit until the ship sinks.'], ['hard', 'Hard', 'Works out where ships are most likely hiding and aims there most of the time.'], ['expert', 'Expert', 'Works out where ships are most likely hiding on every shot, and never wastes one.']], when: function (m) { return m === 'cpu'; } }],
       players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       start: 'Place your ships',
       onStart: function (cfg) {
@@ -538,6 +538,7 @@
       }, 380);
     }, 650 + Math.random() * 300);
   }
+  var CW = 30, PF = 0.85;
   function aiPick() {
     var sh = S.shots[1], lv = S.level, i, free = [];
     for (i = 0; i < 100; i++) if (!sh[i]) free.push(i);
@@ -549,10 +550,12 @@
     function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
     var nbFree = []; open.forEach(function (x) { nb(x).forEach(function (y) { if (!sh[y] && nbFree.indexOf(y) < 0) nbFree.push(y); }); });
     if (lv === 'easy') {
-      if (nbFree.length && Math.random() < 0.65) return pick(nbFree);
+      if (nbFree.length && Math.random() < 0.4) return pick(nbFree);
       return pick(free);
     }
-    if (lv === 'hard') {
+    // Expert weighs every way each ship still afloat could lie, on every shot; Hard does the same except that about one
+    // hunting shot in three it fires on Normal's checkerboard instead (Expert is the best this aim can do, so Hard slips).
+    if (lv === 'expert' || (lv === 'hard' && (open.length || Math.random() >= 0.35))) {
       var dens = []; for (i = 0; i < 100; i++) dens.push(0);
       left.forEach(function (L) {
         for (var r = 0; r < N; r++) for (var c = 0; c < N; c++) for (var hh = 0; hh < 2; hh++) {
@@ -565,14 +568,14 @@
             cells.push(x);
           }
           if (bad) continue;
-          var w = open.length ? (cover ? Math.pow(30, cover) : 1) : 1;
+          var w = open.length ? (cover ? Math.pow(CW, cover) : 1) : 1;
           cells.forEach(function (x) { if (!sh[x]) dens[x] += w; });
         }
       });
       var best = -1, picks = [];
       free.forEach(function (x) {
         var v = dens[x];
-        if (!open.length && ((Math.floor(x / N) + x % N) % 2)) v *= 0.85; // checkerboard parity
+        if (!open.length && ((Math.floor(x / N) + x % N) % 2)) v *= PF; // checkerboard parity
         if (v > best + 1e-9) { best = v; picks = [x]; } else if (Math.abs(v - best) < 1e-9) picks.push(x);
       });
       return picks.length ? pick(picks) : pick(free);

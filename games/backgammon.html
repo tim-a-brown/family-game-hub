@@ -193,7 +193,7 @@
         { id: 'target', label: 'Match length', help: 'A win scores 1 point, a gammon 2 and a backgammon 3 (times the cube); first to this many points wins.', value: '1', choices: [['1', 'One game'], ['3', 'To 3'], ['5', 'To 5'], ['7', 'To 7']] },
         { id: 'cube', label: 'Doubling cube', value: 'on', choices: [['on', 'On', 'Before rolling, you can double the stakes; the other player must take it or give up the game.'], ['off', 'Off', 'No doubling: each game is worth its normal points.']] },
         { id: 'hints', label: 'Hints', value: 'on', choices: [['on', 'On', 'Each player\'s plate shows their pip count, how far their checkers still have to go to bear off, so you can see who is ahead in the race.'], ['off', 'Off', 'No pip counts on the plates: count the race yourself.']] },
-        { id: 'level', robot: true, label: 'Computer skill', value: 'med', choices: [['easy', 'Easy', 'Makes plenty of loose moves. Good for learning.'], ['med', 'Medium', 'Plays solid moves with the odd slip.'], ['hard', 'Hard', 'Picks the best move it can find almost every time.']], when: function (m) { return m === 'cpu'; } }
+        { id: 'level', robot: true, label: 'Computer skill', value: 'med', choices: [['easy', 'Easy', 'Makes plenty of loose moves and leaves checkers open. Good for learning.'], ['med', 'Medium', 'Plays solid moves with the odd slip.'], ['hard', 'Hard', 'Picks the best move it can find almost every time.'], ['expert', 'Expert', 'Also works out every roll you could answer with, and plays the move that leaves you the least.']], when: function (m) { return m === 'cpu'; } }
       ],
       players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       onStart: function (cfg) {
@@ -380,12 +380,41 @@
   function bestPlay(s) {
     var plays = allPlays(S.pos, s, S.left);
     if (!plays.length) return null;
-    var noise = S.level === 'easy' ? 9 : S.level === 'med' ? 2.2 : 0.3;
+    if (S.level === 'expert') return expertPlay(plays, s);
+    var noise = S.level === 'easy' ? 15 : S.level === 'med' ? 2.2 : 0.3;
     var best = null, bv = -Infinity;
     plays.forEach(function (pl) {
       var v = evaluate(pl.pos, s) + Math.random() * noise;
       if (v > bv) { bv = v; best = pl; }
     });
+    return best;
+  }
+  // Expert: the best 8 plays by the evaluation, each tried against all 21 rolls the other side could answer with
+  // (doubles once, the rest twice), the other side playing its best reply; the play that leaves the least wins.
+  var ROLLS21 = (function () { var r = []; for (var a = 1; a <= 6; a++) for (var b = a; b <= 6; b++) r.push([a, b, a === b ? 1 : 2]); return r; })();
+  function expertPlay(plays, s) {
+    var o = 1 - s, t0 = Date.now();
+    var cand = plays.map(function (pl) { return { pl: pl, v: evaluate(pl.pos, s) }; }).sort(function (a, b) { return b.v - a.v; });
+    if (cand.length === 1) return cand[0].pl;
+    cand = cand.slice(0, 8);
+    var best = cand[0].pl, bv = -Infinity;
+    for (var c = 0; c < cand.length; c++) {
+      if (c > 1 && Date.now() - t0 > 1800) break;
+      var q = cand[c].pl.pos, tot = 0;
+      if (q.off[s] >= 15) return cand[c].pl;
+      for (var r = 0; r < ROLLS21.length; r++) {
+        var R = ROLLS21[r], dice = R[0] === R[1] ? [R[0], R[0], R[0], R[0]] : [R[0], R[1]];
+        var replies = allPlays(q, o, dice), worst = Infinity;
+        if (!replies.length) worst = evaluate(q, s);
+        else for (var k = 0; k < replies.length; k++) {
+          var rq = replies[k].pos, v = rq.off[o] >= 15 ? -1000 : -evaluate(rq, o);
+          if (v < worst) worst = v;
+        }
+        tot += worst * R[2];
+      }
+      var val = tot / 36;
+      if (val > bv) { bv = val; best = cand[c].pl; }
+    }
     return best;
   }
   // Rough chance the side to roll wins, for cube decisions

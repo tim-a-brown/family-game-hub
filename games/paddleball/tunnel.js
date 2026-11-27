@@ -26,13 +26,14 @@ const PU = 0.26, PV = 0.26;             // each paddle's half size, as a share o
 const NEED = 3;                         // points past the computer to clear a level
 const LIVES = 3, MAX_LIVES = 5;
 const SPIN_DECAY = 0.32, CURVE = 0.6, BIG_CURVE = 1.5;
-const MUL = { easy: 1, normal: 2, hard: 3 };
+const MUL = { easy: 1, normal: 2, hard: 3, expert: 4 };
 // The computer's skill: how fast it moves (u a second), how quickly it looks again, how far off its first guess is,
 // how much of the ball's curve it reads, how it aims, and how much curve it puts on. Never anything it couldn't see.
 const DIFF = {
-  easy:   { name: 'Easy',   speed: 1.1,  accel: 6,  react: 0.3,  err: 0.4,  settle: 0.95, read: 0,    aim: 0,    spin: 0,    spinP: 0 },
+  easy:   { name: 'Easy',   speed: 0.95, accel: 5,  react: 0.36, err: 0.5,  settle: 0.96, read: 0,    aim: 0,    spin: 0,    spinP: 0 },
   normal: { name: 'Normal', speed: 1.35, accel: 9,  react: 0.22, err: 0.32, settle: 0.93, read: 0.2,  aim: 0.35, spin: 0.8,  spinP: 0.3 },
-  hard:   { name: 'Hard',   speed: 1.6,  accel: 12, react: 0.17, err: 0.3,  settle: 0.92, read: 0.4,  aim: 0.6,  spin: 1.1,  spinP: 0.5 }
+  hard:   { name: 'Hard',   speed: 1.6,  accel: 12, react: 0.17, err: 0.3,  settle: 0.92, read: 0.4,  aim: 0.6,  spin: 1.1,  spinP: 0.5 },
+  expert: { name: 'Expert', speed: 1.85, accel: 15, react: 0.13, err: 0.24, settle: 0.9,  read: 0.65, aim: 0.75, spin: 1.3,  spinP: 0.65 }
 };
 // Each level has its own colors (the last ones cycle the rainbow)
 const PALS = [

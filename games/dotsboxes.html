@@ -105,7 +105,7 @@ html[data-o=land] .desk{padding:10px 10px 12px;}
   })();
   var SAVE = 'dotsboxes_state', KEY = 'dotsboxes', U = 100, PAD = 50;
   var INK = ['#2457c5', '#d1352b', '#1f8a4c', '#7b3fb8'];
-  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard', expert: 'Expert' };
 
   Kit.init({
     id: 'dotsboxes',
@@ -144,7 +144,7 @@ html[data-o=land] .desk{padding:10px 10px 12px;}
       modes: Kit.modes([{ id: 'cpu', desc: 'You against one or two computers' }, { id: 'pp', kind: 'local' }]),
       options: [
         { id: 'n', label: 'Boxes', help: 'How many boxes across and down. Bigger boards take longer.', value: 4, choices: [[2, '2×2'], [3, '3×3'], [4, '4×4'], [5, '5×5'], [6, '6×6'], [7, '7×7']] },
-        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Grabs boxes but often gives some away.'], ['normal', 'Normal', 'Takes every box it can and tries not to give any away.'], ['hard', 'Hard', 'Also plays the endgame smartly, sometimes passing up two boxes to win the long chains.']] }
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Grabs boxes when it notices them and often gives some away.'], ['normal', 'Normal', 'Takes every box it can and tries not to give any away.'], ['hard', 'Hard', 'Also plays the endgame smartly, sometimes passing up two boxes to win the long chains.'], ['expert', 'Expert', 'Plays the endgame as Hard does, and before it counts the safe lines left so that you are the one who has to open the first long chain.']] }
       ],
       players: { min: 2, max: 4, range: function (m) { return m === 'cpu' ? [2, 3] : [2, 4]; }, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'pp' ? 'mix' : false; } },
       onStart: function (cfg) {
@@ -264,20 +264,46 @@ html[data-o=land] .desk{padding:10px 10px 12px;}
     var B = boardNow(), cs = caps(B), all = undrawn(B), lv = (S.players[S.cur] && S.players[S.cur].level) || S.level;
     var safe = all.filter(function (L) { return isSafe(B, L); });
     if (lv === 'easy') {
-      if (cs.length && Math.random() < 0.8) return { ln: rnd(cs) };
-      if (safe.length && Math.random() < 0.6) return { ln: rnd(safe) };
+      if (cs.length && Math.random() < 0.6) return { ln: rnd(cs) };
+      if (safe.length && Math.random() < 0.45) return { ln: rnd(safe) };
       return { ln: rnd(all) };
     }
+    var top = lv === 'hard' || lv === 'expert';
     if (cs.length) {
-      if (lv === 'hard') { var dd = doubleDeal(B); if (dd) return { ln: dd, dd: true }; }
+      if (top) { var dd = doubleDeal(B); if (dd) return { ln: dd, dd: true }; }
       return { ln: rnd(cs) };
     }
-    if (safe.length) return { ln: rnd(safe) };
+    if (safe.length) {
+      if (lv === 'expert') { var pk = parityPick(B); if (pk && pk.ln) return { ln: pk.ln }; }
+      return { ln: rnd(safe) };
+    }
     // Every move gives something away: pick the cheapest (or smartest) one
-    if (lv === 'hard') { var op = bestOpening(B); if (op) return { ln: op }; }
+    if (top) { var op = bestOpening(B); if (op) return { ln: op }; }
     var best = Infinity, picks = [];
     all.forEach(function (L) { var g = giveaway(B, L); if (g < best) { best = g; picks = [L]; } else if (g === best) picks.push(L); });
     return { ln: rnd(picks) };
+  }
+  // Expert, before the endgame: once few safe lines are left, search them all (with the board remembered) to the moment
+  // none is left, and value that board by the chains and loops with best play (fEnd: the player who must open one).
+  // Returns {ln, v} for the best safe line, or null when the safe lines are too many or the search runs out of time.
+  function parityPick(B) {
+    var safe0 = undrawn(B).filter(function (L) { return isSafe(B, L); });
+    if (!safe0.length || safe0.length > 16) return null;
+    var seen = {}, nodes = 0, t0 = Date.now(), out = false;
+    function key(b) { return b.h.map(Number).join('') + b.v.map(Number).join(''); }
+    function val(b) {   // net boxes still to come for the player to move
+      if (out) return 0;
+      if (++nodes % 512 === 0 && Date.now() - t0 > 1500) { out = true; return 0; }
+      var k = key(b); if (seen[k] != null) return seen[k];
+      var sf = undrawn(b).filter(function (L) { return isSafe(b, L); }), best = -Infinity;
+      if (!sf.length) { var cs = components(b); best = cs ? fEnd(cs) : 0; }
+      else sf.forEach(function (L) { var nb = copyB(b); draw(nb, L); var v = -val(nb); if (v > best) best = v; });
+      seen[k] = best; return best;
+    }
+    var best = -Infinity, picks = [];
+    safe0.forEach(function (L) { var nb = copyB(B); draw(nb, L); var v = -val(nb); if (v > best) { best = v; picks = [L]; } else if (v === best) picks.push(L); });
+    if (out) return null;
+    return { ln: rnd(picks), v: best };
   }
   // Hard: decline the last two boxes of a chain (or four of a loop) when keeping control pays.
   function doubleDeal(B) {

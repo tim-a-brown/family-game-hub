@@ -1520,7 +1520,12 @@ Underlying principles for everything:
   when the window changes size).
 - **Easy** (Tim, 2026-11-15: "nudge mexican train easy up slightly"): any tile that fits, but a little more than half
   the time it looks first (its own train when its marker is out, a double it can follow, a heavier tile): `EZ` in the
-  core. The sim (mulberry32 now) has Easy winning about 1 match in 5 against Normal head to head, 1 in 15 against Hard.
+  core (2026-11-27: looking 45% of the time, ending a first-turn run early half the time). The sim (mulberry32 now)
+  has Easy winning 17 matches in 100 against Normal head to head, about 1 in 30 against Hard.
+- **Expert** (2026-11-27, `expertMove`, `EXP` in the core): Hard's three best plays, each played out to the end of the
+  round with Hard's robots in every seat over 12 to 30 deals of the tiles it hasn't seen (1.5 s at most); Hard's own
+  choice stands unless another comes out 8 dots better on average. The sim: Expert won 53% of 30 two-player matches and
+  60% of 15 four-player ones against Hard, finishing about 50 points lower.
 
 ## Lines of Action (2026-11-23)
 
@@ -1609,7 +1614,7 @@ Underlying principles for everything:
   guess, settling and how much curve it reads, never in what it can see. Levels: 3 points past the computer clear one
   (pips in the Level plate), the ball speeds up, the computer sharpens, each level has its own colors (`PALS`; from
   level 4 the camera rolls, from 5 the tunnel twists, from 6 the picture wobbles, from 7 the colors cycle). 3 balls,
-  an extra one every third level (up to 5). Points count x1, x2, x3 by skill.
+  an extra one every third level (up to 5). Points count x1, x2, x3, x4 by skill (Easy to Expert).
 - Moments: a curve or big curve shot (words in the air), rally 10/20/30... (disco floor), a point (sun flash and
   fireworks), a miss (the ball smashes the glass: glitch and aberration), a level cleared or perfect (`Kit.moment`,
   then a warp-speed flight out of the tunnel's far end), a new personal best. Moments from mid-rally wait in `G.queue`.
@@ -2606,7 +2611,7 @@ Underlying principles for everything:
   of a person can stand on your side at once (`unique: 0`, Tim, 2026-11-12; it was one of each), a Legacy Figure has +1 Might for each
   person it names who is in play on its side (`inspEach`; two copies of one person count once), every Legacy Line a player makes scores, however many in a round (`lineCap: 0`, Tim, 2026-11-12: "i look at legacy lines as powerups for making historical connections"; it was the first line a round only, and the ready decks measured 4.8 apart without the limit against 4.9 with it), the second copy costs the same as the first (`ret: 0`, Tim, 2026-11-12: "remove that discount rule"; it returned for 1 less), and Threads (`threads`): any card can name what
   it grew from in cards.js (`from`: a Figure, a Relic or `'@place'`; a Figure's own Legacy is `insp`), with a true
-  sentence for each link in `text.js` (`LINKS`). The robots are `PROF.novice` (Easy), `normal` and `hard`.
+  sentence for each link in `text.js` (`LINKS`). The robots are `PROF.novice` (Easy), `normal`, `hard` and `expert` (Hard's weights, and its best six steps each weighed by the best step it leads to this turn, `look`).
   **Two players can have the same Guide** (Tim, 2026-11-16, of a mirror match): two Cleopatras in a tie on different sides
   cancel out and the tie goes as it would without her; two teammates who both have her are one side, so their team holds it
   (`holderM`, `holderT`; the rules page and her card's notes say so; players-test.js).

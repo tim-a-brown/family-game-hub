@@ -590,7 +590,7 @@
   // ── The computer's side of the duel ───────────────────────────────────────
   // Easy picks at random. Normal leans on the matchup: a pitcher throws what his ratings and the hitter's weakness
   // favor; a hitter looks for what this pitcher likes. Hard also reads what the other side has done this game and
-  // stays hard to read itself.
+  // stays hard to read itself; Expert reads it sooner and leans on it harder.
   function pitchWeights(P, H) {
     var stf = (P.stf || 5) / 10, ctl = (P.ctl || 5) / 10, pow = (H.pow || 5) / 10, con = (H.con || 5) / 10, eye = (H.eye || 5) / 10;
     var w = { H: .6 + 1.2 * stf - .7 * pow, B: .6 + .7 * stf + .3 * ctl - .5 * con, J: .5 + 1.1 * ctl - .6 * eye, C: .5 + .8 * ctl - .4 * pow };
@@ -599,19 +599,23 @@
   }
   // the pitches a pitcher holds (his pitch cards): the batter guesses among these
   function pitchesOf(P) { return (P && P.pitches) || PITCHES; }
+  // Expert reads the other side sooner and harder than Hard (XD), and never leans so far that it becomes easy to read.
+  var XD = { pn: 3, pa: 1.6, ps: 1, ln: 2, la: .3, lb: 2.5, ls: 3 };
   function cpuPitch(P, H, level, seen, r) {
     var has = pitchesOf(P);
     if (level === 'easy') return has[Math.floor(r() * has.length)];
     var w = pitchWeights(P, H);
     if (level === 'hard' && seen && seen.n >= 4) has.forEach(function (k) { w[k] *= 1.35 - (seen[k] || 0) / seen.n; });   // away from what the batter keeps looking for
-    return weighted(w, r, level === 'hard' ? 1.4 : 1);
+    if (level === 'expert' && seen && seen.n >= XD.pn) has.forEach(function (k) { w[k] *= Math.max(.15, XD.pa - (seen[k] || 0) / seen.n * 1.4); });
+    return weighted(w, r, level === 'hard' ? 1.4 : level === 'expert' ? XD.ps : 1);
   }
   function cpuLook(P, H, level, seen, r) {
     var has = pitchesOf(P);
     if (level === 'easy') return has[Math.floor(r() * has.length)];
     var w = pitchWeights(P, H);
     if (level === 'hard' && seen && seen.n >= 3) has.forEach(function (k) { w[k] *= .65 + (seen[k] || 0) / seen.n * 1.2; });   // toward what this pitcher has been throwing
-    return weighted(w, r, level === 'hard' ? 1.6 : 1.1);
+    if (level === 'expert' && seen && seen.n >= XD.ln) has.forEach(function (k) { w[k] *= XD.la + (seen[k] || 0) / seen.n * XD.lb; });
+    return weighted(w, r, level === 'hard' ? 1.6 : level === 'expert' ? XD.ls : 1.1);
   }
   function weighted(w, r, sharp) {
     var t = 0, k, v = {};
@@ -623,7 +627,7 @@
     RULE: RULE, RANGES: RANGES, ranges: ranges, readDie: readDie, CNAME: CNAME, BNAME: BNAME, RANK: RANK, VAL: VAL, BOOT: BOOT, WHERE6: WHERE6, whereOf: whereOf,
     valuesH: valuesH, valuesP: valuesP, table: table, tired: tired, tiredFor: tiredFor, SHOE: SHOE, shoeH: shoeH, shoeP: shoeP, shoeLines: shoeLines,
     POW: POW, PNAME2: PNAME2, powerOf: powerOf, powerLabel: powerLabel, powerLines: powerLines, powerMods: powerMods, reroll: reroll,
-    stealOption: stealOption, steal: steal, cpuSteal: cpuSteal, cpuWalk: cpuWalk, cpuReroll: cpuReroll, stints: stints, stintOf: stintOf, staffOrder: staffOrder,
+    XD: XD, stealOption: stealOption, steal: steal, cpuSteal: cpuSteal, cpuWalk: cpuWalk, cpuReroll: cpuReroll, stints: stints, stintOf: stintOf, staffOrder: staffOrder,
     atBat: atBat, d20: d20, d6: d6, tune: tune,
     clamp: clamp, rng: rng, hash: hash, skey: skey, load: load, db: function () { return DB; }, seasons: seasons, honors: honors,
     teamName: teamName, nick: nick, lgOf: lgOf, byId: byId, name: name, find: find, roleOf: roleOf, cardSeason: cardSeason,

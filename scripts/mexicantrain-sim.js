@@ -1,4 +1,4 @@
-// node scripts/mexicantrain-sim.js [games] [seed]
+// node scripts/mexicantrain-sim.js [games] [seed] [expertGames]
 // Plays Mexican Train games between robots with games/mexicantrain-core.js, at every table size from 2 to 8 and with
 // every option, and checks the rules as it goes:
 //   every move a robot makes is one of the legal moves, and every legal move is a real one (apply accepts it);
@@ -7,7 +7,9 @@
 //   a marker comes off only when its owner plays on their own train, and goes on only when they pass;
 //   a double that must be covered is covered before any other play;
 //   every round ends (someone goes out, or nobody can play with the boneyard empty), and every game ends after its rounds.
-// Then it seats the three skills against each other and reports how they finish (lowest total wins).
+// Then it seats the four skills against each other and reports how they finish (lowest total wins). Expert plays
+// each choice out many times, so its games are fewer (expertGames, 40 by default; 0 leaves Expert out), and a few of
+// them have every move checked as above.
 'use strict';
 const C = require('../games/mexicantrain-core.js');
 const N = +(process.argv[2] || 3000);
@@ -105,3 +107,11 @@ function duel(a, b, n, games) {
 const D = Math.max(200, Math.round(N / 2));
 console.log('Skills (' + D + ' games each, seats alternating):');
 duel('hard', 'normal', 2, D); duel('normal', 'easy', 2, D); duel('hard', 'easy', 2, D); duel('hard', 'normal', 4, D); duel('normal', 'easy', 4, D);
+const E = +(process.argv[4] == null ? 40 : process.argv[4]);
+if (E) {
+  C.EXP.deals = 24; C.EXP.min = 24; C.EXP.ms = 1e9;   // (a fixed number of deals, so a run comes out the same)
+  if (process.env.MT_EXP) Object.assign(C.EXP, JSON.parse(process.env.MT_EXP));
+  for (let g = 0; g < 2; g++) playGame(2 + g, OPTS[3], ['expert', 'hard', 'normal', 'easy', 'expert'].slice(0, 2 + g));
+  console.log('  Expert: 2 games with every move checked');
+  duel('expert', 'hard', 2, E); duel('expert', 'hard', 4, Math.max(10, E >> 1));
+}

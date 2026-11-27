@@ -1078,13 +1078,19 @@
     doPlay(pi, m.t, m.end);
   }
   // Its skill. Normal is how it has always played; a game saved before there were levels plays Normal.
-  var LEVELS = [['easy', 'Easy', 'Plays any tile that fits, with no plan.'],
+  var LEVELS = [['easy', 'Easy', 'Plays any tile that fits with no plan, and often holds on to its heavy tiles.'],
     ['normal', 'Normal', 'Gets rid of heavy tiles, keeps its options open and blocks when it can.'],
-    ['hard', 'Hard', 'Counts the tiles it hasn’t seen and thinks each play through to the end of the hand.']];
-  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+    ['hard', 'Hard', 'Counts the tiles it hasn’t seen and thinks each play through to the end of the hand.'],
+    ['expert', 'Expert', 'Counts the tiles it hasn’t seen and plays each choice through to the end of the hand in four times as many ways as Hard.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' || v === 'expert' ? v : 'normal'; }
   function cpuChoose(pi, ms) {
     var lv = lvName(S.players[pi].level);
-    if (lv === 'easy') return ms[Math.floor(Math.random() * ms.length)];
+    if (lv === 'easy') {
+      // (Easy: a tile at random, or a little less than half the time the lightest one, which keeps the heavy tiles in hand)
+      if (ms.length > 1 && Math.random() < 0.4) return ms.slice().sort(function (a, b) { return pips(a.t) - pips(b.t); })[0];
+      return ms[Math.floor(Math.random() * ms.length)];
+    }
+    if (lv === 'expert') return hardChoose(pi, ms, EXPERT_DEALS, EXPERT_MS, 40);
     return lv === 'hard' ? hardChoose(pi, ms) : normalChoose(pi, ms);
   }
   // Hard counts tiles. The tiles it hasn't seen are in the other hands or the boneyard; it deals them out many
@@ -1092,6 +1098,7 @@
   // the end of the hand with everyone getting rid of their heaviest useful tile, and keeps the play that leaves
   // its side furthest ahead. For that it keeps the line as its open ends only (lite).
   var HARD_DEALS = 80, HARD_MS = 300;   // (as many deals as fit in the time, and never fewer than 12)
+  var EXPERT_DEALS = 320, EXPERT_MS = 1200;   // (Expert: four times as many, never fewer than 40)
   function lite(L, fives) {
     var a = {};
     ['E', 'W', 'N', 'S'].forEach(function (k) { var arm = L.arms[k], t = arm.length ? last(arm).t : null; a[k] = t ? [t[1], t[0] === t[1]] : null; });
@@ -1153,13 +1160,14 @@
     for (i = 0; i < pts.length; i++) if (i !== mine) rest += pts[i];
     return pts[mine] - rest / Math.max(1, pts.length - 1);
   }
-  function hardChoose(pi, ms) {
+  function hardChoose(pi, ms, maxD, maxMs, minD) {
     if (ms.length < 2) return ms[0];
+    maxD = maxD || HARD_DEALS; maxMs = maxMs || HARD_MS; minD = minD || 12;
     var P = S.players[pi], n = S.players.length, known = {}, tot = ms.map(function () { return 0; }), d, i, q, t0 = Date.now();
     onLine(S.line).concat(P.hand).forEach(function (t) { known[tid(t)] = 1; });
     var unknown = fullSet().filter(function (t) { return !known[tid(t)]; }), X0 = lite(S.line, S.variant === 'fives');
     var lacks = S.variant === 'block' ? S.lacks : [];
-    for (d = 0; d < HARD_DEALS && (d < 12 || Date.now() - t0 < HARD_MS); d++) {
+    for (d = 0; d < maxD && (d < minD || Date.now() - t0 < maxMs); d++) {
       var pool = shuffle(unknown.slice()), hands = [];
       for (q = 0; q < n; q++) {
         hands.push([]); if (q === pi) continue;

@@ -479,15 +479,19 @@ html.yw .ylay .sc .lbl small{display:none;}
 
   // ── Computer player ───────────────────────────────────────────────────────
   // Its skill. Normal is how it has always played; a game saved before there were levels plays Normal.
-  var LEVELS = [['easy', 'Easy', 'Keeps whichever number it has most of and takes the biggest score on offer.'],
+  var LEVELS = [['easy', 'Easy', 'Keeps whichever number it has most of, takes the biggest score on offer, and sometimes stops rolling too soon.'],
     ['normal', 'Normal', 'Chases straights and full houses and saves its boxes for good rolls.'],
-    ['hard', 'Hard', 'Works out the odds of every way to hold the dice before it rolls again.']];
-  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+    ['hard', 'Hard', 'Works out the odds of every way to hold the dice before it rolls again.'],
+    ['expert', 'Expert', 'Works out the odds as Hard does, and also weighs what each box does for its chance at the 35 bonus.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' || v === 'expert' ? v : 'normal'; }
   function cpuHolds(p, d, rolls) {
     if (rolls == null) rolls = S.rolls;
     var lv = lvName(p.level);
     if (lv === 'hard') return hardHolds(p, d, rolls);
+    if (lv === 'expert') return hardHolds(p, d, rolls, expertRate);
     if (lv === 'easy') {
+      // (now and then Easy is happy with what it has and stops: a third of the time after its second roll)
+      if (rolls === 2 && Math.random() < 0.33) return [true, true, true, true, true];
       // Easy keeps the number it has most of (the higher one when two tie) and rolls the rest
       var ce = counts(d), top = 0;
       for (var f = 1; f <= 6; f++) if (ce[f] >= (ce[top] || 0) && ce[f]) top = f;
@@ -500,12 +504,34 @@ html.yw .ylay .sc .lbl small{display:none;}
   // what is worth most given that it will choose as well again after the next roll. What five dice are worth is
   // how far their best box comes out above par: the score a good player averages in that box (PAR), with the
   // upper bonus counted as it is earned (three of each number makes the 63 it needs).
+    var HARD_SLIP = 0.25;
   var PAR = { ones: 2.1, twos: 4.2, threes: 6.3, fours: 8.4, fives: 10.6, sixes: 12.7, k3: 21.7, k4: 13.1, fh: 22.6, ss: 29.5, ls: 32.7, ch: 22, yz: 16.9 }, HARD_UP = 0.6;
   function hardRate(p, d) {
     var opt = options(p, d), best = null, bestW = -1e9;
     Object.keys(opt).forEach(function (id) {
       var v = opt[id], c = CAT[id], w = v - (PAR[id] || 0);
       if (c.up) w += (v - 3 * c.up) * HARD_UP;
+      if (w > bestW) { bestW = w; best = id; }
+    });
+    return { id: best, v: opt[best], w: bestW };
+  }
+  // Expert rates the boxes as Hard does, but an upper box is weighed by how it changes the chance of the 35 bonus: the
+  // points still needed for 63 against what the open upper boxes are likely to bring (about 2.6 of each number).
+  var EXB = { w: 25, lin: 0.5, mu: 2.6, sp: 0.45, yz: 6, pl: 0, ps: 0.75 };
+  function bonusChance(need, open) {
+    if (need <= 0) return 1;
+    var e = 0, spread = 2; open.forEach(function (k) { e += EXB.mu * k; spread += 0.9 * k; });
+    if (!open.length) return 0;
+    return 1 / (1 + Math.exp(-(e - need) / (spread * EXB.sp)));
+  }
+  function expertRate(p, d) {
+    var opt = options(p, d), best = null, bestW = -1e9, need = 63 - upperSum(p), up = [];
+    CATS.forEach(function (c) { if (c.up && p.card[c.id] == null) up.push(c.up); });
+    var p0 = bonusChance(need, up), leftN = 13 - filled(p), parScale = EXB.ps * (EXB.pl ? Math.min(1, (leftN - 1) / EXB.pl) : 1);
+    Object.keys(opt).forEach(function (id) {
+      var v = opt[id], c = CAT[id], w = v - (PAR[id] || 0) * parScale;
+      if (c.up) w += EXB.w * (bonusChance(need - v, up.filter(function (k) { return k !== c.up; })) - p0) + (v - 3 * c.up) * EXB.lin;
+      if (id === 'yz' && !v && p.card.yz == null) w -= EXB.yz;   // (a zero there also gives up every extra Yahtzee's 100)
       if (w > bestW) { bestW = w; best = id; }
     });
     return { id: best, v: opt[best], w: bestW };
@@ -528,12 +554,13 @@ html.yw .ylay .sc .lbl small{display:none;}
     var subs = states.map(function (st) { var seen = {}, l = []; for (var m = 0; m < 32; m++) { var k = st.filter(function (x, i) { return m >> i & 1; }).join(''); if (!seen[k]) { seen[k] = 1; l.push(kIdx[k]); } } return l; });
     return (YT = { states: states, kIdx: kIdx, land: land, subs: subs });
   }
-  function hardHolds(p, d, rolls) {
-    var Y = diceTables(), worth = Y.states.map(function (st) { return hardRate(p, st).w; });
+  function hardHolds(p, d, rolls, rateFn) {
+    rateFn = rateFn || hardRate;
+    var Y = diceTables(), worth = Y.states.map(function (st) { return rateFn(p, st).w; });
     function over(vals) { return Y.land.map(function (l) { var t = 0; for (var i = 0; i < l.length; i++) t += l[i][1] * vals[l[i][0]]; return t; }); }
     var E = over(worth);   // what each hold is worth with one roll to come
     if (rolls < 2) E = over(Y.subs.map(function (ks) { var b = -1e9; ks.forEach(function (k) { if (E[k] > b) b = E[k]; }); return b; }));   // and with two
-    var best = 31, bestV = hardRate(p, d).w;   // (holding all five is stopping here)
+    var best = 31, bestV = rateFn(p, d).w;   // (holding all five is stopping here)
     for (var m = 30; m >= 0; m--) {
       var v = E[Y.kIdx[d.filter(function (x, i) { return m >> i & 1; }).sort().join('')]];
       if (v > bestV + 1e-9) { bestV = v; best = m; }
@@ -575,7 +602,9 @@ html.yw .ylay .sc .lbl small{display:none;}
       CATS.forEach(function (c) { if (oe[c.id] != null && (be == null || oe[c.id] > oe[be])) be = c.id; });
       return { id: be, v: oe[be] };
     }
-    return lvName(p.level) === 'hard' ? hardRate(p, d) : rate(p, d);
+    var lv = lvName(p.level);
+    // (Hard picks its box by Normal's rule of thumb one turn in HARD_SLIP; Expert never does)
+    return lv === 'hard' ? (Math.random() < HARD_SLIP ? rate(p, d) : hardRate(p, d)) : lv === 'expert' ? expertRate(p, d) : rate(p, d);
   }
   // the box these dice are best scored in, what they score there (v) and what that is worth to the card (w)
   function rate(p, d) {
@@ -605,7 +634,7 @@ html.yw .ylay .sc .lbl small{display:none;}
           var h = cpuHolds(p, S.dice), ch = cpuChoose(p, S.dice);
           // Stop early on a made hand worth keeping
           // (Hard has already weighed stopping against rolling: it stops when holding everything is best)
-          if (h.every(Boolean) || (p.level !== 'hard' && (ch.v >= 40 || (ch.id === 'yz' && ch.v) || (ch.id === 'fh' && ch.v)))) return finishCpu();
+          if (h.every(Boolean) || (p.level !== 'hard' && p.level !== 'expert' && (ch.v >= 40 || (ch.id === 'yz' && ch.v) || (ch.id === 'fh' && ch.v)))) return finishCpu();
           S.held = h; paintDice();
         }
         setTimeout(function () { if (!alive()) return; roll(); setTimeout(go, 1000); }, 600);
