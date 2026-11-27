@@ -3372,7 +3372,7 @@
     var t = String(tag || '').toLowerCase();
     if (/easy|begin|novice|gentle|casual|relax|kid|learn/.test(t)) return 'e';
     if (/expert|master|brutal|elite|champion/.test(t)) return 'x';
-    if (/hard|tough|pro\b|shark|strong/.test(t)) return 'h';
+    if (/hard|tough|pro\b|shark|strong|sharp/.test(t)) return 'h';
     return 'n';
   }
   var BOT_FLAME = '<svg class="fl" viewBox="0 0 40 40" aria-hidden="true"><defs>' +

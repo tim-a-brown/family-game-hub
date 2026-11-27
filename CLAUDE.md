@@ -1365,7 +1365,7 @@ Underlying principles for everything:
   than hand-rolled buttons, so every game offers the same things in the same order. Reference:
   `games/othello.html`.
 
-## Hints (2026-11-26; Tim: "have an option to turn off scoring hints ... do similar for other games that have options that make it easier (not length based)", then "I want hints off against hard automatically")
+## Hints and computer skills (2026-11-26; Tim: "have an option to turn off scoring hints ... do similar for other games that have options that make it easier (not length based)", then "I want hints off against hard automatically")
 
 - A game with aids that make it easier (would-be scores, suggested bids, threat rings, odds, deadwood counts, a Hint
   button) has the setup option `{ id: 'hints', label: 'Hints', value: 'on', choices: [['on','On',...],['off','Off',...]] }`,
@@ -1377,10 +1377,16 @@ Underlying principles for everything:
   Continuo, Mahjong, Monopoly, Yahtzee, Farkle, Sudoku (saved as `S.aids`; it folds in Show mistakes), Connect Four,
   Tic-Tac-Toe, Deal or No Deal, Backgammon, Candy Match, Scrabble, Axis & Allies, Lorcana (it replaced the menu's
   `lorc_hints`, read as the default) and Arvela (`G.hints`). Bridge keeps its own `aids`.
-- **A Hard computer at the table turns Hints off** (`autoHints` in kit.js): when a seat's skill becomes the hardest
-  of the game's choices, Hints goes to Off, and back to On when no Hard computer is left if the kit had turned it off.
+- **Four computer skills** (Tim, 2026-11-27): every game with a `robot: true` option has Easy, Normal, Hard and Expert
+  (a game's own words keep their style but its last choice is Expert; ids kept, `expert` added last). Easy is weaker
+  than the Easy of before, Normal and Hard much as they were (Hard thinks a little less in the slowest board games, and
+  where it was already near perfect it slips now and then), Expert stronger than the old Hard within about 2 to 3 s a
+  move on a phone. In games ruled by luck (Crazy Eights, UNO, Canasta, Farkle, Yahtzee, Monopoly, Continuo) Expert is
+  only a little ahead or even with Hard.
+- **An Expert computer at the table turns Hints off** (`autoHints` in kit.js): when a seat's skill becomes the hardest
+  of the game's choices (Expert), Hints goes to Off, and back to On when no Expert is left if the kit had turned it off.
   Only a change acts, so a player can turn Hints back on by hand. The players sheet says so under the skill's words
-  when Hard is chosen (`.k-pb-hint`); a Hard computer seated any other way gets a toast.
+  when Expert is chosen (`.k-pb-hint`); an Expert seated any other way gets a toast.
 
 ## Player counts added 2026-11-14 (Tim: "add missing game modes")
 
