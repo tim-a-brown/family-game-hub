@@ -3371,7 +3371,8 @@
   function botLevel(tag) {
     var t = String(tag || '').toLowerCase();
     if (/easy|begin|novice|gentle|casual|relax|kid|learn/.test(t)) return 'e';
-    if (/hard|expert|master|tough|pro\b|brutal|shark|elite|strong/.test(t)) return 'h';
+    if (/expert|master|brutal|elite|champion/.test(t)) return 'x';
+    if (/hard|tough|pro\b|shark|strong/.test(t)) return 'h';
     return 'n';
   }
   var BOT_FLAME = '<svg class="fl" viewBox="0 0 40 40" aria-hidden="true"><defs>' +
@@ -3385,11 +3386,11 @@
       : lv === 'n'
         ? '<circle cx="9" cy="12" r="1.6" fill="#e8a200"/><circle cx="15" cy="12" r="1.6" fill="#e8a200"/><path d="M10.2 15.2h3.6" stroke="' + ink + '" stroke-width="1.3" stroke-linecap="round"/>'
         : '<path d="M7.2 9.7l3.4 1.3M16.8 9.7l-3.4 1.3" stroke="' + ink + '" stroke-width="1.5" stroke-linecap="round"/><circle cx="9.1" cy="12.6" r="1.45" fill="#ff3b1f"/><circle cx="14.9" cy="12.6" r="1.45" fill="#ff3b1f"/><path d="M10.2 15.9q1.8-1 3.6 0" fill="none" stroke="' + ink + '" stroke-width="1.3" stroke-linecap="round"/>';
-    var head = '<svg class="hd" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4v2.4" stroke="#f3f1fb" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="2.9" r="1.6" fill="' + (lv === 'h' ? '#ff5a2a' : lv === 'e' ? '#5cff9f' : '#ffd34d') + '"/>' +
+    var head = '<svg class="hd" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4v2.4" stroke="#f3f1fb" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="2.9" r="1.6" fill="' + (lv === 'h' || lv === 'x' ? '#ff5a2a' : lv === 'e' ? '#5cff9f' : '#ffd34d') + '"/>' +
       '<rect x="2.6" y="10" width="2.2" height="4.4" rx="1" fill="#d9d7e6"/><rect x="19.2" y="10" width="2.2" height="4.4" rx="1" fill="#d9d7e6"/>' +
       '<rect x="4.4" y="6" width="15.2" height="12.2" rx="4.2" fill="#f3f1fb"/>' + eyes + '</svg>';
     return el('span', { class: 'avatar botav bot-' + lv, style: { '--c': color }, title: tag || null, html:
-      '<i class="glow"></i>' + (lv === 'h' ? BOT_FLAME : '') + head });
+      '<i class="glow"></i>' + (lv === 'x' ? BOT_FLAME : '') + head });
   }
   // How many are playing, with a − and a + either side of the number: the Players card's top right, in a setup and on
   // the home screen's game sheet. step(-1 | 1) changes it; a button at the end of the range fades.
@@ -3665,16 +3666,6 @@
             sel = nextOpen(i); sfx('pop'); haptic('light'); paint(); changed();
           } }, [botFace(ch[0] == null ? '' : ch[1], c), el('b', { text: ch[1] })]));
       });
-      var any = false; for (var j = 1; j < M.count; j++) if (seatIsBot(M, j)) { any = true; break; }
-      var dice = el('button', { type: 'button', class: 'k-pk-b k-pk-re' + (rolled ? ' roll' : ''), 'aria-label': 'New names for the computer players', onclick: function () {
-        var seats = []; for (var j = 1; j < M.count; j++) if (seatIsBot(M, j)) seats.push(j);
-        var fresh = cpuNames(seats.length, M.bots, M.count >= 4 ? 8 : 0);
-        seats.forEach(function (j, k) { if (fresh[k]) { M.bots[j - 1] = fresh[k]; roll[j] = k + 1; } });
-        rolled = true; sfx('roll'); haptic('medium'); paint(); changed();
-      } }, [el('span', { class: 'avatar', html: icon('dice') }), el('b', { text: 'New names' })]);
-      dice.disabled = !any;
-      row.appendChild(el('i', { class: 'k-pk-sep', 'aria-hidden': 'true' }));
-      row.appendChild(dice);
       var kids = [row];
       if (help) kids.push(el('p', { class: 'k-pb-help', text: help }));
       // (a Hard computer turns Hints off: said here, where Hard is chosen)
