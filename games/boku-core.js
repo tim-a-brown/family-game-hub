@@ -314,11 +314,12 @@
     }
     return { move: encode(best.c, best.x), score: bestS, depth: done, nodes: nodes };
   }
-  // The three skills differ in how far ahead they look and how much they slip, never in what they can see
+  // The four skills differ in how far ahead they look and how much they slip, never in what they can see
   var LEVELS = {
-    easy: { depth: 1, time: 0, noise: 60, beam: 10 },
+    easy: { depth: 1, time: 0, noise: 110, beam: 10 },
     normal: { depth: 3, time: 0, noise: 6, beam: 10 },
-    hard: { depth: 8, time: 1800, noise: 1, beam: 12 }
+    hard: { depth: 8, time: 1800, noise: 1, beam: 12 },
+    expert: { depth: 12, time: 2600, noise: 0, beam: 12 }
   };
 
   root.BokuCore = {

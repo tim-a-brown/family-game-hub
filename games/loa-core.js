@@ -238,7 +238,7 @@
       if (depth <= 0) return evaluate(bd, sd);
       var ms = moves(bd, sd);
       if (!ms.length) return -ab(bd, -sd, depth - 1, -beta, -alpha, ply + 1);
-      order(bd, ms);
+      order(bd, ms, ply);
       var best = -Infinity;
       for (var i = 0; i < ms.length; i++) {
         var nb = apply(bd, ms[i]), res = result(nb, sd, tie), v;
@@ -246,12 +246,18 @@
         else v = -ab(nb, -sd, depth - 1, -beta, -alpha, ply + 1);
         if (v > best) best = v;
         if (v > alpha) alpha = v;
-        if (alpha >= beta) break;
+        if (alpha >= beta) { if (HI) { var hk = ms[i].f * 64 + ms[i].t; HI[hk] = (HI[hk] || 0) + depth * depth; KL[ply] = hk; } break; }
       }
       return best;
     }
-    function order(bd, ms) {
-      for (var i = 0; i < ms.length; i++) { var m = ms[i]; m.o = (m.cap ? 6 : 0) + CEN[m.t] * 2 - CEN[m.f]; }
+    // Expert (o.memory) tries first the moves that cut the search short before, at this depth and anywhere: the same
+    // search, ordered better, so it reaches further in its time
+    var HI = o.memory ? {} : null, KL = [];
+    function order(bd, ms, ply) {
+      for (var i = 0; i < ms.length; i++) {
+        var m = ms[i]; m.o = (m.cap ? 6 : 0) + CEN[m.t] * 2 - CEN[m.f];
+        if (HI) { var hk = m.f * 64 + m.t; if (KL[ply] === hk) m.o += 1000; else m.o += Math.min(500, (HI[hk] || 0) / 8); }
+      }
       ms.sort(function (a, c) { return c.o - a.o; });
     }
     var root = moves(b, side);
@@ -283,9 +289,10 @@
     return { move: { f: best.f, t: best.t }, score: bestS, depth: done, nodes: nodes };
   }
   var LEVELS = {
-    easy: { depth: 1, time: 300, noise: 40 },
+    easy: { depth: 1, time: 300, noise: 120 },
     normal: { depth: 3, time: 900, noise: 10 },
-    hard: { depth: 6, time: 2200, noise: 0 }
+    hard: { depth: 6, time: 2000, noise: 0 },
+    expert: { depth: 10, time: 2700, noise: 0, memory: true }
   };
 
   var API = {

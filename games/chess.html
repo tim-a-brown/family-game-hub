@@ -335,12 +335,16 @@
     function search(pos, o) {
       o = o || {};
       var t0 = Date.now(), limit = o.time || 1000, maxD = o.depth || 4, nodes = 0, killers = [];
+      // Expert (o.memory) remembers the best move it found in each position it has searched, and which quiet moves
+      // cut the search short, and tries those first: the same search, ordered better, so it reaches further in its time
+      var TT = o.memory ? {} : null, TTn = 0, HI = o.memory ? {} : null;
       function score(p, m, pv, kl) {
         if (pv && m.f === pv.f && m.t === pv.t && (m.promo || 0) === (pv.promo || 0)) return 1e6;
         var v = 0;
         if (m.cap) v += 10000 + VAL[m.cap < 0 ? -m.cap : m.cap] * 10 - VAL[Math.abs(p.b[m.f])] / 10;
         if (m.promo) v += 9000 + VAL[m.promo];
         if (kl && m.f === kl.f && m.t === kl.t) v += 5000;
+        else if (HI && !m.cap && !m.promo) v += Math.min(4000, HI[m.f * 64 + m.t] || 0);
         return v;
       }
       function order(p, ms, pv, kl) {
@@ -348,6 +352,7 @@
         ms.sort(function (a, b) { return b.o - a.o; });
       }
       function tick() { if ((++nodes & 1023) === 0 && Date.now() - t0 > limit) throw STOP; }
+      function pieces(p) { for (var i = 0; i < 64; i++) { var v = p.b[i] * p.turn; if (v > 1 && v < 6) return true; } return false; }
       function qs(p, alpha, beta, qd) {
         tick();
         var stand = evaluate(p);
@@ -369,18 +374,30 @@
         var chk = inCheck(p, p.turn);
         if (chk && ply < maxD * 2) depth++;
         if (depth <= 0) return qs(p, alpha, beta, 0);
-        var ms = gen(p, false); order(p, ms, null, killers[ply]);
-        var n = 0, best = -Infinity;
+        // Expert: if passing would still leave it winning here, it doesn't look further (a null move), unless only pawns are left
+        if (TT && !chk && depth >= 3 && ply > 0 && beta < MATE / 2 && beta > -MATE / 2 && pieces(p)) {
+          var nv = -ab({ b: p.b, turn: -p.turn, castle: p.castle, ep: -1, half: p.half, full: p.full }, depth - 3, -beta, -beta + 1, ply + 1);
+          if (nv >= beta) return beta;
+        }
+        var ms = gen(p, false), hk = TT && depth >= 2 ? key(p) : null;
+        order(p, ms, hk ? TT[hk] : null, killers[ply]);
+        var n = 0, best = -Infinity, bm = null;
         for (var i = 0; i < ms.length; i++) {
           var m = ms[i], np = make(p, m);
           if (inCheck(np, p.turn)) continue;
           n++;
-          var v = -ab(np, depth - 1, -beta, -alpha, ply + 1);
-          if (v > best) best = v;
+          var v;
+          // Expert: a quiet move late in the order is looked at a move less deep first, and fully only if it looks good
+          if (TT && n > 4 && depth >= 3 && !chk && !m.cap && !m.promo && alpha > -MATE / 2 && !inCheck(np, np.turn)) {
+            v = -ab(np, depth - 2, -alpha - 1, -alpha, ply + 1);
+            if (v > alpha) v = -ab(np, depth - 1, -beta, -alpha, ply + 1);
+          } else v = -ab(np, depth - 1, -beta, -alpha, ply + 1);
+          if (v > best) { best = v; bm = m; }
           if (v > alpha) alpha = v;
-          if (alpha >= beta) { if (!m.cap) killers[ply] = m; break; }
+          if (alpha >= beta) { if (!m.cap) { killers[ply] = m; if (HI) HI[m.f * 64 + m.t] = (HI[m.f * 64 + m.t] || 0) + depth * depth; } break; }
         }
         if (!n) return chk ? -MATE + ply : 0;
+        if (hk && bm) { TT[hk] = bm; TTn++; if (TTn > 200000) { TT = {}; TTn = 0; } }
         return best;
       }
       var root = legal(pos);
@@ -505,8 +522,8 @@
   // S = {mode, level, players:[{name,cpu,side}], pos, caps:{'1':[],'-1':[]}, last, moves:[san],
   //      keys:[repetition keys], hist:[undo snapshots], events:[], over, result, started, flip}
   var S = null, sel = -1, selMoves = [];
-  var LEVELS = { easy: { depth: 1, time: 500, noise: 150 }, normal: { depth: 4, time: 1500, noise: 12 }, hard: { depth: 6, time: 3000, noise: 0 } };
-  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  var LEVELS = { easy: { depth: 1, time: 500, noise: 320 }, normal: { depth: 4, time: 1500, noise: 12 }, hard: { depth: 6, time: 2200, noise: 0 }, expert: { depth: 12, time: 2800, noise: 0, memory: true } };
+  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard', expert: 'Expert' };
   function save() {
     if (S && S.mode === 'online') return;   // online games live in their table, not in the local save
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
@@ -566,9 +583,9 @@
     S = null; sel = -1; NET.screen = 'setup'; Kit.onBack = null;
     app.classList.remove('ipl', 'cs-land', 'cs-low', 'cs-tall');
     var su = Kit.setup(app, {
-      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: '2p', kind: 'local' }, { id: 'online', desc: 'Two devices, each signed in with a PIN' }]),
+      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal, Hard or Expert' }, { id: '2p', kind: 'local' }, { id: 'online', desc: 'Two devices, each signed in with a PIN' }]),
       options: [
-        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Only looks one move ahead and often blunders.'], ['normal', 'Normal', 'Looks a few moves ahead. A good challenge.'], ['hard', 'Hard', 'Thinks deeper and longer. Very tough to beat.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Only looks one move ahead and blunders a lot.'], ['normal', 'Normal', 'Looks a few moves ahead. A good challenge.'], ['hard', 'Hard', 'Thinks deeper and longer. Very tough to beat.'], ['expert', 'Expert', 'Looks the furthest ahead, skipping lines that can only lose. The strongest there is here.']], when: function (m) { return m === 'cpu'; } },
         { id: 'side', label: 'You play', value: 'w', choices: [['w', 'White', 'White moves first, so you start.'], ['b', 'Black', 'The computer plays White and moves first.'], ['r', 'Random', 'A coin toss picks your color.']], when: function (m) { return m === 'cpu'; } }
       ],
       players: { min: 2, max: 2, range: function (m) { return m === 'online' ? [1, 1] : null; }, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
@@ -698,7 +715,7 @@
       if (moves <= 10) sp.push({ t: 'Mate in ' + moves, l: winner.name + ' checkmated ' + loser.name + ' in only ' + moves + ' moves.', h: winner.name + ' checkmated ' + loser.name + ' in only ' + moves + ' moves' });
       if (mp === 1 || mp === 6) sp.push({ t: 'Mate with a ' + PNAME[mp], l: 'The ' + PNAME[mp] + ' delivered the checkmate.', h: winner.name + ' delivered checkmate with the ' + PNAME[mp] });
       if (mat[1 - wi] - mat[wi] >= 3) sp.push({ t: 'Mate from behind', l: winner.name + ' was ' + (mat[1 - wi] - mat[wi]) + ' points of pieces down and still checkmated.', h: winner.name + ' checkmated while ' + (mat[1 - wi] - mat[wi]) + ' points of pieces down' });
-      if (!net && loser.cpu && !winner.cpu && S.level === 'hard') sp.push({ t: 'Hard computer beaten', l: loser.name + ' was playing on Hard.', h: winner.name + ' checkmated ' + loser.name + ' on Hard' });
+      if (!net && loser.cpu && !winner.cpu && (S.level === 'hard' || S.level === 'expert')) { var lvN = LEVEL_NAME[S.level]; sp.push({ t: lvN + ' computer beaten', l: loser.name + ' was playing on ' + lvN + '.', h: winner.name + ' checkmated ' + loser.name + ' on ' + lvN }); }
       sp.forEach(function (x, i) { hl.splice(1 + i, 0, x.h); });
     }
     if (vsCpu()) hl.push('Computer skill: ' + LEVEL_NAME[S.level]);

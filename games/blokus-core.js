@@ -334,6 +334,19 @@
     }
     return v;
   }
+  // The look past the answer (Expert): the move, then the next color's best answer to it as that color sees it (its
+  // best few placements by the quick weighing, each weighed by the deep look), and the board after both weighed again
+  function deep2(st, m, L) {
+    var base = deep(st, m, L), tmp = JSON.parse(JSON.stringify(st)), mover = ctrl(st, st.turn);
+    if (!play(tmp, m) || tmp.over) return base;
+    var c2 = tmp.turn; if (rel(st, mover, c2) > 0) return base;
+    var rs = moves(tmp, c2); if (!rs.length) return base + L.dDead;
+    var cx = ctxFor(tmp, L), sc = rs.map(function (r) { return { r: r, v: quick(tmp, r, cx) }; });
+    sc.sort(function (a, b2) { return b2.v - a.v; });
+    var bestR = -Infinity;
+    for (var i = 0; i < Math.min(L.reply, sc.length); i++) bestR = Math.max(bestR, deep(tmp, sc[i].r, L) + sc[i].v * L.dQuick);
+    return base - L.dReply * bestR;
+  }
   function squaresOf(mask) { var s = 0; for (var p = 0; p < NP; p++) if (mask >> p & 1) s += SIZE[p]; return s; }
   function now() { return typeof performance !== 'undefined' ? performance.now() : Date.now(); }
   // Choose a move for the color to move. o: a level from LEVELS (or its fields), seed. Returns {move} or null (no move).
@@ -359,17 +372,20 @@
     if (!L.deep) return { move: scored[0].m };
     var top = scored.slice(0, L.wide), best = top[0], bv = -Infinity;
     for (var j = 0; j < top.length; j++) {
-      var v = deep(st, top[j].m, L) + top[j].v * L.dQuick;
+      var v = (L.reply ? deep2(st, top[j].m, L) : deep(st, top[j].m, L)) + top[j].v * L.dQuick;
       if (v > bv) { bv = v; best = top[j]; }
       if (now() - t0 > L.time) break;
     }
     return { move: best.m };
   }
   var LEVELS = {
-    easy: { level: 'easy', easyPow: 1.2, easyLook: 0.35, wSize: 3, wCorner: 1.2, wBlock: 1.5, wMid: 0.25, wMono: 6, noise: 0 },
+    easy: { level: 'easy', easyPow: 0.8, easyLook: 0.12, wSize: 3, wCorner: 1.2, wBlock: 1.5, wMid: 0.25, wMono: 6, noise: 0 },
     normal: { level: 'normal', wSize: 3, wCorner: 1.3, wBlock: 1.6, wMid: 0.3, wMono: 8, noise: 1.2, deep: false },
-    hard: { level: 'hard', wSize: 3, wCorner: 1.3, wBlock: 1.6, wMid: 0.3, wMono: 8, noise: 0, deep: true, wide: 14, time: 1500,
-      dSize: 3.2, dMob: 0.9, dCorner: 0.9, dReach: 0.12, dOpp: 0.55, dDead: 25, dQuick: 0.4 }
+    hard: { level: 'hard', wSize: 3, wCorner: 1.3, wBlock: 1.6, wMid: 0.3, wMono: 8, noise: 0.5, deep: true, wide: 14, time: 1500,
+      dSize: 3.2, dMob: 0.9, dCorner: 0.9, dReach: 0.12, dOpp: 0.55, dDead: 25, dQuick: 0.4 },
+    // Expert: Hard's look after the move, and then past the next color's best answer to it
+    expert: { level: 'expert', wSize: 3, wCorner: 1.3, wBlock: 1.6, wMid: 0.3, wMono: 8, noise: 0, deep: true, wide: 12, time: 2400,
+      dSize: 3.2, dMob: 0.9, dCorner: 0.9, dReach: 0.12, dOpp: 0.55, dDead: 25, dQuick: 0.4, reply: 4, dReply: 0.5 }
   };
 
   var API = {

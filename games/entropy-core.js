@@ -258,6 +258,38 @@
     }
     return out;
   }
+  // Expert's look one step further: the chip the bag gives next, each color by its chance, against Chaos's few most
+  // careful placements of it, each answered by Order's best slide after it
+  function chipLook(cx, st, b, k) {
+    var tot = 0, ev = 0, sz = cx.sz;
+    for (var c = 1; c <= sz; c++) tot += st.bag[c - 1];
+    if (!tot) return 0;
+    for (c = 1; c <= sz; c++) {
+      if (!st.bag[c - 1]) continue;
+      var pc = placeDeltas(cx, b, c).sort(function (x, y) { return x[1] - y[1]; }), mn = Infinity;
+      for (var z = 0; z < Math.min(k, pc.length); z++) {
+        b[pc[z][0]] = c;
+        var sd = slideDeltas(cx, b), mx = 0;
+        for (var j = 0; j < sd.length; j++) if (sd[j][1] > mx) mx = sd[j][1];
+        b[pc[z][0]] = 0;
+        if (pc[z][1] + mx < mn) mn = pc[z][1] + mx;
+      }
+      ev += st.bag[c - 1] / tot * (mn === Infinity ? 0 : mn);
+    }
+    return ev;
+  }
+  function chipNext(cx, st, b) {
+    var tot = 0, ev = 0, sz = cx.sz, bag = st.bag;
+    for (var c = 1; c <= sz; c++) tot += Math.max(0, bag[c - 1]);
+    if (!tot) return 0;
+    for (c = 1; c <= sz; c++) {
+      if (bag[c - 1] <= 0) continue;
+      var pc = placeDeltas(cx, b, c), mn = Infinity;
+      for (var z = 0; z < pc.length; z++) if (pc[z][1] < mn) mn = pc[z][1];
+      ev += bag[c - 1] / tot * (mn === Infinity ? 0 : mn);
+    }
+    return ev;
+  }
   function bestOf(list, sign, noise, rng) {
     var best = null, bv = -Infinity;
     for (var i = 0; i < list.length; i++) {
@@ -281,7 +313,28 @@
       if (pd.length === 1) return { move: name(pd[0][0], sz), role: 'chaos' };
       var pick;
       if (L.rand && rng() < L.rand) pick = pd[Math.floor(rng() * pd.length)];
-      else if (L.depth >= 2) {
+      else if (L.depth >= 3) {
+        // each placement against Order's few best slides after it, each slide followed by the next chip (chipLook)
+        pd.sort(function (x, y) { return x[1] - y[1]; });
+        var cnd = pd.slice(0, L.wide), te = now(), bE = Infinity;
+        pick = cnd[0];
+        for (var ie = 0; ie < cnd.length; ie++) {
+          var sqE = cnd[ie][0];
+          b[sqE] = st.chip;
+          var sdE = slideDeltas(cx, b).sort(function (x, y) { return y[1] - x[1]; }), mxE = -Infinity;
+          for (var je = 0; je < Math.min(L.reply, sdE.length); je++) {
+            var se = sdE[je][0], fe = -1, toe = -1;
+            if (se !== 'pass') { fe = se[0]; toe = se[1]; b[toe] = b[fe]; b[fe] = 0; }
+            var ve = sdE[je][1] + (left(st) > 0 ? chipNext(cx, st, b) : 0);
+            if (se !== 'pass') { b[fe] = b[toe]; b[toe] = 0; }
+            if (ve > mxE) mxE = ve;
+          }
+          b[sqE] = 0;
+          var vE = cnd[ie][1] + (mxE === -Infinity ? 0 : mxE) + rng() * 1e-6;
+          if (vE < bE) { bE = vE; pick = cnd[ie]; }
+          if (now() - te > L.time) break;
+        }
+      } else if (L.depth >= 2) {
         // each placement against Order's best slide after it (the best few placements by themselves first)
         pd.sort(function (x, y) { return x[1] - y[1]; });
         var cand = pd.slice(0, L.wide || 14), t0 = now(), bestV = Infinity;
@@ -302,7 +355,20 @@
     // Order
     var sdl = slideDeltas(cx, b), mv;
     if (L.rand && rng() < L.rand) mv = rng() < 0.35 ? sdl[0] : sdl[Math.floor(rng() * sdl.length)];
-    else if (L.depth >= 2 && left(st) > 0) {
+    else if (L.depth >= 3 && left(st) > 0) {
+      sdl.sort(function (x, y) { return y[1] - x[1]; });
+      var cE = sdl.slice(0, L.wide), tO = now(), bO = -Infinity;
+      mv = cE[0];
+      for (var aE = 0; aE < cE.length; aE++) {
+        var sO = cE[aE][0], fO = -1, tO2 = -1;
+        if (sO !== 'pass') { fO = sO[0]; tO2 = sO[1]; b[tO2] = b[fO]; b[fO] = 0; }
+        var evO = chipLook(cx, st, b, L.reply);
+        if (sO !== 'pass') { b[fO] = b[tO2]; b[tO2] = 0; }
+        var valO = cE[aE][1] + evO + rng() * 1e-6;
+        if (valO > bO) { bO = valO; mv = cE[aE]; }
+        if (now() - tO > L.time) break;
+      }
+    } else if (L.depth >= 2 && left(st) > 0) {
       sdl.sort(function (x, y) { return y[1] - x[1]; });
       var cands = sdl.slice(0, L.wide || 24), tot = left(st), t1 = now(), bv = -Infinity;
       mv = cands[0];
@@ -337,9 +403,10 @@
     return { move: m0 === 'pass' ? 'pass' : name(m0[0], sz) + '-' + name(m0[1], sz), role: 'order' };
   }
   var LEVELS = {
-    easy: { level: 'easy', depth: 1, rand: 0.4, noise: 3, greedy: 1 },
+    easy: { level: 'easy', depth: 1, rand: 0.6, noise: 5, greedy: 1 },
     normal: { level: 'normal', depth: 1, noise: 0.15 },
-    hard: { level: 'hard', depth: 2, wide: 24, time: 1800 }
+    hard: { level: 'hard', depth: 2, wide: 24, time: 1800 },
+    expert: { level: 'expert', depth: 3, wide: 30, reply: 4, time: 2200 }
   };
 
   var API = {

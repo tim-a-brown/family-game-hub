@@ -272,7 +272,8 @@
   // ── The computer ──
   // Easy puts the card where it scores, though not always the most; Normal takes the most points now; Hard weighs the
   // points now against the most the next player could score with the cards still unseen (a sample of them).
-  var LEVELS = { easy: { k: 'easy', part: 0.6 }, normal: { k: 'normal' }, hard: { k: 'hard', sample: 14, top: 12, w: 0.8, ms: 1500 } };
+  var LEVELS = { easy: { k: 'easy', part: 0.5 }, normal: { k: 'normal' }, hard: { k: 'hard', sample: 14, top: 12, w: 0.8, ms: 1500 },
+    expert: { k: 'hard', sample: 32, top: 20, w: 0.8, ms: 2400 } };
   function search(st, o) {
     o = o || {};
     var L = LEVELS[o.level] || LEVELS[o.k] || LEVELS.normal, r = rng(o.seed == null ? 12345 : o.seed), B = boardFor(st);

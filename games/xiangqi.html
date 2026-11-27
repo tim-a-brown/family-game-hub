@@ -267,8 +267,8 @@
   //      hist:[{n, ev, cpu}] (undo: the plies to go back to), events:[], over, result, started, busy, offer}
   var S = null, sel = -1, flash = null;
   var NET = null, LEFT = null, WINO = null, NETREC = {}, SHOWN = 0, OFFERSH = null;
-  var LEVELS = { easy: { depth: 1, time: 400, noise: 160 }, normal: { depth: 4, time: 1200, noise: 22 }, hard: { depth: 7, time: 2600, noise: 0 } };
-  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  var LEVELS = { easy: { depth: 1, time: 400, noise: 250 }, normal: { depth: 4, time: 1200, noise: 22 }, hard: { depth: 7, time: 1800, noise: 8 }, expert: { depth: 12, time: 2900, noise: 0 } };
+  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard', expert: 'Expert' };
   function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
   // the letters on the pieces: on until the first game is played, then as chosen
@@ -332,9 +332,9 @@
     S = null; sel = -1;
     app.classList.remove('ipl', 'xq-land', 'xq-low', 'xq-tall', 'xq-short');
     Kit.setup(app, {
-      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: '2p', kind: 'local' }]),
+      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal, Hard or Expert' }, { id: '2p', kind: 'local' }]),
       options: [
-        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Looks one move ahead and often leaves pieces hanging.'], ['normal', 'Normal', 'Looks a few moves ahead. A good game.'], ['hard', 'Hard', 'Thinks deeper and longer. Very hard to beat.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Looks one move ahead and leaves pieces hanging a lot.'], ['normal', 'Normal', 'Looks a few moves ahead. A good game.'], ['hard', 'Hard', 'Thinks deeper and longer. Very hard to beat.'], ['expert', 'Expert', 'Thinks deepest and longest of all. The strongest there is here.']], when: function (m) { return m === 'cpu'; } },
         { id: 'side', label: 'You play', value: 'r', choices: [['r', 'Red\nMoves first', 'Red always moves first, so you start.'], ['b', 'Black', 'The computer plays Red and moves first.'], ['x', 'Random', 'A coin toss picks your color.']], when: function (m) { return m === 'cpu'; } },
         { id: 'pass', label: 'Between turns', value: 'on', choices: [['on', 'Hand over', 'A cover comes up after each move with the next player’s name, so each of you knows it’s your turn. Hold it to take your turn.'], ['off', 'Open board', 'No cover between moves: the board stays in view, as on a real table.']], when: function (m) { return m === '2p'; } },
         { id: 'letters', label: 'Piece letters', value: firstTime() ? 'on' : (lsGet(LETK) === '1' ? 'on' : 'off'), choices: [['on', 'Shown', 'A small Western letter on each piece says what it is: K General, A Advisor, E Elephant, H Horse, R Chariot, C Cannon, P Soldier.'], ['off', 'Hidden', 'The pieces show only their Chinese characters, as on a real set.']] }
@@ -452,7 +452,7 @@
       var behind = matOfFor(g, -w.side) - matOfFor(g, w.side);
       if (behind >= 4) out.push({ t: 'Mate from behind', l: w.name + ' was ' + behind + ' points of pieces down and still won.', h: w.name + ' checkmated while ' + behind + ' points of pieces down' });
     }
-    if (!net && lo.cpu && !w.cpu && st.level === 'hard') out.push({ t: 'Hard computer beaten', l: lo.name + ' was playing on Hard.', h: w.name + ' beat ' + lo.name + ' on Hard' });
+    if (!net && lo.cpu && !w.cpu && (st.level === 'hard' || st.level === 'expert')) out.push({ t: LEVEL_NAME[st.level] + ' computer beaten', l: lo.name + ' was playing on ' + LEVEL_NAME[st.level] + '.', h: w.name + ' beat ' + lo.name + ' on ' + LEVEL_NAME[st.level] });
     return out;
   }
   function matOfFor(g, side) { var t = 0; g.pl.forEach(function (p, i) { if (p.c && moverAt(g, i) === side) t += PV[Math.abs(p.c)]; }); return t; }

@@ -223,7 +223,7 @@ html.km-dk .tag{font-size:calc(.78rem * var(--dk));}
   'use strict';
   var el = Kit.el, app = document.getElementById('app'), Core = window.KamisadoCore;
   var SAVE = 'kamisado_state', KEY = 'kamisado', BLACK = 1, WHITE = 2;
-  var SKILL = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  var SKILL = { easy: 'Easy', normal: 'Normal', hard: 'Hard', expert: 'Expert' };
   var DEMO = Kit.inDemo && Kit.inDemo();
   var CREDIT = 'Kamisado was designed by Peter Burley and is published by Burley Games.';
   var INK = ['#dd7a26', '#2a5fb5', '#6a3c9e', '#d0628e', '#e3b52f', '#b52d2b', '#2f8a4b', '#76462a'];
@@ -286,9 +286,9 @@ html.km-dk .tag{font-size:calc(.78rem * var(--dk));}
     S = null; deskOff();
     app.classList.remove('ipl');
     Kit.setup(app, {
-      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: '2p', kind: 'local' }]),
+      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal, Hard or Expert' }, { id: '2p', kind: 'local' }]),
       options: [
-        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Looks one move past its own and often slips.'], ['normal', 'Normal', 'Looks a few moves ahead at the towers each move sends.'], ['hard', 'Hard', 'Looks ten or more moves ahead and finds forced wins.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Looks one move past its own and slips a lot.'], ['normal', 'Normal', 'Looks a few moves ahead at the towers each move sends.'], ['hard', 'Hard', 'Looks ten or more moves ahead and finds forced wins.'], ['expert', 'Expert', 'Thinks longest of all, finds forced wins further off and gives you none.']], when: function (m) { return m === 'cpu'; } },
         { id: 'target', label: 'Match', value: '1', choices: [['1', 'Single round\nFirst to 1', 'One round: the first tower home wins.'], ['3', 'Standard\nFirst to 3', 'Rounds until someone has 3 points. Towers that win become Sumo towers.'], ['7', 'Long\nFirst to 7', 'Rounds until someone has 7 points.'], ['15', 'Marathon\nFirst to 15', 'Rounds until someone has 15 points, or a Quadruple Sumo.']] },
         { id: 'side', label: 'You play', value: 'b', choices: [['b', 'Black\nGoes first', 'Black always starts the first round, so you start.'], ['w', 'White', 'The computer plays Black and starts.']], when: function (m) { return m === 'cpu'; } },
         { id: 'hints', label: 'Hints', value: 'on', choices: [['on', 'On', 'Each square a tower can reach is marked gold for a win, red where it hands the other player a way home and with a ring where it leaves their next tower blocked, and red dashed lines show the other player\'s towers with a clear way home.'], ['off', 'Off', 'Every square a tower can reach is marked the same, with no warnings: read the board yourself.']] },
@@ -390,7 +390,7 @@ html.km-dk .tag{font-size:calc(.78rem * var(--dk));}
     if (NET || !S || S.over || !pl(S.turn).cpu || S.busy) return;
     S.busy = true; paintAll();
     var t0 = Date.now(), myN = S.n, myPh = S.phase, L = Object.assign({}, Core.LEVELS[S.level] || Core.LEVELS.normal);
-    var q = S.phase === 'regroup' ? { kind: 'fill', b: S.b.slice(), rk: S.rk.slice(), side: S.turn, o: { depth: S.level === 'hard' ? 6 : S.level === 'normal' ? 3 : 1, noise: S.level === 'easy' ? 40 : 0 } }
+    var q = S.phase === 'regroup' ? { kind: 'fill', b: S.b.slice(), rk: S.rk.slice(), side: S.turn, o: { depth: S.level === 'expert' ? 8 : S.level === 'hard' ? 6 : S.level === 'normal' ? 3 : 1, noise: S.level === 'easy' ? 60 : 0 } }
       : { kind: 'move', b: S.b.slice(), rk: S.rk.slice(), side: S.turn, req: S.req, o: L };
     think(q, function (res) {
       if (!S || S.n !== myN || S.phase !== myPh) return;

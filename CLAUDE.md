@@ -1551,7 +1551,8 @@ Underlying principles for everything:
   line); Past games here (wins by name and the last game); it gives up the chart, then past games, then the oldest
   moves, never a cut row. A desk window held upright keeps the device column without the 760px cap.
 - Robots: alpha-beta (`search`) on spread around the center of mass, quads (Euler number), centralization, groups and
-  mobility; `LEVELS` Easy depth 1 with noise, Normal 3, Hard 6 within 2.2 s. Test hook `window.__loa`
+  mobility; `LEVELS` Easy depth 1 with a lot of noise, Normal 3, Hard 6 within 2 s, Expert 10 within 2.7 s with the moves that
+  cut the search short tried first (`memory`: killers and history). Test hook `window.__loa`
   (`start`, `set(rows, turn)`, `tap`, `play`).
 
 ## Shogi (2026-11-23)
@@ -1571,7 +1572,8 @@ Underlying principles for everything:
   30, 900, 25,470, 719,731.
 - The computer: alpha-beta with quiescence (captures, and every reply when in check), killers and history ordering, an
   evaluation of material (pieces in hand worth a little more), King guards and attackers near each King, advancement.
-  `LEVELS` in the page: Easy depth 1 with a lot of noise, Normal depth 3 in 1.5 s, Hard depth 5 in 3.5 s. The computer
+  `LEVELS` in the page: Easy depth 1 with a great deal of noise, Normal depth 3 in 1.5 s, Hard depth 5 in 2 s, Expert depth 9
+  in 3 s. The computer
   declares an impasse it is sure to win and agrees to a count it doesn't lose.
 - `node scripts/shogi-sim.js [games] [--robots]` checks every position against a second move generator written from
   the rules, the piece counts, nifu, dead pieces, the ends, and fixed tests for uchifuzume, nifu, forced promotion, no
@@ -1655,8 +1657,8 @@ Underlying principles for everything:
   into a position already played (`seen`).
 - Computer: negamax with alpha-beta; the position is weighed by marbles off, marbles the side to move can push off now,
   its own marbles open to a push off next move, nearness to the middle, marbles touching and marbles on the edge (`W`).
-  Easy looks two moves ahead (its move and the answer) with noise at the root, Normal three, Hard deepens to 6 in
-  1.5 s (`LEVELS`).
+  Easy looks two moves ahead (its move and the answer) with a lot of noise at the root, Normal three, Hard deepens to 6
+  in 1.5 s, Expert to 9 in 2.6 s with no noise (`LEVELS`).
 - The table: tap marbles to choose 1 to 3 in a line (a tap two holes along takes the one between), gold arrows on every
   way they can go (a push's arrow is red, standing where the lead marble meets the first one pushed, the marbles pushed
   ringed red and the one that would go off pulsing), or drag the marbles that way. Marbles glide, pushed ones knock, a
@@ -1699,8 +1701,8 @@ Underlying principles for everything:
   player moves, as Xiangqi's). Resign is in the menu. Holes are named A1 (top left) to X24.
 - Computer: alpha-beta over the holes on either side's shortest paths and near the last pegs, weighing each side's pegs
   to go (a 0-1 shortest path: own pegs 0, playable empty holes 1, over links nothing crosses) and the width of its
-  shortest paths (`Engine`, `candidates`). `LEVELS` in the core: Easy one move deep with noise, Normal 3 deep, Hard to 5
-  deep in 3 s. Red's computer opens near its own border when the swap is on, and swaps a first peg in the middle of the
+  shortest paths (`Engine`, `candidates`). `LEVELS` in the core: Easy one move deep with a lot of noise, Normal 3 deep, Hard to
+  5 deep in 2 s with a little noise, Expert to 7 deep in 3 s with none. Red's computer opens near its own border when the swap is on, and swaps a first peg in the middle of the
   board. A two-distance evaluation (as Hex programs use) was tried and played worse than this one.
 - The table: tap-to-aim on a touch screen (a press shows a loupe, the holes three times larger above the finger, and the
   ghost peg with the links it would make as moving lines in its color and the links that would be blocked as red dashes
@@ -1743,8 +1745,10 @@ Underlying principles for everything:
 - Robots (`LEVELS`): Easy plays a random piece that fits (a little more often a large one) at a random place, a third
   of the time the best spot for it; Normal weighs each placement by its size, the new corners it opens, the other
   players' corners it covers (a partner's are spared, the shared color is nobody's) and the pull toward the middle
-  early on, keeping the single square for last; Hard takes Normal's best 14 and plays each out one move, weighing every
-  color's placements, corners and room after it (`deep`, 1.5 s). Measured (`--matrix`): Easy beat Normal in 1 of 100
+  early on, keeping the single square for last; Hard takes Normal's best 14 (by Normal's weighing with a little noise) and
+  plays each out one move, weighing every color's placements, corners and room after it (`deep`, 1.5 s); Expert takes
+  its best 12 and looks past the next color's best answer to each, that color's four best placements weighed by the same
+  deep look (`deep2`, 2.4 s). Easy now looks for the spot with the most room only about one time in eight. Measured (`--matrix`): Easy beat Normal in 1 of 100
   two-player games; Hard beat Normal in 68% to 83% of two-player games and won 44% of four-player games against three
   Normals (an even share is 25%).
 - The table: tap a piece in the tray (pieces with no place left are dimmed, played ones a faint outline in their slot,
@@ -1800,7 +1804,10 @@ Underlying principles for everything:
   counted at its length times the chance it ends up a palindrome if its empty squares were filled from the bag. Normal
   takes the best move by that weight; Hard looks at the answer too (Chaos at Order's best slide after each of its best
   placements, Order at every color the bag could give next and Chaos's worst placement of it, an expectimax over the
-  draw); Easy plays a random move 40% of the time and otherwise only looks at the palindromes a slide makes now. Fast
+  draw); Expert looks a step further (`depth: 3`, `chipLook`, `chipNext`): as Chaos each placement against Order's four best
+  slides, each followed by the next chip; as Order each slide against the next chip's four most careful placements, each
+  answered by Order's best slide; Easy plays a random move 60% of the time and otherwise only looks at the palindromes a
+  slide makes now. Fast
   enough to run on the page (a few ms a move), so there is no Worker.
 - The table: the bag with the chip just drawn in a tray beside it and how many of each color are left as stacks of
   chips; the bag shakes and the chip rises out of it (`drawAnim`) and flies to its square when placed (`flyIn`). Each
@@ -1872,7 +1879,8 @@ Underlying principles for everything:
   counted against their owner (`capturable`), marbles taken a little; when the other side has a four only the moves
   that stop it are searched (a block, or a capture that breaks the line, with the emptied hole counted), so a line that
   can't be stopped is seen as lost. A placement that traps is only ever searched with each of its captures. Easy one
-  move deep with a lot of noise (it still blocks a four), Normal 3 deep, Hard deepens to 8 in 1.8 s (beam 12).
+  move deep with a great deal of noise (it still blocks a four), Normal 3 deep, Hard deepens to 8 in 1.8 s (beam 12),
+  Expert to 12 in 2.6 s with no noise.
   Measured under the official rules (`boku-sim.js 400 60`, Hard capped at depth 4 there): Easy beat Normal in 1 of
   400; Hard beat Normal in 44 of 60; no game ran out of marbles.
 - The table: a tap on a hole shows a ghost marble with the lines of three or more it would make (gold) and the pairs it
@@ -1932,8 +1940,9 @@ Underlying principles for everything:
   or the orange at their right (R). The loser starts the next round. Ranks carry across rounds (`rk` in the state).
 - Computer (`search`, `LEVELS`): negamax with alpha-beta over the one tower that must move (pushes included), blocks and
   deadlocks played out exactly; the position weighed by each tower's open lanes to the goal (within its range), Sumo
-  ranks, how far the towers have come and the mobility of the tower to move. Easy depth 2 with noise, Normal depth 5,
-  Hard iterative deepening in 1.8 s (depth 9 to 14 in the opening). The Defender's fill (`chooseFill`) is the set-up whose
+  ranks, how far the towers have come and the mobility of the tower to move. Easy depth 2 with noise and, half the time, only
+  its own move (`slip`), Normal depth 5, Hard iterative deepening in 1.5 s with a little noise (depth 9 to 14 in the
+  opening), Expert in 2.7 s with none; the fill looks 1, 3, 6 or 8 deep. The Defender's fill (`chooseFill`) is the set-up whose
   best first move is worth least to the Challenger. Measured (`kamisado-sim.js 100`, single rounds, seats alternating):
   Easy beat Normal in 3 of 100; Hard (held to depth 9 in the sim) beat Normal in 100 of 100. Matches to 7 and 15 (with
   the `rand` skill) turned up pushes, Double and Triple Sumos and deadlocks, all agreeing with the plain reading.
@@ -2002,7 +2011,8 @@ Underlying principles for everything:
   (where a marker goes, connection or border, a meeting's field, which markers a turn gives up) made by a quick look, at
   the root by the full evaluation; a position weighed by markers (more near the target), chevrons, each chevron's power
   and moves, pincers it could make, connection fields in reach, chevrons attacked by two of one color, blocked chevrons.
-  Easy one move deep with noise, Normal two, Hard to four in 1.6 s with narrower beams.
+  Easy one move deep with a lot of noise, Normal two, Hard to four in 1.6 s with narrower beams, Expert to six in 2.6 s
+  with wider ones.
 - **Hints** (the setup's `hints`, On by default, Tim 2026-11-26): with it Off the board shows only where a chevron can go
   (the dots, a pincer's ring) and nothing that makes the game easier: no number of fields a move would turn, no preview of
   what a move would change, no red ring round a chevron in danger, no "Choose for me" for a turn's markers, and the
@@ -2085,9 +2095,9 @@ Underlying principles for everything:
   player, points]] (the first card's player is -1), `sc`, `turn`, `win`, `ml`, `aside`, `best`. The core's `Board` is a
   400 by 400 grid (Int8Array colors, chains found by `chains()`); `judge` gives a card's fit, marks and score (each part
   of the card joins the chains it touches, parts linked through a chain counted together); `fits` every place it fits.
-- Robots (`LEVELS`): Easy plays at random among the places scoring at least 0.6 of the most; Normal takes the most points
-  now; Hard weighs its 12 best places by points minus 0.8 of the most the next player could score with a sample of 14
-  unseen cards (1.5 s). Measured (`continuo-sim.js 100`, 2 players, seats alternating): Easy beat Normal in 19 of 100 and Hard
+- Robots (`LEVELS`): Easy plays at random among the places scoring at least half the most (0.6 before Expert); Normal
+  takes the most points now; Hard weighs its 12 best places by points minus 0.8 of the most the next player could score
+  with a sample of 14 unseen cards (1.5 s), Expert its 20 best with a sample of 32 (2.4 s). Measured (`continuo-sim.js 100`, 2 players, seats alternating): Easy beat Normal in 19 of 100 and Hard
   in 19; Hard beat Normal in 58 of 100, with 2 ties (the draw decides much of Continuo); games come to about 260
   points a player (192 to 312), and about one card in two games goes under the deck.
 - The table (`build`, `paintTiles`, `fitView`): an SVG of the cards on a walnut table, viewed round every card down with a
