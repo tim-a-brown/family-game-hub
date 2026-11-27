@@ -430,10 +430,11 @@ html.cdesk-on #app .roundbox small{font-size:.8em;}
     });
   }
   // The computer's skill. Normal is how it has always played; a game saved before there were levels plays Normal.
-  var LEVELS = [['easy', 'Easy', 'Bids by guesswork and often plays the wrong card.'],
+  var LEVELS = [['easy', 'Easy', 'Bids by guesswork and plays the wrong card about half the time.'],
     ['normal', 'Normal', 'Bids what its hand looks worth and plays to hit its bid.'],
-    ['hard', 'Hard', 'Remembers every card played and thinks each bid and play through.']];
-  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+    ['hard', 'Hard', 'Remembers every card played and thinks each bid and play through.'],
+    ['expert', 'Expert', 'Remembers every card and who is out of which suit, weighs more bids, and thinks each bid and play through four times as thoroughly as Hard.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' || v === 'expert' ? v : 'normal'; }
   function lvOf(p) { var pl = S.players && S.players[p]; return lvName((pl && pl.level) || S.level); }
   function newGame(players, options, mode) {
     var n = players.length, full = Math.floor(60 / n);
@@ -818,9 +819,11 @@ html.cdesk-on #app .roundbox small{font-size:.8em;}
       else if (c.r === 'J' && k > 8) est += (S.trump ? 0.05 : 0.15) * crowd;
     });
     var lv = plain ? 'normal' : lvOf(p);
-    // Easy guesses: it can be out by a trick either way. Hard tries the bids around its count and keeps the best.
-    var b = Math.round(est + (Math.random() - .5) * (lv === 'easy' ? 2.6 : 0.6));
+    // Easy guesses: it can be out by two tricks either way. Hard tries the bids around its count and keeps the best;
+    // Expert tries two either side of its count, with more deals.
+    var b = Math.round(est + (Math.random() - .5) * (lv === 'easy' ? 3.6 : 0.6));
     if (lv === 'hard') b = hardBid(p, est);
+    if (lv === 'expert') b = hardBid(p, est, EXPERT_DEALS, EXPERT_MS, 2);
     b = Math.max(0, Math.min(k, b));
     var f = forbiddenBid(p);
     if (b === f) b = est > b || b === 0 ? b + 1 : b - 1;
@@ -829,9 +832,10 @@ html.cdesk-on #app .roundbox small{font-size:.8em;}
   function strength(c, led) { return isW(c) ? 200 : isJ(c) ? 0 : c.s === S.trump ? 100 + V[c.r] : c.s === led ? 50 + V[c.r] : V[c.r]; }
   function cpuPlay(p) {
     var lv = lvOf(p), o;
+    if (lv === 'expert') return hardPlay(p, EXPERT_DEALS, EXPERT_MS);
     if (lv === 'hard') return hardPlay(p);
-    // Easy: one play in three is any card it is allowed to play
-    if (lv === 'easy' && Math.random() < 0.34) { o = legal(p); return o[Math.floor(Math.random() * o.length)]; }
+    // Easy: about half its plays are any card it is allowed to play
+    if (lv === 'easy' && Math.random() < 0.5) { o = legal(p); return o[Math.floor(Math.random() * o.length)]; }
     return normalPlay(p);
   }
   // A player who plays an ordinary card of another suit has shown they are out of the suit led.
@@ -844,7 +848,8 @@ html.cdesk-on #app .roundbox small{font-size:.8em;}
   // and who has shown they are out of a suit. It deals the unseen cards out in ways that fit and plays the round
   // through with everyone playing as Normal does: for a bid, with each bid around its own count; for a card, with
   // each card it could play. It keeps what scores best for it, measured against what the others score.
-  var ALLW = makeDeck(), HARD_DEALS = 30, HARD_MS = 400;   // (as many deals as fit in the time, and never fewer than 8)
+  // Expert does the same with about four times the deals.
+  var ALLW = makeDeck(), HARD_DEALS = 30, HARD_MS = 400, EXPERT_DEALS = 120, EXPERT_MS = 1500;   // (as many deals as fit in the time, and never fewer than 8)
   function unseen(p, X) {
     var seen = {};
     X.hands[p].forEach(function (c) { seen[c.id] = 1; });
@@ -889,11 +894,12 @@ html.cdesk-on #app .roundbox small{font-size:.8em;}
     return { hands: hands.map(function (h) { return h.slice(); }), trick: X.trick.slice(), trickNo: X.trickNo, taken: X.taken.slice(), bids: X.bids.slice(),
       trump: X.trump, trumpCard: X.trumpCard, round: X.round, dealer: X.dealer, opts: X.opts, players: X.players.map(function () { return {}; }), level: 'normal' };
   }
-  function hardPlay(p) {
+  function hardPlay(p, deals, ms) {
+    deals = deals || HARD_DEALS; ms = ms || HARD_MS;
     var opts = legal(p); if (opts.length < 2) return opts[0];
     var X = S, pool = unseen(p, X), need = X.hands.map(function (h, q) { return q === p ? 0 : h.length; }), tot = opts.map(function () { return 0; }), n, i, t0 = Date.now();
     try {
-      for (n = 0; n < HARD_DEALS && (n < 8 || Date.now() - t0 < HARD_MS); n++) {
+      for (n = 0; n < deals && (n < 8 || Date.now() - t0 < ms); n++) {
         var hands = dealOut(pool, need, X.vd || []); hands[p] = X.hands[p];
         for (i = 0; i < opts.length; i++) { var Y = simOf(X, hands); Y.turn = p; S = Y; tot[i] += runOut(Y, p, opts[i]); }
       }
@@ -902,13 +908,14 @@ html.cdesk-on #app .roundbox small{font-size:.8em;}
     var usual = normalPlay(p), u = opts.indexOf(usual);   // (cards that come out the same: play as Normal would)
     return u >= 0 && tot[u] >= tot[best] - 1e-9 ? usual : opts[best];
   }
-  function hardBid(p, est) {
+  function hardBid(p, est, deals, ms, span) {
+    deals = deals || HARD_DEALS; ms = ms || HARD_MS; span = span || 1;
     var X = S, k = X.hands[p].length, n = X.players.length, pool = unseen(p, X), need = X.hands.map(function (h, q) { return q === p ? 0 : h.length; });
     var mid = Math.round(est), cands = [], tot = [], d, i, q, t0 = Date.now();
-    for (i = mid - 1; i <= mid + 1; i++) if (i >= 0 && i <= k && i !== forbiddenBid(p)) { cands.push(i); tot.push(0); }
+    for (i = mid - span; i <= mid + span; i++) if (i >= 0 && i <= k && i !== forbiddenBid(p)) { cands.push(i); tot.push(0); }
     if (cands.length < 2) return cands.length ? cands[0] : mid;
     try {
-      for (d = 0; d < HARD_DEALS && (d < 8 || Date.now() - t0 < HARD_MS); d++) {
+      for (d = 0; d < deals && (d < 8 || Date.now() - t0 < ms); d++) {
         var hands = dealOut(pool, need, []); hands[p] = X.hands[p];
         // (the seats still to bid will bid what their cards look worth)
         var B = simOf(X, hands); S = B;

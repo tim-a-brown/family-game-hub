@@ -147,7 +147,8 @@
     deal(st);
     return st;
   }
-  function lv(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+  function lv(v) { return v === 'easy' || v === 'hard' || v === 'expert' ? v : 'normal'; }
+  function hardish(l) { return l === 'hard' || l === 'expert'; }   // (Expert does everything Hard does, and thinks longer)
   function zeros(n) { var a = []; for (var i = 0; i < n; i++) a.push(0); return a; }
   function deal(st) {
     st.round++; st.dealer = (st.dealer + 1) % st.n;
@@ -502,12 +503,12 @@
       counters = Math.max(80, Math.min(195, 250 * share));
       var mate = (p + 2) % 4, mateBid = 0, oppBid = 0;
       st.auction.forEach(function (x) { if (x.b && x.p === mate) mateBid = Math.max(mateBid, x.b); if (x.b && x.p % 2 !== p % 2) oppBid = Math.max(oppBid, x.b); });
-      var mateMeld = 45 + (mateBid ? (lvl === 'hard' ? 35 + Math.min(40, (mateBid - 250) / 2) : 30) : 0) - (oppBid && lvl === 'hard' ? 10 : 0);
+      var mateMeld = 45 + (mateBid ? (hardish(lvl) ? 35 + Math.min(40, (mateBid - 250) / 2) : 30) : 0) - (oppBid && hardish(lvl) ? 10 : 0);
       var passGain = st.passN === 4 ? 45 : 35;
       // (a strong trump suit gets more from the pass: the partner sends trump and aces)
       if (v.tl >= 6) passGain += 15;
       var est = v.meld + mateMeld + passGain + counters;
-      if (lvl === 'hard') est -= 5; else if (lvl === 'easy') est += (rnd() - 0.4) * 80;
+      if (hardish(lvl)) est -= 5; else if (lvl === 'easy') est += (rnd() - 0.4) * 80;
       else est += (rnd() - 0.5) * 20;
       if (v.tl < 4 && lvl !== 'easy') est -= 40;   // (no trump suit to speak of: let someone else name it)
       return Math.floor(est / STEP) * STEP;
@@ -530,7 +531,7 @@
     }
     if (mx < need) return 0;
     // Hard opens near what it can make when its meld alone is big (so its partner knows), otherwise steps up by ten
-    if (lvOf(st, p) === 'hard' && !st.high && mx >= 330) return Math.min(mx - 40, 300);
+    if (hardish(lvOf(st, p)) && !st.high && mx >= 330) return Math.min(mx - 40, 300);
     return need;
   }
   function botTrump(st, p) {
@@ -569,7 +570,7 @@
       SUITS.forEach(function (s) { if (s !== t && !cnt(cards, s)) v += 10; });
       return v;
     }
-    if (lvl === 'hard') {
+    if (hardish(lvl)) {
       var ids = h.map(function (c) { return c; }), n = ids.length, bestSet = null, bestV = -1e9;
       var idx = []; for (var a = 0; a < N; a++) idx.push(a);
       for (;;) {
@@ -613,7 +614,7 @@
     if (lvl !== 'easy') {
       var v = handValue(st.hands[p], st.trump, lvl), mate = st.kind === 'part' ? handValue(st.hands[(p + 2) % 4] ? st.hands[(p + 2) % 4] : [], st.trump, lvl) : null;
       var share = st.kind === 'part' ? 0.42 + 0.045 * (v.tl - 4) + v.play / 1400 : 0.3 + 0.05 * (v.tl - 5) + v.play / 1500;
-      if (need > 250 * Math.min(0.9, share) + (lvl === 'hard' && st.kind === 'part' ? 45 : 70)) return { k: 'go', concede: true };
+      if (need > 250 * Math.min(0.9, share) + (hardish(lvl) && st.kind === 'part' ? 45 : 70)) return { k: 'go', concede: true };
     }
     return { k: 'go' };
   }
@@ -711,7 +712,7 @@
   // Hard: deals the unseen cards out in ways that fit what it knows (the meld everyone laid, what it passed or was
   // passed, who is out of a suit or couldn't head a trick), plays each card it could play through to the end of the
   // hand with everyone playing as Normal does, and keeps the card that leaves its side best off.
-  var HARD_DEALS = 28, HARD_MS = 420;
+  var HARD_DEALS = 28, HARD_MS = 420, EXPERT_DEALS = 110, EXPERT_MS = 1600;   // (Expert: about four times the deals)
   function known(st, p) {
     // cards this seat knows are in another hand: their meld (until played), and its own pass to its partner
     var k = []; for (var q = 0; q < st.n; q++) k.push([]);
@@ -782,13 +783,14 @@
     if (st.kind === 'cut') return val[sd0] + (st.scores ? st.scores[sd0] : 0) - (top + others / no) / 2;
     return val[sd0] - others / no;
   }
-  function hardPlay(st, p) {
+  function hardPlay(st, p, deals, ms) {
+    deals = deals || HARD_DEALS; ms = ms || HARD_MS;
     var opts = legal(st, p); if (opts.length < 2) return opts[0];
     // (two copies of a card play the same)
     var uniq = [], seenK = {}; opts.forEach(function (c) { if (!seenK[c.r + c.s]) { seenK[c.r + c.s] = 1; uniq.push(c); } });
     if (uniq.length < 2) return uniq[0];
     var tot = uniq.map(function () { return 0; }), t0 = Date.now(), n;
-    for (n = 0; n < HARD_DEALS && (n < 10 || Date.now() - t0 < HARD_MS); n++) {
+    for (n = 0; n < deals && (n < 10 || Date.now() - t0 < ms); n++) {
       var hands = dealOut(st, p);
       for (var i = 0; i < uniq.length; i++) tot[i] += playOut(st, hands, p, uniq[i]);
     }
@@ -819,7 +821,7 @@
     var led = st.trick[0].c, beat = h.filter(function (c) { return beats(c, led, t); });
     var unmelded = meldOptionsFor(st, p);
     // (Hard also takes a trick for a smaller meld, and fights for the last cards of the stock)
-    var want = isCounter(led) || unmelded >= 40 || (lvl === 'hard' && (unmelded >= 20 || st.stock.length <= 4));
+    var want = isCounter(led) || unmelded >= 40 || (hardish(lvl) && (unmelded >= 20 || st.stock.length <= 4));
     if (want && beat.length) {
       var cheap = beat.slice().sort(function (a, b) {
         var va = (keep[a.id] ? 30 : 0) + (a.s === t ? 20 + PW[a.r] * 3 : PW[a.r]) - (isCounter(a) && a.s === led.s ? 12 : 0);
@@ -844,7 +846,7 @@
     var lvl = lvOf(st, p);
     if (lvl === 'easy') return rnd() < 0.2 ? -1 : 0;
     // the royal marriage before the run when both are there: 40 now and the run's 150 next time
-    if (lvl === 'hard' && o[0].k === 'run') { for (var i = 0; i < o.length; i++) if (o[i].k === 'rm' && st.stock.length > 2) return i; }
+    if (hardish(lvl) && o[0].k === 'run') { for (var i = 0; i < o.length; i++) if (o[i].k === 'rm' && st.stock.length > 2) return i; }
     return 0;
   }
   function bot(st, p) {
@@ -859,8 +861,9 @@
       case 'smeld': return { k: 'meld', i: botMeld2(st, p) };
       case 'stock': return { k: 'play', id: stockPlay(st, p).id };
       case 'play':
+        if (lvl === 'expert') return { k: 'play', id: hardPlay(st, p, EXPERT_DEALS, EXPERT_MS).id };
         if (lvl === 'hard') return { k: 'play', id: hardPlay(st, p).id };
-        if (lvl === 'easy') { var o = legal(st, p); return { k: 'play', id: (rnd() < 0.3 ? o[Math.floor(rnd() * o.length)] : normalPlay(st, p, true)).id }; }
+        if (lvl === 'easy') { var o = legal(st, p); return { k: 'play', id: (rnd() < 0.5 ? o[Math.floor(rnd() * o.length)] : normalPlay(st, p, true)).id }; }
         return { k: 'play', id: normalPlay(st, p, false).id };
     }
     return null;

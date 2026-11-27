@@ -564,6 +564,7 @@ html.rdesk #app .fcd .fc-round.r{left:auto;right:clamp(14px,2cqmin,30px);}
     for (var k = 0; k < count; k++) for (var p = 0; p < n; p++) S.hands[(S.dealer + 1 + p) % n].push(deck.pop());
     S.discard = [deck.pop()];
     S.stock = deck;
+    S.took = S.players.map(function () { return []; });   // (what each player has picked up off the discard pile this round)
     S.turn = (S.dealer + 1) % n;
     S.phase = 'draw';
     S.outBy = -1; S.turns = S.players.map(function () { return 0; });
@@ -606,6 +607,7 @@ html.rdesk #app .fcd .fc-round.r{left:auto;right:clamp(14px,2cqmin,30px);}
     if (!quiet) flash('Discards shuffled into a new stock');
     return true;
   }
+  function noteTook(p, c) { if (!S.took) S.took = S.players.map(function () { return []; }); if (S.took[p]) S.took[p].push({ r: c.r, s: c.s }); }
   function draw(p, from) {
     if (S.phase !== 'draw' || S.turn !== p) return null;
     var c;
@@ -614,6 +616,7 @@ html.rdesk #app .fcd .fc-round.r{left:auto;right:clamp(14px,2cqmin,30px);}
     if (!c) return null;
     S.hands[p].push(c);
     S.drew = { id: c.id, from: from };
+    if (from === 'discard') noteTook(p, c);
     S.phase = 'discard';
     return c;
   }
@@ -660,10 +663,11 @@ html.rdesk #app .fcd .fc-round.r{left:auto;right:clamp(14px,2cqmin,30px);}
     return n;
   }
   // Its skill. Normal is how it has always played; a game saved before there were levels plays Normal.
-  var LEVELS = [['easy', 'Easy', 'Only picks up a discard when it is wild, and throws away cards that could still have made a set or a run.'],
+  var LEVELS = [['easy', 'Easy', 'Only picks up a discard when it is wild, and often throws away cards that could still have made a set or a run.'],
     ['normal', 'Normal', 'Picks up discards that help and holds on to cards that can still make a set or a run.'],
-    ['hard', 'Hard', 'Counts the cards it hasn’t seen and works out what each card it could draw next would do for its hand.']];
-  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+    ['hard', 'Hard', 'Counts the cards it hasn’t seen and works out what each card it could draw next would do for its hand.'],
+    ['expert', 'Expert', 'Counts the cards it hasn’t seen, works out every throw against every card it could draw next, and keeps track of what the next player picks up.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' || v === 'expert' ? v : 'normal'; }
   // Hard counts cards: two of each card and six Jokers, less its own hand and the discards it has watched go by.
   // unseen() is what could still be drawn; ahead(hand) is what its hand would cost on average after drawing one
   // of those and throwing its worst card (a card that fits nothing in the hand is just thrown back).
@@ -692,20 +696,23 @@ html.rdesk #app .fcd .fc-round.r{left:auto;right:clamp(14px,2cqmin,30px);}
     });
     return n ? tot / n : now;
   }
-  function hardDiscard(hand, w, avoidId, last) {
-    var list = [];
+  // Expert looks ahead from every throw, not only the likeliest few, and keeps from the next player a card that goes
+  // with one they picked up off the discard pile this round (anyone at the table could have watched them take it).
+  function hardDiscard(hand, w, avoidId, last, ex, p) {
+    var list = [], nx = ex && S.took ? S.took[(p + 1) % S.players.length] || [] : [];
     hand.forEach(function (c) {
       if (isW(c, w) && hand.some(function (x) { return !isW(x, w); })) return;
       if (c.id === avoidId && hand.length > 1) return;
       var rest = hand.filter(function (x) { return x !== c; }), now = cost(rest, w);
-      list.push({ c: c, rest: rest, now: now, plain: now * 10 + partners(c, rest) * 4 - val(c, w) });
+      var deny = nx.some(function (t) { return !isW(t, w) && (t.r === c.r || (t.s === c.s && Math.abs(rn(t) - rn(c)) <= 2)); }) ? 2.5 : 0;
+      list.push({ c: c, rest: rest, now: now, deny: deny, plain: now * 10 + partners(c, rest) * 4 - val(c, w) });
     });
     if (!list.length) return hand[0];
     list.sort(function (a, b) { return a.plain - b.plain; });
     // (going out, or the last turn of the round: what is left in the hand now is all that counts)
     if (!list[0].now || last) return list.sort(function (a, b) { return a.now - b.now || val(b.c, w) - val(a.c, w); })[0].c;
     var pool = unseen(hand), best = null;
-    list.slice(0, hand.length > 10 ? 4 : 6).forEach(function (x) { x.v = ahead(x.rest, w, pool) + x.now * 0.25; if (!best || x.v < best.v - 1e-9) best = x; });
+    (ex ? list : list.slice(0, hand.length > 10 ? 4 : 6)).forEach(function (x) { x.v = ahead(x.rest, w, pool) + x.now * 0.25 + (x.deny || 0); if (!best || x.v < best.v - 1e-9) best = x; });
     return best.c;
   }
   function lvOf(p) { var pl = S && S.players[p]; return lvName(pl && pl.level); }
@@ -716,7 +723,7 @@ html.rdesk #app .fcd .fc-round.r{left:auto;right:clamp(14px,2cqmin,30px);}
       if (c.id === avoidId && hand.length > 1) return;
       var rest = hand.filter(function (x) { return x !== c; });
       // (Easy gives no thought to what a loose card could become)
-      var score = cost(rest, w) * 10 + (lv === 'easy' ? 0 : partners(c, rest) * 4) - val(c, w) + Math.random() * 3;
+      var score = cost(rest, w) * 10 + (lv === 'easy' ? 0 : partners(c, rest) * 4) - val(c, w) + Math.random() * (lv === 'easy' ? 12 : 3);
       if (!best || score < best.score) best = { c: c, score: score };
     });
     return best ? best.c : hand[0];
@@ -724,14 +731,14 @@ html.rdesk #app .fcd .fc-round.r{left:auto;right:clamp(14px,2cqmin,30px);}
   // the card the robot in seat p throws (avoidId: the discard it has just picked up)
   function turnDiscard(p, avoidId) {
     var lv = lvOf(p), h = S.hands[p];
-    return lv === 'hard' ? hardDiscard(h, S.wild, avoidId, S.outBy >= 0) : bestDiscard(h, S.wild, avoidId, lv);
+    return lv === 'hard' || lv === 'expert' ? hardDiscard(h, S.wild, avoidId, S.outBy >= 0, lv === 'expert', p) : bestDiscard(h, S.wild, avoidId, lv);
   }
   // does the robot in seat p take the face-up discard?
   function cpuTake(p) {
     var h = S.hands[p], w = S.wild, top = S.discard[S.discard.length - 1], take = false;
     if (top) {
       if (isW(top, w)) take = true;
-      else if (lvOf(p) === 'hard') {
+      else if (lvOf(p) === 'hard' || lvOf(p) === 'expert') {
         // Hard takes the discard when that leaves its hand better off than the average card off the stock would
         var mine = leastAfter(h.concat([top]), w, top.id);
         take = mine === 0 || mine < ahead(h, w, unseen(h));
@@ -1609,6 +1616,7 @@ html.rdesk #app .fcd .fc-round.r{left:auto;right:clamp(14px,2cqmin,30px);}
         else { mv.rs = refillStock(true) ? 1 : 0; c = S.stock.pop(); mv.f = 'stock'; }
         if (!c) return null;
         S.hands[p].push(c); S.drew = { id: c.id, from: mv.f }; S.phase = 'discard';
+        if (mv.f === 'discard') noteTook(p, c);
         mv.id = c.id;
         return { state: S, mv: mv };
       }

@@ -420,10 +420,11 @@ html.cdesk-on #app .bidbar > .btn{width:auto;}
     });
   }
   // The computer's skill. Normal is how it has always played; a game saved before there were levels plays Normal.
-  var LEVELS = [['easy', 'Easy', 'Bids by guesswork and often plays the wrong card.'],
+  var LEVELS = [['easy', 'Easy', 'Bids by guesswork and plays the wrong card about half the time.'],
     ['normal', 'Normal', 'Bids what its hand is worth and keeps track of the high cards.'],
-    ['hard', 'Hard', 'Remembers every card played and thinks each play through.']];
-  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+    ['hard', 'Hard', 'Remembers every card played and thinks each play through.'],
+    ['expert', 'Expert', 'Remembers every card and who is out of which color, and thinks each play through four times as thoroughly as Hard.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' || v === 'expert' ? v : 'normal'; }
   function lvOf(p) { var pl = S.players && S.players[p]; return lvName((pl && pl.level) || S.level); }
   // Hints (the setup's choice): while a hand is played, the points each side has taken (the top bar, the score sheet's
   // live row, the desk's tug of war and counters), the points still out, and whether the bid can still be made. A game
@@ -577,14 +578,14 @@ html.cdesk-on #app .bidbar > .btn{width:auto;}
   }
   function cpuBid(p) {
     var v = handValue(S.hands[p]).score, lv = lvOf(p);
-    // how far a robot's reading of its hand can be out: Easy by a lot, Normal by a little, Hard not at all
-    var off = lv === 'hard' ? 0 : (Math.random() * 10 - 5) * (lv === 'easy' ? 6 : 1);
+    // how far a robot's reading of its hand can be out: Easy by a lot, Normal by a little, Hard and Expert not at all
+    var off = lv === 'hard' || lv === 'expert' ? 0 : (Math.random() * 10 - 5) * (lv === 'easy' ? 8 : 1);
     var limit = Math.round((58 + v * 1.6 + off) / 5) * 5;
     limit = Math.min(MAX_BID - 5, limit);
     var mate = (p + 2) % 4, need = nextBid();
     if (S.bidder === mate) limit -= 20;               // don't fight your partner without a reason
     if (need > limit) return 0;
-    if (lv !== 'hard' && S.high && S.bidder !== mate && Math.random() < 0.15 && need + 5 <= limit) return need + 5;
+    if (lv !== 'hard' && lv !== 'expert' && S.high && S.bidder !== mate && Math.random() < 0.15 && need + 5 <= limit) return need + 5;
     return need;
   }
 
@@ -702,17 +703,20 @@ html.cdesk-on #app .bidbar > .btn{width:auto;}
   }
   function cpuChoose(p) {
     var lv = lvOf(p), o;
+    if (lv === 'expert') return hardChoose(p, EXPERT_DEALS, EXPERT_MS);
     if (lv === 'hard') return hardChoose(p);
-    // Easy: one play in three is any card it is allowed to play
-    if (lv === 'easy' && Math.random() < 0.34) { o = legal(p); return o[Math.floor(Math.random() * o.length)]; }
+    // Easy: about half its plays are any card it is allowed to play
+    if (lv === 'easy' && Math.random() < 0.5) { o = legal(p); return o[Math.floor(Math.random() * o.length)]; }
     return normalChoose(p);
   }
   // Hard counts cards. It knows which cards it hasn't seen (the other hands and, unless it buried them itself, the
   // five cards under the nest) and who has shown they are out of a colour. It deals the unseen cards out in ways
   // that fit, plays each card it could play through to the end of the hand with everyone playing as Normal does,
   // and keeps the card that leaves its team best off on the score sheet.
-  var HARD_DEALS = 24, HARD_MS = 400;   // (as many deals as fit in the time, and never fewer than 8)
-  function hardChoose(p) {
+  // Expert does the same with about four times the deals.
+  var HARD_DEALS = 24, HARD_MS = 400, EXPERT_DEALS = 100, EXPERT_MS = 1500;   // (as many deals as fit in the time, and never fewer than 8)
+  function hardChoose(p, deals, ms) {
+    deals = deals || HARD_DEALS; ms = ms || HARD_MS;
     var opts = legal(p); if (opts.length < 2) return opts[0];
     var X = S, seen = {}, need = [0, 0, 0, 0], q, n, i, tot = opts.map(function () { return 0; });
     X.played.forEach(function (id) { seen[id] = 1; });
@@ -721,7 +725,7 @@ html.cdesk-on #app .bidbar > .btn{width:auto;}
     var pool = ALL.filter(function (c) { return !seen[c.id]; }), vd = X.vd || [{}, {}, {}, {}], t0 = Date.now();
     for (q = 0; q < 4; q++) if (q !== p) need[q] = X.hands[q].length;
     try {
-      for (n = 0; n < HARD_DEALS && (n < 8 || Date.now() - t0 < HARD_MS); n++) {
+      for (n = 0; n < deals && (n < 8 || Date.now() - t0 < ms); n++) {
         var d = dealOut(pool, need, vd); d.hands[p] = X.hands[p];
         for (i = 0; i < opts.length; i++) tot[i] += playOut(X, d.hands, p === X.bidder ? X.discards : d.rest, p, opts[i]);
       }

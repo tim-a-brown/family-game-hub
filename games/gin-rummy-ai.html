@@ -381,11 +381,15 @@ html.cdesk-on #app.stage > .cbar .hint{font-size:1.02rem;}
       ['off', 'Off', 'You sort your own hand by suit or rank, count your own deadwood and decide when to knock, as at a real table.']] };
   function hintsOn(X) { X = X || S; return !X || X.hints !== false; }
   // The computer's skill. Normal is how it has always played; a game saved before there were levels plays Normal.
-  // (Two levels for now: a Hard that beats Normal needs more than sharper numbers. Knocking sooner or later, a
-  // heavier hand on what it throws you and looking one draw ahead were each tried and none of them won more.)
-  var LEVELS = [['easy', 'Easy', 'Throws its highest loose card and knocks the moment it can.'],
-    ['normal', 'Normal', 'Keeps cards that can still become melds and picks its moment to knock.']];
-  function lvName(v) { return v === 'easy' ? v : 'normal'; }
+  // (Knocking sooner or later, a heavier hand on what it throws you and looking one draw ahead were each tried as a
+  // stronger player and none of them won more than the robot that is now Hard, so the levels are spread round it:
+  // Normal is Hard with a few slips, and Expert is Hard without its guesswork, which also picks up a discard that
+  // lowers what its hand is worth by enough.)
+  var LEVELS = [['easy', 'Easy', 'Throws a loose card without much thought and knocks the moment it can.'],
+    ['normal', 'Normal', 'Keeps cards that can still become melds, though now and then it throws one it should have kept.'],
+    ['hard', 'Hard', 'Keeps cards that can still become melds, watches what you pick up and picks its moment to knock.'],
+    ['expert', 'Expert', 'Plays as Hard does without guessing, takes any discard that clearly helps its hand, and holds out for gin while the stock is long.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' || v === 'expert' ? v : 'normal'; }
   function lvOf(p) { var pl = S && S.players && S.players[p]; return lvName(pl && pl.level); }
   function freshGame(players, target, mode, hints) {
     return {
@@ -673,7 +677,7 @@ html.cdesk-on #app.stage > .cbar .hint{font-size:1.02rem;}
       var rest = h.filter(function (x) { return x !== c; });
       // Easy only counts the deadwood it would be left with, give or take: no thought for what its cards could
       // become or for what the other player is collecting
-      var v = lv === 'easy' ? best(rest).dw + Math.random() * 4 : handValue(rest, vis) + danger(c) + Math.random() * 0.6;
+      var v = lv === 'easy' ? best(rest).dw + Math.random() * 8 : handValue(rest, vis) + danger(c) + Math.random() * (lv === 'expert' ? 0 : lv === 'normal' ? 2.5 : 0.6);
       if (v < bestV) { bestV = v; bestC = c; }
     });
     return bestC;
@@ -683,7 +687,13 @@ html.cdesk-on #app.stage > .cbar .hint{font-size:1.02rem;}
     var h = S.hands[AI], vis = seen(), withTop = h.concat([top]);
     var b = best(withTop);
     var inMeld = b.melds.some(function (m) { return m.indexOf(top) >= 0; });
-    if (inMeld) return true;
+    if (inMeld) return lvOf(AI) !== 'easy' || Math.random() < 0.6;
+    // (Expert: also when its hand, with the card it would throw back, is worth clearly less than now)
+    if (lvOf(AI) === 'expert') {
+      var now = handValue(h, vis), after = Infinity;
+      h.forEach(function (c) { var v = handValue(withTop.filter(function (x) { return x !== c; }), vis); if (v < after) after = v; });
+      if (now - after >= 7) return true;
+    }
     // Otherwise only if it clearly improves things (a low card that cuts deadwood)
     var bestAfter = Infinity;
     h.forEach(function (c) { var v = best(withTop.filter(function (x) { return x !== c; })).dw; if (v < bestAfter) bestAfter = v; });
@@ -708,8 +718,8 @@ html.cdesk-on #app.stage > .cbar .hint{font-size:1.02rem;}
     if (S.pubTook[1 - AI].length >= 2) limit -= 2;
     if (S.stock.length <= 6) limit = 10;
     var knock = dw === 0 || (dw <= 10 && dw <= limit);
-    // Holding out for gin now and then when very close early on
-    if (knock && dw > 0 && dw <= 2 && S.turnNo < 10 && Math.random() < 0.3) knock = false;
+    // Holding out for gin now and then when very close early on (Expert: when the stock is long and it is close)
+    if (knock && dw > 0 && dw <= 2 && S.turnNo < 10 && (lv === 'expert' ? S.stock.length >= 16 : Math.random() < (lv === 'normal' ? 0.5 : 0.3))) knock = false;
     return { k: 'discard', c: c, knock: knock };
   }
 

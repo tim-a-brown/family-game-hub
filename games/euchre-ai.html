@@ -414,10 +414,11 @@ html.cdesk-on #app.stage > .cbar .bidbox .q{font-size:.95rem;line-height:1.25;}
   function partner(p) { return (p + 2) % 4; }
 
   // The computer's skill. Normal is how it has always played; a game saved before there were levels plays Normal.
-  var LEVELS = [['easy', 'Easy', 'Calls trump on a whim and often plays the wrong card.'],
+  var LEVELS = [['easy', 'Easy', 'Calls trump on a whim and plays the wrong card about half the time.'],
     ['normal', 'Normal', 'Calls trump on a good hand and keeps track of the trumps.'],
-    ['hard', 'Hard', 'Remembers every card played and thinks each call and play through.']];
-  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+    ['hard', 'Hard', 'Remembers every card played and thinks each call and play through.'],
+    ['expert', 'Expert', 'Remembers every card and who is out of which suit, and thinks each call and play through four times as thoroughly as Hard.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' || v === 'expert' ? v : 'normal'; }
   function lvOf(p) { var pl = S.players && S.players[p]; return lvName((pl && pl.level) || S.level); }
   // Hints: at a desk, the seven trumps highest first with the ones played faded (trumpStrip). A game saved before there
   // was a choice has no hints field and plays with them on.
@@ -673,15 +674,16 @@ html.cdesk-on #app.stage > .cbar .bidbox .q{font-size:.95rem;line-height:1.25;}
   }
   // how far a robot's reading of its hand can be out: Easy by a lot (it calls on thin hands and passes good ones),
   // Normal by a little, Hard not at all
-  function jitter(p) { var lv = lvOf(p); return lv === 'hard' ? 0 : (Math.random() - 0.5) * (lv === 'easy' ? 5 : 0.8); }
+  function jitter(p) { var lv = lvOf(p); return lv === 'hard' || lv === 'expert' ? 0 : (Math.random() - 0.5) * (lv === 'easy' ? 6.5 : 0.8); }
   // Hard decides whether to call by trying it: it deals the cards it can't see many ways, plays the hand out with
   // itself as the maker (with a partner, and alone) and calls when that comes out well enough ahead on average.
-  var HARD_BID_DEALS = 40, HARD_CALL = [0.3, 0.2];   // (how far ahead a call has to come out: when the turned card is ordered up, when a suit is named)
+  var HARD_BID_DEALS = 40, EXPERT_BID_DEALS = 120, HARD_CALL = [0.3, 0.2];   // (how far ahead a call has to come out: when the turned card is ordered up, when a suit is named)
   function hardCall(p, t, round) {
+    var D = lvOf(p) === 'expert' ? EXPERT_BID_DEALS : HARD_BID_DEALS;
     var X = S, pool = DECK_IDS.filter(function (c) { return c.id !== X.up.id && find(X.hands[p], c.id) < 0; }), need = [5, 5, 5, 5], v = [0, 0], n, a;
     need[p] = 0;
     try {
-      for (n = 0; n < HARD_BID_DEALS; n++) {
+      for (n = 0; n < D; n++) {
         var hands = dealOut(pool, need, [{}, {}, {}, {}], t, null, 0); hands[p] = X.hands[p];
         for (a = 0; a < 2; a++) {
           var Y = { hands: hands.map(function (h) { return h.slice(); }), trick: [], trickNo: 0, played: [], tricks: [0, 0, 0, 0], voids: [{}, {}, {}, {}],
@@ -693,13 +695,13 @@ html.cdesk-on #app.stage > .cbar .bidbox .q{font-size:.95rem;line-height:1.25;}
         }
       }
     } finally { S = X; }
-    return v[1] > v[0] + 0.15 * HARD_BID_DEALS ? { v: v[1] / HARD_BID_DEALS, alone: true } : { v: v[0] / HARD_BID_DEALS, alone: false };
+    return v[1] > v[0] + 0.15 * D ? { v: v[1] / D, alone: true } : { v: v[0] / D, alone: false };
   }
   function cpuBid1(p) { var d = cpuCall1(p); bid1(p, d.order, d.alone); }
   function cpuBid2(p) { var d = cpuCall2(p); bid2(p, d.suit, d.alone); }
   // what a computer player says (the decisions only; the moves are bid1 and bid2, or online nBid1 and nBid2)
   function cpuCall1(p) {
-    if (lvOf(p) === 'hard') { var hc = hardCall(p, S.up.s, 1); return { order: hc.v >= HARD_CALL[0], alone: hc.alone }; }
+    if (lvOf(p) === 'hard' || lvOf(p) === 'expert') { var hc = hardCall(p, S.up.s, 1); return { order: hc.v >= HARD_CALL[0], alone: hc.alone }; }
     var t = S.up.s, h = S.hands[p], hv;
     if (p === S.dealer) hv = bestAfterPickup(h, S.up, t);
     else {
@@ -715,7 +717,7 @@ html.cdesk-on #app.stage > .cbar .bidbox .q{font-size:.95rem;line-height:1.25;}
     return { order: false };
   }
   function cpuCall2(p) {
-    if (lvOf(p) === 'hard') {
+    if (lvOf(p) === 'hard' || lvOf(p) === 'expert') {
       var hb = null;
       ['s', 'h', 'd', 'c'].forEach(function (s) { if (s === S.up.s) return; var c = hardCall(p, s, 2); if (!hb || c.v > hb.v) hb = { v: c.v, alone: c.alone, s: s }; });
       if ((S.stick && p === S.dealer) || hb.v >= HARD_CALL[1]) return { suit: hb.s, alone: hb.alone };
@@ -750,17 +752,20 @@ html.cdesk-on #app.stage > .cbar .bidbox .q{font-size:.95rem;line-height:1.25;}
   }
   function cpuChoose(p) {
     var lv = lvOf(p), opts;
+    if (lv === 'expert') return hardChoose(p, EXPERT_DEALS);
     if (lv === 'hard') return hardChoose(p);
-    // Easy: one play in three is any card it is allowed to play
-    if (lv === 'easy' && Math.random() < 0.34) { opts = legal(p); return opts[Math.floor(Math.random() * opts.length)]; }
+    // Easy: about half its plays are any card it is allowed to play
+    if (lv === 'easy' && Math.random() < 0.5) { opts = legal(p); return opts[Math.floor(Math.random() * opts.length)]; }
     return normalChoose(p);
   }
   // Hard counts cards. It knows which cards it hasn't seen (the other hands and the cards left face down), that the
   // dealer holds the turned-up card they picked up, and who has shown they are out of a suit. It deals the unseen
   // cards out in ways that fit, plays each card it could play through to the end of the hand with everyone playing
   // as Normal does, and keeps the card that scores best for its team.
-  var HARD_DEALS = 30;
-  function hardChoose(p) {
+  // Expert does the same with four times the deals.
+  var HARD_DEALS = 30, EXPERT_DEALS = 120;
+  function hardChoose(p, deals) {
+    deals = deals || HARD_DEALS;
     var opts = legal(p); if (opts.length < 2) return opts[0];
     var X = S, seen = {}, pool, need = [0, 0, 0, 0], q, n, i, tot = opts.map(function () { return 0; });
     X.played.forEach(function (id) { seen[id] = 1; });
@@ -772,7 +777,7 @@ html.cdesk-on #app.stage > .cbar .bidbox .q{font-size:.95rem;line-height:1.25;}
     // the card the dealer picked up is in the dealer's hand until it is played
     var held = X.picked && X.dealer !== p && !seen[X.up.id] && need[X.dealer] > 0 ? X.up.id : null;
     try {
-      for (n = 0; n < HARD_DEALS; n++) {
+      for (n = 0; n < deals; n++) {
         var hands = dealOut(pool, need, X.voids || [{}, {}, {}, {}], X.trump, held, X.dealer); hands[p] = X.hands[p];
         for (i = 0; i < opts.length; i++) tot[i] += playOut(X, hands, p, opts[i]);
       }

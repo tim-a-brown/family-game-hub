@@ -1401,9 +1401,10 @@ Underlying principles for everything:
   scoring, the insult bonus, slams and honors in both.
 - The computer bids SAYC basics from one table of rules (`rulesFor`): a robot's call and the meaning shown for it come
   from the same rule, so a new convention is one rule with its `say` and `sh` (the hand it shows). Michaels, the
-  unusual 2NT (`two` on the bidder's picture) and new minor forcing (`convState`) are in it. Easy, Normal and Hard
-  differ in skill, never in cheating; Hard samples hands that fit the auction and solves the last three tricks exactly
-  (`HARD_DEALS`, `HARD_MS`, `DD_AT`). Hard bids a slam only after playing the hand out in its head (`slamOdds`: 72
+  unusual 2NT (`two` on the bidder's picture) and new minor forcing (`convState`) are in it. Easy, Normal, Hard and
+  Expert differ in skill, never in cheating; Hard samples hands that fit the auction and solves the last three tricks
+  exactly (`HARD_DEALS`, `HARD_MS`, `DD_AT`), and Expert bids as Hard does and plays on three times the layouts with
+  the last four tricks solved exactly (`EXPERT_DEALS`, `EXPERT_MS`, `EXPERT_DD`). Hard bids a slam only after playing the hand out in its head (`slamOdds`: 72
   partner hands that fit the auction, played open-handed): when they average `SLAM6` (10.6) tricks and take twelve at
   least 3 times in 10. On about 17,000 Hard deals that made 73% of the slams bid (62% before); 11.1 makes 78% but fewer
   slams in all, and Hard's own card play is what loses most of the rest.
