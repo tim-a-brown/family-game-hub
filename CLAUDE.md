@@ -1518,7 +1518,12 @@ Underlying principles for everything:
   when the window changes size).
 - **Easy** (Tim, 2026-11-15: "nudge mexican train easy up slightly"): any tile that fits, but a little more than half
   the time it looks first (its own train when its marker is out, a double it can follow, a heavier tile): `EZ` in the
-  core. The sim (mulberry32 now) has Easy winning about 1 match in 5 against Normal head to head, 1 in 15 against Hard.
+  core (2026-11-27: looking 45% of the time, ending a first-turn run early half the time). The sim (mulberry32 now)
+  has Easy winning 17 matches in 100 against Normal head to head, about 1 in 30 against Hard.
+- **Expert** (2026-11-27, `expertMove`, `EXP` in the core): Hard's three best plays, each played out to the end of the
+  round with Hard's robots in every seat over 12 to 30 deals of the tiles it hasn't seen (1.5 s at most); Hard's own
+  choice stands unless another comes out 8 dots better on average. The sim: Expert won 53% of 30 two-player matches and
+  60% of 15 four-player ones against Hard, finishing about 50 points lower.
 
 ## Lines of Action (2026-11-23)
 
