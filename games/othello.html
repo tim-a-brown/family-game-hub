@@ -176,7 +176,9 @@ html[data-o=land] .cb-col>.acts{grid-area:a;justify-content:flex-start;}
       o = o || {};
       var t0 = Date.now(), limit = o.time || 1000, maxD = o.depth || 4, nodes = 0;
       var empties = 0; for (var i = 0; i < 64; i++) if (!b[i]) empties++;
-      var exact = empties <= (o.exact || 0);
+      var exact = empties <= (o.exact || 0), T0 = t0, budget = limit;
+      // the exact solve of the last moves has most of the time; if it can't finish, a normal search has what is left
+      if (exact) limit = budget * 0.65;
       function tick() { if ((++nodes & 511) === 0 && Date.now() - t0 > limit) throw STOP; }
       function final(bd, sd) { var d = 0; for (var i = 0; i < 64; i++) d += bd[i]; d *= sd; return d > 0 ? WIN + d : d < 0 ? -WIN + d : 0; }
       function ab(bd, sd, depth, alpha, beta, passed) {
@@ -220,7 +222,7 @@ html[data-o=land] .cb-col>.acts{grid-area:a;justify-content:flex-start;}
         } catch (e) {
           if (e !== STOP) throw e;
           // Ran out of time on an exact solve: fall back to a normal search
-          if (exact && !done) { exact = false; t0 = Date.now(); limit = limit / 2; d = 0; top = maxD; continue; }
+          if (exact && !done) { exact = false; t0 = T0; limit = budget; d = 0; top = maxD; continue; }
           break;
         }
       }
@@ -253,8 +255,8 @@ html[data-o=land] .cb-col>.acts{grid-area:a;justify-content:flex-start;}
   // S = {mode, level, players:[{name,cpu,side}], b, turn, last, n, passes:{'1':0,'-1':0},
   //      best:{'1':{n,move},'-1':..}, hist:[], over, started}
   var S = null;
-  var LEVELS = { easy: { depth: 1, time: 300, noise: 40, exact: 0 }, normal: { depth: 4, time: 1200, noise: 6, exact: 8 }, hard: { depth: 8, time: 2500, noise: 0, exact: 14 } };
-  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  var LEVELS = { easy: { depth: 1, time: 300, noise: 75, exact: 0 }, normal: { depth: 4, time: 1200, noise: 6, exact: 8 }, hard: { depth: 8, time: 1800, noise: 0, exact: 12 }, expert: { depth: 14, time: 2800, noise: 0, exact: 15 } };
+  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard', expert: 'Expert' };
   // Online (turnnet.js): NET is the table while playing at one; S is then the table's state (never saved here)
   var NET = null, LEFT = null, WINO = null, NETREC = {}, SHOWN = 0;
   function save() {
@@ -289,9 +291,9 @@ html[data-o=land] .cb-col>.acts{grid-area:a;justify-content:flex-start;}
     S = null;
     app.classList.remove('ipl');
     Kit.setup(app, {
-      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: '2p', kind: 'local' }]),
+      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal, Hard or Expert' }, { id: '2p', kind: 'local' }]),
       options: [
-        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Only looks one move ahead and often slips.'], ['normal', 'Normal', 'Looks a few moves ahead and plays the endgame well.'], ['hard', 'Hard', 'Looks far ahead and plays the last moves perfectly.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Only looks one move ahead and slips a lot.'], ['normal', 'Normal', 'Looks a few moves ahead and plays the endgame well.'], ['hard', 'Hard', 'Looks far ahead and plays the last moves perfectly.'], ['expert', 'Expert', 'Looks furthest ahead and plays the last fifteen moves perfectly.']], when: function (m) { return m === 'cpu'; } },
         { id: 'side', label: 'You play', value: 'b', choices: [['b', 'Black\nMoves first', 'Black always moves first, so you start.'], ['w', 'White', 'The computer plays Black and moves first.']], when: function (m) { return m === 'cpu'; } }
       ],
       players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },

@@ -123,7 +123,7 @@
     app.classList.remove('ipl', 'c4-land', 'c4-tall', 'c4-low');
     Kit.setup(app, {
       modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Medium or Hard' }, { id: '2p', kind: 'local' }]),
-      options: [{ id: 'level', robot: true, label: 'Computer skill', value: 'med', choices: [['easy', 'Easy', 'Looks a little ahead and sometimes drops a disc anywhere.'], ['med', 'Medium', 'Looks a few moves ahead.'], ['hard', 'Hard', 'Looks far ahead and rarely misses a threat.']], when: function (m) { return m === 'cpu'; } },
+      options: [{ id: 'level', robot: true, label: 'Computer skill', value: 'med', choices: [['easy', 'Easy', 'Looks a little ahead, but often drops a disc anywhere.'], ['med', 'Medium', 'Looks a few moves ahead.'], ['hard', 'Hard', 'Looks far ahead and rarely misses a threat.'], ['expert', 'Expert', 'Looks as far ahead as it can in a second, and sees traps long before they close.']], when: function (m) { return m === 'cpu'; } },
         { id: 'hints', label: 'Hints', value: 'on', choices: [['on', 'On', 'A disc that blocks four lights up as it lands, and a move that leaves two places to finish four is called out.'], ['off', 'Off', 'No light on a block and no call when someone has two ways to win: read the board yourself.']] }],
       players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       onStart: function (cfg) {
@@ -206,7 +206,9 @@
     return s;
   }
   var ORDER = [3, 2, 4, 1, 5, 0, 6];
+  var DEADLINE = 0, NODES = 0, STOP = {};
   function minimax(g, depth, a, b, maxing, me) {
+    if (DEADLINE && (++NODES & 255) === 0 && Date.now() > DEADLINE) throw STOP;
     var opp = 3 - me;
     if (findLine(g, me)) return 100000 + depth;
     if (findLine(g, opp)) return -100000 - depth;
@@ -223,11 +225,37 @@
     }
     return best;
   }
+  // Expert: the same search, deeper and deeper while there is time (about a second), each pass trying the columns in the
+  // order the pass before ranked them; a win it can see it takes at once
+  function expertMove(g, me, cols) {
+    var order = cols.slice(), best = order[0], t0 = Date.now();
+    DEADLINE = t0 + 900; NODES = 0;
+    try {
+      for (var d = 2; d <= 42; d++) {
+        var sc = {}, curB = null, curV = -Infinity, a = -Infinity;
+        for (var i = 0; i < order.length; i++) {
+          var c = order[i], r = openRow(g, c); g[r][c] = me;
+          var v;
+          try { v = minimax(g, d - 1, a, Infinity, false, me); } finally { g[r][c] = 0; }
+          sc[c] = v;
+          if (v > curV) { curV = v; curB = c; }
+          if (v > a) a = v;
+        }
+        best = curB;
+        order.sort(function (x, y) { return (sc[y] === undefined ? -1e9 : sc[y]) - (sc[x] === undefined ? -1e9 : sc[x]); });
+        if (curV >= 100000 || d >= 42 - S.moves.length) break;
+        if (Date.now() - t0 > 450) break;
+      }
+    } catch (e) { if (e !== STOP) throw e; }
+    DEADLINE = 0;
+    return best;
+  }
   function cpuMove() {
     var me = S.cur + 1, g = S.grid.map(function (r) { return r.slice(); });
     var depth = S.level === 'easy' ? 2 : S.level === 'med' ? 4 : 7;
     var cols = ORDER.filter(function (c) { return openRow(g, c) >= 0; });
-    if (S.level === 'easy' && Math.random() < 0.35) return cols[Math.floor(Math.random() * cols.length)];
+    if (S.level === 'expert') return expertMove(g, me, cols);
+    if (S.level === 'easy' && Math.random() < 0.5) return cols[Math.floor(Math.random() * cols.length)];
     var best = cols[0], bestV = -Infinity;
     cols.forEach(function (c) {
       var r = openRow(g, c); g[r][c] = me;
@@ -289,7 +317,7 @@
     if (linesThrough(S.grid, r, c, who) >= 2) out.push({ t: 'Two lines at once', l: 'That disc finished four in two directions.', h: p.name + ' finished two lines with one disc' });
     else if (li.len >= 5) out.push({ t: li.len + ' in a row', l: 'The winning line runs ' + li.len + ' discs long.', h: p.name + ' connected ' + li.len + ' in a row' });
     if (mine === 4) out.push({ t: 'Four for four', l: p.name + ' won with the first four discs.', h: p.name + ' won with the first four discs played' });
-    if (foe.cpu && !p.cpu && S.level === 'hard') out.push({ t: 'Hard computer beaten', l: p.name + ' beat ' + foe.name + ' on Hard.', h: p.name + ' beat ' + foe.name + ' on Hard' });
+    if (foe.cpu && !p.cpu && (S.level === 'hard' || S.level === 'expert')) { var lvN = S.level === 'hard' ? 'Hard' : 'Expert'; out.push({ t: lvN + ' computer beaten', l: p.name + ' beat ' + foe.name + ' on ' + lvN + '.', h: p.name + ' beat ' + foe.name + ' on ' + lvN }); }
     if (S.run && S.run.n >= 3) out.push({ t: S.run.n + ' wins in a row', l: p.name + ' has won the last ' + S.run.n + ' games.', h: p.name + ' won ' + S.run.n + ' games in a row' });
     return out;
   }
@@ -389,7 +417,7 @@
     } else if (!p) hl.push('The board filled up: a draw after 42 moves');
     (S.ev || []).forEach(function (e) { if (e.k === 'trap') hl.push(S.players[e.p].name + ' set up two ways to win on move ' + e.n); });
     (S.special || []).forEach(function (h) { hl.push(h); });
-    if (vsCpu) hl.push('Computer skill: ' + ({ easy: 'Easy', med: 'Medium', hard: 'Hard' }[S.level] || S.level));
+    if (vsCpu) hl.push('Computer skill: ' + ({ easy: 'Easy', med: 'Medium', hard: 'Hard', expert: 'Expert' }[S.level] || S.level));
     hl.push('Series so far: ' + S.players[0].name + ' ' + S.wins[0] + ' – ' + S.wins[1] + ' ' + S.players[1].name);
     Kit.record('c4', {
       started: S.started, mode: vsCpu ? 'vs Computer' : 'Two players',

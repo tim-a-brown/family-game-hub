@@ -245,6 +245,8 @@
   function search(b0, rk, side, req, o) {
     o = o || {};
     var b = b0.slice(), pos = [], t0 = Date.now(), limit = o.time || 0, maxD = o.depth || 3, nodes = 0, rnd = o.rnd || Math.random;
+    // Easy now and then looks only at its own move, not at the tower it hands the other player (o.slip of its moves)
+    if (o.slip && rnd() < o.slip) maxD = 1;
     for (var p0 = 0; p0 <= 16; p0++) pos.push(-1);
     for (var i0 = 0; i0 < 64; i0++) if (b[i0]) pos[b[i0]] = i0;
     function tick() { if ((++nodes & 1023) === 0 && limit > 0 && Date.now() - t0 > limit) throw STOP; }
@@ -369,11 +371,12 @@
     });
     return res[0].v <= res[1].v ? 'L' : 'R';
   }
-  // The three skills differ in how far ahead they look and how much they slip, never in what they can see
+  // The four skills differ in how far ahead they look and how much they slip, never in what they can see
   var LEVELS = {
-    easy: { depth: 2, time: 0, noise: 40 },
+    easy: { depth: 2, time: 0, noise: 50, slip: 0.3 },
     normal: { depth: 5, time: 0, noise: 4 },
-    hard: { depth: 30, time: 1800, noise: 0 }
+    hard: { depth: 30, time: 1500, noise: 0 },
+    expert: { depth: 40, time: 2700, noise: 0 }
   };
 
   root.KamisadoCore = {

@@ -357,9 +357,10 @@
   // How many more pegs each side needs, as the computer weighs it (the room's "pegs to go"): {1: n, 2: n}, 99 = can't
   function toGo(st) { var E = Engine(st), a = E.dist(RED), b = E.dist(BLACK); return { 1: a >= 255 ? 99 : a, 2: b >= 255 ? 99 : b }; }
   var LEVELS = {
-    easy: { level: 'easy', depth: 1, time: 400, noise: 150, root: 30 },
+    easy: { level: 'easy', depth: 1, time: 400, noise: 240, root: 30 },
     normal: { level: 'normal', depth: 3, time: 1400, noise: 12, root: 50, wide: 9, inner: 7 },
-    hard: { level: 'hard', depth: 5, time: 3000, noise: 0, root: 60, wide: 12, inner: 8 }
+    hard: { level: 'hard', depth: 5, time: 2000, noise: 4, root: 60, wide: 12, inner: 8 },
+    expert: { level: 'expert', depth: 7, time: 3000, noise: 0, root: 60, wide: 12, inner: 8 }
   };
 
   var API = {

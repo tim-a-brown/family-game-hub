@@ -275,8 +275,8 @@
   var S = null, sel = -1, prefix = [];
   // Online (turnnet.js): NET is the table while playing at one; S is then the table's state (never saved here)
   var NET = null, LEFT = null, WINO = null, NETREC = {}, SHOWN = 0;
-  var LEVELS = { easy: { depth: 2, time: 300, noise: 70 }, normal: { depth: 8, time: 900, noise: 8 }, hard: { depth: 14, time: 2200, noise: 0 } };
-  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  var LEVELS = { easy: { depth: 2, time: 300, noise: 170 }, normal: { depth: 8, time: 900, noise: 8 }, hard: { depth: 14, time: 2000, noise: 4 }, expert: { depth: 24, time: 2800, noise: 0 } };
+  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard', expert: 'Expert' };
   var QUIET_LIMIT = 80; // 40 moves each with no capture and no man moved
   function save() {
     if (NET) return;
@@ -319,9 +319,9 @@
     S = null; sel = -1; prefix = [];
     app.classList.remove('ipl', 'ck-land', 'ck-low', 'ck-tall');
     Kit.setup(app, {
-      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: '2p', kind: 'local' }]),
+      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal, Hard or Expert' }, { id: '2p', kind: 'local' }]),
       options: [
-        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Only looks a move or two ahead and makes mistakes.'], ['normal', 'Normal', 'Looks several moves ahead.'], ['hard', 'Hard', 'Looks far ahead and takes its time. Tough to beat.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Only looks a move or two ahead and makes plenty of mistakes.'], ['normal', 'Normal', 'Looks several moves ahead.'], ['hard', 'Hard', 'Looks far ahead and takes its time. Tough to beat.'], ['expert', 'Expert', 'Looks furthest ahead of all and never lets a mistake go. Very hard to beat.']], when: function (m) { return m === 'cpu'; } },
         { id: 'side', label: 'You play', value: 'b', choices: [['b', 'Black\nMoves first', 'Black always moves first, so you start.'], ['r', 'Red', 'The computer plays Black and moves first.']], when: function (m) { return m === 'cpu'; } },
         { id: 'forced', label: 'Jumps', value: 'on', choices: [['on', 'Must jump', 'If you can jump a piece, you have to. This is the official rule.'], ['off', 'Jumps optional', 'House rule: you can choose not to jump.']] }
       ],
@@ -441,7 +441,7 @@
     S.hist.forEach(function (h) { var a = 0, b = 0; h.b.forEach(function (v) { if (v * w.side > 0) a++; else if (v) b++; }); worst = Math.min(worst, a - b); });
     if (mine === 12) out.push({ t: 'A shutout', l: w.name + ' won without losing a single checker.', h: w.name + ' won without losing a single checker' });
     else if (worst <= -3) out.push({ t: 'Comeback', l: w.name + ' was ' + (-worst) + ' checkers behind and still won.', h: w.name + ' came back from ' + (-worst) + ' checkers down to win' });
-    if (lo.cpu && !w.cpu && S.level === 'hard') out.push({ t: 'Hard computer beaten', l: w.name + ' beat ' + lo.name + ' on Hard.', h: w.name + ' beat ' + lo.name + ' on Hard' });
+    if (lo.cpu && !w.cpu && (S.level === 'hard' || S.level === 'expert')) { var lvN = LEVEL_NAME[S.level]; out.push({ t: lvN + ' computer beaten', l: w.name + ' beat ' + lo.name + ' on ' + lvN + '.', h: w.name + ' beat ' + lo.name + ' on ' + lvN }); }
     return out;
   }
   // History detail: final board rows (b/B black man/king, r/R red), every move in square numbers (1-32) for the replay

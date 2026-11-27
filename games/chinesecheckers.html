@@ -287,8 +287,8 @@
   var S = null, sel = -1, selMoves = [], animating = false;
   // Online (turnnet.js): NET is the table while playing at one; S is then the table's state (never saved here)
   var NET = null, LEFT = null, WINO = null, NETREC = {}, SHOWN = 0;
-  var LEVELS = { easy: { depth: 1, noise: 2.5, wild: 0.3 }, normal: { depth: 2, beam: 6, noise: 0.8 }, hard: { depth: 3, beam: 14, noise: 0.05 } };
-  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  var LEVELS = { easy: { depth: 1, noise: 3.5, wild: 0.45 }, normal: { depth: 2, beam: 6, noise: 0.8 }, hard: { depth: 3, beam: 14, noise: 0.05 }, expert: { depth: 4, beam: 18, noise: 0 } };
+  var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard', expert: 'Expert' };
   function hasCpu() { return S.players.some(function (p) { return p.cpu; }); }
   function humans() { return S.players.filter(function (p) { return !p.cpu; }).length; }
   function cur() { return S.players[S.turn]; }
@@ -337,7 +337,7 @@
     Kit.setup(app, {
       modes: Kit.modes([{ id: 'cpu', desc: 'You against 1 to 5 computer players' }, { id: 'pp', kind: 'local' }]),
       options: [
-        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Plays loosely and makes mistakes. Good for beginners.'], ['normal', 'Normal', 'Looks a couple of moves ahead.'], ['hard', 'Hard', 'Plans further ahead and rarely wastes a move.']] },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Plays loosely and makes plenty of mistakes. Good for beginners.'], ['normal', 'Normal', 'Looks a couple of moves ahead.'], ['hard', 'Hard', 'Plans further ahead and rarely wastes a move.'], ['expert', 'Expert', 'Plans four moves of its own ahead and never wastes a hop.']] },
         { id: 'places', label: 'Play for', value: 'win', choices: [['win', 'The winner', 'The game ends as soon as someone fills the opposite point.'], ['all', 'All places', 'After the winner, everyone else keeps going to decide 2nd, 3rd and so on.']] },
         { id: 'nostay', label: 'Other players’ points', value: 'stop', help: 'The star points that belong to other players (not your start or your goal).', choices: [['stop', 'Can stop there', 'Your marbles may hop into and stay in other players’ points.'], ['pass', 'Pass through only', 'You can hop through other players’ points, but you can’t end your move there.']] },
         { id: 'spin', label: 'Board', value: 'turn', choices: [['turn', 'Turns to each player', 'The board rotates so whoever’s turn it is has their home at the bottom.'], ['fixed', 'Stays put', 'The board never rotates.']], when: function (m) { return m !== 'cpu'; } }
@@ -521,7 +521,7 @@
       var rest = order.slice(1).map(function (i) { return E.homeCount(S.b, i, S.pts); }), most = Math.max.apply(null, rest);
       var who2 = n === 2 ? S.players[order[1]].name : 'anyone else', had = most === 0 ? 'before ' + who2 + ' had a single marble home' : 'while ' + (n === 2 ? who2 + ' had only ' : 'nobody else had more than ') + most + (most === 1 ? ' marble' : ' marbles') + ' home';
       if (most <= 2) sp.push({ t: 'Runaway win', l: W.name + ' filled the goal point ' + had + '.', h: W.name + ' won ' + had });
-      if (!W.cpu && S.level === 'hard' && S.players.some(function (x) { return x.cpu; })) sp.push({ t: 'Hard computer beaten', l: W.name + ' beat the computer on Hard.', h: W.name + ' beat the computer on Hard' });
+      if (!W.cpu && (S.level === 'hard' || S.level === 'expert') && S.players.some(function (x) { return x.cpu; })) { var lvN = LEVEL_NAME[S.level]; sp.push({ t: lvN + ' computer beaten', l: W.name + ' beat the computer on ' + lvN + '.', h: W.name + ' beat the computer on ' + lvN }); }
     }
     sp.forEach(function (x, i) { hl.splice(1 + i, 0, x.h); });
     if (S.nostay) hl.push('Played with pass-through-only points');

@@ -285,11 +285,12 @@
     }
     return { move: encode(best), score: bestS, depth: done, nodes: nodes };
   }
-  // The three skills differ in how far ahead they look and how much they slip, never in what they can see
+  // The four skills differ in how far ahead they look and how much they slip, never in what they can see
   var LEVELS = {
-    easy: { depth: 2, time: 0, noise: 70 },
+    easy: { depth: 2, time: 0, noise: 120 },
     normal: { depth: 3, time: 0, noise: 15 },
-    hard: { depth: 6, time: 1500, noise: 2 }
+    hard: { depth: 6, time: 1500, noise: 2 },
+    expert: { depth: 9, time: 2600, noise: 0 }
   };
 
   function startName(key) { return START[key] ? START[key].name : 'a set'; }

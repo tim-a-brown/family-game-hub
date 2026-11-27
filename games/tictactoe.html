@@ -169,7 +169,7 @@ html[data-o=land] .slate{padding:12px 12px 22px;}
   var SYMTXT = { X: 'X', O: 'O', T: '△' };
   var MODE_NAME = { cpu: 'vs Computer', '2p': 'Pass & play', multi: 'Multi-board', '3p': 'Three players', online: 'Online' };
   var VARIANT_NAME = { ultimate: 'Ultimate', multi: 'Multi-board', '3p': 'Three players' };
-  var LEVEL_NAME = { easy: 'Easy', med: 'Medium', hard: 'Hard' };
+  var LEVEL_NAME = { easy: 'Easy', med: 'Medium', hard: 'Hard', expert: 'Expert' };
 
   Kit.init({
     id: 'tictactoe',
@@ -221,7 +221,7 @@ html[data-o=land] .slate{padding:12px 12px 22px;}
           if (m === '2p') [2, 3, 4, 5].forEach(function (k) { c.push(['m' + k, k + ' boards', k + ' boards at once. Win the most boards to win.']); });
           return c;
         } },
-        { id: 'level', robot: true, label: 'Computer skill', value: 'med', choices: [['easy', 'Easy', 'Often misses wins and blocks. Good for little kids.'], ['med', 'Medium', 'Always wins or blocks when it can, but sometimes slips up.'], ['hard', 'Hard', 'Plays perfectly on the classic board. The best you can do is a tie.']], when: function (m) { return m === 'cpu'; } },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'med', choices: [['easy', 'Easy', 'Misses lots of wins and blocks. Good for little kids.'], ['med', 'Medium', 'Always wins or blocks when it can, but sometimes slips up.'], ['hard', 'Hard', 'Nearly perfect on the classic board, with the odd lapse you can catch.'], ['expert', 'Expert', 'Plays perfectly and sets traps. On the classic board the best you can do is a tie.']], when: function (m) { return m === 'cpu'; } },
         { id: 'hints', label: 'Hints', value: 'on', choices: [['on', 'On', 'A move that makes two ways to win at once, so the other player can block only one, is called out as a fork.'], ['off', 'Off', 'No call when someone sets up two ways to win: spot the fork yourself.']] }
       ],
       players: {
@@ -382,18 +382,33 @@ html[data-o=land] .slate{padding:12px 12px 22px;}
     var me = S.players[S.G.cur].sym, opp = me === 'X' ? 'O' : 'X', em = empties(bd), lv = S.level;
     var win = threats(bd, me), block = threats(bd, opp);
     if (lv === 'easy') {
-      if (win.length && Math.random() < 0.6) return { b: 0, i: win[0] };
-      if (block.length && Math.random() < 0.35) return { b: 0, i: block[0] };
+      if (win.length && Math.random() < 0.45) return { b: 0, i: win[0] };
+      if (block.length && Math.random() < 0.25) return { b: 0, i: block[0] };
       return { b: 0, i: rnd(em) };
     }
     if (win.length) return { b: 0, i: win[0] };
     if (block.length) return { b: 0, i: block[0] };
     if (lv === 'med' && Math.random() < 0.35) return { b: 0, i: rnd(em) };
+    // Hard plays perfectly but for the odd lapse: about one move in eight it goes by feel, which can let a fork through
+    if (lv === 'hard' && em.length < 9 && Math.random() < 0.12) return { b: 0, i: rnd(em) };
+    // (an empty board: every move draws with best play; Expert opens in a corner, which leaves the most ways to go wrong)
+    if (lv === 'expert' && em.length === 9) return { b: 0, i: rnd([0, 2, 6, 8]) };
     var best = -Infinity, picks = [];
     em.forEach(function (i) {
       bd[i] = me; var v = mm(bd, false, me, opp, 1); bd[i] = '';
       if (v > best) { best = v; picks = [i]; } else if (v === best) picks.push(i);
     });
+    // Expert never slips, and among its best moves it takes the one that leaves the other player the most ways to go wrong
+    if (lv === 'expert' && picks.length > 1) {
+      var bestT = -1, tp = [];
+      picks.forEach(function (i) {
+        bd[i] = me; var t = 0;
+        empties(bd).forEach(function (j) { bd[j] = opp; if (mm(bd, true, me, opp, 2) > 0) t++; bd[j] = ''; });
+        bd[i] = '';
+        if (t > bestT) { bestT = t; tp = [i]; } else if (t === bestT) tp.push(i);
+      });
+      picks = tp;
+    }
     return { b: 0, i: rnd(picks) };
   }
   function mm(bd, maxing, me, opp, depth) {
@@ -449,14 +464,15 @@ html[data-o=land] .slate{padding:12px 12px 22px;}
     return u;
   }
   function ultUndo(P, u) { P.boards[u.mv.b][u.mv.i] = ''; P.meta[u.mv.b] = u.meta; P.next = u.next; P.turn = u.turn; }
-  var nodes = 0;
+  var nodes = 0, DEADLINE = 0, STOP = {};
   function negamax(P, depth, a, b, me, opp) {
     nodes++;
+    if (DEADLINE && (nodes & 255) === 0 && Date.now() > DEADLINE) throw STOP;
     var ml = lineOf(P.meta);
     if (ml >= 0) return (P.meta[LINES[ml][0]] === me ? 100000 + depth : -100000 - depth);
     var moves = ultLegal(P);
     if (!moves.length) return 0;
-    if (depth === 0 || nodes > 60000) return ultEval(P, me, opp);
+    if (depth === 0 || (!DEADLINE && nodes > 60000)) return ultEval(P, me, opp);
     var best = -Infinity;
     for (var k = 0; k < moves.length; k++) {
       var u = ultApply(P, moves[k], me); P.turn = opp;
@@ -472,9 +488,10 @@ html[data-o=land] .slate{padding:12px 12px 22px;}
     var moves = ultLegal(P);
     if (S.level === 'easy') {
       var wins = moves.filter(function (m) { return threats(P.boards[m.b], me).indexOf(m.i) >= 0; });
-      if (wins.length && Math.random() < 0.6) return rnd(wins);
+      if (wins.length && Math.random() < 0.45) return rnd(wins);
       return rnd(moves);
     }
+    if (S.level === 'expert') return ultExpert(P, moves, me, opp);
     var depth = S.level === 'hard' ? (moves.length > 20 ? 3 : 4) : 2;
     nodes = 0;
     var best = -Infinity, picks = [];
@@ -485,6 +502,30 @@ html[data-o=land] .slate{padding:12px 12px 22px;}
       if (v > best + 1e-9) { best = v; picks = [m]; }
     });
     return picks[0] || rnd(moves);
+  }
+
+  // Expert in Ultimate: the same search, a move deeper each pass while there is time (about a second), each pass trying
+  // first the moves the pass before liked best; the last pass that finished decides
+  function ultExpert(P, moves, me, opp) {
+    var order = moves.slice(), best = order[0], t0 = Date.now();
+    nodes = 0; DEADLINE = t0 + 900;
+    try {
+      for (var d = 2; d <= 30; d++) {
+        var sc = [], a = -Infinity, cur = null;
+        for (var k = 0; k < order.length; k++) {
+          var v, u = ultApply(P, order[k], me); P.turn = opp;
+          try { v = -negamax(P, d - 1, -Infinity, -a, opp, me); } finally { ultUndo(P, u); }
+          sc.push({ m: order[k], v: v });
+          if (v > a) { a = v; cur = order[k]; }
+        }
+        best = cur || best;
+        sc.sort(function (x, y) { return y.v - x.v; });
+        order = sc.map(function (x) { return x.m; });
+        if (a >= 100000 || Date.now() - t0 > 500) break;
+      }
+    } catch (e) { if (e !== STOP) throw e; }
+    DEADLINE = 0;
+    return best;
   }
 
   // ── Hand-drawn chalk shapes ───────────────────────────────────────────────

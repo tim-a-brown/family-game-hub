@@ -444,9 +444,10 @@
   }
   // The skills differ in how far ahead they look and how much they slip, never in what they can see
   var LEVELS = {
-    easy: { depth: 1, noise: 18, time: 0 },
+    easy: { depth: 1, noise: 32, time: 0 },
     normal: { depth: 2, noise: 2, time: 0, rootBeam: 18, beam: 30 },
-    hard: { depth: 4, noise: 0, time: 1600, rootBeam: 14, beam: 16 }
+    hard: { depth: 4, noise: 0, time: 1600, rootBeam: 14, beam: 16 },
+    expert: { depth: 6, noise: 0, time: 2600, rootBeam: 18, beam: 18 }
   };
 
   root.PacruCore = {
