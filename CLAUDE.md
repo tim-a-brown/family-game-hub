@@ -1304,9 +1304,11 @@ Underlying principles for everything:
   a glass panel lit along its top in the chosen seat's color with a notch that glides to the chosen token and that seat
   again small at its head (its name and "Seat 2"), what can sit there: a row of the computer players themselves, each
   skill's robot face (`botFace`, in the seat's color) with the game's word for the skill under it, the one seated there
-  lit gold, and at the right the dice, New names, which gives every robot at the table a new name (no two alike, none it
-  had), each name turning over in turn (Tim, 2026-11-15: "having a toggle here is kind of a weird UI decision ... just
-  have easy medium and hard computer players selectable with a randomizer for the names on the right"; a game with no
+  lit gold (Tim, 2026-11-15: "having a toggle here is kind of a weird UI decision ... just have easy medium and hard
+  computer players selectable"). The New names dice are gone (Tim, 2026-11-27): a tap on another skill where a robot sits
+  changes its skill and gives it a new name no robot at the table has, the name turning over (where every robot plays at
+  one skill, they all change and all get new names). Four skills: Easy (green), Normal (gold), Hard (red, no flame) and
+  Expert (red with the flame), the face read from the skill's word (`botLevel`); a game with no
   skill choice shows one face, Computer; a seat where the game seats no robots has no row); then everyone you play
   with as chips. **The computer's skill is never a row among the game's options** (Tim, 2026-11-17, of Pong's Tunnel: "cpu
   skill should be tied to the player picker not in game options"): the option a game marks `robot: true` is chosen on

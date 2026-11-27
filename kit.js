@@ -3562,7 +3562,7 @@
     return b;
   }
   // The sheet is a table and a bench. Up top, every seat as a token (its person, a robot, or an open seat) with
-  // one seat chosen; underneath, what can go in that seat: a robot at each skill (the dice beside them rename them all), and everyone you play
+  // one seat chosen; underneath, what can go in that seat: a robot at each skill, and everyone you play
   // with as big chips. A tap seats someone and moves on to the next open seat; a tap on someone already at the
   // table swaps the two seats; a tap on the person sitting there stands them up.
   function playersSheet(M, o) {
@@ -3638,9 +3638,8 @@
     // of that, just have easy medium and hard computer players selectable with a randomizer for the names on the
     // right"): one row of the robots themselves, each skill's face in this seat's color with its word under it, and
     // the dice at the right. A tap on a face seats that robot here and moves on to the next open seat, as a person's
-    // chip does; the face of the robot already sitting here is lit, and a tap on another changes only its skill. The
-    // dice give every robot at the table a new name (each one different, none it had before). A game with no skill
-    // choice has one face, Computer.
+    // chip does; the face of the robot already sitting here is lit, and a tap on another changes its skill and gives it a
+    // new name (one no robot at the table has). A game with no skill choice has one face, Computer.
     function robotRow(i, next) {
       var cpu = next ? M.cpu[M.count + 1] : cpuNow(), bot = !next && seatIsBot(M, i), fixed = cpu !== 'mix', c = playerColor(i);
       var chs = M.lv ? (M.lv.ch[next ? M.count + 1 : M.count] || []) : [], cur = bot && M.lv ? String(seatLevel(M, i)) : null, help = '';
@@ -3654,7 +3653,11 @@
             if (bot) {   // (a robot already sits here: just its skill)
               if (fixed) { M.lv.def = ch[0]; M.levels = {}; }
               else { M.levels[i] = ch[0]; skLast = i; if (!othersBots(i).length) M.lv.def = ch[0]; }
-              pop[i] = 1; sfx('tap'); haptic('light'); paint(); changed(); return;
+              // (Tim, 2026-11-27: a new skill brings a new robot, so it takes a new name too; where every robot
+              // plays at one skill, they all change, so they all get new names)
+              var rn = fixed ? othersBots(-1) : [i], fresh = cpuNames(rn.length, M.bots, M.count >= 4 ? 8 : 0);
+              rn.forEach(function (j, k) { if (fresh[k]) { M.bots[j - 1] = fresh[k]; roll[j] = k + 1; } });
+              pop[i] = 1; sfx('pop'); haptic('light'); paint(); changed(); return;
             }
             var was = {}; for (var j = 1; j < M.count; j++) was[j] = seatIsBot(M, j);
             if (next) { M.count++; M.names[i] = ''; }   // (the next seat: a robot joins)
