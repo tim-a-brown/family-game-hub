@@ -323,6 +323,17 @@ html.lay-side .aa:has(> .scores) .hand{--cw:clamp(84px, calc((var(--vvh,100dvh) 
 html.lay-side .aa:has(> .scores) > .hint{grid-column:2;margin-top:4px;}
 /* An upright phone or tablet (upFit in the script): your cards never sit below the screen. With many players the
    table's cards come down in size first, then your hand's; cards drawn small leave out their small print. */
+.aa.aa-fit *{transition:none !important;}
+.plays.dots .who{padding:0 4px;gap:0;}
+.plays.dots .who span{display:none;}
+.aa.aa-tight .score{padding-top:3px;padding-bottom:3px;}
+.aa.aa-tight .score .sub{display:none;}
+.aa.aa-tight .tbl .felt-in{padding:8px 8px 10px;}
+.aa.aa-tight .st{margin-bottom:6px;}
+.aa.aa-tight .plays{margin-top:8px;}
+.aa.aa-tight .bar{padding-top:8px;}
+.aa.aa-tight .bar .btn-lg{min-height:46px;font-size:1rem;}
+.aa.aa-tight .rail .hd{min-height:36px;padding-top:4px;}
 .plays.sm .ac .ds,.mid.sm .ac .ds,.plays.sm .ac.kg .tp,.mid.sm .ac.kg .tp{display:none;}
 /* ══ The desk: a large window (deskLay in the script; every rule hangs off html.aa-dk, set only there) ═════════ */
 html.aa-dk body{overflow:hidden;}
@@ -1958,20 +1969,40 @@ html.aa-dk.aa-tall .aa-room .pn.won{max-height:none;}
   // cards"): when the scores, the table and your hand run past the foot of the screen, the pile and the played cards
   // step down first (to 45% of their size, more of them to a row), then your hand (to 70%), until the page fits.
   function upFit() {
+    // (sizes are measured as they will be: a card easing to its new size would read as its old one)
+    app.classList.add('aa-fit');
+    try { fitTo(); } finally { void app.offsetWidth; app.classList.remove('aa-fit'); }
+  }
+  function fitTo() {
     var root = document.documentElement, mid = app.querySelector('.mid'), plays = app.querySelector('.plays'), hand = app.querySelector('.hand');
-    [mid, plays, hand].forEach(function (e) { if (e) { e.style.removeProperty('--cw'); e.classList.remove('sm'); } });
+    [mid, plays, hand].forEach(function (e) { if (e) { e.style.removeProperty('--cw'); e.classList.remove('sm', 'dots'); } });
+    app.classList.remove('aa-tight');
+    // a played card's name tag that would be cut short shows its player's colored initial alone (whose card won is
+    // said over the table), so the cards also stand closer together
+    var dots = function () {
+      if (!plays) return;
+      plays.classList.remove('dots');
+      if (Array.prototype.some.call(plays.querySelectorAll('.who span'), function (t) { return t.scrollWidth > t.clientWidth + 1; })) plays.classList.add('dots');
+    };
+    dots();
     var on = !DK.on && !root.classList.contains('lay-side') && app.querySelector(':scope > .scores') && (mid || plays);
     if (hand && HF && HF.el === hand) HF.layout();
     if (!on) return;
-    var de = document.scrollingElement || root;
-    var over = function () { return de.scrollHeight - window.innerHeight; };
+    // (measured from the boxes as laid out, so a card still gliding in, which can reach past the foot, never counts)
+    var over = function () {
+      var b = 0; Array.prototype.forEach.call(app.children, function (c) { if (c.offsetParent !== null || c === app.lastElementChild) b = Math.max(b, c.getBoundingClientRect().bottom); });
+      return b + (parseFloat(getComputedStyle(app).paddingBottom) || 0) + window.scrollY - window.innerHeight;
+    };
     if (over() <= 1) return;
     var cw = function (e) { return e ? parseFloat(getComputedStyle(e).getPropertyValue('--cw')) || 0 : 0; };
     var m0 = cw(mid), p0 = cw(plays), h0 = cw(hand), t = 1, h = 1;
     for (var i = 0; i < 40 && over() > 1; i++) {
-      if (t > 0.46) t *= 0.95; else if (hand && h > 0.71) h *= 0.95; else break;
+      // the table's cards first; on a small phone the scores, buttons and margins close up too, then the hand
+      if (t > 0.7) t *= 0.95;
+      else if (!app.classList.contains('aa-tight')) { app.classList.add('aa-tight'); continue; }
+      else if (t > 0.46) t *= 0.95; else if (hand && h > 0.71) h *= 0.95; else break;
       if (mid) { mid.style.setProperty('--cw', Math.round(m0 * t) + 'px'); mid.classList.toggle('sm', m0 * t < 80); }
-      if (plays) { plays.style.setProperty('--cw', Math.round(p0 * t) + 'px'); plays.classList.toggle('sm', p0 * t < 72); }
+      if (plays) { plays.style.setProperty('--cw', Math.round(p0 * t) + 'px'); plays.classList.toggle('sm', p0 * t < 72); dots(); }
       if (hand) { hand.style.setProperty('--cw', Math.round(h0 * h) + 'px'); if (HF && HF.el === hand) HF.layout(); }
     }
   }
