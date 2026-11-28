@@ -761,6 +761,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       movePlayer(P, m[0], m[1]);
       P.fire = firing();
     } else {
+      if (P.bot) botSteer(P, dt);
       if (P.tx != null) { var dx = P.tx - P.x, dy = P.ty - P.y, d = Math.hypot(dx, dy), mx = 900 * dt; if (d > mx) { dx *= mx / d; dy *= mx / d; } movePlayer(P, P.x + dx, P.y + dy); }
       if (performance.now() - P.lastIn > 600) P.fire = false;
     }
@@ -3043,9 +3044,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
         } else {
           var A = live && net.away && net.away[peer.id];
           if (A) {
-            delete net.away[peer.id]; back = true;
+            awayDrop(peer.id); back = true;
             r = { pid: A.P.id, name: A.name, dev: peer.id, peer: peer };
-            P = restorePlayer(A.P);
+            // the computer was flying the ship: it is theirs again where it is now; otherwise back onto the field
+            if (A.P.bot && G.players.indexOf(A.P) >= 0) { P = A.P; P.bot = false; P.tx = null; P.ty = null; P.fire = false; P.lastIn = performance.now(); }
+            else P = restorePlayer(A.P);
           } else r = { pid: ++net.pidN, name: uniqueName(peer.name), dev: peer.id, peer: peer };
           net.roster.push(r);
         }
@@ -3071,7 +3074,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
             if (P.alive) burst(P.x, P.y, P.color, 20, 1.2);
             G.players.splice(G.players.indexOf(P), 1); G.bullets = G.bullets.filter(function (b) { return b.o !== P.id; });
             // the ship, its score and its lives wait for this device to come back to the game
-            if (!G.ended && r.dev) { net.away = net.away || {}; net.away[r.dev] = { P: P, name: r.name }; }
+            if (!G.ended && r.dev) { net.away = net.away || {}; awayDrop(r.dev); net.away[r.dev] = { P: P, name: r.name }; awayLater(r.dev); }
           }
         }
       });
@@ -3083,6 +3086,80 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       });
       showWait();
     }).catch(function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); goLobby(); });
+  }
+  // ── A player who hasn't come back ──
+  // Their ship waits in net.away. After 45 seconds the host can let the computer fly it (botSteer) or keep
+  // waiting; the card lies over the top of the field and the game goes on under it. The moment that device joins
+  // again, the ship is theirs again.
+  var AWAY_ASK = 45000;
+  function awayDrop(dev) { var A = net.away && net.away[dev]; if (!A) return; clearTimeout(A.t); if (A === awayShown) awayCardOff(); delete net.away[dev]; }
+  function awayClear() { Object.keys(net.away || {}).forEach(function (d) { clearTimeout(net.away[d].t); }); net.away = {}; awayCardOff(); }
+  function awayLater(dev) {
+    var A = net.away[dev], G0 = G;
+    A.t = setTimeout(function () { A.t = 0; A.ask = true; if (net.away[dev] === A && G === G0 && G && !G.ended) awayNext(); }, window.__awayAskMs || AWAY_ASK);
+  }
+  function awayNext() {
+    if (awayShown) return;
+    var d = Object.keys(net.away || {}).filter(function (k) { var A = net.away[k]; return A.ask && !A.P.bot && !A.no; })[0];
+    if (!d) return;
+    var A = net.away[d];
+    awayCard(A.name, 'ship', function () {
+      var P = A.P; P.bot = true; P.tx = null; P.ty = null; P.fire = false;
+      if (G.players.indexOf(P) < 0) restorePlayer(P);
+      popup(P.x, P.y - 14, 'Computer', P.color, true); sound('extra'); Kit.toast('The computer is flying ' + Kit.poss(A.name) + ' ship until ' + A.name + ' comes back.');
+    }, function () { A.no = true; });
+    awayShown = A;
+  }
+  var awayEl = null, awayShown = null;
+  function awayCard(name, what, onBot, onWait) {
+    awayCardOff();
+    if (!document.getElementById('aw-css')) document.head.appendChild(el('style', { id: 'aw-css', text:
+      '.aw-ask{position:fixed;left:50%;top:calc(var(--bar,58px) + 8px);z-index:60;width:min(460px,calc(100vw - 32px));box-sizing:border-box;padding:14px 16px 16px;border-radius:20px;' +
+      'background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 60%),var(--toast-bg,rgba(40,43,74,.92));box-shadow:inset 0 1px 0 var(--gold-hi,#ffd76a),0 0 0 1px var(--gl-line,rgba(255,255,255,.12)),0 18px 40px -16px rgba(0,0,0,.7);' +
+      '-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:var(--text,#fff);transform:translate(-50%,-12px);opacity:0;transition:transform .22s ease,opacity .22s ease;}' +
+      '.aw-ask.show{transform:translate(-50%,0);opacity:1;}' +
+      '.aw-ask b{display:block;font-size:17px;font-weight:800;line-height:1.25;}' +
+      '.aw-ask p{margin:4px 0 12px;font-size:14px;line-height:1.35;color:var(--text-2,rgba(255,255,255,.75));}' +
+      '.aw-ask .aw-b{display:flex;flex-wrap:wrap;gap:8px;}' +
+      '.aw-ask .aw-b .btn{flex:1 1 auto;min-height:44px;white-space:normal;}' +
+      '.aw-ask .aw-b .btn-primary{flex-basis:220px;}' +
+      '@media (max-height:520px) and (orientation:landscape){.aw-ask{top:calc(var(--bar,58px) + 4px);padding:10px 14px 12px;width:min(560px,calc(100vw - 32px));}.aw-ask p{margin:2px 0 8px;font-size:13px;}.aw-ask b{font-size:15px;}.aw-ask .aw-b{flex-wrap:nowrap;}.aw-ask .aw-b .btn-primary{flex:1 1 auto;white-space:nowrap;}.aw-ask .aw-b .btn-ghost{flex:0 0 auto;padding-left:18px;padding-right:18px;}}' }));
+    var whose = Kit.poss(name) + ' ' + what;
+    awayEl = el('div', { class: 'aw-ask', role: 'status', 'aria-live': 'polite' }, [
+      el('b', { text: name + ' hasn’t come back' }),
+      el('p', { text: 'The computer can play ' + whose + ' until ' + name + ' joins this table again.' }),
+      el('div', { class: 'aw-b' }, [
+        el('button', { type: 'button', class: 'btn btn-primary', text: 'Let the computer play ' + whose, onclick: function () { Kit.haptic && Kit.haptic('light'); awayCardOff(); onBot(); awayNext(); } }),
+        el('button', { type: 'button', class: 'btn btn-ghost', text: 'Keep waiting', onclick: function () { awayCardOff(); onWait(); awayNext(); } })
+      ])
+    ]);
+    document.body.appendChild(awayEl); Kit.sfx('pop');
+    var e0 = awayEl; requestAnimationFrame(function () { requestAnimationFrame(function () { e0.classList.add('show'); }); });
+  }
+  function awayCardOff() { if (awayEl) { var e0 = awayEl; e0.classList.remove('show'); setTimeout(function () { e0.remove(); }, 240); } awayEl = null; awayShown = null; }
+  // The computer flying a ship: under the lowest train's head (a little off, as a person is), firing, and stepping
+  // away from bugs, shots and blasts nearby
+  function botSteer(P, dt) {
+    var now = performance.now(); P.lastIn = now;
+    if (!P.alive) { P.fire = false; return; }
+    if (!P.bj || now > P.bjT) { P.bj = (Math.random() - 0.5) * 10; P.bjT = now + 600 + Math.random() * 900; }
+    var tx = null, best = 1e9;
+    G.segs.forEach(function (s) { var c = Math.abs(s.x - P.x) * 0.5 - s.y * (s.head ? 1.4 : 1); if (c < best) { best = c; tx = s.x; } });
+    if (tx == null && G.boss) tx = G.boss.x;
+    if (tx == null) { var fb = 1e9; G.foes.forEach(function (o) { var d = Math.hypot(o.x - P.x, o.y - P.y); if (d < fb) { fb = d; tx = o.x; } }); }
+    if (tx == null) tx = spawnX(P.ci);
+    tx += P.bj;
+    var ax = 0, ay = 0;
+    function push(x, y, r, w) { var dx = P.x - x, dy = P.y - y, d = Math.hypot(dx, dy); if (d < r) { if (d < 0.01) { dx = P.x < W / 2 ? 1 : -1; dy = 0; d = 1; } var k = (1 - d / r) * w; ax += dx / d * k; ay += dy / d * k; } }
+    G.segs.forEach(function (s) { if (s.y > P.y - 36) push(s.x, s.y, 24, 1.2); });
+    G.foes.forEach(function (o) { push(o.x + (o.vx || 0) * 0.2, o.y + (o.vy || 0) * 0.2, o.type === 'spider' || o.type === 'mini' ? 46 : 32, 1.6); });
+    G.shots.forEach(function (o) { if (o.k !== 'ember') push(o.x + (o.vx || 0) * 0.15, o.y + (o.vy || 0) * 0.15, 22, 1.5); });
+    G.zones.forEach(function (z) { push(z.x, z.y, (z.R || 20) + 12, 2); });
+    if (G.boss) push(G.boss.x, G.boss.y, 64, 1.4);
+    var home = H - 12, vx = clamp((tx - P.x) * 5, -150, 150) + ax * 240, vy = clamp((home - P.y) * 3, -110, 110) + ay * 240, m = Math.hypot(vx, vy), cap = ax || ay ? 230 : 160;
+    if (m > cap) { vx *= cap / m; vy *= cap / m; }
+    P.tx = P.x + vx * dt; P.ty = clamp(P.y + vy * dt, H * 0.6, H - 8);
+    P.fire = G.phase === 'play' || G.phase === 'intro' ? !!(G.segs.length || G.foes.length || G.boss) : false;
   }
   function peerName(peer) { var r = net.roster.filter(function (x) { return x.peer === peer; })[0]; return r ? r.name : peer.name; }
   function uniqueName(n) { var base = n || 'Player', k = 2, out = base; while (net.roster.some(function (r) { return r.name.toLowerCase() === out.toLowerCase(); })) out = base + ' ' + k++; return out; }
@@ -3102,7 +3179,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   }
   function hostStart() {
     var s = lsGet('centi_opts', {}) || {};
-    net.wait = null; G = null; GV = null; net.away = {};
+    net.wait = null; G = null; GV = null; awayClear();
     buildView();
     makeGame({ mode: 'host', cols: FIELD[0], rows: FIELD[1], diff: s.diff || 'arcade', players: net.roster.map(function (r) { return { id: r.pid, name: r.name, local: !!r.host, dev: r.dev }; }) });
     Kit.gameStart();
@@ -3137,6 +3214,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     t.broadcast(s, false);
   }
   function netOver(R) {
+    awayClear();
     if (!net.table) return;
     if (net.evq.length || G.md.length) { net.table.broadcast({ t: 'e', ev: net.evq, m: G.md }, true); net.evq = []; G.md = []; }
     net.table.broadcast({ t: 'over', r: R }, true);
@@ -3298,7 +3376,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     }
     if (net.table) net.table.close();
     if (net.peer) { var p = net.peer; net.peer = null; p.close(); }  // no arg: we're the one leaving, so the bye goes out
-    hostTimer(false);
+    hostTimer(false); awayClear();
     net.mode = null; net.table = null; net.wait = null; net.roster = [];
     if (!quiet) { GV = null; if (G && G.mode === 'host') G = null; }
     closeLobby();
