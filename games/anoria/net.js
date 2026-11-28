@@ -218,7 +218,16 @@
       if (S.pend && S.pend.o === s) return { k: 'act', a: E.pendPick(S, prof, Math.random) };
       if (S.turn !== s) return null;
       const a = (g.bn || 0) < 40 ? E.aiPick(S, prof, Math.random) : null;
-      return a ? { k: 'act', a: a } : { k: 'end' };
+      if (a) return { k: 'act', a: a };
+      // (a person's seat the computer plays while their device is away: over the hand limit, a person's turn ends only
+      // once they have discarded, so the computer discards for them, the dearest card first as the engine does for its own)
+      const P = S.P[s], hm = E.handMax(S, s);
+      if (!g.players[s].cpu && hm && P.hand.length > hm) {
+        const cost = k => ((C.CARDS[k] || (C.RETIRED || {})[k] || {}).c) || 0;
+        let hi = 0; for (let i = 1; i < P.hand.length; i++) if (cost(P.hand[i]) > cost(P.hand[hi])) hi = i;
+        return { k: 'disc', h: hi };
+      }
+      return { k: 'end' };
     });
     return m ? step(st, s, m) : null;
   }
