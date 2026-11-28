@@ -2459,6 +2459,7 @@ Underlying principles for everything:
   the player (`dev`): Apples to Apples gives a returning device its old player (name, color, green cards won, a hand dealt
   back up to 7) and says "Tim is back"; a new connection that arrives before the old one is noticed gone replaces it,
   and the old one's late leave is ignored (`peer._replaced`).
+- **A device that rejoins a live `online.js` table takes back its own seat** (Tim, 2026-11-28: he came back as a new "Tim 2" beside his old seat): the host keeps each player's device id (`peer.id`, `Online.dev()`) on their record and, when that device joins again, gives it the same seat, name, color, score and state, says "Tim is back", and ignores the late `leave` of the link it replaced (Mind Meld, Trivia, Centipede's `net.away`, TetriNET's field held 20 s in `net.away`, Pong, Space Invaders, the live shows, the consoles' `devSeat`).
 - **Notifications** (the bell on home, the profile menu and every game's menu, `Kit.inbox`): news that came in on this
   device, newest first (`gn_inbox_dev`). Anything new worth looking back at (a turn, a link answer, a request) goes in
   with `FGHSync.inboxAdd({id, k, ...})` and gets a line in `inboxLine` in kit.js. A turn notification is marked read (`read: 1`,

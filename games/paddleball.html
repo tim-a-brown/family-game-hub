@@ -1131,7 +1131,11 @@ html.pd-land .ar-pbtn{width:100%;height:44px;}
     }, function (e) { if (!(e && e.message === 'Cancelled')) Kit.toast('Couldn’t open a table. ' + Online.errText(e)); backOut(); });
   }
   function hostPeer(peer) {
-    if (NET.peer && !NET.peer.closed && NET.peer !== peer) { peer.close('full'); return; }
+    // the same device on a new link (its old one not yet closed here) takes its seat over; anyone else is turned away
+    if (NET.peer && !NET.peer.closed && NET.peer !== peer) {
+      if (NET.peer.id !== peer.id) { peer.close('full'); return; }
+      var old = NET.peer; NET.peer = null; old.close('rejoin');
+    }
     var back = !!(G && G.mode === 'net' && !G.ended && NET.themDev === peer.id);
     NET.peer = peer;
     if (!back) { NET.themDev = peer.id; NET.them = peer.name && peer.name.toLowerCase() !== NET.me.toLowerCase() ? peer.name : (peer.name || 'Player') + ' 2'; }

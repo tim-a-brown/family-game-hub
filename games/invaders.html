@@ -1905,7 +1905,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     }, function (e) { if (!(e && e.message === 'Cancelled')) Kit.toast('Couldn’t open a table. ' + Online.errText(e)); backOut(); });
   }
   function hostPeer(peer) {
-    if (NET.peer && !NET.peer.closed && NET.peer !== peer) { peer.close('full'); return; }
+    // the same device on a new link (its old one not yet closed here) takes its seat over; anyone else is turned away
+    if (NET.peer && !NET.peer.closed && NET.peer !== peer) {
+      if (NET.peer.id !== peer.id) { peer.close('full'); return; }
+      var old = NET.peer; NET.peer = null; old.close('rejoin');
+    }
     var back = !!(G && G.net && !G.ended && NET.themDev === peer.id);
     NET.peer = peer; NET.inAt = performance.now(); NET.gf = false;
     if (!back) { NET.themDev = peer.id; NET.them = peer.name && peer.name.toLowerCase() !== NET.me.toLowerCase() ? peer.name : (peer.name || 'Player') + ' 2'; }

@@ -451,7 +451,7 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
   // a field does goes to the host, which passes it to the others: field pictures after each change, specials
   // used (from, to, which), lines sent, and who's out. The host decides when it's over.
   var M = null;       // the match
-  var net = { mode: null, table: null, peer: null, roster: [], lobby: null, wait: null, myPid: 0, hostName: '', botsN: 0 };
+  var net = { mode: null, table: null, peer: null, roster: [], away: {}, lobby: null, wait: null, myPid: 0, hostName: '', botsN: 0 };
   function makeMatch(o) {
     M = { mode: o.mode, me: o.me, seats: o.seats.map(function (s, i) { return { i: i, name: s.name, bot: !!s.bot, pid: s.pid, alive: true, b: newBoard(), lv: CFG.start, ln: 0, place: 0,
         u: {}, r: 0, sl: 0, hit: null, ko: -1, kk: '', outT: 0, fin: '' }; }),
@@ -765,24 +765,53 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
   function hostTable(name) {
     closeLobby();
     return Online.host({ game: GAME, name: name, max: MAXP, min: 2, screen: app,
-      accept: function () { if (M && !M.over && net.mode === 'host') return 'That game has already started'; if (net.roster.filter(function (r) { return !r.bot; }).length >= MAXP) return 'That table is full'; return true; }
+      accept: function (o) {
+        // (a match under way takes back only a field waiting for its own device)
+        if (M && !M.over && net.mode === 'host') { var d = o && o.x && o.x.dev; return d && net.away[d] ? true : 'That game has already started'; }
+        if (net.roster.filter(function (r) { return !r.bot; }).length >= MAXP) return 'That table is full'; return true; }
     }).then(function (table) {
       table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); leaveOnline(false); goLobby(); });
       net.mode = 'host'; net.table = table; net.me = name; net.myPid = 1; net.pidN = 1;
       net.roster = [{ pid: 1, name: name, host: true }];
       table.on('peer', function (peer) {
-        peer._pid = ++net.pidN;
-        if (net.roster.length >= MAXP) { var bi = lastBot(); if (bi >= 0) net.roster.splice(bi, 1); }
-        net.roster.push({ pid: peer._pid, name: uniqueName(peer.name), peer: peer });
+        var live = M && !M.over && M.mode === 'host';
+        // a device that comes back takes its own field again, as it stood (its old link may not have closed yet here)
+        var r = net.roster.filter(function (x) { return x.dev && x.dev === peer.id; })[0], A = live ? net.away[peer.id] : null, back = false;
+        if (r) { if (r.peer && r.peer !== peer) r.peer._pid = -1; r.peer = peer; back = live; }
+        else if (A) {
+          delete net.away[peer.id]; clearTimeout(A.t); back = true;
+          r = { pid: A.pid, name: A.name, dev: peer.id, peer: peer };
+          net.roster.splice(Math.min(A.k, net.roster.length), 0, r);
+        } else if (live) { peer.close('full'); return; }
+        else {
+          if (net.roster.length >= MAXP) { var bi = lastBot(); if (bi >= 0) net.roster.splice(bi, 1); }
+          r = { pid: ++net.pidN, name: uniqueName(peer.name), dev: peer.id, peer: peer };
+          net.roster.push(r);
+        }
+        peer._pid = r.pid;
         peer.send({ t: 'hi', you: peer._pid }, true);
         sendRoster(); Kit.sfx('pop');
+        if (back) { var S = M.seats.filter(function (x) { return x.pid === r.pid; })[0]; if (S) { peer.send(backMsg(S), true); Kit.toast(r.name + ' is back'); } }
       });
       table.on('leave', function (peer) {
-        var r = net.roster.filter(function (x) { return x.peer === peer; })[0];
-        net.roster = net.roster.filter(function (x) { return x.peer !== peer; });
+        // (a link this device's newer one has replaced: nothing to take away)
+        var r = net.roster.filter(function (x) { return x.peer === peer; })[0]; if (!r) return;
+        var k = net.roster.indexOf(r);
+        net.roster = net.roster.filter(function (x) { return x !== r; });
         sendRoster();
-        if (r) Kit.toast(r.name + ' left');
-        if (M && !M.over && r) { var s = M.seats.filter(function (x) { return x.pid === r.pid; })[0]; if (s && s.alive) { bcast({ t: 'dead', s: s.i }); onDead(s.i); checkEnd(); } }
+        var s = M && !M.over ? M.seats.filter(function (x) { return x.pid === r.pid; })[0] : null;
+        if (s && s.alive && M.mode === 'host' && r.dev) {
+          // the field waits a while for its own device to come back, then counts as out
+          var M0 = M, A = net.away[r.dev] = { pid: r.pid, name: r.name, k: k };
+          A.t = setTimeout(function () {
+            if (net.away[r.dev] !== A) return; delete net.away[r.dev];
+            if (M === M0 && !M.over && s.alive) { bcast({ t: 'dead', s: s.i }); onDead(s.i); checkEnd(); }
+          }, AWAY_MS);
+          Kit.toast(r.name + ' dropped out. ' + Kit.poss(r.name) + ' field waits ' + Math.round(AWAY_MS / 1000) + ' seconds for ' + r.name + ' to come back.');
+          return;
+        }
+        Kit.toast(r.name + ' left');
+        if (s && s.alive) { bcast({ t: 'dead', s: s.i }); onDead(s.i); checkEnd(); }
       });
       table.on('msg', function (peer, m) {
         if (!M || M.mode !== 'host') return;
@@ -791,6 +820,15 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
       });
       showWait();
     }).catch(function (e) { if (e && e.message === 'Cancelled') return goLobby(); Kit.toast('Couldn’t open a table. ' + Online.errText(e)); goLobby(); });
+  }
+  var AWAY_MS = 20000;
+  function clearAway() { Object.keys(net.away).forEach(function (d) { clearTimeout(net.away[d].t); }); net.away = {}; }
+  // a player back at the match: their seat, every field as it stands now, and how far the match has gone
+  function backMsg(S) {
+    return { t: 'start', seats: M.seats.map(function (x) { return { name: x.name, bot: x.bot, pid: x.pid }; }), you: S.i, skill: M.skill,
+      back: { bs: M.seats.map(function (x) { return bStr(M.eng[x.i] ? M.eng[x.i].b : x.b); }), al: M.seats.map(function (x) { return x.alive ? 1 : 0; }),
+        lv: M.seats.map(function (x) { return M.eng[x.i] ? M.eng[x.i].lv : x.lv; }), ln: M.seats.map(function (x) { return M.eng[x.i] ? M.eng[x.i].lines : x.ln; }),
+        fin: M.seats.map(function (x) { return x.fin || ''; }), out: M.out.slice(), t: M.t, st: M.started } };
   }
   function lastBot() { for (var i = net.roster.length - 1; i >= 0; i--) if (net.roster[i].bot) return i; return -1; }
   function uniqueName(n) { var base = n || 'Player', k = 2, out = base; while (net.roster.some(function (r) { return r.name.toLowerCase() === out.toLowerCase(); })) out = base + ' ' + k++; return out; }
@@ -834,7 +872,7 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
   function hostStart() {
     if (net.roster.length < 2) { Kit.toast('Add a computer player or wait for someone to join'); return; }
     var o = opts(), seats = net.roster.map(function (r) { return { name: r.name, bot: !!r.bot, pid: r.pid }; });
-    net.wait = null; botBox = null;
+    net.wait = null; botBox = null; clearAway();
     makeMatch({ mode: 'host', me: 0, seats: seats, skill: o.skill || 'normal', shadow: o.shadow !== 'off' });
     net.roster.forEach(function (r) { if (r.peer) r.peer.send({ t: 'start', seats: seats, you: M.seats.filter(function (s) { return s.pid === r.pid; })[0].i, skill: M.skill }, true); });
     net.table.setStatus('playing', seats.length + ' players');
@@ -842,7 +880,7 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
   }
   function joinTable(code, name) {
     closeLobby();
-    return Online.join(code, { game: GAME, name: name, min: 2, max: MAXP, screen: app }).then(function (peer) {
+    return Online.join(code, { game: GAME, name: name, min: 2, max: MAXP, screen: app, extra: { dev: Online.dev() } }).then(function (peer) {
       net.mode = 'guest'; net.peer = peer; net.hostName = peer.name; net.me = name; net.roster = []; net.myPid = 0;
       peer.on('msg', guestIn);
       peer.on('close', function (why) {
@@ -863,6 +901,15 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
     net.wait = null;
     Array.prototype.forEach.call(document.querySelectorAll('.k-win'), function (n) { n.remove(); });
     makeMatch({ mode: 'guest', me: m.you, seats: m.seats, skill: m.skill, shadow: opts().shadow !== 'off' });
+    var B = m.back;
+    if (B) {   // back at a match under way: every field as it stands, yours to carry on after the count of three
+      M.t = B.t || 0; M.started = B.st || M.started; M.out = (B.out || []).slice();
+      M.seats.forEach(function (S, i) {
+        S.b = strB(B.bs && B.bs[i]); S.alive = !B.al || !!B.al[i]; S.lv = (B.lv && B.lv[i]) || S.lv; S.ln = (B.ln && B.ln[i]) || 0; S.fin = (B.fin && B.fin[i]) || '';
+      });
+      var e = M.eng[M.me];
+      if (e) { e.b = M.seats[M.me].b; e.lv = M.seats[M.me].lv; e.lines = M.seats[M.me].ln; e.lvAcc = e.lines % CFG.perLevel; e.dirty = true; }
+    }
     beginView();
   }
   function backToTable() {
@@ -879,7 +926,7 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
     }
     if (net.table) net.table.close();
     if (net.peer) { var p = net.peer; net.peer = null; p.close(); }
-    net.mode = null; net.table = null; net.wait = null; net.roster = []; botBox = null;
+    net.mode = null; net.table = null; net.wait = null; net.roster = []; botBox = null; clearAway();
     closeLobby();
   }
   window.addEventListener('pagehide', function () { if (net.table) net.table.close(); if (net.peer) net.peer.close(); });
