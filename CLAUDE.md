@@ -2459,7 +2459,25 @@ Underlying principles for everything:
   the player (`dev`): Apples to Apples gives a returning device its old player (name, color, green cards won, a hand dealt
   back up to 7) and says "Tim is back"; a new connection that arrives before the old one is noticed gone replaces it,
   and the old one's late leave is ignored (`peer._replaced`).
-- **A device that rejoins a live `online.js` table takes back its own seat** (Tim, 2026-11-28: he came back as a new "Tim 2" beside his old seat): the host keeps each player's device id (`peer.id`, `Online.dev()`) on their record and, when that device joins again, gives it the same seat, name, color, score and state, says "Tim is back", and ignores the late `leave` of the link it replaced (Mind Meld, Trivia, Centipede's `net.away`, TetriNET's field held 20 s in `net.away`, Pong, Space Invaders, the live shows, the consoles' `devSeat`).
+- **A device that rejoins a live `online.js` table takes back its own seat** (Tim, 2026-11-28: he came back as a new "Tim 2" beside his old seat): the host keeps each player's device id (`peer.id`, `Online.dev()`) on their record and, when that device joins again, gives it the same seat, name, color, score and state, says "Tim is back", and ignores the late `leave` of the link it replaced (Mind Meld, Trivia, Centipede's `net.away`, TetriNET's field held 45 s in `net.away`, Pong, Space Invaders, the live shows, the consoles' `devSeat`).
+- **When a device drops out of an online game** (Tim, 2026-11-28, one plan for every game, a 45-second wait everywhere):
+  TurnNet beats every 15 s while a page is visible and counts a seat as dropped after 45 s without one (`cov[seat]`,
+  written once in a transaction; `hs` is how many people sat down at the start). **Two-player turn games** (and any table
+  that started with fewer than 3 people) wait for the dropped player for as long as it takes, as Lorcana does.
+  **A table that started with 3 or more people** in a game with a computer player has the computer play the dropped
+  seat from a device that is there, until that device beats again ("Jamie's device dropped out. The computer plays for
+  Jamie until Jamie is back."; the chip shows the robot). **Casino tables** (CasinoNet, Blackjack, Horse Race) and
+  **Poker's cash games**: a dropped seat sits out with no bet and its money unchanged and is dealt back in on return;
+  after 10 minutes away it leaves as a deliberate leave does, its own device settling the bankroll when it next opens
+  the table, and the last person left gets Close the table or Keep waiting. **Poker tournaments** keep the seat in: it
+  posts blinds and checks or folds. **Centipede and Space Invaders**: after 45 s the host gets a card, "Let the computer
+  play Jamie's ship" (cannon) or "Keep waiting" (`AWAY_ASK`, `botSteer`, `botAim`), and the device that rejoins takes its
+  ship back. **TetriNET** holds the field 45 s (`AWAY_MS`), Pong pauses with End the match, and the party games skip a
+  gone player. **Giving up**: removing an online game in progress from Keep playing (the red trash in edit mode, or a
+  hold) asks "Give up this game?" and ends it with the other player winning, or gives the seat to the computer where the
+  game does that (`netGiveUp` in index.html, `Kit.netQuit`: a TurnNet game's own page opens in a hidden frame with
+  `?kquit=1` and leaves; Chess resigns; Lorcana's `w.how 'gave'`, also Give up the game in its menu, recorded once a
+  table through `lorc_net_done`). firestore.rules allows `hs`, `cov` and `bn` on turnRooms (deployed 2026-11-28).
 - **The table's code during play** (Tim, 2026-11-28: "keep the online game code visible", then "only make that code
   visible in-game on party games like apples to apples that people can jump into after it starts but list it in the game
   options screen for all"): every game's menu heads its Game group with Table code ABCD while the page is at an online
