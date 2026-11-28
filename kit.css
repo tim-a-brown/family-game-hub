@@ -570,13 +570,87 @@ html.k-in-setup .gbar.k-tight .k-home{width:auto;height:40px;padding:0 7px 0 8px
 html.k-in-setup .gbar.k-tight .k-home .k-home-logo{display:grid;}
 html.k-in-setup .gbar.k-tight .k-home{height:48px;}   /* (the bigger bar: the same height as the round buttons) */
 @media (max-width:359px){ html.k-in-setup .gbar .k-home .k-home-logo,html.k-in-setup .gbar.k-tight .k-home .k-home-logo{display:none;} }   /* (a 320-wide phone in setup: the pill keeps its words, and Menu stays on the screen) */
-.gbar .k-code{flex:none;display:grid;place-items:center;align-content:center;gap:1px;height:48px;min-width:60px;padding:0 10px;border:0;border-radius:14px;
-  background:var(--w08);color:var(--text);font:inherit;cursor:pointer;box-shadow:inset 0 0 0 1px var(--gl-line,rgba(255,255,255,.12));}
+/* The table's code in the bar (Kit.init codeBar): a glass key the height of the round buttons, "Table" over the code;
+   a tap copies it and the label turns to a green check and Copied for a moment (.k-copied) */
+.gbar .k-code{flex:none;display:grid;place-items:center;align-content:center;gap:2px;height:50px;min-width:62px;padding:0 9px;border:0;border-radius:15px;
+  background:var(--gl,var(--w08));color:var(--text);font:inherit;cursor:pointer;box-shadow:inset 0 0 0 1px var(--gl-line,rgba(255,255,255,.12));
+  transition:transform .12s,background .2s,box-shadow .2s;}
 .gbar .k-code[hidden]{display:none;}
-.gbar .k-code small{font-size:.62rem;font-weight:700;line-height:1;color:var(--muted,rgba(255,255,255,.62));}
-.gbar .k-code b{font-size:.98rem;font-weight:900;line-height:1.05;font-variant-numeric:tabular-nums;}
-.gbar .k-code:active{transform:scale(.94);background:var(--w16);}
-@media (min-width:600px){.gbar .k-code{min-width:66px;} .gbar .k-code b{font-size:1.1rem;}}
+.gbar.k-norules .k-rules{display:none;}
+.gbar .k-code b{font-size:1rem;font-weight:900;line-height:1;font-variant-numeric:tabular-nums;}
+.gbar .k-code:active{transform:scale(.94);background:var(--gl-2,var(--w16));}
+@media (min-width:600px){.gbar .k-code{min-width:70px;} .gbar .k-code b{font-size:1.12rem;}}
+.k-code-l{display:grid;font-size:.64rem;font-weight:700;line-height:1;color:var(--text-3,rgba(255,255,255,.62));}
+.k-code-l > span{grid-area:1/1;display:inline-flex;align-items:center;justify-content:center;gap:3px;transition:opacity .2s,transform .3s var(--spring);}
+.k-code-l .b{opacity:0;transform:translateY(4px);color:var(--green,#3ddc84);font-weight:800;}
+.k-code-l .b svg{width:11px;height:11px;flex:none;}
+.k-copied .k-code-l .a{opacity:0;transform:translateY(-4px);}
+.k-copied .k-code-l .b{opacity:1;transform:none;}
+.gbar .k-code.k-copied{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--green,#3ddc84) 70%,transparent);}
+/* the menu's row: the code at its right as four letter tiles */
+.k-list .k-coderow .lbl small.k-code-l{justify-items:start;font-size:.76rem;font-weight:600;}
+.k-list .k-coderow .k-code-l > span{justify-content:flex-start;}
+.k-list .k-coderow .k-code-l .b{font-weight:800;}
+.k-codet{flex:none;display:flex;gap:4px;}
+.k-codet i{display:grid;place-items:center;width:27px;height:34px;border-radius:8px;font-style:normal;font-weight:900;font-size:1.08rem;color:var(--text);
+  background:var(--w08,rgba(255,255,255,.08));box-shadow:inset 0 0 0 1px var(--gl-line,rgba(255,255,255,.14)),inset 0 1px 0 rgba(255,255,255,.12);font-variant-numeric:tabular-nums;}
+.k-copied .k-codet i{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--green,#3ddc84) 65%,transparent);transition:box-shadow .2s;}
+@media (max-width:359px){.k-codet i{width:23px;height:30px;font-size:.96rem;}}
+
+/* the question before giving an online game up: the game as Keep playing shows it, and who it's with */
+.k-gq{display:flex;align-items:center;gap:14px;margin:2px 0 12px;padding:12px 14px;border-radius:18px;background:var(--gl,rgba(255,255,255,.06));box-shadow:inset 0 0 0 1px var(--gl-line,rgba(255,255,255,.1));}
+.k-gq-ic{flex:none;width:48px;height:48px;display:grid;}
+.k-gq-ic svg,.k-gq-ic .gicon{width:48px;height:48px;}
+.k-gq-t{min-width:0;display:flex;flex-direction:column;line-height:1.2;}
+.k-gq-t b{font-weight:900;font-size:1.05rem;}
+.k-gq-t small{color:var(--text-2);font-weight:700;font-size:.86rem;}
+/* Who is away from an online table (Kit.away): in the bar, each one's avatar faded with a badge for what happens to
+   their seat; a person's name and the short state beside it where the bar has room */
+.gbar .k-aw{flex:none;display:flex;align-items:center;gap:8px;height:50px;padding:0 10px;border:0;border-radius:15px;
+  background:var(--gl,var(--w08));color:var(--text);font:inherit;cursor:pointer;box-shadow:inset 0 0 0 1px var(--gl-line,rgba(255,255,255,.12));
+  animation:kAwIn .55s var(--spring) both;transition:transform .12s;}
+.gbar .k-aw[hidden]{display:none;}
+.gbar .k-aw:active{transform:scale(.94);}
+@keyframes kAwIn{from{transform:scale(.4);opacity:0;}}
+.k-aw-st{display:flex;align-items:center;}
+.k-aw-st > .k-awav + .k-awav{margin-left:-11px;}
+.k-aw-more{margin-left:4px;font-size:.78rem;font-weight:900;color:var(--text-2);}
+.k-aw-t{display:none;flex-direction:column;align-items:flex-start;line-height:1.1;text-align:left;}
+.k-aw-t b{font-size:.86rem;font-weight:800;white-space:nowrap;max-width:9em;overflow:hidden;text-overflow:ellipsis;}
+.k-aw-t small{font-size:.7rem;font-weight:700;color:var(--text-3);white-space:nowrap;}
+@media (min-width:600px){.gbar .k-aw.one .k-aw-t{display:flex;} .gbar .k-aw.one{padding-right:14px;}}
+/* the face: the avatar faded and gray, a dashed ring where its color was, the badge at its lower right */
+.k-awav{position:relative;flex:none;display:inline-grid;width:32px;height:32px;}
+.k-awav > .avatar{width:100%;height:100%;font-size:.84rem;filter:saturate(.7) brightness(.62);box-shadow:0 0 0 2px var(--bg,#0e0f1f);}
+.k-awav.k-aw-back > .avatar,.k-awav.k-aw-me > .avatar{filter:none;}
+.k-awb{position:absolute;right:-6px;bottom:-5px;z-index:2;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-style:normal;
+  background:#eceaf8;color:#20223a;box-shadow:0 0 0 2px var(--bg,#0e0f1f),0 2px 5px rgba(0,0,0,.45);}
+.k-awb svg{width:13px;height:13px;stroke-width:2.4;}
+.k-awb.wait,.k-awb.out{background:#3a3d5c;color:#f1effb;}
+.k-awb.back,.k-awb.me{background:var(--green,#3ddc84);color:#062312;}
+.k-awb.gone{background:#55303a;color:#ffc4cc;}
+.k-awb.wait svg{animation:kAwWait 2.4s ease-in-out infinite;}
+.k-aw.up .k-awb.wait{background:var(--yellow-fill,#f5c542);color:#2b1a00;}
+@keyframes kAwWait{50%{opacity:.45;}}
+.k-awav.md{width:42px;height:42px;} .k-awav.md > .avatar{font-size:1.05rem;}
+.k-awav.md .k-awb{width:22px;height:22px;} .k-awav.md .k-awb svg{width:14px;height:14px;}
+.k-awav.lg{width:52px;height:52px;} .k-awav.lg > .avatar{font-size:1.3rem;}
+.k-awav.lg .k-awb{width:26px;height:26px;right:-6px;bottom:-5px;} .k-awav.lg .k-awb svg{width:16px;height:16px;}
+/* a seat's own avatar on the table while its player is away (Kit.awaySeat): darkened, its color kept, the badge on it */
+.avatar.k-awd{position:relative;overflow:visible;box-shadow:inset 0 0 0 99px rgba(8,9,22,.42);color:rgba(255,255,255,.7);}
+.avatar.k-awd .k-awb{width:58%;height:58%;min-width:14px;min-height:14px;right:-22%;bottom:-18%;}
+.avatar.k-awd .k-awb svg{width:72%;height:72%;}
+/* the sheet: a row a person, the face and the sentence */
+.k-awl{display:flex;flex-direction:column;gap:10px;margin:2px 0 4px;}
+.k-awr{display:flex;align-items:center;gap:16px;padding:14px 16px 14px 14px;border-radius:18px;background:var(--gl,var(--w06));box-shadow:inset 0 0 0 1px var(--gl-line,rgba(255,255,255,.1));}
+.k-awr-t{min-width:0;}
+.k-awr-t b{display:block;font-weight:900;margin-bottom:2px;}
+.k-awr-t p{margin:0;color:var(--text-2);font-weight:600;line-height:1.35;}
+/* the moment it happens: the banner from the top, in plain glass (gold is for your turn) */
+.k-note.k-awn{gap:13px;padding:11px 16px 11px 12px;cursor:default;}
+.k-note.k-awn .grow{flex:1;}
+.k-note.k-awn b{white-space:normal;}
+.k-note.k-awn small{margin-top:2px;line-height:1.3;}
 .gbar .ttl{flex:1;min-width:0;display:flex;align-items:center;gap:10px;font-weight:900;font-size:1.2rem;padding-left:2px;}
 .gbar .ttl::before{content:"";flex:none;width:4px;height:22px;border-radius:2px;background:var(--accent);}
 .gbar .ttl.has-ic::before{display:none;}

@@ -895,7 +895,8 @@
     o = o || {};
     return new Promise(function (resolve) {
       sheet({
-        title: msg, html: o.body ? '<p class="muted">' + factHtml(o.body) + '</p>' : null,
+        title: msg, html: o.node ? null : o.body ? '<p class="muted">' + factHtml(o.body) + '</p>' : null,
+        node: o.node ? el('div', null, [o.node, o.body ? el('p', { class: 'muted', html: factHtml(o.body) }) : null]) : null,
         actions: [
           { label: o.ok || 'OK', cls: o.danger ? 'btn-red' : 'btn-primary', onClick: function () { resolve(true); } },
           { label: o.cancel || 'Cancel', cls: 'btn-ghost', onClick: function () { resolve(false); } }
@@ -2120,26 +2121,132 @@
     } catch (e) {}
     return null;
   }
-  function copyCode(c) {
+  // The code copied: the place that was tapped says so where the finger is (a check and "Copied" in the pill or the
+  // menu's row for a moment), rather than a sentence at the foot of the screen
+  function copyCode(c, at) {
     try { navigator.clipboard.writeText(c).catch(function () {}); } catch (e) {}
-    haptic('light'); toast('The table code is ' + c + '. It’s copied, so you can send it to a friend.');
+    haptic('light'); sfx('tap');
+    if (at) { at.classList.add('k-copied'); clearTimeout(at._cpT); at._cpT = setTimeout(function () { at.classList.remove('k-copied'); }, 1600); }
+    else toast('Copied the table code, ' + c + '.');
   }
+  // the code as four letter tiles, the way it is read out to a friend
+  function codeTiles(c) { return el('span', { class: 'k-codet', 'aria-hidden': 'true' }, String(c).split('').map(function (ch) { return el('i', { text: ch }); })); }
   // Every online game has its table's code in the menu (above). A game people can join after it has started (Kit.init's
   // codeBar: Apples to Apples, Mind Meld, Trivia) also keeps it in the game bar while you're at the table (Tim,
-  // 2026-11-28), so a friend arriving late can be told it at a glance. A tap copies it.
+  // 2026-11-28), so a friend arriving late can be told it at a glance. A tap copies it: the pill turns green with a
+  // check for a moment.
   function codePill() {
     if (!gbarEl || codePill.on) return; codePill.on = 1;
-    var pill = el('button', { class: 'k-code', type: 'button', hidden: true, onclick: function () { if (pill.dataset.c) copyCode(pill.dataset.c); } }, [el('small', { text: 'Table' }), el('b')]);
+    var b = el('b'), pill = el('button', { class: 'k-code', type: 'button', hidden: true, onclick: function () { if (pill.dataset.c) copyCode(pill.dataset.c, pill); } },
+      [el('small', { class: 'k-code-l' }, [el('span', { class: 'a', text: 'Table' }), el('span', { class: 'b', html: icon('check') + 'Copied' })]), b]);
     var rb = gbarEl.querySelector('.k-rules') || gbarEl.querySelector('.icon-btn:last-child');
     gbarEl.insertBefore(pill, rb);
     function tick() {
       var c = atTable(); c = c ? String(c).toUpperCase() : '';
       if (c === (pill.dataset.c || '')) return;
-      pill.dataset.c = c; pill.hidden = !c; pill.querySelector('b').textContent = c;
-      pill.setAttribute('aria-label', c ? 'Table code ' + c : 'Table code');
+      pill.dataset.c = c; pill.hidden = !c; b.textContent = c;
+      pill.setAttribute('aria-label', c ? 'Table code ' + c + ', tap to copy' : 'Table code');
       requestAnimationFrame(fitBar);
     }
     tick(); setInterval(tick, 1500);
+  }
+  // ── Who is away from an online table ──
+  // (Tim, 2026-11-28, of the first drop notices: "i need everything to be amazingly and thoughtfully designed". A
+  // dropped device was a sentence at the foot of the screen that went away, and the table showed nothing after it.)
+  // Kit.away(list) keeps a mark in the game bar for as long as anyone is away: each one's avatar, faded, with a badge
+  // that shows what happens to their seat (the computer's face: it plays for them; a pause: they sit out; a clock: the
+  // game waits for them). A tap tells it in sentences. list: [{name, color, kind: 'cover' | 'auto' | 'out' | 'wait',
+  // since (ms), up (their turn now), leave (ms: they leave the table after so long away), line (the sentence, in place
+  // of the kit's)}], or [] when nobody is away. Kit.awayNote({name, color, kind: ... | 'back' | 'gone' | 'me', title,
+  // line, say}) is the moment it happens: a banner from the top with the same face and badge (say: the whole sentence,
+  // for a screen reader).
+  function awAgo(t) {
+    var s = Math.max(0, Date.now() - (t || Date.now())) / 1000;
+    if (s < 60) return 'just now';
+    var m = Math.round(s / 60); if (m < 60) return m === 1 ? 'a minute ago' : m + ' minutes ago';
+    var h = Math.round(m / 60); return h === 1 ? 'an hour ago' : h + ' hours ago';
+  }
+  function awMins(ms) { var m = Math.round(ms / 60000); return m === 1 ? 'a minute' : m + ' minutes'; }
+  function awBadge(kind) {
+    return el('i', { class: 'k-awb ' + kind, html: icon(kind === 'cover' || kind === 'auto' ? 'bot' : kind === 'out' ? 'pause' : kind === 'back' || kind === 'me' ? 'check' : kind === 'gone' ? 'logout' : 'clock') });
+  }
+  function awFace(x, cls) {
+    return el('span', { class: 'k-awav k-aw-' + x.kind + (cls ? ' ' + cls : '') }, [avEl(x.name || '?', null, x.color || playerColor(0)), awBadge(x.kind)]);
+  }
+  // A seat's own avatar on the table (a game's plate) while that person is away: dimmed, with the same badge as the bar's
+  // mark at its lower right. Returns the avatar, so a game can wrap the one it builds: Kit.awaySeat(el(...), net.dropOf(i))
+  // Kit.awaySeat(avatar, net, seat): the table's own avatar for that seat follows net.dropOf(seat) from then on (TurnNet
+  // calls Kit.awaySeat.refresh() whenever someone drops out or comes back, without the game drawing its table again).
+  var awNet = null;
+  function awaySeat(av, net, seat) {
+    if (!av) return av;
+    if (net && typeof net === 'object') { if (!net.dropOf) return av; awNet = net; av.setAttribute('data-k-aws', String(seat)); awSeatPaint(av, net.dropOf(seat)); }
+    else awSeatPaint(av, net);
+    return av;
+  }
+  function awSeatPaint(av, kind) {
+    if ((av.getAttribute('data-k-awk') || '') === (kind || '')) return;
+    av.setAttribute('data-k-awk', kind || '');
+    av.classList.remove('k-awd'); var old = av.querySelector(':scope > .k-awb'); if (old) old.remove();
+    if (!kind) { av.removeAttribute('title'); return; }
+    av.classList.add('k-awd'); av.appendChild(awBadge(kind));
+    av.title = kind === 'cover' ? 'The computer plays this seat until its player is back' : kind === 'auto' ? 'Away: checks or folds until back' : 'Away from the table: sitting out';
+  }
+  awaySeat.refresh = function () {
+    if (!awNet) return;
+    Array.prototype.forEach.call(doc.querySelectorAll('[data-k-aws]'), function (av) { awSeatPaint(av, awNet.dropOf ? awNet.dropOf(+av.getAttribute('data-k-aws')) : null); });
+  };
+  var AW_SHORT = { cover: 'The computer plays', auto: 'Checks or folds', out: 'Sitting out', wait: 'Away' };
+  function awLine(x) {
+    if (x.line) return x.line;
+    var n = x.name, ago = awAgo(x.since);
+    if (x.kind === 'cover') return n + '’s device dropped out ' + ago + '. The computer plays for ' + n + ' until ' + n + ' is back.';
+    if (x.kind === 'out') return n + '’s device dropped out ' + ago + ', so ' + n + ' sits out and ' + n + '’s money stays as it is. ' + n + ' is dealt back in as soon as ' + n + ' is back.' +
+      (x.leave ? ' After ' + awMins(x.leave) + ' away, ' + n + ' leaves the table.' : '');
+    return n + ' isn’t at the table right now. ' + (x.up ? 'The game waits for ' + n + '’s move, however long it takes.' : 'When it’s ' + n + '’s turn, the game waits for ' + n + '.');
+  }
+  var awEl = null, awList = [];
+  function away(list) {
+    awList = (list || []).filter(function (x) { return x && x.name; });
+    if (!gbarEl || SNAP_MODE || QUIT) return;
+    if (!awEl) {
+      awEl = el('button', { class: 'k-aw', type: 'button', hidden: true, onclick: function () { sfx('tap'); awaySheet(); } });
+      gbarEl.insertBefore(awEl, gbarEl.querySelector('.k-code') || gbarEl.querySelector('.k-rules') || gbarEl.querySelector('.icon-btn:last-child'));
+    }
+    var sig = JSON.stringify(awList.map(function (x) { return [x.name, x.kind, x.color, !!x.up]; }));
+    if (sig === awEl._sig) return; awEl._sig = sig;
+    awEl.textContent = ''; awEl.hidden = !awList.length;
+    awEl.className = 'k-aw' + (awList.length === 1 ? ' one' : '') + (awList.some(function (x) { return x.up && x.kind === 'wait'; }) ? ' up' : '');
+    if (awList.length) {
+      var shown = awList.slice(0, 3);
+      awEl.appendChild(el('span', { class: 'k-aw-st' }, shown.map(function (x) { return awFace(x); }).concat(awList.length > 3 ? [el('span', { class: 'k-aw-more', text: '+' + (awList.length - 3) })] : [])));
+      if (awList.length === 1) awEl.appendChild(el('span', { class: 'k-aw-t' }, [el('b', { text: awList[0].name }), el('small', { text: AW_SHORT[awList[0].kind] || 'Away' })]));
+      awEl.setAttribute('aria-label', awList.map(function (x) { return x.name + ' is away'; }).join(', ') + '. Tap to see more.');
+    }
+    requestAnimationFrame(fitBar);
+  }
+  function awaySheet() {
+    if (!awList.length) return;
+    var one = awList.length === 1;
+    sheet({ title: one ? awList[0].name + ' is away from the table' : 'Away from the table', node: el('div', { class: 'k-awl' }, awList.map(function (x) {
+      return el('div', { class: 'k-awr' }, [awFace(x, 'lg'), el('div', { class: 'k-awr-t' }, [one ? null : el('b', { text: x.name }), el('p', { text: awLine(x) })])]);
+    })), actions: [{ label: 'OK', cls: 'btn-ghost' }] });
+  }
+  var awNoteEl = null, awNoteT = 0;
+  function awayNote(x) {
+    if (SNAP_MODE || QUIT || !x) return;
+    if (awNoteEl) awNoteEl.remove();
+    var b = el('button', { type: 'button', class: 'k-note k-awn k-awn-' + x.kind, role: 'status', 'aria-label': x.say || ((x.title || '') + '. ' + (x.line || '')) }, [
+      awFace(x, 'md'),
+      el('span', { class: 'grow' }, [el('b', { text: x.title }), x.line ? el('small', { text: x.line }) : null])
+    ]);
+    awNoteEl = b;
+    function hide() { b.classList.remove('show'); setTimeout(function () { b.remove(); if (awNoteEl === b) awNoteEl = null; }, 450); }
+    b.addEventListener('click', hide);
+    doc.body.appendChild(b);
+    requestAnimationFrame(function () { requestAnimationFrame(function () { b.classList.add('show'); }); });
+    haptic(x.kind === 'back' || x.kind === 'me' ? 'success' : 'light');
+    clearTimeout(awNoteT); awNoteT = setTimeout(hide, x.ms || 5200);
   }
   // The banner: the game's icon, whose move it is, and a Play button; tap it to go, swipe it up (or wait) to let it be
   function turnBanner(x, more, o) {
@@ -2395,7 +2502,15 @@
     });
     if (opts.undo) tile('undo', 'Undo', opts.undo);
     // at an online table, its code heads the menu (a tap copies it), so someone who dropped out can be told it
-    var tcode = atTable(); if (tcode) item(G, 'link', 'Table code ' + String(tcode).toUpperCase(), function () { copyCode(String(tcode).toUpperCase()); }, '', 'Tap to copy it for a friend');
+    // (the code stands at the row's right as letter tiles; a tap copies it and the row says so, the menu staying open)
+    var tcode = atTable();
+    if (tcode) {
+      tcode = String(tcode).toUpperCase();
+      var crow = el('button', { type: 'button', class: 'k-coderow', 'aria-label': 'Table code ' + tcode + ', tap to copy', onclick: function () { copyCode(tcode, crow); } },
+        [el('span', { class: 'ic', html: menuIc('link') }), el('span', { class: 'lbl' }, [el('span', { text: 'Table code' }),
+          el('small', { class: 'k-code-l' }, [el('span', { class: 'a', text: 'Tap to copy it for a friend' }), el('span', { class: 'b', html: icon('check') + 'Copied' })])]), codeTiles(tcode)]);
+      group(G).push(crow);
+    }
     (opts.menu || []).forEach(function (m) {
       if (m.when && !m.when()) return;
       if (m.exit && opts.exitFirst) { exitBtn(m.icon || 'logout', m.label, m.onClick); return; }
@@ -3019,7 +3134,10 @@
   // the arrow alone (gbar.k-tight) so the name wins
   function fitBar() {
     if (!gbarEl) return;
-    gbarEl.classList.remove('k-tight', 'k-noic', 'k-wrap', 'k-nochev');
+    gbarEl.classList.remove('k-tight', 'k-noic', 'k-wrap', 'k-nochev', 'k-norules');
+    // (an online table's code or away mark in the bar of a phone under 380 wide: the ? steps aside for it, How to play
+    // being in the menu too, so the game's name keeps two lines at most)
+    if (innerWidth < 380 && gbarEl.querySelector('.k-code:not([hidden]), .k-aw:not([hidden])') && !doc.documentElement.classList.contains('k-in-setup')) gbarEl.classList.add('k-norules');
     var t = gbarEl.querySelector('.ttl > span:not(.gi):not(.k-chev)');
     if (!t) return;
     t.style.fontSize = '';
@@ -3036,6 +3154,10 @@
       // (one long word, "Conversation", still has to fit its line)
       while (t.scrollWidth > t.clientWidth + 0.5 && fs > fs0 * 0.6) { fs -= 0.5; t.style.fontSize = fs + 'px'; }
       if (t.scrollWidth > t.clientWidth + 0.5) gbarEl.classList.add('k-nochev');   // (still too long: a switcher's arrow steps aside, the name is what you tap)
+      // (two lines at most: "Apples to Apples" beside an online table's code on a 320-wide phone was three)
+      var lines = function () { var lh = parseFloat(getComputedStyle(t).lineHeight) || fs * 1.15; return t.getBoundingClientRect().height / lh; };
+      if (lines() > 2.2) gbarEl.classList.add('k-nochev');
+      while (lines() > 2.2 && fs > fs0 * 0.55) { fs -= 0.5; t.style.fontSize = fs + 'px'; }
     }
   }
   function titleSwitch(text, onClick, label) {
@@ -7550,7 +7672,7 @@
   }
 
   window.Kit = {
-    netTurns: netTurns, netQuit: netQuit, turnsMark: turnsMark, turnBanner: turnBanner, turnBadge: turnBadge, badgeAsk: badgeAsk, notify: notifySheet, notifyStatus: notifyStatus, inbox: inboxSheet, inboxNew: inboxNew,
+    netTurns: netTurns, netQuit: netQuit, away: away, awayNote: awayNote, awayFace: awFace, awaySeat: awaySeat, turnsMark: turnsMark, turnBanner: turnBanner, turnBadge: turnBadge, badgeAsk: badgeAsk, notify: notifySheet, notifyStatus: notifyStatus, inbox: inboxSheet, inboxNew: inboxNew,
     marquee: marquee, glide: glide, init: init, keepAwake: keepAwake, setup: setup, cashOut: cashOutBtn, fitText: fitText, modes: modes, depth: depth, win: win, winClear: winPeekClear, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout, moment: moment,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, joker: joker, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     defaults: { sheet: defaultsSheet, get: setupSaved }, setupPage: function (g) { return g && g.play && SETUP_PAGES.indexOf(g.play) >= 0 ? g.play : null; }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, sortCat: sortCat, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, playing: playing, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },

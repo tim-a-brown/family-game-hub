@@ -861,7 +861,7 @@ var CasinoNet = (function () {
     '.cz-net .czs.up{background:color-mix(in srgb,var(--yellow,#f5c542) 30%,rgba(0,0,0,.3));box-shadow:inset 0 0 0 1.5px var(--yellow,#f5c542),0 0 12px color-mix(in srgb,var(--yellow,#f5c542) 45%,transparent);color:#fff;}' +
     '.cz-net .czs .ck{width:14px;height:14px;color:#3ddc84;flex:none;display:inline-flex;}.cz-net .czs .ck svg{width:14px;height:14px;}' +
     '.cz-net .czs.me:not(.up){box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.4);}' +
-    '.cz-net .czs.out{opacity:.45;}' +
+    '.cz-net .czs.out{opacity:.45;}.cz-net .czs.away{opacity:.8;}.cz-net .czs.away > span:not(.avatar),.cz-net .czs.away b{opacity:.6;}' +
     '.cz-net .czs .mk{display:inline-flex;width:16px;height:16px;margin-right:-2px;color:#f6d77b;flex:none;}.cz-net .czs .mk svg{width:16px;height:16px;}' +
     '.cz-net .czs .d{font-size:.74rem;font-weight:900;}.cz-net .czs .d.pos{color:#3ddc84;}.cz-net .czs .d.neg{color:#ff8a8a;}' +
     '.cz-net .cz-back{flex-basis:100%;max-width:280px;margin:4px auto 0;}';
@@ -876,8 +876,8 @@ var CasinoNet = (function () {
     st.seats.forEach(function (s, i) {
       var isUp = up.indexOf(i) >= 0, inn = !isUp && !s.out && net.state.phase !== 'over' && (net.state.phase === 'bet' ? !!net.state.ready[i] : true);
       var amt = o.amount ? o.amount(i) : s.bank, d = o.delta ? o.delta(i) : null;
-      var c = Kit.el('span', { class: 'czs' + (isUp ? ' up' : '') + (inn ? ' in' : '') + (i === me ? ' me' : '') + (s.out ? ' out' : ''), title: s.away ? s.name + '’s device dropped out, so ' + s.name + ' is sitting out' : s.out ? s.name + ' left the table' : '' }, [
-        Kit.avatar && Kit.avatar.el ? Kit.avatar.el(s.name, null, Kit.color ? Kit.color(i) : null) : Kit.el('span', { class: 'avatar', text: s.name.charAt(0) }),
+      var c = Kit.el('span', { class: 'czs' + (isUp ? ' up' : '') + (inn ? ' in' : '') + (i === me ? ' me' : '') + (s.out ? ' out' : '') + (s.away && !s.left ? ' away' : ''), title: s.away ? s.name + '’s device dropped out, so ' + s.name + ' is sitting out' : s.out ? s.name + ' left the table' : '' }, [
+        (function (a) { return s.away && !s.left && Kit.awaySeat ? Kit.awaySeat(a, 'out') : a; })(Kit.avatar && Kit.avatar.el ? Kit.avatar.el(s.name, null, Kit.color ? Kit.color(i) : null) : Kit.el('span', { class: 'avatar', text: s.name.charAt(0) })),
         Kit.el('span', { text: s.name }), Kit.el('b', { text: money(amt) })]);
       if (s.bust) c.title = (i === me ? 'You are' : s.name + ' is') + ' out of chips';
       var mk = o.mark ? o.mark(i) : null;
