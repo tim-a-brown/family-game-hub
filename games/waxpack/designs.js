@@ -248,17 +248,20 @@
     bk: bk('gray', { st: '#d9cfb8', hd: '#b3261e' }), sure: 'a', note: 'the cap with the team name' });
   // 1982: two stripes in the team's colors down the left and along the foot, the team's name in large letters, the
   // position and name under it, a signature
-  def('topps', 1982, { bg: WH, ph: P(10, 4, 86, 104, {}),
-    L: [B(3, 4, 3, 130, { bg: 't1' }), B(7, 4, 2, 126, { bg: 't2' }), B(3, 131, 93, 3, { bg: 't1' }), B(7, 127, 89, 2, { bg: 't2' }),
-      T('TM', 10, 108, 86, 11, { f: 'blk', z: 8, c: 't1', al: 'r' }), T('PF', 12, 119, 30, 7, { f: 'blk', z: 4, c: 't2' }), T('NM', 40, 119, 56, 7, { f: 'blk', z: 5, c: 't1', al: 'r' }),
-      S(30, 70, 50, 20, { c: '#1d1d1d', z: 9 }), K(80, 106, 14, 8, { c: '#fff', z: 3.6 })],
+  def('topps', 1982, { bg: WH, ph: P(10, 4, 85, 100, {}),
+    L: [B(5, 4, 34, 104, { sh: 'inset 3.2cqw -3.2cqw 0 t2', rd: '0 0 0 7cqw' }), B(2, 4, 1.3, 122, { bg: 't1' }),
+      B(2, 125, 32, 8, { bg: 't1', rd: '0 0 0 1.5cqw' }), T('PF', 3, 125, 30, 8, { f: 'blk', z: 3.8, c: 'i1', al: 'c' }),
+      T('TM', 36, 108, 60, 12, { f: 'blk', z: 9, c: 't2', al: 'r' }), T('NM', 36, 120, 60, 13, { f: 'blk', z: 7.4, c: 't1', al: 'r' }),
+      S(30, 62, 50, 22, { c: '#1d1d1d', z: 9 }), K(76, 93, 18, 9, { c: '#fff', z: 4.6, it: 1 })],
     bk: bk('gray', { st: '#d6d6c8', hd: '#2a6b37' }), sure: 'a', note: 'hockey sticks' });
   // 1983: the photograph in a colored frame, a second picture in a circle at the lower left, the name, position and
   // team at the lower right
-  def('topps', 1983, { bg: WH, ph: P(4, 4, 92, 108, { b: '0 0 0 .8cqw t2' }),
-    L: [B(4, 112, 92, 24, { bg: 't2' }), I(4, 94, 40, 40, { s: 'circle', sh: '0 0 0 1cqw t1' }), T('FN', 46, 113, 48, 6, { f: 'blk', z: 4.4, c: 'i2', al: 'r' }),
-      T('LN', 46, 118, 48, 8, { f: 'blk', z: 6, c: 'i2', al: 'r' }), T('PF', 46, 125, 48, 5, { f: 'cond', z: 3.8, c: 'i2', al: 'r' }), T('TM', 46, 129, 48, 7, { f: 'bung', z: 5.4, c: 't1', al: 'r' }),
-      K(76, 6, 18, 8, { c: '#2f8a4c', z: 3.6 })],
+  def('topps', 1983, { bg: '#f4efe2', ph: P(7, 5, 86, 102, { b: '0 0 0 1cqw t2' }),
+    L: [B(30, 109, 63, 27, { bg: '#f3ecd9', sh: '0 0 0 .9cqw t1' }), B(30, 126.5, 63, 9.5, { bg: 't1' }),
+      I(5, 88, 46, 46, { s: 'circle', sh: '0 0 0 .9cqw #f4efe2, 0 0 0 1.9cqw t2' }),
+      T('FN', 52, 109.5, 40, 6, { f: 'blk', z: 4.8, c: 't1', al: 'r' }), T('LN', 52, 115, 40, 6.5, { f: 'blk', z: 5.4, c: 't1', al: 'r' }),
+      T('PF', 52, 121.5, 40, 5, { f: 'cond', z: 3.6, c: '#222', al: 'r' }), T('TM', 52, 126.5, 40, 9.5, { f: 'blk', z: 6.4, c: 'i1', al: 'r' }),
+      K(72, 2.5, 20, 7, { c: 't2', z: 4.4, it: 1 })],
     bk: bk('gray', { st: '#d6c7a1', hd: '#c25a1f' }), sure: 'a' });
   // 1984: the team's name down the left side in large colored letters, a second picture at the lower left, the name and
   // position at the lower right
@@ -282,9 +285,10 @@
     bk: bk('gray', { st: '#ccbfa6', hd: '#b3261e' }), sure: 'a', note: 'the black band at the top' });
   // 1987: wood grain round the photograph, the team's mark in a circle at the upper left, the name on a colored plate
   // across the foot
-  def('topps', 1987, { bg: 'wood', ph: P(6, 6, 88, 112, { b: '0 0 0 .6cqw #1f140a' }),
-    L: [B(4, 4, 24, 24, { bg: '#fff', rd: 50, sh: '0 0 0 .8cqw t1' }), G(7, 7, 18, 18), B(22, 118, 56, 16, { bg: 't1', sh: '0 0 0 .5cqw #fff' }),
-      T('NM', 23, 118, 54, 16, { f: 'blk', z: 5.6, c: 'i1', al: 'c' }), K(6, 123, 14, 7, { c: '#fff', z: 3.4 })],
+  def('topps', 1987, { bg: 'oak', ph: P(6, 6, 88, 114, { b: '0 0 0 .6cqw #1f140a' }),
+    L: [B(3, 3, 24, 24, { bg: 't1', rd: 50, sh: '0 0 0 .9cqw #fff, 0 0 0 1.4cqw #1f140a' }), G(6.5, 6.5, 17, 17),
+      B(30, 120, 46, 14, { bg: 't1', sh: '0 0 0 .5cqw #1f140a' }), T('NM', 31, 120, 44, 14, { f: 'blk', z: 5.8, c: 'i1', al: 'c', sh: 1 }),
+      K(8, 124, 18, 8, { c: '#1d1d1d', z: 4.6, it: 1 })],
     bk: bk('gray', { st: '#c9b98f', hd: '#2a4f8f' }), sure: 'a', note: 'wood grain' });
   // 1988: the photograph to a thin frame, the team's name in large outlined letters over its top, the name on a slanted
   // band at the lower right
@@ -300,10 +304,10 @@
     bk: bk('gray', { st: '#e7b5b6', hd: '#2b2b2b' }), sure: 'a' });
   // 1990: bright two-color speckled borders, the team's name in italic letters at the top left, the name on a colored
   // band along the foot
-  def('topps', 1990, { bg: 'two', ph: P(7, 7, 86, 118, { b: '0 0 0 .8cqw #fff' }),
-    L: [T('TM', 9, 6, 64, 12, { f: 'bung', z: 8.6, c: 'color-mix(in srgb,t2 45%,#fff)', it: 1, sh: 1 }), B(7, 125, 86, 11, { bg: 't2' }),
-      T('NM', 9, 125, 82, 11, { f: 'blk', z: 5.6, c: 'i2', al: 'r', it: 1 }), K(78, 9, 14, 7, { c: '#fff', z: 3.4 })],
-    bk: bk('gray', { st: '#e7b24f', hd: '#2b2b2b' }), sure: 'a', note: 'bright two-color borders' });
+  def('topps', 1990, { bg: 'dots', ph: P(7, 7, 86, 117, { b: '0 0 0 .9cqw t2' }),
+    L: [T('TM', 9, 6, 66, 14, { f: 'cond8', z: 11.5, c: 'color-mix(in srgb,t2 55%,#fff)', sh: 3 }), B(18, 124, 75, 10, { bg: 't2', sh: '0 0 0 .5cqw #111' }),
+      T('NM', 20, 124, 71, 10, { f: 'blk', z: 5.4, c: 'i2', al: 'r', it: 1 }), K(76, 9, 16, 7, { c: '#fff', z: 4.2, it: 1 })],
+    bk: bk('gray', { st: '#e7b24f', hd: '#2b2b2b' }), sure: 'a', note: 'speckled two-color borders' });
   // 1991: the fortieth year: white borders, the photograph in a double colored line, the team's name in script on the
   // photograph's lower right, the position and the name along the foot
   def('topps', 1991, { bg: WH, ph: P(6, 6, 88, 120, { b: '0 0 0 .5cqw t1, 0 0 0 1.2cqw #fff, 0 0 0 1.7cqw t2' }),
@@ -333,10 +337,11 @@
     L: [T('nm', 6, 112, 70, 13, { f: 'scr', z: 9, c: '#1d1d1d', sh: 2 }), T('PF', 6, 127, 28, 8, { f: 'pag', z: 3.8, c: '#8a6b1f', ls: '.2em' }),
       T('FT', 34, 127, 60, 8, { f: 'pag', z: 3.8, c: '#8a6b1f', al: 'r', ls: '.2em' })],
     bk: bk('white', {}), sure: 'a' });
-  // 1996: the photograph to the edge, the team's mark at the upper left, the name on a dark band at the lower right
-  def('topps', 1996, { bg: '#111', ph: P(0, 0, 100, 140, {}),
-    L: [G(4, 4, 18, 18), B(30, 122, 70, 12, { bg: 'linear-gradient(90deg,transparent,rgba(0,0,0,.85) 30%)' }),
-      T('NM', 36, 122, 60, 12, { f: 'blk', z: 5.6, c: '#c9c9cf', al: 'r', ls: '.08em' }), K(4, 126, 14, 7, { c: '#fff', z: 3.4 })],
+  // 1996: the photograph nearly to the edge inside a thin white border, the team's mark at the upper left, the name on a
+  // dark band at the lower right
+  def('topps', 1996, { bg: WH, ph: P(3, 3, 94, 134, {}),
+    L: [G(6, 6, 16, 16), B(28, 120, 69, 12, { bg: 'linear-gradient(90deg,transparent,rgba(0,0,0,.8) 30%)' }),
+      T('NM', 34, 120, 61, 12, { f: 'blk', z: 5.6, c: '#d4d4da', al: 'r', ls: '.08em' }), K(6, 124, 16, 7, { c: '#fff', z: 3.6, it: 1 })],
     bk: bk('white', {}), sure: 'a' });
   // 1997: the photograph in a dark colored border that fades into it, the name large across the foot, the team's name
   // in script at the lower left
