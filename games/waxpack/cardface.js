@@ -248,10 +248,16 @@
     return box;
   }
   function logoEl(c, s) {
-    var L = Wl(), src = L && L.find ? L.find(c.tc, c.sy || (c.year ? c.year - 1 : 0)) : null, d = h('div', 'wxt-lg');
-    function letters() { d.innerHTML = ''; d.classList.add('txt'); d.appendChild(h('span', '', nickFor(c) || (c.tc || ''))); }
-    if (src) { var im = h('img'); im.alt = ''; im.decoding = 'async'; im.draggable = false; im.onerror = letters; im.src = BASE + 'logos/' + src; d.appendChild(im); }
-    else letters();
+    // the team's name in lettering at once; the season's cap mark over it once it has loaded (WaxLogos keeps it on the
+    // device), never holding up the card
+    var L = Wl(), d = h('div', 'wxt-lg txt'), p = L && L.url ? L.url(c.tc, c.sy || (c.year ? c.year - 1 : 0)) : null;
+    d.appendChild(h('span', '', nickFor(c) || (c.tc || '')));
+    if (p) p.then(function (u) {
+      if (!u) return;
+      var im = h('img'); im.alt = ''; im.decoding = 'async'; im.draggable = false;
+      im.onload = function () { d.innerHTML = ''; d.classList.remove('txt'); d.appendChild(im); };
+      im.src = u;
+    });
     return d;
   }
   function buildDesign(c, o, pk) {
