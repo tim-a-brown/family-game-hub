@@ -72,6 +72,14 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
 .why{position:relative;margin:16px auto 0;max-width:460px;padding:10px 14px;border-radius:16px;background:#fffdf6;color:#2a2440;font-weight:700;font-size:.95rem;line-height:1.3;box-shadow:0 8px 18px rgba(0,0,0,.35);animation:rise .4s var(--ease) .2s both;}
 .why::before{content:"";position:absolute;left:28px;top:-8px;border:8px solid transparent;border-top:0;border-bottom-color:#fffdf6;}
 .why b{color:#7a1730;}
+/* the judge's words lie over the table (Tim, 2026-11-28: "just place the quote over top of the cards without
+   obstructing the words"): placed by placeWhy in a band where no card's words, name tag or the line over the table
+   lie, so the cards keep their size when it comes up */
+.tbl .felt-in > .why{position:absolute;margin:0;z-index:6;max-width:none;}
+.tbl .felt-in > .why::before{display:none;}
+.tbl .felt-in > .why.s1{font-size:.84rem;padding:8px 12px;}
+.tbl .felt-in > .why.s2{font-size:.76rem;padding:6px 10px;gap:7px;}
+.tbl .felt-in > .why.s2 .avatar{width:22px;height:22px;}
 .think{display:inline-flex;gap:3px;margin-left:4px;vertical-align:middle;}
 .think i{width:5px;height:5px;border-radius:50%;background:currentColor;animation:th 1s infinite;}
 .think i:nth-child(2){animation-delay:.15s;}.think i:nth-child(3){animation-delay:.3s;}
@@ -286,7 +294,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
 @media (min-width:1000px) and (orientation:landscape){
   .aa{max-width:1180px;}
   .tbl .felt-in{display:grid;grid-template-columns:auto 1fr;column-gap:28px;align-items:center;}
-  .tbl .felt-in > .st,.tbl .felt-in > .sent,.tbl .felt-in > .why{grid-column:1 / -1;}
+  .tbl .felt-in > .st,.tbl .felt-in > .sent{grid-column:1 / -1;}
   .mid{--cw:150px;grid-column:1;}
   .plays{--cw:128px;grid-column:2;margin-top:0;align-content:center;}
   .plays.crowd{--cw:108px;}
@@ -303,8 +311,9 @@ html.lay-side .aa:has(> .scores) .score .pt{font-size:1.2rem;}
 html.lay-side .aa:has(> .scores) > .tbl{grid-column:1;grid-row:2;min-height:0;display:flex;flex-direction:column;}
 html.lay-side .aa:has(> .scores):not(:has(> .rail)) > .tbl{grid-column:1 / -1;}
 html.lay-side .aa:has(> .scores) .tbl .felt-in{flex:1;min-height:0;padding:8px 10px 10px;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto minmax(0,1fr);column-gap:14px;align-items:center;}
-html.lay-side .aa:has(> .scores) .tbl .felt-in > .st,html.lay-side .aa:has(> .scores) .tbl .felt-in > .sent,html.lay-side .aa:has(> .scores) .tbl .felt-in > .why{grid-column:1 / -1;}
-html.lay-side .aa:has(> .scores) .tbl .felt-in > .sent,html.lay-side .aa:has(> .scores) .tbl .felt-in > .why{margin-top:6px;font-size:.88rem;padding:7px 10px;}
+html.lay-side .aa:has(> .scores) .tbl .felt-in > .st,html.lay-side .aa:has(> .scores) .tbl .felt-in > .sent{grid-column:1 / -1;}
+html.lay-side .aa:has(> .scores) .tbl .felt-in > .sent{margin-top:6px;font-size:.88rem;padding:7px 10px;}
+html.lay-side .aa:has(> .scores) .tbl .felt-in > .why{font-size:.88rem;padding:7px 10px;}
 html.lay-side .aa:has(> .scores) .st{margin-bottom:6px;min-height:26px;}
 html.lay-side .aa:has(> .scores) .tbl .felt-in{container-type:size;--mcw:clamp(46px, min(calc((100cqh - 54px) / 1.4), 18cqw), 104px);}
 html.lay-side .aa:has(> .scores) .mid{--cw:var(--mcw);gap:8px;grid-column:1;}
@@ -346,7 +355,7 @@ html.aa-dk .aa > .rail{grid-area:rail;margin:0;}
 html.aa-dk .aa > .hint{grid-area:hint;margin:0;}
 html.aa-dk .aa > .aa-room{grid-area:room;}
 html.aa-dk .aa .tbl .felt-in{flex:1;min-height:0;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;column-gap:32px;align-items:center;padding:16px 22px 20px;}
-html.aa-dk .aa .tbl .felt-in > .st,html.aa-dk .aa .tbl .felt-in > .sent,html.aa-dk .aa .tbl .felt-in > .why{grid-column:1 / -1;}
+html.aa-dk .aa .tbl .felt-in > .st,html.aa-dk .aa .tbl .felt-in > .sent{grid-column:1 / -1;}
 html.aa-dk .aa .mid{--cw:var(--dmc);grid-column:1;gap:22px;}
 html.aa-dk.aa-stk .aa .tbl .felt-in{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto;row-gap:22px;}
 html.aa-dk.aa-stk .aa .felt-in .plays{grid-column:1;}
@@ -354,7 +363,7 @@ html.aa-dk .aa .mid.two{--cw:var(--dmc);}
 html.aa-dk .aa .plays,html.aa-dk .aa .plays.crowd{--cw:var(--dpc);grid-column:2;margin-top:0;gap:18px 16px;align-content:center;min-height:0;}
 html.aa-dk .aa .st .msg{font-size:1.25rem;}
 html.aa-dk .aa .sent{font-size:1.25rem;max-width:760px;}
-html.aa-dk .aa .why{max-width:640px;font-size:1.05rem;}
+html.aa-dk .aa .why{font-size:1.05rem;}
 html.aa-dk .aa .hand{--cw:var(--dhc);}
 html.aa-dk .aa .who{font-size:.9rem;height:28px;max-width:calc(var(--cw) + 36px);}
 html.aa-dk .aa .scores{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));overflow:visible;}
@@ -736,7 +745,7 @@ html.aa-dk.aa-tall .aa-room .pn.won{max-height:none;}
       if (w.length) { var i = pickOne(w); step = function () { var c = cpuPlay(g, i); if (c) apply(g, i, { t: 'play', c: c }); }; wait = 650 + Math.random() * 700; }
     } else if (g.phase === 'judge' && J.cpu) {
       var k = -1; for (var x = 0; x < g.subs.length; x++) if (!g.subs[x].rev) { k = x; break; }
-      if (k >= 0) { step = function () { apply(g, g.judge, { t: 'reveal', i: k }); }; wait = k === 0 ? 1000 : 850; }
+      if (k >= 0) { step = function () { apply(g, g.judge, { t: 'reveal', i: k }); }; wait = k === 0 ? 2000 : 1700; }   // (Tim, 2026-11-28: half as fast as before)
       else { step = function () { var r = cpuJudge(g); apply(g, g.judge, { t: 'pick', i: r.i, why: r.why }); }; wait = 1500 + Math.random() * 900; }
     }
     if (!step) return;
@@ -1266,6 +1275,9 @@ html.aa-dk.aa-tall .aa-room .pn.won{max-height:none;}
     if (prev && prev.phase !== 'result' && V.phase === 'result' && V.win) celebrate(V);
     deskLay(V);
     upFit();
+    placeWhy();
+    // (again as the cards' words are fitted, the fonts arrive and the winning card rises)
+    if (V.phase === 'result' && V.win && V.win.why) { [120, 400, 900, 1600].forEach(function (ms) { setTimeout(placeWhy, ms); }); if (document.fonts && document.fonts.ready) document.fonts.ready.then(placeWhy); }
   }
   function flipCard() {
     var c = app.querySelector('.deck .ac:last-child');
@@ -2025,7 +2037,43 @@ html.aa-dk.aa-tall .aa-room .pn.won{max-height:none;}
       grow(hand, h0, h, 0, function () { if (HF && HF.el === hand) HF.layout(); });
     }
   }
-  window.addEventListener('resize', function () { if (lastV) upFit(); });
+  // The judge's words: the widest shape (the felt's width to 520px, then narrower) at the lowest place on the felt
+  // where they cover no card's words, no name tag and not the line over the table, at the middle, the left or the
+  // right; failing that, where they cover no card's words at least; failing that, the felt's foot
+  function placeWhy() {
+    // (measured as it will be: a width or a size easing to its new value would read as its old one)
+    app.classList.add('aa-fit');
+    try { placeWhy0(); } finally { void app.offsetWidth; app.classList.remove('aa-fit'); }
+  }
+  function placeWhy0() {
+    var felt = app.querySelector('.tbl .felt-in'), w = felt && felt.querySelector(':scope > .why');
+    if (!w) return;
+    var fr = felt.getBoundingClientRect(), full = Math.min(520, fr.width - 20), pad = 5;
+    var rects = function (sel) { return Array.prototype.map.call(felt.querySelectorAll(sel), function (e) { return e.getBoundingClientRect(); }).filter(function (r) { return r.width > 1 && r.height > 1; }); };
+    var words = rects('.ac:not(.down) .fa .nm, .ac:not(.down) .fa .ds, .ac:not(.down) .fa .tp, .ac:not(.down) .fa .tx, :scope > .st, .ribbon');
+    var tags = words.concat(rects('.who'));
+    var find = function (rs) {
+      var widths = [full, Math.round(full * 0.78), Math.round(full * 0.62)].filter(function (x) { return x >= 180; });
+      for (var k = 0; k < widths.length; k++) {
+        var W = widths[k]; w.style.width = W + 'px'; var H = w.offsetHeight;
+        var xs = [(fr.width - W) / 2, 10, fr.width - W - 10];
+        for (var top = fr.height - H - 8; top >= 0; top -= 4) {
+          for (var j = 0; j < xs.length; j++) {
+            var x0 = fr.left + xs[j], a = fr.top + top - pad, b = fr.top + top + H + pad;
+            if (!rs.some(function (r) { return r.bottom > a && r.top < b && r.right > x0 - pad && r.left < x0 + W + pad; })) return { W: W, x: xs[j], y: top };
+          }
+        }
+      }
+      return null;
+    };
+    // (a size smaller, then smaller again, before it covers a name tag)
+    var at = null, sz = ['', 's1', 's2'];
+    for (var q = 0; q < sz.length && !at; q++) { w.classList.remove('s1', 's2'); if (sz[q]) w.classList.add(sz[q]); at = find(tags); }
+    if (!at) { w.classList.remove('s1', 's2'); at = find(words); }
+    if (!at) { w.classList.remove('s1', 's2'); w.style.width = full + 'px'; at = { W: full, x: (fr.width - full) / 2, y: fr.height - w.offsetHeight - 8 }; }
+    w.style.width = at.W + 'px'; w.style.left = Math.round(at.x) + 'px'; w.style.top = Math.round(at.y) + 'px';
+  }
+  window.addEventListener('resize', function () { if (lastV) { upFit(); placeWhy(); } });
 
   // ═══ Test hooks ══════════════════════════════════════════════════════════
   window.__a2a = {
