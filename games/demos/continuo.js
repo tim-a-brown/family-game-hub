@@ -1,5 +1,6 @@
-// Continuo's demo (demo.js; CLAUDE.md, Demos): the first card is turned up; you turn your card a quarter, move it beside
-// the first card where every touching square matches, and score its two chains; Jamie answers; a few cards later your
+// Continuo's demo (demo.js; CLAUDE.md, Demos): the first card is turned up; you turn your card a quarter, the markers
+// show every place it fits with the points each scores, the finger drags the card and it snaps from place to place,
+// and you tap the gold marker beside the first card and score its two chains; Jamie answers; a few cards later your
 // card joins two green chains into one, and the points show where they come from before you put it down.
 (function () {
   'use strict';
@@ -12,7 +13,7 @@
 
   Kit.demoScript({
     intro: 'Here’s how to match the colors, and how one card can score a whole chain.',
-    beats: 11,
+    beats: 12,
     end: 'Match every square your card touches, and look for the card that joins two chains into one.',
     start: function () {
       var me = (localStorage.getItem('my_name') || '').trim() || 'You';
@@ -23,11 +24,15 @@
       var them = S().players[1].name;
       await D.say('Every card has 16 small squares in four colors. Where your card’s squares touch squares on the table, the colors must match. That’s the one rule.', { at: '.frame .tiles .tl' });
       await D.you('.ct-rot', 'Tap Turn to turn your card a quarter turn.', { until: function () { return aim().o === 1; } });
-      // (turning snaps the card to the nearest place it fits, which can be the very place this step asks for, and then the
-      // step passed at once: the card waits on the other side of the first card instead)
-      await D.set(function () { var a = aim(); if (a.x === -4 && a.y === -2) A.to(4, -2, 1); });
-      await D.wait(400);
-      await D.you(A.spot(-4, -2), 'Now tap the table at the left of the first card to move your card there.', { until: function () { var a = aim(); return a.x === -4 && a.y === -2 && a.o === 1; } });
+      // (turning snaps the card to the nearest place it fits, which can be the place this step asks for: the card
+      // waits on the other side of the first card instead)
+      await D.set(function () { var a = aim(); if (a.x === -4 && a.y === -2) { var o = A.spots().filter(function (q) { return q.x > 0 && Math.abs(q.x + 4) + Math.abs(q.y + 2) >= 6; })[0]; if (o) A.to(o.x, o.y, 1); } });
+      await D.wait(500);
+      await D.say('Each marker on the table is a place your card fits, with the points it would score there. The gold ones score the most.', { at: '.frame .sps', avoid: '.ct-dock' });
+      // the finger carries the card round the first card: it snaps into each place it passes
+      await D.drag(function () { return document.querySelector('.gh .in'); }, [A.under(1, 3), A.under(-3, 3)], { after: 500 });
+      await D.say('Drag your card and it snaps into each place it fits on the way. Let go anywhere else and it goes back.', { at: '.gh', avoid: '.ct-dock' });
+      await D.you(A.spot(-4, -2), 'Now tap the gold marker at the left of the first card to move your card there.', { until: function () { var a = aim(); return a.x === -4 && a.y === -2 && a.o === 1; } });
       await D.wait(300);
       await D.say('The gold dots mark the squares that match. Your card makes a red chain and a yellow chain longer, and +8 is what they score.', { at: function () { return A.ghostTag(); } });
       await D.you('.ct-go', 'Tap Place to put the card down.', { until: function () { return S().pl.length >= 2; } });
@@ -37,8 +42,8 @@
       await D.wait(function () { return S().pl.length > n && !A.busy; }, 5000);
       await D.say('A chain your card makes longer scores its whole length: a red chain of 4 and a yellow chain of 4 made 8 points. ' + them + ' put a card down on the other side.', { at: '.ct-plates' });
       await D.set(function () { A.set(LATER); A.orient(0); A.zoom(true, 1, 6); });
-      await D.set(function () { var a = aim(); if (a.x === -1 && a.y === 4) A.to(-1, -10, 0); });
-      await D.you(A.spot(-1, 4), 'A few cards later, tap the table where your card fits between two green chains.', { until: function () { var a = aim(); return a.x === -1 && a.y === 4 && a.o === 0; } });
+      await D.set(function () { var a = aim(); if (a.x === -1 && a.y === 4) { var o = A.spots().filter(function (q) { return Math.abs(q.x + 1) + Math.abs(q.y - 4) >= 6; })[0]; if (o) A.to(o.x, o.y, 0); } });
+      await D.you(A.spot(-1, 4), 'A few cards later, tap the gold marker where your card fits between two green chains.', { until: function () { var a = aim(); return a.x === -1 && a.y === 4 && a.o === 0; } });
       await D.wait(300);
       await D.you(function () { return A.ghostTag(); }, 'Tap the points to see where they come from.', { until: function () { return A.peeked; } });
       await D.wait(400);
