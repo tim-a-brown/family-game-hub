@@ -1967,7 +1967,7 @@ html.aa-dk.aa-tall .aa-room .pn.won{max-height:none;}
   window.addEventListener('resize', function () { if (DK.on || (DK.V && dkWin())) deskLay(); });
   // An upright phone or tablet (Tim, 2026-11-28: "no matter how many players I shouldn't need to scroll down to see my
   // cards"): when the scores, the table and your hand run past the foot of the screen, the pile and the played cards
-  // step down first (to 45% of their size, more of them to a row), then your hand (to 70%), until the page fits.
+  // step down first (to 45% of their size, more of them to a row; a hand over 120px, an iPad's, steps down with them), then your hand (to 70%), until the page fits.
   function upFit() {
     // (sizes are measured as they will be: a card easing to its new size would read as its old one)
     app.classList.add('aa-fit');
@@ -1997,13 +1997,32 @@ html.aa-dk.aa-tall .aa-room .pn.won{max-height:none;}
     var cw = function (e) { return e ? parseFloat(getComputedStyle(e).getPropertyValue('--cw')) || 0 : 0; };
     var m0 = cw(mid), p0 = cw(plays), h0 = cw(hand), t = 1, h = 1;
     for (var i = 0; i < 40 && over() > 1; i++) {
-      // the table's cards first; on a small phone the scores, buttons and margins close up too, then the hand
-      if (t > 0.7) t *= 0.95;
+      // the table's cards and a large hand (an iPad's) together while the hand is over 120px; then the table's
+      // cards alone; on a small phone the scores, buttons and margins close up too; then the hand
+      if (t > 0.7 && hand && h0 * h * 0.95 >= 120) { t *= 0.95; h *= 0.95; }
+      else if (t > 0.7) t *= 0.95;
       else if (!app.classList.contains('aa-tight')) { app.classList.add('aa-tight'); continue; }
       else if (t > 0.46) t *= 0.95; else if (hand && h > 0.71) h *= 0.95; else break;
       if (mid) { mid.style.setProperty('--cw', Math.round(m0 * t) + 'px'); mid.classList.toggle('sm', m0 * t < 80); }
       if (plays) { plays.style.setProperty('--cw', Math.round(p0 * t) + 'px'); plays.classList.toggle('sm', p0 * t < 72); dots(); }
       if (hand) { hand.style.setProperty('--cw', Math.round(h0 * h) + 'px'); if (HF && HF.el === hand) HF.layout(); }
+    }
+    // the played cards going to fewer rows can leave room over: the pile and the card turned over grow back into it,
+    // then your hand, a step at a time while the page still fits
+    var grow = function (e, base, cur, k, after) {
+      if (!e) return cur;
+      while (cur < 1) {
+        var nx = Math.min(1, cur / 0.96);
+        e.style.setProperty('--cw', Math.round(base * nx) + 'px'); if (after) after(nx);
+        if (over() > 1) { e.style.setProperty('--cw', Math.round(base * cur) + 'px'); if (after) after(cur); break; }
+        cur = nx;
+      }
+      return cur;
+    };
+    if (over() <= 1) {
+      grow(plays, p0, t, 0, function (x) { plays.classList.toggle('sm', p0 * x < 72); dots(); });
+      grow(mid, m0, t, 0, function (x) { mid.classList.toggle('sm', m0 * x < 80); });
+      grow(hand, h0, h, 0, function () { if (HF && HF.el === hand) HF.layout(); });
     }
   }
   window.addEventListener('resize', function () { if (lastV) upFit(); });
