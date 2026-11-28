@@ -3032,7 +3032,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + (Online.errText ? Online.errText(e) : '')); leaveOnline(false); goLobby(); });
       net.mode = 'host'; net.table = table; net.me = name; net.pidN = 1;
       net.roster = [{ pid: 1, name: name, dev: Online.dev(), host: true }];
+      net.joining = {};
+      table.on('joining', function (j) { net.joining[j.dev] = Date.now(); });
+      table.on('joinfail', function (j) { delete net.joining[j.dev]; });
       table.on('peer', function (peer) {
+        delete net.joining[peer.id];
         var live = G && G.mode === 'host' && !G.ended;
         // a device that comes back takes its own ship again: its color, score and lives. Its old link may still
         // be open here (then the ship simply moves to the new link), or the ship waits in net.away since it left.
@@ -3092,11 +3096,16 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   // waiting; the card lies over the top of the field and the game goes on under it. The moment that device joins
   // again, the ship is theirs again.
   var AWAY_ASK = 45000;
+  function joiningNow(dev) { var t = net.joining && net.joining[dev]; return !!t && Date.now() - t < 30000; }
   function awayDrop(dev) { var A = net.away && net.away[dev]; if (!A) return; clearTimeout(A.t); if (A === awayShown) awayCardOff(); delete net.away[dev]; }
   function awayClear() { Object.keys(net.away || {}).forEach(function (d) { clearTimeout(net.away[d].t); }); net.away = {}; awayCardOff(); }
   function awayLater(dev) {
     var A = net.away[dev], G0 = G;
-    A.t = setTimeout(function () { A.t = 0; A.ask = true; if (net.away[dev] === A && G === G0 && G && !G.ended) awayNext(); }, window.__awayAskMs || AWAY_ASK);
+    A.t = setTimeout(function ask() {
+      // (that device is linking up again right now: wait for it rather than ask)
+      if (net.away[dev] === A && joiningNow(dev)) { A.t = setTimeout(ask, 2000); return; }
+      A.t = 0; A.ask = true; if (net.away[dev] === A && G === G0 && G && !G.ended) awayNext();
+    }, window.__awayAskMs || AWAY_ASK);
   }
   function awayNext() {
     if (awayShown) return;
@@ -3104,9 +3113,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (!d) return;
     var A = net.away[d];
     awayCard(A.name, 'ship', function () {
+      if (net.away[d] !== A || !G || G.ended) return;
       var P = A.P; P.bot = true; P.tx = null; P.ty = null; P.fire = false;
       if (G.players.indexOf(P) < 0) restorePlayer(P);
-      popup(P.x, P.y - 14, 'Computer', P.color, true); sound('extra'); Kit.toast('The computer is flying ' + Kit.poss(A.name) + ' ship until ' + A.name + ' comes back.');
+      popup(P.x, P.y - 14, 'Computer', P.color, true); sound('extra'); Kit.toast('The computer is flying ' + poss(A.name) + ' ship until ' + A.name + ' comes back.');
     }, function () { A.no = true; });
     awayShown = A;
   }
@@ -3114,29 +3124,89 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   function awayCard(name, what, onBot, onWait) {
     awayCardOff();
     if (!document.getElementById('aw-css')) document.head.appendChild(el('style', { id: 'aw-css', text:
-      '.aw-ask{position:fixed;left:50%;top:calc(var(--bar,58px) + 8px);z-index:60;width:min(460px,calc(100vw - 32px));box-sizing:border-box;padding:14px 16px 16px;border-radius:20px;' +
+      '.aw-ask{position:fixed;left:0;top:0;z-index:60;width:460px;max-width:calc(100vw - 24px);box-sizing:border-box;padding:14px 16px 16px;border-radius:20px;' +
       'background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 60%),var(--toast-bg,rgba(40,43,74,.92));box-shadow:inset 0 1px 0 var(--gold-hi,#ffd76a),0 0 0 1px var(--gl-line,rgba(255,255,255,.12)),0 18px 40px -16px rgba(0,0,0,.7);' +
-      '-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:var(--text,#fff);transform:translate(-50%,-12px);opacity:0;transition:transform .22s ease,opacity .22s ease;}' +
-      '.aw-ask.show{transform:translate(-50%,0);opacity:1;}' +
+      '-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:var(--text,#fff);transform:translateY(-10px);opacity:0;transition:transform .22s ease,opacity .22s ease;}' +
+      '.aw-ask.show{transform:none;opacity:1;}.aw-ask.gone{pointer-events:none;}' +
       '.aw-ask b{display:block;font-size:17px;font-weight:800;line-height:1.25;}' +
       '.aw-ask p{margin:4px 0 12px;font-size:14px;line-height:1.35;color:var(--text-2,rgba(255,255,255,.75));}' +
       '.aw-ask .aw-b{display:flex;flex-wrap:wrap;gap:8px;}' +
       '.aw-ask .aw-b .btn{flex:1 1 auto;min-height:44px;white-space:normal;}' +
       '.aw-ask .aw-b .btn-primary{flex-basis:220px;}' +
-      '@media (max-height:520px) and (orientation:landscape){.aw-ask{top:calc(var(--bar,58px) + 4px);padding:10px 14px 12px;width:min(560px,calc(100vw - 32px));}.aw-ask p{margin:2px 0 8px;font-size:13px;}.aw-ask b{font-size:15px;}.aw-ask .aw-b{flex-wrap:nowrap;}.aw-ask .aw-b .btn-primary{flex:1 1 auto;white-space:nowrap;}.aw-ask .aw-b .btn-ghost{flex:0 0 auto;padding-left:18px;padding-right:18px;}}' }));
-    var whose = Kit.poss(name) + ' ' + what;
-    awayEl = el('div', { class: 'aw-ask', role: 'status', 'aria-live': 'polite' }, [
+      // beside the field: the title over the two buttons, one above the other
+      '.aw-ask.aw-side{padding:12px;border-radius:18px;}.aw-side p{display:none;}.aw-side b{font-size:15px;margin-bottom:10px;}' +
+      '.aw-side .aw-b{flex-direction:column;}.aw-side .aw-b .btn{flex:none;width:100%;font-size:14px;padding-left:10px;padding-right:10px;}' +
+      // across the game bar, where the field leaves no room: one row
+      '.aw-ask.aw-strip{display:flex;align-items:center;gap:12px;padding:6px 6px 6px 14px;border-radius:16px;background:var(--sheet-solid,#23264a);}.aw-strip p{display:none;}' +
+      '.aw-strip b{font-size:14px;flex:0 1 auto;}.aw-strip .aw-b{flex:1 1 auto;flex-wrap:nowrap;gap:6px;}' +
+      '.aw-strip .aw-b .btn{min-height:40px;font-size:13px;line-height:1.2;padding:4px 12px;flex:0 1 auto;}.aw-strip .aw-b .btn-primary{flex:1 1 auto;}' +
+      '.aw-strip.aw-nob{padding-left:6px;}.aw-strip.aw-nob b{display:none;}' }));
+    var whose = poss(name) + ' ' + what, me;
+    me = awayEl = el('div', { class: 'aw-ask', role: 'status', 'aria-live': 'polite' }, [
       el('b', { text: name + ' hasn’t come back' }),
       el('p', { text: 'The computer can play ' + whose + ' until ' + name + ' joins this table again.' }),
       el('div', { class: 'aw-b' }, [
-        el('button', { type: 'button', class: 'btn btn-primary', text: 'Let the computer play ' + whose, onclick: function () { Kit.haptic && Kit.haptic('light'); awayCardOff(); onBot(); awayNext(); } }),
-        el('button', { type: 'button', class: 'btn btn-ghost', text: 'Keep waiting', onclick: function () { awayCardOff(); onWait(); awayNext(); } })
+        el('button', { type: 'button', class: 'btn btn-primary', text: 'Let the computer play ' + whose, onclick: function () { if (awayEl !== me) return; Kit.haptic && Kit.haptic('light'); awayCardOff(); onBot(); awayNext(); } }),
+        el('button', { type: 'button', class: 'btn btn-ghost', text: 'Keep waiting', onclick: function () { if (awayEl !== me) return; awayCardOff(); onWait(); awayNext(); } })
       ])
     ]);
-    document.body.appendChild(awayEl); Kit.sfx('pop');
+    document.body.appendChild(awayEl); awayPlace(awayEl, cabEl, AW_OBS); Kit.sfx('pop');
     var e0 = awayEl; requestAnimationFrame(function () { requestAnimationFrame(function () { e0.classList.add('show'); }); });
   }
-  function awayCardOff() { if (awayEl) { var e0 = awayEl; e0.classList.remove('show'); setTimeout(function () { e0.remove(); }, 240); } awayEl = null; awayShown = null; }
+  function awayCardOff() { if (awayEl) { var e0 = awayEl; e0.classList.remove('show'); e0.classList.add('gone'); setTimeout(function () { e0.remove(); }, 240); } awayEl = null; awayShown = null; }
+  var AW_OBS = 'button, .ar-hint';
+  window.addEventListener('resize', function () { if (awayEl) requestAnimationFrame(function () { requestAnimationFrame(function () { awayPlace(awayEl, cabEl, AW_OBS); }); }); });
+  function poss(n) { return Kit.poss(n).replace(/'/g, '\u2019'); }
+  // Where the card lies: somewhere that covers neither the field nor a control, as wide as it can be there (beside
+  // the field, at the right first on a screen wider than tall: where you act); with no such room, across the game
+  // bar as one row of buttons. Measured again whenever the window changes size.
+  function awayPlace(card, field, obsSel) {
+    if (!card) return;
+    if (!card.isConnected || card.classList.contains('gone')) { if (card._ro) card._ro.disconnect(); return; }
+    // the field takes its new size a frame or two after the window does: place the card again when it has
+    if (!card._ro && field && window.ResizeObserver) { card._ro = new ResizeObserver(function () { requestAnimationFrame(function () { awayPlace(card, field, obsSel); }); }); card._ro.observe(field); }
+    var vw = window.innerWidth, vh = window.innerHeight, M = 12, land = vw > vh, shown = card.classList.contains('show');
+    var bar = document.querySelector('.gbar'), br = bar ? bar.getBoundingClientRect() : null, top0 = br ? br.bottom : 0;
+    var obs = [], fr = field && field.isConnected ? field.getBoundingClientRect() : null;
+    if (fr && fr.width) obs.push(fr);
+    Array.prototype.forEach.call(app.querySelectorAll(obsSel), function (e) { if (card.contains(e)) return; var r = e.getBoundingClientRect(); if (r.width && r.height) obs.push(r); });
+    function hit(x, y, w, h) { return obs.some(function (r) { return x < r.right + 6 && r.left - 6 < x + w && y < r.bottom + 6 && r.top - 6 < y + h; }); }
+    function form(cls, w) { card.className = 'aw-ask' + (cls ? ' ' + cls : '') + (shown ? ' show' : ''); card.style.width = w + 'px'; return card.offsetHeight; }
+    function put(x, y) { card.style.left = Math.round(x) + 'px'; card.style.top = Math.round(y) + 'px'; }
+    var forms = [['', [460, 420, 380, 340, 300]], ['aw-side', [300, 270, 240, 210, 180, 160, 140, 128]]];
+    for (var f = 0; f < forms.length; f++) for (var i = 0; i < forms[f][1].length; i++) {
+      var w = forms[f][1][i]; if (w > vw - 2 * M) continue;
+      var h = form(forms[f][0], w), best = null, bs = -1e9;
+      var xs = [vw - M - w, (vw - w) / 2, M]; if (fr) xs.push(fr.right + 8, fr.left - 8 - w);
+      var ys = [vh - M - h]; for (var y = top0 + 8; y + h <= vh - M; y += 8) ys.push(y);
+      xs.forEach(function (x) {
+        if (x < M || x + w > vw - M) return;
+        ys.forEach(function (y) {
+          if (y < top0 + 6 || y + h > vh - M || hit(x, y, w, h)) return;
+          var s = land ? (x + w / 2) * 4 - y : -y * 4 - Math.abs(x + w / 2 - vw / 2);
+          if (s > bs) { bs = s; best = [x, y]; }
+        });
+      });
+      if (best) { put(best[0], best[1]); return; }
+    }
+    if (br) {   // the bar's own row (under any notch): in the room between its title and its buttons, or across it all
+      var room = Math.min(br.height, 62), ins = [];
+      Array.prototype.forEach.call(bar.querySelectorAll('button, .gi, svg'), function (e) { var r = e.getBoundingClientRect(); if (r.width && !(e.parentNode.closest && e.parentNode.closest('svg'))) ins.push([r.left, r.right]); });
+      var tw = document.createTreeWalker(bar, NodeFilter.SHOW_TEXT), tn, rg = document.createRange();
+      while ((tn = tw.nextNode())) if (tn.nodeValue.trim()) { rg.selectNodeContents(tn); var q = rg.getBoundingClientRect(); if (q.width) ins.push([q.left, q.right]); }
+      ins.sort(function (a, b) { return a[0] - b[0]; });
+      var gap = [0, 0], at = 0;
+      ins.concat([[vw, vw]]).forEach(function (r) { if (r[0] - at > gap[1] - gap[0]) gap = [at, r[0]]; at = Math.max(at, r[1]); });
+      var spans = [[gap[0] + 8, Math.min(gap[1] - gap[0] - 16, 640)], [8, vw - 16]];
+      for (var j = 0; j < 2; j++) for (var k = 0; k < 2; k++) {
+        var sw = spans[j][1]; if (sw < 200) continue;
+        var sh = form(k ? 'aw-strip aw-nob' : 'aw-strip', sw);
+        var cut = Array.prototype.some.call(card.querySelectorAll('b, .btn'), function (e) { return e.offsetWidth && (e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1); });
+        if (sh <= room - 4 && !cut) { put(j ? 8 : spans[0][0] + (gap[1] - gap[0] - 16 - sw) / 2, br.bottom - room + (room - sh) / 2); return; }
+      }
+    }
+    var fw = Math.min(300, vw - 2 * M); form('aw-side', fw); put(vw - M - fw, top0 + 8);
+  }
   // The computer flying a ship: under the lowest train's head (a little off, as a person is), firing, and stepping
   // away from bugs, shots and blasts nearby
   function botSteer(P, dt) {
