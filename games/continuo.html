@@ -833,7 +833,9 @@ html.ct-dk .tag.pt{font-size:calc(1rem * var(--dk));}
 
   // ── The plates, the hand, the turn, the buttons ──────────────────────────
   function paintAll() { if (!S || !colEl) return; paintPlates(); paintHand(); paintGhost(); paintStatus(); paintActs(); paintRoom(); }
-  function paintPlates(prevSc, bump) {
+  // (each player's plate takes the away badge while their device is away: Kit.awaySeat)
+  function paintPlates(a, b) { paintPlates0(a, b); if (platesEl && S && NET && Kit.awaySeat) { Array.prototype.forEach.call(platesEl.querySelectorAll(':scope > .pl'), function (n, i) { if (S.players[i]) Kit.awaySeat(n, NET, S.players[i].name); }); } }
+  function paintPlates0(prevSc, bump) {
     if (!platesEl) return;
     platesEl.innerHTML = '';
     platesEl.classList.toggle('many', S.np >= 5); platesEl.classList.toggle('four', S.np === 4);

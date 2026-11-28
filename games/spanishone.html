@@ -610,7 +610,7 @@
     app.style.setProperty('--pw', Math.round(pw) + 'px');
   }
   function dkCard(code) { if (!code) return null; var c = { c: code.charAt(0), v: code.slice(1), id: 'h' + code }; return cardEl(c); }
-  function dkAv(p) { var pl = S.players[p]; return pl.cpu ? el('span', { class: 'avatar', style: { '--c': color(p) }, html: Kit.icon('bot') }) : Kit.avatar.el(pl.name, '', color(p)); }
+  function dkAv(p) { var pl = S.players[p]; return pl.cpu ? el('span', { class: 'avatar', style: { '--c': color(p) }, html: Kit.icon('bot') }) : Kit.awaySeat(Kit.avatar.el(pl.name, '', color(p)), NET, pl.name); }
   // a panel too short for all of it gives up whole parts, least needed first, never a part cut through
   function dkTrim(pn, sels) {
     (sels || ['[data-drop]']).forEach(function (sel) {
@@ -712,7 +712,7 @@
     var list = others();
     list.forEach(function (p, i) {
       var pl = S.players[p], n = V.counts[p];
-      var av = pl.cpu ? el('span', { class: 'avatar', style: { '--c': color(p) }, html: Kit.icon('bot') }) : Kit.avatar.el(pl.name, '', color(p));
+      var av = pl.cpu ? el('span', { class: 'avatar', style: { '--c': color(p) }, html: Kit.icon('bot') }) : Kit.awaySeat(Kit.avatar.el(pl.name, '', color(p)), NET, pl.name);
       var fan = el('div', { class: 'so-fan' }), shown = Math.min(n, 5);
       for (var j = 0; j < shown; j++) { var b = cardEl(null, { back: true, cls: 'xs' }); b.style.left = (shown > 1 ? j * (1.2 / (shown - 1)) : 0.6) * 100 / 2.2 + '%'; b.style.rotate = ((j - (shown - 1) / 2) * 7) + 'deg'; fan.appendChild(b); }
       var node = el('div', { class: 'so-op' + (V.turn === p && S.phase !== 'over' ? ' turn' : '') + (pl.away ? ' away' : ''), 'data-p': p }, [

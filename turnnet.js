@@ -229,13 +229,22 @@
     free: function (fn) { return act(fn, T.seat, null, true); },
     // (a seat whose device has dropped out: 'cover' the computer plays it, 'out' it sits out, 'auto' it checks or folds;
     // null otherwise. A game puts Kit.awaySeat(its avatar, net.dropOf(seat)) on that seat's plate)
-    dropOf: function (i) { var d = T.d, s = d && d.seats && d.seats[i]; return s && !s.bot && !s.left && covered(d, i) ? (ownDrop() ? markOf(T.st, i) : 'cover') : null; },   // (a move made when it isn't your turn: the game's fn decides whether it can be)
+    // (i: the seat, or the player's name as the table has it. 'wait': a table that waits for a person who isn't here)
+    dropOf: function (i) {
+      var d = T.d; if (!d || !d.seats || d.status !== 'playing') return null;
+      if (typeof i === 'string') { var nm = i; i = -1; d.seats.forEach(function (x, k) { if (i < 0 && x && !x.bot && x.name === nm) i = k; }); }
+      var s = d.seats[i]; if (!s || s.bot || s.left || i === T.seat) return null;
+      if (covered(d, i)) return ownDrop() ? markOf(T.st, i) : 'cover';
+      return !dropOn(d) && stale(d, i) ? 'wait' : null;
+    },   // (a move made when it isn't your turn: the game's fn decides whether it can be)
     again: again, leave: function () { return leave(); }
   };
   function away(i) { return stale(T.d, i); }
   function draw(info) {
     paintChips();
     try { G.show(net, info || {}); } catch (e) { console.error('[turnnet] show', e); }
+    // (the plates the game has just drawn take the away badges: again once its animations have settled)
+    if (Kit.awaySeat && Kit.awaySeat.refresh && (T.awayAny || T.d && T.d.cov && Object.keys(T.d.cov).length)) { setTimeout(function () { Kit.awaySeat.refresh(net); }, 30); setTimeout(function () { Kit.awaySeat.refresh(net); }, 900); }
   }
 
   // ── Moves ──
@@ -416,8 +425,9 @@
         out.push(x);
       });
     }
+    T.awayAny = out.length > 0;
     Kit.away(out);
-    if (Kit.awaySeat && Kit.awaySeat.refresh) Kit.awaySeat.refresh();
+    if (Kit.awaySeat && Kit.awaySeat.refresh) Kit.awaySeat.refresh(net);
   }
   // the others have all left: the last person at the table chooses to close it or keep playing on their own. The sheet
   // shows the table: your face, lit, and the people who have left, faded, each with the mark of leaving.

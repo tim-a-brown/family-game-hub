@@ -3123,6 +3123,7 @@
     const spent = (on && ((p.guide === 'tubman' && p.uT) || (p.guide === 'suntzu' && p.uC) || (p.guide === 'franklin' && p.uD) || (p.guide === 'saladin' && p.uR) || (p.guide === 'curie' && p.uN >= 3 && p.uN < 9))) || (p.guide === 'mandela' && p.uM) || (p.guide === 'shakespeare' && p.uW);   // (a once-a-turn power, used; Mandela's and Shakespeare's are once a round)
     const gb = el('button', { type: 'button', class: 'st-guide' + (spent ? ' used' : ''), 'aria-label': g.n + ', ' + Kit.poss(pl.name) + ' Guide', style: { '--f': FAC[g.f].c }, onclick: () => { if (G.demo) openView(p.guide); else scan({ side: o, key: p.guide }); } }, [el('span', { class: 'na', text: g.n.charAt(0) })]);
     const gi = artImg(p.guide, true); if (gi) gb.appendChild(gi);
+    if (window.TurnNet && TurnNet.net && Kit.awaySeat) Kit.awaySeat(gb, TurnNet.net, pl.name);   // (online: the Guide takes the away badge while that player's device is away)
     node.appendChild(gb);
     // (the Guide's name and power in words: shown where a bar stands on end as a pillar, the desk)
     node.appendChild(el('span', { class: 'st-gn', 'aria-hidden': 'true', text: g.n })); if (g.tx) node.appendChild(el('span', { class: 'st-gp', 'aria-hidden': 'true', html: boldKeys(DW(g.tx)) }));
@@ -3955,6 +3956,7 @@
     const n = el('div', { class: 'an-strip wn-plate p' + o + (on ? ' on' : '') + (out ? ' out' : '') + (f ? ' ' + f : ''), 'data-o': o, style: { '--pc': 'var(--pc' + o + ')' } });
     const gb = el('button', { type: 'button', class: 'st-guide', 'aria-label': g.n + ', ' + Kit.poss(pl.name) + ' Guide', style: { '--f': FAC[g.f].c }, onclick: e => { e.stopPropagation(); scan({ side: o, key: p.guide }); } }, [el('span', { class: 'na', text: g.n.charAt(0) })]);
     const gi = artImg(p.guide, true); if (gi) gb.appendChild(gi);
+    if (window.TurnNet && TurnNet.net && Kit.awaySeat) Kit.awaySeat(gb, TurnNet.net, pl.name);   // (online: the Guide takes the away badge while that player's device is away)
     const seals = el('span', { class: 'st-seals', 'aria-label': p.seals + ' of ' + sm + ' Seals left' });
     for (let i = 0; i < sm; i++) seals.appendChild(el('span', { class: 'seal' + (i >= p.seals ? ' broken' : '') + (ui.crack && ui.crack.o === o && ui.crack.i === i ? ' crack' : '') + (ui.press && ui.press.o === o && ui.press.i === i ? ' press' : '') }));
     n.appendChild(gb);

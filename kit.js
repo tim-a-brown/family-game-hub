@@ -2180,21 +2180,41 @@
   var awNet = null;
   function awaySeat(av, net, seat) {
     if (!av) return av;
-    if (net && typeof net === 'object') { if (!net.dropOf) return av; awNet = net; av.setAttribute('data-k-aws', String(seat)); awSeatPaint(av, net.dropOf(seat)); }
+    if (net && typeof net === 'object') { if (!net.dropOf) return av; awNet = net; av.setAttribute('data-k-aws', (typeof seat === 'string' ? 'n:' : '') + seat); awSeatPaint(av, net.dropOf(seat)); }
     else awSeatPaint(av, net);
     return av;
   }
   function awSeatPaint(av, kind) {
-    if ((av.getAttribute('data-k-awk') || '') === (kind || '')) return;
+    var same = (av.getAttribute('data-k-awk') || '') === (kind || '');
+    if (same && (!kind || av.querySelector(':scope > .k-awb') && av.classList.contains(av.classList.contains('avatar') ? 'k-awd' : 'k-awp'))) return;   // (a plate a game redraws in place may have lost its class or badge)
     av.setAttribute('data-k-awk', kind || '');
-    av.classList.remove('k-awd'); var old = av.querySelector(':scope > .k-awb'); if (old) old.remove();
+    // (an avatar takes the badge at its lower right and is dimmed; anything else, a game's plate, takes it at its
+    // upper left corner, half off, so nothing inside the plate moves)
+    var plate = !av.classList.contains('avatar'), cls = plate ? 'k-awp' : 'k-awd';
+    av.classList.remove(cls); var old = av.querySelector(':scope > .k-awb'); if (old) old.remove();
     if (!kind) { av.removeAttribute('title'); return; }
-    av.classList.add('k-awd'); av.appendChild(awBadge(kind));
-    av.title = kind === 'cover' ? 'The computer plays this seat until its player is back' : kind === 'auto' ? 'Away: checks or folds until back' : 'Away from the table: sitting out';
+    // (a plate placed by its own rules keeps its place; one in the flow becomes the badge's frame. Looked at once the
+    // plate is on the page, since a plate just made has no style yet)
+    if (plate) (function pos() { if (!av.isConnected) { requestAnimationFrame(function () { if (av.isConnected) pos(); }); return; } if (getComputedStyle(av).position === 'static') av.style.position = 'relative'; })();
+    av.classList.add(cls); av.appendChild(awBadge(kind));
+    av.title = kind === 'cover' ? 'The computer plays this seat until its player is back' : kind === 'auto' ? 'Away: checks or folds until back' : kind === 'wait' ? 'Not at the table right now' : 'Away from the table: sitting out';
   }
-  awaySeat.refresh = function () {
+  // A game whose plate is a name over a score (the kit's .score plates, and the like) needs no wiring: the plate whose
+  // name (.nm) is an away person's takes the badge too, found again on every refresh (TurnNet's seats, and after each
+  // move it draws).
+  var AW_PLATES = '.score, .pchip, .mtag, .pc, .pk-seat, .pl, .plate, .pbar, .cseat .tag, .so-op';
+  awaySeat.refresh = function (net) {
+    if (net && net.dropOf) awNet = net;
     if (!awNet) return;
-    Array.prototype.forEach.call(doc.querySelectorAll('[data-k-aws]'), function (av) { awSeatPaint(av, awNet.dropOf ? awNet.dropOf(+av.getAttribute('data-k-aws')) : null); });
+    var seats = []; try { seats = awNet.seats || []; } catch (e) {}
+    var away = {}; seats.forEach(function (s) { if (s && !s.bot && !s.me) { var kd = awNet.dropOf(s.name); if (kd) away[s.name] = kd; } });
+    Array.prototype.forEach.call(doc.querySelectorAll('.nm, .pk-nm'), function (n) {
+      if (n.closest('.gbar, .k-sheet, .k-note, .k-win, .tn-chips, .cz-net, [data-k-aws]')) return;
+      var nm = (n.textContent || '').trim(); if (!away[nm]) return;
+      var host = n.closest(AW_PLATES) || n; if (host.hasAttribute('data-k-aws') || host.querySelector('[data-k-aws]')) return;   // (a plate whose avatar the game marks itself)
+      host.setAttribute('data-k-aws', 'n:' + nm);
+    });
+    Array.prototype.forEach.call(doc.querySelectorAll('[data-k-aws]'), function (av) { var a = av.getAttribute('data-k-aws'); awSeatPaint(av, awNet.dropOf ? awNet.dropOf(a.indexOf('n:') === 0 ? a.slice(2) : +a) : null); });
   };
   var AW_SHORT = { cover: 'The computer plays', auto: 'Checks or folds', out: 'Sitting out', wait: 'Away' };
   function awLine(x) {
@@ -3141,19 +3161,21 @@
     var t = gbarEl.querySelector('.ttl > span:not(.gi):not(.k-chev)');
     if (!t) return;
     t.style.fontSize = '';
-    if (t.scrollWidth > t.clientWidth) gbarEl.classList.add('k-tight');
+    // (the text's own width, to the fraction of a pixel: scrollWidth rounds, and a name a fraction too wide shows "…")
+    var over = function () { var r = doc.createRange(); r.selectNodeContents(t); return r.getBoundingClientRect().width > t.getBoundingClientRect().width + 0.05; };
+    if (over()) gbarEl.classList.add('k-tight');
     // still too long: the name eases down a little, then the game's icon steps aside, then a little more; the
     // title is never cut off
     var fs0 = parseFloat(getComputedStyle(t).fontSize), fs = fs0;
-    while (t.scrollWidth > t.clientWidth + 0.5 && fs > fs0 * 0.84) { fs -= 0.5; t.style.fontSize = fs + 'px'; }
-    if (t.scrollWidth > t.clientWidth + 0.5 && gbarEl.querySelector('.ttl .gi')) gbarEl.classList.add('k-noic');
-    while (t.scrollWidth > t.clientWidth + 0.5 && fs > fs0 * 0.7) { fs -= 0.5; t.style.fontSize = fs + 'px'; }
+    while (over() && fs > fs0 * 0.84) { fs -= 0.5; t.style.fontSize = fs + 'px'; }
+    if (over() && gbarEl.querySelector('.ttl .gi')) gbarEl.classList.add('k-noic');
+    while (over() && fs > fs0 * 0.7) { fs -= 0.5; t.style.fontSize = fs + 'px'; }
     // (a long name on a 320-wide phone, "Wheel of Fortune": two lines, at the size the eased name had first)
-    if (t.scrollWidth > t.clientWidth + 0.5) {
+    if (over()) {
       gbarEl.classList.add('k-wrap'); fs = Math.round(fs0 * 0.84); t.style.fontSize = fs + 'px';
       // (one long word, "Conversation", still has to fit its line)
-      while (t.scrollWidth > t.clientWidth + 0.5 && fs > fs0 * 0.6) { fs -= 0.5; t.style.fontSize = fs + 'px'; }
-      if (t.scrollWidth > t.clientWidth + 0.5) gbarEl.classList.add('k-nochev');   // (still too long: a switcher's arrow steps aside, the name is what you tap)
+      while (over() && fs > fs0 * 0.6) { fs -= 0.5; t.style.fontSize = fs + 'px'; }
+      if (over()) gbarEl.classList.add('k-nochev');   // (still too long: a switcher's arrow steps aside, the name is what you tap)
       // (two lines at most: "Apples to Apples" beside an online table's code on a 320-wide phone was three)
       var lines = function () { var lh = parseFloat(getComputedStyle(t).lineHeight) || fs * 1.15; return t.getBoundingClientRect().height / lh; };
       if (lines() > 2.2) gbarEl.classList.add('k-nochev');

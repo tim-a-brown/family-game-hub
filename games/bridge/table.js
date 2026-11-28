@@ -504,7 +504,7 @@
       Array.prototype.slice.call(s.children).forEach(function (n) { if (n !== D.dummy && n !== D.cap) n.remove(); });
       var role = S.phase !== 'bid' && S.k ? (p === S.k.decl ? 'Declarer' : p === S.dummy ? 'Dummy' : '') : S.phase === 'bid' && p === S.dealer ? 'Dealer' : '';
       var tag = el('div', { class: 'bs-tag' }, [
-        el('span', { class: 'avatar', style: { '--c': Kit.color(p % 2) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
+        Kit.awaySeat(el('span', { class: 'avatar', style: { '--c': Kit.color(p % 2) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }), NET, pl.name),
         el('span', { class: 'tx' }, [el('span', { class: 'nm' + (first(pl.name).length >= 9 ? ' long' : ''), text: first(pl.name) }), role ? el('span', { class: 'role' + (role === 'Dealer' ? ' dl' : ''), text: role }) : null])
       ]);
       tag.setAttribute('aria-label', pl.name + ', ' + SEATN[p] + (S.vul[p % 2] ? ', vulnerable' : ', not vulnerable') + (role ? ', ' + role.toLowerCase() : ''));

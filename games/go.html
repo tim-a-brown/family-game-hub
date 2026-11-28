@@ -1161,7 +1161,9 @@ function GoEngine() {
     var hu = S.players.filter(function (p) { return !p.cpu; }), bs = NET ? (NET.seat >= 0 ? S.players[NET.seat].color : BLACK) : hu.length === 1 ? hu[0].color : BLACK;
     bar(topBar, 3 - bs, anim); bar(botBar, bs, anim);
   }
-  function bar(node, c, anim) {
+  // (the player's plate takes the away badge while their device is away: Kit.awaySeat)
+  function bar(node, a, b) { bar0(node, a, b); if (node && NET && Kit.awaySeat) { var aw = pl(a); if (aw) Kit.awaySeat(node, NET, aw.name); } }
+  function bar0(node, c, anim) {
     var p = pl(c), on = S.phase === 'play' && S.turn === c;
     node.className = 'pbar ' + (node === topBar ? 'top' : 'bot') + (on ? ' on' : '');
     node.style.setProperty('--c', c === BLACK ? '#a9a9b3' : '#f4f1e8');
