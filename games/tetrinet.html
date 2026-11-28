@@ -773,7 +773,11 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
       table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); leaveOnline(false); goLobby(); });
       net.mode = 'host'; net.table = table; net.me = name; net.myPid = 1; net.pidN = 1;
       net.roster = [{ pid: 1, name: name, host: true }];
+      net.joining = {};
+      table.on('joining', function (j) { net.joining[j.dev] = Date.now(); });
+      table.on('joinfail', function (j) { delete net.joining[j.dev]; });
       table.on('peer', function (peer) {
+        delete net.joining[peer.id];
         var live = M && !M.over && M.mode === 'host';
         // a device that comes back takes its own field again, as it stood (its old link may not have closed yet here)
         var r = net.roster.filter(function (x) { return x.dev && x.dev === peer.id; })[0], A = live ? net.away[peer.id] : null, back = false;
@@ -803,8 +807,11 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
         if (s && s.alive && M.mode === 'host' && r.dev) {
           // the field waits a while for its own device to come back, then counts as out
           var M0 = M, A = net.away[r.dev] = { pid: r.pid, name: r.name, k: k };
-          A.t = setTimeout(function () {
-            if (net.away[r.dev] !== A) return; delete net.away[r.dev];
+          A.t = setTimeout(function out() {
+            if (net.away[r.dev] !== A) return;
+            // (that device is linking up again right now: its field waits for it)
+            var j = net.joining && net.joining[r.dev]; if (j && Date.now() - j < 30000) { A.t = setTimeout(out, 2000); return; }
+            delete net.away[r.dev];
             if (M === M0 && !M.over && s.alive) { bcast({ t: 'dead', s: s.i }); onDead(s.i); checkEnd(); }
           }, window.__awayMs || AWAY_MS);
           Kit.toast(r.name + ' dropped out. ' + Kit.poss(r.name).replace(/'/g, '\u2019') + ' field waits ' + Math.round(AWAY_MS / 1000) + ' seconds for ' + r.name + ' to come back.');

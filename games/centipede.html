@@ -3032,7 +3032,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + (Online.errText ? Online.errText(e) : '')); leaveOnline(false); goLobby(); });
       net.mode = 'host'; net.table = table; net.me = name; net.pidN = 1;
       net.roster = [{ pid: 1, name: name, dev: Online.dev(), host: true }];
+      net.joining = {};
+      table.on('joining', function (j) { net.joining[j.dev] = Date.now(); });
+      table.on('joinfail', function (j) { delete net.joining[j.dev]; });
       table.on('peer', function (peer) {
+        delete net.joining[peer.id];
         var live = G && G.mode === 'host' && !G.ended;
         // a device that comes back takes its own ship again: its color, score and lives. Its old link may still
         // be open here (then the ship simply moves to the new link), or the ship waits in net.away since it left.
@@ -3092,11 +3096,16 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   // waiting; the card lies over the top of the field and the game goes on under it. The moment that device joins
   // again, the ship is theirs again.
   var AWAY_ASK = 45000;
+  function joiningNow(dev) { var t = net.joining && net.joining[dev]; return !!t && Date.now() - t < 30000; }
   function awayDrop(dev) { var A = net.away && net.away[dev]; if (!A) return; clearTimeout(A.t); if (A === awayShown) awayCardOff(); delete net.away[dev]; }
   function awayClear() { Object.keys(net.away || {}).forEach(function (d) { clearTimeout(net.away[d].t); }); net.away = {}; awayCardOff(); }
   function awayLater(dev) {
     var A = net.away[dev], G0 = G;
-    A.t = setTimeout(function () { A.t = 0; A.ask = true; if (net.away[dev] === A && G === G0 && G && !G.ended) awayNext(); }, window.__awayAskMs || AWAY_ASK);
+    A.t = setTimeout(function ask() {
+      // (that device is linking up again right now: wait for it rather than ask)
+      if (net.away[dev] === A && joiningNow(dev)) { A.t = setTimeout(ask, 2000); return; }
+      A.t = 0; A.ask = true; if (net.away[dev] === A && G === G0 && G && !G.ended) awayNext();
+    }, window.__awayAskMs || AWAY_ASK);
   }
   function awayNext() {
     if (awayShown) return;

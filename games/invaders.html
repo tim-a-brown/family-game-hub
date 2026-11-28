@@ -1898,7 +1898,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     }).then(function (table) {
       NET.mode = 'host'; NET.table = table; NET.peer = null; NET.themDev = null; NET.them = ''; ME = 0;
       table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); leaveOnline(false); backOut(); });
-      table.on('peer', hostPeer);
+      NET.joining = {};
+      table.on('joining', function (j) { NET.joining[j.dev] = Date.now(); });
+      table.on('joinfail', function (j) { delete NET.joining[j.dev]; });
+      table.on('peer', function (peer) { delete NET.joining[peer.id]; hostPeer(peer); });
       table.on('leave', hostLeave);
       table.on('msg', hostMsg);
       showWait();
@@ -2189,7 +2192,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   var AWAY_ASK = 45000, awayT = 0, awayEl = null;
   function awayLater() {
     clearTimeout(awayT); var G0 = G;
-    awayT = setTimeout(function () { awayT = 0; if (G === G0 && G && G.net && !G.ended && NET.mode === 'host' && !NET.peer && NET.themDev && !NET.bot) awayCard(); }, window.__awayAskMs || AWAY_ASK);
+    awayT = setTimeout(function ask() {
+      // (that device is linking up again right now: wait for it rather than ask)
+      var j = NET.joining && NET.themDev && NET.joining[NET.themDev];
+      if (j && Date.now() - j < 30000 && !NET.peer) { awayT = setTimeout(ask, 2000); return; }
+      awayT = 0; if (G === G0 && G && G.net && !G.ended && NET.mode === 'host' && !NET.peer && NET.themDev && !NET.bot) awayCard();
+    }, window.__awayAskMs || AWAY_ASK);
   }
   function awayOff() { clearTimeout(awayT); awayT = 0; if (awayEl) { var e0 = awayEl; e0.classList.remove('show'); e0.classList.add('gone'); setTimeout(function () { e0.remove(); }, 240); } awayEl = null; }
   function awayCard() {

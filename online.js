@@ -531,7 +531,8 @@
       if (!room || room.game !== opts.game) throw new Error('No open table with code ' + code);
       if (room.host && room.host.dev === me) throw new Error('That’s your own table. Join it from another device.');
       if (room.status !== 'open' && room.status !== 'playing' || Date.now() - (room.at || 0) > STALE * 3) throw new Error('That table has closed');
-      if ((room.n || 1) >= (room.max || 2)) throw new Error('That table is full');
+      // (a table that looks full is asked anyway: the seat counted may be this device's own, its old link not yet
+      // noticed gone at the host, and the host answers That table is full when it is)
       if (scr) {
         scr.room(room);
         scr.step('find', 'done', 'Found ' + (room.host && room.host.name || 'the host') + '’s table, ' + code);
