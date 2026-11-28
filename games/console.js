@@ -1790,14 +1790,19 @@
     NET.me = name;
     if (!cur || !started) { NET.pick = name; netOvClose(); root.classList.add('net-pick'); Kit.toast('Pick the game to play online'); return Promise.resolve(); }   // (the cartridges glow until one's picked)
     if (NET.lobby) { NET.lobby.close(); NET.lobby = null; }
-    NET.max = seatsMax(); NET.guests = []; NET.names = { 0: name }; NET.seat = 0;
+    NET.max = seatsMax(); NET.guests = []; NET.names = { 0: name }; NET.seat = 0; NET.devSeat = {};
     return Online.host({ game: SYS_ID, name: name, max: NET.max, min: 2, info: cur.name, screen: netOv(), relay: false }).then(function (table) {
       NET.mode = 'host'; NET.table = table;
       table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); netQuit(); });
       table.on('peer', function (peer) {
-        // the first free seat (someone who left mid-game frees theirs)
+        // the same device on a new link while its old one is still open here: the old one goes first
+        NET.guests.filter(function (x) { return x.peer.id === peer.id && x.peer !== peer; }).forEach(function (x) { hostGone(x); });
+        // a device that comes back takes its own seat again if it's still free; anyone else the first free seat
+        // (someone who left mid-game frees theirs)
         var taken = {}, seat = 1; NET.guests.forEach(function (x) { taken[x.seat] = 1; });
-        while (taken[seat]) seat++;
+        var was = NET.devSeat[peer.id], back = was != null && !taken[was];
+        if (back) seat = was; else while (taken[seat]) seat++;
+        NET.devSeat[peer.id] = seat;
         var g = { peer: peer, seat: seat, name: peer.name || 'Player ' + (seat + 1), ready: false };
         NET.guests.push(g); NET.names[seat] = g.name;
         ConsoleNet.listen(peer);
@@ -1805,10 +1810,12 @@
         peer.send({ t: 'cart', id: cur.id, name: cur.name, file: cur.file, p1: NET.me, seat: seat, max: NET.max, tap: TAP_ON }, true);
         netRoster();
         if (NET.wait) { netWaitUpdate(); netHostSteps(); }
-        else { Kit.toast(g.name + ' is joining'); Kit.sfx('pop'); }
+        else { Kit.toast(g.name + (back ? ' is back' : ' is joining')); Kit.sfx('pop'); }
       });
       table.on('leave', function (peer) {
-        var g = NET.guests.filter(function (x) { return x.peer === peer; })[0]; if (!g) return;
+        var g = NET.guests.filter(function (x) { return x.peer === peer; })[0]; if (g) hostGone(g);
+      });
+      function hostGone(g) {
         NET.guests = NET.guests.filter(function (x) { return x !== g; });
         if (ConsoleNet.on()) {
           // the others carry on; with nobody left, back to playing alone
@@ -1818,7 +1825,7 @@
         netRoster();
         table.setStatus(NET.want ? 'playing' : 'open', cur.name);
         netGo();   // (someone still loading may be all that was missing)
-      });
+      }
       netShowWait();
     }).catch(function (e) { if (e && e.message === 'Cancelled') return; Kit.toast('Couldn’t open a table. ' + Online.errText(e)); netQuit(); });
   }

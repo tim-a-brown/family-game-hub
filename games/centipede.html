@@ -336,6 +336,18 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (G.boss) rescaleBoss();
     return P;
   }
+  // A player who left an online game and came back: the same ship, score and lives, in its own color if that is
+  // still free, back on the field with a moment's safety
+  function restorePlayer(P) {
+    var used = G.players.map(function (q) { return q.ci; });
+    if (used.indexOf(P.ci) >= 0) { var ci = 0; while (used.indexOf(ci) >= 0) ci++; P.ci = ci; P.color = PCOL[ci % 3]; }
+    P.tx = null; P.ty = null; P.fire = false; P.beaming = false; P.beamOn = false; P.lastIn = performance.now();
+    if (P.alive) P.inv = Math.max(P.inv, 2.5);
+    else if (!P.benched && P.lives > 0 && P.respawn <= 0) P.respawn = 0.6;   // (out of lives: back at the next wave, as before)
+    G.players.push(P);
+    if (G.boss) rescaleBoss();
+    return P;
+  }
   function isBossWave(n) { return !!waveDef(n).boss; }
 
   function startWave(n) {
@@ -2988,7 +3000,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   // (the whole field, with its shape, at the start of each wave). Each guest sends its ship's position and
   // fire button about 30 times a second, moves its own ship at once (so it feels instant) and draws
   // everything else 100 ms in the past, smoothly between two snapshots.
-  var net = { mode: null, table: null, peer: null, roster: [], evq: [], snapT: 0, seq: 0, lobby: null, wait: null, gridDirty: false, pidN: 1, inT: 0, me: null, hostName: '' };
+  var net = { mode: null, table: null, peer: null, roster: [], away: {}, evq: [], snapT: 0, seq: 0, lobby: null, wait: null, gridDirty: false, pidN: 1, inT: 0, me: null, hostName: '' };
   var DELAY = 100;
   function meName() { var m = lsGet(NETME, {}) || {}; return m.name || (function () { try { return (localStorage.getItem('my_name') || '').trim(); } catch (e) { return ''; } })() || (Kit.knownNames && Kit.knownNames()[0]) || ''; }
   function goLobby() {
@@ -3020,24 +3032,47 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       net.mode = 'host'; net.table = table; net.me = name; net.pidN = 1;
       net.roster = [{ pid: 1, name: name, dev: Online.dev(), host: true }];
       table.on('peer', function (peer) {
-        peer._pid = ++net.pidN;
+        var live = G && G.mode === 'host' && !G.ended;
+        // a device that comes back takes its own ship again: its color, score and lives. Its old link may still
+        // be open here (then the ship simply moves to the new link), or the ship waits in net.away since it left.
+        var r = net.roster.filter(function (x) { return x.dev && x.dev === peer.id; })[0], P = null, back = false;
+        if (r) {
+          if (r.peer && r.peer !== peer) r.peer._pid = -1;
+          r.peer = peer; back = true;
+          if (live) P = G.players.filter(function (p) { return p.id === r.pid; })[0] || null;
+        } else {
+          var A = live && net.away && net.away[peer.id];
+          if (A) {
+            delete net.away[peer.id]; back = true;
+            r = { pid: A.P.id, name: A.name, dev: peer.id, peer: peer };
+            P = restorePlayer(A.P);
+          } else r = { pid: ++net.pidN, name: uniqueName(peer.name), dev: peer.id, peer: peer };
+          net.roster.push(r);
+        }
+        peer._pid = r.pid;
         peer.send({ t: 'hi', you: peer._pid }, true);
-        net.roster.push({ pid: peer._pid, name: uniqueName(peer.name), dev: peer.id, peer: peer });
         sendRoster();
-        Kit.toast(peerName(peer) + ' joined'); Kit.sfx('pop');
-        if (G && G.mode === 'host' && !G.ended) {     // joining a game already going
-          var P = addPlayer({ id: peer._pid, name: peerName(peer), dev: peer.id });
-          popup(P.x, P.y - 14, P.name + ' joined', P.color, true); sound('extra');
+        Kit.toast(r.name + (back ? ' is back' : ' joined')); Kit.sfx('pop');
+        if (live) {     // joining (or coming back to) a game already going
+          if (!P) P = addPlayer({ id: peer._pid, name: r.name, dev: peer.id });
+          popup(P.x, P.y - 14, P.name + (back ? ' is back' : ' joined'), P.color, true); sound('extra');
           sendInit(peer);
         }
       });
       table.on('leave', function (peer) {
-        net.roster = net.roster.filter(function (r) { return r.peer !== peer; });
+        // (a link this device's newer one has replaced has nothing left to take away)
+        var r = net.roster.filter(function (x) { return x.peer === peer; })[0]; if (!r) return;
+        net.roster = net.roster.filter(function (x) { return x !== r; });
         sendRoster();
-        Kit.toast(peerName(peer) + ' left');
+        Kit.toast(r.name + ' left');
         if (G && G.mode === 'host') {
-          var P = G.players.filter(function (p) { return p.id === peer._pid; })[0];
-          if (P) { if (P.alive) burst(P.x, P.y, P.color, 20, 1.2); G.players.splice(G.players.indexOf(P), 1); G.bullets = G.bullets.filter(function (b) { return b.o !== P.id; }); }
+          var P = G.players.filter(function (p) { return p.id === r.pid; })[0];
+          if (P) {
+            if (P.alive) burst(P.x, P.y, P.color, 20, 1.2);
+            G.players.splice(G.players.indexOf(P), 1); G.bullets = G.bullets.filter(function (b) { return b.o !== P.id; });
+            // the ship, its score and its lives wait for this device to come back to the game
+            if (!G.ended && r.dev) { net.away = net.away || {}; net.away[r.dev] = { P: P, name: r.name }; }
+          }
         }
       });
       table.on('msg', function (peer, m) {
@@ -3067,7 +3102,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   }
   function hostStart() {
     var s = lsGet('centi_opts', {}) || {};
-    net.wait = null; G = null; GV = null;
+    net.wait = null; G = null; GV = null; net.away = {};
     buildView();
     makeGame({ mode: 'host', cols: FIELD[0], rows: FIELD[1], diff: s.diff || 'arcade', players: net.roster.map(function (r) { return { id: r.pid, name: r.name, local: !!r.host, dev: r.dev }; }) });
     Kit.gameStart();

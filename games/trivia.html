@@ -2148,7 +2148,8 @@ html.tr-dk .tr-room .qr.no .qw{color:#ff9a9a;}
       net.mode = 'host'; net.table = table; net.me = name; net.pidN = 1; net.myPid = 1; net.hostName = name;
       net.roster = [{ pid: 1, name: name, dev: Online.dev(), host: true }];
       table.on('peer', function (peer) {
-        var r = net.roster.filter(function (x) { return x.dev === peer.id; })[0];
+        // a device that comes back takes its own place again, with its points (its old link may not have closed yet)
+        var r = net.roster.filter(function (x) { return x.dev === peer.id; })[0], back = !!r;
         if (r) { r.peer = peer; r.gone = false; }
         else { r = { pid: ++net.pidN, name: uniqueName(peer.name, peer.id), dev: peer.id, peer: peer }; net.roster.push(r); }
         peer.send({ t: 'hi', you: r.pid }, true);
@@ -2156,7 +2157,7 @@ html.tr-dk .tr-room .qr.no .qw{color:#ff9a9a;}
         if (live) { var ep = E.players.filter(function (p) { return p.pid === r.pid; })[0]; if (ep) ep.gone = false; else { E.players.push({ pid: r.pid, name: r.name, gone: false }); eInit(r.pid); } }
         sendRoster();
         if (live) peer.send(stMsg(), true);
-        Kit.toast(r.name + ' joined'); snd('join');
+        Kit.toast(r.name + (back ? ' is back' : ' joined')); snd('join');
       });
       table.on('leave', function (peer) {
         var r = net.roster.filter(function (x) { return x.peer === peer; })[0]; if (!r) return;

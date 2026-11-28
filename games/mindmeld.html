@@ -480,14 +480,14 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
   }
 
   // ═══ The game ════════════════════════════════════════════════════════════
-  // G = {mode, players:[{name,color,cpu,pid,score,temp,gone}], rounds, timer, round, deck:[prompt index], qs, pi,
+  // G = {mode, players:[{name,color,cpu,pid,dev (online: the device),score,temp,gone}], rounds, timer, round, deck:[prompt index], qs, pi,
   //      phase: write|reveal|scored|over, ans:[[text]|null per player], items:[{p,i,t,g}] (g = which stack),
   //      pts (this round's points), log:[{q, pts, top:[{t,c}]}], deadline, cpuAt, started}
   var G = null;
   function prompt(g) { return DATA[g.pi] || { q: '', n: 1, a: [] }; }
   function newGame(cfg) {
     var g = { v: 1, mode: cfg.mode, rounds: cfg.rounds, timer: cfg.timer, round: 0, log: [], started: Date.now(), sid: 0,
-      players: cfg.players.map(function (p) { return { name: p.name, color: p.color, cpu: !!p.cpu, pid: p.pid, score: 0, temp: p.cpu ? rnd(0.7, 1.15) : 1 }; }),
+      players: cfg.players.map(function (p) { return { name: p.name, color: p.color, cpu: !!p.cpu, pid: p.pid, dev: p.dev || undefined, score: 0, temp: p.cpu ? rnd(0.7, 1.15) : 1 }; }),
       deck: pickDeck(cfg.rounds) };
     g.qs = g.deck.map(function (i) { return DATA[i].q; });
     startRound(g);
@@ -1233,14 +1233,29 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
       net.mode = 'host'; net.table = table; net.myName = name; net.nextPid = 1;
       net.roster = [{ pid: 0, name: name, host: true }];
       table.on('peer', function (peer) {
-        var r = { pid: net.nextPid++, name: uniqueName(peer.name), peer: peer };
-        peer._pid = r.pid; net.roster.push(r);
+        // a device that comes back takes its own seat again: its name, its color and its points (and, if its old
+        // link hasn't closed yet here, the seat simply moves to the new link)
+        var r = net.roster.filter(function (x) { return x.dev && x.dev === peer.id; })[0], back = !!r;
+        if (r) { if (r.peer && r.peer !== peer) r.peer._pid = -1; r.peer = peer; }
+        else {
+          var gp = G && G.phase !== 'over' ? G.players.filter(function (p) { return p.dev && p.dev === peer.id && p.gone; })[0] : null;
+          if (gp) { r = { pid: gp.pid, name: gp.name, dev: peer.id, peer: peer }; back = true; }
+          else r = { pid: net.nextPid++, name: uniqueName(peer.name), dev: peer.id, peer: peer };
+          net.roster.push(r);
+        }
+        peer._pid = r.pid;
         peer.send({ t: 'hi', you: r.pid, name: r.name }, true);
-        Kit.toast(r.name + ' joined'); Kit.sfx('pop');
-        if (G && G.phase !== 'over') { addPlayer(G, r.name, r.pid); changed(); }
+        Kit.toast(r.name + (back ? ' is back' : ' joined')); Kit.sfx('pop');
+        if (G && G.phase !== 'over') {
+          var i = idxOfPid(r.pid);
+          if (i < 0) addPlayer(G, r.name, r.pid, r.dev);
+          else G.players[i].gone = false;
+          changed();
+        }
         sendRoster();
       });
       table.on('leave', function (peer) {
+        // (a link this device's newer one has replaced: nothing left to do)
         var r = net.roster.filter(function (x) { return x.peer === peer; })[0]; if (!r) return;
         net.roster = net.roster.filter(function (x) { return x !== r; });
         Kit.toast(r.name + ' left');
@@ -1255,9 +1270,9 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
       showWait();
     }).catch(function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); goLobby(); });
   }
-  function addPlayer(g, name, pid) {
+  function addPlayer(g, name, pid, dev) {
     var k = g.players.length;
-    g.players.push({ name: name, color: Kit.color(k), cpu: false, pid: pid, score: 0, temp: 1 });
+    g.players.push({ name: name, color: Kit.color(k), cpu: false, pid: pid, dev: dev || undefined, score: 0, temp: 1 });
     g.ans.push(g.phase === 'write' ? null : []); g.cpuAt.push(0);
   }
   function idxOfPid(pid) { if (!G) return -1; for (var i = 0; i < G.players.length; i++) if (G.players[i].pid === pid) return i; return -1; }
@@ -1280,7 +1295,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     var n = net.roster.length;
     if (n < 2) { Kit.toast('You need at least 2 players'); return Promise.resolve(); }
     net.wait = null;
-    lastCfg = { mode: 'online', rounds: net.cfg.rounds, timer: net.cfg.timer, players: net.roster.map(function (r, i) { return { name: r.name, color: Kit.color(i), cpu: false, pid: r.pid }; }) };
+    lastCfg = { mode: 'online', rounds: net.cfg.rounds, timer: net.cfg.timer, players: net.roster.map(function (r, i) { return { name: r.name, color: Kit.color(i), cpu: false, pid: r.pid, dev: r.dev }; }) };
     G = newGame(lastCfg); screen = 'game'; finished = false; ui.sig = ''; ui.paperRound = ''; ui.intro = ''; ui.scored = ''; ui.cardRound = 0; draft = [];
     Kit.gameStart();
     sendRoster();
