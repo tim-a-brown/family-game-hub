@@ -517,7 +517,7 @@ html.aa-dk.aa-tall .aa-room .pn.won{max-height:none;}
     var cah = cfg.deck === 'cah', turn = !cah && !!cfg.rules.turn;
     var g = { v: 1, mode: cfg.mode, deck: cah ? 'cah' : 'a2a', packs: cfg.packs.slice(), rules: Object.assign({}, cfg.rules), ghost: !!cfg.ghost,
       ansKind: cah ? 'w' : turn ? 'g' : 'r', prKind: cah ? 'b' : turn ? 'r' : 'g', hand: cah ? 10 : turn ? 5 : 7,
-      players: cfg.players.map(function (p) { return { name: p.name, color: p.color, cpu: !!p.cpu, pid: p.pid == null ? null : p.pid, gone: false, hand: [], won: [], pers: p.cpu ? persona() : null }; }),
+      players: cfg.players.map(function (p) { return { name: p.name, color: p.color, cpu: !!p.cpu, pid: p.pid == null ? null : p.pid, dev: p.dev || null, gone: false, hand: [], won: [], pers: p.cpu ? persona() : null }; }),
       ghostWon: [], judge: 0, round: 0, phase: 'flip', prompt: [], shown: false, subs: [], pick: 1, extra: 0, win: null, log: [], disc: [], started: Date.now(), final: false, pile: { a: [], p: [] } };
     if (cah) { g.rules.crab = g.rules.pot = g.rules.two = g.rules.turn = false; }
     else g.rules.heat = false;
@@ -624,9 +624,9 @@ html.aa-dk.aa-tall .aa-room .pn.won{max-height:none;}
     }
     p.hand.forEach(function (c) { g.disc.push(c); }); p.hand = [];
   }
-  function addPlayer(g, name, pid) {
+  function addPlayer(g, name, pid, dev) {
     var i = g.players.length;
-    g.players.push({ name: name, color: Kit.color(i), cpu: false, pid: pid, gone: false, hand: [], won: [], pers: null });
+    g.players.push({ name: name, color: Kit.color(i), cpu: false, pid: pid, dev: dev || null, gone: false, hand: [], won: [], pers: null });
     refill(g, i);
     if (g.phase === 'wait' && act(g).length >= minPlayers(g)) { g.round--; startRound(g); }
     return i;
@@ -1740,14 +1740,29 @@ html.aa-dk.aa-tall .aa-room .pn.won{max-height:none;}
       net.mode = 'host'; net.table = table; net.myName = name; net.nextPid = 1;
       net.roster = [{ pid: 0, name: name, host: true }];
       table.on('peer', function (peer) {
-        var r = { pid: net.nextPid++, name: uniqueName(peer.name), peer: peer };
+        // (Tim, 2026-11-28: a device that lost its connection and joins again takes back the seat it had: the same
+        // name, color, green cards won and a hand dealt back up to 7, not a new player beside its old "left" one)
+        var dev = peer.id || null, old = dev ? net.roster.filter(function (x) { return x.dev === dev && x.peer && x.peer !== peer; })[0] : null;
+        if (old) { old.peer._replaced = true; net.roster = net.roster.filter(function (x) { return x !== old; }); }
+        var back = -1;
+        if (G && G.phase !== 'over' && dev) for (var q = 0; q < G.players.length; q++) if (G.players[q].dev === dev && !G.players[q].cpu && G.players[q].pid !== 0) { back = q; break; }
+        var r = back >= 0 ? { pid: G.players[back].pid, name: G.players[back].name, peer: peer, dev: dev } : { pid: net.nextPid++, name: uniqueName(peer.name), peer: peer, dev: dev };
         peer._pid = r.pid; net.roster.push(r);
         peer.send({ t: 'hi', you: r.pid, name: r.name }, true);
-        Kit.toast(r.name + ' joined'); Kit.sfx('pop');
-        if (G && G.phase !== 'over') { addPlayer(G, r.name, r.pid); changed(); }
+        Kit.sfx('pop');
+        if (back >= 0) {
+          var P = G.players[back];
+          Kit.toast(r.name + ' is back');
+          if (P.gone) { P.gone = false; refill(G, back); if (G.phase === 'wait' && act(G).length >= minPlayers(G)) { G.round--; startRound(G); } }
+          changed();
+        } else {
+          Kit.toast(r.name + ' joined');
+          if (G && G.phase !== 'over') { addPlayer(G, r.name, r.pid, dev); changed(); }
+        }
         sendRoster();
       });
       table.on('leave', function (peer) {
+        if (peer._replaced) return;   // (the same device came back on a new connection: its seat is the new one's)
         var r = net.roster.filter(function (x) { return x.peer === peer; })[0]; if (!r) return;
         net.roster = net.roster.filter(function (x) { return x !== r; });
         Kit.toast(r.name + ' left');
@@ -1792,7 +1807,7 @@ html.aa-dk.aa-tall .aa-room .pn.won{max-height:none;}
     var c = net.cfg, bots = c.bots || [], n = net.roster.length + bots.length, ghost = c.ghost === 'on' || (c.ghost === 'auto' && n === 3);
     if (n < 3 && !(ghost && n === 2)) { Kit.toast('You need at least 3 players'); return Promise.resolve(); }
     net.wait = null;
-    var seated = net.roster.map(function (r, i) { return { name: r.name, color: Kit.color(i), cpu: false, pid: r.pid }; });
+    var seated = net.roster.map(function (r, i) { return { name: r.name, color: Kit.color(i), cpu: false, pid: r.pid, dev: r.dev || null }; });
     bots.forEach(function (b, k) { seated.push({ name: b, color: Kit.color(seated.length), cpu: true, pid: null }); });   // (the host's device plays them)
     lastCfg = { mode: 'online', deck: c.deck, packs: c.packs, rules: c.rules, target: c.target, ghost: ghost, players: seated };
     G = newGame(lastCfg); screen = 'game'; finished = false; lastV = null; ui.round = 0;

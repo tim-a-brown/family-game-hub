@@ -2453,6 +2453,12 @@ Underlying principles for everything:
   fallback. Rules in firestore.rules (`/gd/{id}`, 300,000 characters a detail). The scratchpad's `gdtest/t.js` runs two
   devices on one PIN against the Firestore emulator.
 - Real-time games (arcade, consoles) use `online.js` (WebRTC); consoles add lockstep in `games/console-net.js`.
+- **A device that joins its live table again takes back its own seat** (Tim, 2026-11-28: he lost his connection mid-game
+  and came back as a new player beside his old one marked left). A TurnNet table already reseats by device or account.
+  On an `online.js` table the host knows a joiner by `peer.id`, the joining device's id (`Online.dev()`), and keeps it on
+  the player (`dev`): Apples to Apples gives a returning device its old player (name, color, green cards won, a hand dealt
+  back up to 7) and says "Tim is back"; a new connection that arrives before the old one is noticed gone replaces it,
+  and the old one's late leave is ignored (`peer._replaced`).
 - **Notifications** (the bell on home, the profile menu and every game's menu, `Kit.inbox`): news that came in on this
   device, newest first (`gn_inbox_dev`). Anything new worth looking back at (a turn, a link answer, a request) goes in
   with `FGHSync.inboxAdd({id, k, ...})` and gets a line in `inboxLine` in kit.js. A turn notification is marked read (`read: 1`,
