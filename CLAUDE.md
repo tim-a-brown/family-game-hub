@@ -1534,6 +1534,13 @@ Underlying principles for everything:
   choice stands unless another comes out 8 dots better on average. The sim: Expert won 53% of 30 two-player matches and
   60% of 15 four-player ones against Hard, finishing about 50 points lower.
 
+## Hive Mind (2026-11-28; Mind Meld converted with Calliope Games' written permission)
+
+- **The permission**, from The Calliope Games Team: "We're happy for you to include Hive Mind in your private family app, including the original questions, artwork, branding and game terminology. As long as it's just for your family's enjoyment and isn't distributed or commercialized, we're fine with it." Tim: "convert mind meld". Credit under the setup's title (`.hm-credit`) and at the foot of How to play: "Hive Mind was designed by Richard Garfield. Hive Mind is published by Calliope Games and used with permission."
+- **Ids stay `mindmeld`** (as UNO's stay spanishone): the catalog id, files, `mindmeld_*`, `gh_mindmeld`, `gn_setup_mindmeld`, the online.js game id, `window.__ta`. Only what a player reads says Hive Mind. A Mind Meld save in progress is set aside; old history records still draw.
+- Rules in `games/mindmeld-core.js` (`HiveCore`, plain JSON: the page, the online host and Node), checked by `node scripts/hivemind-sim.js`. Calliope's own question cards go in `games/mindmeld/questions-hm.js` (`HIVEMIND_PROMPTS`, before the house questions; empty until Tim photographs his cards).
+- **Not confirmed from the rulebook** (it could not be read here; check against Tim's box): the gates (the hive closes after level 4 with 3 or 4 bees, 5 with 5 or 6, all six levels with 7 or more), the die's faces 1, 1, 2, 2, 3, 3, the asker going round the table and choosing one of two cards, and the ties at the cut. Confirmed by several sources: an answer scores 1 for each player who wrote it, the lowest scorers drop as many levels as the die says, the highest climb, six levels, the game ends when a bee leaves the hive and everyone still in it wins, 3 to 12 players.
+
 ## Lines of Action (2026-11-23)
 
 - `games/lines-of-action.html` (catalog id `linesofaction`, Board, 2 players), the rules and the robots in
@@ -2470,21 +2477,18 @@ Underlying principles for everything:
   **Poker's cash games**: a dropped seat sits out with no bet and its money unchanged and is dealt back in on return;
   after 10 minutes away it leaves as a deliberate leave does, its own device settling the bankroll when it next opens
   the table, and the last person left gets Close the table or Keep waiting. **Poker tournaments** keep the seat in: it
-  posts blinds and checks or folds. **Centipede and Space Invaders**: after 45 s the host gets a card, "Let the computer
-  play Jamie's ship" (cannon) or "Keep waiting" (`AWAY_ASK`, `botSteer`, `botAim`; `awayPlace` stands the card beside the field where it fits, the right side first, else as one row in the game bar, never over the field or a control; a seat whose device is linking back up waits, online.js's `joining` event), and the device that rejoins takes its
-  ship back. **TetriNET** holds the field 45 s (`AWAY_MS`), Pong pauses with End the match, and the party games skip a
-  gone player. **Giving up**: removing an online game in progress from Keep playing (the red trash in edit mode, or a
+  posts blinds and checks or folds. **Centipede and Space Invaders**: the dropped player's ship (cannon) stays where it was, ghosted in their seat color in a ring that drains over the 45 s wait (`away.js`, shared by the four real-time games: `Away.ring`, `Away.ghostAlpha`; Centipede sends it to the other devices in its snapshot as `aw`). When the wait runs out the game holds still for the host and a Night glass panel over the field gives the choice (`Away.ask`: their token, one sentence, a gold 'Let the computer play Jamie’s ship' with the robot face in their color, and 'Keep waiting for Jamie', which asks again after twice as long, `Away.wait`); other devices see 'Tim is choosing who flies Jamie’s ship' over a held field (`Away.note`). A ship the computer plays carries a robot badge in their color (`Away.bot`), and their return is a moment, 'Jamie is back' (`Away.back`); the device that rejoins takes its ship back. **TetriNET** holds the field 45 s (`AWAY_MS`), drawn dimmed with their initial in a draining ring on every device (`aw` messages). **Pong** shows the same panel ('Keep waiting for Jamie' in gold, 'End the match'); Keep waiting folds it into a plate at the top of the court. **Giving up**: removing an online game in progress from Keep playing (the red trash in edit mode, or a
   hold) asks "Give up this game?" and ends it with the other player winning, or gives the seat to the computer where the
   game does that (`netGiveUp` in index.html, `Kit.netQuit`: a TurnNet game's own page opens in a hidden frame with
   `?kquit=1` and leaves; Chess resigns; Lorcana's `w.how 'gave'`, also Give up the game in its menu, recorded once a
-  table through `lorc_net_done`). firestore.rules allows `hs`, `cov` and `bn` on turnRooms (deployed 2026-11-28).
+  table through `lorc_net_done`). **Who is away shows by design** (Tim, 2026-11-28: "i need everything to be amazingly and thoughtfully designed"): a glass banner from the top when it happens (`Kit.awayNote`: their face with a badge, the robot when the computer plays, a pause for sitting out, a clock for a table that waits, a check when back, a leave mark), and while they are away their dimmed face with that badge in the game bar (`Kit.away`; a tap says it in sentences). Every TurnNet game's seat plate carries the same badge (`Kit.awaySeat(av, net, seat)`, `net.dropOf` by seat or name; `Kit.awaySeat.refresh` finds plates by name). The last one at a table gets a composed sheet with Close the table or Keep playing. The banner has its own `view-transition-name`, so a table's glide never draws over it. firestore.rules allows `hs`, `cov` and `bn` on turnRooms (deployed 2026-11-28).
 - **The table's code during play** (Tim, 2026-11-28: "keep the online game code visible", then "only make that code
   visible in-game on party games like apples to apples that people can jump into after it starts but list it in the game
   options screen for all"): every game's menu heads its Game group with Table code ABCD while the page is at an online
   table (a tap copies it, `copyCode`), read from `atTable()` (TurnNet's `_t.code`, `Online.current()` for online.js
   tables, hosting or joined, or a page's `window.onlineTable()`: Chess, Lorcana). A game people can join after it has
   started passes `codeBar: true` to `Kit.init` (Apples to Apples, Mind Meld, Trivia) and also keeps it in the game bar
-  as a small glass pill before the ? (`codePill`, checked every 1.5 s, hidden when the page leaves the table).
+  as a small glass pill before the ? (`codePill`, checked every 1.5 s, hidden when the page leaves the table). A tap on the code (the bar's pill or the menu's letter tiles) says Copied where it was tapped.
 - **Notifications** (the bell on home, the profile menu and every game's menu, `Kit.inbox`): news that came in on this
   device, newest first (`gn_inbox_dev`). Anything new worth looking back at (a turn, a link answer, a request) goes in
   with `FGHSync.inboxAdd({id, k, ...})` and gets a line in `inboxLine` in kit.js. A turn notification is marked read (`read: 1`,
