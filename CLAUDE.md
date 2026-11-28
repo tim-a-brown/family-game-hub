@@ -2462,7 +2462,7 @@ Underlying principles for everything:
 - **A device that rejoins a live `online.js` table takes back its own seat** (Tim, 2026-11-28: he came back as a new "Tim 2" beside his old seat): the host keeps each player's device id (`peer.id`, `Online.dev()`) on their record and, when that device joins again, gives it the same seat, name, color, score and state, says "Tim is back", and ignores the late `leave` of the link it replaced (Mind Meld, Trivia, Centipede's `net.away`, TetriNET's field held 45 s in `net.away`, Pong, Space Invaders, the live shows, the consoles' `devSeat`).
 - **When a device drops out of an online game** (Tim, 2026-11-28, one plan for every game, a 45-second wait everywhere):
   TurnNet beats every 15 s while a page is visible and counts a seat as dropped after 45 s without one (`cov[seat]`,
-  written once in a transaction; `hs` is how many people sat down at the start). **Two-player turn games** (and any table
+  written once in a transaction; `hs` is how many people sat down at the start). Another seat's beat is judged by this device's own clock (`SEEN` in turnnet.js: how long since this device saw that seat's `hb` change), so a phone whose clock is wrong is never counted as dropped; a computer move for a covered seat is refused once the cover lifts, and the hidden `?kquit=1` frame never beats, covers or uncovers anything. **Two-player turn games** (and any table
   that started with fewer than 3 people) wait for the dropped player for as long as it takes, as Lorcana does.
   **A table that started with 3 or more people** in a game with a computer player has the computer play the dropped
   seat from a device that is there, until that device beats again ("Jamie's device dropped out. The computer plays for
@@ -2471,7 +2471,7 @@ Underlying principles for everything:
   after 10 minutes away it leaves as a deliberate leave does, its own device settling the bankroll when it next opens
   the table, and the last person left gets Close the table or Keep waiting. **Poker tournaments** keep the seat in: it
   posts blinds and checks or folds. **Centipede and Space Invaders**: after 45 s the host gets a card, "Let the computer
-  play Jamie's ship" (cannon) or "Keep waiting" (`AWAY_ASK`, `botSteer`, `botAim`), and the device that rejoins takes its
+  play Jamie's ship" (cannon) or "Keep waiting" (`AWAY_ASK`, `botSteer`, `botAim`; `awayPlace` stands the card beside the field where it fits, the right side first, else as one row in the game bar, never over the field or a control; a seat whose device is linking back up waits, online.js's `joining` event), and the device that rejoins takes its
   ship back. **TetriNET** holds the field 45 s (`AWAY_MS`), Pong pauses with End the match, and the party games skip a
   gone player. **Giving up**: removing an online game in progress from Keep playing (the red trash in edit mode, or a
   hold) asks "Give up this game?" and ends it with the other player winning, or gives the seat to the computer where the
