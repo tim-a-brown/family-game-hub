@@ -2124,7 +2124,38 @@ html.bj-dk .bjinfo.row{flex-direction:row;align-items:stretch;}
     // (a person out of chips sits out until they buy back in: Tim, 2026-11-14, "give players an opportunity to reset their
     // bankroll and buy back in if they bust")
     S.seats.forEach(function (x) { if (!x.cpu && x.bank < 1 && !x.bust) { x.bust = S.round || 1; S.notes.push({ w: 6, t: x.name + ' ran out of chips' }); } });
-    S.ready = S.seats.map(function (x) { return !!x.cpu || !!x.bust; });
+    S.ready = S.seats.map(function (x) { return !!x.cpu || !!x.bust || !!x.away; });
+  }
+  // A device that drops out (TurnNet, after 45 s without a beat): the seat sits out with no bet and its money as it is
+  // (counted as in, so the cards are dealt without it), and a hand it already holds stands, without insurance; it is
+  // dealt back in when the device is back. After 10 minutes away it leaves the table as a person who leaves does.
+  function coverNow(seat) {
+    for (var n = 0; n < 30; n++) {
+      if (S.phase === 'bet' && !S.ready[seat]) { S.bets[seat] = 0; S.ready[seat] = true; if (S.ready.every(Boolean)) deal(); }
+      else if (S.phase === 'ins' && S.insQ >= 0 && S.hands[S.insQ].seat === seat) insAnswer('no');
+      else if (S.phase === 'play' && curHand() && !curHand().done && curHand().seat === seat) doAct('S');
+      else break;
+    }
+  }
+  function netAway(st, seat, mark) {
+    return pure(st, function () {
+      var x = S.seats[seat]; if (!x || x.cpu || S.phase === 'over') return null;
+      if (mark) { if (x.away || x.bust) return null; x.away = 1; } else if (!x.away) return null;
+      var r0 = S.round;
+      coverNow(seat);
+      var mv = { t: 'drop', s: seat };
+      if (S.phase === 'done') { mv.settled = 1; roundOver(); }
+      else if (S.round !== r0) mv.settled = 1;
+      return { state: S, mv: mv };
+    });
+  }
+  function netBack(st, seat) {
+    return pure(st, function () {
+      var x = S.seats[seat]; if (!x || !x.away) return null;
+      x.away = 0;
+      if (S.phase === 'bet' && S.ready[seat] && !(S.bets[seat] > 0) && !x.bust) S.ready[seat] = false;
+      return { state: S, mv: { t: 'back', s: seat } };
+    });
   }
   function moveOn(st, seat, m) {
     return pure(st, function () {
@@ -2149,7 +2180,7 @@ html.bj-dk .bjinfo.row{flex-direction:row;align-items:stretch;}
         if (S.phase === 'bet') { S.ready[seat] = false; S.bets[seat] = 0; }
         return { state: S, mv: { t: 'rebuy', s: seat } };
       } else if (m.t === 'end') {
-        if (S.phase !== 'bet') return null;
+        if (S.phase !== 'bet' || m.last && S.seats.some(function (x, i) { return i !== seat && !x.cpu; })) return null;
         S.phase = 'over';
         return { state: S, mv: { t: 'end', s: seat } };
       } else return null;
@@ -2300,10 +2331,23 @@ html.bj-dk .bjinfo.row{flex-direction:row;align-items:stretch;}
       nets.forEach(function (n, i) { if (n === hi) win.push(i); });
       return { win: win, text: 'Cashed out after ' + st.rounds.length + (st.rounds.length === 1 ? ' hand' : ' hands') };
     },
+    dropAny: true,
+    dropped: function (st, seat) { return netAway(st, seat, true); },
+    cover: function (st, seat) { return netAway(st, seat, false); },
+    returned: netBack,
+    dropLeave: 10 * 60000,
+    dropSay: function (nm) { return nm + '’s device dropped out. ' + nm + ' sits out until ' + nm + ' is back.'; },
+    // the last person at the table closes it: the table cashes out, between hands
+    closeTable: function (net) {
+      var st = net.state, me = net.seat;
+      if (!st || me < 0 || st.phase !== 'bet') return false;
+      net.free(function (t) { return moveOn(t, me, { t: 'end', last: 1 }); });
+      return true;
+    },
     // someone who leaves: the computer takes their seat and plays on from where they were
     resign: function (st, seat) {
       return pure(st, function () {
-        S.seats[seat].cpu = true;
+        S.seats[seat].cpu = true; S.seats[seat].away = 0;
         if (S.phase === 'bet' && !S.ready[seat]) { S.bets[seat] = cpuBet(seat); S.ready[seat] = true; if (S.ready.every(Boolean)) deal(); }
         else if (S.phase === 'ins' && S.insQ >= 0 && S.hands[S.insQ].seat === seat) insAnswer('no');
         else if (S.phase === 'play' && curHand() && curHand().seat === seat) cpuAct();
@@ -2320,6 +2364,7 @@ html.bj-dk .bjinfo.row{flex-direction:row;align-items:stretch;}
   var stackN = 0;
   window.__bj = {
     state: function () { return S; },
+    move: function (st, seat, m) { return moveOn(st, seat, m); },   // (tests: an online table's moves)
     start: function (players, o) { startSession(players, players.length > 1 ? 'cpu' : 'solo', o || {}); },
     stack: function (codes) {
       codes.slice().reverse().forEach(function (k) { S.shoe.push({ r: k.slice(0, -1), s: k.slice(-1), id: 'dm' + (stackN++) }); });

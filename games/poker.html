@@ -2994,12 +2994,12 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
     var n = N();
     if (!QUIET && S.players[0].wantRe && !S.players[0].cpu) { save(); renderTable(); Kit.haptic('error'); return; }   // (your rebuy choice first)
     if (!S.tourn) S.players.forEach(function (p, i) {
-      if (S.online && !p.cpu && !p.left && p.stack <= 0) { p.wantRe = 1; return; }
+      if (S.online && !p.cpu && !p.left && p.stack <= 0) { if (!p.idle) p.wantRe = 1; return; }   // (away: asked when they're back)
       if ((i > 0 || S.online) && !p.left && p.stack <= 0) { p.stack = BUYIN; p.buyin += BUYIN; p.rebuys++; p.rebought = true; }
     });
     if (S.circ) circSeats();
     if (!S.tourn && !S.online && S.players[0].stack <= 0) { if (SIM) { S.players[0].stack = BUYIN; S.players[0].buyin += BUYIN; } else { S.hand = null; save(); renderTable(); return askRebuy(); } }
-    var act = alive().filter(function (i) { return S.players[i].stack > 0; });
+    var act = alive().filter(function (i) { return S.players[i].stack > 0 && !S.players[i].idle; });   // (idle: an online cash seat whose device dropped out sits out)
     if (act.length < 2) {
       if (QUIET) { if (S.players.some(function (p) { return p.wantRe && !p.left; }) || !S.tourn) { S.stall = 1; return; } return netOver(); }
       return S.circ ? endEvent() : endTourney();
@@ -5456,7 +5456,7 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
       // a player who just busted (or got up) this hand: they stay readable with their finish until the next deal; a new
       // player slides in from the rail and wears "New" through their first hand. Each plays its moment once.
       var bust = !!(H && done && (p.out || p.left) && H.inHand[i]), fx = R.fx || (R.fx = {});
-      if (p.out && !bust) seat.classList.add('out');
+      if ((p.out || p.idle) && !bust) seat.classList.add('out');
       if (bust) { seat.classList.add('bust'); if (!fx['b' + H.no + ':' + i]) { fx['b' + H.no + ':' + i] = 1; seat.classList.add('bustanim'); if (!SIM) Kit.sfx('lose', 0.45); } }
       if (p.sat && H && p.sat === H.no) {
         seat.classList.add('sit');
@@ -7899,6 +7899,40 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
     netTrim(st);
     return { state: st };
   }
+  // A device that drops out (TurnNet, after 45 s without a beat). A cash game: the seat sits out, its chips staying with
+  // it (folded out of the hand it's in, dealt out of the hands after), and is dealt back in when the device is back;
+  // after 10 minutes away it leaves the table as a person who leaves does. A tournament: the seat stays in, as at a
+  // real tournament, posting its blinds, checking when it can and folding when it can't (netCover), until it's back.
+  function netDropped(st, seat) {
+    var p = st.players[seat];
+    if (!p || p.cpu || p.out || p.left || p.idle || st.tourn || st.over) return null;
+    p.idle = 1;
+    quiet(st, function () {
+      var H = S.hand;
+      if (!H || H.phase !== 'bet' || !H.inHand[seat] || H.folded[seat] || p.stack <= 0) return;   // (all in: the hand runs out as it would)
+      if (H.actor === seat) return act(seat, { t: 'fold' });
+      H.folded[seat] = true; H.say[seat] = 'Fold'; logAdd(seat, 'Fold'); if (live().length <= 1) endStreet();
+    });
+    netTrim(st);
+    return { state: st, mv: { s: seat, t: 'drop' } };
+  }
+  function netReturned(st, seat) {
+    var p = st.players[seat];
+    if (!p || !p.idle) return null;
+    delete p.idle;
+    if (!st.over && st.stall) quiet(st, function () { startHand(); });   // (a table that had too few players to deal: it deals now)
+    netTrim(st);
+    return { state: st, mv: { s: seat, t: 'back' } };
+  }
+  function netCover(st, seat) {
+    var p = st.players[seat];
+    if (!p || st.over) return null;
+    if (p.wantRe) return st.tourn ? netMove(st, seat, { t: 're', yes: false }) : null;   // (a tournament's rebuy: an absent player doesn't take it)
+    var H = st.hand;
+    if (!H || H.phase !== 'bet' || H.actor !== seat) return null;
+    var toCall = Math.max(0, H.curBet - H.bet[seat]);
+    return netMove(st, seat, { t: st.tourn && toCall === 0 ? 'check' : 'fold' });
+  }
   function netLeaveNote(st, seat) {
     if (!st || st.tourn || seat < 0 || !st.players[seat]) return null;
     var p = st.players[seat];
@@ -7954,7 +7988,28 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
     [st.hand, st.prev].forEach(function (h) { if (h) { delete h.eqc; delete h.meq; delete h.reqc; } });
     if (st.st.rows.length > 300) st.st.rows = st.st.rows.slice(-300);
   }
+  // the only person still at an online cash table (the others have left): they may close it at any moment
+  function netCanClose(st, seat) {
+    if (!st || st.tourn || st.over || !st.players[seat]) return false;
+    var here = st.players.map(function (p, i) { return i; }).filter(function (i) { return !st.players[i].cpu && !st.players[i].left; });
+    return here.length === 1 && here[0] === seat;
+  }
   function netMove(st, seat, a) {
+    if (a.t === 'close') {
+      if (!netCanClose(st, seat)) return null;
+      // (a hand still being played is called off: everyone takes back what they put in it)
+      quiet(st, function () {
+        var H = S.hand;
+        if (H && H.phase !== 'done' && H.total) {
+          H.total.forEach(function (t, i) { if (S.players[i]) S.players[i].stack += t || 0; });
+          H.phase = 'done'; H.results = []; H.pot = 0; H.won = S.players.map(function () { return 0; });
+          H.bet = H.bet.map(function () { return 0; }); H.total = H.total.map(function () { return 0; });
+        }
+        netOver();
+      });
+      netTrim(st);
+      return { state: st, mv: { s: seat, t: 'close' } };
+    }
     if (a.t === 're') {
       var pr = st.players[seat];
       if (!pr || !pr.wantRe || st.over) return null;
@@ -8033,7 +8088,7 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
     NETBUSY = true; NETSEAT = e.seat;
     var was = S && S.online ? S : null, v = netView(e), pv = v.prev, key = NET.code + ':' + v.started + ':' + (pv ? pv.no : 0);
     var mv = e.info && e.info.mv;
-    if (mv && !e.info.fresh) Kit.sfx(mv.t === 'fold' ? 'flip' : mv.t === 'check' ? 'tap' : mv.t === 're' && !mv.yes ? 'tap' : 'chip');
+    if (mv && !e.info.fresh && mv.t !== 'drop' && mv.t !== 'back' && mv.t !== 'gone') Kit.sfx(mv.t === 'fold' ? 'flip' : mv.t === 'check' ? 'tap' : mv.t === 're' && !mv.yes ? 'tap' : 'chip');
     // the hand just finished, first (when this device was watching it)
     if (pv && !NETSEEN[key] && was && was.hand && was.hand.no === pv.no && (v.hand.no !== pv.no || v.over)) {
       NETSEEN[key] = 1;
@@ -8114,7 +8169,10 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
     NETWIN.key = key;
   }
   function netLeave() {
-    var v = S && S.online ? S : null, cashing = v && NET && NETSEAT >= 0 && !v.tourn && !v.players[0].left, code = NETCODE, seat = NETSEAT;
+    var v = S && S.online ? S : null;
+    if (!v && NET && NET.state && NET.seat >= 0) { NETSEAT = NET.seat; v = netRot(NET.state, NET.seat); }   // (the table, before this device had drawn it)
+    // (a seat that left while its device was away: what the table kept for it, on this device)
+    var cashing = v && NET && NETSEAT >= 0 && !v.tourn && (!v.players[0].left || v.players[0].cashout != null), code = NETCODE, seat = NETSEAT;
     NET = null; NETQ = []; NETBUSY = false; clearTimeout(netT); netCloseWin(); R = {};
     showSetup();
     if (!cashing) return;
@@ -8188,6 +8246,10 @@ html.pk-big,html.pk-big body{overflow:hidden;overscroll-behavior:none;}
     game: 'poker', title: 'Poker', min: 2, max: 10, botMs: 650,
     seats: function (n, o) { return Math.min(10, Math.max(n, +(o && o.seats) || 0)); },
     opts: netOpts, start: netStart, turn: netTurn, over: netResult, bot: netBot, resign: netResign, leaveNote: netLeaveNote,
+    free: netCanClose, dropAny: true, dropped: netDropped, returned: netReturned, cover: netCover,
+    dropLeave: function (st) { return st && !st.tourn ? 10 * 60000 : 0; },
+    dropSay: function (nm, st) { return st && st.tourn ? nm + '’s device dropped out. Until ' + nm + ' is back, ' + nm + ' posts the blinds, checks when that’s possible and folds when it isn’t.' : nm + '’s device dropped out. ' + nm + ' sits out until ' + nm + ' is back.'; },
+    closeTable: function (net) { var me = net.seat; if (me < 0) return false; net.free(function (st) { return netMove(st, me, { t: 'close' }); }); return true; },
     show: netShow, leave: netLeave
   });
 })();
