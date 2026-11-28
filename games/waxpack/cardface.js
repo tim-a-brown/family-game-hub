@@ -189,6 +189,8 @@
   }
   function bgOf(v, c) {
     if (v === 'wood') return 'repeating-linear-gradient(92deg,#6b4423 0 1.6cqw,#7b5130 1.6cqw 2.4cqw,#5c3a1d 2.4cqw 4.6cqw,#80563a 4.6cqw 5.4cqw),#6b4423';
+    if (v === 'oak') return 'repeating-linear-gradient(91deg,rgba(120,80,40,.18) 0 .3cqw,transparent .3cqw 1.9cqw,rgba(90,55,25,.22) 1.9cqw 2.3cqw,transparent 2.3cqw 4.4cqw),linear-gradient(90deg,#c99c62,#d8ad73 40%,#c49558 70%,#d3a76c)';
+    if (v === 'dots') return 'radial-gradient(circle,rgba(255,255,255,.5) 30%,transparent 34%) 0 0/2.2% 1.57%,linear-gradient(180deg,var(--t1) 0 62%,var(--t2) 62% 100%)';
     if (v === 'burlap') return 'repeating-linear-gradient(0deg,rgba(80,60,30,.25) 0 .5cqw,transparent .5cqw 1.2cqw),repeating-linear-gradient(90deg,rgba(80,60,30,.25) 0 .5cqw,transparent .5cqw 1.2cqw),#c9b27c';
     if (v === 'two') return 'linear-gradient(180deg,var(--t1) 0 50%,var(--t2) 50% 100%)';
     if (v === 'stripes') return 'linear-gradient(135deg,#fff 0 70%,#c8102e 70% 76%,#fff 76% 80%,#1c3f8a 80% 86%,#fff 86%)';
