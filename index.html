@@ -584,7 +584,16 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
 @keyframes sdel-in{from{transform:scale(0);}}
 .rail.editing .sbox{animation:wig .26s ease-in-out infinite alternate;}
 .rail.editing .sbox:nth-child(2n){animation-delay:-.13s;}
-.rail.editing .nbar{opacity:.4;pointer-events:none;}
+/* an online game while editing: a remove button at its right, in place of its turn tag (removing it gives the game
+   up, so it asks first and has no Undo); while the table is being reached the bar waits, dimmed */
+.rail.editing .nbar :is(.yt,.pl,.a){display:none;}
+.ndel{flex:none;width:36px;height:36px;margin-right:2px;border:0;border-radius:50%;display:grid;place-items:center;padding:0;cursor:pointer;
+  background:linear-gradient(180deg,#ff5a6b,#e0243c);color:#fff;box-shadow:0 4px 10px rgba(224,36,60,.45);animation:sdel-in .3s var(--spring) both;}
+.ndel .ico{width:17px;height:17px;}
+.ndel:active{transform:scale(.92);}
+.nbar.quit{opacity:.55;pointer-events:none;}
+.nbar.quit .ndel{animation:ndel-wait .8s ease-in-out infinite alternate;}
+@keyframes ndel-wait{to{opacity:.45;transform:scale(.9);}}
 @media (prefers-reduced-motion:reduce){.rail.editing .sbox{animation:none;}.sbox{animation:none;}}
 /* Online games: bars, the latest move on top. Your move: in the game's colour with a gold tag and a play button; waiting
    on someone else: quiet */
@@ -2649,14 +2658,39 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
   }
   // An online game: a bar. Your move: the game's colour, a Your turn tag and a play button; theirs: quiet
   function netBar(x) {
-    var mine = x.n.mine;
+    var mine = x.n.mine, a;
     // (the first tap through to an online game asks to allow notifications, which the icon's count needs on iPhone)
-    return el('a', { class: 'nbar ' + (mine ? 'turn' : 'wait'), href: x.n.href, onclick: function (e) { var h = x.n.href; e.preventDefault(); Kit.badgeAsk().then(function () { location.href = h; }); }, style: { '--c': x.g.color, '--h': catHsl(x.g, 58) }, title: x.g.name + (mine ? ': your turn' : ': ' + x.n.vs + '’s turn') }, [
+    a = el('a', { class: 'nbar ' + (mine ? 'turn' : 'wait'), href: x.n.href, onclick: function (e) { var h = x.n.href; e.preventDefault(); if (editing) return; Kit.badgeAsk().then(function () { location.href = h; }); }, style: { '--c': x.g.color, '--h': catHsl(x.g, 58) }, title: x.g.name + (mine ? ': your turn' : ': ' + x.n.vs + '’s turn') }, [
       el('span', { html: GameIcon(x.g.id), style: { display: 'contents' } }),
       el('span', { class: 'tx' }, [el('b', { text: x.g.name }), el('small', { text: mine ? 'Against ' + x.n.vs : x.n.vs + '’s turn' }), mine ? el('small', { text: 'Last move ' + ago(x.n.at) }) : null]),   // (how long ago is at the right when it's their turn)
       mine ? el('span', { class: 'yt', html: '<i></i><span>Your turn</span>' }) : el('span', { class: 'a', text: ago(x.n.at, true) }),
-      mine ? el('span', { class: 'pl', html: Kit.icon('play') }) : null
+      mine ? el('span', { class: 'pl', html: Kit.icon('play') }) : null,
+      editing ? el('button', { type: 'button', class: 'ndel', 'aria-label': 'Remove ' + x.g.name + ' from Keep playing', html: Kit.icon('trash'), onclick: function (e) { e.preventDefault(); e.stopPropagation(); netGiveUp(x, a); } }) : null
     ]);
+    a.addEventListener('dragstart', function (e) { e.preventDefault(); });
+    a.addEventListener('contextmenu', function (e) { e.preventDefault(); if (editing) return; Kit.haptic('light'); netGiveUp(x, a); });
+    return a;
+  }
+  // Removing an online game from Keep playing gives it up (Tim, 2026-11-28: online games wait as long as it takes for a
+  // player who has gone quiet, "but even in lorcana, allow an option to surrender by removing the online game from your
+  // keep playing options"). Kit.netQuit finds out what that does at this table (the others win, or the computer takes
+  // the seat), the question says so in a sentence, and Give up does it. It can't be undone, so there is no Undo.
+  var quitting = {};
+  function netGiveUp(x, bar) {
+    var k = x.n.id + ':' + x.n.code; if (quitting[k]) return;
+    quitting[k] = 1; Kit.sfx('tap'); if (bar) bar.classList.add('quit');
+    function off() { delete quitting[k]; if (bar) bar.classList.remove('quit'); }
+    function gone() { netTurns = netTurns.filter(function (n) { return !(n.id === x.n.id && n.code === x.n.code); }); netAt = 0; railSig = ''; renderRail(); }
+    Kit.netQuit(x.n).then(function (q) {
+      if (q.gone) { off(); gone(); Kit.toast('That game is already over'); return; }
+      return Kit.confirm('Give up this game?', { ok: 'Give up', cancel: 'Cancel', danger: true, body: q.body }).then(function (ok) {
+        if (!ok) { q.drop(); off(); return; }
+        return q.go().then(function () {
+          off(); Kit.haptic('success'); gone();
+          Kit.toast('You gave up your game of ' + x.g.name + '. It has ended.');
+        });
+      });
+    }).catch(function (e) { off(); Kit.sfx('bad'); Kit.toast((e && e.message) || 'That game couldn’t be given up right now'); });
   }
 
   // ── Online games waiting on your move ───────────────────────────────────────
@@ -2891,7 +2925,9 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     var items = currentItems().filter(function (x) { return !narrowed || (vis.indexOf(x.g) >= 0 && inCats(x.g)); });
     railItems = items;
     refreshBadges();
-    if (!items.length) editing = false;
+    // online games: the latest move on top
+    var nets = netTurns.map(function (x) { return { g: findGame(x.id), n: x }; }).filter(function (x) { return x.g; }).sort(function (a, b) { return (b.n.at || 0) - (a.n.at || 0); });
+    if (!items.length && !nets.length) editing = false;
     var nets0 = netTurns.map(function (x) { return x.id + ':' + x.code + ':' + (x.at || 0) + ':' + (x.mine ? 1 : 0) + ':' + (x.vs || ''); });
     var sig = JSON.stringify([editing, !!undoList, Math.floor(Date.now() / 6e4), items.map(function (x) { return x.g.id + ':' + x.r.ts + ':' + (x.r.label || '') + ':' + (x.r.file || '') + ':' + (x.sn ? x.sn.ts : 0); }), nets0]);
     if (sig === railSig) return;
@@ -2899,11 +2935,9 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     var rail = $('rail'), was = rail.querySelector('.shelf'), sx = was ? was.scrollLeft : 0;
     rail.innerHTML = ''; rail.classList.toggle('editing', editing);
     // (the same quiet pencil as every section's heading; while editing it is the gold Done that ends it)
-    var eb = $('cont-edit'); eb.hidden = !items.length;
+    var eb = $('cont-edit'); eb.hidden = !items.length && !nets.length;
     if (editing) { eb.className = 'cont-edit on'; eb.textContent = 'Done'; eb.removeAttribute('aria-label'); }
     else { eb.className = 'sec-ed'; eb.innerHTML = Kit.icon('pencil'); eb.setAttribute('aria-label', 'Edit Keep playing'); }
-    // online games: the latest move on top
-    var nets = netTurns.map(function (x) { return { g: findGame(x.id), n: x }; }).filter(function (x) { return x.g; }).sort(function (a, b) { return (b.n.at || 0) - (a.n.at || 0); });
     if (items.length) {
       var shelf = el('div', { class: 'shelf' });
       items.forEach(function (x) { var bx = shelfBox(x); if (railSeen[x.g.id]) bx.classList.add('seen'); railSeen[x.g.id] = 1; shelf.appendChild(bx); });

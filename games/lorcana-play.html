@@ -7219,6 +7219,7 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
     menu: [
       { icon: 'globe', label: 'Your online games', when: function () { return !!S && S.mode === 'online' && ui.screen === 'game'; }, onClick: function () { netStop(false); try { localStorage.removeItem(NETK); } catch (e) {} showLobby(); } },
       { icon: 'book', label: 'Game log', when: function () { return !!S && ui.screen === 'game'; }, onClick: function () { showLog(); } },
+      { icon: 'flag', label: 'Give up the game', sub: 'The other player wins', when: function () { return !!S && S.mode === 'online' && ui.screen === 'game' && S.phase !== 'over'; }, onClick: function () { netGiveUp(); } },
       { icon: 'pencil', label: 'Fix something by hand', when: function () { return !!S && ui.screen === 'game'; }, onClick: function () { if (S && S.mode === 'online' && !canAct()) Kit.toast('You can fix things on your own turn'); else if (S && S.phase === 'play') openToolbox(null, {}); else Kit.toast('Start a game first'); } },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { keys: [OTHER], title: 'Lorcana: Past Games' }); } },
       { section: 'Cards & decks', icon: 'book', label: 'Card library', onClick: function () { openBuilderFromMenu(true); } },
@@ -12208,7 +12209,7 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
     Kit.handoff.close(); closeOverlays();
     var wp = S.P[w.pi], lp = S.P[opp(w.pi)], hl = [];
     var rounds = Math.max(1, Math.ceil(S.turn / 2));
-    hl.push(w.how === 'deck' ? lp.name + ' ran out of cards, so ' + wp.name + ' won (' + wp.lore + ' to ' + lp.lore + ' lore)' : wp.name + ' reached ' + wp.lore + ' lore in ' + plural(rounds, 'round') + ' (' + lp.name + ' had ' + lp.lore + ')');
+    hl.push(w.how === 'gave' ? lp.name + ' gave up the game, so ' + wp.name + ' won (' + wp.lore + ' to ' + lp.lore + ' lore)' : w.how === 'deck' ? lp.name + ' ran out of cards, so ' + wp.name + ' won (' + wp.lore + ' to ' + lp.lore + ' lore)' : wp.name + ' reached ' + wp.lore + ' lore in ' + plural(rounds, 'round') + ' (' + lp.name + ' had ' + lp.lore + ')');
     var bigs = [0, 1].map(function (i) { return { p: S.P[i], b: S.st[i].big }; }).filter(function (x) { return x.b; }).sort(function (a, b) { return b.b.n - a.b.n; });
     if (bigs[0] && bigs[0].b.n >= 2) hl.push('Biggest quest: ' + bigs[0].p.name + '’s ' + bigs[0].b.name + ' for ' + bigs[0].b.n + ' lore');
     var ch = [0, 1].sort(function (a, b) { return S.st[b].ban - S.st[a].ban; })[0];
@@ -12218,9 +12219,9 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
     [0, 1].forEach(function (i) { if (S.st[i].loc >= 3) hl.push(S.P[i].name + ' collected ' + S.st[i].loc + ' lore from locations'); });
     hl.push(S.P[0].name + ' played ' + S.P[0].deck + '; ' + S.P[1].name + ' played ' + S.P[1].deck);
     var labels = S.rl.map(function (r, i) { return 'R' + (i + 1); });
-    var online = S.mode === 'online';
+    var online = S.mode === 'online', code = online && NET.ref ? NET.ref.id : null;
     if (online) netOver(w);
-    Kit.record(KEY, {
+    if (!code || netDoneMark(code)) Kit.record(KEY, {
       started: S.started, mode: S.mode === 'cpu' ? 'vs computer' : online ? 'online' : 'pass & play',
       players: S.P.map(function (p) { return { name: p.name, score: p.lore, cpu: p.cpu }; }), winner: wp.name,
       rounds: S.rl.length ? { labels: labels, scores: S.rl.map(function (r) { return [r[0], r[1]]; }) } : null,
@@ -12231,7 +12232,7 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
     if (!online) clearSave();
     render();
     var lose = S.mode === 'cpu' ? wp.cpu : online && w.pi !== NET.seat;
-    if (online) { Kit.win({ icon: 'trophy', lose: lose, title: lose ? wp.name + ' wins' : 'You win!', sub: w.how === 'deck' ? lp.name + ' couldn’t draw a card' : wp.lore + ' lore',
+    if (online) { Kit.win({ icon: 'trophy', lose: lose, title: lose ? wp.name + ' wins' : 'You win!', sub: w.how === 'gave' ? (lose ? 'You gave up the game' : lp.name + ' gave up the game') : w.how === 'deck' ? lp.name + ' couldn’t draw a card' : wp.lore + ' lore',
       rank: [wp, lp].map(function (p) { return { name: p.name, score: p.lore + ' lore', color: p.color }; }), again: function () { showLobby(); }, againLabel: 'Back to the lobby' }); return; }
     // how it ended: the last few moves (public ones), oldest first
     var notes = S.log.filter(function (l) { return l && l.t && !/^(Turn \d|— )/.test(l.t); }).slice(-3).map(function (l) { return l.t; });
@@ -13781,6 +13782,7 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
     var nm = [d.host && d.host.mat || null, d.guest && d.guest.mat || null];
     if (!NET.mats || NET.mats[0] !== nm[0] || NET.mats[1] !== nm[1]) { NET.mats = nm; if (S && ui.screen === 'game') render(); }
     if (d.status === 'closed' && byDev(d) !== NET.dev) { var who = S && S.P ? S.P[opp(NET.seat)].name : 'The other player'; netStop(true); S = null; Kit.toast(who + ' left the game'); showLobby(); return; }
+    if (d.status === 'over' && d.w && d.w.how === 'gave' && S && S.mode === 'online' && S.phase !== 'over') { tok++; resetQ(); NET.owner = false; NET.pend = null; netPill(false); finish(d.w); return; }
     if (ui.screen === 'netwait' && !d.st) { if (NET.seat === 0 && d.status === 'joined' && d.guest) netDeal(d); return; }
     // the answer to my question
     if (NET.owner && NET.pend && d.an && d.an.id === NET.pend.id) {
@@ -13828,6 +13830,61 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
   }
   function netOver(w) { if (NET.owner) netPush(true, { w: w, status: 'over' }); netStop(true); }
   function netLeave() { var r = NET.ref; if (r) { netGone(r.id); r.update({ status: 'closed', at: Date.now(), by: NET.dev }).catch(function () {}); } netStop(true); }
+  // Give up the game (Tim, 2026-11-28: online games wait for the other player as long as it takes, "but even in lorcana,
+  // allow an option to surrender"; the home screen does the same when the game is removed from Keep playing): the other
+  // player wins. w.how 'gave' tells their device, which shows it and records it once.
+  function netGiveUp() {
+    if (!S || S.mode !== 'online' || S.phase === 'over' || !NET.ref) return;
+    var me = NET.seat, other = S.P[opp(me)].name;
+    Kit.confirm('Give up this game?', { ok: 'Give up', danger: true, body: 'The game ends, and ' + esc(other) + ' wins.' }).then(function (ok) {
+      if (!ok || !S || S.mode !== 'online' || S.phase === 'over' || !NET.ref) return;
+      var ref = NET.ref, w = { pi: opp(me), how: 'gave', by: me };
+      ref.firestore.runTransaction(function (t) {
+        return t.get(ref).then(function (sn) {
+          var x = sn.exists ? sn.data() : null;
+          if (!x || x.status === 'over' || x.status === 'closed') return false;
+          t.update(ref, { status: 'over', w: w, at: Date.now(), by: myBy() }); return true;
+        });
+      }).then(function (did) {
+        if (!did || !S || S.phase === 'over') return;
+        netGone(ref.id); tok++; resetQ(); NET.owner = false; NET.pend = null; netPill(false); finish(w);
+      }).catch(netErr);
+    });
+  }
+  // Each online game is recorded once (lorc_net_done follows the account): true the first time a table is marked
+  function netDoneMark(code) {
+    var l = lsGet('lorc_net_done', []); if (!Array.isArray(l)) l = [];
+    if (l.indexOf(code) >= 0) return false;
+    lsSet('lorc_net_done', l.concat([code]).slice(-40));
+    return true;
+  }
+  // A game given up while this device wasn't at the table (the other player gave up, or you did from Keep playing):
+  // recorded here once, as a win or a loss, the next time Your games is looked at; a win is told in a toast
+  var gaveLooked = false;
+  function netGaveCatch(db, tag) {
+    if (gaveLooked || !tag) return; gaveLooked = true;
+    var col = roomCol(db);
+    ['host', 'guest'].forEach(function (seat, me) {
+      col.where(seat + '.acct', '==', tag).where('status', '==', 'over').limit(10).get()
+        .catch(function () { return col.where(seat + '.acct', '==', tag).limit(40).get(); })
+        .then(function (qs) {
+          qs.forEach(function (x) {
+            var d = x.data(), w = d && d.w;
+            if (!d || d.status !== 'over' || !w || w.how !== 'gave' || !d.st || (S && S.mode === 'online' && NET.ref && NET.ref.id === x.id)) return;
+            var st = null; try { st = JSON.parse(d.st); } catch (e) {}
+            if (!st || !st.P || !st.P[w.pi] || !st.P[1 - w.pi] || !netDoneMark(x.id)) return;
+            var wp = st.P[w.pi], lp = st.P[1 - w.pi];
+            Kit.record(KEY, {
+              started: st.started || d.at, mode: 'online',
+              players: st.P.map(function (p) { return { name: p.name, score: p.lore || 0 }; }), winner: wp.name,
+              highlights: [lp.name + ' gave up the game, so ' + wp.name + ' won (' + (wp.lore || 0) + ' to ' + (lp.lore || 0) + ' lore)'].map(youFix),
+              summary: wp.name + ' won · ' + (st.P[0].lore || 0) + ' – ' + (st.P[1].lore || 0)
+            });
+            if (w.pi === me) Kit.toast(lp.name + ' gave up your game of Lorcana, so you win.');
+          });
+        }).catch(function () {});
+    });
+  }
   function lobbyOff() { if (NET.lobbyOff) { NET.lobbyOff(); NET.lobbyOff = null; } if (NET.peekOff) NET.peekOff(); }
   function netDb() { return window.FGHSync && FGHSync.db ? FGHSync.db() : Promise.reject(new Error('Sync isn’t loaded')); }
   function roomCol(db) { return db.collection('lorcanaRooms'); }
@@ -14107,6 +14164,7 @@ html.lc-dk .lp-panel .dk-log .logbox{flex:1;min-height:0;overflow:hidden;backgro
   function netMine() {
     return Promise.all([netDb(), acctTag()]).then(function (r) {
       var db = r[0], tag = r[1], col = roomCol(db);
+      netGaveCatch(db, tag);
       function q(seat, st) {
         return col.where(seat + '.acct', '==', tag).where('status', 'in', st).limit(20).get()
           .catch(function () { return col.where(seat + '.acct', '==', tag).limit(40).get(); })   // in case the two-field query is refused
