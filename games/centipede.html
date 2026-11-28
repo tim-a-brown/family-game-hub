@@ -15,6 +15,7 @@
 <script src="../arcade-hi.js"></script>
 <script src="centipede-audio.js"></script>
 <script src="../online.js"></script>
+<script src="../away.js"></script>
 <style>
 /* ── Play view: the arcade screen fills the page, no page scroll ─────────── */
 html.ar-on,html.ar-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
@@ -1655,6 +1656,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var dt = lastT ? Math.min(0.1, (t - lastT) / 1000) : 0; lastT = t; frameAt = t;
     if (screen !== 'game') return;
     if (GV) guestFrame(dt);
+    else if (G && G.mode === 'host' && awayHold) netHostTick();
     else if (G && !paused && !hold) {
       acc += dt * (fx.slow > 0 ? 0.3 : 1); var n = 0;
       if (fx.slow > 0) fx.slow -= dt;
@@ -1665,7 +1667,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     if (refit) { refit = false; cssW = 0; fit(); }
     fxStep(dt);
     var R = view();
-    if (R && !paused && R.phase !== 'over' && R.phase !== 'won' && !(G && G.ended)) Mus.tick(); else Mus.stop();
+    if (R && !paused && !awayHold && !(GV && GV.hz) && R.phase !== 'over' && R.phase !== 'won' && !(G && G.ended)) Mus.tick(); else Mus.stop();
     if (!drawIt) return;
     var t0 = performance.now();
     draw();
@@ -2392,6 +2394,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       var ht = txt('PICK UP POWER-UPS!', '#ffffff', 1); drawTxtAt(x, ht, cp.x, cp.y - 30, Math.min(1, 120 / ht.w));
     });
     R.players.forEach(function (p) { drawShip(x, p, me, use3); });
+    drawAway(x, R);
     // explosions, sparks and flying cubes
     x.globalCompositeOperation = 'lighter';
     fx.exps.forEach(function (e) { drawBoom(x, e); });
@@ -3059,10 +3062,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
         peer._pid = r.pid;
         peer.send({ t: 'hi', you: peer._pid }, true);
         sendRoster();
-        Kit.toast(r.name + (back ? ' is back' : ' joined')); Kit.sfx('pop');
+        if (!(live && back)) { Kit.toast(r.name + (back ? ' is back' : ' joined')); Kit.sfx('pop'); }
         if (live) {     // joining (or coming back to) a game already going
           if (!P) P = addPlayer({ id: peer._pid, name: r.name, dev: peer.id });
-          popup(P.x, P.y - 14, P.name + (back ? ' is back' : ' joined'), P.color, true); sound('extra');
+          sound('extra');
+          // back: the ghost lights up where it stands, in their color, and a moment says so
+          if (back) { burst(P.x, P.y, PCOL[P.ci % 3], 26, 1.1); Away.back({ name: r.name, color: PCOL[P.ci % 3], at: cabEl, top: true, line: 'The ship is ' + poss(r.name) + ' again.' }); }
+          else popup(P.x, P.y - 14, P.name + ' joined', P.color, true);
           sendInit(peer);
         }
       });
@@ -3071,11 +3077,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
         var r = net.roster.filter(function (x) { return x.peer === peer; })[0]; if (!r) return;
         net.roster = net.roster.filter(function (x) { return x !== r; });
         sendRoster();
-        Kit.toast(r.name + ' left');
+        var held = G && G.mode === 'host' && !G.ended && r.dev;
+        if (!held) Kit.toast(r.name + ' left');
         if (G && G.mode === 'host') {
           var P = G.players.filter(function (p) { return p.id === r.pid; })[0];
           if (P) {
-            if (P.alive) burst(P.x, P.y, P.color, 20, 1.2);
+            // (a ship that waits for its device fades to its ghost where it is; one that has gone for good bursts)
+            if (P.alive && !held) burst(P.x, P.y, P.color, 20, 1.2);
+            if (held) Kit.sfx('tap');
             G.players.splice(G.players.indexOf(P), 1); G.bullets = G.bullets.filter(function (b) { return b.o !== P.id; });
             // the ship, its score and its lives wait for this device to come back to the game
             if (!G.ended && r.dev) { net.away = net.away || {}; awayDrop(r.dev); net.away[r.dev] = { P: P, name: r.name }; awayLater(r.dev); }
@@ -3092,120 +3101,64 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     }).catch(function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); goLobby(); });
   }
   // ── A player who hasn't come back ──
-  // Their ship waits in net.away. After 45 seconds the host can let the computer fly it (botSteer) or keep
-  // waiting; the card lies over the top of the field and the game goes on under it. The moment that device joins
-  // again, the ship is theirs again.
-  var AWAY_ASK = 45000;
+  // Their ship waits in net.away, ghosted where it was with a ring round it that drains over the wait (Away.ring;
+  // the snapshot carries it to the other devices as aw). When the wait runs out the game holds still (awayHold) and
+  // the host chooses on a panel over the field (Away.ask): the computer flies the ship (botSteer, with a robot badge
+  // on it) or the table keeps waiting, for twice as long each time (Away.wait). The moment that device joins again,
+  // the ship is theirs again.
+  var awayHold = false, awayAsk = null;
   function joiningNow(dev) { var t = net.joining && net.joining[dev]; return !!t && Date.now() - t < 30000; }
   function awayDrop(dev) { var A = net.away && net.away[dev]; if (!A) return; clearTimeout(A.t); if (A === awayShown) awayCardOff(); delete net.away[dev]; }
-  function awayClear() { Object.keys(net.away || {}).forEach(function (d) { clearTimeout(net.away[d].t); }); net.away = {}; awayCardOff(); }
+  function awayClear() { Object.keys(net.away || {}).forEach(function (d) { clearTimeout(net.away[d].t); }); net.away = {}; awayCardOff(); if (guestNote) { guestNote.close(); guestNote = null; } }
   function awayLater(dev) {
     var A = net.away[dev], G0 = G;
+    A.t0 = performance.now(); A.win = Away.wait(A.n || 0); A.ask = false;
+    clearTimeout(A.t);
     A.t = setTimeout(function ask() {
       // (that device is linking up again right now: wait for it rather than ask)
       if (net.away[dev] === A && joiningNow(dev)) { A.t = setTimeout(ask, 2000); return; }
       A.t = 0; A.ask = true; if (net.away[dev] === A && G === G0 && G && !G.ended) awayNext();
-    }, window.__awayAskMs || AWAY_ASK);
+    }, A.win);
   }
   function awayNext() {
     if (awayShown) return;
-    var d = Object.keys(net.away || {}).filter(function (k) { var A = net.away[k]; return A.ask && !A.P.bot && !A.no; })[0];
+    var d = Object.keys(net.away || {}).filter(function (k) { var A = net.away[k]; return A.ask && !A.P.bot; })[0];
     if (!d) return;
-    var A = net.away[d];
-    awayCard(A.name, 'ship', function () {
-      if (net.away[d] !== A || !G || G.ended) return;
-      var P = A.P; P.bot = true; P.tx = null; P.ty = null; P.fire = false;
-      if (G.players.indexOf(P) < 0) restorePlayer(P);
-      popup(P.x, P.y - 14, 'Computer', P.color, true); sound('extra'); Kit.toast('The computer is flying ' + poss(A.name) + ' ship until ' + A.name + ' comes back.');
-    }, function () { A.no = true; });
-    awayShown = A;
+    var A = net.away[d], col = PCOL[A.P.ci % 3], whose = poss(A.name) + ' ship';
+    awayShown = A; awayHold = true; Mus.stop(true);
+    awayAsk = Away.ask({ name: A.name, color: col, at: cabEl, line: poss(A.name) + ' device dropped out of the game.',
+      choices: [{ id: 'bot', icon: 'bot', main: true, label: 'Let the computer fly ' + whose }, { id: 'wait', icon: 'wait', label: 'Keep waiting for ' + A.name }],
+      onPick: function (id) {
+        awayAsk = null; awayShown = null; awayHold = false; lastT = 0; acc = 0;
+        if (net.away[d] !== A || !G || G.ended) { awayNext(); return; }
+        if (id === 'bot') {
+          var P = A.P; P.bot = true; P.tx = null; P.ty = null; P.fire = false;
+          if (G.players.indexOf(P) < 0) restorePlayer(P);
+          sound('extra'); Away.botOn({ color: col, at: cabEl, top: true, title: 'The computer is flying ' + whose, line: 'It’s ' + poss(A.name) + ' again as soon as ' + A.name + ' is back.' });
+        } else { A.n = (A.n || 0) + 1; awayLater(d); }
+        awayNext();
+      } });
   }
-  var awayEl = null, awayShown = null;
-  function awayCard(name, what, onBot, onWait) {
-    awayCardOff();
-    if (!document.getElementById('aw-css')) document.head.appendChild(el('style', { id: 'aw-css', text:
-      '.aw-ask{position:fixed;left:0;top:0;z-index:60;width:460px;max-width:calc(100vw - 24px);box-sizing:border-box;padding:14px 16px 16px;border-radius:20px;' +
-      'background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 60%),var(--toast-bg,rgba(40,43,74,.92));box-shadow:inset 0 1px 0 var(--gold-hi,#ffd76a),0 0 0 1px var(--gl-line,rgba(255,255,255,.12)),0 18px 40px -16px rgba(0,0,0,.7);' +
-      '-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:var(--text,#fff);transform:translateY(-10px);opacity:0;transition:transform .22s ease,opacity .22s ease;}' +
-      '.aw-ask.show{transform:none;opacity:1;}.aw-ask.gone{pointer-events:none;}' +
-      '.aw-ask b{display:block;font-size:17px;font-weight:800;line-height:1.25;}' +
-      '.aw-ask p{margin:4px 0 12px;font-size:14px;line-height:1.35;color:var(--text-2,rgba(255,255,255,.75));}' +
-      '.aw-ask .aw-b{display:flex;flex-wrap:wrap;gap:8px;}' +
-      '.aw-ask .aw-b .btn{flex:1 1 auto;min-height:44px;white-space:normal;}' +
-      '.aw-ask .aw-b .btn-primary{flex-basis:220px;}' +
-      // beside the field: the title over the two buttons, one above the other
-      '.aw-ask.aw-side{padding:12px;border-radius:18px;}.aw-side p{display:none;}.aw-side b{font-size:15px;margin-bottom:10px;}' +
-      '.aw-side .aw-b{flex-direction:column;}.aw-side .aw-b .btn{flex:none;width:100%;font-size:14px;padding-left:10px;padding-right:10px;}' +
-      // across the game bar, where the field leaves no room: one row
-      '.aw-ask.aw-strip{display:flex;align-items:center;gap:12px;padding:6px 6px 6px 14px;border-radius:16px;background:var(--sheet-solid,#23264a);}.aw-strip p{display:none;}' +
-      '.aw-strip b{font-size:14px;flex:0 1 auto;}.aw-strip .aw-b{flex:1 1 auto;flex-wrap:nowrap;gap:6px;}' +
-      '.aw-strip .aw-b .btn{min-height:40px;font-size:13px;line-height:1.2;padding:4px 12px;flex:0 1 auto;}.aw-strip .aw-b .btn-primary{flex:1 1 auto;}' +
-      '.aw-strip.aw-nob{padding-left:6px;}.aw-strip.aw-nob b{display:none;}' }));
-    var whose = poss(name) + ' ' + what, me;
-    me = awayEl = el('div', { class: 'aw-ask', role: 'status', 'aria-live': 'polite' }, [
-      el('b', { text: name + ' hasn’t come back' }),
-      el('p', { text: 'The computer can play ' + whose + ' until ' + name + ' joins this table again.' }),
-      el('div', { class: 'aw-b' }, [
-        el('button', { type: 'button', class: 'btn btn-primary', text: 'Let the computer play ' + whose, onclick: function () { if (awayEl !== me) return; Kit.haptic && Kit.haptic('light'); awayCardOff(); onBot(); awayNext(); } }),
-        el('button', { type: 'button', class: 'btn btn-ghost', text: 'Keep waiting', onclick: function () { if (awayEl !== me) return; awayCardOff(); onWait(); awayNext(); } })
-      ])
-    ]);
-    document.body.appendChild(awayEl); awayPlace(awayEl, cabEl, AW_OBS); Kit.sfx('pop');
-    var e0 = awayEl; requestAnimationFrame(function () { requestAnimationFrame(function () { e0.classList.add('show'); }); });
-  }
-  function awayCardOff() { if (awayEl) { var e0 = awayEl; e0.classList.remove('show'); e0.classList.add('gone'); setTimeout(function () { e0.remove(); }, 240); } awayEl = null; awayShown = null; }
-  var AW_OBS = 'button, .ar-hint';
-  window.addEventListener('resize', function () { if (awayEl) requestAnimationFrame(function () { requestAnimationFrame(function () { awayPlace(awayEl, cabEl, AW_OBS); }); }); });
+  var awayShown = null;
+  function awayCardOff() { if (awayAsk) { awayAsk.close(); awayAsk = null; } awayShown = null; if (awayHold) { awayHold = false; lastT = 0; acc = 0; } }
   function poss(n) { return Kit.poss(n).replace(/'/g, '\u2019'); }
-  // Where the card lies: somewhere that covers neither the field nor a control, as wide as it can be there (beside
-  // the field, at the right first on a screen wider than tall: where you act); with no such room, across the game
-  // bar as one row of buttons. Measured again whenever the window changes size.
-  function awayPlace(card, field, obsSel) {
-    if (!card) return;
-    if (!card.isConnected || card.classList.contains('gone')) { if (card._ro) card._ro.disconnect(); return; }
-    // the field takes its new size a frame or two after the window does: place the card again when it has
-    if (!card._ro && field && window.ResizeObserver) { card._ro = new ResizeObserver(function () { requestAnimationFrame(function () { awayPlace(card, field, obsSel); }); }); card._ro.observe(field); }
-    var vw = window.innerWidth, vh = window.innerHeight, M = 12, land = vw > vh, shown = card.classList.contains('show');
-    var bar = document.querySelector('.gbar'), br = bar ? bar.getBoundingClientRect() : null, top0 = br ? br.bottom : 0;
-    var obs = [], fr = field && field.isConnected ? field.getBoundingClientRect() : null;
-    if (fr && fr.width) obs.push(fr);
-    Array.prototype.forEach.call(app.querySelectorAll(obsSel), function (e) { if (card.contains(e)) return; var r = e.getBoundingClientRect(); if (r.width && r.height) obs.push(r); });
-    function hit(x, y, w, h) { return obs.some(function (r) { return x < r.right + 6 && r.left - 6 < x + w && y < r.bottom + 6 && r.top - 6 < y + h; }); }
-    function form(cls, w) { card.className = 'aw-ask' + (cls ? ' ' + cls : '') + (shown ? ' show' : ''); card.style.width = w + 'px'; return card.offsetHeight; }
-    function put(x, y) { card.style.left = Math.round(x) + 'px'; card.style.top = Math.round(y) + 'px'; }
-    var forms = [['', [460, 420, 380, 340, 300]], ['aw-side', [300, 270, 240, 210, 180, 160, 140, 128]]];
-    for (var f = 0; f < forms.length; f++) for (var i = 0; i < forms[f][1].length; i++) {
-      var w = forms[f][1][i]; if (w > vw - 2 * M) continue;
-      var h = form(forms[f][0], w), best = null, bs = -1e9;
-      var xs = [vw - M - w, (vw - w) / 2, M]; if (fr) xs.push(fr.right + 8, fr.left - 8 - w);
-      var ys = [vh - M - h]; for (var y = top0 + 8; y + h <= vh - M; y += 8) ys.push(y);
-      xs.forEach(function (x) {
-        if (x < M || x + w > vw - M) return;
-        ys.forEach(function (y) {
-          if (y < top0 + 6 || y + h > vh - M || hit(x, y, w, h)) return;
-          var s = land ? (x + w / 2) * 4 - y : -y * 4 - Math.abs(x + w / 2 - vw / 2);
-          if (s > bs) { bs = s; best = [x, y]; }
-        });
-      });
-      if (best) { put(best[0], best[1]); return; }
-    }
-    if (br) {   // the bar's own row (under any notch): in the room between its title and its buttons, or across it all
-      var room = Math.min(br.height, 62), ins = [];
-      Array.prototype.forEach.call(bar.querySelectorAll('button, .gi, svg'), function (e) { var r = e.getBoundingClientRect(); if (r.width && !(e.parentNode.closest && e.parentNode.closest('svg'))) ins.push([r.left, r.right]); });
-      var tw = document.createTreeWalker(bar, NodeFilter.SHOW_TEXT), tn, rg = document.createRange();
-      while ((tn = tw.nextNode())) if (tn.nodeValue.trim()) { rg.selectNodeContents(tn); var q = rg.getBoundingClientRect(); if (q.width) ins.push([q.left, q.right]); }
-      ins.sort(function (a, b) { return a[0] - b[0]; });
-      var gap = [0, 0], at = 0;
-      ins.concat([[vw, vw]]).forEach(function (r) { if (r[0] - at > gap[1] - gap[0]) gap = [at, r[0]]; at = Math.max(at, r[1]); });
-      var spans = [[gap[0] + 8, Math.min(gap[1] - gap[0] - 16, 640)], [8, vw - 16]];
-      for (var j = 0; j < 2; j++) for (var k = 0; k < 2; k++) {
-        var sw = spans[j][1]; if (sw < 200) continue;
-        var sh = form(k ? 'aw-strip aw-nob' : 'aw-strip', sw);
-        var cut = Array.prototype.some.call(card.querySelectorAll('b, .btn'), function (e) { return e.offsetWidth && (e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1); });
-        if (sh <= room - 4 && !cut) { put(j ? 8 : spans[0][0] + (gap[1] - gap[0] - 16 - sw) / 2, br.bottom - room + (room - sh) / 2); return; }
-      }
-    }
-    var fw = Math.min(300, vw - 2 * M); form('aw-side', fw); put(vw - M - fw, top0 + 8);
+  // Ghosts for the draw: [{id, x, y, ci, name, frac (null while the host chooses)}]
+  function awayList() {
+    if (GV) return GV.aw || [];
+    if (!G || G.mode !== 'host') return [];
+    var now = performance.now();
+    return Object.keys(net.away || {}).map(function (d) { var A = net.away[d]; if (A.P.bot) return null; return { id: A.P.id, x: A.P.x, y: A.P.y, ci: A.P.ci, name: A.name, frac: A.ask ? null : Math.max(0, 1 - (now - A.t0) / A.win) }; }).filter(Boolean);
+  }
+  // the ghosts: each ship as it was, dim and flickering, its ring draining, its name under it; and the computer
+  // flying a ship: a robot badge at its shoulder
+  function drawAway(x, R) {
+    awayList().forEach(function (A) {
+      var col = PCOL[A.ci % 3];
+      x.globalAlpha = Away.ghostAlpha(drawT, A.id); drawSpr(x, shipSpr(A.ci), A.x, A.y - 1); x.globalAlpha = 1;
+      Away.ring(x, A.x, A.y, 13, col, A.frac, drawT, 1.6);
+      x.globalAlpha = 0.9; outlined(A.name.length > 9 ? A.name.slice(0, 8) + '…' : A.name, A.x, A.y + 20, 5.5, col, 1.4); x.globalAlpha = 1;
+    });
+    R.players.forEach(function (p) { if (p.bot && p.alive) Away.bot(x, p.x + 9, p.y - 9, 5.2, PCOL[p.ci % 3]); });
   }
   // The computer flying a ship: under the lowest train's head (a little off, as a person is), firing, and stepping
   // away from bugs, shots and blasts nearby
@@ -3279,8 +3232,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     G.zones.forEach(function (z) { s.zn.push(z.id, q4(z.x), q4(z.y), z.R, Math.round(z.t * 100), z.ci); });
     G.bullets.forEach(function (b) { s.u.push(b.id, b.o, q4(b.x), q4(b.y), BK.indexOf(b.k), ang(b.vx, b.vy)); });
     G.caps.forEach(function (c) { s.cp.push(c.id, POWK.indexOf(c.k) + (c.tut ? 10 : 0), q4(c.x), q4(c.y), Math.round(c.t * 10)); });
-    G.players.forEach(function (p) { s.p.push([p.id, q4(p.x), q4(p.y), (p.alive ? 1 : 0) | (p.inv > 0 ? 2 : 0) | (p.beaming ? 4 : 0), p.lives, p.score, p.power ? POWK.indexOf(p.power) + 1 : 0, Math.round(p.powerT * 100), p.ci, p.name]); });
+    G.players.forEach(function (p) { s.p.push([p.id, q4(p.x), q4(p.y), (p.alive ? 1 : 0) | (p.inv > 0 ? 2 : 0) | (p.beaming ? 4 : 0) | (p.bot ? 8 : 0), p.lives, p.score, p.power ? POWK.indexOf(p.power) + 1 : 0, Math.round(p.powerT * 100), p.ci, p.name]); });
     if (G.boss) { var B = G.boss; s.b = [B.id, BT.indexOf(B.type), q4(B.x), q4(B.y), Math.round(B.hp * 10) / 10, Math.round(B.max * 10) / 10, BST.indexOf(B.st), Math.round(B.z || 0), B.flash > 0 ? 1 : 0, B.ph, B.st === 'hold' ? Math.round(B.tx) * 1000 + Math.round(B.ty) : -1, B.vul ? 1 : 0]; }
+    var aw = awayList(); if (aw.length) s.aw = aw.map(function (A) { return [A.id, q4(A.x), q4(A.y), A.ci, A.frac == null ? -1 : Math.round(A.frac * 1000), A.name]; });
+    if (awayHold && awayShown) s.hz = [awayShown.name, awayShown.P.ci];
     t.broadcast(s, false);
   }
   function netOver(R) {
@@ -3305,7 +3260,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       peer.on('close', function (why) {
         if (net.peer !== peer) return;
         var playing = screen === 'game' && GV && !GV.ended;
-        net.peer = null; net.mode = null;
+        net.peer = null; net.mode = null; awayClear();
         if (playing) { GV.ended = true; var res = GV.lastRes(); endGame(false, res, (net.hostName || 'The host') + (why === 'host' || why === 'left' ? ' left the game' : '’s table lost its connection')); }
         else if (screen === 'wait') { Kit.toast((net.hostName || 'The host') + ' closed the table'); goLobby(); }
       });
@@ -3392,12 +3347,26 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
       var pm = {}; (A.p || []).forEach(function (p) { pm[p[0]] = p; });
       var wasAlive = V.pred.alive;
       V.players = B.p.map(function (p) {
-        var o = pm[p[0]] || p, P = { id: p[0], x: o[1] / 4 + (p[1] - o[1]) / 4 * a, y: o[2] / 4 + (p[2] - o[2]) / 4 * a, alive: !!(p[3] & 1), inv: p[3] & 2 ? 1 : 0, beaming: !!(p[3] & 4), lives: p[4], score: p[5], power: p[6] ? POWK[p[6] - 1] : null, powerT: p[7] / 100, ci: p[8], name: p[9] };
+        var o = pm[p[0]] || p, P = { id: p[0], x: o[1] / 4 + (p[1] - o[1]) / 4 * a, y: o[2] / 4 + (p[2] - o[2]) / 4 * a, alive: !!(p[3] & 1), inv: p[3] & 2 ? 1 : 0, beaming: !!(p[3] & 4), lives: p[4], score: p[5], power: p[6] ? POWK[p[6] - 1] : null, powerT: p[7] / 100, ci: p[8], name: p[9], bot: !!(p[3] & 8) };
         if (P.id === V.me) { V.ci = P.ci; V.power = P.power; if (P.alive && !wasAlive) { V.pred.x = p[1] / 4; V.pred.y = p[2] / 4; } V.pred.alive = P.alive; }
         return P;
       });
     }
-    guestLocal(dt);
+    guestAway(V.buf.length ? V.buf[V.buf.length - 1] : null);
+    if (!V.hz) guestLocal(dt);
+  }
+  // The ghosts as the host has them, and while the host chooses who flies a ship that has lost its device, the game
+  // holds still here too with a plate saying so
+  var guestNote = null;
+  function guestAway(B) {
+    var V = GV;
+    V.aw = B && B.aw ? B.aw.map(function (a) { return { id: a[0], x: a[1] / 4, y: a[2] / 4, ci: a[3], frac: a[4] < 0 ? null : a[4] / 1000, name: a[5] }; }) : [];
+    var hz = B && B.hz && !V.ended && !V.stall ? B.hz : null;
+    if (!!hz !== !!V.hz) {
+      V.hz = hz;
+      if (guestNote) { guestNote.close(); guestNote = null; }
+      if (hz) guestNote = Away.note({ name: hz[0], color: PCOL[hz[1] % 3], at: cabEl, mid: true, dim: true, text: (V.hostName || 'The host') + ' is choosing who flies ' + poss(hz[0]) + ' ship.' });
+    }
   }
   // A guest's own ship: moved here straight away; its plain, rapid and ice shots are drawn here too (the
   // host's copy decides what they hit). Homing missiles and hits come from the host.

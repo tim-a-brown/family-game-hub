@@ -12,6 +12,7 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <script src="../online.js"></script>
+<script src="../away.js"></script>
 <style>
 /* ── Play view: fills the screen, no page scroll (the same cabinet as Tetris) ── */
 html.tn-on,html.tn-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
@@ -487,6 +488,7 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
     if (m.t === 'use') { onUse(m.from, m.to, m.k); return; }
     if (m.t === 'cl') { onLines(m.from, m.n); return; }
     if (m.t === 'dead') { onDead(m.s, m.f, m.pf); return; }
+    if (m.t === 'aw') { awaySet(m.s, m.off ? 0 : m.left, m.back); return; }
     if (m.t === 'end') { finish(m); return; }
   }
   function sendField(e) {
@@ -795,7 +797,7 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
         peer._pid = r.pid;
         peer.send({ t: 'hi', you: peer._pid }, true);
         sendRoster(); Kit.sfx('pop');
-        if (back) { var S = M.seats.filter(function (x) { return x.pid === r.pid; })[0]; if (S) { peer.send(backMsg(S), true); Kit.toast(r.name + ' is back'); } }
+        if (back) { var S = M.seats.filter(function (x) { return x.pid === r.pid; })[0]; if (S) { peer.send(backMsg(S), true); bcastAway(S.i, 0, true); awaySet(S.i, 0, true); } }
       });
       table.on('leave', function (peer) {
         // (a link this device's newer one has replaced: nothing to take away)
@@ -812,9 +814,11 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
             // (that device is linking up again right now: its field waits for it)
             var j = net.joining && net.joining[r.dev]; if (j && Date.now() - j < 30000) { A.t = setTimeout(out, 2000); return; }
             delete net.away[r.dev];
+            if (M === M0 && !M.over) { bcastAway(s.i, 0); awaySet(s.i, 0); }
             if (M === M0 && !M.over && s.alive) { bcast({ t: 'dead', s: s.i }); onDead(s.i); checkEnd(); }
           }, window.__awayMs || AWAY_MS);
-          Kit.toast(r.name + ' dropped out. ' + Kit.poss(r.name).replace(/'/g, '\u2019') + ' field waits ' + Math.round(AWAY_MS / 1000) + ' seconds for ' + r.name + ' to come back.');
+          // (no words: their field dims where it is, a ring on it draining over the hold, on every device)
+          bcastAway(s.i, window.__awayMs || AWAY_MS); awaySet(s.i, window.__awayMs || AWAY_MS); Kit.sfx('tap');
           return;
         }
         Kit.toast(r.name + ' left');
@@ -829,7 +833,34 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
     }).catch(function (e) { if (e && e.message === 'Cancelled') return goLobby(); Kit.toast('Couldn’t open a table. ' + Online.errText(e)); goLobby(); });
   }
   var AWAY_MS = 45000;
-  function clearAway() { Object.keys(net.away).forEach(function (d) { clearTimeout(net.away[d].t); }); net.away = {}; }
+  function clearAway() { Object.keys(net.away).forEach(function (d) { clearTimeout(net.away[d].t); }); net.away = {}; AW = {}; }
+  // A field waiting for its device, as every device draws it (drawAway): the seat and when the hold runs out here
+  var AW = {};
+  function bcastAway(i, left, back) { if (M && M.mode === 'host' && net.table) net.table.broadcast(left ? { t: 'aw', s: i, left: Math.round(left) } : { t: 'aw', s: i, off: 1, back: back ? 1 : 0 }, true); }
+  function awaySet(i, left, back) {
+    if (left) { AW[i] = { end: performance.now() + left, ms: left }; return; }
+    var was = AW[i]; delete AW[i];
+    // back: their field lights up again, and a moment says so
+    if (was && back && M && M.seats[i]) { var F = fieldFx(i); F.ring = 1; F.flash = 0.6; F.col = PCOL[i % 6]; var q = rectOf(i), cr = cv.getBoundingClientRect(); Away.back({ name: M.seats[i].name, color: PCOL[i % 6], rect: { left: cr.left + q.x, top: cr.top + q.y, width: q.w, height: q.h } }); }
+  }
+  // over a waiting field: the field dims and flickers, and on it their initial in a ring that drains over the hold
+  function drawAway(s, X, Y, WW, WH, mini) {
+    var A = AW[s]; if (!A || !M.seats[s] || !M.seats[s].alive) return;
+    var now = performance.now(), t = now / 1000, col = PCOL[s % 6], nm = M.seats[s].name || '?';
+    g.save();
+    g.fillStyle = 'rgba(8,6,24,' + (0.62 - 0.08 * Math.sin(t * 2.2 + s)) + ')'; g.fillRect(X, Y, WW, WH);
+    // a lost signal: a faint band rolls down the field now and then
+    var band = ((t * 0.45 + s * 0.3) % 1.6) - 0.3;
+    if (band > 0 && band < 1) { g.fillStyle = hexA(col, 0.07); g.fillRect(X, Y + band * WH, WW, Math.max(2, WH * 0.05)); }
+    var r = Math.max(9, Math.min(WW * 0.3, WH * 0.16)), cx = X + WW / 2, cy = Y + WH * 0.45;
+    var frac = Math.max(0, (A.end - now) / A.ms);
+    Away.ring(g, cx, cy, r, col, frac > 0 ? frac : null, t, Math.max(1.5, r * 0.11));
+    g.globalAlpha = 0.85; g.fillStyle = col; g.beginPath(); g.arc(cx, cy, r * 0.66, 0, Math.PI * 2); g.fill();
+    g.globalAlpha = 1;
+    label(nm.charAt(0).toUpperCase(), cx, cy + r * 0.04, Math.round(r * 0.78), '#16102e', 'center', false, true);
+    if (!mini && WH > 120) label(nm, cx, cy + r + Math.max(14, r * 0.5), Math.round(Math.max(12, Math.min(20, r * 0.42))), col, 'center', true, false);
+    g.restore();
+  }
   // a player back at the match: their seat, every field as it stands now, and how far the match has gone
   function backMsg(S) {
     return { t: 'start', seats: M.seats.map(function (x) { return { name: x.name, bot: x.bot, pid: x.pid }; }), you: S.i, skill: M.skill,
@@ -905,6 +936,7 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
     });
   }
   function guestStart(m) {
+    AW = {};
     net.wait = null;
     Array.prototype.forEach.call(document.querySelectorAll('.k-win'), function (n) { n.remove(); });
     makeMatch({ mode: 'guest', me: m.you, seats: m.seats, skill: m.skill, shadow: opts().shadow !== 'off' });
@@ -1465,6 +1497,7 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
     if (F.flash > 0) { g.fillStyle = hexA(F.col.charAt(0) === '#' ? F.col : '#ffffff', Math.min(0.55, F.flash * 0.5)); g.fillRect(X, Y, WW, WH); }
     if (F.swap > 0) { var sw = F.swap; g.fillStyle = hexA(SP.s.col, sw * 0.4); g.fillRect(X, Y + WH * (1 - sw), WW, WH * sw); }
     g.restore();
+    drawAway(s, X, Y, WW, WH, mini);
     // targeting: every living field glows in its player's colour, and shows its number
     if (target && S.alive && M.phase === 'play') {
       var pulse = 0.55 + 0.45 * Math.sin(performance.now() / 160);

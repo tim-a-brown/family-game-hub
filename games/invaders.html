@@ -14,6 +14,7 @@
 <script src="../arcade-hi.js"></script>
 <script src="../arcade-music.js"></script>
 <script src="../online.js"></script>
+<script src="../away.js"></script>
 <style>
 /* ── Play view: the LED game screen on top, a plain control strip under it (beside it when turned) ── */
 html.ar-on,html.ar-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
@@ -1461,14 +1462,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     if (view !== 'game' || !G) { ufoSoundOff(); return false; }
     var n = 0;
     if (NET.mode === 'guest' && G.net) { if (!G.ended) guestFrame(dt); n = 1; }
-    else if (!paused && !G.ended) {
+    else if (!paused && !G.ended && !awayHold) {
       acc += dt;
       while (acc >= TICK && n++ < 6) { acc -= TICK; update(); if (G.ended) break; }
       if (n >= 6) acc = 0;
     }
-    if (!paused && !G.ended) { if (G.phase === 'play' || G.phase === 'clear') MUS.tick(); else MUS.stop(); }
+    if (!paused && !G.ended && !awayHold) { if (G.phase === 'play' || G.phase === 'clear') MUS.tick(); else MUS.stop(); }
     if (NET.mode === 'host' && G.net) netTick();
-    if (drawIt && (n || !dt || paused || G.ended)) draw();   // 120Hz screens: no step this frame, nothing new to draw
+    if (drawIt && (n || !dt || paused || G.ended || awayState())) draw();   // 120Hz screens: no step this frame, nothing new to draw
     return true;
   }
   function wake() { if (!raf && !frozen && view === 'game' && G && !paused && !G.ended && !document.hidden) { lastT = 0; raf = requestAnimationFrame(loop); } }
@@ -1663,7 +1664,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
       if (G.phase === 'dying' || G.phase === 'over') break;
       var a = aimOf(i), cx = canX(i), cy = CAN_Y - 4, ang = Math.atan2(a.y - cy, a.x - cx);
       var bx0 = cx + Math.cos(ang) * BARREL, by0 = cy + Math.sin(ang) * BARREL;
-      g.strokeStyle = PCOL[TWO() ? i : 0]; g.globalAlpha = 0.32 + 0.5 * G.muz[i]; g.lineWidth = 1.6 + 1.5 * G.muz[i];
+      g.strokeStyle = PCOL[TWO() ? i : 0]; g.globalAlpha = (0.32 + 0.5 * G.muz[i]) * (i === 1 && awayState() === 'ghost' ? 0.3 : 1); g.lineWidth = 1.6 + 1.5 * G.muz[i];
       g.beginPath(); g.moveTo(bx0, by0); g.lineTo(a.x, a.y); g.stroke();
     }
     g.globalAlpha = 1;
@@ -1697,7 +1698,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     // targets
     if (G.phase !== 'dying' && G.phase !== 'over') for (i = 0; i < (TWO() ? 2 : 1); i++) {
       var am = aims[i], rs = reticle(PCOL[i], lockAt(am.x, am.y)), sc = 1 + 0.05 * Math.sin(t * 6);
+      if (i === 1 && awayState() === 'ghost') g.globalAlpha = 0.25;
       g.drawImage(rs.c, am.x - rs.s * sc, am.y - rs.s * sc, rs.s * 2 * sc, rs.s * 2 * sc);
+      g.globalAlpha = 1;
     }
     // score popups
     for (i = 0; i < pops.length; i++) {
@@ -1740,7 +1743,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     if (G.phase === 'dying' || G.phase === 'over') return;
     for (var i = 0; i < 2; i++) {
       var a = aimOf(i), cx = canX(i), cy = CAN_Y - 4, ang = Math.atan2(a.y - cy, a.x - cx), bl = BARREL - G.rec[i] * 5;
-      var pc = PCOL[TWO() ? i : 0];
+      var pc = PCOL[TWO() ? i : 0], gh = i === 1 && awayState() === 'ghost';
+      if (gh) g.globalAlpha = Away.ghostAlpha(t, 1);
       g.save(); g.translate(cx, cy); g.rotate(ang);
       g.fillStyle = '#2a8a3a'; g.fillRect(0, -6, bl, 12);
       g.fillStyle = '#6dff4a'; g.fillRect(2, -3.5, bl - 4, 7);
@@ -1752,7 +1756,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
       if (G.muz[i] > 0) drawGlow('#ffffff', tx, ty, 6, G.muz[i]);
       g.globalCompositeOperation = 'source-over';
       drawSpr(ledSprite('base', ART.base[0], '#6dff4a', 3), cx, CAN_Y + 6);
+      g.globalAlpha = 1;
     }
+    drawAway(t);
   }
   function bar(x, y, w, h, f, col, segs) {
     g.fillStyle = 'rgba(255,255,255,.1)'; g.fillRect(x, y, w, h);
@@ -1921,7 +1927,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
       awayOff(); NET.bot = false; NET.botF = false;
       sendInit(peer);
       if (G.phase === 'choose') netChoose();
-      netStatus(); Kit.toast(NET.them + ' is back'); Kit.sfx('pop');
+      netStatus();
+      // the ghost lights up in its corner, and a moment says so
+      ring(canX(1), CAN_Y - 2, PCOL[1], 46, 0.7, 60); sPower();
+      Away.back({ name: NET.them, color: PCOL[1], at: boxEl, top: true, line: 'The blue cannon is ' + poss(NET.them) + ' again.' });
       return;
     }
     Kit.toast(NET.them + ' joined'); Kit.sfx('pop');
@@ -1930,7 +1939,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     if (peer !== NET.peer) return;
     NET.peer = null; NET.gf = false;
     if (G && G.net && !G.ended && view === 'game') {   // the battle goes on; the blue cannon waits for them
-      Kit.toast(NET.them + ' left. If ' + NET.them + ' joins this table again, the blue cannon is theirs again.');
+      Kit.sfx('tap');   // (the cannon fades to its ghost, its ring draining while the table waits)
       if (G.phase === 'choose' && !G.pl[1].wpn && G.pl[0].wpn) { if (NET.bot) pickWeapon(1, botWeapon()); else showChoice(1); }
       if (!NET.bot) awayLater();
       netStatus();
@@ -2186,110 +2195,51 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   }
 
   // ── A player who hasn't come back ──
-  // The blue cannon waits for its device. After 45 seconds the host can let the computer play it (botAim) or keep
-  // waiting; the card lies over the top of the field and the battle goes on under it. The moment that device joins
-  // again, the cannon is theirs again.
-  var AWAY_ASK = 45000, awayT = 0, awayEl = null;
-  function awayLater() {
+  // The blue cannon waits for its device, ghosted in its corner with a ring round it that drains over the wait
+  // (drawAway). When the wait runs out the battle holds still (awayHold) and the host chooses on a panel over the
+  // field (Away.ask): the computer plays the cannon (botAim, with a robot badge on it) or the table keeps waiting, for
+  // twice as long each time (Away.wait). The moment that device joins again, the cannon is theirs again.
+  var awayT = 0, awayAsk = null, awayHold = false, awayN = 0, awayT0 = 0, awayWin = 0, awayAsking = false;
+  function awayLater(again) {
     clearTimeout(awayT); var G0 = G;
+    if (!again) awayN = 0;
+    awayT0 = performance.now(); awayWin = Away.wait(awayN); awayAsking = false;
     awayT = setTimeout(function ask() {
       // (that device is linking up again right now: wait for it rather than ask)
       var j = NET.joining && NET.themDev && NET.joining[NET.themDev];
       if (j && Date.now() - j < 30000 && !NET.peer) { awayT = setTimeout(ask, 2000); return; }
       awayT = 0; if (G === G0 && G && G.net && !G.ended && NET.mode === 'host' && !NET.peer && NET.themDev && !NET.bot) awayCard();
-    }, window.__awayAskMs || AWAY_ASK);
+    }, awayWin);
   }
-  function awayOff() { clearTimeout(awayT); awayT = 0; if (awayEl) { var e0 = awayEl; e0.classList.remove('show'); e0.classList.add('gone'); setTimeout(function () { e0.remove(); }, 240); } awayEl = null; }
+  function awayOff() { clearTimeout(awayT); awayT = 0; awayAsking = false; if (awayAsk) { awayAsk.close(); awayAsk = null; } if (awayHold) { awayHold = false; lastT = 0; acc = 0; } }
   function awayCard() {
-    var name = NET.them, whose = poss(name) + ' cannon', me;
-    if (awayEl) awayOff();
-    if (!document.getElementById('aw-css')) document.head.appendChild(el('style', { id: 'aw-css', text:
-      '.aw-ask{position:fixed;left:0;top:0;z-index:60;width:460px;max-width:calc(100vw - 24px);box-sizing:border-box;padding:14px 16px 16px;border-radius:20px;' +
-      'background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 60%),var(--toast-bg,rgba(40,43,74,.92));box-shadow:inset 0 1px 0 var(--gold-hi,#ffd76a),0 0 0 1px var(--gl-line,rgba(255,255,255,.12)),0 18px 40px -16px rgba(0,0,0,.7);' +
-      '-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:var(--text,#fff);transform:translateY(-10px);opacity:0;transition:transform .22s ease,opacity .22s ease;}' +
-      '.aw-ask.show{transform:none;opacity:1;}.aw-ask.gone{pointer-events:none;}' +
-      '.aw-ask b{display:block;font-size:17px;font-weight:800;line-height:1.25;}' +
-      '.aw-ask p{margin:4px 0 12px;font-size:14px;line-height:1.35;color:var(--text-2,rgba(255,255,255,.75));}' +
-      '.aw-ask .aw-b{display:flex;flex-wrap:wrap;gap:8px;}' +
-      '.aw-ask .aw-b .btn{flex:1 1 auto;min-height:44px;white-space:normal;}' +
-      '.aw-ask .aw-b .btn-primary{flex-basis:220px;}' +
-      // beside the field: the title over the two buttons, one above the other
-      '.aw-ask.aw-side{padding:12px;border-radius:18px;}.aw-side p{display:none;}.aw-side b{font-size:15px;margin-bottom:10px;}' +
-      '.aw-side .aw-b{flex-direction:column;}.aw-side .aw-b .btn{flex:none;width:100%;font-size:14px;padding-left:10px;padding-right:10px;}' +
-      // across the game bar, where the field leaves no room: one row
-      '.aw-ask.aw-strip{display:flex;align-items:center;gap:12px;padding:6px 6px 6px 14px;border-radius:16px;background:var(--sheet-solid,#23264a);}.aw-strip p{display:none;}' +
-      '.aw-strip b{font-size:14px;flex:0 1 auto;}.aw-strip .aw-b{flex:1 1 auto;flex-wrap:nowrap;gap:6px;}' +
-      '.aw-strip .aw-b .btn{min-height:40px;font-size:13px;line-height:1.2;padding:4px 12px;flex:0 1 auto;}.aw-strip .aw-b .btn-primary{flex:1 1 auto;}' +
-      '.aw-strip.aw-nob{padding-left:6px;}.aw-strip.aw-nob b{display:none;}' }));
-    me = awayEl = el('div', { class: 'aw-ask', role: 'status', 'aria-live': 'polite' }, [
-      el('b', { text: name + ' hasn’t come back' }),
-      el('p', { text: 'The computer can play ' + whose + ' until ' + name + ' joins this table again.' }),
-      el('div', { class: 'aw-b' }, [
-        el('button', { type: 'button', class: 'btn btn-primary', text: 'Let the computer play ' + whose, onclick: function () {
-          if (awayEl !== me) return;
-          awayOff(); if (!G || G.ended || NET.peer) return;
-          NET.bot = true; NET.botF = false; NET.botT = null; Kit.haptic('light'); sPower();
-          pop(WW * 0.72, AIM_BOT - 20, 'COMPUTER', PCOL[1], 1); Kit.toast('The computer is playing ' + whose + ' until ' + name + ' comes back.');
+    var name = NET.them, whose = poss(name) + ' cannon';
+    if (awayAsk) awayAsk.close(true);
+    awayAsking = true; awayHold = true; resetInput(); MUS.stop(true); ufoSoundOff();
+    awayAsk = Away.ask({ name: name, color: PCOL[1], at: boxEl, line: poss(name) + ' device dropped out of the game.',
+      choices: [{ id: 'bot', icon: 'bot', main: true, label: 'Let the computer play ' + whose }, { id: 'wait', icon: 'wait', label: 'Keep waiting for ' + name }],
+      onPick: function (id) {
+        awayAsk = null; awayAsking = false; awayHold = false; lastT = 0; acc = 0;
+        if (!G || G.ended || NET.peer) return;
+        if (id === 'bot') {
+          NET.bot = true; NET.botF = false; NET.botT = null; sPower();
+          Away.botOn({ color: PCOL[1], at: boxEl, top: true, title: 'The computer is playing ' + whose, line: 'It’s ' + poss(name) + ' again as soon as ' + name + ' is back.' });
           if (G.phase === 'choose' && !G.pl[1].wpn && G.pl[0].wpn) pickWeapon(1, botWeapon());
-        } }),
-        el('button', { type: 'button', class: 'btn btn-ghost', text: 'Keep waiting', onclick: function () { if (awayEl === me) awayOff(); } })
-      ])
-    ]);
-    document.body.appendChild(awayEl); awayPlace(awayEl, boxEl, AW_OBS); Kit.sfx('pop');
-    var e0 = awayEl; requestAnimationFrame(function () { requestAnimationFrame(function () { e0.classList.add('show'); }); });
+        } else { awayN++; awayLater(true); }
+      } });
   }
-  var AW_OBS = '.inv-stick, .inv-fire, .inv-lab, .inv-auto, .inv-pbtn, .inv-top > *, .ar-hint';
-  window.addEventListener('resize', function () { if (awayEl) requestAnimationFrame(function () { requestAnimationFrame(function () { awayPlace(awayEl, boxEl, AW_OBS); }); }); });
   function poss(n) { return Kit.poss(n).replace(/'/g, '\u2019'); }
-  // Where the card lies: somewhere that covers neither the field nor a control, as wide as it can be there (beside
-  // the field, at the right first on a screen wider than tall: where you act); with no such room, across the game
-  // bar as one row of buttons. Measured again whenever the window changes size.
-  function awayPlace(card, field, obsSel) {
-    if (!card) return;
-    if (!card.isConnected || card.classList.contains('gone')) { if (card._ro) card._ro.disconnect(); return; }
-    // the field takes its new size a frame or two after the window does: place the card again when it has
-    if (!card._ro && field && window.ResizeObserver) { card._ro = new ResizeObserver(function () { requestAnimationFrame(function () { awayPlace(card, field, obsSel); }); }); card._ro.observe(field); }
-    var vw = window.innerWidth, vh = window.innerHeight, M = 12, land = vw > vh, shown = card.classList.contains('show');
-    var bar = document.querySelector('.gbar'), br = bar ? bar.getBoundingClientRect() : null, top0 = br ? br.bottom : 0;
-    var obs = [], fr = field && field.isConnected ? field.getBoundingClientRect() : null;
-    if (fr && fr.width) obs.push(fr);
-    Array.prototype.forEach.call(app.querySelectorAll(obsSel), function (e) { if (card.contains(e)) return; var r = e.getBoundingClientRect(); if (r.width && r.height) obs.push(r); });
-    function hit(x, y, w, h) { return obs.some(function (r) { return x < r.right + 6 && r.left - 6 < x + w && y < r.bottom + 6 && r.top - 6 < y + h; }); }
-    function form(cls, w) { card.className = 'aw-ask' + (cls ? ' ' + cls : '') + (shown ? ' show' : ''); card.style.width = w + 'px'; return card.offsetHeight; }
-    function put(x, y) { card.style.left = Math.round(x) + 'px'; card.style.top = Math.round(y) + 'px'; }
-    var forms = [['', [460, 420, 380, 340, 300]], ['aw-side', [300, 270, 240, 210, 180, 160, 140, 128]]];
-    for (var f = 0; f < forms.length; f++) for (var i = 0; i < forms[f][1].length; i++) {
-      var w = forms[f][1][i]; if (w > vw - 2 * M) continue;
-      var h = form(forms[f][0], w), best = null, bs = -1e9;
-      var xs = [vw - M - w, (vw - w) / 2, M]; if (fr) xs.push(fr.right + 8, fr.left - 8 - w);
-      var ys = [vh - M - h]; for (var y = top0 + 8; y + h <= vh - M; y += 8) ys.push(y);
-      xs.forEach(function (x) {
-        if (x < M || x + w > vw - M) return;
-        ys.forEach(function (y) {
-          if (y < top0 + 6 || y + h > vh - M || hit(x, y, w, h)) return;
-          var s = land ? (x + w / 2) * 4 - y : -y * 4 - Math.abs(x + w / 2 - vw / 2);
-          if (s > bs) { bs = s; best = [x, y]; }
-        });
-      });
-      if (best) { put(best[0], best[1]); return; }
-    }
-    if (br) {   // the bar's own row (under any notch): in the room between its title and its buttons, or across it all
-      var room = Math.min(br.height, 62), ins = [];
-      Array.prototype.forEach.call(bar.querySelectorAll('button, .gi, svg'), function (e) { var r = e.getBoundingClientRect(); if (r.width && !(e.parentNode.closest && e.parentNode.closest('svg'))) ins.push([r.left, r.right]); });
-      var tw = document.createTreeWalker(bar, NodeFilter.SHOW_TEXT), tn, rg = document.createRange();
-      while ((tn = tw.nextNode())) if (tn.nodeValue.trim()) { rg.selectNodeContents(tn); var q = rg.getBoundingClientRect(); if (q.width) ins.push([q.left, q.right]); }
-      ins.sort(function (a, b) { return a[0] - b[0]; });
-      var gap = [0, 0], at = 0;
-      ins.concat([[vw, vw]]).forEach(function (r) { if (r[0] - at > gap[1] - gap[0]) gap = [at, r[0]]; at = Math.max(at, r[1]); });
-      var spans = [[gap[0] + 8, Math.min(gap[1] - gap[0] - 16, 640)], [8, vw - 16]];
-      for (var j = 0; j < 2; j++) for (var k = 0; k < 2; k++) {
-        var sw = spans[j][1]; if (sw < 200) continue;
-        var sh = form(k ? 'aw-strip aw-nob' : 'aw-strip', sw);
-        var cut = Array.prototype.some.call(card.querySelectorAll('b, .btn'), function (e) { return e.offsetWidth && (e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1); });
-        if (sh <= room - 4 && !cut) { put(j ? 8 : spans[0][0] + (gap[1] - gap[0] - 16 - sw) / 2, br.bottom - room + (room - sh) / 2); return; }
-      }
-    }
-    var fw = Math.min(300, vw - 2 * M); form('aw-side', fw); put(vw - M - fw, top0 + 8);
+  // the blue cannon while its device is away (a ghost in a draining ring, its name over it) or the computer plays it
+  // (a robot badge): 'ghost', 'bot' or ''
+  function awayState() { return NET.mode === 'host' && G && G.net && !G.ended && !NET.peer && NET.themDev ? (NET.bot ? 'bot' : 'ghost') : ''; }
+  function drawAway(t) {
+    var st = awayState(); if (!st || G.phase === 'dying' || G.phase === 'over') return;
+    // (in its corner: the ring stays inside the field's edges; never smaller on the screen than a fingertip's mark)
+    var cx = canX(1) - 3, cy = CAN_Y - 7, px = DPR / S;
+    if (st === 'bot') { Away.bot(g, cx, CAN_Y - 36, Math.max(9, 12 * px), PCOL[1]); return; }
+    var fr = awayAsking ? null : Math.max(0, 1 - (performance.now() - awayT0) / awayWin), r = 16;
+    Away.ring(g, cx, cy, r, PCOL[1], fr, t, Math.max(2.2, 2 * px));
+    text(NET.them.toUpperCase().slice(0, 8), WW - 6, cy - r - 12, 1.3, PCOL[1], 'r');
   }
   function botWeapon() { return Math.random() < 0.5 ? 'ring' : 'missile'; }
   // The computer playing the blue cannon: its sight moves at a person's speed to the most pressing target it can
@@ -2346,7 +2296,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   window.__inv = {
     get: function () {
       if (!G) return null;
-      return { phase: G.phase, wave: G.wave, type: G.type, shield: G.shield, ib: G.ib, nb: G.nb, WW: WW, WH: WH, warned: !!G.warned, fv: !!(F && F.fv), grid: !!(F && F.grid),
+      return { t: G.t, held: awayHold, phase: G.phase, wave: G.wave, type: G.type, shield: G.shield, ib: G.ib, nb: G.nb, WW: WW, WH: WH, warned: !!G.warned, fv: !!(F && F.fv), grid: !!(F && F.grid),
         pl: G.pl.map(function (p) { return { name: p.name, score: p.score, streak: p.streak, best: p.best, wpn: p.wpn, kills: p.kills }; }), score: team(),
         aim: { x: aims[0].x, y: aims[0].y }, aim2: { x: aims[1].x, y: aims[1].y },
         invs: invs.length, kinds: invs.reduce(function (o, v) { o[v.kind + ':' + v.st] = (o[v.kind + ':' + v.st] || 0) + 1; return o; }, {}),

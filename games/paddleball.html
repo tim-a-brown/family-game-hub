@@ -14,6 +14,7 @@
 <script src="../arcade-hi.js"></script>
 <script src="../arcade-music.js"></script>
 <script src="../online.js"></script>
+<script src="../away.js"></script>
 <link rel="stylesheet" href="paddleball/tunnel.css">
 <script type="importmap">{"imports":{"three":"../vendor/three/three.module.min.js","three/addons/":"../vendor/three/addons/"}}</script>
 <script type="module" src="paddleball/tunnel.js"></script>
@@ -370,11 +371,11 @@ html.pd-land .ar-pbtn{width:100%;height:44px;}
     P.flash = 1;
     sHit(sp, smash);
     for (var i = 0; i < (smash ? 18 : 7); i++) part(l, c, dir * (60 + Math.random() * 200), (Math.random() - 0.5) * 260, PC[p], 0.35 + Math.random() * 0.3, 1.2 + Math.random() * 1.6);
-    if (rally === 20 || rally === 40) { Kit.moment({ title: rally + '-hit rally', line: 'The ball has crossed the court ' + rally + ' times without a miss.', at: cabEl, ms: 1500 }); Kit.sfx('good'); }
+    if (rally === 20 || rally === 40) { Kit.moment({ title: rally + '-hit rally', line: 'The ball has crossed the court ' + rally + ' times without a miss.', at: function () { return cabEl; }, ms: 1500 }); Kit.sfx('good'); }
     // against the computer the board keeps the longest rally: passing it is a moment, once a match
     if (G.mode === 'cpu' && !G.stats.rallyPB) {
       if (G.rb0 == null) G.rb0 = ArcadeHi.best('paddleball') || 0;
-      if (G.rb0 >= 10 && rally === G.rb0 + 1) { G.stats.rallyPB = rally; Kit.moment({ title: 'Longest rally yet', line: 'This rally just passed the best on the board, ' + G.rb0 + ' hits.', icon: 'trophy', at: cabEl, ms: 2000 }); Kit.sfx('win'); Kit.haptic('success'); }
+      if (G.rb0 >= 10 && rally === G.rb0 + 1) { G.stats.rallyPB = rally; Kit.moment({ title: 'Longest rally yet', line: 'This rally just passed the best on the board, ' + G.rb0 + ' hits.', icon: 'trophy', at: function () { return cabEl; }, ms: 2000 }); Kit.sfx('win'); Kit.haptic('success'); }
     }
   }
   function wallSpark(b) { for (var i = 0; i < 4; i++) part(b.l, b.c, (Math.random() - 0.5) * 120, (b.c < FC / 2 ? 1 : -1) * (40 + Math.random() * 80), '#cfe6ff', 0.2, 0.8); }
@@ -415,7 +416,7 @@ html.pd-land .ar-pbtn{width:100%;height:44px;}
     // all square after being 4 or more points down: the comeback is on
     if (G.score[p] === G.score[other] && G.stats.maxDown[p] >= 4 && !won(p)) {
       G.stats.cb = G.stats.cb || [0, 0];
-      if (!G.stats.cb[p]) { G.stats.cb[p] = G.score[p]; Kit.moment({ title: 'All square', line: name(p) + ' was ' + G.stats.maxDown[p] + ' points down and has caught up at ' + G.score[p] + ' all.', icon: 'flame', color: PC[p], at: cabEl, ms: 2000 }); if (G.mode !== 'net' || p === ME) Kit.haptic('success'); }
+      if (!G.stats.cb[p]) { G.stats.cb[p] = G.score[p]; Kit.moment({ title: 'All square', line: name(p) + ' was ' + G.stats.maxDown[p] + ' points down and has caught up at ' + G.score[p] + ' all.', icon: 'flame', color: PC[p], at: function () { return cabEl; }, ms: 2000 }); if (G.mode !== 'net' || p === ME) Kit.haptic('success'); }
     }
     pointFx(p, b.l, b.c);
     var ev = { k: 'pt', p: p, id: b.id, l: r1(b.l), c: r1(b.c), sc: G.score.slice() };
@@ -1009,6 +1010,7 @@ html.pd-land .ar-pbtn{width:100%;height:44px;}
     var a = P2(l - PAD_T / 2, P.c - P.hw), b = P2(l + PAD_T / 2, P.c + P.hw);
     var x = Math.min(a.x, b.x), y = Math.min(a.y, b.y), w = Math.abs(b.x - a.x), h = Math.abs(b.y - a.y);
     g.save();
+    if (awayGhost(p)) g.globalAlpha = Away.ghostAlpha(performance.now() / 1000, p);
     g.shadowColor = PC[p]; g.shadowBlur = 14 + P.flash * 18;
     var gr = LAND ? g.createLinearGradient(x, 0, x + w, 0) : g.createLinearGradient(0, y, 0, y + h);
     gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.35, PC[p]); gr.addColorStop(1, PC[p]);
@@ -1141,8 +1143,8 @@ html.pd-land .ar-pbtn{width:100%;height:44px;}
     if (!back) { NET.themDev = peer.id; NET.them = peer.name && peer.name.toLowerCase() !== NET.me.toLowerCase() ? peer.name : (peer.name || 'Player') + ' 2'; }
     sendRoster();
     if (back) {   // the same device again: the match carries on
-      sendInit(peer); NET.away = false; NET.inAt = performance.now(); NET.quiet = false; netCardOff(); paused = false; lastT = 0; acc = 0; wake(); netStatus();
-      Kit.toast(NET.them + ' is back'); Kit.sfx('pop');
+      sendInit(peer); NET.away = false; NET.inAt = performance.now(); NET.quiet = false; netCardOff(); awayOff(); paused = false; lastT = 0; acc = 0; wake(); netStatus();
+      pads[1].flash = 1; Away.back({ name: NET.them, color: PC[1], at: function () { return cabEl; }, line: 'The match carries on at ' + G.score[0] + ' to ' + G.score[1] + '.' });
       return;
     }
     Kit.toast(NET.them + ' joined'); Kit.sfx('pop');
@@ -1152,9 +1154,8 @@ html.pd-land .ar-pbtn{width:100%;height:44px;}
     NET.peer = null;
     if (G && G.mode === 'net' && !G.ended && view === 'game') {   // the match waits for them
       NET.away = true; paused = true; ptrs = {}; Mus.stop(true);
-      netCard(NET.them + ' left the match', 'The match waits at ' + G.score[0] + ' – ' + G.score[1] + '. If ' + NET.them + ' joins this table again, it carries on from there.',
-        [{ label: 'End the match', fn: function () { G.ended = true; NET.away = false; NET.themDev = null; NET.them = ''; netCardOff(); showWait(); } }]);
-      netStatus();
+      awayPanel('left');
+      netStatus(); draw();
       return;
     }
     NET.themDev = null; NET.them = '';
@@ -1190,12 +1191,12 @@ html.pd-land .ar-pbtn{width:100%;height:44px;}
   // The guest's device has gone quiet (it sends where its paddle is at least five times a second): the match holds
   // still until it speaks again or its link closes, so nobody wins points off a player who can't see the ball
   function netQuiet() {
-    if (!G || G.mode !== 'net' || G.ended || !NET.peer || G.phase === 'over' || G.phase === 'done') { if (NET.quiet) { NET.quiet = false; if (NET.card.indexOf('Waiting for') === 0) netCardOff(); } return false; }
+    if (!G || G.mode !== 'net' || G.ended || !NET.peer || G.phase === 'over' || G.phase === 'done') { if (NET.quiet) { NET.quiet = false; if (awayKind === 'quiet') awayOff(); } return false; }
     var q = performance.now() - (NET.inAt || 0) > 1200;
     if (q !== NET.quiet) {
       NET.quiet = q;
-      if (q) netCard('Waiting for ' + NET.them, NET.them + '’s device has stopped answering. It may be locked or out of range. The match carries on as soon as it’s back.', [{ label: 'End the match', fn: function () { var p = NET.peer; NET.peer = null; if (p) p.close('host'); G.ended = true; NET.quiet = false; NET.themDev = null; NET.them = ''; showWait(); } }]);
-      else { netCardOff(); lastT = 0; acc = 0; }
+      if (q) { awayPanel('quiet'); draw(); }
+      else { awayOff(); lastT = 0; acc = 0; }
     }
     return q;
   }
@@ -1241,7 +1242,7 @@ html.pd-land .ar-pbtn{width:100%;height:44px;}
     return a;
   }
   function showWait() {
-    leaveGame(); closeLobby(); hostTimer(false); netCardOff();
+    leaveGame(); closeLobby(); hostTimer(false); netCardOff(); awayOff();
     app.className = 'stage';
     if (NET.mode === 'host') {
       NET.table.setStatus('open', '');
@@ -1389,15 +1390,15 @@ html.pd-land .ar-pbtn{width:100%;height:44px;}
     var stall = performance.now() - NET.lastAt > 1500;
     if (stall !== NET.stall) {
       NET.stall = stall;
-      if (stall) netCard('Waiting for ' + (NET.hostName || 'the host'), (NET.hostName || 'The host') + '’s device has stopped sending the match. It may be locked or out of range. The match carries on as soon as it’s back.', [{ label: 'Leave the match', fn: function () { leaveOnline(false); goLobby(); } }]);
-      else netCardOff();
+      if (stall) awayPanel('stall');
+      else awayOff();
     }
   }
   function guestLost(peer) {
     if (NET.peer !== peer) return;
     var host = NET.hostName || 'The host', playing = !!(G && G.mode === 'net' && !G.ended && view === 'game');
     NET.peer = null; NET.mode = null; NET.wait = null;
-    netCardOff();
+    netCardOff(); awayOff();
     if (playing) {
       G.ended = true;
       Kit.win({ lose: true, icon: 'meh', title: host + ' left the match',
@@ -1421,6 +1422,33 @@ html.pd-land .ar-pbtn{width:100%;height:44px;}
     ovEl.classList.add('show'); NET.card = title;
   }
   function netCardOff() { if (ovEl && NET.card) { ovEl.classList.remove('show'); ovEl.innerHTML = ''; } NET.card = ''; }
+  // ── The other player's device has dropped out or gone quiet ──
+  // The match holds still, the other paddle ghosted where it was, and a panel over the court gives the choice: keep
+  // waiting (the panel folds into a plate at the top of the court, a tap on it brings the panel back) or end the
+  // match. 'left': their device left the table; 'quiet': it stopped answering; 'stall' (on the guest's device): the
+  // host's stopped sending the match. Their coming back puts it all away.
+  var awayAsk = null, awayPill = null, awayKind = '';
+  function awayWho() { var guest = awayKind === 'stall'; return { name: guest ? NET.hostName || 'The host' : NET.them, color: PC[guest ? 0 : 1] }; }
+  function awayPanel(kind) {
+    if (kind) awayKind = kind;
+    if (awayAsk) { awayAsk.close(true); awayAsk = null; }
+    if (awayPill) { awayPill.close(); awayPill = null; }
+    var w = awayWho(), k = awayKind;
+    awayAsk = Away.ask({ name: w.name, color: w.color, at: function () { return cabEl; },
+      line: k === 'left' ? poss(w.name) + ' device dropped out of the match.' : poss(w.name) + ' device has stopped answering.',
+      choices: [{ id: 'wait', icon: 'wait', main: true, label: 'Keep waiting for ' + w.name }, { id: 'end', icon: 'end', label: k === 'stall' ? 'Leave the match' : 'End the match' }],
+      onPick: function (id) {
+        awayAsk = null;
+        if (id === 'wait') { awayPill = Away.note({ name: w.name, color: w.color, at: function () { return cabEl; }, text: 'Waiting for ' + w.name, onTap: function () { awayPanel(); } }); return; }
+        var kk = awayKind; awayOff();
+        if (kk === 'stall') { leaveOnline(false); goLobby(); return; }
+        if (kk === 'quiet') { var pr = NET.peer; NET.peer = null; if (pr) pr.close('host'); NET.quiet = false; }
+        G.ended = true; NET.away = false; NET.themDev = null; NET.them = ''; netCardOff(); showWait();
+      } });
+  }
+  function awayOff() { awayKind = ''; if (awayAsk) { awayAsk.close(); awayAsk = null; } if (awayPill) { awayPill.close(); awayPill = null; } }
+  function awayGhost(p) { return NET.mode === 'host' ? p === 1 && (NET.away || NET.quiet) : NET.mode === 'guest' && p === 0 && NET.stall; }
+  function poss(n) { return Kit.poss(n).replace(/'/g, '\u2019'); }
 
   // ── Leaving ──
   function leaveOnline(ask) {
@@ -1433,7 +1461,7 @@ html.pd-land .ar-pbtn{width:100%;height:44px;}
     }
     hostTimer(false);
     var t = NET.table, p = NET.peer;
-    NET.mode = null; NET.table = null; NET.peer = null; NET.wait = null; NET.themDev = null; NET.them = ''; NET.away = false; NET.evq = []; NET.stall = false;
+    NET.mode = null; NET.table = null; NET.peer = null; NET.wait = null; NET.themDev = null; NET.them = ''; NET.away = false; NET.evq = []; NET.stall = false; awayOff();
     if (t) t.close();
     if (p) p.close();   // (no reason: this device is the one leaving, so the goodbye goes out)
     if (G && G.mode === 'net') G.ended = true;

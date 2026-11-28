@@ -336,6 +336,7 @@ const PRECACHE_URLS = [
   '/games/mazes.html',
   '/games/mazes/maze-core.js',
   '/online.js',
+  '/away.js',
   '/games/liveshow.js',
   '/games/talk/talk.js',
   '/games/talk/applestoapples.js',
