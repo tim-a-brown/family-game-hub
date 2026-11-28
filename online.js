@@ -45,7 +45,7 @@
   // it could delete the doc), so lobbies drop it. Hidden pages can run timers only once a minute: STALE allows that.
   var COL = 'arcadeRooms', V = 1, STALE = 90000, BEAT = 30000;
   // Tables closed on this device: off its lists at once, before the server says so
-  var GONE = {};
+  var GONE = {}, LIVE = { code: null };
   function gone(code) { return !!GONE[code] && Date.now() - GONE[code] < 5 * 60000; }
   var LS = (function () { try { return window.localStorage; } catch (e) { return null; } })();
   function lsGet(k, d) { try { var v = LS.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
@@ -321,6 +321,7 @@
       Object.keys(table.peers).forEach(function (k) { table.peers[k].close('host'); });
       Object.keys(pending).forEach(function (k) { try { pending[k].close(); } catch (e) {} });
       if (table.code) { GONE[table.code] = Date.now(); t.remove(table.code).catch(function () {}); }
+      if (LIVE.code === table.code) LIVE.code = null;
     };
     var relays = {}, late = {};
     function lateIn(m) {
@@ -411,7 +412,7 @@
     if (scr) scr.step('open', 'run', 'Getting a table code');
     var opened = attempt().then(function (code) {
       if (table.closed) { GONE[code] = Date.now(); t.remove(code).catch(function () {}); throw new Error('Cancelled'); }   // closed while it opened
-      table.code = code;
+      table.code = code; LIVE.code = code;
       dl('Opened a ' + opts.game + ' table · ' + code);
       if (scr) { scr.setCode(code); scr.step('open', 'done', 'Code ' + code); scr.table(table); }
       offs.push(t.inbox(code, me, answer, function (e) { console.warn('[online] inbox', e); }));
@@ -560,6 +561,7 @@
             got.on('close', function () { try { off(); } catch (e) {} });
             if (got.relay) got._off = t.inbox(code, me, function (m) { if (isRelayKind(m.k) && m.from === room.host.dev) got.take(m); }, function () {});
             got.room = room; got.code = code;
+            LIVE.code = code; got.on('close', function () { if (LIVE.code === code) LIVE.code = null; });
             resolve(got);
           }
           // No direct link in time (phone data, strict Wi-Fi): play through the relay instead
@@ -1101,6 +1103,8 @@
   }
 
   window.Online = {
+    // the code of the table this page is at right now (hosting or joined), for the game bar's code pill
+    current: function () { return LIVE.code; },
     config: config, dev: dev, errText: errText, linkTag: linkTag, people: people, whose: whose, myTag: myTag,
     lobby: lobby, waitRoom: waitRoom, stage: stage, host: host, join: join, NAT_MSG: NAT_MSG, busy: busyBtn, ice: ice,
     useTransport: function (t) { transport = t; }, transport: T, localTransport: localTransport, fsTransport: fsTransport,

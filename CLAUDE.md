@@ -2460,6 +2460,11 @@ Underlying principles for everything:
   back up to 7) and says "Tim is back"; a new connection that arrives before the old one is noticed gone replaces it,
   and the old one's late leave is ignored (`peer._replaced`).
 - **A device that rejoins a live `online.js` table takes back its own seat** (Tim, 2026-11-28: he came back as a new "Tim 2" beside his old seat): the host keeps each player's device id (`peer.id`, `Online.dev()`) on their record and, when that device joins again, gives it the same seat, name, color, score and state, says "Tim is back", and ignores the late `leave` of the link it replaced (Mind Meld, Trivia, Centipede's `net.away`, TetriNET's field held 20 s in `net.away`, Pong, Space Invaders, the live shows, the consoles' `devSeat`).
+- **The table's code stays in the game bar during play** (Tim, 2026-11-28: "keep the online game code visible on the screen
+  somewhere while in it"): `codePill` in kit.js puts a small glass pill ("Table" over the code) before the bar's ? on any
+  page at an online table, read every 1.5 s from `atTable()` (TurnNet's `_t.code`, `Online.current()` for online.js
+  tables, hosting or joined, or a page's `window.onlineTable()`: Chess, Lorcana), and hides it when the page leaves the
+  table. A tap copies the code and says so. A new online system only needs `atTable()` to know its code.
 - **Notifications** (the bell on home, the profile menu and every game's menu, `Kit.inbox`): news that came in on this
   device, newest first (`gn_inbox_dev`). Anything new worth looking back at (a turn, a link answer, a request) goes in
   with `FGHSync.inboxAdd({id, k, ...})` and gets a line in `inboxLine` in kit.js. A turn notification is marked read (`read: 1`,

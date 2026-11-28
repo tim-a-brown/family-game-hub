@@ -1954,8 +1954,33 @@
   }
   // The online table this page is at, if any: TurnNet games know theirs; Chess and Lorcana say through window.onlineTable
   function atTable() {
-    try { if (window.TurnNet && TurnNet._t && TurnNet._t.code) return TurnNet._t.code; if (typeof window.onlineTable === 'function') return window.onlineTable() || null; } catch (e) {}
+    try {
+      if (window.TurnNet && TurnNet._t && TurnNet._t.code) return TurnNet._t.code;
+      if (window.Online && Online.current && Online.current()) return Online.current();
+      if (typeof window.onlineTable === 'function') return window.onlineTable() || null;
+    } catch (e) {}
     return null;
+  }
+  // The table's code stays in the game bar for as long as you're at an online table (Tim, 2026-11-28: "keep the
+  // online game code visible on the screen somewhere while in it"), so a friend who drops out or joins late can be
+  // told it. A tap copies it.
+  function codePill() {
+    if (!gbarEl || codePill.on) return; codePill.on = 1;
+    var pill = el('button', { class: 'k-code', type: 'button', hidden: true, onclick: function () {
+      var c = pill.dataset.c; if (!c) return;
+      try { navigator.clipboard.writeText(c).catch(function () {}); } catch (e) {}
+      haptic('light'); toast('The table code is ' + c + '. It’s copied, so you can send it to a friend.');
+    } }, [el('small', { text: 'Table' }), el('b')]);
+    var rb = gbarEl.querySelector('.k-rules') || gbarEl.querySelector('.icon-btn:last-child');
+    gbarEl.insertBefore(pill, rb);
+    function tick() {
+      var c = atTable(); c = c ? String(c).toUpperCase() : '';
+      if (c === (pill.dataset.c || '')) return;
+      pill.dataset.c = c; pill.hidden = !c; pill.querySelector('b').textContent = c;
+      pill.setAttribute('aria-label', c ? 'Table code ' + c : 'Table code');
+      requestAnimationFrame(fitBar);
+    }
+    tick(); setInterval(tick, 1500);
   }
   // The banner: the game's icon, whose move it is, and a Play button; tap it to go, swipe it up (or wait) to let it be
   function turnBanner(x, more, o) {
@@ -2799,6 +2824,7 @@
     ]);
     doc.body.insertBefore(bar, doc.body.firstChild);
     gbarEl = bar;
+    if (!SNAP_MODE && !(window.__KIT_DEMO)) codePill();
     // --bar is the bar's real height (taller in the installed app and on notched phones), so a game that fills
     // the screen below it fits exactly and the page stays locked in place
     function barH() { var h = bar.offsetHeight; if (h) root.style.setProperty('--bar', h + 'px'); }
