@@ -57,7 +57,7 @@
       await D.say('Three of you wrote Ketchup, so each of you scores 3 for it. Your total is ' + pts[0] + ', and EVE’s is only ' + (pts[2] || 0) + '.', { at: pawn(0), wait: 3600 });
       await D.wait(function () { return X.ui.shook === String(G().round); }, 6000);
       await D.wait(1100);
-      await D.say('EVE had the lowest total, so EVE’s pawn moves down a level. As soon as a pawn goes off the bottom of the board, the game ends and everyone still on it wins.', { at: '.hive' });
+      await D.say('EVE had the lowest total, so EVE’s pawn moves down a level. As soon as a pawn goes off the bottom of the board, the game ends and everyone still on it wins.', { at: pawn(2) });
     }
   });
 })();
