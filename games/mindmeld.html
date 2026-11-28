@@ -73,7 +73,8 @@ body{overflow-x:hidden;}
 @keyframes gainUp{from{transform:translateY(12px) scale(.4);opacity:0;}}
 .bee.lo .gain{background:#ff7a6b;color:#3b0700;}
 .bee.hi .gain{background:linear-gradient(180deg,#fff3a8,#ffc83d);color:#3a2600;}
-.bee .ar{min-width:13px;min-height:13px;position:absolute;right:calc(var(--bz) * -.18);top:calc(var(--bz) * .12);width:calc(var(--bz) * .52);height:calc(var(--bz) * .52);border-radius:50%;display:grid;place-items:center;z-index:3;animation:ta_pop .4s var(--spring) both;animation-delay:var(--ad,0s);box-shadow:0 2px 4px rgba(0,0,0,.4);}
+.bee .ar{min-width:13px;min-height:13px;position:absolute;right:calc(var(--bz) * -.18);top:calc(var(--bz) * .12);width:calc(var(--bz) * .52);height:calc(var(--bz) * .52);border-radius:50%;display:grid;place-items:center;z-index:3;animation:arPop .4s var(--spring) both;animation-delay:var(--ad,0s);box-shadow:0 2px 4px rgba(0,0,0,.4);}
+@keyframes arPop{from{transform:scale(.3);opacity:0;}}
 .bee .ar .ico{width:72%;height:72%;stroke-width:3;}
 .bee .ar.dn{background:#ff5c48;color:#fff;}
 .bee .ar.up{background:#ffd447;color:#4a2c00;}
@@ -377,8 +378,11 @@ html.mm-dk .hg svg{width:calc(60px * var(--u));height:calc(98px * var(--u));}
 html.mm-dk .hg{width:calc(66px * var(--u));}
 html.mm-dk .hg b{font-size:1.4rem;}
 html.mm-dk .st{font-size:calc(1.05rem * min(var(--u),1.3));}
-html.mm-dk .ta .hive{--bz:calc(34px * var(--u));}
-html.mm-dk .ta .hive.crowd{--bz:calc(28px * var(--u));}
+html.mm-dk .ta .hive{--bz:var(--hbz,calc(34px * var(--u)));}
+html.mm-dk .hive .bee{width:calc(var(--bz) * 1.25);}
+html.mm-dk #app.t-col .ph-write > .mid:empty{display:none;}
+html.mm-dk #app.t-col .ph-write > .pad{margin-block:auto;}
+html.mm-dk .ta .hive.crowd{--bz:calc(var(--hbz,calc(34px * var(--u))) * .84);}
 html.mm-dk .qd .face{--ds:calc(56px * var(--u));}
 html.mm-dk .offer .pc .q{font-size:calc(1.9rem * var(--u));}
 html.mm-dk .pad{max-width:calc(620px * var(--u));padding:36px 16px 16px;}
@@ -434,9 +438,9 @@ html.mm-dk #app.dk-small .pc .q{font-size:clamp(1.5rem,5.4vw,2.2rem);}
 .dk-pn h4{font-size:1.05em;font-weight:800;color:var(--text);margin:0 0 10px;}
 /* the hive as the room's hero: its own panel, as large as the column lets it be */
 .dk-pn.hvp{flex:1 1 auto;justify-content:center;overflow:hidden;}
-.dk-pn.hvp .hive{--bz:var(--hbz,48px);gap:calc(var(--hbz,48px) * .12);}
+.dk-pn.hvp .hive{--bz:var(--hbz,48px);gap:calc(var(--hbz,48px) * .12);width:100%;}
 .dk-pn.hvp .hive.crowd{--bz:calc(var(--hbz,48px) * .86);}
-.dk-room .dk-pn.lg{flex:0 1 auto;max-height:42%;}
+#app.dk-wide .dk-room .dk-pn.lg{flex:0 1 auto;max-height:42%;}
 .dk-log{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:9px;}
 #app.dk-stack .dk-log{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));align-content:start;}
 .dk-rd{padding:10px 12px 11px;border-radius:14px;background:rgba(255,255,255,.04);}
@@ -1489,7 +1493,8 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     var w = innerWidth, h = innerHeight;
     if (!deskWin(w, h)) return null;
     if (w < 900 && h < 1100) return 'small';
-    return w / Math.max(1, h - 60) >= 1.2 && w >= 1100 ? 'wide' : 'stack';
+    // (the hive gets a column of its own wherever the window is about as wide as tall or wider)
+    return w / Math.max(1, h - 60) >= 1 && w >= 1100 ? 'wide' : 'stack';
   }
   function deskOff() {
     DK = null; document.documentElement.classList.remove('mm-dk');
@@ -1512,11 +1517,15 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     if (plan === 'wide' && !over) {
       // the hive is the hero: a column of its own as tall as the window, its bees sized from that column
       var d = V.depth || 6, rh = H - 80, rw = Math.round(Math.max(380, Math.min(W * 0.42, 1100)));
-      var hbz = Math.max(40, Math.min(110, (rh * (log.length ? 0.62 : 0.9) - 60) / (d + 0.9) - 22, rw / 9));
+      var nb = Math.min(8, V.players.length), hbz = Math.max(40, Math.min(110, (rh * (log.length ? 0.62 : 0.9) - 60) / (d + 0.9) - 22, (rw - 120) / (nb * 1.45 + 1.6)));
       app.style.setProperty('--rw', rw + 'px'); app.style.setProperty('--hbz', Math.round(hbz) + 'px');
       room = el('aside', { class: 'dk-room' });
       var hv = ta.querySelector('.hive'); if (hv) { room.appendChild(el('section', { class: 'dk-pn hvp' }, [hv])); app.classList.add('nohv'); }
-    } else if (plan === 'stack' && log.length) room = el('aside', { class: 'dk-room' });
+    } else {
+      // (the hive at the table's head, its bees as large as a share of the window's height allows)
+      var d2 = V.depth || 6; app.style.setProperty('--hbz', Math.round(Math.max(30, Math.min(100, (H * (plan === 'small' ? 0.3 : 0.4)) / (d2 + 0.9) - 22, (W * 0.8) / (Math.min(8, V.players.length) * 1.45 + 1.6)))) + 'px');
+      if (plan === 'stack' && log.length) room = el('aside', { class: 'dk-room' });
+    }
     app.style.setProperty('--rh', Math.round(Math.max(200, Math.min(520, (H - 60) * .3))) + 'px');
     if (room && log.length) room.appendChild(logPanel(log));
     if (room) { if (plan === 'wide') app.insertBefore(room, ta); else app.appendChild(room); }
@@ -1538,10 +1547,11 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
   // (a list longer than its panel gives up its oldest cards whole and says how many)
   function fitLog(room) {
     var box = room.querySelector('.dk-log'); if (!box) return;
-    var gone = 0, more = null;
-    while (box.children.length > 1 && box.scrollHeight > box.clientHeight + 1) {
+    // (it can be fitted again after a redraw: the cards it already gave up are counted on the list)
+    var gone = +(box.dataset.gone || 0), more = box.querySelector('.dk-more');
+    while (box.querySelectorAll('.dk-rd').length > 1 && box.scrollHeight > box.clientHeight + 1) {
       if (more) more.remove();
-      box.lastElementChild.remove(); gone++;
+      var rds = box.querySelectorAll('.dk-rd'); rds[rds.length - 1].remove(); gone++; box.dataset.gone = gone;
       more = el('div', { class: 'dk-more', text: gone === 1 ? 'One earlier card is in the results at the end.' : gone + ' earlier cards are in the results at the end.' });
       box.appendChild(more);
     }
