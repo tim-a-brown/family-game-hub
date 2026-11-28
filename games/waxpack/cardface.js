@@ -178,8 +178,130 @@
     if (c.rb) return h('b', 'wxc-mk rb', 'RECORD BREAKER');
     return null;
   }
+  // ── The makers' designs (designs.js): a card's layout drawn in boxes, by maker and year ─────────────────────
+  function Wd() { return root.WaxDesigns || null; }
+  function Wl() { return root.WaxLogos || null; }
+  var FIELDS = ['#d9b45a', '#9fb7a0', '#c97f6b', '#8fa6c4', '#d8c48e', '#b5a3c9', '#e0a96d', '#a7c3a1', '#c9c08d', '#9db4bf'];
+  function col(v) {   // a color or a CSS background that may name the team's colors
+    if (v == null) return '';
+    return String(v).replace(/\b(t1|t2|i1|i2)\b/g, function (m) { return 'var(--' + m + ')'; });
+  }
+  function bgOf(v, c) {
+    if (v === 'wood') return 'repeating-linear-gradient(92deg,#6b4423 0 1.6cqw,#7b5130 1.6cqw 2.4cqw,#5c3a1d 2.4cqw 4.6cqw,#80563a 4.6cqw 5.4cqw),#6b4423';
+    if (v === 'burlap') return 'repeating-linear-gradient(0deg,rgba(80,60,30,.25) 0 .5cqw,transparent .5cqw 1.2cqw),repeating-linear-gradient(90deg,rgba(80,60,30,.25) 0 .5cqw,transparent .5cqw 1.2cqw),#c9b27c';
+    if (v === 'two') return 'linear-gradient(180deg,var(--t1) 0 50%,var(--t2) 50% 100%)';
+    if (v === 'stripes') return 'linear-gradient(135deg,#fff 0 70%,#c8102e 70% 76%,#fff 76% 80%,#1c3f8a 80% 86%,#fff 86%)';
+    if (v === 'pins') return 'repeating-linear-gradient(90deg,#d8d8d8 0 .5cqw,#f4f4f4 .5cqw 4cqw)';
+    if (v === 'field') return FIELDS[hash((c.pid || c.name || '') + (c.year || '')) % FIELDS.length];
+    return col(v);
+  }
+  function fullTeam(c) {
+    var e = E(), db = e && e.db ? e.db() : null, t = db && db.teams && c.tc ? db.teams[c.tc] : '';
+    var nk = nickFor(c);
+    if (c.tc === 'CLE' && nk === 'Indians') t = 'Cleveland Indians';
+    if (c.tc === 'TBA' && nk === 'Devil Rays') t = 'Tampa Bay Devil Rays';
+    if (!t) t = nk;
+    return { full: t || '', city: t && nk && t.slice(-nk.length) === nk ? t.slice(0, t.length - nk.length).trim() : t || '' };
+  }
+  function fieldText(v, c, o) {
+    var nm = nameParts(c), pos = posOf(c, o), ft = fullTeam(c);
+    if (c.kind && c.kind !== 'player') { nm = ['', SPN[c.kind] || 'Card']; pos = ''; }
+    var up = /^[A-Z]{2}$/.test(v), k = v.toLowerCase();
+    var t = k === 'fn' ? nm[0] : k === 'ln' ? nm[1] : k === 'nm' ? (nm[0] ? nm[0] + ' ' : '') + nm[1] : k === 'tm' ? nickFor(c) : k === 'ct' ? ft.city : k === 'ft' ? ft.full
+      : k === 'ps' ? pos : k === 'pf' ? (POSN[pos] || pos) : k === 'yr' ? (c.year ? String(c.year) : '') : '';
+    if (c.kid && (k === 'tm' || k === 'ct' || k === 'ft')) t = 'Sandlot';
+    return up ? String(t || '').toUpperCase() : String(t || '');
+  }
+  var FONT = { blk: 'var(--blk)', cond: 'var(--cond)', cond8: 'var(--cond)', slab: 'var(--slab)', scr: 'var(--scr)', bung: "'Wax Bungee', var(--blk)", russo: "'Wax Russo', var(--blk)",
+    lil: "'Wax Lilita', var(--blk)", vib: "'Wax Vibes', var(--scr)", fell: "'Wax Fell', Georgia, serif", cinz: "'Wax Cinzel', Georgia, serif", pag: "'Wax Pagella', Georgia, serif", rye: "'Wax Rye', var(--slab)" };
+  function sty(n, s) {
+    var st = n.style;
+    if (s.c) st.color = col(s.c);
+    if (s.bg) st.background = bgOf(s.bg, {});
+    if (s.f) { st.fontFamily = FONT[s.f] || s.f; if (s.f === 'cond8') { st.fontWeight = 800; st.fontStyle = 'italic'; } else if (s.f === 'cond') st.fontWeight = 600; else if (s.f === 'blk') st.fontWeight = 700; }
+    if (s.w) st.fontWeight = s.w;
+    if (s.it) st.fontStyle = 'italic';
+    if (s.up) st.textTransform = 'uppercase';
+    if (s.ls) st.letterSpacing = s.ls;
+    if (s.rd != null) st.borderRadius = typeof s.rd === 'number' ? s.rd + (s.rd >= 50 ? '%' : 'cqw') : s.rd;
+    if (s.sh) st.boxShadow = typeof s.sh === 'string' ? col(s.sh) : '';
+    if (s.cp) st.clipPath = s.cp;
+    if (s.rot) st.transform = 'rotate(' + s.rot + 'deg)';
+    if (s.o != null) st.opacity = s.o;
+  }
+  function place(n, x, y, w, h) { n.style.left = x + 'cqw'; n.style.top = y + 'cqw'; n.style.width = w + 'cqw'; n.style.height = h + 'cqw'; }
+  var PFILT = { bw: 'grayscale(1) contrast(1.06)', sep: 'sepia(.75) saturate(.8) contrast(1.02)', tint: 'saturate(.72) sepia(.18) contrast(1.04)', paint: 'saturate(1.18) contrast(.96) brightness(1.03)' };
+  var PSHAPE = { rd: '3cqw', oval: '50%', circle: '50%', arch: '50% 50% 4cqw 4cqw / 32% 32% 4cqw 4cqw', tv: '12cqw / 9cqw' };
+  function designPic(c, o, p, el) {
+    var box = picture(c, o); box.classList.add('wxt-ph');
+    place(box, p.r[0], p.r[1], p.r[2], p.r[3]);
+    if (p.bg) box.style.background = bgOf(p.bg, c);
+    if (PSHAPE[p.s]) box.style.borderRadius = PSHAPE[p.s];
+    if (p.s === 'curl') box.style.clipPath = 'polygon(0 0,100% 0,100% 84%,86% 100%,0 100%)';
+    if (p.b) box.style.boxShadow = col(p.b);
+    var im = box.querySelector('img');
+    if (im && PFILT[p.f] && !box.classList.contains('own')) im.style.filter = PFILT[p.f];
+    // a set printed on a plain field of color (T206, the 1958 Topps, Goudey): the color closes in round the player
+    if (p.bg && im && !box.classList.contains('own')) { var fl = h('i', 'wxt-field'); fl.style.setProperty('--fc', bgOf(p.bg, c)); box.appendChild(fl); }
+    el.appendChild(box);
+    if (p.s === 'curl') { var cu = h('i', 'wxt-curl'); place(cu, p.r[0] + p.r[2] - p.r[2] * .14, p.r[1] + p.r[3] * .84, p.r[2] * .14, p.r[3] * .16); el.appendChild(cu); }
+    return box;
+  }
+  function logoEl(c, s) {
+    var L = Wl(), src = L && L.find ? L.find(c.tc, c.sy || (c.year ? c.year - 1 : 0)) : null, d = h('div', 'wxt-lg');
+    function letters() { d.innerHTML = ''; d.classList.add('txt'); d.appendChild(h('span', '', nickFor(c) || (c.tc || ''))); }
+    if (src) { var im = h('img'); im.alt = ''; im.decoding = 'async'; im.draggable = false; im.onerror = letters; im.src = BASE + 'logos/' + src; d.appendChild(im); }
+    else letters();
+    return d;
+  }
+  function buildDesign(c, o, pk) {
+    var spec = pk.d, cl = colors(c);
+    var d = h('div', 'wxc wxt wxt-' + pk.mk + (c.kind && c.kind !== 'player' ? ' wxc-sp' : ''));
+    d.dataset.mk = pk.mk; d.dataset.yr = c.year || '';
+    paintColors(d, cl); sizeOf(d, o);
+    d.setAttribute('role', 'img');
+    var M = (Wd().MAKERS[pk.mk] || {});
+    d.setAttribute('aria-label', (c.kind && c.kind !== 'player' ? SPN[c.kind] || 'Card' : (c.name || 'Card')) + (c.year ? ', ' + c.year + ' ' + (M.name || '') : ''));
+    d.style.background = bgOf(spec.bg || '#fbfaf6', c);
+    if (o.photo && o.photoWhole) { d.classList.add('wxc-whole'); var im = h('img'); im.alt = ''; im.src = photoUrl(o.photo); d.appendChild(im); d.appendChild(h('i', 'wxc-fx')); return d; }
+    designPic(c, o, spec.ph || { r: [5, 5, 90, 110] }, d);
+    (spec.L || []).forEach(function (l) {
+      var t = l[0], n;
+      if (t === 'tx') {
+        var s = l[6] || {}, txt = s.lit || fieldText(l[1], c, o); if (!txt) return;
+        n = h('div', 'wxt-tx'); place(n, l[2], l[3], l[4], l[5]);
+        var sp = h('span', '', txt); n.appendChild(sp);
+        n.style.fontSize = 'max(9px,' + (s.z || 6) + 'cqw)';
+        n.style.justifyContent = s.al === 'c' ? 'center' : s.al === 'r' ? 'flex-end' : 'flex-start';
+        if (s.al === 'c') sp.style.transformOrigin = 'center center'; else if (s.al === 'r') sp.style.transformOrigin = 'right center';
+        if (s.sh) n.style.textShadow = s.sh === 3 ? '.5cqw .5cqw 0 #111, 1cqw 1cqw 0 rgba(0,0,0,.35)' : s.sh === 2 ? '.3cqw .3cqw 0 rgba(255,255,255,.8)' : '.3cqw .4cqw .8cqw rgba(0,0,0,.6)';
+        var ss = Object.assign({}, s); delete ss.sh; sty(n, ss);
+        if (/^(ln|nm|NM|LN)$/.test(l[1])) n.classList.add('nm');
+      } else if (t === 'box') { n = h('i', 'wxt-box'); place(n, l[1], l[2], l[3], l[4]); sty(n, l[5]); }
+      else if (t === 'lg') { n = logoEl(c, l[5]); place(n, l[1], l[2], l[3], l[4]); }
+      else if (t === 'mk') { n = h('div', 'wxt-mk'); place(n, l[1], l[2], l[3], l[4]); var s2 = Object.assign({ f: M.f || 'blk' }, l[5]); n.appendChild(h('span', '', M.mk || '')); n.style.fontSize = 'max(9px,' + (s2.z || 5) + 'cqw)'; sty(n, s2); }
+      else if (t === 'sg') { var nm2 = c.kid || (c.kind && c.kind !== 'player') ? '' : c.name; if (!nm2) return; n = h('div', 'wxt-sg'); place(n, l[1], l[2], l[3], l[4]); n.appendChild(h('span', '', nm2)); n.style.fontSize = 'max(9px,' + (l[5].z || 9) + 'cqw)'; sty(n, Object.assign({ f: 'vib' }, l[5])); }
+      else if (t === 'in') {
+        var k = o.art || artFor(c); if (!k || o.photo) return;
+        n = h('div', 'wxt-in'); place(n, l[1], l[2], l[3], l[4]);
+        var im2 = h('img'); im2.alt = ''; im2.src = artSrc(k, true); im2.decoding = 'async'; n.appendChild(im2);
+        var s3 = l[5] || {}; if (s3.s === 'circle') n.style.borderRadius = '50%'; if (s3.f && PFILT[s3.f]) im2.style.filter = PFILT[s3.f]; var s4 = Object.assign({}, s3); delete s4.f; delete s4.s; sty(n, s4);
+      }
+      if (n) d.appendChild(n);
+    });
+    // a small card's own plate: his last name and his position (the design's words are too small to read there)
+    var nm = nameParts(c), pos = posOf(c, o);
+    if (c.kind && c.kind !== 'player') { nm = ['', SPN[c.kind] || 'Card']; pos = ''; }
+    var sm = h('div', 'wxt-sm'); sm.appendChild(h('span', 'wxc-ln', String(nm[1]))); d.appendChild(sm);
+    if (pos) d.appendChild(h('b', 'wxt-pos', pos));
+    var mk = mark(c); if (mk) d.appendChild(mk);
+    d.appendChild(h('i', 'wxc-fx'));
+    watch(d);
+    return d;
+  }
   function face(c, o) {
     c = c || {}; o = o || {};
+    if (!o.style && Wd() && !(o.photo && o.photoWhole)) { var pk = Wd().design(c, hash(c.pid || c.name || '')); if (pk) return buildDesign(c, o, pk); }
     var st = STYLES.indexOf(o.style) >= 0 ? o.style : styleFor(c), cl = colors(c);
     var d = h('div', 'wxc wxc-' + st + (c.kind && c.kind !== 'player' ? ' wxc-sp' : ''));
     paintColors(d, cl);
@@ -237,6 +359,7 @@
     }
     return [yr, tm, s.g, s.ab, s.h, s.d, s.tr, s.hr, s.rbi, s.sb, f3(s.h / Math.max(1, s.ab))];
   }
+  var HFR = { p: ['Année', 'Club', 'G', 'P', 'MPM', 'J', 'PC', 'ML', 'CS', 'BB', 'RB', 'S'], h: ['Année', 'Club', 'J', 'AB', 'CS', '2B', '3B', 'CC', 'PP', 'BV', 'MOY'] };
   var HEAD = { p: ['Year', 'Club', 'W', 'L', 'ERA', 'G', 'GS', 'IP', 'H', 'BB', 'SO', 'SV'], h: ['Year', 'Club', 'G', 'AB', 'H', '2B', '3B', 'HR', 'RBI', 'SB', 'AVG'] };
   // one line from the honors he had won by the card's season (a 1988 card can't know about 1995), in whole sentences
   function bio(c, pl, upto) {
@@ -271,6 +394,12 @@
     var cl = colors(c), d = h('div', 'wxb');
     paintColors(d, cl);
     sizeOf(d, o);
+    // the maker's back: its cardboard, its inks, its panel (designs.js)
+    var pk = Wd() && !o.style ? Wd().design(c, hash(c.pid || c.name || '')) : null, bs = pk && pk.d.bk, FR = bs && bs.fr;
+    if (bs) {
+      d.classList.add('wxb-t'); d.dataset.mk = pk.mk;
+      d.style.setProperty('--bst', bgOf(bs.st, c)); d.style.setProperty('--bink', col(bs.ink)); d.style.setProperty('--bhd', col(bs.hd)); d.style.setProperty('--bhi', col(bs.hi)); d.style.setProperty('--bbx', col(bs.bx));
+    }
     var e = E(), pl = c.pid && e && e.byId ? e.byId(c.pid) : null, role = c.role === 'p' ? 'p' : 'h';
     var num = h('b', 'wxb-no', String(1 + hash((c.pid || c.name || '') + c.year) % 792));
     var hd = h('div', 'wxb-hd'), nm = h('div', 'wxb-nm');
@@ -294,7 +423,7 @@
     if (!txt) txt = c.kid ? 'He plays every day after school and never misses a pickup game.' : c.scout ? 'The record book has no line for him, so a scout sized him up.' : c.kind && c.kind !== 'player' ? '' : '';
     if (L.length) {
       var R = rowsFor(L, role, upto || 0), t = h('table', 'wxb-st ' + role), tr = h('tr');
-      HEAD[role].forEach(function (x) { tr.appendChild(h('th', '', x)); }); var th = h('thead'); th.appendChild(tr); t.appendChild(th);
+      HEAD[role].forEach(function (x, i) { var th0 = h('th', '', x); if (FR && HFR[role][i]) { th0.appendChild(h('br')); th0.appendChild(h('small', '', HFR[role][i])); } tr.appendChild(th0); }); var th = h('thead'); th.appendChild(tr); t.appendChild(th);
       var tb = h('tbody');
       R.rows.concat(R.n > 1 ? [R.tot] : []).forEach(function (s) {
         var r = h('tr', s.total ? 'tot' : s.y0 ? 'grp' : ''); cells(s, role).forEach(function (v) { r.appendChild(h('td', '', String(v))); }); tb.appendChild(r);
@@ -304,7 +433,9 @@
       d.style.setProperty('--rows', R.rows.length + (R.n > 1 ? 2 : 1));
     } else d.appendChild(h('div', 'wxb-tw none'));
     if (txt) d.appendChild(h('p', 'wxb-bio', txt));
-    var ft = h('div', 'wxb-ft'); ft.appendChild(h('span', '', c.year ? String(c.year) : '')); ft.appendChild(h('span', '', 'Printed for Wax Pack'));
+    if (bs && bs.pn && txt) d.querySelector('.wxb-bio').classList.add('pn', bs.pn);
+    var M = pk ? Wd().MAKERS[pk.mk] : null;
+    var ft = h('div', 'wxb-ft'); ft.appendChild(h('span', '', c.year ? String(c.year) : '')); ft.appendChild(h('span', '', M ? M.name + (FR ? ', imprimé au Canada' : '') : 'Printed for Wax Pack'));
     d.appendChild(ft);
     d.appendChild(h('i', 'wxc-fx'));
     watch(d);
@@ -314,7 +445,7 @@
   // ── Names that run long are set condensed, as card makers did, never cut ───────────────────────────────────
   var RO = null;
   function fitOne(card) {
-    card.querySelectorAll('.wxc-ln,.wxc-fn,.wxc-tm,.wxb-name').forEach(function (n) {
+    card.querySelectorAll('.wxc-ln,.wxc-fn,.wxc-tm,.wxb-name,.wxt-tx > span,.wxt-mk > span,.wxt-sg > span,.wxt-lg.txt > span').forEach(function (n) {
       n.style.transform = ''; n.style.letterSpacing = '';
       var box = n.parentNode.clientWidth, w = n.scrollWidth;
       if (!box || !w) return;
@@ -330,5 +461,5 @@
   }
   function fit(rootEl) { (rootEl || document).querySelectorAll('.wxc,.wxb').forEach(fitOne); }
 
-  root.WaxCard = { face: face, back: back, artFor: artFor, styleFor: styleFor, colors: colors, fit: fit, STYLES: STYLES, TEAM: TEAM, artSrc: artSrc };
+  root.WaxCard = { face: face, back: back, makerOf: function (c) { return Wd() ? Wd().makerOf(c) : ''; }, fullTeam: fullTeam, artFor: artFor, styleFor: styleFor, colors: colors, fit: fit, STYLES: STYLES, TEAM: TEAM, artSrc: artSrc };
 })(this);

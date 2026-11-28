@@ -428,6 +428,8 @@ const PRECACHE_URLS = [
   '/games/waxpack/cards.js',
   '/games/waxpack/scan.js',
   '/games/waxpack/ui.js',
+  '/games/waxpack/designs.js',
+  '/games/waxpack/logos/index.js',
   '/games/waxpack/cardface.js',
   '/games/waxpack/cardface.css',
   '/games/waxpack/photo.js',

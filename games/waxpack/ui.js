@@ -70,6 +70,7 @@
   // ── Making a card from the database ──────────────────────────────────────
   function makeCard(o) {   // o: {pid | name, year, kind, role, rk, as, rb, err, ph, lid, scout role, team code}
     var c = { id: 'c' + (++S.cn), lid: o.lid || null, kind: o.kind || 'player', year: o.year || 0, ph: o.ph || '', rk: !!o.rk, as: !!o.as, rb: !!o.rb, err: !!o.err };
+    if (o.mk) c.mk = o.mk;   // who made the card (designs.js); none: Topps when Topps made a set that year
     if (S.vals === 'shoe') c.vm = 'shoe';   // Shoebox rules: the values are read off the card back (E.SHOE)
     if (c.kind !== 'player') { c.name = C.SPECIAL[c.kind].name; c.tc = o.tc || ''; c.team = o.tc ? E.nick(o.tc) : ''; return c; }
     var pl = o.pid ? E.byId(o.pid) : null;
@@ -198,6 +199,8 @@
     '<li>A player’s <b>All-Star card</b> rolls his d20 twice and keeps the higher one. A <b>Record Breaker</b> moves his hit up one: a single to a double, a double to a triple, a triple to a home run. An <b>error card</b> makes the other team boot the next ball in play. A <b>second copy</b> of a player puts him on fire, +3 for an at-bat. A <b>rookie card</b> is +1 in his first at-bat.</li></ul>' +
     '<h3>Winning</h3><ul><li>A game is 3, 5 or 9 innings; 5 takes about 20 minutes. Most runs wins, and a tie goes to extra innings.</li>' +
     '<li>Your league keeps every card you’ve entered and its numbers from every game, so the common card that keeps hitting home runs becomes a legend.</li></ul>' +
+    '<h3>The cards</h3><ul><li>Each card is drawn in the design its maker printed that year. When you add a card, choose who made it from the makers that printed cards that year; Topps is chosen first. A box of cards deals makers at random, now and then from the tobacco and candy cards of the early 1900s. The player pictures are the game’s own paintings, and a photo of your own card takes the drawing’s place.</li></ul>' +
+    '<p class="note">Topps card designs are used with the permission of Topps / Fanatics Collectibles, which also owns Bowman and Play Ball. Upper Deck, Fleer, Ultra, Flair, SP, Collector’s Choice, SkyBox, O-Pee-Chee and Goudey card designs are used with the permission of The Upper Deck Company. Old Judge, T206, T205, T207, Cracker Jack, The Sporting News and American Caramel cards are in the public domain. Team cap logos are from Wikimedia Commons, in the public domain.</p>' +
     '<p class="note">Player seasons from the Lahman Baseball Database (seanlahman.com), CC BY-SA 3.0. Card photos are read on this device with Tesseract.js and never leave it.</p>';
 
   Kit.init({
@@ -537,9 +540,9 @@
     S.C[c.id] = c; S.stack.push(c.id);
     // into the league: a card it already has (the same player and year) is the same card
     var Lg = league(), lid = null;
-    Object.keys(Lg.cards).some(function (k) { var x = Lg.cards[k]; if ((x.pid && x.pid === c.pid || !x.pid && x.n === c.name) && x.y === c.year && x.k === c.kind) { lid = k; return true; } });
+    Object.keys(Lg.cards).some(function (k) { var x = Lg.cards[k]; if ((x.pid && x.pid === c.pid || !x.pid && x.n === c.name) && x.y === c.year && x.k === c.kind && (x.mk || '') === (c.mk || '')) { lid = k; return true; } });
     if (!lid) { lid = 'L' + (++Lg.n); Lg.cards[lid] = { pid: c.pid || null, n: c.name, y: c.year, role: c.role, k: c.kind, at: Date.now() }; }
-    var rec = Lg.cards[lid]; ['rk', 'as', 'rb', 'err'].forEach(function (f) { if (c[f]) rec[f] = 1; }); if (c.ph) rec.ph = c.ph; if (c.tc && c.kind !== 'player') rec.tc = c.tc;
+    var rec = Lg.cards[lid]; ['rk', 'as', 'rb', 'err'].forEach(function (f) { if (c[f]) rec[f] = 1; }); if (c.mk) rec.mk = c.mk; if (c.ph) rec.ph = c.ph; if (c.tc && c.kind !== 'player') rec.tc = c.tc;
     if (c.scout) rec.sr = c.role;
     c.lid = lid; saveLeague(); save();
     if (!quiet) { Kit.sfx('deal'); Kit.haptic('light'); }
@@ -572,14 +575,19 @@
     if (role === 'p') return s.w >= 18 || s.so >= 200 || s.sv >= 25 || s.ipo >= 690 || s.ipo >= 450 && s.er * 27 / s.ipo < 2.7;
     return s.hr >= 30 || s.sb >= 30 || s.rbi >= 100 || s.ab >= 400 && s.h / s.ab >= .31;
   }
+  // the years before 1950 a box may deal, because a set of that year can be drawn (designs.js: Old Judge, the tobacco
+  // and candy cards, Goudey, Play Ball, Bowman)
+  function OLDSET(y) { return !!(window.WaxDesigns && WaxDesigns.makersFor(y).length); }
+  function boxMaker(y, rnd) { var L = window.WaxDesigns ? WaxDesigns.makersFor(y) : []; return L.length ? L[Math.floor(rnd() * L.length)] : ''; }
   function boxDraw(want, star, rnd, used) {
-    var D = E.db(), list = D.list, upto = D.upto, role = want === 'p' ? 'p' : 'h';
+    var D = E.db(), list = D.list, upto = D.upto, role = want === 'p' ? 'p' : 'h', y0 = rnd() < .14 ? 1886 : 1950;
     for (var k = 0; k < 6000; k++) {
       var pl = list[Math.floor(rnd() * list.length)];
-      if (used[pl.id] || pl.y1 < 1950) continue;
+      if (used[pl.id] || pl.y1 < y0) continue;
       var L = E.seasons(pl, role); if (!L.length) continue;
       var s = L[Math.floor(rnd() * L.length)];
-      if (s.y < 1950 || s.y > upto) continue;
+      if (s.y < y0 || s.y > upto) continue;
+      if (s.y < 1950 && !OLDSET(s.y + 1)) continue;   // before 1950, only the years a set we can draw was printed
       if (L.filter(function (x) { return x.y === s.y; }).length > 1) continue;   // a season split between teams
       if (role === 'p' ? s.ipo < 300 && !(s.sv >= 15 && s.ipo >= 150) : s.ab < 300) continue;
       if (role === 'h' && want !== 'h' && s.pos !== want) continue;
@@ -588,7 +596,7 @@
       if (star && k < 5000 && !starSeason(s, role)) continue;
       used[pl.id] = 1;
       var as = (E.honors(pl).A || []).indexOf(s.y) >= 0 && rnd() < .35;
-      return { pid: pl.id, year: s.y + 1, role: role, as: as };
+      return { pid: pl.id, year: s.y + 1, role: role, as: as, mk: boxMaker(s.y + 1, rnd) };
     }
     return null;
   }
@@ -670,7 +678,7 @@
   function keepCard(c) {
     var Lg = league(), lid = 'L' + (++Lg.n);
     Lg.cards[lid] = { pid: c.pid || null, n: c.name, y: c.year, role: c.role, k: c.kind, at: Date.now() };
-    if (c.as) Lg.cards[lid].as = 1; if (c.tc && c.kind !== 'player') Lg.cards[lid].tc = c.tc;
+    if (c.as) Lg.cards[lid].as = 1; if (c.mk) Lg.cards[lid].mk = c.mk; if (c.tc && c.kind !== 'player') Lg.cards[lid].tc = c.tc;
     c.lid = lid; c.box = 1; delete c.dealt; saveLeague(); save();
     Kit.toast(c.name + ' is in your league'); Kit.sfx('good');
   }
@@ -696,7 +704,7 @@
   }
   function fromLeague(lid, peek) {
     var x = league().cards[lid];
-    var c = makeCard({ pid: x.pid, name: x.n, year: x.y, kind: x.k, role: x.sr || (x.pid ? null : x.role), rk: x.rk, as: x.as, rb: x.rb, err: x.err, ph: x.ph, tc: x.tc, lid: lid });
+    var c = makeCard({ pid: x.pid, name: x.n, year: x.y, kind: x.k, role: x.sr || (x.pid ? null : x.role), rk: x.rk, as: x.as, rb: x.rb, err: x.err, ph: x.ph, tc: x.tc, mk: x.mk, lid: lid });
     if (peek) S.cn--;
     return c;
   }
@@ -748,17 +756,21 @@
     for (var y = y0; y <= y1; y++) years.push(y);
     var guess = pre.year && years.indexOf(pre.year) >= 0 ? pre.year : lastYear && years.indexOf(lastYear) >= 0 ? lastYear : (function () {
       var L = E.seasons(pl, role), best = L[0]; L.forEach(function (s) { if ((role === 'p' ? s.ipo : s.ab) > (role === 'p' ? best.ipo : best.ab)) best = s; }); return Math.min(y1, best.y + 1); })();
-    var fx = { rk: false, as: false, rb: false, err: !!C.famousErr(E.name(pl), guess) }, ph = pre.ph || '';
+    var fx = { rk: false, as: false, rb: false, err: !!C.famousErr(E.name(pl), guess) }, ph = pre.ph || '', mk = pre.mk || '';
     var body = el('div', { class: 'wp-yr' });
     var prev = el('div', { class: 'wp-yrprev' }), facts = el('div', { class: 'wp-yrfacts' });
     var strip = el('div', { class: 'wp-yrs', role: 'listbox', 'aria-label': 'Year on the card' });
     var flags = el('div', { class: 'wp-flags' });
+    var makers = el('div', { class: 'wp-mks', role: 'listbox', 'aria-label': 'Who made the card' }), mkL = el('p', { class: 'wp-lbl', text: 'Who made the card' });
     var note = el('p', { class: 'wp-note' });
     body.appendChild(el('div', { class: 'wp-yrtop' }, [prev, facts]));
     body.appendChild(el('p', { class: 'wp-lbl', text: 'The year printed on the card' })); body.appendChild(strip);
+    body.appendChild(mkL); body.appendChild(makers);
     body.appendChild(el('p', { class: 'wp-lbl', text: 'What kind of card it is' })); body.appendChild(flags); body.appendChild(note);
     var cur = guess;
-    function card() { return makeCardPeek({ pid: pl.id, year: cur, rk: fx.rk, as: fx.as, rb: fx.rb, err: fx.err, ph: ph }); }
+    // the makers that printed cards in the card's year (designs.js), the one chosen lit; Topps first where it made a set
+    function mkNow() { var L = window.WaxDesigns ? WaxDesigns.makersFor(cur) : []; return L.indexOf(mk) >= 0 ? mk : L[0] || ''; }
+    function card() { return makeCardPeek({ pid: pl.id, year: cur, rk: fx.rk, as: fx.as, rb: fx.rb, err: fx.err, ph: ph, mk: mkNow() }); }
     function paint() {
       var c = card();
       prev.innerHTML = ''; prev.appendChild(cardFace(c));
@@ -770,6 +782,10 @@
         strip.appendChild(el('button', { type: 'button', class: 'wp-y' + (y === cur ? ' on' : ''), role: 'option', 'aria-selected': String(y === cur), text: String(y), onclick: function () { cur = y; lastYear = y; Kit.sfx('tap'); paint(); } }));
       });
       var on = strip.querySelector('.on'); if (on) setTimeout(function () { strip.scrollLeft = Math.max(0, on.offsetLeft - strip.clientWidth / 2 + on.offsetWidth / 2); }, 0);
+      makers.innerHTML = ''; var ML = window.WaxDesigns ? WaxDesigns.makersFor(cur) : [], mn = mkNow();
+      mkL.hidden = makers.hidden = ML.length < 2;
+      ML.forEach(function (b) { var M = WaxDesigns.MAKERS[b];
+        makers.appendChild(el('button', { type: 'button', class: 'wp-mk mk-' + b + (b === mn ? ' on' : ''), role: 'option', 'aria-selected': String(b === mn), text: M.name, onclick: function () { mk = b; Kit.sfx('tap'); paint(); } })); });
       flags.innerHTML = '';
       [['rk', 'Rookie card'], ['as', 'All-Star card'], ['rb', 'Record Breaker'], ['err', 'Error card']].forEach(function (f) {
         flags.appendChild(el('button', { type: 'button', class: 'wp-flag' + (fx[f[0]] ? ' on' : ''), 'aria-pressed': String(fx[f[0]]), text: f[1], onclick: function () { fx[f[0]] = !fx[f[0]]; Kit.sfx('pop'); paint(); } }));
@@ -780,8 +796,8 @@
     }
     paint();
     var sh = Kit.sheet({ title: E.name(pl), node: body, actions: [
-      { label: 'Add to the stack', primary: true, onClick: function () { lastYear = cur; var c = makeCard({ pid: pl.id, year: cur, rk: fx.rk, as: fx.as, rb: fx.rb, err: fx.err, ph: ph }); addToStack(c); Kit.toast(c.name + ' is in the stack'); } },
-      { label: ph ? 'Retake the photo' : 'Add a photo of the card', onClick: function () { setTimeout(function () { takePhoto(function (key) { ph = key; pre.ph = key; yearSheet(pl, Object.assign({}, pre, { year: cur, ph: key })); }); }, 250); } },
+      { label: 'Add to the stack', primary: true, onClick: function () { lastYear = cur; var c = makeCard({ pid: pl.id, year: cur, rk: fx.rk, as: fx.as, rb: fx.rb, err: fx.err, ph: ph, mk: mkNow() }); addToStack(c); Kit.toast(c.name + ' is in the stack'); } },
+      { label: ph ? 'Retake the photo' : 'Add a photo of the card', onClick: function () { setTimeout(function () { takePhoto(function (key) { ph = key; pre.ph = key; yearSheet(pl, Object.assign({}, pre, { year: cur, ph: key, mk: mkNow() })); }); }, 250); } },
       { label: 'Back to the search', onClick: function () { setTimeout(function () { entrySheet({ q: pl.l, year: cur }); }, 250); } }
     ] });
   }
@@ -867,7 +883,7 @@
         body.appendChild(el('p', { class: 'wp-lbl', text: cands.length ? 'Is it one of these?' : 'The app couldn’t read a name it knows. Type it instead.' }));
         cands.forEach(function (c, i) {
           var pl = c.pl, s = E.cardSeason(pl, c.role, m.year || 0);
-          body.appendChild(el('button', { type: 'button', class: 'wp-hit' + (i === 0 && c.score > .8 ? ' best' : ''), onclick: function () { sh.close(); yearSheet(pl, { year: m.year || 0, ph: key, line: m.line }); } }, [
+          body.appendChild(el('button', { type: 'button', class: 'wp-hit' + (i === 0 && c.score > .8 ? ' best' : ''), onclick: function () { sh.close(); yearSheet(pl, { year: m.year || 0, ph: key, line: m.line, mk: m.mk || '' }); } }, [
             el('b', { text: E.name(pl) }), el('span', { text: (c.role === 'p' ? 'Pitcher' : 'Hitter') + (s ? ' for the ' + E.nick(s.t) : '') }), el('i', { text: pl.y0 + ' to ' + pl.y1 })]));
         });
         if (m.year) body.appendChild(el('p', { class: 'wp-note', text: 'The card looks like it’s from ' + m.year + '.' }));
@@ -2322,6 +2338,7 @@
     var hx = []; // half-inning by half-inning from the plays
     var detail = { wp: 2, home: S.home, inn: S.inn, wo: g.wo ? 1 : 0, tm: [tm(0), tm(1)], plays: g.plays.slice(-12), duel: g.duels.slice(0, 2), nh: g.nohit || '', n20: g.n20 || 0,
       sb: g.sb ? g.sb[0] + g.sb[1] : 0, cs: g.cs ? g.cs[0] + g.cs[1] : 0, ibb: g.ibb ? g.ibb[0] + g.ibb[1] : 0, vals: S.vals === 'shoe' ? 1 : 0,
+      mk: (function () { var m = {}; S.T.forEach(function (T) { T.cards.forEach(function (id) { var c = S.C[id], k = c && window.WaxDesigns ? WaxDesigns.makerOf(c) : ''; if (k) m[k] = (m[k] || 0) + 1; }); }); return m; })(),
       dealt: Object.keys(S.C).filter(function (id) { return (S.C[id].dealt || S.C[id].box) && S.T.some(function (T) { return T.cards.indexOf(id) >= 0; }); }).length };
     var hl = g.hl.slice(0, 10);
     hl.push('Batters guessed the pitch ' + g.duels[0] + ' times and were fooled ' + g.duels[1] + ' times.');
