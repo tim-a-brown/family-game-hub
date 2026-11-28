@@ -82,6 +82,10 @@
   'use strict';
   if (window.TurnNet) return;
   var COL = 'turnRooms', V = 1, HB = 15000, DROP = 45000;   // (a beat every 15 s; 45 s without one is a dropped device)
+  // The home screen's hidden frame that only gives this device's seat up (?kquit=1, Kit.netQuit): it never beats (a beat
+  // would lift the computer's cover on the seat and say "You're back"), never moves for a computer or a dropped seat and
+  // never marks anyone dropped. It only reads the table and leaves.
+  var QUIT = /[?&]kquit=1\b/.test(location.search) && window.parent !== window;
   var LS = (function () { try { return window.localStorage; } catch (e) { return null; } })();
   function lsJ(k, d) { try { var v = JSON.parse(LS.getItem(k)); return v == null ? d : v; } catch (e) { return d; } }
   function lsP(k, v) { try { if (v == null) LS.removeItem(k); else LS.setItem(k, JSON.stringify(v)); } catch (e) {} }
@@ -241,9 +245,10 @@
     if (!res || !res.state) return Promise.resolve(false);
     var mine = as === T.seat;
     if (mine) { T.busy = true; T.st = res.state; T.mv = res.mv || null; T.local = base + 1; draw({ prev: prev, mv: T.mv, by: dev(), mine: true }); }
-    var drive = T.seat;
+    var drive = T.seat, sx = T.d.seats[as], cover = !mine && !!sx && !sx.bot;   // (a move for a person's seat whose device dropped out)
     return store().tx(code, function (d) {
       if (!d || d.status !== 'playing') throw new Error('This game has ended');
+      if (cover && !covered(d, as)) throw new Error('stale');   // (their device came back first: the move is theirs to make)
       var r = res;
       if (d.seq !== base) {
         if (!fn) throw new Error('stale');
@@ -271,6 +276,7 @@
   // computer seats: whoever's looking makes their moves (the one sitting nearest after the last mover goes first). A
   // seat whose device has dropped out is moved for in the same way (coverFn), never by its own device.
   function botCheck() {
+    if (QUIT) return;
     if (T.botT && T.botSeq === T.seq && T.d && T.d.status === 'playing') return;   // (a heartbeat changed nothing: the move already waiting stays on time)
     clearTimeout(T.botT); T.botT = 0; T.botSeq = T.seq;
     var d = T.d;
@@ -305,6 +311,7 @@
   // (a transaction, so two devices never both do it), with the game's own dropped() where it has one; and after
   // dropLeave(state) of it, the seat leaves the table as a person who leaves does.
   function dropCheck() {
+    if (QUIT) return;
     var d = T.d, me = T.seat, code = T.code;
     if (!code || !d || d.status !== 'playing' || me < 0 || document.hidden || T.dropBusy || !dropOn(d)) return;
     if (d.seats[me] && d.seats[me].gone) return;
@@ -400,8 +407,8 @@
     T.code = code; T.d = null; T.seq = -1; T.st = null; T.fresh = true; T.wasMine = false;
     remember(code); lsP('tn_last_' + G.game, code);
     T.off = store().watch(code, onDoc, function (e) { console.warn('[turnnet] watch', e); Kit.toast('Connection problem: ' + errText(e)); });
-    clearInterval(T.hbT); T.hbT = setInterval(beat, HB);
-    clearInterval(T.wdT); T.wdT = setInterval(watchdog, 15000);
+    clearInterval(T.hbT); clearInterval(T.wdT);
+    if (!QUIT) { T.hbT = setInterval(beat, HB); T.wdT = setInterval(watchdog, 15000); }
   }
   // A computer seat's move that never came (a dropped update, a stalled timer): look at the table again. And every
   // 15 s, whether anyone's device has dropped out.
@@ -421,6 +428,7 @@
   function stopListen() { if (T.off) { T.off(); T.off = null; } clearInterval(T.hbT); clearInterval(T.wdT); clearTimeout(T.botT); T.botT = 0; }
   // Here: this seat's hb. A seat that was dropped out comes back (cov cleared, the game's returned()).
   function beat() {
+    if (QUIT) return;
     if (!T.code || T.seat < 0 || document.hidden || !T.d || T.d.status === 'over') return;
     var code = T.code, s = T.seat;
     T.lastBeat = Date.now();

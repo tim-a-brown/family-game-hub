@@ -1836,13 +1836,41 @@
                 var e = s2.exists ? s2.data() : null; if (!e || e.status !== 'playing') return;
                 var now = Date.now();
                 // (as the game's own Resign writes it, so the other player's page shows "wins by resignation")
-                if ((e.moves || []).length) t.update(ref, { status: 'over', result: { type: 'resign', winner: -mine, by: 'home' }, offer: null, at: now, by: 'home' });
-                else t.update(ref, { status: 'closed', at: now, by: 'home' });
+                if ((e.moves || []).length) { t.update(ref, { status: 'over', result: { type: 'resign', winner: -mine, by: 'home' }, offer: null, at: now, by: 'home' }); return true; }
+                t.update(ref, { status: 'closed', at: now, by: 'home' });
               });
-            });
+            }).then(function (resigned) { if (resigned) return chessRecord(x); });
           }
         };
       });
+    });
+  }
+  // The game given up from Keep playing is recorded here as the loss it is: Chess's own page, opened in a frame nobody
+  // sees (?kquit=1), finds the table over by resignation and records it as it always does (once a device, through its
+  // chess_net_done), then the frame goes and the page's notes of the table with it.
+  function chessRecord(x) {
+    var NK = 'chess_online', NL = 'chess_net_mine', ND = 'chess_net_done';
+    function doneN() { var l = []; try { l = JSON.parse(LS.getItem(ND)) || []; } catch (e) {} return Array.isArray(l) ? l.filter(function (k) { return String(k).indexOf(x.code + ':') === 0; }).length : 0; }
+    var n0 = doneN(), keepK = lsGet(NK, null);
+    return new Promise(function (resolve) {
+      var fr = doc.createElement('iframe'), t0 = Date.now(), timer = 0;
+      fr.setAttribute('aria-hidden', 'true'); fr.setAttribute('tabindex', '-1'); fr.setAttribute('inert', '');
+      fr.style.cssText = 'position:fixed;left:0;top:0;width:' + innerWidth + 'px;height:' + innerHeight + 'px;border:0;opacity:0;pointer-events:none;z-index:-1;';
+      var href = x.href || 'games/' + (x.file || 'chess.html?online=1&room=' + x.code);
+      fr.src = href + (href.indexOf('?') < 0 ? '?' : '&') + 'kquit=1';
+      function end() {
+        clearTimeout(timer);
+        try { fr.src = 'about:blank'; } catch (e) {} fr.remove();
+        try {
+          var k = JSON.parse(keepK || 'null');
+          if (k && k.code !== x.code) LS.setItem(NK, keepK); else LS.removeItem(NK);
+          var l = JSON.parse(LS.getItem(NL) || '[]');
+          if (Array.isArray(l)) LS.setItem(NL, JSON.stringify(l.filter(function (y) { return y && y.code !== x.code; })));
+        } catch (e) {}
+        resolve();
+      }
+      (function look() { if (doneN() > n0 || Date.now() - t0 > 20000) { setTimeout(end, 300); return; } timer = setTimeout(look, 250); })();
+      doc.body.appendChild(fr);
     });
   }
   function quitLorc(x) {
