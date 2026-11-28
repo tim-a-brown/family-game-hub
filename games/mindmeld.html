@@ -24,7 +24,7 @@ body{overflow-x:hidden;}
 .ta > .felt-in{position:relative;border-radius:19px;padding:12px 12px 16px;display:flex;flex-direction:column;gap:12px;
   min-height:calc(100dvh - var(--bar) - 30px - var(--safe-b));}
 .hive{order:1;}.pcw{order:2;}.st{order:3;}.mid{order:4;}.pad{order:5;}.acts{order:6;}
-.st:empty,.acts:empty,.pcw:empty{display:none;}
+.st:empty,.acts:empty,.pcw:empty,.ph-write > .mid:empty{display:none;}
 .ph-ask > .mid,.ph-write > .mid,.ph-reveal > .mid,.ph-scored > .mid{flex:1;display:flex;flex-direction:column;}
 .mid > :first-child{margin-top:auto;}.mid > :last-child{margin-bottom:auto;}
 .acts{margin-top:auto;}
@@ -291,7 +291,8 @@ body{overflow-x:hidden;}
   .ph-write{grid-template-areas:"hv pc" "hv pad" "st pad" "x acts";grid-template-rows:auto 1fr auto auto;}
   .ph-reveal,.ph-scored{grid-template-areas:"hv pc" "hv mid" "st acts";grid-template-rows:auto 1fr auto;}
   .hive{grid-area:hv;align-self:center;}.pcw{grid-area:pc;align-self:start;}.st{grid-area:st;}.mid{grid-area:mid;}.pad{grid-area:pad;align-self:center;}.acts{grid-area:acts;align-self:end;}
-  .ph-reveal .mid,.ph-scored .mid{overflow-y:auto;overscroll-behavior:contain;max-height:calc(100dvh - var(--bar) - 190px - var(--safe-b));border-radius:12px;}
+  .ph-reveal .mid,.ph-scored .mid{overflow-y:auto;overscroll-behavior:contain;max-height:none;min-height:0;border-radius:12px;}
+  html:not(.mm-dk) .ta > .felt-in.ph-reveal,html:not(.mm-dk) .ta > .felt-in.ph-scored{height:calc(100dvh - var(--bar) - 30px - var(--safe-b));min-height:0;box-sizing:border-box;grid-template-rows:auto minmax(0,1fr) auto;}
   .st{align-self:start;}
   .ta > .felt-in.ph-over{display:flex;}
   .offer .two{flex-direction:column;align-items:stretch;max-width:560px;}
@@ -787,7 +788,9 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     if (room) H = room.clientHeight - 30;
     else if (felt) {
       var cs = getComputedStyle(felt), fr = felt.getBoundingClientRect();
-      var bottom = DK ? fr.bottom : Math.min(fr.bottom, innerHeight - 32);
+      // (the room under the felt, its wood and the page's own margin, is measured, so the table ends at the screen's foot)
+      var slack = Math.max(16, document.documentElement.scrollHeight - (fr.bottom + scrollY));
+      var bottom = DK ? fr.bottom : Math.min(fr.bottom, innerHeight - slack);
       var avail = bottom - fr.top - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom), rg = parseFloat(cs.rowGap) || 0;
       if (cs.display === 'grid') {
         var st = Q('.st'), span = DK && app.classList.contains('t-row');
@@ -838,6 +841,11 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     h.style.setProperty('--bz', best + 'px');
     h.style.setProperty('--tgf', Math.max(11, Math.round(best * 0.36)) + 'px');
     h.style.setProperty('--lvh', Math.max(one, share) + 'px');
+    // (the estimate is checked against the hive as drawn: a step smaller until it stands inside its room)
+    for (var guard = 0; guard < 24 && h.offsetHeight > H + 1 && best > 14; guard++) {
+      best--; one = need(best, ini, longest);
+      h.style.setProperty('--bz', best + 'px'); h.style.setProperty('--tgf', Math.max(11, Math.round(best * 0.36)) + 'px'); h.style.setProperty('--lvh', one + 'px');
+    }
   }
   // FLIP: a bee that has moved glides from where it was
   function flipBees(before) {
