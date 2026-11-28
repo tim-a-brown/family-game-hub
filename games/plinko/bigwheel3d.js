@@ -651,7 +651,7 @@ export function BigWheel3D(host, hooks, api) {
     camera.position.set(camBase.x + par.x * 0.12, camBase.y + par.y * 0.08, camBase.z); camera.lookAt(par.x * 0.03, -0.03 + par.y * 0.02, 0.3);
     const fast = Math.abs(st.om) > 1.5 && level < 1;
     if (fast !== trail.enabled) { trail.enabled = fast; if (fast) { renderer.setRenderTarget(trail.textureOld); renderer.clear(); renderer.setRenderTarget(null); } }
-    trail.uniforms.damp.value = Math.min(0.8, 0.35 + Math.abs(st.om) * 0.06);
+    trail.uniforms.damp.value = Math.min(0.5, 0.2 + Math.abs(st.om) * 0.03);   // a light trail: heavier ghosted the panels into see-through slabs
     renderer.info.reset();
     const t0 = performance.now();
     renderer.shadowMap.needsUpdate = true;

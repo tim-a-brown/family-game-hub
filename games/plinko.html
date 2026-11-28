@@ -134,21 +134,22 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
   background:radial-gradient(120% 90% at 50% 15%,#ff8a7a 0%,#e5242a 45%,#8a0d16 100%);
   box-shadow:0 0 0 3px #1a0608,0 0 0 5px #f3c85a,0 0 22px rgba(255,120,60,.45),0 14px 26px -12px rgba(0,0,0,.8),inset 0 2px 0 rgba(255,255,255,.35);
   text-shadow:0 2px 0 rgba(0,0,0,.5);transition:transform .12s var(--ease),box-shadow .12s,filter .2s;}
-.bw-act .btn.bw-spin::after{content:"";position:absolute;inset:-5px;border-radius:999px;pointer-events:none;
-  background:repeating-conic-gradient(#ffe9a8 0 6deg,transparent 6deg 18deg);
-  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));
-  opacity:.9;animation:bwbulbs 1.1s steps(3) infinite;}
-@keyframes bwbulbs{to{transform:rotate(18deg)}}
+/* the chasing bulbs: dots along a ring drawn to the button's own pill, so nothing sticks out past it */
+.bw-act .btn.bw-spin .bw-bulbs{position:absolute;left:-5px;top:-5px;width:calc(100% + 10px);height:calc(100% + 10px);max-width:none;max-height:none;pointer-events:none;overflow:visible;}
+.bw-act .btn.bw-spin .bw-bulbs rect{fill:none;stroke:#ffe9a8;stroke-width:3.4;stroke-linecap:round;stroke-dasharray:0 11;opacity:.9;animation:bwbulbs 1.1s steps(3) infinite;}
+@keyframes bwbulbs{to{stroke-dashoffset:var(--bg,-11px)}}
 .bw-act .btn.bw-spin:active:not(:disabled){transform:translateY(1px) scale(.975);filter:brightness(.92);}
 .bw-act .btn.bw-spin:disabled{filter:saturate(.35) brightness(.6);}
-.bw-act .btn.bw-spin:disabled::after{animation:none;opacity:.35;}
+.bw-act .btn.bw-spin:disabled .bw-bulbs rect{animation:none;opacity:.35;}
 .bw-act .btn.bw-next{min-height:56px;border-radius:999px;font-family:var(--display);font-size:1.2rem;letter-spacing:-.02em;color:var(--gold-ink);
   background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 0 0 3px #1a0608,0 0 0 5px rgba(243,200,90,.55),0 10px 24px -10px rgba(255,190,60,.6);}
 .bw-act .btn.bw-next:active:not(:disabled){transform:translateY(1px) scale(.975);filter:brightness(.94);}
 .bw-frame{filter:drop-shadow(0 24px 30px rgba(0,0,0,.55));}
 .bw-stage .bw-frame canvas{-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 7%,#000 100%),linear-gradient(90deg,transparent 0,#000 5%,#000 95%,transparent 100%);-webkit-mask-composite:source-in;mask-image:linear-gradient(180deg,transparent 0,#000 7%,#000 100%),linear-gradient(90deg,transparent 0,#000 5%,#000 95%,transparent 100%);mask-composite:intersect;}
-@media (prefers-reduced-motion:reduce){body.bw-stage::before,.bw-act .btn.bw-spin::after{animation:none;}}
-.bw-frame{position:relative;margin:0 auto;}
+@media (prefers-reduced-motion:reduce){body.bw-stage::before,.bw-act .btn.bw-spin .bw-bulbs rect{animation:none;}}
+.bw-frame{position:relative;margin:0 auto;animation:bwfin .35s ease-out both;}
+.bw-frame.bw-wait{visibility:hidden;}
+@keyframes bwfin{from{opacity:0}}
 .bw-frame canvas{display:block;touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none;}
 .bw-frame canvas:active{cursor:grabbing;}
 .bw-frame canvas:focus-visible{outline:2px solid #ffd45a;outline-offset:4px;border-radius:12px;}
@@ -1135,11 +1136,31 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
       onKey: function () { if (canSpin()) doSpin(buttonSpin()); }
     });
     window.PlinkoWheel.view = BW;   // test hook: the renderer in use (is3D, info())
+    // The 3D module arrives a moment after this script: rather than show the flat wheel and swap it out,
+    // keep the frame empty until the 3D wheel replaces it (or 3 s pass and the canvas wheel stays)
+    if (!BW.is3D && !window.BigWheel3D && want3D()) { var wf0 = dom.wf; wf0.classList.add('bw-wait'); setTimeout(function () { wf0.classList.remove('bw-wait'); }, 3000); }
     if (S.wangle == null) S.wangle = Math.random() * Math.PI * 2;
     BW.setAngle(S.wangle);
     paintWheelUI();
     deskClass();
     wheelLayout();
+  }
+  // The Spin button's chasing bulbs: an SVG ring the size of the button, its corners its own pill
+  function bulbRing(b) {
+    var NS = 'http://www.w3.org/2000/svg', sv = document.createElementNS(NS, 'svg'), r = document.createElementNS(NS, 'rect');
+    sv.setAttribute('class', 'bw-bulbs'); sv.setAttribute('aria-hidden', 'true'); sv.appendChild(r); b.appendChild(sv);
+    function fit() {
+      var w = b.offsetWidth + 10, h = b.offsetHeight + 10; if (w < 20 || h < 20) return;
+      sv.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+      r.setAttribute('x', 2.5); r.setAttribute('y', 2.5); r.setAttribute('width', w - 5); r.setAttribute('height', h - 5);
+      r.setAttribute('rx', (h - 5) / 2); r.setAttribute('ry', (h - 5) / 2);
+      // space the bulbs so they divide the ring evenly, with no odd gap where it closes
+      var per = 2 * (w - h) + Math.PI * (h - 5), g = per / Math.max(8, Math.round(per / 11));
+      r.style.strokeDasharray = '0 ' + g.toFixed(3); sv.style.setProperty('--bg', -g.toFixed(3) + 'px');
+    }
+    if (window.ResizeObserver) new ResizeObserver(fit).observe(b);
+    requestAnimationFrame(fit);
+    return b;
   }
   // The 3D module loads after this script: if the wheel went up before it arrived, rebuild it in 3D
   window.addEventListener('bw3d-ready', function () { if (BW && !BW.is3D && S && S.phase === 'wheel' && !BW.busy() && !wheelBusy) renderWheel(); });
@@ -1172,7 +1193,7 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
     if (!p.wheel) {
       dom.hint.innerHTML = Kit.icon('hand') + '<span>' + (multi ? '<b>' + Kit.esc(p.name) + '</b>, swipe down on the wheel to spin' : 'Swipe down on the wheel to spin') + '</span>';
       dom.hint.classList.remove('big');
-      dom.act.appendChild(el('button', { type: 'button', class: 'btn bw-spin', html: '<span>Spin</span>', disabled: wheelBusy, onclick: function () { if (canSpin()) doSpin(buttonSpin()); } }));
+      dom.act.appendChild(bulbRing(el('button', { type: 'button', class: 'btn bw-spin', html: '<span>Spin</span>', disabled: wheelBusy, onclick: function () { if (canSpin()) doSpin(buttonSpin()); } })));
     } else {
       var n = nextSpinner();
       dom.hint.classList.add('big');
