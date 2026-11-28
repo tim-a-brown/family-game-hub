@@ -199,7 +199,18 @@
   }
   // the moves for a dropped seat when it's their turn: the game's own, or the computer's at a table of 3 or more
   function coverFn(d) { if (!dropOn(d)) return null; return G.cover || (ownDrop() ? null : G.bot) || null; }
-  function stale(d, i, now) { var h = d && d.hb && d.hb[i]; return !h || (now || Date.now()) - h > DROP; }
+  // Another seat's beat is judged by this device's own clock: the moment it saw that seat's hb change (SEEN), not the
+  // time written by the other device's clock, so a phone whose clock runs fast or slow is never counted as dropped
+  // when it isn't. Your own seat's beat was written by this clock and is read as it is.
+  var SEEN = {};
+  function stale(d, i, now) {
+    var h = d && d.hb && d.hb[i]; if (!h) return true;
+    now = now || Date.now();
+    if (i === T.seat) return now - h > DROP;
+    var k = (T.code || '') + ':' + i, s = SEEN[k], t = Date.now();
+    if (!s || s.h !== h) { SEEN[k] = s = { h: h, at: t }; }
+    return now - s.at > DROP;
+  }
   function covered(d, i) { return !!(d && d.cov && d.cov[i] != null); }
   function leaveMs(st) { try { return typeof G.dropLeave === 'function' ? +G.dropLeave(st) || 0 : +G.dropLeave || 0; } catch (e) { return 0; } }
   function mins(ms) { var m = Math.round(ms / 60000); return m === 1 ? 'a minute' : m + ' minutes'; }
@@ -467,6 +478,7 @@
       }
       return;
     }
+    if (d.seats) d.seats.forEach(function (x, i) { stale(d, i); });   // (notes, by this device's clock, whose beats have just changed)
     if (T.seat >= 0 && !document.hidden && d.status === 'playing' && (covered(d, T.seat) || stale(d, T.seat, Date.now() - HB))) beatSoon();   // (you're here: back, or just opened the table)
     if (T.closing) tryClose(false);
     botCheck();
