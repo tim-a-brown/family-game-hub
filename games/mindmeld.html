@@ -25,111 +25,172 @@ body{overflow-x:hidden;}
   min-height:calc(100dvh - var(--bar) - 30px - var(--safe-b));}
 .hive{order:1;}.pcw{order:2;}.st{order:3;}.mid{order:4;}.pad{order:5;}.acts{order:6;}
 .st:empty,.acts:empty,.pcw:empty,.ph-write > .mid:empty{display:none;}
-.ph-ask > .mid,.ph-write > .mid,.ph-reveal > .mid,.ph-scored > .mid{flex:1;display:flex;flex-direction:column;}
+.ph-roll > .mid,.ph-ask > .mid,.ph-write > .mid,.ph-reveal > .mid,.ph-scored > .mid{flex:1;display:flex;flex-direction:column;}
 .mid > :first-child{margin-top:auto;}.mid > :last-child{margin-bottom:auto;}
 .acts{margin-top:auto;}
 @keyframes ta_shake{20%{transform:translateX(-5px);}40%{transform:translateX(5px);}60%{transform:translateX(-3px);}80%{transform:translateX(3px);}}
 @keyframes ta_pop{from{transform:scale(.3);}}
 
-/* ── The hive: its levels as tiers of honeycomb, the top one narrowest, a door under the last one. Each player is a
-   bee in their seat color on the level they are on; a bee pushed past the last level goes out through the door. ── */
+/* ── The board, as printed: a white sheet washed with watercolor; level 1 a big blue quarter circle in the top left
+   corner, each next level an overlapping circle with its huge outlined number, snaking along the top, down the right
+   and back along the bottom; an arrow off the board after the last; the logo in the open middle. Every part is placed
+   by layBoard, sized for the board's room. Each player is a Mind pawn in their seat color. ── */
 .ta .pcw > .pc{view-transition-name:hm-card;}.ta .pad{view-transition-name:hm-pad;}.ta .acts{view-transition-name:hm-acts;}
-.hive{--bz:30px;--lvh:calc(var(--bz) + 18px);position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:2px 0 0;}
-.hive .lv{--w:100%;position:relative;width:var(--w);min-height:var(--lvh);flex:none;box-sizing:border-box;display:flex;flex-wrap:wrap;justify-content:center;align-content:center;align-items:flex-end;
-  gap:calc(var(--bz) * .42) calc(var(--bz) * .18);padding:calc(var(--bz) * .3) calc(var(--bz) * .8) 3px;border-radius:calc(var(--bz) * .5);
-  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='49' viewBox='0 0 28 49'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.98-7.5V0h-2v6.35L0 12.69v2.3zm0 18.5L12.98 41v8h-2v-6.85L0 35.81v-2.3zM15 0v7.5L27.99 15H28v-2.31h-.01L17 6.35V0h-2zm0 49v-8l12.99-7.5H28v2.31h-.01L17 42.15V49h-2z' fill='%237a4300' fill-opacity='.26'/%3E%3C/svg%3E") 0 0/calc(var(--bz) * .62) auto,
-    radial-gradient(120% 90% at 50% 0%,#ffd76a,#f2ac2e 55%,#c97a12);
-  box-shadow:inset 0 1.5px 0 rgba(255,250,210,.75),inset 0 -4px 6px rgba(110,55,0,.35),0 3px 0 #8f5409,0 6px 12px rgba(0,0,0,.35);transition:background-color .3s;}
-.hive .lv::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.14),transparent 40%);}
-.hive .lv > b{position:absolute;left:calc(var(--bz) * .2);top:50%;transform:translateY(-50%);min-width:max(17px,calc(var(--bz) * .5));height:max(17px,calc(var(--bz) * .5));padding:0 2px;box-sizing:border-box;border-radius:max(5px,calc(var(--bz) * .14));display:grid;place-items:center;
-  background:linear-gradient(180deg,#b86f0e,#8f5409);box-shadow:inset 0 1px 2px rgba(60,25,0,.7),0 1px 0 rgba(255,235,170,.55);
-  font-family:var(--display);font-weight:800;font-size:max(10px,calc(var(--bz) * .3));line-height:1;color:#ffe7a6;text-shadow:0 -1px 0 rgba(60,25,0,.6);font-variant-numeric:tabular-nums;}
-.hive .lv.last > b{background:linear-gradient(180deg,#c24a12,#8a2a05);color:#fff;}
-.hive .lv.last{background-color:#e08c1e;}
-.hive.drop-on .lv.last{box-shadow:inset 0 1.5px 0 rgba(255,250,210,.75),inset 0 -4px 6px rgba(110,55,0,.35),0 3px 0 #8f5409,0 0 0 2px rgba(255,92,72,.7),0 6px 16px rgba(255,80,40,.35);}
-/* the door out of the hive, with the gate that closes it for a smaller table */
-.hive .door{position:relative;display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-end;gap:1px calc(var(--bz) * .2);min-width:calc(var(--bz) * 3);min-height:calc(var(--bz) * 1.15);
-  margin-top:-2px;padding:4px calc(var(--bz) * .5) 3px;border-radius:calc(var(--bz) * .9) calc(var(--bz) * .9) 6px 6px;
-  background:radial-gradient(80% 110% at 50% 100%,#140a02,#2c1806 70%,#3a2209);box-shadow:inset 0 3px 8px rgba(0,0,0,.7),0 0 0 3px #8f5409,0 0 0 4.5px rgba(255,215,120,.35);}
-.hive .door > i{position:absolute;inset:3px 10px auto;height:calc(100% - 6px);pointer-events:none;
-  background:repeating-linear-gradient(90deg,transparent 0 calc(var(--bz) * .42),rgba(220,170,80,.5) calc(var(--bz) * .42) calc(var(--bz) * .42 + 2px));border-radius:inherit;opacity:.55;}
-.hive .door.has > i{opacity:.18;}
-/* a bee */
-.bee{--c:#ffc83d;position:relative;flex:none;display:flex;flex-direction:column;align-items:center;width:calc(var(--bz) * 1.28);min-width:min-content;z-index:1;}
-.bee .bz{position:relative;width:var(--bz);height:calc(var(--bz) * .8);animation:hover 2.6s ease-in-out infinite;animation-delay:var(--bd,0s);}
-.bee .bz svg{display:block;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 2px 1.5px rgba(70,30,0,.45));}
-@keyframes hover{50%{transform:translateY(-2px);}}
-.bee .tg{margin-top:1px;padding:0 max(4px,calc(var(--tgf,11px) * .38));border-radius:max(5px,calc(var(--tgf,11px) * .4));background:rgba(40,18,0,.58);color:#fff;font-weight:750;font-size:var(--tgf,max(11px,calc(var(--bz) * .36)));line-height:1.3;white-space:nowrap;}
-.bee.me .tg{background:var(--c);color:var(--ink-on,#1b1530);box-shadow:0 0 0 1.5px #fff7d6;}
-.bee.gone{opacity:.45;}
-.bee.gone .bz{animation:none;}
-.bee .mk{position:absolute;right:calc(var(--bz) * -.02);top:calc(var(--bz) * -.18);width:calc(var(--bz) * .48);height:calc(var(--bz) * .48);min-width:13px;min-height:13px;border-radius:50%;display:grid;place-items:center;background:#fffdf4;color:#1f2a6b;box-shadow:0 1px 3px rgba(0,0,0,.45);z-index:2;}
-.bee .mk .ico{width:70%;height:70%;}
-.bee .mk.ok{background:#3ddc84;color:#06301a;animation:ta_pop .4s var(--spring);}
-.bee .mk.wr .ico{animation:scrib .7s ease-in-out infinite;}
+.hive{--bz:30px;position:relative;width:100%;height:240px;flex:none;align-self:center;overflow:hidden;border-radius:12px;background:#fbfaf6;isolation:isolate;
+  box-shadow:0 0 0 1px rgba(0,0,0,.25),0 2px 0 #d9d4c8,0 4px 0 #b9b2a3,0 10px 22px rgba(0,0,0,.45);}
+.hive .wash{position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(45% 38% at 18% 46%,rgba(70,110,210,.42),transparent 70%),radial-gradient(38% 30% at 82% 8%,rgba(120,60,150,.38),transparent 70%),
+    radial-gradient(40% 34% at 92% 82%,rgba(245,110,40,.38),transparent 72%),radial-gradient(42% 30% at 46% 96%,rgba(250,210,40,.42),transparent 72%),
+    radial-gradient(30% 26% at 6% 92%,rgba(70,190,140,.32),transparent 72%),radial-gradient(28% 24% at 40% 30%,rgba(150,90,200,.18),transparent 70%);
+  filter:saturate(1.1);}
+.hive .lv{--bc:#3f7fd6;position:absolute;left:0;top:0;width:100px;height:100px;border-radius:50%;box-sizing:border-box;pointer-events:none;
+  background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.2) 1.1px,transparent 1.8px) 0 0/7px 7px,radial-gradient(120% 120% at 35% 25%,color-mix(in srgb,var(--bc) 82%,#fff),var(--bc) 55%,color-mix(in srgb,var(--bc) 86%,#000));
+  box-shadow:0 0 0 3px #fff,0 0 0 4.5px color-mix(in srgb,var(--bc) 55%,#1b1530),0 4px 10px rgba(0,0,0,.18);}
+.hive .lv > b{position:absolute;transform:translate(-50%,-52%);font-family:var(--display);font-weight:800;line-height:1;font-variant-numeric:tabular-nums;
+  color:color-mix(in srgb,var(--bc) 88%,#000);-webkit-text-stroke:.03em color-mix(in srgb,var(--bc) 45%,#fff);paint-order:stroke fill;opacity:.95;
+  text-shadow:.04em .04em 0 color-mix(in srgb,var(--bc) 70%,#1b1530);}
+.hive .lv.q1 > b{transform:translate(-50%,-50%);}
+.hive.drop-on .lv.last{box-shadow:0 0 0 3px #fff,0 0 0 6px rgba(255,70,50,.85),0 0 20px rgba(255,70,50,.5);}
+/* the logo in the open middle, and the arrow that points off the board */
+.hive .logo{position:absolute;z-index:0;transform:translate(-50%,-50%) rotate(-4deg);display:flex;flex-direction:column;align-items:center;pointer-events:none;text-align:center;}
+.hive .logo b{font-family:Georgia,'Times New Roman',serif;font-weight:900;font-size:1em;line-height:.86;color:#2f4b1d;letter-spacing:-.02em;text-shadow:.03em .03em 0 #b9d46a;}
+.hive .logo .bub{align-self:flex-end;margin:0 -.4em -.1em 0;padding:.16em .4em;border-radius:.35em;background:#f6e36b;color:#7a3a10;font:800 max(9px,.2em)/1.05 var(--font);max-width:6.5em;transform:rotate(6deg);box-shadow:.05em .05em 0 #c9a51e;}
+.hive .logo small{margin-top:.25em;font:700 max(9px,.14em)/1 var(--font);color:#3d5a26;white-space:nowrap;}
+.hive .exit{position:absolute;z-index:12;pointer-events:none;}
+.hive .logo.sm .bub,.hive .logo.sm small{display:none;}
+.hive .exit svg{display:block;width:100%;height:auto;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25));}
+/* a Mind pawn */
+.pawn{--c:#ffc83d;position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:center;transition:none;}
+.pawn .bz{position:relative;width:calc(var(--bz) * .8);height:var(--bz);flex:none;}
+.pawn .bz svg{display:block;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35));}
+.pawn .tg{margin-top:0;padding:0 max(4px,calc(var(--tgf,11px) * .38));border-radius:max(5px,calc(var(--tgf,11px) * .4));background:rgba(22,18,42,.82);color:#fff;font-weight:750;font-size:var(--tgf,11px);line-height:1.3;white-space:nowrap;}
+.pawn.me .tg{background:var(--c);color:var(--ink-on,#1b1530);box-shadow:0 0 0 1.5px #1b1530;}
+.pawn.gone{opacity:.45;}
+.pawn .mk{position:absolute;right:calc(var(--bz) * -.08);top:calc(var(--bz) * -.1);width:calc(var(--bz) * .46);height:calc(var(--bz) * .46);min-width:13px;min-height:13px;border-radius:50%;display:grid;place-items:center;background:#fff;color:#1f2a6b;box-shadow:0 1px 3px rgba(0,0,0,.45);z-index:2;}
+.pawn .mk .ico{width:70%;height:70%;}
+.pawn .mk.ok{background:#3ddc84;color:#06301a;animation:ta_pop .4s var(--spring);}
+.pawn .mk.wr .ico{animation:scrib .7s ease-in-out infinite;}
 @keyframes scrib{25%{transform:translate(-1.5px,1px) rotate(-8deg);}75%{transform:translate(1.5px,-1px) rotate(6deg);}}
-.bee .cr{position:absolute;left:50%;top:calc(var(--bz) * -.34);width:calc(var(--bz) * .5);height:calc(var(--bz) * .36);margin-left:calc(var(--bz) * -.32);color:#ffd447;z-index:2;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5));}
-.bee .cr .ico{width:100%;height:100%;fill:#ffd447;stroke:#7a4b00;stroke-width:1.5;}
-.bee .gain{position:absolute;left:calc(var(--bz) * -.2);top:calc(var(--bz) * -.32);z-index:3;min-width:calc(var(--bz) * .62);padding:1px 5px;border-radius:999px;background:#3ddc84;color:#06301a;font-family:var(--display);font-weight:800;font-size:max(10px,calc(var(--bz) * .4));line-height:1.15;text-align:center;
+.pawn .cr{position:absolute;left:50%;top:calc(var(--bz) * -.36);width:calc(var(--bz) * .5);height:calc(var(--bz) * .36);min-width:12px;min-height:9px;transform:translateX(-50%);color:#ffd447;z-index:2;filter:drop-shadow(0 1px 1px rgba(0,0,0,.6));animation:crB 1.6s ease-in-out infinite;}
+@keyframes crB{50%{margin-top:-2px;}}
+.pawn .cr .ico{width:100%;height:100%;fill:#ffd447;stroke:#7a4b00;stroke-width:1.5;}
+.pawn .gain{position:absolute;left:calc(var(--bz) * -.3);top:calc(var(--bz) * -.15);z-index:3;min-width:calc(var(--bz) * .6);padding:1px 5px;border-radius:999px;background:#3ddc84;color:#06301a;font-family:var(--display);font-weight:800;font-size:max(11px,calc(var(--bz) * .38));line-height:1.15;text-align:center;
   box-shadow:0 2px 5px rgba(0,0,0,.4);animation:gainUp .7s var(--spring) both;animation-delay:var(--gd,0s);}
 @keyframes gainUp{from{transform:translateY(12px) scale(.4);opacity:0;}}
-.bee.lo .gain{background:#ff7a6b;color:#3b0700;}
-.bee.hi .gain{background:linear-gradient(180deg,#fff3a8,#ffc83d);color:#3a2600;}
-.bee .ar{min-width:13px;min-height:13px;position:absolute;right:calc(var(--bz) * -.18);top:calc(var(--bz) * .12);width:calc(var(--bz) * .52);height:calc(var(--bz) * .52);border-radius:50%;display:grid;place-items:center;z-index:3;animation:arPop .4s var(--spring) both;animation-delay:var(--ad,0s);box-shadow:0 2px 4px rgba(0,0,0,.4);}
+.pawn.lo .gain{background:#ff7a6b;color:#3b0700;}
+.pawn.hi .gain{background:linear-gradient(180deg,#fff3a8,#ffc83d);color:#3a2600;}
+.pawn .ar{min-width:13px;min-height:13px;position:absolute;right:calc(var(--bz) * -.22);top:calc(var(--bz) * .32);width:calc(var(--bz) * .5);height:calc(var(--bz) * .5);border-radius:50%;display:grid;place-items:center;z-index:3;animation:arPop .4s var(--spring) both;animation-delay:var(--ad,0s);box-shadow:0 2px 4px rgba(0,0,0,.4);}
 @keyframes arPop{from{transform:scale(.3);opacity:0;}}
-.bee .ar .ico{width:72%;height:72%;stroke-width:3;}
-.bee .ar.dn{background:#ff5c48;color:#fff;}
-.bee .ar.up{background:#ffd447;color:#4a2c00;}
-.bee.outb .bz{animation:none;transform:rotate(-14deg);}
-.bee.outb .tg{background:rgba(255,92,72,.85);}
-.hive.shake{animation:hiveShake .7s cubic-bezier(.36,.07,.19,.97);}
-@keyframes hiveShake{10%,90%{transform:translateX(-1px) rotate(-.3deg);}20%,80%{transform:translateX(3px) rotate(.5deg);}30%,50%,70%{transform:translateX(-5px) rotate(-.8deg);}40%,60%{transform:translateX(5px) rotate(.8deg);}}
-.hive.shake .bee .bz{animation:buzz .12s linear 5;}
-@keyframes buzz{50%{transform:translate(1px,-1px) rotate(4deg);}}
-.hive.crowd{--bz:24px;}
-/* many bees in little room: each bee's initial on a tag over its foot, the bees side by side */
-.hive.ini .bee{width:calc(var(--bz) * 1.18);padding-bottom:calc(var(--tgf,11px) * .35);}
-.hive.ini .lv{padding-top:calc(var(--bz) * .12);padding-bottom:2px;}
-.hive.ini .bee .gain{left:50%;transform:translateX(-50%);top:calc(var(--bz) * -.5);}
-.hive.ini .bee .tg{position:absolute;left:50%;bottom:calc(var(--tgf,11px) * -.1);transform:translateX(-50%);min-width:calc(var(--tgf,11px) * 1.3);text-align:center;padding:0 3px;box-sizing:border-box;}
+.pawn .ar .ico{width:72%;height:72%;stroke-width:3;}
+.pawn .ar.dn{background:#ff5c48;color:#fff;}
+.pawn .ar.up{background:#ffd447;color:#4a2c00;}
+.pawn.outb .bz{transform:rotate(-70deg);transform-origin:50% 92%;}
+.pawn.outb .tg{background:rgba(220,60,45,.92);}
+.hive.shake{animation:boardThump .45s cubic-bezier(.36,.07,.19,.97);}
+@keyframes boardThump{30%{transform:translateY(-2px) scale(1.008);}60%{transform:scale(.997);}}
+/* many pawns in little room: each pawn's initial on a tag over its foot */
+.hive.ini .pawn{padding-bottom:calc(var(--tgf,11px) * .35);}
+.hive.ini .pawn .gain{left:50%;transform:translateX(-50%);top:calc(var(--bz) * -.3);font-size:11px;padding:0 4px;min-width:0;}
+.hive.ini .pawn .ar{display:none;}
+.hive.ini .pawn .tg,.pawn.outb .tg{position:absolute;left:50%;bottom:calc(var(--tgf,11px) * -.1);transform:translateX(-50%);min-width:calc(var(--tgf,11px) * 1.3);text-align:center;padding:0 3px;box-sizing:border-box;}
 
-/* The Queen Bee die: honey-colored, with the number of bees it sends down as pips */
+/* The die: white, with one, two or three dots or the star (a dot inside a star); arrows under it say who moves */
 .qd{flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;}
-.qd .face{--ds:46px;position:relative;width:var(--ds);height:var(--ds);border-radius:calc(var(--ds) * .22);display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:calc(var(--ds) * .13);box-sizing:border-box;
-  background:radial-gradient(90% 90% at 30% 22%,#fff3c2,#ffcf4a 55%,#e39b18);box-shadow:inset 0 -3px 0 rgba(140,80,0,.45),inset 0 2px 0 rgba(255,255,255,.7),0 6px 10px rgba(0,0,0,.4);}
-.qd .face i{width:72%;height:72%;margin:auto;border-radius:50%;background:radial-gradient(circle at 35% 30%,#5a3a10,#1d1204);box-shadow:inset 0 1px 1px rgba(255,255,255,.25);visibility:hidden;}
-.qd .face[data-v="1"] i:nth-child(5),.qd .face[data-v="2"] i:nth-child(3),.qd .face[data-v="2"] i:nth-child(7),
-.qd .face[data-v="3"] i:nth-child(3),.qd .face[data-v="3"] i:nth-child(5),.qd .face[data-v="3"] i:nth-child(7){visibility:visible;}
+.qd .face,.faces .face{--ds:46px;position:relative;width:var(--ds);height:var(--ds);border-radius:calc(var(--ds) * .2);display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:calc(var(--ds) * .13);box-sizing:border-box;
+  background:radial-gradient(90% 90% at 30% 22%,#ffffff,#f1f1f6 55%,#d4d5e0);box-shadow:inset 0 -3px 0 rgba(60,60,90,.28),inset 0 2px 0 #fff,0 6px 10px rgba(0,0,0,.4);}
+.face i{width:72%;height:72%;margin:auto;border-radius:50%;background:radial-gradient(circle at 35% 30%,#3d3c58,#14132a);box-shadow:inset 0 1px 1px rgba(255,255,255,.25);visibility:hidden;}
+.face[data-v="1"] i:nth-child(5),.face[data-v="2"] i:nth-child(3),.face[data-v="2"] i:nth-child(7),
+.face[data-v="3"] i:nth-child(3),.face[data-v="3"] i:nth-child(5),.face[data-v="3"] i:nth-child(7){visibility:visible;}
+.face[data-v="s"]{display:block;padding:calc(var(--ds) * .08);}
+.face[data-v="s"] svg{display:block;width:100%;height:100%;}
 .qd .face.roll{animation:qdRoll .9s cubic-bezier(.2,.8,.3,1) both;}
 @keyframes qdRoll{0%{transform:translate(-50px,-60px) rotate(-200deg) scale(.6);}55%{transform:translate(6px,4px) rotate(18deg) scale(1.08);}75%{transform:translate(-2px,-6px) rotate(-6deg);}100%{transform:none;}}
-.qd .dn{display:flex;gap:1px;color:#ff7a6b;height:14px;}
-.qd .dn .ico{width:14px;height:14px;stroke-width:3.2;}
-.qd.dim .face{filter:saturate(.3) brightness(.75);}
+.qd .face.land{animation:qdLand .45s var(--spring) both;}
+@keyframes qdLand{from{transform:translateY(-30px) rotate(40deg) scale(1.3);}}
+.qd.read .face{animation:qdRead .5s var(--spring);}
+@keyframes qdRead{40%{transform:scale(1.18) rotate(-6deg);}}
+.qd .dn,.faces .dn{display:flex;gap:1px;color:#ff7a6b;height:14px;}
+.qd .dn .ico,.faces .dn .ico{width:14px;height:14px;stroke-width:3.2;}
+.dn i.up{display:grid;color:#ffd447;transform:rotate(180deg);font-style:normal;}
+/* Rolling: the die in the middle of the table, its six faces in a row under it */
+.rtray{display:flex;flex-direction:column;align-items:center;gap:16px;padding:10px 0;}
+.qd.big .face{--ds:108px;border-radius:24px;}
+.qd.big .face.idle{animation:idle 2.4s ease-in-out infinite;}
+@keyframes idle{25%{transform:rotate(-5deg);}75%{transform:rotate(5deg) translateY(-3px);}}
+.rtray.can .qd.big{cursor:pointer;}
+.rtray.can .qd.big .face{box-shadow:inset 0 -3px 0 rgba(60,60,90,.28),inset 0 2px 0 #fff,0 0 0 4px rgba(255,212,71,.55),0 0 30px rgba(255,212,71,.45),0 10px 18px rgba(0,0,0,.45);}
+.qd.big.wait .face{animation:idle 1.2s ease-in-out infinite;}
+.qd .face.tumble{animation:tumble .64s cubic-bezier(.3,.6,.4,1) both;}
+@keyframes tumble{30%{transform:translate(-14px,-40px) rotate(-170deg) scale(1.05);}60%{transform:translate(10px,-10px) rotate(-320deg);}100%{transform:translate(0,0) rotate(-360deg) scale(.6);opacity:.2;}}
+.faces{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+.faces .ff{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.faces .face{--ds:30px;box-shadow:inset 0 -2px 0 rgba(60,60,90,.28),0 3px 5px rgba(0,0,0,.35);}
+.faces .dn{height:11px;}.faces .dn .ico{width:11px;height:11px;}
 
-/* Choosing the card: the two cards held out, a tap on one asks it */
-.offer{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%;}
-.offer .two{display:flex;gap:14px;justify-content:center;width:100%;max-width:820px;}
-.offer .pc{flex:1 1 0;cursor:default;transition:transform .25s var(--spring),box-shadow .25s,opacity .3s;}
-.offer .pc.can{cursor:pointer;}
-.offer .pc.can:hover{transform:translateY(-4px) rotate(0deg);}
-.offer .pc.can:active{transform:scale(.97);}
-.offer .pc:nth-child(2){transform:rotate(1.2deg);}
-.offer .pc.chose{transform:translateY(-10px) scale(1.04) rotate(0deg);box-shadow:0 0 0 3px #ffd447,0 0 26px rgba(255,212,71,.55),0 16px 26px rgba(0,0,0,.45);}
-.offer .pc.left{opacity:0;transform:translateY(30px) scale(.9);}
-.offer.wait .pc{opacity:.92;}
-@media (max-width:560px){ .offer .two{flex-direction:column;align-items:stretch;} .offer .pc:nth-child(2){transform:rotate(.6deg);} }
+/* A question card, as printed: white with a pale watercolor wash, the questions in speech bubbles with green comic
+   outlines and halftone shading, in a condensed sans; a smaller bubble to make up your own, its thought circles trailing */
+@font-face{font-family:'HM Cond';src:url('../fonts/waxpack-barlow-condensed-600.woff2') format('woff2');font-weight:600;font-display:swap;}
+@font-face{font-family:'HM Cond';src:url('../fonts/waxpack-barlow-condensed-800i.woff2') format('woff2');font-weight:800;font-style:italic;font-display:swap;}
+.hmc{--gr:#4f7f22;--gr2:#83b13e;position:relative;width:100%;max-width:640px;align-self:center;margin:0 auto;padding:12px 14px 12px;border-radius:16px;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;color:#26341a;
+  background:radial-gradient(40% 50% at 8% 6%,rgba(160,190,240,.45),transparent 70%),radial-gradient(40% 40% at 96% 4%,rgba(250,215,90,.5),transparent 70%),radial-gradient(45% 45% at 4% 100%,rgba(230,160,220,.42),transparent 72%),radial-gradient(40% 40% at 98% 98%,rgba(170,215,240,.45),transparent 72%),#fdfcf8;
+  box-shadow:0 0 0 1px rgba(0,0,0,.2),0 2px 0 #ddd6c6,0 14px 26px rgba(0,0,0,.45);transform:rotate(-.6deg);}
+.hmc.deal{animation:dealIn .6s var(--spring) both;}
+.hmc{overflow:clip;overflow-clip-margin:10px;}
+.hmc .hmh{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 2px;font-weight:750;font-size:.84rem;color:#5d6a4c;}
+.hmc .hmh .lg{font-family:Georgia,'Times New Roman',serif;font-weight:900;font-size:1.1rem;color:#2f4b1d;text-shadow:.05em .05em 0 #c8dc7c;}
+.bq{position:relative;display:flex;align-items:center;gap:10px;justify-content:space-between;padding:9px 14px;border-radius:12px;color:#26341a;
+  background:radial-gradient(circle at 50% 50%,rgba(79,127,34,.22) .9px,transparent 1.5px) 0 0/5px 5px,linear-gradient(#fff,#fff) 6px 6px/calc(100% - 14px) calc(100% - 14px) no-repeat,#fff;
+  box-shadow:0 0 0 2.5px var(--gr),3px 3px 0 2.5px var(--gr2);animation:bqIn .45s var(--spring) both;transition:transform .2s var(--spring),opacity .3s,box-shadow .2s;}
+@keyframes bqIn{from{transform:scale(.6) translateY(10px);opacity:0;}}
+.bq::after{content:"";position:absolute;bottom:-13px;left:34px;width:18px;height:15px;background:var(--gr);clip-path:polygon(0 0,100% 0,10% 100%);}
+.bq::before{content:"";position:absolute;bottom:-8px;left:37px;width:11px;height:9px;background:#fff;clip-path:polygon(0 0,100% 0,8% 100%);z-index:1;}
+.bq.b1::after{left:auto;right:40px;clip-path:polygon(0 0,100% 0,90% 100%);}
+.bq.b1::before{left:auto;right:43px;clip-path:polygon(0 0,100% 0,92% 100%);}
+.bq.b1{margin-left:22px;}.bq.b0,.bq.b2{margin-right:22px;}
+.bq .tx{font-family:'HM Cond',var(--font);font-weight:600;font-size:clamp(1.12rem,4.6vw,1.5rem);line-height:1.08;text-wrap:balance;overflow-wrap:break-word;min-width:0;}
+.bq .slots{flex:none;}
+.hmc.can .bq[data-c]{cursor:pointer;}
+.hmc.can .bq[data-c]:hover{transform:translateY(-2px) rotate(-.5deg);}
+.hmc.can .bq[data-c]:active{transform:scale(.97);}
+.bq.chose{transform:scale(1.04);box-shadow:0 0 0 2.5px var(--gr),0 0 0 6px #ffd447,0 0 26px rgba(255,212,71,.75);z-index:2;}
+.bq.left{opacity:0;transform:scale(.9);}
+.bq.own{align-self:flex-start;border-radius:999px;padding:7px 16px;margin:0 46px 4px 0;background:#fffdf2;box-shadow:0 0 0 2px var(--gr2),inset 0 0 0 1px rgba(131,177,62,.35);}
+.bq.own::before,.bq.own::after{content:"";position:absolute;bottom:50%;border-radius:50%;background:#fffdf2;box-shadow:0 0 0 2px var(--gr2);clip-path:none;}
+.bq.own::after{right:-24px;width:13px;height:11px;transform:translateY(50%);left:auto;}
+.bq.own::before{right:-40px;width:8px;height:7px;transform:translateY(50%);left:auto;z-index:0;}
+.bq.own .tx{display:flex;align-items:center;gap:7px;font-weight:800;font-style:italic;font-size:clamp(1rem,4vw,1.2rem);color:var(--gr);}
+.bq.own .tx .ico{width:17px;height:17px;flex:none;}
+.hmc.can .bq.own{cursor:pointer;}
+.bq.own.open{align-self:stretch;flex-direction:column;align-items:stretch;border-radius:14px;margin-right:0;padding:10px 12px 12px;}
+.bq.own.open::before,.bq.own.open::after{display:none;}
+.bq.own input{width:100%;box-sizing:border-box;border:0;border-bottom:2px solid var(--gr);background:transparent;outline:none;padding:6px 2px;font-family:'HM Cond',var(--font);font-weight:600;font-size:1.35rem;color:#26341a;}
+.bq.own .orow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.bq.own .ol{font-size:.8rem;font-weight:750;color:#5d6a4c;}
+.nch{display:flex;gap:6px;}
+.nc{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:44px;min-height:44px;padding:4px 6px;border:0;border-radius:10px;background:#eef1e6;color:#26341a;font:inherit;cursor:pointer;}
+.nc b{font-family:var(--display);font-size:.95rem;line-height:1;}
+.nc.on{background:#ffd447;box-shadow:0 0 0 2px #26341a;}
+.nc .slots i{width:9px;height:7px;}
+.bq.own .btn{margin-left:auto;min-height:44px;}
+.bq.own.nudge{animation:ta_shake .45s;}
+.hmc.owning .bq[data-c]{display:none;}
+.bq.own .bk{align-self:flex-start;min-height:40px;padding-left:4px;color:#4f7f22;}
+.hmc .ft{display:flex;justify-content:space-between;gap:10px;padding:0 2px;font-size:.66rem;font-weight:600;color:#8a8f7c;}
+@media (max-width:560px){ .bq.b1{margin-left:12px;} .bq.b0,.bq.b2{margin-right:12px;} }
 
-/* The prompt card, dealt onto the table, and the sand timer beside it */
+/* The question asked: its own bubble on a card, and the die beside it (and the timer while everyone writes) */
 .pcw{display:flex;align-items:center;justify-content:center;gap:12px;}
-.pc{position:relative;flex:1;min-width:0;max-width:640px;padding:11px 15px 14px;border-radius:14px;color:#1d2340;
-  background:radial-gradient(120% 80% at 20% 0%,rgba(255,255,255,.7),transparent 60%),linear-gradient(170deg,#fffdf6,#f3e9d0);
-  box-shadow:inset 0 0 0 1px rgba(120,90,40,.18),0 2px 0 rgba(0,0,0,.18),0 12px 24px rgba(0,0,0,.42);transform:rotate(-.8deg);}
-.pc::before{content:"";position:absolute;left:0;right:0;top:0;height:7px;border-radius:14px 14px 0 0;background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 60%,#fff));}
-.pc .k{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:2px;font-size:.8rem;font-weight:700;color:#8a7650;}
-.pc .slots{display:flex;gap:4px;flex:none;}
-.pc .slots i{width:16px;height:11px;border-radius:2px;background:#fffdf4;box-shadow:inset 0 0 0 1.5px #b9a678,0 1px 0 rgba(0,0,0,.08);}
-.pc .slots i::after{content:"";display:block;margin:4px 3px 0;height:1.5px;background:#3550a8;opacity:.55;border-radius:1px;}
-.pc .q{margin-top:5px;font-family:var(--display);font-weight:400;font-size:clamp(1.3rem,5.4vw,2rem);line-height:1.08;letter-spacing:.005em;text-wrap:balance;overflow-wrap:break-word;}
+.pcw .rs{flex:0 1 26em;margin:0;color:#fff;font-weight:700;font-size:.95rem;line-height:1.25;text-wrap:balance;}
+.pc{--gr:#4f7f22;--gr2:#83b13e;position:relative;flex:1;min-width:0;max-width:640px;padding:12px 16px 14px;border-radius:14px;color:#26341a;
+  background:radial-gradient(circle at 50% 50%,rgba(79,127,34,.2) .9px,transparent 1.5px) 0 0/5px 5px,linear-gradient(#fff,#fff) 7px 7px/calc(100% - 16px) calc(100% - 16px) no-repeat,#fff;
+  box-shadow:0 0 0 2.5px var(--gr),3px 3px 0 2.5px var(--gr2),0 12px 24px rgba(0,0,0,.42);transform:rotate(-.8deg);}
+.pc::after{content:"";position:absolute;bottom:-14px;left:40px;width:20px;height:16px;background:var(--gr);clip-path:polygon(0 0,100% 0,10% 100%);}
+.pc .k{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:0;font-size:.8rem;font-weight:700;color:#5d6a4c;}
+.pc .q{margin-top:4px;font-family:'HM Cond',var(--font);font-weight:600;font-size:clamp(1.4rem,5.8vw,2.1rem);line-height:1.06;text-wrap:balance;overflow-wrap:break-word;}
+.pc.own .q{font-style:italic;}
+.slots{display:flex;gap:4px;flex:none;}
+.slots i{width:16px;height:11px;border-radius:2px;background:#fffdf4;box-shadow:inset 0 0 0 1.5px #9db57a,0 1px 0 rgba(0,0,0,.08);}
+.slots i::after{content:"";display:block;margin:4px 3px 0;height:1.5px;background:#3550a8;opacity:.55;border-radius:1px;}
 .pc.deal{animation:dealIn .6s var(--spring) both;}
 @keyframes dealIn{from{transform:translate(60px,-120px) rotate(14deg) scale(.7);opacity:0;}}
 .hg{flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;width:48px;}
@@ -241,14 +302,9 @@ body{overflow-x:hidden;}
 .hm-credit{margin:-6px auto 2px;max-width:34em;text-align:center;font-size:.78rem;font-weight:600;color:var(--text-3);text-wrap:balance;}
 .k-rules .credit,.credit{margin-top:14px;font-size:.82rem;color:var(--text-3);}
 /* The hive at the end: on the table and on the results card */
-.fin .hive.end{--bz:38px;width:100%;max-width:520px;align-self:center;}
 .fin .endsay{text-align:center;color:#fff;font-weight:700;font-size:1.02rem;line-height:1.3;margin:-4px 0 2px;text-wrap:balance;}
 .fin .row.gone{opacity:.7;}
 .fin .row.gone .sc{color:#ff9b8f;font-size:1rem;}
-.k-win .hive.wpic{--bz:17px;width:min(100%,330px);margin:4px auto 2px;gap:2px;}
-.k-win .hive.wpic .lv{min-height:calc(var(--bz) + 14px);padding-top:4px;padding-bottom:2px;}
-.k-win .hive.wpic .bee .tg{font-size:9px;}
-.k-win .hive.wpic .bee .bz{animation:none;}
 
 /* Buttons on the table */
 .acts{display:flex;gap:10px;justify-content:center;}
@@ -282,12 +338,16 @@ body{overflow-x:hidden;}
   .stx.crowd{--sw:132px;}
   .stx{--tf:1.55rem;}
   .hg svg{width:52px;height:85px;}.hg{width:56px;}
-  .hive{--bz:34px;}
 }
 /* Sideways: the hive (what you look at) on the left; the card, your paper and the slips (what you do) on the right */
 @media (orientation:landscape) and (min-width:600px){
   .ta > .felt-in{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);column-gap:18px;row-gap:10px;align-content:stretch;}
-  .ph-ask{grid-template-areas:"hv mid" "st mid" "x acts";grid-template-rows:1fr auto auto;}
+  .ph-roll{grid-template-areas:"hv mid" "hv st" "hv acts";grid-template-rows:minmax(0,1fr) auto auto;}
+  .ta > .felt-in.ph-roll{grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);}
+  .ph-ask{grid-template-areas:"hv pc" "hv mid" "hv st";grid-template-rows:auto minmax(0,1fr) auto;}
+  html:not(.mm-dk) .ta > .felt-in.ph-ask,html:not(.mm-dk) .ta > .felt-in.ph-roll{height:calc(100dvh - var(--bar) - 30px - var(--safe-b));min-height:0;box-sizing:border-box;}
+  .ph-ask .mid{overflow-y:auto;overscroll-behavior:contain;min-height:0;padding:4px 2px;}
+  .ph-ask .pcw{justify-content:flex-start;}
   .ph-write{grid-template-areas:"hv pc" "hv pad" "st pad" "x acts";grid-template-rows:auto 1fr auto auto;}
   .ph-reveal,.ph-scored{grid-template-areas:"hv pc" "hv mid" "st acts";grid-template-rows:auto 1fr auto;}
   .hive{grid-area:hv;align-self:center;}.pcw{grid-area:pc;align-self:start;}.st{grid-area:st;}.mid{grid-area:mid;}.pad{grid-area:pad;align-self:center;}.acts{grid-area:acts;align-self:end;}
@@ -295,7 +355,6 @@ body{overflow-x:hidden;}
   html:not(.mm-dk) .ta > .felt-in.ph-reveal,html:not(.mm-dk) .ta > .felt-in.ph-scored{height:calc(100dvh - var(--bar) - 30px - var(--safe-b));min-height:0;box-sizing:border-box;grid-template-rows:auto minmax(0,1fr) auto;}
   .st{align-self:start;}
   .ta > .felt-in.ph-over{display:flex;}
-  .offer .two{flex-direction:column;align-items:stretch;max-width:560px;}
   .ta > .felt-in.n-mid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
   .ta > .felt-in.n-many{grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);}
 }
@@ -314,23 +373,16 @@ body{overflow-x:hidden;}
   .ph-reveal .mid,.ph-scored .mid{max-height:none;min-height:0;}
   .stx{--sw:116px;gap:14px 12px;padding-top:12px;}
   .stx{--tf:1.2rem;}
-  .hive{--bz:20px;gap:3px;--lvh:calc(var(--bz) + 13px);}
   .st{line-height:1.2;}
-  .hive.crowd{--bz:19px;}
-  .offer .pc .q{font-size:1.12rem;}
-  .offer .two{gap:8px;}
   .st{font-size:.84rem;}
 }
 /* iPads: a big table, so big pieces */
 @media (min-width:700px) and (min-height:900px){
-  .hive{--bz:44px;gap:6px;}
-  .hive.crowd{--bz:36px;}
   .qd .face{--ds:62px;}
   .qd .dn{height:18px;}.qd .dn .ico{width:18px;height:18px;}
   .pc{max-width:760px;padding:16px 22px 20px;border-radius:18px;}
   .pc .k{font-size:.92rem;}.pc .slots i{width:22px;height:15px;}
   .pc .q{font-size:2.8rem;}
-  .offer .pc .q{font-size:2.1rem;}
   .hg svg{width:64px;height:105px;}.hg{width:70px;}.hg b{font-size:1.4rem;}
   .st{font-size:1.1rem;}
   .pad{max-width:640px;padding:36px 16px 16px;}
@@ -350,8 +402,6 @@ body{overflow-x:hidden;}
 }
 /* an iPad on its side: the hive a step smaller than upright, so the paper keeps its room */
 @media (orientation:landscape) and (min-width:900px) and (max-height:899px) and (min-height:501px){
-  .hive{--bz:38px;}
-  .hive.crowd{--bz:30px;}
   .qd .face{--ds:54px;}
   .pc .q{font-size:2rem;}
   .sheet{--lh:46px;}
@@ -361,21 +411,19 @@ body{overflow-x:hidden;}
 @media (orientation:portrait){
   html:not(.mm-dk) .ta > .felt-in.ph-reveal,html:not(.mm-dk) .ta > .felt-in.ph-scored{height:calc(100dvh - var(--bar) - 30px - var(--safe-b));min-height:0;box-sizing:border-box;}
   .ta > .felt-in.ph-reveal > *,.ta > .felt-in.ph-scored > *{flex-shrink:0;}
+  html:not(.mm-dk) .ta > .felt-in.ph-ask{height:calc(100dvh - var(--bar) - 30px - var(--safe-b));min-height:0;box-sizing:border-box;}
+  .ta > .felt-in.ph-ask > *{flex-shrink:0;}
+  .ta > .felt-in.ph-ask > .mid{flex:1 1 0;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:4px 2px 8px;}
   .ta > .felt-in.ph-reveal > .mid,.ta > .felt-in.ph-scored > .mid{flex:1 1 0;min-height:0;overflow-y:auto;overscroll-behavior:contain;border-radius:12px;}
-  .ph-reveal .hive,.ph-scored .hive{--bz:26px;}
   .ph-reveal .pc .q,.ph-scored .pc .q{font-size:1.35rem;}
 }
-@media (orientation:portrait) and (min-width:700px){ .ph-reveal .hive,.ph-scored .hive{--bz:34px;} .ph-reveal .pc .q,.ph-scored .pc .q{font-size:2rem;} }
-@media (max-width:370px){ .stx{--sw:122px;gap:16px 10px;--tf:1.22rem;} .stx.crowd{--sw:104px;} .hive{--bz:24px;} .hive.crowd{--bz:20px;} }
+@media (orientation:portrait) and (min-width:700px){ .ph-reveal .pc .q,.ph-scored .pc .q{font-size:2rem;} }
+@media (max-width:370px){ .stx{--sw:122px;gap:16px 10px;--tf:1.22rem;} .stx.crowd{--sw:104px;} }
 /* A short phone held upright (320 by 568): the hive, the cards and the paper all draw in */
 @media (orientation:portrait) and (max-height:700px){
-  .hive,.ph-reveal .hive,.ph-scored .hive{--bz:18px;--lvh:calc(var(--bz) + 12px);gap:2px;}
-  .hive .door{min-height:20px;}
   .ta > .felt-in{gap:8px;padding:8px 8px 10px;}
   .pc{padding:8px 12px 10px;}
   .pc .q{font-size:1.2rem;}
-  .offer .two{gap:8px;}
-  .offer .pc .q{font-size:1.05rem;}
   .sheet{--lh:32px;}
   .pad{padding:22px 10px 10px;}
   .pad .fold{margin-top:8px;min-height:44px;}
@@ -405,15 +453,9 @@ html.mm-dk .hg svg{width:calc(60px * var(--u));height:calc(98px * var(--u));}
 html.mm-dk .hg{width:calc(66px * var(--u));}
 html.mm-dk .hg b{font-size:1.4rem;}
 html.mm-dk .st{font-size:calc(1.05rem * min(var(--u),1.3));}
-html.mm-dk .ta .hive{--bz:var(--hbz,calc(34px * var(--u)));}
-html.mm-dk .hive .bee{width:calc(var(--bz) * 1.25);}
 html.mm-dk #app.t-col .ph-write > .mid:empty{display:none;}
 html.mm-dk #app.t-col .ph-write > .pad{margin-block:auto;}
-html.mm-dk .ta .hive.crowd{--bz:calc(var(--hbz,calc(34px * var(--u))) * .84);}
 html.mm-dk .qd .face{--ds:calc(56px * var(--u));}
-html.mm-dk .offer .pc .q{font-size:calc(1.9rem * var(--u));}
-html.mm-dk .offer .two{flex-direction:row;align-items:stretch;max-width:calc(980px * var(--u));gap:calc(20px * var(--u));}
-html.mm-dk .offer .pc{padding:calc(16px * var(--u)) calc(22px * var(--u)) calc(20px * var(--u));}
 html.mm-dk .pad{max-width:calc(620px * var(--u));padding:36px 16px 16px;}
 html.mm-dk .pad .clip{width:150px;margin-left:-75px;height:38px;}
 html.mm-dk .sheet{--lh:calc(52px * var(--u));--ml:46px;padding-left:56px;}
@@ -434,10 +476,12 @@ html.mm-dk .tray .ms{max-width:calc(220px * var(--u));}
 html.mm-dk .acts .btn{min-height:60px;font-size:1.12rem;}
 /* a table wider than tall: what you look at at the left, your paper and the slips at the right */
 html.mm-dk #app.t-row .ta > .felt-in:not(.ph-over){display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);column-gap:calc(26px * var(--u));align-content:stretch;}
-html.mm-dk #app.t-row .ph-ask{grid-template-areas:"hv st" "hv mid" "hv acts";grid-template-rows:auto minmax(0,1fr) auto;}
+html.mm-dk #app.t-row .ph-roll{grid-template-areas:"hv mid" "hv st" "hv acts";grid-template-rows:minmax(0,1fr) auto auto;}
+html.mm-dk #app.t-row .ph-ask{grid-template-areas:"hv pc" "hv mid" "hv st";grid-template-rows:auto minmax(0,1fr) auto;}
 html.mm-dk #app.t-row .ph-write{grid-template-areas:"hv pc" "hv st" "hv pad" "hv acts";grid-template-rows:auto auto minmax(0,1fr) auto;}
 html.mm-dk #app.t-row .ph-reveal,html.mm-dk #app.t-row .ph-scored{grid-template-areas:"hv pc" "hv st" "hv mid" "hv acts";grid-template-rows:auto auto minmax(0,1fr) auto;}
-html.mm-dk #app.t-row.nohv .ph-ask{grid-template-areas:"st mid" "x acts";grid-template-rows:minmax(0,1fr) auto;}
+html.mm-dk #app.t-row.nohv .ph-roll{grid-template-areas:"mid mid" "st st" "acts acts";grid-template-rows:minmax(0,1fr) auto auto;}
+html.mm-dk #app.t-row.nohv .ph-ask{grid-template-areas:"pc mid" "st mid";grid-template-rows:minmax(0,1fr) auto;}
 html.mm-dk #app.t-row.nohv .ph-write{grid-template-areas:"pc pad" "st pad" "x acts";grid-template-rows:minmax(0,1fr) auto auto;}
 html.mm-dk #app.t-row.nohv .ph-reveal,html.mm-dk #app.t-row.nohv .ph-scored{grid-template-areas:"pc mid" "st mid" "x acts";grid-template-rows:minmax(0,1fr) auto auto;}
 html.mm-dk #app.t-row.nohv .pcw{align-self:center;}
@@ -467,8 +511,6 @@ html.mm-dk #app.dk-small .pc .q{font-size:clamp(1.5rem,5.4vw,2.2rem);}
 .dk-pn h4{font-size:1.05em;font-weight:800;color:var(--text);margin:0 0 10px;}
 /* the hive as the room's hero: its own panel, as large as the column lets it be */
 .dk-pn.hvp{flex:1 1 auto;justify-content:center;overflow:hidden;}
-.dk-pn.hvp .hive{--bz:var(--hbz,48px);gap:calc(var(--hbz,48px) * .12);width:100%;}
-.dk-pn.hvp .hive.crowd{--bz:calc(var(--hbz,48px) * .86);}
 #app.dk-wide .dk-room .dk-pn.lg{flex:0 1 auto;max-height:42%;}
 .dk-log{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:9px;}
 #app.dk-stack .dk-log{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));align-content:start;}
@@ -479,6 +521,7 @@ html.mm-dk #app.dk-small .pc .q{font-size:clamp(1.5rem,5.4vw,2.2rem);}
 .dk-rd .tops span{display:inline-flex;align-items:center;gap:6px;padding:3px 4px 3px 9px;border-radius:5px;background:linear-gradient(180deg,#fffdf4,#f4ead2);color:#1f2a6b;font-family:var(--hand);font-size:1.15em;line-height:1.1;}
 .dk-rd .tops i{min-width:22px;height:22px;padding:0 5px;border-radius:11px;display:grid;place-items:center;background:#ffd447;color:#3a2600;font:400 .85rem/1 var(--display);font-style:normal;}
 .dk-rd .none{margin-top:6px;padding-left:calc(1.4em + 10px);color:var(--text-3);font-weight:650;font-size:.88em;}
+.dk-rd .lf{margin-left:auto;flex:none;align-self:center;}.dk-rd .lf .face{--ds:24px;}
 .dk-more{font-size:.85em;font-weight:700;color:var(--text-3);padding:2px 4px;}
 /* the end at a desk: the final scores and the buttons at the left, every card in columns at the right */
 html.mm-dk .fin.dk-fin{max-width:none;display:grid;grid-template-columns:minmax(300px,.7fr) minmax(0,1.3fr);gap:16px 26px;align-items:start;font-size:calc(1rem * var(--dku,1));}
@@ -499,10 +542,17 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
   // and history carry on. The rules are games/mindmeld-core.js (HiveCore).
   var el = Kit.el, esc = Kit.esc, app = document.getElementById('app'), C = window.HiveCore;
   var KEY = 'mindmeld', SAVE = 'mindmeld_state', SEEN = 'mindmeld_seen', NETME = 'mindmeld_net_me';
-  // Hive Mind's own cards first (games/mindmeld/questions-hm.js), then the house questions
-  var DATA = (window.HIVEMIND_PROMPTS || []).concat(window.MINDMELD_PROMPTS || []);
-  C.setData(DATA);
-  var CREDIT = 'Hive Mind was designed by Richard Garfield. Hive Mind is published by Calliope Games and used with permission.';
+  // The question cards, three questions to a card: Hive Mind's own first (games/mindmeld/questions-hm.js), then the
+  // house questions three at a time (games/mindmeld-data.js)
+  var DATA = [], CARDS = [];
+  (window.HIVEMIND_CARDS || []).forEach(function (c) {
+    var qs = (c && c.qs || []).filter(function (q) { return q && q.q; }).slice(0, 3); if (qs.length < 3) return;
+    CARDS.push(qs.map(function (q) { DATA.push({ q: q.q, n: Math.max(1, Math.min(4, +q.n || 3)), a: Array.isArray(q.a) ? q.a : [] }); return DATA.length - 1; }));
+  });
+  (function (h) { for (var i = 0; i + 2 < h.length; i += 3) { var b = DATA.length; DATA.push(h[i], h[i + 1], h[i + 2]); CARDS.push([b, b + 1, b + 2]); } })(window.MINDMELD_PROMPTS || []);
+  C.setData(DATA, CARDS);
+  var CREDIT = 'Hive Mind was designed by Richard Garfield and is published by Calliope Games. Used with permission.';
+  var TM = 'Hive Mind is a trademark of Compound Fun, Inc.';
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
@@ -516,26 +566,32 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
   var coarse = (function () { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
   var NUM = ['no', 'one', 'two', 'three', 'four', 'five', 'six'];
   function lvName(l) { return 'level ' + (l + 1); }
+  function faceSay(f) { return f === 's' ? 'the star' : NUM[f] + (f === 1 ? ' dot' : ' dots'); }
   function darkInk(hex) { var m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '')); if (!m) return true; var n = parseInt(m[1], 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255; return (0.299 * r + 0.587 * g + 0.114 * b) > 150; }
 
-  // ── The question cards for a game: ones you haven't seen lately first ────
-  function pickDeck(bots) {
+  // ── The deck for a game: cards you haven't seen lately first (a card is known by its first question) ────
+  function cardKey(c) { var x = CARDS[c]; return x && DATA[x[0]] ? DATA[x[0]].q : ''; }
+  function pickDeck() {
     var seen = lsGet(SEEN, []); if (!Array.isArray(seen)) seen = [];
-    var all = DATA.map(function (p, i) { return i; }).filter(function (i) { return !bots || DATA[i].a.length; });   // (robots need a card's answers)
-    var fresh = shuffle(all.filter(function (i) { return seen.indexOf(DATA[i].q) < 0; })), old = shuffle(all.filter(function (i) { return seen.indexOf(DATA[i].q) >= 0; }));
+    var all = CARDS.map(function (x, i) { return i; });
+    var fresh = shuffle(all.filter(function (i) { return seen.indexOf(cardKey(i)) < 0; })), old = shuffle(all.filter(function (i) { return seen.indexOf(cardKey(i)) >= 0; }));
     return fresh.concat(old);
   }
-  function markSeen(pi) { var seen = lsGet(SEEN, []); if (!Array.isArray(seen)) seen = []; if (DATA[pi]) { seen.push(DATA[pi].q); lsSet(SEEN, seen.slice(-200)); } }
+  function markSeen(c) { var seen = lsGet(SEEN, []); if (!Array.isArray(seen)) seen = []; var k = cardKey(c); if (k) { seen.push(k); lsSet(SEEN, seen.slice(-200)); } }
 
   // ═══ The game (the rules: games/mindmeld-core.js) ═══════════════════════
   var G = null;
   function prompt(g) { return C.prompt(g); }
-  function newGame(cfg) { return C.newGame(cfg, pickDeck(cfg.players.some(function (p) { return p.cpu; }))); }
+  function newGame(cfg) { return C.newGame(cfg, pickDeck()); }
   function apply(g, who, a) {
     var ok = C.apply(g, who, a);
-    if (ok && a.t === 'pick') markSeen(g.pi);
+    if (ok && a.t === 'roll') markSeen(g.card);
     return ok;
   }
+  // a computer player's responses: from the question's list, or (a question made up, or one with no list yet) thinking
+  // along with the people at the table
+  function botAns(g, k) { var P = prompt(g); return P.a && P.a.length ? C.cpuWrite(g.pi, P.n, g.players[k].temp) : C.cpuOwn(g, k); }
+  function listless(g) { var P = prompt(g); return !(P.a && P.a.length); }
 
   // ═══ Driving it: moves, robots, the sand timer, saving, undo ══════════════
   var gen = 0, botT = 0, undoStack = [], lastCfg = null, finished = false, lastV = null;
@@ -543,13 +599,12 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
   var draft = [];   // what's on this device's paper right now
   var ui = { sig: '', sel: null, cardRound: 0, intro: '', scored: '', shook: '', flash: null, rolled: '', lastPos: null };
   // (the cards a save points at are found again by what they say, in case the card list has changed since)
-  function cardText(i) { return DATA[i] ? DATA[i].q : ''; }
   function save() {
     if (!G || G.mode === 'online') return;
     if (G.phase === 'over') { clearSave(); return; }
-    var qx = {}; [G.pi].concat(G.offer || [], G.used || [], G.deck.slice(0, 40)).forEach(function (i) { if (i != null) qx[i] = cardText(i); });
-    lsSet(SAVE, { G: G, cfg: lastCfg, qx: qx });
-    Kit.resume.set('Round ' + G.round, { keys: [SAVE] });
+    var cx = {}; [G.card].concat(G.used || [], G.deck.slice(0, 60)).forEach(function (i) { if (i != null) cx[i] = cardKey(i); });
+    lsSet(SAVE, { G: G, cfg: lastCfg, cx: cx, px: G.pi >= 0 && DATA[G.pi] ? DATA[G.pi].q : null });
+    Kit.resume.set('Turn ' + G.round, { keys: [SAVE] });
   }
   function clearSave() { lsSet(SAVE, null); Kit.resume.clear(); }
   function hostIdx() { if (!G) return 0; for (var i = 0; i < G.players.length; i++) if (G.players[i].pid === 0) return i; return 0; }
@@ -557,7 +612,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
   function doAct(a) {
     if (net.mode === 'guest') { if (net.peer) net.peer.send({ t: 'a', a: a }, true); return true; }
     if (!G) return false;
-    var who = a.t === 'ans' ? meIdx() : a.t === 'pick' ? (G.mode === 'pass' ? -1 : meIdx()) : -1;
+    var who = a.t === 'ans' ? meIdx() : a.t === 'pick' || a.t === 'roll' ? (G.mode === 'pass' ? -1 : meIdx()) : -1;
     var before = G.mode !== 'online' ? JSON.stringify(G) : null;
     if (!apply(G, who, a)) return false;
     if (before) { undoStack.push(before); if (undoStack.length > 60) undoStack.shift(); }
@@ -590,14 +645,20 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     clearTimeout(botT);
     if (!G || net.mode === 'guest') return;
     var g = G, now = Date.now(), my = gen;
+    var A = g.players[g.ask];
+    if (g.phase === 'roll') {
+      // a computer player (or someone who has left the table) rolls the die after a moment
+      if (A && (A.cpu || A.gone)) botT = setTimeout(function () { if (G === g && my === gen && g.phase === 'roll') { apply(g, -1, { t: 'roll' }); changed({ t: 'roll' }); } }, 1300);
+      return;
+    }
     if (g.phase === 'ask') {
-      // a computer player (or someone who has left the table) chooses the card after a moment
-      var A = g.players[g.ask];
+      // and chooses one of the card's three questions (never one of their own), one the robots know answers to if it can
       if (A && (A.cpu || A.gone)) botT = setTimeout(function () {
         if (G !== g || my !== gen || g.phase !== 'ask') return;
-        var c = Math.random() < 0.5 ? 0 : 1; ui.botPick = c; paint({ t: 'think' });
-        setTimeout(function () { if (G === g && my === gen && g.phase === 'ask') { apply(g, -1, { t: 'pick', c: c }); changed({ t: 'pick' }); } }, 700);
-      }, 1500);
+        var qs = C.cardQs(g), ok = [0, 1, 2].filter(function (c) { return qs[c] && qs[c].a && qs[c].a.length; });
+        var c = (ok.length ? ok : [0, 1, 2])[Math.floor(Math.random() * (ok.length || 3))]; ui.botPick = c; paint({ t: 'think' });
+        setTimeout(function () { if (G === g && my === gen && g.phase === 'ask') { apply(g, -1, { t: 'pick', c: c }); changed({ t: 'pick' }); } }, 900);
+      }, 2400);
       return;
     }
     if (g.phase !== 'write') return;
@@ -605,16 +666,17 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
       botT = setTimeout(function () { if (G === g && my === gen && g.phase === 'write' && C.allIn(g)) { apply(g, -1, { t: 'reveal' }); changed({ t: 'reveal' }); } }, 1300);
       return;
     }
-    // everybody real has written: the robots don't keep you waiting
-    if (C.humansIn(g)) { var s = 0; g.players.forEach(function (p, k) { if (p.cpu && !g.ans[k] && g.cpuAt[k] > now + 2000) g.cpuAt[k] = now + 500 + (s++) * 450 + Math.random() * 300; }); }
+    // everybody real has written: the robots don't keep you waiting (and on a question without a list, they wait for you)
+    var hin = C.humansIn(g);
+    if (hin) { var s = 0; g.players.forEach(function (p, k) { if (p.cpu && !g.ans[k] && g.cpuAt[k] > now + 2000) g.cpuAt[k] = now + 500 + (s++) * 450 + Math.random() * 300; }); }
     var next = Infinity, what = null;
-    g.players.forEach(function (p, k) { if (p.cpu && !p.gone && !p.out && !g.ans[k] && g.cpuAt[k] < next) { next = g.cpuAt[k]; what = k; } });
+    if (hin || !listless(g)) g.players.forEach(function (p, k) { if (p.cpu && !p.gone && !p.out && !g.ans[k] && g.cpuAt[k] < next) { next = g.cpuAt[k]; what = k; } });
     if (g.deadline && g.deadline <= next) { next = g.deadline; what = 'time'; }
     if (next === Infinity) return;
     botT = setTimeout(function () {
       if (G !== g || my !== gen || g.phase !== 'write') return;
       if (what === 'time') return timeUp(g);
-      apply(g, what, { t: 'ans', a: C.cpuWrite(g.pi, prompt(g).n, g.players[what].temp) });
+      apply(g, what, { t: 'ans', a: botAns(g, what) });
       changed({ t: 'cpu', p: what });
     }, Math.max(0, next - Date.now()));
   }
@@ -624,7 +686,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     Kit.sfx('clash', 0.6); Kit.haptic('medium');
     var me = meIdx();
     if (me >= 0 && !g.ans[me] && !g.players[me].cpu) apply(g, me, { t: 'ans', a: draft });
-    g.players.forEach(function (p, k) { if (p.cpu && !p.gone && !p.out && !g.ans[k]) apply(g, k, { t: 'ans', a: C.cpuWrite(g.pi, prompt(g).n, p.temp) }); });
+    g.players.forEach(function (p, k) { if (p.cpu && !p.gone && !p.out && !g.ans[k]) apply(g, k, { t: 'ans', a: botAns(g, k) }); });
     if (net.mode === 'host' && !C.allIn(g)) {
       // the others' own timers send theirs at zero; a moment's grace, then over
       var my = gen; setTimeout(function () { if (G === g && my === gen && g.phase === 'write') { apply(g, -1, { t: 'reveal' }); changed({ t: 'reveal' }); } }, 2500);
@@ -663,16 +725,16 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
   // What one player may see (i = -1: the table only). Nobody sees anyone's answers until they're turned over.
   function viewFor(i) {
     var g = G, P = prompt(g), open = g.phase === 'reveal' || g.phase === 'scored';
-    var V = { hm: 1, mode: g.mode, me: i, round: g.round, phase: g.phase, timer: g.timer, depth: g.depth, ask: g.ask,
+    var V = { hm: 2, mode: g.mode, me: i, round: g.round, phase: g.phase, timer: g.timer, depth: g.depth, ask: g.ask,
       left: g.phase === 'write' && g.deadline ? Math.max(0, g.deadline - Date.now()) : null,
       q: P.q, n: P.n, boss: true, host: g.players[hostIdx()] ? g.players[hostIdx()].name : '',
-      roll: g.roll == null ? null : C.DIE[g.roll],
-      offer: g.phase === 'ask' ? g.offer.map(function (k) { var d = DATA[k] || { q: '', n: 1 }; return { q: d.q, n: d.n }; }) : null,
+      roll: g.roll == null ? null : C.DIE[g.roll], own: g.pi === -1, cardNo: g.card != null ? g.card + 1 : 0,
+      qs: g.phase === 'ask' ? C.cardQs(g).map(function (d) { return { q: d.q, n: d.n }; }) : null,
       players: g.players.map(function (p, k) { return { name: p.name, color: p.color, cpu: p.cpu, lv: p.lv, out: p.out || 0, done: !!g.ans[k], gone: !!p.gone, gain: g.phase === 'scored' && g.pts ? g.pts[k] : null }; }),
-      shake: g.phase === 'scored' && g.shake ? { n: g.shake.n, mv: g.shake.mv, down: g.shake.down, up: g.shake.up } : null,
+      shake: g.phase === 'scored' && g.shake ? { n: g.shake.n, star: g.shake.star, mv: g.shake.mv, down: g.shake.down, up: g.shake.up } : null,
       mine: i >= 0 && g.ans[i] ? g.ans[i].slice() : null,
       items: open && g.items ? g.items.map(function (it) { return { p: it.p, i: it.i, t: it.t, g: it.g }; }) : null,
-      log: (g.log || []).map(function (l) { return { q: l.q, top: l.top, roll: l.roll, mv: l.mv }; }) };
+      log: (g.log || []).map(function (l) { return { q: l.q, top: l.top, roll: l.roll, mv: l.mv, ask: l.ask }; }) };
     if (g.phase === 'over') V.done = summary();
     return V;
   }
@@ -693,12 +755,13 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
   }
   function build(V, a) {
     if (V.phase !== 'reveal') ui.sel = null;
-    var pos = beePos();
+    var pos = pawnPos();
     onStage(false);
     app.innerHTML = '';
-    var felt = el('div', { class: 'felt-in ph-' + V.phase + (V.players.length > 8 ? ' n-many' : V.players.length > 5 ? ' n-mid' : '') });
-    felt.appendChild(hiveEl(V));
-    felt.appendChild(V.phase === 'ask' ? el('div', { class: 'pcw' }) : cardEl(V));
+    var n = V.players.length;
+    var felt = el('div', { class: 'felt-in ph-' + V.phase + (n > 12 ? ' n-huge' : '') + (n > 8 ? ' n-many' : n > 5 ? ' n-mid' : '') });
+    felt.appendChild(boardEl(V));
+    felt.appendChild(V.phase === 'roll' ? el('div', { class: 'pcw' }) : cardEl(V));
     felt.appendChild(el('div', { class: 'st' }));
     felt.appendChild(el('div', { class: 'mid' }));
     if (V.phase === 'write') felt.appendChild(padEl(V));
@@ -711,83 +774,225 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
   }
   function update(V, a, pos) { paintStatus(V); paintActs(V); paintMid(V, a); paintHive(V, pos); var md = Q('.mid'); if (md && md.querySelector('.stx')) fitStacks(md); if (DK) { var rm = app.querySelector(':scope > .dk-room'); if (rm) fitLog(rm); } }
 
-  // ── The hive ──
-  var WIDE = { 4: [100, 97, 92, 84], 5: [100, 98, 94, 88, 80], 6: [100, 98, 95, 90, 84, 77] };   // (the hive narrows toward its door)
-  function hiveEl(V) {
-    var d = V.depth || 6, h = el('div', { class: 'hive' + (V.players.length > 8 ? ' crowd' : ''), 'aria-label': 'The hive' });
-    for (var l = 0; l < d; l++) h.appendChild(el('div', { class: 'lv' + (l === d - 1 ? ' last' : ''), 'data-l': l, style: { '--w': (WIDE[d] || WIDE[6])[l] + '%' } }, [el('b', { text: String(l + 1) })]));
-    h.appendChild(el('div', { class: 'door', 'aria-label': 'The way out of the hive' }, [el('i')]));
+  // ── The board, drawn as the printed one: a white sheet washed with watercolor, level 1 a big blue quarter circle in
+  // the top left corner, each next level a large overlapping circle with its huge outlined number, snaking along the
+  // top, down the right side and back along the bottom, and after the last one an arrow pointing off the board. The
+  // logo sits in the open middle. The snake is laid out for the board's room on each screen (boardGeo).
+  var BAND = { 6: ['#3f7fd6', '#d14aa6', '#ee5b93', '#e8434b', '#f2632f', '#c4d93a'],
+    8: ['#3f7fd6', '#d14aa6', '#ee5b93', '#e8434b', '#f2632f', '#f5d13a', '#c4d93a', '#2aa98f'] };
+  var ARROW_SVG = '<svg viewBox="0 0 60 70" aria-hidden="true"><path d="M44 66c-3-14-9-25-22-34l-4 7L10 8l30 9-7 5c13 10 19 24 21 41z" fill="#fff" stroke="#3d6b2a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>' +
+    '<path d="M40 60c-3-11-8-19-18-26" fill="none" stroke="#7fb04a" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="1 5"/></svg>';
+  function boardEl(V) {
+    var d = V.depth || 6, h = el('div', { class: 'hive d' + d, 'aria-label': 'The board, ' + d + ' levels' }, [el('i', { class: 'wash' })]);
+    for (var l = 0; l < d; l++) h.appendChild(el('div', { class: 'lv' + (l ? '' : ' q1') + (l === d - 1 ? ' last' : ''), 'data-l': l, style: { '--bc': (BAND[d] || BAND[6])[l], 'z-index': l + 1 } }, [el('b', { text: String(l + 1) })]));
+    h.appendChild(el('div', { class: 'logo', 'aria-hidden': 'true', html: '<span class="bub">The game of thinking alike!</span><b>Hive<br>Mind</b><small>designed by Richard Garfield</small>' }));
+    h.appendChild(el('div', { class: 'exit', 'aria-label': 'Off the board', html: ARROW_SVG }));
     return h;
   }
-  var BEE_SVG = '<svg viewBox="0 0 40 32" aria-hidden="true">' +
-    '<ellipse cx="17" cy="9" rx="7.5" ry="6" fill="rgba(240,250,255,.78)" stroke="rgba(60,40,10,.45)" stroke-width="1" transform="rotate(-18 17 9)"/>' +
-    '<ellipse cx="25" cy="8.5" rx="6.5" ry="5.2" fill="rgba(240,250,255,.62)" stroke="rgba(60,40,10,.4)" stroke-width="1" transform="rotate(16 25 8.5)"/>' +
-    '<path d="M33.5 19.5l5 1.2-5 1.6z" fill="#2a1a08"/>' +
-    '<ellipse cx="21" cy="20" rx="13" ry="9" fill="var(--c)" stroke="#2a1a08" stroke-width="1.4"/>' +
-    '<path d="M18 11.4c-1.4 5.6-1.4 11.6 0 17.2M24.5 11.6c1.3 5.5 1.3 11.3 0 16.8" fill="none" stroke="#2a1a08" stroke-width="3.2" stroke-linecap="round"/>' +
-    '<ellipse cx="16" cy="16" rx="5" ry="2.2" fill="rgba(255,255,255,.35)" transform="rotate(-12 16 16)"/>' +
-    '<circle cx="7.5" cy="19" r="6" fill="#2a1a08"/>' +
-    '<circle cx="5.6" cy="17.6" r="1.7" fill="#fff"/><circle cx="5.2" cy="17.8" r=".8" fill="#2a1a08"/>' +
-    '<path d="M6 13.5c-1-2.6-2.7-4-4.6-4.4M9 13.3c.2-2.8 1.3-4.6 3-5.6" fill="none" stroke="#2a1a08" stroke-width="1.2" stroke-linecap="round"/>' +
-    '<circle cx="1.3" cy="9" r="1.2" fill="#2a1a08"/><circle cx="12.2" cy="7.6" r="1.2" fill="#2a1a08"/></svg>';
-  function beeEl(V, p, k) {
-    var b = el('div', { class: 'bee' + (k === V.me ? ' me' : '') + (p.gone ? ' gone' : '') + (p.out ? ' outb' : ''), 'data-p': k,
-      style: { '--c': p.color, '--ink-on': darkInk(p.color) ? '#1b1530' : '#fff', '--bd': (-(k * 0.37) % 2.6).toFixed(2) + 's' },
-      title: p.name, 'aria-label': p.name + (p.out ? ', out of the hive' : ', on ' + lvName(p.lv)) }, [
-      el('span', { class: 'bz', html: BEE_SVG }), el('span', { class: 'tg', text: short(p.name) })]);
-    return b;
+  // the snake for a board of W by H: level 1's radius R1 and the circles' radius r, the largest that fit with each
+  // circle overlapping the next a little; the circles' centers spaced evenly along the top, the right side and the bottom
+  function snake(W, H, R1, r, k) {
+    if (W < 2 * r + 4 || H < 2 * r + 4) return null;
+    var a = R1 + 0.3 * r, S, pts;
+    var b = R1 + 0.75 * r, ex = r;
+    if (H - r < b) ex = Math.max(r, Math.sqrt(b * b - (H - r) * (H - r)));
+    if (H >= 3.55 * r) {
+      // along the top, down the right side, back along the bottom
+      if (a <= W - r) S = [a, r]; else S = [W - r, Math.max(r, Math.sqrt(Math.max(0, a * a - (W - r) * (W - r))))];
+      pts = [S]; if (S[1] <= r + 0.5) pts.push([W - r, r]);
+      pts.push([W - r, H - r]);
+      if (ex < W - r - 1) pts.push([ex, H - r]);
+    } else {
+      // a low wide board: one row along the bottom, from beside level 1 to the right
+      var x0 = Math.max(r, Math.sqrt(Math.max(0, a * a - (H - r) * (H - r))));
+      if (x0 > W - r) return null;
+      pts = [[x0, H - r], [W - r, H - r]];
+    }
+    var L = 0, seg = [];
+    for (var i = 1; i < pts.length; i++) { var dl = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); seg.push(dl); L += dl; }
+    var s = k > 1 ? L / (k - 1) : 0;
+    if (k > 1 && s < 1.5 * r) return null;
+    var cs = [];
+    for (var j = 0; j < k; j++) {
+      var t = j * s, q = 0;
+      while (q < seg.length - 1 && t > seg[q]) { t -= seg[q]; q++; }
+      var f = seg[q] ? Math.min(1, t / seg[q]) : 0, A = pts[q], B = pts[q + 1] || pts[q];
+      cs.push([A[0] + (B[0] - A[0]) * f, A[1] + (B[1] - A[1]) * f]);
+    }
+    return { r: r, cs: cs };
   }
-  // where each bee stands now, before a redraw (so a bee that changes level flies there)
-  function beePos() { var o = {}; app.querySelectorAll('.hive .bee').forEach(function (b) { var r = b.getBoundingClientRect(); if (r.width) o[b.dataset.p] = r; }); return o; }
+  // the cells a region holds for pawns of a cell size, nearest its middle first
+  function cellsIn(pred, fx, fy, bx, cw, ch) {
+    var out = [], J = Math.ceil((bx[3] - bx[1]) / ch) + 1, I = Math.ceil((bx[2] - bx[0]) / cw) + 1;
+    for (var j = -J; j <= J; j++) {
+      var y = fy + j * ch, off = (j & 1) ? cw / 2 : 0;
+      for (var i = -I; i <= I; i++) {
+        var x = fx + i * cw + off, x0 = x - cw / 2, x1 = x + cw / 2, y0 = y - ch / 2, y1 = y + ch / 2;
+        if (pred(x0, y0) && pred(x1, y0) && pred(x0, y1) && pred(x1, y1) && pred(x, y0) && pred(x, y1) && pred(x0, y) && pred(x1, y)) out.push([x, y, Math.hypot(x - fx, (y - fy) * 1.15)]);
+      }
+    }
+    return out.sort(function (A, B) { return A[2] - B[2]; });
+  }
+  function cellOf(p, ini, len) {
+    var tg = Math.max(11, Math.round(p * 0.34));
+    return ini ? { w: p * 0.86 + 2, h: p * 1.02 + tg * 0.5, tg: tg } : { w: Math.max(p * 0.92, len * tg * 0.6 + tg * 0.9) + 3, h: p * 1.02 + tg * 1.35, tg: tg };
+  }
+  // where the arrow off the board goes: beside the last circle, pointing away from it, clear of level 1 and the other
+  // circles where it can be (up and to the left of the last circle, as printed, if there is room)
+  function arrowSpot(g, W, H) {
+    var last = g.cs[g.cs.length - 1] || [g.R1, g.R1], w = Math.max(26, Math.min(g.r * 0.8, 90)), best = null;
+    [225, 200, 250, 180, 270, 160, 290, 135].forEach(function (deg) {
+      var t = deg * Math.PI / 180, cx = last[0] + Math.cos(t) * (g.r + w * 0.32), cy = last[1] + Math.sin(t) * (g.r + w * 0.32);
+      var x = cx - w / 2, y = cy - w / 2, bad = 0;
+      if (x < 2 || y < 2 || x + w > W - 2 || y + w > H - 2) bad += 100;
+      var nx = Math.max(x, Math.min(0, x + w)), ny = Math.max(y, Math.min(0, y + w));   // (the nearest point to level 1's corner)
+      if (Math.hypot(Math.max(0, x), Math.max(0, y)) < g.R1 + 4) bad += 10;
+      g.cs.forEach(function (c, i) { if (i < g.cs.length - 1 && Math.hypot(cx - c[0], cy - c[1]) < g.r + w * 0.3) bad += 3; });
+      if (!best || bad < best.bad) best = { bad: bad, x: x, y: y, w: w, rot: deg - 225 };
+    });
+    return best;
+  }
+  // where every pawn stands for a board of W by H: the snake and the pawn size that make the pawns largest
+  function boardGeo(W, H, d, byLv, lens) {
+    var k = d - 1, m = Math.min(W, H), best = null;
+    [0.42, 0.5, 0.58, 0.66, 0.76].forEach(function (fr) {
+      var R1 = fr * m, lo = 6, hi = m / 2, g = null;
+      for (var it = 0; it < 16; it++) { var r = (lo + hi) / 2, t = snake(W, H, R1, r, k); if (t) { lo = r; g = t; } else hi = r; }
+      if (!g) return;
+      g.R1 = R1; g.ar = arrowSpot(g, W, H);
+      var A = g.ar, clear = function (x, y) { return !(x > A.x - 3 && x < A.x + A.w + 3 && y > A.y - 3 && y < A.y + A.w + 3); };
+      var regions = [];
+      for (var l = 0; l < d; l++) (function (l) {
+        var nx = g.cs[l] || null;   // the circle drawn over this one
+        var outNext = function (x, y) { return (!nx || Math.hypot(x - nx[0], y - nx[1]) > g.r * 1.02) && clear(x, y); };
+        if (!l) regions.push({ pred: function (x, y) { return x >= 4 && y >= 4 && x * x + y * y <= R1 * R1 * 0.94 && outNext(x, y); }, f: [R1 * 0.36, R1 * 0.36], bx: [0, 0, R1, R1] });
+        else { var c = g.cs[l - 1]; regions.push({ pred: function (x, y) { return Math.hypot(x - c[0], y - c[1]) <= g.r * 0.93 && x >= 2 && y >= 2 && x <= W - 2 && y <= H - 2 && outNext(x, y); }, f: [c[0], c[1]], bx: [c[0] - g.r, c[1] - g.r, c[0] + g.r, c[1] + g.r] }); }
+      })(l);
+      var fitP = function (ini) {
+        for (var p = Math.round(Math.min(g.r * 0.62, R1 * 0.5, 96)); p >= 12; p--) {
+          var ok = true, at = [];
+          for (var l = 0; l < d && ok; l++) {
+            if (!byLv[l].length) { at.push([]); continue; }
+            var len = Math.max.apply(null, byLv[l].map(function (k2) { return lens[k2]; })), c = cellOf(p, ini, len);
+            var cells = cellsIn(regions[l].pred, regions[l].f[0], regions[l].f[1], regions[l].bx, c.w, c.h);
+            if (cells.length < byLv[l].length) ok = false; else at.push(cells.slice(0, byLv[l].length).sort(function (A, B) { return A[1] - B[1] || A[0] - B[0]; }));
+          }
+          if (ok) return { p: p, ini: ini, at: at };
+        }
+        return null;
+      };
+      var nm = fitP(false), iz = nm && nm.p >= 26 ? null : fitP(true), pk = !nm ? iz : !iz ? nm : nm.p >= iz.p * 0.78 ? nm : iz;
+      if (!pk) return;
+      var score = pk.p + g.r * 0.12;
+      if (!best || score > best.score) best = { score: score, g: g, pk: pk };
+    });
+    return best;
+  }
+  // lay the board out at W by H with the pawns in V where levelOf puts them
+  function layBoard(h, V, W, H) {
+    var d = V.depth || 6, byLv = [], outs = [], lens = V.players.map(function (p) { return short(p.name).length; });
+    for (var l = 0; l < d; l++) byLv.push([]);
+    V.players.forEach(function (p, k) { var L = levelOf(V, p, k); if (L >= d) outs.push(k); else byLv[Math.max(0, L)].push(k); });
+    // (the board lays out for every pawn on level 1 too, so the pawns keep their size from the start of the game)
+    var best = boardGeo(W, H, d, byLv, lens);
+    if (!best) { var all = []; for (var l2 = 0; l2 < d; l2++) all.push(l2 ? [] : V.players.map(function (p, k) { return k; })); best = boardGeo(W, H, d, all, lens); if (best) best.pk = null; }
+    if (!best) return;
+    var g = best.g, pk = best.pk || { p: 14, ini: true, at: byLv.map(function (ks, l) { var c = l ? g.cs[l - 1] : [g.R1 * 0.35, g.R1 * 0.35]; return ks.map(function (k, j) { return [c[0] + (j % 5 - 2) * 12, c[1] + Math.floor(j / 5) * 16]; }); }) };
+    h.style.width = W + 'px'; h.style.height = H + 'px';
+    h.style.setProperty('--bz', pk.p + 'px'); h.style.setProperty('--tgf', Math.max(11, Math.round(pk.p * 0.34)) + 'px');
+    h.classList.toggle('ini', pk.ini);
+    h.querySelectorAll('.lv').forEach(function (c) {
+      var l = +c.dataset.l, b = c.querySelector('b');
+      if (!l) { c.style.left = -g.R1 + 'px'; c.style.top = -g.R1 + 'px'; c.style.width = c.style.height = 2 * g.R1 + 'px'; b.style.fontSize = g.R1 * 0.7 + 'px'; b.style.left = g.R1 * 1.42 + 'px'; b.style.top = g.R1 * 1.4 + 'px'; return; }
+      var ct = g.cs[l - 1]; c.style.left = ct[0] - g.r + 'px'; c.style.top = ct[1] - g.r + 'px'; c.style.width = c.style.height = 2 * g.r + 'px';
+      b.style.fontSize = g.r * 1.3 + 'px'; b.style.left = '50%'; b.style.top = '50%';
+    });
+    // the logo in the open middle, the arrow off the board after the last circle
+    var lg = h.querySelector('.logo'), lx0 = W * 0.04, lx1 = W - 2 * g.r - 6, ly0 = g.R1 + 6, ly1 = H - 2 * g.r - 6;
+    var lw = lx1 - lx0, lh = ly1 - ly0, lf = Math.min(lw / 4.2, lh / 2.9, 64);
+    if (lg) { lg.style.display = lf >= 16 ? '' : 'none'; lg.classList.toggle('sm', lf < 58); lg.style.fontSize = lf + 'px'; lg.style.left = (lx0 + lx1) / 2 + 'px'; lg.style.top = (ly0 + ly1) / 2 + 'px'; }
+    var ar = h.querySelector('.exit'), aw = g.ar.w, ax = g.ar.x, ay = g.ar.y;
+    if (ar) { ar.style.width = aw + 'px'; ar.style.left = ax + 'px'; ar.style.top = ay + 'px'; ar.style.transform = 'rotate(' + g.ar.rot + 'deg)'; }
+    var place = function (k, x, y, cw, ch) {
+      var b = h.querySelector('.pawn[data-p="' + k + '"]'); if (!b) return;
+      b.style.width = cw + 'px'; b.style.left = x - cw / 2 + 'px'; b.style.top = y - ch / 2 + 'px';
+    };
+    byLv.forEach(function (ks, l) {
+      var len = ks.length ? Math.max.apply(null, ks.map(function (k) { return lens[k]; })) : 1, c = cellOf(pk.p, pk.ini, len);
+      ks.forEach(function (k, j) { var at = pk.at[l] && pk.at[l][j]; if (at) place(k, at[0], at[1], c.w - 3, c.h); });
+    });
+    // a pawn off the board stands beside the arrow's tip, tipped over
+    var oc = cellOf(pk.p, true, 1);
+    var ox0 = Math.max(oc.w / 2 + 2, Math.min(W - oc.w / 2 - 2 - (outs.length - 1) * oc.w, ax - oc.w * (outs.length - 0.6)));
+    outs.forEach(function (k, j) { place(k, ox0 + j * oc.w, Math.max(oc.h / 2 + 2, Math.min(H - oc.h / 2 - 2, ay + aw * 0.5)), oc.w - 3, oc.h); });
+    h.querySelectorAll('.pawn .tg').forEach(function (t) { var P = V.players[+t.parentNode.dataset.p], o = P && P.out && levelOf(V, P, +t.parentNode.dataset.p) >= d; if (P) t.textContent = pk.ini || o ? String(P.name || '?').charAt(0).toUpperCase() : short(P.name); });
+  }
+  // a Mind pawn: a glossy plastic pawn, a bulb on a cone, in its player's seat color
+  var PAWN_SVG = '<svg viewBox="0 0 32 40" aria-hidden="true">' +
+    '<ellipse cx="16" cy="37" rx="12.5" ry="2.6" fill="rgba(0,0,0,.28)"/>' +
+    '<path d="M4.2 34.6c0-2.4 2.6-3.7 4.8-4.9 2.6-1.5 3.3-6.1 3.6-10.6h6.8c.3 4.5 1 9.1 3.6 10.6 2.2 1.2 4.8 2.5 4.8 4.9 0 1.7-5.3 2.9-11.8 2.9S4.2 36.3 4.2 34.6z" fill="var(--c)" stroke="#16122a" stroke-width="1.3"/>' +
+    '<path d="M8.4 33.4c2 .9 4.6 1.3 7.6 1.3" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1.4" stroke-linecap="round"/>' +
+    '<path d="M14 20.6c-.2 4-.6 7.6-2 9.6" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="1.3" stroke-linecap="round"/>' +
+    '<ellipse cx="16" cy="19.2" rx="7.4" ry="2.3" fill="var(--c)" stroke="#16122a" stroke-width="1.3"/>' +
+    '<circle cx="16" cy="10.2" r="7.6" fill="var(--c)" stroke="#16122a" stroke-width="1.3"/>' +
+    '<circle cx="16" cy="10.2" r="7.6" fill="url(#pwS)"/>' +
+    '<ellipse cx="13.2" cy="7.3" rx="2.7" ry="1.8" fill="rgba(255,255,255,.7)" transform="rotate(-32 13.2 7.3)"/>' +
+    '<defs><radialGradient id="pwS" cx=".38" cy=".32" r=".75"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".28"/></radialGradient></defs></svg>';
+  function pawnEl(V, p, k) {
+    return el('div', { class: 'pawn' + (k === V.me ? ' me' : '') + (p.gone ? ' gone' : '') + (p.out ? ' outb' : ''), 'data-p': k,
+      style: { '--c': p.color, '--ink-on': darkInk(p.color) ? '#1b1530' : '#fff', 'z-index': 20 + k },
+      title: p.name, 'aria-label': p.name + (p.out ? ', off the board' : ', on ' + lvName(p.lv)) }, [
+      el('span', { class: 'bz', html: PAWN_SVG }), el('span', { class: 'tg', text: short(p.name) })]);
+  }
+  // where each pawn stands now, before a redraw (so a pawn that changes level slides there)
+  function pawnPos() { var o = {}; app.querySelectorAll('.hive .pawn').forEach(function (b) { var r = b.getBoundingClientRect(); if (r.width) o[b.dataset.p] = r; }); return o; }
   function levelOf(V, p, k) {
-    // the round's points come first; the bees move a moment later (the shake)
+    // the turn's points come first; the pawns move a moment later
     if (V.phase === 'scored' && V.shake && ui.shook !== V.round + '') { var m = V.shake.mv.filter(function (x) { return x[0] === k; })[0]; if (m) return m[1]; }
     return p.out ? V.depth : p.lv;
   }
   function paintHive(V, pos) {
     var roots = app.querySelectorAll('.hive'); if (!roots.length) return;
-    var h = roots[0], before = pos || beePos();
-    h.classList.toggle('drop-on', V.phase !== 'ask' && V.phase !== 'over' && V.players.some(function (p) { return !p.out && p.lv === V.depth - 1; }));
+    var h = roots[0], before = pos || pawnPos();
+    h.classList.toggle('drop-on', V.phase !== 'over' && V.players.some(function (p) { return !p.out && p.lv === V.depth - 1; }));
     var scoredNow = V.phase === 'scored' && V.shake && ui.shook !== V.round + '';
     var lo = scoredNow ? V.shake.down : [], hi = scoredNow ? V.shake.up : [];
     var first = V.phase === 'scored' && ui.gainShown !== V.round + '';
     V.players.forEach(function (p, k) {
-      var b = h.querySelector('.bee[data-p="' + k + '"]');
-      if (!b) { b = beeEl(V, p, k); b.style.viewTransitionName = 'hm-bee' + k; }   // (a turn of the device: each bee glides to its new place)
+      var b = h.querySelector('.pawn[data-p="' + k + '"]');
+      if (!b) { b = pawnEl(V, p, k); b.style.viewTransitionName = 'hm-pawn' + k; h.appendChild(b); }   // (a turn of the device: each pawn glides to its new place)
       b.classList.toggle('me', k === V.me); b.classList.toggle('gone', !!p.gone); b.classList.toggle('outb', !!p.out && !scoredNow);
-      var L = levelOf(V, p, k), box = L >= V.depth ? h.querySelector('.door') : h.querySelector('.lv[data-l="' + L + '"]');
-      if (box && b.parentNode !== box) box.appendChild(b);
-      // writing, folded in, asking, the round's points, where they are going
+      // whose turn it is, writing, handed in, the turn's points, where they are going
       b.querySelectorAll('.mk,.cr,.gain,.ar').forEach(function (x) { x.remove(); });
       if (V.phase === 'write' && !p.gone && !p.out) b.appendChild(el('span', { class: 'mk ' + (p.done ? 'ok' : 'wr'), html: Kit.icon(p.done ? 'check' : 'pencil') }));
-      if ((V.phase === 'ask' || V.phase === 'write') && k === V.ask) b.appendChild(el('span', { class: 'cr', html: Kit.icon('crown') }));
+      if ((V.phase === 'roll' || V.phase === 'ask' || V.phase === 'write') && k === V.ask) b.appendChild(el('span', { class: 'cr', html: Kit.icon('crown') }));
       if (V.phase === 'scored' && p.gain != null && !p.gone && !(p.out && !scoredNow && p.out < V.round)) {
-        b.appendChild(el('span', { class: 'gain', style: { '--gd': (first ? 0.9 + k * 0.05 : 0) + 's' }, text: String(p.gain) }));
+        b.appendChild(el('span', { class: 'gain', style: { '--gd': (first ? 0.9 + Math.min(k, 16) * 0.05 : 0) + 's' }, text: String(p.gain) }));
       }
       b.classList.toggle('lo', scoredNow && lo.indexOf(k) >= 0); b.classList.toggle('hi', scoredNow && hi.indexOf(k) >= 0);
       if (scoredNow && lo.indexOf(k) >= 0) b.appendChild(el('span', { class: 'ar dn', style: { '--ad': '1.5s' }, html: Kit.icon('down') }));
-      if (scoredNow && hi.indexOf(k) >= 0 && p.lv !== L) b.appendChild(el('span', { class: 'ar up', style: { '--ad': '1.5s' }, html: '<span style="display:grid;transform:rotate(180deg)">' + Kit.icon('down') + '</span>' }));
+      else if (scoredNow && hi.indexOf(k) >= 0 && p.lv !== levelOf(V, p, k)) b.appendChild(el('span', { class: 'ar up', style: { '--ad': '1.5s' }, html: '<span style="display:grid;transform:rotate(180deg)">' + Kit.icon('down') + '</span>' }));
     });
-    h.querySelector('.door').classList.toggle('has', !!h.querySelector('.door .bee'));
     if (first) ui.gainShown = V.round + '';
     fitHive(V);
-    flipBees(before);
+    flipPawns(before);
     if (scoredNow && !ui.shakeT) {
       var my = gen, rd = V.round + '';
-      ui.shakeT = setTimeout(function () { ui.shakeT = 0; if (my !== gen || !lastV || lastV.round + '' !== rd || lastV.phase !== 'scored') return; shakeHive(lastV); }, 2600);
+      ui.shakeT = setTimeout(function () { ui.shakeT = 0; if (my !== gen || !lastV || lastV.round + '' !== rd || lastV.phase !== 'scored') return; movePawns(lastV); }, 2600);
     }
   }
-  // The bees as large as the hive's room allows (they are the game pieces): the room is what the table leaves the hive
-  // (beside the card in a wide table, a share of the height in an upright one, the column at a desk), the bees' size the
-  // largest at which every bee fits on one level, with its name tag 11px or more; the levels then share the room.
+  // The board's room: what the table leaves it (beside the card in a wide table, a share of the height in an upright
+  // one, the column at a desk); the snake and the pawns are then laid out for exactly that room
   function fitHive(V) {
     var h = Q('.hive'); if (!h || h.classList.contains('end')) return;
     var felt = Q('.ta > .felt-in'), room = h.closest('.dk-pn');
-    var n = V.players.length, d = V.depth || 6, W = h.clientWidth, H;
+    h.style.width = ''; h.style.height = '';
+    var W = h.clientWidth, H;
     if (!W) return;
     if (room) H = room.clientHeight - 30;
     else if (felt) {
       var cs = getComputedStyle(felt), fr = felt.getBoundingClientRect();
+      h.style.height = '10px';
       // (the room under the felt, its wood and the page's own margin, is measured, so the table ends at the screen's foot)
       var slack = Math.max(16, document.documentElement.scrollHeight - (fr.bottom + scrollY));
       var bottom = DK ? fr.bottom : Math.min(fr.bottom, innerHeight - slack);
@@ -798,122 +1003,120 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
       } else if (V.phase === 'write') {
         var others = 0, seen = 0;
         Array.prototype.forEach.call(felt.children, function (c) { if (c === h || c.classList.contains('mid') || !c.offsetHeight) return; others += c.offsetHeight; seen++; });
-        H = avail - others - seen * (parseFloat(cs.rowGap) || 0);
+        H = avail - others - seen * rg;
       } else {
-        // (upright, with the cards to choose from or the stacks under it: the hive takes what they leave, between
-        // three tenths and a little over half of the table)
-        var oth = 0, cnt = 0, md = Q('.mid'), sx = md && md.querySelector('.stx');
+        // (upright, with the die, the card or the stacks under it: the board takes what they leave, between three
+        // tenths and a little over half of the table)
+        var oth = 0, cnt = 0, md = Q('.mid'), sx = md && md.querySelector('.stx'), nat0 = md && md.querySelector('.hmc, .rtray');
         Array.prototype.forEach.call(felt.children, function (c) { if (c === h || c === md || !c.offsetHeight) return; oth += c.offsetHeight; cnt++; });
-        var nat = sx ? +(sx.dataset.nat || sx.scrollHeight) + 8 : md ? md.scrollHeight : 0;
-        H = Math.max(avail * 0.3, Math.min(avail * 0.56, avail - oth - nat - (cnt + 1) * rg));
+        var nat = sx ? +(sx.dataset.nat || sx.scrollHeight) + 8 : nat0 ? nat0.offsetHeight + 8 : md ? md.scrollHeight : 0;
+        var nP = V.players.length, lo = nP > 12 ? 0.46 : nP > 6 ? 0.38 : 0.3;
+        H = Math.max(avail * lo, Math.min(avail * 0.56, avail - oth - nat - (cnt + 1) * rg));
       }
     }
-    if (!H || H < 60) H = 60;
-    var lens = V.players.map(function (p) { return short(p.name).length; });
-    var door = function (bz) { return Math.max(18, bz * 1.1) + 8; };
-    // a level's height for bees of size bz: its rows of bees (the names under them, or with many bees in little room,
-    // each bee's initial on a tag over its foot), then the gaps; every bee on the widest level counts, as at the start
-    function need(bz, ini, list) {
-      var tg = Math.max(11, Math.round(bz * 0.36)), gap = bz * 0.18, avail = W * 0.96 - bz * 1.6, row = 0, rows = 1;
-      list.forEach(function (c) {
-        var w = ini ? bz * 1.18 : Math.max(bz * 1.28, c * tg * 0.62 + tg * 0.9);
-        if (row && row + gap + w > avail) { rows++; row = w; } else row += (row ? gap : 0) + w;
-      });
-      var beeH = ini ? bz * 0.85 + tg * 0.4 : bz * 0.85 + tg * 1.35;
-      return rows * beeH + (rows - 1) * bz * 0.42 + (ini ? bz * 0.12 + 3 : bz * 0.3 + 6);
-    }
-    // (a level is one row of bees tall and grows when more bees crowd onto it: the hive has to hold every bee on one
-    // level, as at the start, and every other level one row; the longest name stands for the one row)
-    var longest = [Math.max.apply(null, lens)];
-    var best = 14, full = 0, one = 0, ini = false, fit = false;
-    [false, true].some(function (mode) {
-      for (var bz = 130; bz >= (mode ? 14 : 20); bz -= 1) {
-        var f = need(bz, mode, lens), o = need(bz, mode, longest);
-        if (f + (d - 1) * o + (d - 1) * 4 + door(bz) <= H) { best = bz; full = f; one = o; ini = mode; fit = true; return true; }
-      }
-      return false;
-    });
-    if (!fit) { best = 14; ini = true; full = need(14, true, lens); one = need(14, true, longest); }
-    h.classList.toggle('ini', ini);
-    h.querySelectorAll('.bee').forEach(function (b) { var t = b.querySelector('.tg'), P = V.players[+b.dataset.p]; if (t && P) t.textContent = ini ? String(P.name || '?').charAt(0).toUpperCase() : short(P.name); });
-    // (the levels share what is left, up to a sixth again of a row, so a level never stands empty and huge)
-    var share = Math.min(one * 1.15, (H - door(best) - (d - 1) * 4 - (full - one)) / d);
-    h.style.setProperty('--bz', best + 'px');
-    h.style.setProperty('--tgf', Math.max(11, Math.round(best * 0.36)) + 'px');
-    h.style.setProperty('--lvh', Math.max(one, share) + 'px');
-    // (the estimate is checked against the hive as drawn: a step smaller until it stands inside its room)
-    for (var guard = 0; guard < 24 && h.offsetHeight > H + 1 && best > 14; guard++) {
-      best--; one = need(best, ini, longest);
-      h.style.setProperty('--bz', best + 'px'); h.style.setProperty('--tgf', Math.max(11, Math.round(best * 0.36)) + 'px'); h.style.setProperty('--lvh', one + 'px');
-    }
+    if (!H || H < 120) H = 120;
+    // (a board much taller than wide, or wider than tall, is drawn at a shape it reads well at)
+    H = Math.min(H, W * 1.45); W = Math.min(W, H * 2.4);
+    layBoard(h, V, Math.floor(W), Math.floor(H));
   }
-  // FLIP: a bee that has moved glides from where it was
-  function flipBees(before) {
+  // FLIP: a pawn that has moved slides from where it was; one that changes level hops down (or up) to its new band
+  function flipPawns(before) {
     if (!before) return;
-    app.querySelectorAll('.hive .bee').forEach(function (b) {
+    app.querySelectorAll('.hive .pawn').forEach(function (b) {
       var r0 = before[b.dataset.p]; if (!r0 || !b.animate) return;
       var r = b.getBoundingClientRect(), dx = r0.left - r.left, dy = r0.top - r.top;
       if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
       var far = Math.abs(dy) > 10;
-      b.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, far ? { transform: 'translate(' + dx * 0.45 + 'px,' + (dy * 0.55 - 26) + 'px) rotate(' + (dy > 0 ? 14 : -10) + 'deg) scale(1.12)', offset: 0.5 } : null, { transform: 'none' }].filter(Boolean),
-        { duration: far ? 900 : 380, easing: 'cubic-bezier(.45,.05,.3,1)' });
+      b.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, far ? { transform: 'translate(' + dx * 0.5 + 'px,' + (dy * 0.5 - 22) + 'px) rotate(' + (dy > 0 ? 8 : -8) + 'deg) scale(1.08)', offset: 0.45 } : null,
+        far ? { transform: 'translate(0,0) scale(1.06,.9)', offset: 0.86 } : null, { transform: 'none' }].filter(Boolean),
+        { duration: far ? 820 : 380, easing: 'cubic-bezier(.45,.05,.3,1)' });
     });
   }
-  // The hive shake: the hive rocks, the lowest drop a level, the highest climb one, a bee past the last level goes out
-  function shakeHive(V) {
+  // Moving the pawns: the die is read, the lowest totals slide down a band (and on the star the highest up one), and
+  // a pawn pushed past the last band goes off the board
+  function movePawns(V) {
     var h = Q('.hive'); if (!h) return;
-    var before = beePos();
+    var before = pawnPos();
     ui.shook = V.round + '';
     h.classList.remove('shake'); void h.offsetWidth; h.classList.add('shake');
-    Kit.sfx('shuffle'); Kit.haptic('heavy');
+    var dz = Q('.pcw .qd'); if (dz) { dz.classList.remove('read'); void dz.offsetWidth; dz.classList.add('read'); }
+    Kit.sfx('dice', 0.6); Kit.haptic('medium');
     setTimeout(function () {
       if (!lastV || lastV !== V) return;
       paintHive(V, before);
       var mv = V.shake.mv, downs = mv.filter(function (m) { return m[2] > m[1]; }).length, ups = mv.length - downs;
-      if (downs) setTimeout(function () { Kit.sfx('bad', 0.5); }, 350);
+      if (downs) setTimeout(function () { Kit.sfx('slide'); Kit.sfx('bad', 0.45); }, 300);
       if (ups) setTimeout(function () { Kit.sfx('good', 0.6); }, 550);
       paintStatus(V); paintActs(V);
       moments(V);
-    }, 560);
+    }, 420);
   }
   function moments(V) {
     var out = V.players.map(function (p, k) { return k; }).filter(function (k) { return V.players[k].out === V.round; });
     var back = V.shake.mv.filter(function (m) { return m[1] === V.depth - 1 && m[2] < m[1]; }).map(function (m) { return m[0]; });
     var t = 1000;
     if (out.length) {
+      var every = V.players.every(function (p) { return p.out || p.gone; });
       setTimeout(function () {
-        var nm = out.map(function (k) { return short(V.players[k].name); });
-        Kit.moment({ title: out.length > 1 ? andList(nm) + ' left the hive' : nm[0] + ' left the hive', line: out.length > 1 ? 'They went out through the door, so the game ends here.' : (out[0] === V.me ? 'You' : nm[0]) + ' went out through the door, so the game ends here.', icon: 'logout', tone: 'bad', at: Q('.hive') });
-        Kit.sfx('lose'); Kit.haptic('error');
+        var nm = out.map(function (k) { return k === V.me ? 'You' : short(V.players[k].name); });
+        Kit.moment({ title: every ? 'Every pawn left the board' : andList(nm) + ' left the Hive',
+          line: every ? 'Everyone went off the board at once, so everyone wins together.' : (out.length > 1 || nm[0] === 'You' ? andList(nm) + ' went off the board' : nm[0] + '’s pawn went off the board') + ', so the game ends. Everyone still on the board wins.',
+          icon: every ? 'trophy' : 'logout', tone: every ? undefined : 'bad', at: Q('.hive') });
+        if (every) { Kit.sfx('win'); Kit.confetti({ count: 90 }); } else { Kit.sfx('lose'); Kit.haptic('error'); }
       }, t);
     } else if (back.length) {
       setTimeout(function () {
         var nm = back.map(function (k) { return k === V.me ? 'You' : short(V.players[k].name); });
-        Kit.callout(andList(nm) + (nm.length === 1 && nm[0] !== 'You' ? ' climbs' : ' climb') + ' away from the door!', '#ffe08a'); Kit.sfx('sparkle'); Kit.haptic('success');
+        Kit.callout(andList(nm) + (nm.length === 1 && nm[0] !== 'You' ? ' climbs' : ' climb') + ' away from the edge!', '#ffe08a'); Kit.sfx('sparkle'); Kit.haptic('success');
       }, t);
     }
   }
   // ── The card ──
-  function slotsEl(n) { var s = el('span', { class: 'slots', 'aria-label': n + (n === 1 ? ' answer' : ' answers') }); for (var k = 0; k < n; k++) s.appendChild(el('i')); return s; }
+  function slotsEl(n) { var s = el('span', { class: 'slots', 'aria-label': n + (n === 1 ? ' response' : ' responses') }); for (var k = 0; k < n; k++) s.appendChild(el('i')); return s; }
+  // the question asked, in its speech bubble, with the die beside it (and the timer while everyone writes)
   function cardEl(V) {
-    var asker = V.players[V.ask];
-    var card = el('div', { class: 'pc' + (ui.cardRound !== V.round ? ' deal' : '') }, [
-      el('div', { class: 'k' }, [el('span', { text: asker ? (V.ask === V.me ? 'You asked' : short(asker.name) + ' asked') : 'Round ' + V.round }), slotsEl(V.n)]),
-      el('div', { class: 'q', text: V.q })
-    ]);
-    if (ui.cardRound !== V.round) { ui.cardRound = V.round; Kit.sfx('deal'); }
-    var w = el('div', { class: 'pcw' }, [card]);
-    if (V.roll) w.appendChild(dieEl(V.roll, ui.rolled !== V.round + ''));
-    ui.rolled = V.round + '';
+    var w = el('div', { class: 'pcw' });
+    if (V.phase !== 'ask') {
+      var asker = V.players[V.ask];
+      w.appendChild(el('div', { class: 'pc bub' + (V.own ? ' own' : '') + (ui.cardRound !== V.round ? ' deal' : '') }, [
+        el('div', { class: 'k' }, [el('span', { text: asker ? (V.ask === V.me ? 'You asked' : short(asker.name) + ' asked') : 'Turn ' + V.round }), slotsEl(V.n)]),
+        el('div', { class: 'q', text: V.q })
+      ]));
+      if (ui.cardRound !== V.round) { ui.cardRound = V.round; Kit.sfx('deal'); }
+    }
+    if (V.roll != null) {
+      var fresh = ui.rolled !== V.round + '';
+      w.appendChild(dieEl(V.roll, fresh ? (ui.tumbled === V.round + '' ? 'land' : 'roll') : '', V));
+      if (V.phase === 'ask') w.appendChild(el('p', { class: 'rs', text: rollSay(V) }));
+      if (fresh && V.phase === 'ask' && V.roll === 's') setTimeout(function () { Kit.callout('The star!', '#ffe08a'); Kit.sfx('sparkle'); }, 900);
+      ui.rolled = V.round + '';
+    }
     if (V.timer && V.phase === 'write') w.appendChild(hourglass());
     return w;
   }
-  // the Queen Bee die: its pips are how many of the lowest scores drop a level after the round
-  function dieEl(v, roll) {
-    var f = el('div', { class: 'face' + (roll ? ' roll' : ''), 'data-v': v }); for (var i = 0; i < 9; i++) f.appendChild(el('i'));
-    var dn = el('span', { class: 'dn' }); for (var j = 0; j < v; j++) dn.innerHTML += Kit.icon('down');
-    var d = el('div', { class: 'qd', title: 'The Queen Bee die', 'aria-label': 'The Queen Bee die shows ' + v + ': the ' + (v === 1 ? 'lowest score drops' : v + ' lowest scores drop') + ' a level' }, [f, dn]);
-    if (roll) { Kit.sfx('roll'); setTimeout(function () { Kit.sfx('dice', 0.6); Kit.haptic('light'); }, 520); }
+  // The die: white, with one, two or three dots, or the star (one dot inside a star)
+  var STAR_SVG = '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3.6l5 10.5 11.5 1.4-8.5 7.9 2.3 11.4L20 29.1 9.7 34.8 12 23.4l-8.5-7.9L15 14.1z" fill="none" stroke="#1b1a2e" stroke-width="2.7" stroke-linejoin="round"/><circle cx="20" cy="20.6" r="3.7" fill="#1b1a2e"/></svg>';
+  function faceEl(v, cls) {
+    var f = el('div', { class: 'face' + (cls ? ' ' + cls : ''), 'data-v': v });
+    if (v === 's') f.innerHTML = STAR_SVG; else for (var i = 0; i < 9; i++) f.appendChild(el('i'));
+    return f;
+  }
+  function arrows(v) {
+    var dn = el('span', { class: 'dn' });
+    if (v === 's') dn.innerHTML = Kit.icon('down') + '<i class="up">' + Kit.icon('down') + '</i>';
+    else for (var j = 0; j < v; j++) dn.innerHTML += Kit.icon('down');
+    return dn;
+  }
+  function moveRule(v, live) {
+    if (v === 's') return 'the lowest total moves down and the highest moves up';
+    if (v === 3 && live === 3) return 'with three players three dots count as two, so the two lowest totals move down';
+    return v === 1 ? 'the lowest total moves down' : 'the ' + NUM[v] + ' lowest totals move down';
+  }
+  function dieEl(v, roll, V) {
+    var live = V ? V.players.filter(function (p) { return !p.gone && !p.out; }).length : 4;
+    var d = el('div', { class: 'qd', title: 'The die', 'aria-label': 'The die shows ' + faceSay(v) + ': ' + moveRule(v, live) }, [faceEl(v, roll), arrows(v)]);
+    if (roll === 'roll') { Kit.sfx('roll'); setTimeout(function () { Kit.sfx('dice', 0.6); Kit.haptic('light'); }, 520); }
+    else if (roll === 'land') { Kit.sfx('dice', 0.6); Kit.haptic('light'); }
     return d;
   }
   function hourglass() {
@@ -935,21 +1138,30 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
   // ── What's going on, as a sentence on the felt ──
   function think(box) { box.appendChild(el('span', { class: 'think', html: '<i></i><i></i><i></i>' })); }
   function canPick(V) { var A = V.players[V.ask]; return !!A && !A.cpu && !A.gone && (V.mode === 'pass' || V.me === V.ask); }
+  function live(V) { return V.players.filter(function (p) { return !p.gone && !p.out; }).length; }
+  function rollSay(V) {
+    var A = V.players[V.ask], w = V.ask === V.me ? 'You' : A ? short(A.name) : 'The die';
+    return w + ' rolled ' + faceSay(V.roll) + ': after this question ' + moveRule(V.roll, live(V)) + '.';
+  }
   function paintStatus(V) {
     var box = Q('.st'); if (!box) return;
     box.innerHTML = '';
     var t = '', A = V.players[V.ask];
-    if (V.phase === 'ask') {
-      if (canPick(V)) t = V.mode === 'pass' ? short(A.name) + ' asks this round. ' + short(A.name) + ', choose the card to ask.' : 'It’s your turn to ask. Choose the card everyone will answer.';
-      else if (A) { box.appendChild(el('span', { text: short(A.name) + ' is choosing the card' })); think(box); return; }
+    if (V.phase === 'roll') {
+      if (canPick(V)) t = V.mode === 'pass' ? short(A.name) + '’s turn. Roll the die, then choose a question.' : 'It’s your turn. Roll the die, then choose a question.';
+      else if (A) { box.appendChild(el('span', { text: short(A.name) + ' is rolling the die' })); think(box); return; }
       box.appendChild(el('span', { text: t }));
+      return;
+    }
+    if (V.phase === 'ask') {
+      if (!canPick(V) && A) { box.appendChild(el('span', { text: short(A.name) + ' is choosing a question' })); think(box); }
       return;
     }
     if (V.phase === 'write') {
       var wait = V.players.filter(function (p) { return !p.done && !p.gone && !p.out; }).map(function (p) { return short(p.name); });
       var mine = V.mine || (V.mode === 'pass' && V.me < 0);
-      if (mine && wait.length) t = wait.length > 3 ? wait.length + ' bees are still writing' : 'Waiting for ' + andList(wait);
-      else if (!wait.length) t = 'Turning the answers over';
+      if (mine && wait.length) t = wait.length > 3 ? wait.length + ' players are still writing' : 'Waiting for ' + andList(wait);
+      else if (!wait.length) t = 'Turning the responses over';
       if (t) { box.appendChild(el('span', { text: t })); think(box); }
       return;
     }
@@ -957,17 +1169,16 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
       if (!V.boss) { box.appendChild(el('span', { text: short(V.host) + ' is checking the matches' })); think(box); return; }
       var gs = C.groupsOf(V.items), s = ui.sel ? gs.filter(function (x) { return x.id === ui.sel; })[0] : null;
       if (gs.length < 2 && !(s && s.items.length > 1)) return;
-      t = !s ? 'Same thing written two ways? Tap both stacks to put them together.' : s.items.length > 1 ? 'Tap the stack it matches, or a slip to pull it out' : 'Now tap the stack it matches';
+      t = !s ? 'Two stacks mean the same thing? Tap both to put them together.' : s.items.length > 1 ? 'Tap the stack it matches, or a slip to pull it out' : 'Now tap the stack it matches';
       box.appendChild(el('span', { text: t }));
       return;
     }
     if (V.phase === 'scored' && V.shake) {
       if (ui.shook !== V.round + '') {
-        var dn = V.shake.down, s;
-        if (!dn.length) s = 'The Queen Bee die rolled ' + V.roll + ', but everyone scored the same, so no bee moves.';
-        else if (dn.length > V.shake.n) s = 'The Queen Bee die rolled ' + V.roll + '. ' + andList(dn.map(function (k) { return who(V, k); })) + ' tied at the bottom, so ' + (dn.length === 2 ? 'both' : 'all ' + (NUM[dn.length] || dn.length)) + ' drop a level.';
-        else s = 'The Queen Bee die rolled ' + V.roll + ', so ' + (V.shake.n === 1 ? 'the lowest score drops a level.' : 'the ' + NUM[V.shake.n] + ' lowest scores drop a level.');
-        box.appendChild(el('span', { text: s }));
+        var dn = V.shake.down, on = live(V), s2;
+        if (dn.length >= on && on > 1) s2 = 'The die shows ' + faceSay(V.roll) + ', and everyone tied, so everyone moves down.';
+        else s2 = 'The die shows ' + faceSay(V.roll) + ', so ' + moveRule(V.roll, on) + '.';
+        box.appendChild(el('span', { text: s2 }));
         return;
       }
       box.appendChild(el('span', { text: shakeSay(V) }));
@@ -979,42 +1190,108 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     var mv = V.shake.mv, dn = [], up = [], out = [];
     mv.forEach(function (m) { if (m[2] >= V.depth) out.push(who(V, m[0])); else if (m[2] > m[1]) dn.push(who(V, m[0])); else up.push(who(V, m[0])); });
     var s = [];
-    if (out.length) s.push(andList(out) + (out.length === 1 && out[0] !== 'You' ? ' goes' : ' go') + ' out of the hive.');
-    if (dn.length) s.push(andList(dn) + (dn.length === 1 && dn[0] !== 'You' ? ' drops' : ' drop') + ' a level.');
-    if (up.length) s.push(andList(up) + (up.length === 1 && up[0] !== 'You' ? ' climbs' : ' climb') + ' a level.');
-    if (!s.length) s.push(V.shake.down.length ? 'The top scorers were already at the top, so only the lowest moved.' : 'Everyone scored the same, so no bee moves.');
+    if (out.length) s.push(andList(out) + (out.length === 1 && out[0] !== 'You' ? ' goes' : ' go') + ' off the board.');
+    if (dn.length) s.push(andList(dn) + (dn.length === 1 && dn[0] !== 'You' ? ' moves' : ' move') + ' down a level.');
+    if (up.length) s.push(andList(up) + (up.length === 1 && up[0] !== 'You' ? ' moves' : ' move') + ' up a level.');
+    if (!s.length) s.push('Nobody’s pawn moves this time.');
+    else if (V.shake.star && !up.length && V.shake.up.length) s.push('The highest total was already on level 1.');
     return s.join(' ');
   }
-  // ── The middle of the table: the two cards to choose from, then the stacks once the answers are turned over ──
+  // ── The middle of the table: the die to roll, the card's three questions, then the stacks once they're turned over ──
   function paintMid(V, a) {
     var box = Q('.mid'); if (!box) return;
-    if (V.phase === 'ask') return paintOffer(box, V, a);
+    if (V.phase === 'roll') return paintRoll(box, V);
+    if (V.phase === 'ask') return paintAsk(box, V, a);
     if (V.phase === 'write') { box.innerHTML = ''; return; }
     paintStacks(box, V, a);
   }
-  function paintOffer(box, V, a) {
-    var can = canPick(V), wrap = el('div', { class: 'offer' + (can ? '' : ' wait') }), two = el('div', { class: 'two' });
-    (V.offer || []).forEach(function (o, c) {
-      var cd = el('div', { class: 'pc' + (can ? ' can' : '') + (a && a.t === 'start' || ui.offerRound !== V.round ? ' deal' : '') + (ui.botPick === c ? ' chose' : ''), style: { 'animation-delay': (c * 0.12) + 's' }, role: can ? 'button' : null, tabindex: can ? '0' : null,
-        'aria-label': can ? 'Ask: ' + o.q : o.q }, [el('div', { class: 'k' }, [el('span', { text: c ? 'Second card' : 'First card' }), slotsEl(o.n)]), el('div', { class: 'q', text: o.q })]);
+  // the die in the middle of the table, waiting to be rolled, and its six faces in a row under it
+  function paintRoll(box, V) {
+    var can = canPick(V);
+    if (box.querySelector('.rtray[data-r="' + V.round + '"]')) { box.querySelector('.rtray').classList.toggle('can', can); return; }
+    var die = el('div', { class: 'qd big' + (can ? '' : ' wait'), role: can ? 'button' : null, tabindex: can ? '0' : null, 'aria-label': can ? 'Roll the die' : 'The die' }, [faceEl('s', 'idle')]);
+    var faces = el('div', { class: 'faces', 'aria-label': 'The die’s six faces' });
+    C.DIE.forEach(function (f) { faces.appendChild(el('span', { class: 'ff' }, [faceEl(f), arrows(f)])); });
+    var tray = el('div', { class: 'rtray' + (can ? ' can' : ''), 'data-r': V.round }, [die, faces]);
+    if (can) {
+      die.addEventListener('click', rollDie);
+      die.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); rollDie(); } });
+    }
+    box.innerHTML = ''; box.appendChild(tray);
+  }
+  var rolling = false;
+  function rollDie() {
+    var V = lastV; if (rolling || !V || V.phase !== 'roll' || !canPick(V)) return; rolling = true;
+    var f = Q('.rtray .qd .face'); if (f) { f.classList.remove('idle'); f.classList.add('tumble'); }
+    Kit.sfx('roll'); Kit.haptic('medium');
+    ui.tumbled = V.round + '';
+    setTimeout(function () { rolling = false; doAct({ t: 'roll', f: ui.forceRoll }); }, 640);
+  }
+  // the card drawn: three questions in speech bubbles, and a fourth for one of your own
+  function paintAsk(box, V, a) {
+    var can = canPick(V), old = box.querySelector('.hmc[data-r="' + V.round + '"]');
+    if (old) { old.querySelectorAll('.bq[data-c]').forEach(function (b) { b.classList.toggle('chose', ui.botPick === +b.dataset.c); }); return; }
+    if (ui.ownRound !== V.round) { ui.ownRound = V.round; ui.ownOpen = false; ui.ownQ = ''; ui.ownN = 3; }
+    var card = el('div', { class: 'hmc' + (can ? ' can' : ' wait') + (ui.dealt !== V.round ? ' deal' : ''), 'data-r': V.round },
+      [el('div', { class: 'hmh' }, [el('span', { class: 'lg', text: 'Hive Mind' }), el('span', { text: V.ask === V.me ? 'Choose a question' : short((V.players[V.ask] || {}).name || '') + ' chooses' })])]);
+    (V.qs || []).forEach(function (o, c) {
+      var b = el('div', { class: 'bq b' + c + (ui.botPick === c ? ' chose' : ''), 'data-c': c, style: { 'animation-delay': (0.15 + c * 0.1) + 's' },
+        role: can ? 'button' : null, tabindex: can ? '0' : null, 'aria-label': can ? 'Ask: ' + o.q : o.q }, [el('span', { class: 'tx', text: o.q }), slotsEl(o.n)]);
       if (can) {
-        var go = function () { choose(c); };
-        cd.addEventListener('click', go);
-        cd.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+        b.addEventListener('click', function () { choose(c); });
+        b.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(c); } });
       }
-      two.appendChild(cd);
+      card.appendChild(b);
     });
-    if (ui.offerRound !== V.round) { ui.offerRound = V.round; ui.botPick = null; Kit.sfx('deal'); setTimeout(function () { Kit.sfx('deal', 0.7); }, 140); }
-    wrap.appendChild(two);
-    box.innerHTML = ''; box.appendChild(wrap);
+    card.appendChild(ownEl(V, can));
+    card.appendChild(el('div', { class: 'ft' }, [el('span', { text: '© 2022 Calliope Games' }), el('span', { text: 'Card ' + V.cardNo })]));
+    if (ui.dealt !== V.round) { ui.dealt = V.round; ui.botPick = null; Kit.sfx('deal'); }
+    box.innerHTML = ''; box.appendChild(card);
+  }
+  function ownEl(V, can) {
+    var o = el('div', { class: 'bq own' + (ui.ownOpen && can ? ' open' : ''), style: { 'animation-delay': '.45s' } });
+    if (!can || !ui.ownOpen) {
+      o.appendChild(el('span', { class: 'tx', html: Kit.icon('pencil') + '<span>Or make up your own question!</span>' }));
+      if (can) { o.setAttribute('role', 'button'); o.setAttribute('tabindex', '0'); o.addEventListener('click', function () { ui.ownOpen = true; Kit.sfx('tap'); var nw = ownEl(V, true); o.replaceWith(nw); if (lastV) fitHive(lastV); var f = nw.querySelector('input'); if (f && !coarse) f.focus(); }); }
+      return o;
+    }
+    var inp = el('input', { type: 'text', maxlength: 120, autocomplete: 'off', autocapitalize: 'sentences', enterkeyhint: 'go', placeholder: 'Name something…', 'aria-label': 'Your own question' });
+    inp.value = ui.ownQ || '';
+    var go = el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('check') + '<span>Ask it</span>', onclick: function () { askOwn(); } });
+    var back = el('button', { type: 'button', class: 'btn btn-ghost bk', html: Kit.icon('back') + '<span>The card’s questions</span>', onclick: function () {
+      ui.ownOpen = false; Kit.sfx('tap'); var c = o.closest('.hmc'); if (c) c.classList.remove('owning'); var nw = ownEl(V, true); o.replaceWith(nw); if (lastV) fitHive(lastV); } });
+    var sync = function () { ui.ownQ = inp.value; go.disabled = !inp.value.trim(); };
+    inp.addEventListener('input', sync);
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); askOwn(); } });
+    var chips = el('div', { class: 'nch', role: 'group', 'aria-label': 'How many responses' });
+    [1, 2, 3, 4].forEach(function (k) {
+      chips.appendChild(el('button', { type: 'button', class: 'nc' + (ui.ownN === k ? ' on' : ''), 'aria-pressed': ui.ownN === k ? 'true' : 'false', 'aria-label': k + (k === 1 ? ' response' : ' responses'),
+        onclick: function () { ui.ownN = k; chips.querySelectorAll('.nc').forEach(function (c, j) { c.classList.toggle('on', j === k - 1); c.setAttribute('aria-pressed', j === k - 1 ? 'true' : 'false'); }); Kit.sfx('tap'); } }, [slotsEl(k), el('b', { text: String(k) })]));
+    });
+    o.appendChild(inp);
+    o.appendChild(el('div', { class: 'orow' }, [el('span', { class: 'ol', text: 'Responses' }), chips, go]));
+    o.appendChild(back);
+    setTimeout(function () { var c = o.closest('.hmc'); if (c) c.classList.add('owning'); }, 0);
+    setTimeout(sync, 0);
+    return o;
   }
   var picking = false;
   function choose(c) {
     if (picking) return; picking = true;
-    var cs = app.querySelectorAll('.offer .pc');
-    if (cs[c]) cs[c].classList.add('chose'); if (cs[1 - c]) cs[1 - c].classList.add('left');
+    var cs = app.querySelectorAll('.hmc .bq');
+    cs.forEach(function (b, k) { b.classList.add(+b.dataset.c === c ? 'chose' : 'left'); });
     Kit.sfx('pop'); Kit.haptic('medium');
-    setTimeout(function () { picking = false; doAct({ t: 'pick', c: c, f: ui.forceRoll }); }, 420);
+    setTimeout(function () { picking = false; doAct({ t: 'pick', c: c }); }, 420);
+  }
+  function askOwn() {
+    var q = String(ui.ownQ || '').replace(/\s+/g, ' ').trim();
+    if (!q) { var o = Q('.bq.own'); if (o) { o.classList.remove('nudge'); void o.offsetWidth; o.classList.add('nudge'); } Kit.haptic('error'); return; }
+    if (picking) return; picking = true;
+    app.querySelectorAll('.hmc .bq[data-c]').forEach(function (b) { b.classList.add('left'); });
+    var ow = Q('.bq.own'); if (ow) ow.classList.add('chose');
+    Kit.sfx('pop'); Kit.haptic('medium');
+    try { document.activeElement && document.activeElement.blur && document.activeElement.blur(); } catch (e) {}
+    setTimeout(function () { picking = false; doAct({ t: 'pick', own: q, n: ui.ownN || 3 }); }, 420);
   }
   function paintStacks(box, V, a) {
     var gs = C.groupsOf(V.items);
@@ -1048,7 +1325,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
       }
       wrap.appendChild(b);
     });
-    if (!gs.length) wrap.appendChild(el('div', { class: 'none', text: 'Nobody wrote anything this round' }));
+    if (!gs.length) wrap.appendChild(el('div', { class: 'none', text: 'Nobody wrote anything for this question' }));
     box.appendChild(wrap);
     ui.bump = null; ui.flash = null;
     fitStacks(box);
@@ -1067,7 +1344,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     var sw = s0.offsetWidth, tf = parseFloat(getComputedStyle(t0).fontSize) / (t0.classList.contains('lg') ? .86 : t0.classList.contains('xl') ? .72 : t0.classList.contains('xxl') ? .6 : 1);
     wrap.classList.add('fitted');
     for (var k = 1; k >= 0.62; k -= 0.06) {
-      wrap.style.setProperty('--sw', Math.round(sw * k) + 'px'); wrap.style.setProperty('--tf', (tf * Math.max(k, 0.8)).toFixed(1) + 'px');
+      wrap.style.setProperty('--sw', Math.round(sw * k) + 'px'); wrap.style.setProperty('--tf', (tf * k).toFixed(1) + 'px');
       if (!over()) return;
     }
     box.classList.add('scrolly');
@@ -1124,7 +1401,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
   function celebrate(V, gs, nAct) {
     var all = gs.filter(function (s) { return nAct >= 3 && s.ps.length >= nAct; });
     if (all.length) {
-      setTimeout(function () { Kit.callout((all.length > 1 ? 'The whole hive said ' + C.label(all[0]) + ' and more!' : 'The whole hive said ' + C.label(all[0]) + '!'), '#ffe08a'); Kit.sfx('sparkle'); Kit.haptic('success'); Kit.confetti({ count: 80, colors: ['#ffd447', '#fffdf4', '#f2ac2e', '#3ddc84', '#2a1a08'] }); }, 700);
+      setTimeout(function () { Kit.callout((all.length > 1 ? 'Everyone said ' + C.label(all[0]) + ' and more!' : 'Everyone said ' + C.label(all[0]) + '!'), '#ffe08a'); Kit.sfx('sparkle'); Kit.haptic('success'); Kit.confetti({ count: 80, colors: ['#ffd447', '#fffdf4', '#f2ac2e', '#3ddc84', '#2a1a08'] }); }, 700);
     } else setTimeout(function () { Kit.sfx('good'); }, 700);
   }
   // ── Buttons ──
@@ -1132,14 +1409,15 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     var box = Q('.acts'); if (!box) return;
     box.innerHTML = '';
     function b(label, icon, fn, cls) { box.appendChild(el('button', { type: 'button', class: 'btn ' + (cls || 'btn-primary'), html: (icon ? Kit.icon(icon) : '') + '<span>' + esc(label) + '</span>', onclick: fn })); }
+    if (V.phase === 'roll' && canPick(V)) b('Roll the die', 'dice', rollDie);
     if (V.phase === 'reveal' && V.boss) b('Count the points', 'check', function () { ui.sel = null; Kit.sfx('pop'); doAct({ t: 'score' }); }, 'btn-primary ready');
     if (V.phase === 'scored' && V.boss) {
       var shook = ui.shook === V.round + '', over = V.players.some(function (p) { return p.out; });
-      if (!shook) b('Shake the hive', 'shuffle', function () { clearTimeout(ui.shakeT); ui.shakeT = 0; shakeHive(lastV); }, 'btn-soft');
-      else b(over ? 'See who won' : 'Next round', over ? 'trophy' : 'right', function () { doAct({ t: 'next' }); });
+      if (!shook) b('Move the pawns', 'down', function () { clearTimeout(ui.shakeT); ui.shakeT = 0; movePawns(lastV); }, 'btn-soft');
+      else b(over ? 'See who won' : 'Next turn', over ? 'trophy' : 'right', function () { doAct({ t: 'next' }); });
     }
     if (V.phase === 'write' && net.mode === 'host' && V.mine && V.players.some(function (p) { return !p.done && !p.gone && !p.out; }))
-      b('Turn them over now', 'eye', function () { Kit.confirm('Turn the answers over now?', { ok: 'Turn them over', body: 'Anyone still writing misses this card and scores nothing for it.' }).then(function (ok) { if (ok) doAct({ t: 'reveal' }); }); }, 'btn-soft');
+      b('Turn them over now', 'eye', function () { Kit.confirm('Turn the responses over now?', { ok: 'Turn them over', body: 'Anyone still writing misses this question and scores nothing for it.' }).then(function (ok) { if (ok) doAct({ t: 'reveal' }); }); }, 'btn-soft');
   }
 
   // ── The clipboard ──
@@ -1191,10 +1469,10 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     var my = gen;
     setTimeout(function () { ui.sending = ''; if (my !== gen && net.mode !== 'guest') return; if (net.mode === 'guest') ui.sent = tag; doAct({ t: 'ans', a: vals }); }, 420);
   }
-  // the paper folds up and flies to your bee in the hive
+  // the paper folds up and flies to your pawn on the board
   function foldAway(me) {
-    var s = Q('.pad .sheet'), bee = Q('.hive .bee[data-p="' + me + '"] .bz') || Q('.hive'); if (!s || !bee) return;
-    var r = s.getBoundingClientRect(), rb = bee.getBoundingClientRect();
+    var s = Q('.pad .sheet'), pw = Q('.hive .pawn[data-p="' + me + '"] .bz') || Q('.hive'); if (!s || !pw) return;
+    var r = s.getBoundingClientRect(), rb = pw.getBoundingClientRect();
     var c = s.cloneNode(true); c.classList.add('flyfold');
     c.style.left = r.left + 'px'; c.style.top = r.top + 'px'; c.style.width = r.width + 'px'; c.style.height = r.height + 'px';
     document.body.appendChild(c);
@@ -1237,17 +1515,15 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     tmr = setInterval(step, 200); step();
   }
 
-  // ── The end of the game, on the table: the hive as it ended, who stayed in, every card ──
-  function finalHive(S, meI) {
+  // ── The end of the game, on the table: the board as it ended, who stayed on it, every question ──
+  function finalHive(S, meI, W, H) {
     var V = { phase: 'over', depth: S.depth, me: meI, round: S.rounds, players: S.players.map(function (p) { return { name: p.name, color: p.color, cpu: p.cpu, lv: p.lv, out: p.out }; }) };
-    var h = hiveEl(V);
-    S.players.forEach(function (p, k) {
-      var b = beeEl(V, V.players[k], k), box = p.out ? h.querySelector('.door') : h.querySelector('.lv[data-l="' + p.lv + '"]');
-      if (box) box.appendChild(b);
-    });
-    h.querySelector('.door').classList.toggle('has', S.players.some(function (p) { return p.out; }));
+    var h = boardEl(V);
+    S.players.forEach(function (p, k) { h.appendChild(pawnEl(V, V.players[k], k)); });
+    layBoard(h, V, W, H);
     return h;
   }
+  function allOutS(S) { return S.players.every(function (p) { return p.out || p.gone; }); }
   function standings(S) {
     return S.players.map(function (p, i) { return { p: p, i: i }; }).sort(function (a, b) { return (a.p.out ? 1 : 0) - (b.p.out ? 1 : 0) || a.p.lv - b.p.lv || b.p.score - a.p.score; });
   }
@@ -1258,20 +1534,20 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     app.innerHTML = '';
     var felt = el('div', { class: 'felt-in ph-over' });
     var stay = S.winners.map(function (i) { return short(S.players[i].name); });
-    var fin = el('div', { class: 'fin' }, [el('h2', { text: 'The hive at the end' })]);
-    var hv = finalHive(S, meOf(S)); hv.classList.add('end');
+    var fin = el('div', { class: 'fin' }, [el('h2', { text: 'The board at the end' })]);
+    var fw = Math.min(560, Math.max(280, (app.clientWidth || innerWidth) - 60)), hv = finalHive(S, meOf(S), fw, Math.round(fw * 0.8)); hv.classList.add('end');
     fin.appendChild(hv);
-    fin.appendChild(el('p', { class: 'endsay', text: stay.length + (stay.length === 1 ? ' bee stayed in the hive and wins: ' : ' bees stayed in the hive and win: ') + andList(stay) + '.' }));
+    fin.appendChild(el('p', { class: 'endsay', text: allOutS(S) ? 'Every pawn left the board at once, so everyone wins together.' : stay.length === 1 ? stay[0] + ' stayed on the board and wins.' : andList(stay) + ' stayed on the board and win.' }));
     standings(S).forEach(function (x, k) {
       fin.appendChild(el('div', { class: 'row' + (x.p.out ? ' gone' : '') }, [el('span', { class: 'pl-n', text: x.p.out ? '' : String(x.p.lv + 1) }),
         x.p.cpu ? el('span', { class: 'avatar sm', style: { '--c': x.p.color }, html: Kit.icon('bot') }) : Kit.avatar.el(x.p.name, 'sm', x.p.color),
-        el('span', { class: 'nm', text: x.p.name }), el('span', { class: 'sc', text: x.p.out ? 'Out of the hive' : 'Level ' + (x.p.lv + 1) })]));
+        el('span', { class: 'nm', text: x.p.name }), el('span', { class: 'sc', text: x.p.out ? 'Off the board' : 'Level ' + (x.p.lv + 1) })]));
     });
-    fin.appendChild(el('div', { class: 'lab', text: 'Every card' }));
+    fin.appendChild(el('div', { class: 'lab', text: 'Every question' }));
     (S.log || []).forEach(function (l, k) {
       var tops = el('div', { class: 'tops' });
       (l.top || []).forEach(function (t) { tops.appendChild(el('span', null, [el('span', { text: t.t }), el('b', { text: String(t.c) })])); });
-      fin.appendChild(el('div', { class: 'rd' }, [el('div', { class: 'rq' }, [el('span', { text: l.q }), el('span', { text: 'Round ' + (k + 1) })]),
+      fin.appendChild(el('div', { class: 'rd' }, [el('div', { class: 'rq' }, [el('span', { text: l.q }), el('span', { text: 'Turn ' + (k + 1) })]),
         (l.top || []).length ? tops : el('div', { class: 'none', text: 'Nobody matched' })]));
     });
     var acts = el('div', { class: 'acts' });
@@ -1291,21 +1567,23 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     var hl = [], best = null, P = S.players;
     (S.log || []).forEach(function (l, k) {
       var t = (l.top || [])[0], on = P.filter(function (p) { return !p.out || p.out > k; }).length;
-      if (t && t.c >= on && on >= 3) hl.push('In round ' + (k + 1) + ' the whole hive wrote ' + t.t + ' for ' + l.q + '.');
-      (l.mv || []).forEach(function (m) { if (P[m[0]] && m[1] === S.depth - 1 && m[2] < m[1]) hl.push(P[m[0]].name + ' climbed away from the door in round ' + (k + 1) + '.'); });
+      if (t && t.c >= on && on >= 3) hl.push('On turn ' + (k + 1) + ' everyone wrote ' + t.t + ' for ' + l.q + '.');
+      (l.mv || []).forEach(function (m) { if (P[m[0]] && m[1] === S.depth - 1 && m[2] < m[1]) hl.push(P[m[0]].name + ' moved back up from the last level on turn ' + (k + 1) + ', thanks to the star.'); });
       l.pts.forEach(function (v, i) { if (!best || v > best.v) best = { v: v, i: i, k: k }; });
     });
-    P.forEach(function (p) { if (p.out) hl.unshift(p.name + ' went out of the hive in round ' + p.out + '.'); });
-    if (best && best.v > 1 && P[best.i]) hl.push(P[best.i].name + ' scored ' + best.v + ' points on one card: ' + S.log[best.k].q + '.');
-    var dt = { v: 'hm', d: S.depth, lv: P.map(function (p) { return p.out ? -1 : p.lv; }).join(','), pt: P.map(function (p) { return p.score; }).join(','),
-      rs: (S.log || []).map(function (l) { return { q: String(l.q).slice(0, 90), t: (l.top || []).map(function (x) { return String(x.t).slice(0, 40) + ':' + x.c; }).join('\n'), r: l.roll, m: (l.mv || []).map(function (m) { return m.join(':'); }).join(',') }; }) };
+    var every = allOutS(S);
+    if (every) hl.unshift('Every pawn left the board at once on turn ' + S.rounds + ', so everyone won together.');
+    else P.forEach(function (p) { if (p.out) hl.unshift(p.name + ' went off the board on turn ' + p.out + '.'); });
+    if (best && best.v > 1 && P[best.i]) hl.push(P[best.i].name + ' scored ' + best.v + ' points on one question: ' + S.log[best.k].q + '.');
+    var dt = { v: 'hm', b: 2, d: S.depth, lv: P.map(function (p) { return p.out ? -1 : p.lv; }).join(','), pt: P.map(function (p) { return p.score; }).join(','),
+      rs: (S.log || []).map(function (l) { return { q: String(l.q).slice(0, 90), t: (l.top || []).map(function (x) { return String(x.t).slice(0, 40) + ':' + x.c; }).join('\n'), r: l.roll, a: l.ask, m: (l.mv || []).map(function (m) { return m.join(':'); }).join(',') }; }) };
     var W = S.winners.map(function (i) { return P[i].name; });
     Kit.record(KEY, {
       started: S.started, mode: MODE_NAME[S.mode] || '',
-      // (where each bee ended, not the points: in Hive Mind the points count round by round, and the game's points are in the detail)
-      players: P.map(function (p) { return { name: p.name, score: p.out ? 'Out' : 'Level ' + (p.lv + 1), cpu: p.cpu }; }),
-      winner: W.length === 1 ? W[0] : null,
-      summary: W.length > 1 ? andList(W) + ' stayed in the hive' : undefined,
+      // (where each pawn ended, not the points: in Hive Mind the points count question by question, and are in the detail)
+      players: P.map(function (p) { return { name: p.name, score: p.out ? 'Off' : 'Level ' + (p.lv + 1), cpu: p.cpu }; }),
+      winner: W.length === 1 && !every ? W[0] : null,
+      summary: every ? 'Everyone left the board at once and won together' : W.length > 1 ? andList(W) + ' stayed on the board' : undefined,
       rounds: { labels: (S.log || []).map(function (l, k) { return String(k + 1); }), scores: (S.log || []).map(function (l) { return l.pts.slice(0, P.length); }) },
       highlights: hl.slice(0, 6), detail: dt
     });
@@ -1319,20 +1597,23 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
   }
   function showWin(S) {
     var me = meOf(S), local = !net.mode && (S.mode === 'solo' || S.mode === 'cpu');
-    var rank = standings(S).map(function (x) { return { name: x.p.name, score: x.p.out ? 'Out' : 'Level ' + (x.p.lv + 1), color: x.p.color, cpu: x.p.cpu, me: x.i === me }; });
+    var rank = standings(S).map(function (x) { return { name: x.p.name, score: x.p.out ? 'Off the board' : 'Level ' + (x.p.lv + 1), color: x.p.color, cpu: x.p.cpu, me: x.i === me }; });
     var out = S.players.map(function (p, i) { return i; }).filter(function (i) { return S.players[i].out; });
     var won = me >= 0 && S.winners.indexOf(me) >= 0, title, lose = false;
     var gone = andList(out.map(function (i) { return i === me ? 'You' : short(S.players[i].name); }));
-    if (me >= 0) { title = won ? 'You stayed in the hive!' : 'You left the hive'; lose = !won; }
-    else title = S.winners.length === 1 ? short(S.players[S.winners[0]].name) + ' wins!' : S.winners.length + ' bees win!';
-    var sub = gone + ' went out of the hive in round ' + S.rounds + ' · Everyone still in the hive wins';
+    var every = allOutS(S);
+    if (every) title = 'Everyone wins together!';
+    else if (me >= 0) { title = won ? 'You stayed on the board!' : 'You left the board'; lose = !won; }
+    else title = S.winners.length === 1 ? short(S.players[S.winners[0]].name) + ' wins!' : S.winners.length + ' players win!';
+    var sub = every ? 'Every pawn left the board at once on turn ' + S.rounds + ' · When everyone leaves together, everyone wins'
+      : gone + ' went off the board on turn ' + S.rounds + ' · Everyone still on the board wins';
     setTimeout(function () {
-      Kit.win({ title: title, sub: sub, rank: rank, lose: lose && local, icon: lose ? 'meh' : 'trophy', pic: (function () { var h = finalHive(S, me); h.classList.add('wpic'); return h; })(),
+      Kit.win({ title: title, sub: sub, rank: rank, lose: lose && local, icon: lose ? 'meh' : 'trophy', pic: (function () { var h = finalHive(S, me, 300, 250); h.classList.add('wpic'); return h; })(),
         again: again, againLabel: net.mode ? 'Back to the table' : undefined,
-        look: 'Look at every card',
+        look: 'Look at every question',
         setup: net.mode ? null : showSetup,
         closeLabel: net.mode ? 'Leave the table' : undefined, onClose: net.mode ? function () { leaveOnline(false); goLobby(); } : undefined });
-      if (won) Kit.confetti({ count: 90, colors: ['#ffd447', '#fffdf4', '#f2ac2e', '#2a1a08'] });
+      if (won || every) Kit.confetti({ count: 90, colors: ['#ffd447', '#fffdf4', '#f2ac2e', '#2a1a08'] });
     }, 2600);
   }
   function again() {
@@ -1344,33 +1625,36 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
 
   // ═══ Setup ═══════════════════════════════════════════════════════════════
   var RULES =
-    '<p class="goal">Think like the rest of the hive. Each round everyone writes answers to the same question, and an answer scores a point for each player who wrote it. The lowest scores drop down the hive; a bee who drops out of it ends the game, and everyone still in the hive wins.</p>' +
-    '<h3>The hive</h3><ul>' +
-    '<li>Every player is a bee, and every bee starts on the top level of the hive.</li>' +
-    '<li>The hive has six levels. With 3 or 4 players a gate closes it after level 4, and with 5 or 6 players after level 5. With 7 or more, all six levels are open.</li>' +
-    '<li>Under the last open level is the door out of the hive.</li></ul>' +
-    '<h3>A round</h3><ul>' +
-    '<li>Players take turns asking. The asker chooses one of two question cards, like <b>Name 3 things in a junk drawer</b>, and rolls the <b>Queen Bee die</b>. The little slips on the card show how many answers it wants.</li>' +
-    '<li>Everyone writes their answers on their own paper, in secret, and hands it in.</li>' +
-    '<li>With the <b>sand timer</b> on, whatever is on your paper when the sand runs out goes in.</li></ul>' +
-    '<h3>Turning them over</h3><ul>' +
-    '<li>All the answers are turned over and the same answers stack up together. Small differences don\'t matter: <b>Pizzas</b>, <b>a pizza</b> and <b>pizza</b> are one answer.</li>' +
-    '<li>The game can\'t always tell, so the table decides. If two stacks mean the same thing (<b>soda</b> and <b>pop</b>), tap one and then the other to put them together.</li>' +
-    '<li>If a slip doesn\'t belong in a stack, tap the stack and then tap that slip to pull it out.</li></ul>' +
+    '<p class="goal">Think like everyone else. On each turn everyone writes responses to the same question, and you score for every other player who wrote what you wrote. After each question the die moves the lowest scores down the board. As soon as a pawn goes off the board the game ends, and <b>everyone still on the board wins</b>.</p>' +
+    '<h3>The board</h3><ul>' +
+    '<li>Each player has a Mind pawn in their color, and every pawn starts on level 1 at the top of the board.</li>' +
+    '<li>The board has two sides: <b>6 levels</b> for a speedier game, or <b>8 levels</b> for a longer one. Choose the side in the setup.</li></ul>' +
+    '<h3>A turn</h3><ul>' +
+    '<li>The person who thought to play goes first, and the turn passes to the left.</li>' +
+    '<li>On your turn you roll the die, then draw a card and choose one of the three questions on it, or make up your own question. The little slips on a question show how many responses it asks for.</li>' +
+    '<li>Everyone, you included, writes their responses on their own paper in secret. With the timer on, everyone has 2 minutes, and whatever is on your paper when it runs out goes in.</li></ul>' +
     '<h3>Scoring</h3><ul>' +
-    '<li>Each of your answers scores <b>1 point for every player who wrote it</b>, you included. If four of you wrote pizza, you each score 4 for it. An answer only you wrote scores 1.</li>' +
-    '<li>Writing the same thing twice only counts once. Points count for this round only.</li></ul>' +
-    '<h3>The hive shake</h3><ul>' +
-    '<li>The Queen Bee die shows 1, 2 or 3. That many of the round\'s lowest scores drop down a level. With only 3 players in the hive, a 3 counts as 2.</li>' +
-    '<li>Players tied at the cut all drop together, and everyone with the highest score climbs up a level (no higher than the top).</li>' +
-    '<li>If everyone scored the same, no bee moves.</li></ul>' +
+    '<li>You score <b>1 point for each response you wrote</b>, and <b>1 more for each other player who wrote a matching response</b>.</li>' +
+    '<li>If you wrote two responses that match each other, only one of them scores the matches; the other still scores its 1 point. You can’t get the same matches on more than one response.</li>' +
+    '<li>The points count for this question only.</li></ul>' +
+    '<h3>Do these responses match?</h3><ul>' +
+    '<li>What you are referring to matters, not how you say it. <b>Cat</b>, <b>kitty</b> and <b>kitten</b> all mean the same animal.</li>' +
+    '<li>Spelling doesn’t matter, and neither do plurals: <b>cookie</b> and <b>cookies</b> match.</li>' +
+    '<li>Something more specific doesn’t match something more general: <b>beagle</b> doesn’t match <b>dog</b>.</li>' +
+    '<li>The game stacks the ones it is sure of. If two stacks mean the same thing, tap one and then the other to put them together. If a slip doesn’t belong in a stack, tap the stack and then that slip to pull it out. The table decides, as it would around a real table.</li></ul>' +
+    '<h3>Moving the pawns</h3><ul>' +
+    '<li><b>One, two or three dots</b>: every player whose total is among the one, two or three lowest totals moves down one level. Players with the same total move together, so with totals of 6, 7, 7 and 9, two dots move the 6 and both 7s down. If everyone has the same total, everyone moves down.</li>' +
+    '<li>With only three players, three dots count as two.</li>' +
+    '<li><b>The star</b>: the players with the single lowest total move down one level, then the players with the highest total move up one level (never past the top).</li>' +
+    '<li>Nobody ever moves up except on the star.</li></ul>' +
     '<h3>The end</h3><ul>' +
-    '<li>A bee who has to drop from the last level goes out through the door, and the game ends after that shake. <b>Everyone still in the hive wins.</b></li></ul>' +
+    '<li>As soon as one or more pawns go off the bottom of the board, the game ends. <b>Everyone still on the board wins.</b></li>' +
+    '<li>If every pawn goes off the board at once, everyone wins together.</li></ul>' +
     '<h3>Ways to play</h3><ul>' +
-    '<li><b>Just me</b> or <b>vs Computer</b>: computer players fill the other seats. They write what most people say, but not always.</li>' +
-    '<li><b>Pass and play</b>: one phone. Each person holds the button to see the paper, writes, hands it in, and passes the phone on. Then everyone looks at the answers together.</li>' +
-    '<li><b>Play online</b>: everyone writes on their own phone at the same time, up to 12 players. The host turns the answers over and fixes the matches.</li></ul>' +
-    '<p class="credit">' + CREDIT + '</p>';
+    '<li><b>Just me</b> or <b>vs Computer</b>: computer players fill the other seats. They write what most people say, but not always, and they never make up a question of their own.</li>' +
+    '<li><b>Pass and play</b>: one phone or tablet. Each person holds the button to see the paper, writes, hands it in, and passes it on. Then everyone looks at the responses together.</li>' +
+    '<li><b>Play online</b>: everyone writes on their own device at the same time, up to 24 players. The host turns the responses over and checks the matches.</li></ul>' +
+    '<p class="credit">' + CREDIT + ' ' + TM + '</p>';
 
   function showSetup() {
     leaveOnline(false);
@@ -1379,13 +1663,14 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     screen = 'setup'; onStage(true);
     window.scrollTo(0, 0);
     Kit.setup(app, {
-      modes: Kit.modes([{ id: 'solo' }, { id: 'cpu' }, { id: 'pass', kind: 'local' }, { id: 'online', desc: 'Everyone on their own device, up to 12' }]),
-      players: { min: 1, max: 12, count: 1, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'pass' ? 'mix' : false; },
-        range: function (m) { return m === 'solo' ? [1, 1] : m === 'cpu' ? [3, 8] : m === 'pass' ? [3, 12] : [1, 1]; } },
+      modes: Kit.modes([{ id: 'solo' }, { id: 'cpu' }, { id: 'pass', kind: 'local' }, { id: 'online', desc: 'Everyone on their own device, up to 24' }]),
+      players: { min: 1, max: 24, count: 1, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'pass' ? 'mix' : false; },
+        range: function (m) { return m === 'solo' ? [1, 1] : m === 'cpu' ? [3, 24] : m === 'pass' ? [3, 24] : [1, 1]; } },
       options: [
-        { id: 'timer', label: 'Sand timer', value: '0', help: 'How long everyone has to write. When the sand runs out, whatever is on your paper goes in.', choices: [['0', 'Off'], ['60', '60 seconds'], ['90', '90 seconds']] }
+        { id: 'levels', label: 'Board', value: '6', choices: [['6', '6 levels', 'The board’s 6-level side, for a speedier game.'], ['8', '8 levels', 'The board’s 8-level side, for a longer game.']] },
+        { id: 'timer', label: 'Timer', value: '120', choices: [['120', '2 minutes', 'Everyone has 2 minutes to write, as in the box. When the time runs out, whatever is on your paper goes in.'], ['0', 'Off', 'No timer: the responses are turned over once everyone has handed theirs in.']] }
       ],
-      start: 'Into the hive',
+      start: 'Start the game',
       onStart: onStart
     });
     var hero = app.querySelector('.setup-hero');
@@ -1397,7 +1682,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     }
   }
   function onStart(cfg) {
-    var opt = { timer: +cfg.options.timer || 0 };
+    var opt = { timer: +cfg.options.timer || 0, levels: +cfg.options.levels === 8 ? 8 : 6 };
     if (cfg.mode === 'online') {
       var nm = (cfg.players[0] && cfg.players[0].name) || '';
       if (/^(Player \d+|You)$/.test(nm)) nm = (function () { try { return localStorage.getItem('my_name') || ''; } catch (e) { return ''; } })();
@@ -1407,7 +1692,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     var players = cfg.players.map(function (p) { return { name: p.name, color: p.color, cpu: !!p.cpu }; }), mode = cfg.mode;
     // Just me: robots fill the other seats
     if (mode === 'solo') Kit.cpuNames(4, [players[0].name], 8).forEach(function (b, k) { players.push({ name: b, color: Kit.color(k + 1), cpu: true }); });
-    // (Hive Mind needs three bees at least: a computer player makes up the number)
+    // (Hive Mind needs three players at least: a computer player makes up the number)
     if (players.length < 3) Kit.cpuNames(3 - players.length, players.map(function (p) { return p.name; }), 8).forEach(function (b) { players.push({ name: b, color: Kit.color(players.length), cpu: true }); });
     var people = players.filter(function (p) { return !p.cpu; }).length;
     if (mode === 'pass' && people === 1) mode = 'cpu';
@@ -1424,7 +1709,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     window.scrollTo(0, 0);
     changed({ t: 'start' });
   }
-  function resetUi() { ui.sig = ''; ui.sel = null; ui.intro = ''; ui.scored = ''; ui.shook = ''; ui.gainShown = ''; ui.cardRound = 0; ui.rolled = ''; ui.offerRound = 0; ui.botPick = null; clearTimeout(ui.shakeT); ui.shakeT = 0; }
+  function resetUi() { ui.sig = ''; ui.sel = null; ui.intro = ''; ui.scored = ''; ui.shook = ''; ui.gainShown = ''; ui.cardRound = 0; ui.rolled = ''; ui.tumbled = ''; ui.dealt = 0; ui.ownRound = 0; ui.botPick = null; clearTimeout(ui.shakeT); ui.shakeT = 0; }
   Kit.init({ codeBar: true,
     id: KEY,
     // (pass and play: what one person holds or writes never shows in Keep playing's picture)
@@ -1433,7 +1718,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     undo: function () { undo(); },
     menu: [
       { icon: 'history', label: 'Past games', onClick: pastGames },
-      { icon: 'globe', label: 'Play online', sub: 'Everyone on their own device, up to 12', when: function () { return !net.mode && screen !== 'lobby'; }, onClick: function () { goLobby(); } },
+      { icon: 'globe', label: 'Play online', sub: 'Everyone on their own device, up to 24', when: function () { return !net.mode && screen !== 'lobby'; }, onClick: function () { goLobby(); } },
       { icon: 'logout', label: 'Leave the online game', when: function () { return !!net.mode; }, onClick: function () { leaveOnline(true); } }
     ],
     rules: RULES
@@ -1441,9 +1726,10 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
 
   // ═══ Online ══════════════════════════════════════════════════════════════
   // The host's device runs the game and sends each player only their own view (their own paper, and the answers once
-  // they're turned over). Guests send back the card they chose and what they wrote; the host turns the answers over,
-  // fixes the matches, shakes the hive and moves on. A table of two people gets a computer bee as the third.
-  var screen = 'setup', MAXP = 12;
+  // they're turned over). Guests roll on their turn and send back the question they chose and what they wrote; the host
+  // turns the responses over, checks the matches, moves the pawns and goes on. A table of two people gets a computer
+  // player as the third.
+  var screen = 'setup', MAXP = 24;
   var net = { mode: null, table: null, peer: null, roster: [], lobby: null, wait: null, nextPid: 1, view: null, myName: '', hostName: '', cfg: null, myPid: null };
   function netMe() { var m = lsGet(NETME, {}) || {}; var mn = ''; try { mn = localStorage.getItem('my_name') || ''; } catch (e) {} return m.name || mn || (Kit.knownNames && Kit.knownNames()[0]) || ''; }
   function closeLobby() { if (net.lobby) { net.lobby.close(); net.lobby = null; } }
@@ -1452,7 +1738,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     leaveOnline(false); G = null; gen++; clearTimeout(botT); clearInterval(tmr); screen = 'lobby'; lastV = null; ui.sig = ''; onStage(true);
     window.scrollTo(0, 0);
     net.lobby = Online.lobby(app, {
-      game: KEY, title: 'Play Online', intro: 'Everyone writes on their own phone or tablet. Up to 12 players.',
+      game: KEY, title: 'Play Online', intro: 'Everyone writes on their own phone or tablet. Up to 24 players.',
       me: { name: netMe() },
       onName: function (n) { var m = lsGet(NETME, {}) || {}; m.name = n; lsSet(NETME, m); },
       onHost: function (me) { return hostTable(me.name); },
@@ -1466,11 +1752,11 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     closeLobby(); busy('Opening your table…');
     return Online.host({ game: KEY, name: name, max: MAXP, min: 2, screen: app }).then(function (table) {
       table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); leaveOnline(false); goLobby(); });
-      if (!net.cfg) net.cfg = { timer: 0 };
+      if (!net.cfg) net.cfg = { timer: 120, levels: 6 };
       net.mode = 'host'; net.table = table; net.myName = name; net.nextPid = 1;
       net.roster = [{ pid: 0, name: name, host: true }];
       table.on('peer', function (peer) {
-        // a device that comes back takes its own seat again: its name, its color and its bee's place in the hive (and,
+        // a device that comes back takes its own seat again: its name, its color and its pawn's place on the board (and,
         // if its old link hasn't closed yet here, the seat simply moves to the new link)
         var r = net.roster.filter(function (x) { return x.dev && x.dev === peer.id; })[0], back = !!r;
         if (r) { if (r.peer && r.peer !== peer) r.peer._pid = -1; r.peer = peer; }
@@ -1500,7 +1786,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
         sendRoster();
       });
       table.on('msg', function (peer, m) {
-        if (m.t !== 'a' || !G || !m.a || (m.a.t !== 'ans' && m.a.t !== 'pick')) return;   // (guests only choose a card and write; the host runs the rest, and rolls the die)
+        if (m.t !== 'a' || !G || !m.a || (m.a.t !== 'ans' && m.a.t !== 'pick' && m.a.t !== 'roll')) return;   // (guests roll on their turn, choose a question and write; the host runs the rest)
         delete m.a.f;
         var i = idxOfPid(peer._pid); if (i < 0) return;
         if (apply(G, i, m.a)) changed({ t: m.a.t, p: i });
@@ -1508,11 +1794,11 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
       showWait();
     }).catch(function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); goLobby(); });
   }
-  // someone who joins once the game is under way comes in as a bee on the level where most of the hive is
+  // someone who joins once the game is under way puts their pawn on the level where most of the others are
   function addPlayer(g, name, pid, dev) {
     var k = g.players.length, lv = C.joinLevel(g);
     g.players.push({ name: name, color: Kit.color(k), cpu: false, pid: pid, dev: dev || undefined, lv: lv, score: 0, temp: 1 });
-    g.ans.push(g.phase === 'write' || g.phase === 'ask' ? null : []); if (g.cpuAt) g.cpuAt.push(0);
+    g.ans.push(g.phase === 'write' || g.phase === 'ask' || g.phase === 'roll' ? null : []); if (g.cpuAt) g.cpuAt.push(0);
   }
   function idxOfPid(pid) { if (!G) return -1; for (var i = 0; i < G.players.length; i++) if (G.players[i].pid === pid) return i; return -1; }
   function uniqueName(n) { var base = String(n || 'Player').slice(0, 14), k = 2, out = base; while (net.roster.some(function (r) { return r.name.toLowerCase() === out.toLowerCase(); })) out = base + ' ' + k++; return out; }
@@ -1525,7 +1811,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     if (net.mode === 'host') {
       net.table.setStatus('open', '');
       net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: MAXP, min: 2, table: net.table, players: waitPlayers(net.roster, 0), onStart: hostStart, onLeave: function () { leaveOnline(false); goLobby(); },
-        note: 'Two or more players: with two, a computer bee joins you. People can join while you play.' });
+        note: 'Two or more players: with two, a computer player joins you. People can join while you play.' });
     } else if (net.mode === 'guest') {
       net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: MAXP, min: 2, players: waitPlayers(net.roster, net.myPid), onLeave: function () { leaveOnline(false); goLobby(); } });
     }
@@ -1536,7 +1822,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     net.wait = null;
     var players = net.roster.map(function (r, i) { return { name: r.name, color: Kit.color(i), cpu: false, pid: r.pid, dev: r.dev }; });
     if (players.length < 3) Kit.cpuNames(1, players.map(function (p) { return p.name; }), 8).forEach(function (b) { players.push({ name: b, color: Kit.color(players.length), cpu: true, pid: -1 }); });
-    lastCfg = { mode: 'online', timer: net.cfg.timer, players: players };
+    lastCfg = { mode: 'online', timer: net.cfg.timer, levels: net.cfg.levels || 6, players: players };
     G = newGame(lastCfg); screen = 'game'; finished = false; resetUi(); ui.paperRound = ''; draft = [];
     Kit.gameStart();
     sendRoster();
@@ -1546,7 +1832,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
   function netSync() {
     if (net.mode !== 'host' || !G) return;
     net.roster.forEach(function (r) { if (!r.peer) return; var i = idxOfPid(r.pid); if (i >= 0) r.peer.send({ t: 'v', v: viewFor(i) }, true); });
-    net.table.setStatus(G.phase === 'over' ? 'open' : 'playing', G.phase === 'over' ? '' : 'Round ' + G.round);
+    net.table.setStatus(G.phase === 'over' ? 'open' : 'playing', G.phase === 'over' ? '' : 'Turn ' + G.round);
   }
   function backToTable() {
     if (net.mode === 'host' && net.table && !net.table.closed) { G = null; showWait(); net.table.broadcast({ t: 'wait' }, true); sendRoster(); return; }
@@ -1577,8 +1863,8 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     if (m.t === 'wait') { net.view = null; lastV = null; finished = false; showWait(); return; }
     if (m.t === 'v') {
       var V = m.v; V.boss = false;
-      // (a host on the Mind Meld page of before sends a view this page can't draw)
-      if (!V.hm) { Kit.toast('The host’s copy of the game needs updating'); return; }
+      // (a host on an older copy of the page sends a view this page can't draw)
+      if (V.hm !== 2) { Kit.toast('The host’s copy of the game needs updating'); return; }
       if (screen !== 'game') { net.wait = null; screen = 'game'; resetUi(); ui.paperRound = ''; ui.sent = ''; finished = false; draft = []; window.scrollTo(0, 0); Kit.gameStart(); }
       // the host's sand timer, on this device's clock
       if (V.left != null) { var dl = Date.now() + V.left; if (!ui.gDl || Math.abs(ui.gDl - dl) > 1500 || (lastV && lastV.round !== V.round)) ui.gDl = dl; } else ui.gDl = 0;
@@ -1669,10 +1955,10 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     for (var k = log.length - 1; k >= 0; k--) {
       var l = log[k], tops = el('div', { class: 'tops' });
       (l.top || []).forEach(function (t) { tops.appendChild(el('span', null, [el('span', { text: t.t }), el('i', { text: String(t.c) })])); });
-      box.appendChild(el('div', { class: 'dk-rd' }, [el('div', { class: 'rq' }, [el('b', { text: String(k + 1) }), el('span', { text: l.q })]),
-        (l.top || []).length ? tops : el('div', { class: 'none', text: 'Nobody matched on this card.' })]));
+      box.appendChild(el('div', { class: 'dk-rd' }, [el('div', { class: 'rq' }, [el('b', { text: String(k + 1) }), el('span', { text: l.q }), l.roll != null ? el('span', { class: 'faces lf', title: 'The die' }, [faceEl(l.roll)]) : null]),
+        (l.top || []).length ? tops : el('div', { class: 'none', text: 'Nobody matched on this question.' })]));
     }
-    return el('section', { class: 'dk-pn lg' }, [el('h4', { text: log.length === 1 ? 'The card so far' : 'The ' + log.length + ' cards so far' }), box]);
+    return el('section', { class: 'dk-pn lg' }, [el('h4', { text: log.length === 1 ? 'The question so far' : 'The ' + log.length + ' questions so far' }), box]);
   }
   // (a list longer than its panel gives up its oldest cards whole and says how many)
   function fitLog(room) {
@@ -1682,7 +1968,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     while (box.querySelectorAll('.dk-rd').length > 1 && box.scrollHeight > box.clientHeight + 1) {
       if (more) more.remove();
       var rds = box.querySelectorAll('.dk-rd'); rds[rds.length - 1].remove(); gone++; box.dataset.gone = gone;
-      more = el('div', { class: 'dk-more', text: gone === 1 ? 'One earlier card is in the results at the end.' : gone + ' earlier cards are in the results at the end.' });
+      more = el('div', { class: 'dk-more', text: gone === 1 ? 'One earlier question is in the results at the end.' : gone + ' earlier questions are in the results at the end.' });
       box.appendChild(more);
     }
   }
@@ -1714,7 +2000,8 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     state: function () { return G; }, view: function () { return lastV; }, net: net, ui: ui, pp: pp, core: C,
     norm: C.norm, keyOf: C.keyOf, cpuWrite: C.cpuWrite, groupsOf: C.groupsOf, data: DATA,
     act: function (a) { return doAct(a); }, draft: function (a) { draft = a.slice(); }, kick: function () { changed(); },
-    shake: function () { if (lastV && lastV.phase === 'scored') { clearTimeout(ui.shakeT); ui.shakeT = 0; shakeHive(lastV); } },
+    shake: function () { if (lastV && lastV.phase === 'scored') { clearTimeout(ui.shakeT); ui.shakeT = 0; movePawns(lastV); } },
+    roll: function (f) { if (f != null) ui.forceRoll = f; rollDie(); }, choose: function (c) { choose(c); }, own: function (q, n) { ui.ownQ = q; ui.ownN = n || 3; askOwn(); },
     host: function (n) { return hostTable(n || 'Tim'); }, join: function (c, n) { return joinTable(c, n || 'Sam'); }, start: function () { return hostStart(); }, lobby: goLobby,
     local: function (cfg) { startLocal(cfg); }, setup: showSetup, submit: submit
   };
@@ -1724,14 +2011,16 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     var saved = lsGet(SAVE, null);
     if (/[?&]online=1/.test(location.search)) { goLobby(); return; }
     if (saved && saved.G && saved.G.players && saved.G.phase && saved.G.phase !== 'over' && saved.G.mode !== 'online') {
-      var g = saved.G, ok = g.v === 2 && g.hm === 1 && Array.isArray(g.deck);
-      // a Mind Meld game from before Hive Mind can't go on under these rules: it's set aside and the setup shows
-      if (!ok) { clearSave(); showSetup(); Kit.toast('Your Mind Meld game was set aside. The game is Hive Mind now.'); return; }
+      var g = saved.G, ok = g.v === 3 && g.hm === 2 && Array.isArray(g.deck);
+      // a game from before the rulebook's rules (Mind Meld's, or Hive Mind's first version) can't go on: it's set aside
+      if (!ok) { clearSave(); showSetup(); Kit.toast('Your earlier game was set aside. Hive Mind follows the rulebook now.'); return; }
       // the cards are found again by what they say, in case the card list has changed since
-      var qx = saved.qx || {}, find = function (i) { var t = qx[i]; if (t == null || (DATA[i] && DATA[i].q === t)) return DATA[i] ? i : -1; for (var j = 0; j < DATA.length; j++) if (DATA[j].q === t) return j; return -1; };
-      g.pi = find(g.pi); g.offer = (g.offer || []).map(find); g.used = (g.used || []).map(find).filter(function (i) { return i >= 0; });
-      g.deck = g.deck.map(function (i) { return qx[i] != null ? find(i) : i; }).filter(function (i) { return i >= 0 && i < DATA.length; });
-      if (g.pi >= 0 && g.offer.every(function (i) { return i >= 0; })) {
+      var cx = saved.cx || {}, find = function (i) { var t = cx[i]; if (t == null || cardKey(i) === t) return CARDS[i] ? i : -1; for (var j = 0; j < CARDS.length; j++) if (cardKey(j) === t) return j; return -1; };
+      if (g.card != null) g.card = find(g.card);
+      g.used = (g.used || []).map(find).filter(function (i) { return i >= 0; });
+      g.deck = g.deck.map(function (i) { return cx[i] != null ? find(i) : i; }).filter(function (i) { return i >= 0 && i < CARDS.length; });
+      if (g.pi != null && g.pi >= 0 && saved.px != null && (!DATA[g.pi] || DATA[g.pi].q !== saved.px)) { g.pi = -2; for (var j = 0; j < DATA.length; j++) if (DATA[j].q === saved.px) { g.pi = j; break; } }
+      if (g.card !== -1 && g.pi !== -2) {
         G = g; lastCfg = saved.cfg || null; screen = 'game'; pp.viewer = -1;
         changed();
         return;

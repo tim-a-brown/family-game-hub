@@ -157,7 +157,7 @@ var GAMES = [
   { id: 'trivia',      name: 'Trivia',       color: '#f59e0b', cat: 'party', min: 1, max: 24, tag: 'Who knows the most?', play: 'trivia', demo: 1 },
   { id: 'wouldyourather', name: 'Would You Rather', color: '#ec4899', cat: 'party', min: 2, max: 0, tag: 'Tough choices, big debates', play: 'wouldyourather', demo: 1 },
   { id: 'applestoapples', name: 'Apples to Apples', color: '#e0303f', cat: 'party', min: 1, max: 24, tag: 'Match a red card to the green card', play: 'applestoapples', demo: 1 },
-  { id: 'mindmeld',  name: 'Hive Mind',  color: '#0ea5b7', cat: 'party', min: 1, max: 12, tag: 'Think like the hive, or drop out of it', play: 'mindmeld', demo: 1 },
+  { id: 'mindmeld',  name: 'Hive Mind',  color: '#0ea5b7', cat: 'party', min: 1, max: 24, tag: 'Think alike, or slide off the board', play: 'mindmeld', demo: 1 },
   { id: 'madlibs',     name: 'Mad Libs',     color: '#f43f5e', cat: 'party', min: 1, max: 0, tag: 'Fill the blanks, read it aloud', play: 'madlibs', demo: 1 },
   { id: 'bingo',       name: 'Bingo',        color: '#e11d48', cat: 'party', min: 1, max: 0, tag: 'Call the balls, or play Bingo and Keno cards against the computer', play: 'bingo', demo: 1 },
   { id: 'riddlestories', name: 'Riddle Stories', color: '#6366f1', cat: 'party', min: 2, max: 0, tag: 'Solve the mystery with yes/no questions', play: 'riddlestories', demo: 1 },

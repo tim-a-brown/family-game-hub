@@ -1,27 +1,40 @@
 // Hive Mind's rules (games/mindmeld.html; the ids, files and keys still say mindmeld). Plain JSON state, no page:
 // the page, the online host and Node (scripts/hivemind-sim.js) all run this.
 //
-// Hive Mind is published by Calliope Games and used with permission (CLAUDE.md, Hive Mind). The rules as built:
-//  - The hive has six levels. With 3 or 4 bees a gate closes it after level 4, with 5 or 6 after level 5, and with 7
-//    or more all six levels are open (depthFor). Every bee starts on the top level.
-//  - Each round one player asks (it goes round the table): they choose one of two question cards and roll the Queen
-//    Bee die (faces 1, 1, 2, 2, 3, 3: DIE). Everyone writes as many answers as the card asks for.
-//  - Each answer scores 1 point for every player who wrote it, you included (a lone answer scores 1). Writing the same
-//    thing twice counts once.
-//  - The hive shake: the die's number of lowest scorers move down a level (with 3 bees a 3 counts as 2; players tied at
-//    the cut all move), then every player with the highest score moves up a level (never above the top). If every
-//    score is the same nobody moves. A bee that moves down past the gate leaves the hive.
-//  - The game ends when one or more bees leave the hive in a shake; everyone still in the hive wins.
+// Hive Mind was designed by Richard Garfield and is published by Calliope Games; used with permission (CLAUDE.md,
+// Hive Mind). The rules are the rulebook's (Tim's photos of it, 2026-11-28):
+//  - The board is double-sided: a 6-level side for a speedier game and an 8-level side for a longer one (cfg.levels).
+//    Every Mind pawn starts at the top of the Hive. The person who thought to play goes first (seat 0); the turn then
+//    passes to the left.
+//  - The active player rolls the die (faces in DIE: one, two or three dots, or a star), then draws a card and chooses
+//    one of the three questions on its front, or makes up their own. Everyone writes their responses (2 minutes).
+//  - Scoring: 1 point for each response you wrote, plus 1 for each other player who wrote a matching response. You
+//    can't get the same matches on more than one reference within an answer: of two of your responses in one stack,
+//    only one counts the matches; the other still scores its automatic point.
+//  - Moving the pawns: with one, two or three dots, every player whose score total is among the single, two or three
+//    lowest totals moves down one level (with three players a three counts as two). With the star, the players with
+//    the single lowest total move down, then the players with the highest total move up one level (never past the top).
+//    Nobody moves up except on the star.
+//  - As soon as one or more pawns exit the board, the game ends and everyone still on the board wins. If every pawn
+//    exits at once, everyone wins together.
 (function (root) {
   'use strict';
-  var DATA = [];
-  var DIE = [1, 1, 2, 2, 3, 3];
-  function setData(d) { DATA = d || []; aliasCache = {}; }
+  var DATA = [], CARDS = [];
+  // the die's six faces (1, 2, 3 dots, or 's' the star), in the order they sit on Tim's own die (confirmed from his box,
+  // 2026-11-28: two ones, two twos, one three, one star)
+  var DIE = [1, 2, 3, 's', 1, 2];
+  // the cards: each holds three questions (indices into DATA)
+  function setData(d, cards) {
+    DATA = d || []; aliasCache = {};
+    CARDS = cards || [];
+    if (!CARDS.length) for (var i = 0; i + 2 < DATA.length; i += 3) CARDS.push([i, i + 1, i + 2]);
+  }
 
   // ── Matching answers ──────────────────────────────────────────────────────
-  // Two answers are the same when they read the same after: lower case, accents and punctuation gone, a leading
-  // a/an/the dropped, simple plurals made singular (and "-ie" spelled "-y", so cookie and cookies meet), spaces
-  // ignored (hot dog, hotdog), and the card's own list of other ways to say each answer.
+  // "What you are referring to is important, not how you refer to it": two responses are the same when they read the
+  // same after lower case, accents and punctuation go, a leading a/an/the is dropped, plurals are made singular
+  // ("plurality doesn't matter": cookie and cookies meet), spaces are ignored (hot dog, hotdog), and the card's own list
+  // of other ways to say each answer. Nothing more general is ever matched with something less general (beagle, dog).
   function sing(w) {
     if (w.length <= 3 || /\d/.test(w)) return w;
     if (/ies$/.test(w) && w.length > 4) return w.slice(0, -3) + 'y';
@@ -75,6 +88,21 @@
     }
     return out;
   }
+  // A question a person made up has no list of answers: the computer players think along with the people at the table
+  // (each response, about half the time, is one a person wrote) and otherwise write a thing of their own.
+  var OWN = ['Pizza', 'Dogs', 'Music', 'Coffee', 'The beach', 'Ice cream', 'Money', 'Sleep', 'Family', 'Friends', 'Cats', 'Summer', 'Books', 'Movies',
+    'Chocolate', 'Soccer', 'Rain', 'Pancakes', 'Grandma', 'Tacos', 'The moon', 'Bubbles', 'Shoes', 'Cake', 'Socks', 'Trains', 'A hug', 'Pajamas'];
+  function cpuOwn(g, k, rnd) {
+    rnd = rnd || Math.random;
+    var n = prompt(g).n, pool = [], out = [];
+    g.players.forEach(function (p, i) { if (!p.cpu && g.ans[i]) g.ans[i].forEach(function (t) { if (t && pool.indexOf(t) < 0) pool.push(t); }); });
+    var skill = 0.35 + 0.3 * Math.min(1, Math.max(0, 1.15 - (g.players[k].temp || 1)) / 0.45);
+    for (var s = 0; s < n; s++) {
+      if (pool.length && rnd() < skill) out.push(pool.splice(Math.floor(rnd() * pool.length), 1)[0]);
+      else out.push(OWN[Math.floor(rnd() * OWN.length)]);
+    }
+    return out;
+  }
 
   // ── The stacks: matching slips together, the biggest first ───────────────
   function buildItems(g) {
@@ -101,51 +129,50 @@
     return best ? cap(form[best]) : '';
   }
 
-  // ── The hive ──────────────────────────────────────────────────────────────
-  var LEVELS = 6;
-  function depthFor(n) { return n <= 4 ? 4 : n <= 6 ? 5 : 6; }
-  // the bees that play this round: in the hive and at the table
+  // ── The board ─────────────────────────────────────────────────────────────
   function live(g) { var o = []; g.players.forEach(function (p, i) { if (!p.gone && !p.out) o.push(i); }); return o; }
-  // each answer scores 1 point for every player who wrote it, you included (once per stack)
+  // 1 point for each response written, plus 1 for each other player who wrote a matching one; of one player's two
+  // responses in one stack, only one counts the matches (the rest keep their automatic point)
   function roundPts(g) {
     var pts = g.players.map(function () { return 0; }), on = live(g);
     groupsOf(g.items).forEach(function (s) {
       var ps = s.ps.filter(function (p) { return on.indexOf(p) >= 0; });
-      ps.forEach(function (p) { pts[p] += ps.length; });
+      s.items.forEach(function (it) { if (on.indexOf(it.p) >= 0) pts[it.p] += 1; });
+      ps.forEach(function (p) { pts[p] += ps.length - 1; });
     });
     return pts;
   }
-  // The hive shake: who moves where after a round (nothing is changed here; see doShake)
-  function shakePlan(g, pts, roll) {
-    var on = live(g), n = Math.min(roll, on.length === 3 ? 2 : roll, Math.max(1, on.length - 1));
-    var sc = on.map(function (i) { return pts[i]; }), lo = Math.min.apply(null, sc), hi = Math.max.apply(null, sc);
-    var down = [], up = [];
-    if (on.length >= 2 && lo !== hi) {
-      var sorted = on.slice().sort(function (a, b) { return pts[a] - pts[b]; }), cut = pts[sorted[n - 1]];
-      // (a tie at the cut moves everyone tied, but never the highest score: then only those under it move)
-      down = on.filter(function (i) { return cut === hi ? pts[i] < hi : pts[i] <= cut; });
-      up = on.filter(function (i) { return pts[i] === hi && down.indexOf(i) < 0; });
-    }
+  // Moving the pawns (nothing is changed here; see apply's score)
+  function face(f) { return DIE[f]; }
+  function shakePlan(g, pts, fc) {
+    var on = live(g), star = fc === 's', n = star ? 1 : +fc;
+    if (on.length === 3 && n === 3) n = 2;
+    var vals = []; on.forEach(function (i) { if (vals.indexOf(pts[i]) < 0) vals.push(pts[i]); });
+    vals.sort(function (a, b) { return a - b; });
+    var low = vals.slice(0, n), hi = vals[vals.length - 1];
+    var down = on.filter(function (i) { return low.indexOf(pts[i]) >= 0; });
+    var up = star ? on.filter(function (i) { return pts[i] === hi; }) : [];
     var mv = [];
     on.forEach(function (i) {
       var from = g.players[i].lv, to = from;
-      if (down.indexOf(i) >= 0) to = from + 1; else if (up.indexOf(i) >= 0) to = Math.max(0, from - 1);
+      if (down.indexOf(i) >= 0) to = from + 1;
+      if (to < g.depth && up.indexOf(i) >= 0) to = Math.max(0, to - 1);   // (a pawn that has left the board stays off it)
       if (to !== from) mv.push([i, from, to]);
     });
-    return { n: n, down: down, up: up, mv: mv, out: mv.filter(function (m) { return m[2] >= g.depth; }).map(function (m) { return m[0]; }) };
+    return { n: n, star: star, down: down, up: up, mv: mv, out: mv.filter(function (m) { return m[2] >= g.depth; }).map(function (m) { return m[0]; }) };
   }
 
   // ── The game ──────────────────────────────────────────────────────────────
-  // G = {v: 2, hm: 1, mode, timer, depth, round, ask (who asks this round), offer: [two prompt indices], roll (die face),
-  //      players: [{name, color, cpu, pid, dev, lv (0 the top level), out, score (points over the game), temp, gone}],
-  //      used: [prompt indices dealt], pi, phase: ask|write|reveal|scored|over, ans, items, pts, shake,
-  //      log: [{q, pts, top: [{t, c}], roll, ask, mv: [[p, from, to]]}], deadline, cpuAt, started, sid}
+  // G = {v: 3, hm: 2, mode, timer, depth (6 or 8), round, ask (the active player), roll (index into DIE, or null),
+  //      card (index into CARDS), pi (the question's index into DATA, -1 for one made up), own ({q, n} made up),
+  //      players: [{name, color, cpu, pid, dev, lv (0 the top level), out (round it exited), score (points over the
+  //      game), temp, gone}], deck: [card indices], phase: roll|ask|write|reveal|scored|over, ans, items, pts, shake,
+  //      log: [{q, pts, top: [{t, c}], roll (the face), ask, mv: [[p, from, to]]}], deadline, cpuAt, started, sid}
   function newGame(cfg, deck) {
-    var g = { v: 2, hm: 1, mode: cfg.mode, timer: cfg.timer || 0, round: 0, log: [], started: Date.now(), sid: 0,
-      players: cfg.players.map(function (p) { return { name: p.name, color: p.color, cpu: !!p.cpu, pid: p.pid, dev: p.dev || undefined, lv: 0, score: 0, temp: p.cpu ? 0.7 + (cfg.rnd || Math.random)() * 0.45 : 1 }; }),
+    var rnd = cfg.rnd || Math.random;
+    var g = { v: 3, hm: 2, mode: cfg.mode, timer: cfg.timer || 0, depth: cfg.levels === 8 ? 8 : 6, round: 0, log: [], started: Date.now(), sid: 0,
+      players: cfg.players.map(function (p) { return { name: p.name, color: p.color, cpu: !!p.cpu, pid: p.pid, dev: p.dev || undefined, lv: 0, score: 0, temp: p.cpu ? 0.7 + rnd() * 0.45 : 1 }; }),
       deck: deck.slice(), used: [], ask: -1 };
-    g.depth = depthFor(g.players.length);
-    g.qs = g.deck.map(function (i) { return DATA[i] ? DATA[i].q : ''; });
     startRound(g);
     return g;
   }
@@ -155,11 +182,8 @@
     return Math.max(0, g.ask);
   }
   function startRound(g) {
-    g.round++; g.phase = 'ask'; g.ask = nextAsker(g);
-    // two cards to choose from, the first ones in the deck not yet dealt (a short deck starts over)
-    if (g.deck.length < 2) g.deck = g.deck.concat(g.used.splice(0));
-    g.offer = [g.deck.shift(), g.deck.shift()];
-    g.pi = g.offer[0]; g.roll = null;
+    g.round++; g.phase = 'roll'; g.ask = nextAsker(g);
+    g.roll = null; g.card = null; g.pi = null; g.own = null;
     g.ans = g.players.map(function () { return null; });
     g.items = null; g.pts = null; g.shake = null; g.deadline = 0;
   }
@@ -167,21 +191,36 @@
     rnd = rnd || Math.random; now = now || Date.now();
     g.phase = 'write';
     g.deadline = g.timer && g.mode !== 'pass' ? now + g.timer * 1000 : 0;
-    // when each robot finishes writing (pass and play: right away, their slips drop in one by one)
+    // when each robot finishes writing (pass and play: right away, their slips go in one by one)
     var hi = g.timer ? Math.max(5000, Math.min(16000, g.timer * 1000 - 5000)) : 16000, k = 0;
     g.cpuAt = g.players.map(function (p) { return !p.cpu || p.out ? 0 : g.mode === 'pass' ? now + 900 + (k++) * 380 : now + 3500 + rnd() * (hi - 3500); });
   }
-  function prompt(g) { return DATA[g.pi] || { q: '', n: 1, a: [] }; }
+  function prompt(g) { return g.pi === -1 && g.own ? { q: g.own.q, n: g.own.n, a: [] } : DATA[g.pi] || { q: '', n: 1, a: [] }; }
+  function cardQs(g) { return (CARDS[g.card] || []).map(function (i) { return DATA[i] || { q: '', n: 1, a: [] }; }); }
   function allIn(g) { return live(g).every(function (i) { return !!g.ans[i]; }); }
   function humansIn(g) { return live(g).every(function (i) { return g.players[i].cpu || !!g.ans[i]; }); }
   // one move of the game; who is the player making it (-1: the device running the game). Returns whether it was allowed.
   function apply(g, who, a, rnd) {
     if (!g || !a) return false;
+    rnd = rnd || Math.random;
+    if (a.t === 'roll') {
+      if (g.phase !== 'roll' || (who >= 0 && who !== g.ask)) return false;
+      g.roll = a.f != null && a.f >= 0 && a.f < DIE.length ? a.f : Math.floor(rnd() * DIE.length);
+      if (!g.deck.length) g.deck = g.used.splice(0);
+      g.card = g.deck.length ? g.deck.shift() : 0; g.used.push(g.card);
+      g.phase = 'ask';
+      return true;
+    }
     if (a.t === 'pick') {
       if (g.phase !== 'ask' || (who >= 0 && who !== g.ask)) return false;
-      var c = a.c === 1 ? 1 : 0;
-      g.pi = g.offer[c]; g.used.push(g.pi); g.deck.push(g.offer[1 - c]);   // (the card not chosen goes to the bottom of the deck)
-      g.roll = a.f != null && a.f >= 0 && a.f < DIE.length ? a.f : Math.floor((rnd || Math.random)() * DIE.length);
+      if (a.own) {
+        var q = String(a.own).replace(/\s+/g, ' ').trim().slice(0, 120); if (!q) return false;
+        g.pi = -1; g.own = { q: q, n: Math.max(1, Math.min(4, +a.n || 3)) };
+      } else {
+        var c = CARDS[g.card] || [], k = Math.max(0, Math.min(c.length - 1, +a.c || 0));
+        if (!c.length) return false;
+        g.pi = c[k];
+      }
       beginWrite(g, a.now, rnd);
       return true;
     }
@@ -214,10 +253,10 @@
       if (g.phase !== 'reveal') return false;
       var pts = roundPts(g); g.pts = pts;
       pts.forEach(function (v, k) { g.players[k].score += v; });
-      var sh = shakePlan(g, pts, DIE[g.roll] || 1);
+      var sh = shakePlan(g, pts, DIE[g.roll]);
       sh.mv.forEach(function (m) { var P = g.players[m[0]]; P.lv = Math.min(m[2], g.depth); if (m[2] >= g.depth) P.out = g.round; });
       g.shake = sh;
-      g.log.push({ q: prompt(g).q, pts: pts.slice(), roll: DIE[g.roll] || 1, ask: g.ask, mv: sh.mv,
+      g.log.push({ q: prompt(g).q, pts: pts.slice(), roll: DIE[g.roll], ask: g.ask, mv: sh.mv,
         top: groupsOf(g.items).filter(function (s) { return s.ps.length > 1; }).slice(0, 3).map(function (s) { return { t: label(s), c: s.ps.length }; }) });
       g.phase = 'scored';
       return true;
@@ -229,16 +268,20 @@
     }
     return false;
   }
-  // a bee who joins once the game is under way comes in where most of the hive is
+  // a player who joins once the game is under way puts their pawn where most of the others are
   function joinLevel(g) {
     var on = live(g).map(function (i) { return g.players[i].lv; }).sort(function (a, b) { return a - b; });
     return on.length ? on[Math.floor((on.length - 1) / 2)] : 0;
   }
-  function winners(g) { var o = []; g.players.forEach(function (p, i) { if (!p.out) o.push(i); }); return o; }
+  function winners(g) {
+    var o = []; g.players.forEach(function (p, i) { if (!p.out) o.push(i); });
+    return o.length ? o : g.players.map(function (p, i) { return i; });   // (every pawn out at once: everyone wins together)
+  }
+  function allOut(g) { return g.players.every(function (p) { return p.out || p.gone; }) && g.players.some(function (p) { return p.out; }); }
 
-  var api = { DIE: DIE, LEVELS: LEVELS, setData: setData, data: function () { return DATA; }, norm: norm, keyOf: keyOf, cap: cap, cpuWrite: cpuWrite,
-    buildItems: buildItems, groupsOf: groupsOf, label: label, depthFor: depthFor, live: live, roundPts: roundPts, shakePlan: shakePlan,
-    newGame: newGame, startRound: startRound, beginWrite: beginWrite, prompt: prompt, allIn: allIn, humansIn: humansIn, apply: apply,
-    joinLevel: joinLevel, winners: winners };
+  var api = { DIE: DIE, setData: setData, data: function () { return DATA; }, cards: function () { return CARDS; }, norm: norm, keyOf: keyOf, cap: cap,
+    cpuWrite: cpuWrite, cpuOwn: cpuOwn, buildItems: buildItems, groupsOf: groupsOf, label: label, live: live, roundPts: roundPts, face: face, shakePlan: shakePlan,
+    newGame: newGame, startRound: startRound, beginWrite: beginWrite, prompt: prompt, cardQs: cardQs, allIn: allIn, humansIn: humansIn, apply: apply,
+    joinLevel: joinLevel, winners: winners, allOut: allOut };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.HiveCore = api;
 })(this);

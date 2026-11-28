@@ -344,13 +344,11 @@ var GameIcon = (function () {
         path('M12 7.8c0-2 .6-3.6 1.8-4.8', 'none', ' stroke="#5a3418" stroke-width="1.7" stroke-linecap="round"') + path('M13.4 5c1-1.9 3-2.7 5.1-2.3-.6 2.1-2.6 3.3-5.1 2.3z', G) +
         '<ellipse cx="8.3" cy="11.6" rx="1.3" ry="2.4" fill="' + W + '" opacity=".5" transform="rotate(22 8.3 11.6)"/>';
     },
-    mindmeld: function () {   // Hive Mind (the id says mindmeld): three cells of honeycomb and a bee flying in to them
-      function hex(x, y, f) { var r = 4.6, h = r * .866; return path('M' + (x - r) + ' ' + y + 'l' + r / 2 + ' ' + (-h) + 'h' + r + 'l' + r / 2 + ' ' + h + 'l' + (-r / 2) + ' ' + h + 'h' + (-r) + 'z', f, ' stroke="' + K + '" stroke-width="1.3" stroke-linejoin="round"'); }
-      return hex(8.4, 14.6, Y) + hex(15.3, 18.6, Y) + hex(15.3, 10.6, O) +
-        '<g transform="rotate(-14 7 6.5)">' +
-        '<ellipse cx="6.2" cy="3.4" rx="2.6" ry="1.9" fill="' + W + '" stroke="' + K + '" stroke-width=".9"/>' +
-        '<ellipse cx="7.6" cy="6.6" rx="4" ry="2.8" fill="' + Y + '" stroke="' + K + '" stroke-width="1.1"/>' +
-        line('M7 4.1v5M9 4.3v4.6', K, 1.3) + circ(3.6, 6.6, 1.9, K) + '</g>';
+    mindmeld: function () {   // Hive Mind (the id says mindmeld): a comic speech bubble with a Mind pawn standing in it
+      return path('M2.5 4.6a2.6 2.6 0 0 1 2.6-2.6h13.8a2.6 2.6 0 0 1 2.6 2.6v9.2a2.6 2.6 0 0 1-2.6 2.6H11l-5 4.4v-4.4h-.9a2.6 2.6 0 0 1-2.6-2.6z', W, ' stroke="' + K + '" stroke-width="1.4" stroke-linejoin="round"') +
+        path('M8.6 14.2c0-1.1 1.2-1.6 2-2.2.7-.6.9-2 1-3.4h.8c.1 1.4.3 2.8 1 3.4.8.6 2 1.1 2 2.2 0 .7-1.5 1.1-3.4 1.1s-3.4-.4-3.4-1.1z', B, ' stroke="' + K + '" stroke-width="1.1" stroke-linejoin="round"') +
+        circ(12, 6.4, 2.5, B, ' stroke="' + K + '" stroke-width="1.1"') + circ(11.2, 5.6, .8, W, ' opacity=".7"') +
+        circ(20.6, 19.6, 1.3, W, ' stroke="' + K + '" stroke-width="1"') + circ(22.4, 22, .8, W, ' stroke="' + K + '" stroke-width=".9"');
     },
     madlibs: function (c) { return line('M3 6h18M3 12h7M3 18h12', K, 2) + line('M12.5 12.5h8', c, 2.6) + path('M16.5 21.5l1-3.4 4.6-4.6a1.5 1.5 0 0 1 2.1 2.1l-4.6 4.6z', O); },
     riddlestories: function (c) { return circ(10, 10, 6.5, 'none', ' stroke="' + K + '" stroke-width="2.4"') + line('M15 15l6.5 6.5', K, 3) + txt('?', 9, c, 10.3, 10); },
