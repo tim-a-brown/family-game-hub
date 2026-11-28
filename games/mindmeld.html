@@ -787,11 +787,11 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     if (room) H = room.clientHeight - 30;
     else if (felt) {
       var cs = getComputedStyle(felt), fr = felt.getBoundingClientRect();
-      var bottom = DK ? fr.bottom : Math.min(fr.bottom, innerHeight - 30);
+      var bottom = DK ? fr.bottom : Math.min(fr.bottom, innerHeight - 32);
       var avail = bottom - fr.top - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom), rg = parseFloat(cs.rowGap) || 0;
       if (cs.display === 'grid') {
         var st = Q('.st'), span = DK && app.classList.contains('t-row');
-        H = avail - (!span && st && st.offsetHeight ? st.offsetHeight + rg : 0);
+        H = avail - (span ? 0 : (st && st.offsetHeight ? st.offsetHeight : 0) + 2 * rg);
       } else if (V.phase === 'write') {
         var others = 0, seen = 0;
         Array.prototype.forEach.call(felt.children, function (c) { if (c === h || c.classList.contains('mid') || !c.offsetHeight) return; others += c.offsetHeight; seen++; });
@@ -833,8 +833,8 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     if (!fit) { best = 14; ini = true; full = need(14, true, lens); one = need(14, true, longest); }
     h.classList.toggle('ini', ini);
     h.querySelectorAll('.bee').forEach(function (b) { var t = b.querySelector('.tg'), P = V.players[+b.dataset.p]; if (t && P) t.textContent = ini ? String(P.name || '?').charAt(0).toUpperCase() : short(P.name); });
-    // (the levels share what is left, up to a third again of a row, so a level never stands empty and huge)
-    var share = Math.min(one * 1.35, (H - door(best) - (d - 1) * 4 - (full - one)) / d);
+    // (the levels share what is left, up to a sixth again of a row, so a level never stands empty and huge)
+    var share = Math.min(one * 1.15, (H - door(best) - (d - 1) * 4 - (full - one)) / d);
     h.style.setProperty('--bz', best + 'px');
     h.style.setProperty('--tgf', Math.max(11, Math.round(best * 0.36)) + 'px');
     h.style.setProperty('--lvh', Math.max(one, share) + 'px');
