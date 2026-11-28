@@ -2330,7 +2330,7 @@ Underlying principles for everything:
   the `demo` icon, a play mark in a circle, with the word Demo small under it, `.pk-dl`), only for a game with `demo` in games.js; it glows (a ring that grows and fades
   on `::before`) for a game never played (no `gh_<id>` history, nothing to resume) whose demo hasn't been watched
   (`gn_demo_seen`, a list of game ids, follows the PIN). Every such game's menu has Watch a demo under How to play
-  (`Kit.demo()`). Both open `games/<play>.html?demo=1` (`&from=home` from the sheet, so the strip's X goes back to that
+  (`Kit.demo()`). How to play itself opens with a Watch a demo row (Tim, 2026-11-28: "make all demos available in the how to play in-game pages"; `.k-rules-demo` at the head of `Kit.rules`' sheet, never inside a demo). Both open `games/<play>.html?demo=1` (`&from=home` from the sheet, so the strip's X goes back to that
   sheet through `index.html#sheet=<id>`). A curtain with the game's icon, name and one line covers the table while the
   script sets it, then the demo plays on the game's own table: a glass strip over the game bar (X to leave, the game's
   icon, a dot for each beat filling in gold, Skip), caption plates (Night glass, a gold hairline along the top that fills

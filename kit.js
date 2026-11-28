@@ -2356,7 +2356,13 @@
   function rules() {
     if (!opts.rules) return;
     sfx('pop');
-    sheet({ title: 'How to play', html: '<div class="rules">' + (typeof opts.rules === 'function' ? opts.rules() : opts.rules) + '</div>', actions: [{ label: 'Got it', primary: true }] });
+    // Every game with a demo offers it at the head of How to play (Tim, 2026-11-28: "make all demos available in the
+    // how to play in-game pages"); not inside a demo itself
+    var withDemo = !DEMO && (opts.demo || hasDemo(game));
+    var dm = withDemo ? '<button type="button" class="k-rules-demo">' + icon('demo') + '<span><b>Watch a demo</b><small>See a game played on this table, step by step</small></span>' + icon('right') + '</button>' : '';
+    var sh = sheet({ title: 'How to play', html: dm + '<div class="rules">' + (typeof opts.rules === 'function' ? opts.rules() : opts.rules) + '</div>', actions: [{ label: 'Got it', primary: true }] });
+    var db = withDemo && document.querySelector('.k-rules-demo');
+    if (db) db.addEventListener('click', function () { sfx('tap'); haptic('light'); var sc = db.closest('.k-scrim'); if (sh && sh.close) sh.close(); else if (sc) sc.remove(); demo(); });
   }
   // Theme picker: a swatch per theme, tap to switch at once
   // ── Offline: save everything on this device before a flight ─────────────────────────────────────────────
