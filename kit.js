@@ -1961,16 +1961,16 @@
     } catch (e) {}
     return null;
   }
-  // The table's code stays in the game bar for as long as you're at an online table (Tim, 2026-11-28: "keep the
-  // online game code visible on the screen somewhere while in it"), so a friend who drops out or joins late can be
-  // told it. A tap copies it.
+  function copyCode(c) {
+    try { navigator.clipboard.writeText(c).catch(function () {}); } catch (e) {}
+    haptic('light'); toast('The table code is ' + c + '. It’s copied, so you can send it to a friend.');
+  }
+  // Every online game has its table's code in the menu (above). A game people can join after it has started (Kit.init's
+  // codeBar: Apples to Apples, Mind Meld, Trivia) also keeps it in the game bar while you're at the table (Tim,
+  // 2026-11-28), so a friend arriving late can be told it at a glance. A tap copies it.
   function codePill() {
     if (!gbarEl || codePill.on) return; codePill.on = 1;
-    var pill = el('button', { class: 'k-code', type: 'button', hidden: true, onclick: function () {
-      var c = pill.dataset.c; if (!c) return;
-      try { navigator.clipboard.writeText(c).catch(function () {}); } catch (e) {}
-      haptic('light'); toast('The table code is ' + c + '. It’s copied, so you can send it to a friend.');
-    } }, [el('small', { text: 'Table' }), el('b')]);
+    var pill = el('button', { class: 'k-code', type: 'button', hidden: true, onclick: function () { if (pill.dataset.c) copyCode(pill.dataset.c); } }, [el('small', { text: 'Table' }), el('b')]);
     var rb = gbarEl.querySelector('.k-rules') || gbarEl.querySelector('.icon-btn:last-child');
     gbarEl.insertBefore(pill, rb);
     function tick() {
@@ -2235,6 +2235,8 @@
       confirmSheet('Start a new game?', { ok: 'New game', body: 'The current game will be lost.' }).then(function (ok) { if (ok) opts.onNew(); });
     });
     if (opts.undo) tile('undo', 'Undo', opts.undo);
+    // at an online table, its code heads the menu (a tap copies it), so someone who dropped out can be told it
+    var tcode = atTable(); if (tcode) item(G, 'link', 'Table code ' + String(tcode).toUpperCase(), function () { copyCode(String(tcode).toUpperCase()); }, '', 'Tap to copy it for a friend');
     (opts.menu || []).forEach(function (m) {
       if (m.when && !m.when()) return;
       if (m.exit && opts.exitFirst) { exitBtn(m.icon || 'logout', m.label, m.onClick); return; }
@@ -2824,7 +2826,7 @@
     ]);
     doc.body.insertBefore(bar, doc.body.firstChild);
     gbarEl = bar;
-    if (!SNAP_MODE && !(window.__KIT_DEMO)) codePill();
+    if (opts.codeBar && !SNAP_MODE && !(window.__KIT_DEMO)) codePill();
     // --bar is the bar's real height (taller in the installed app and on notched phones), so a game that fills
     // the screen below it fits exactly and the page stays locked in place
     function barH() { var h = bar.offsetHeight; if (h) root.style.setProperty('--bar', h + 'px'); }
