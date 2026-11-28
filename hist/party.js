@@ -317,7 +317,7 @@
   });
   // ── Hive Mind (the id says mindmeld): the hive as it ended, each bee's level round by round, then every card, the
   // answers people matched on, and who scored what. Games played as Mind Meld (no dt.v) show their cards alone.
-  // dt: {v: 'hm', d: levels open, lv: 'final level per player, -1 out of the hive', rs: [{q: the card, t: 'answer:how many
+  // dt: {v: 'hm', d: levels open, lv: 'final level per player, -1 out of the hive', pt: 'points over the game per player', rs: [{q: the card, t: 'answer:how many
   // wrote it' per line, r: the Queen Bee die, m: 'player:from:to,...' (to = d: out of the hive)}]}; e.rounds.scores: points
   // per card, per player
   function hmHive(el, P, ui, d) {
