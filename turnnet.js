@@ -14,6 +14,8 @@
 //   opts      the table's settings (JSON), min / max (people), g (game number at this table), t0
 //   result    {win: [seats], text} once it's over; hb {seat: last seen}; at; by (the device that wrote last)
 //   lk        the host's link tag (seats[0].lk), at the top so the linked people's home screens can find the table
+//   hs        how many people sat down when the game started (a table of 3 or more gets the computer's cover, below)
+//   cov       {seat: since}: people whose device has dropped out and whose seat is being looked after (below)
 // THE RULE for every turn-based online game (CLAUDE.md): keep seats, accts, turn and drive like this, so the home
 // screen can tell whose move it is without knowing the game.
 //
@@ -53,11 +55,33 @@
 //     net.act(fn)         your move: fn(state) -> {state, mv} (or null for no move). Shown here at once; written
 //                         as a transaction (fn runs again on the newest state if someone else moved first)
 //   Tests: window.__tnStore swaps Firestore for another store with the same calls (fireStore below).
+//
+// A DEVICE THAT DROPS OUT (Tim, 2026-11-28). Every device at a table writes hb[seat] every 15 s while the page is in
+// view, and a seat whose hb is more than 45 s old has dropped out (a person who switches apps for 45 s counts too, and
+// gets the seat back the moment they come back). What happens then:
+//   - a table that started with fewer than 3 people: nothing; the turn waits for them, as a correspondence game does
+//   - a table that started with 3 or more people, in a game with bot(): the computer plays the seat for them (cov),
+//     from whichever other person's device is looking (one move at a time, through the same transaction as any move),
+//     until their device beats again, when the seat is theirs again. The seat stays theirs throughout: not a bot seat,
+//     not a seat that left.
+//   - a game with its own handling (the casino tables, Poker) says so with these cfg hooks:
+//     dropped(state, seat) -> {state, mv} | null   the seat has just dropped out (a casino seat sits out)
+//     returned(state, seat) -> {state, mv} | null  their device is back (dealt back in)
+//     cover(state, seat) -> {state, mv} | null     a move for a dropped seat whose turn it is (Poker's tournament checks
+//                                                   or folds); without it, bot() covers the seat at a table of 3 or more
+//     dropAny: true                                 the game's handling applies however many people started
+//     dropLeave(state) -> ms (or a number)          after that long dropped out the seat leaves the table, as a person who
+//                                                   leaves does (resign); their own device, when it next opens the table,
+//                                                   finishes leaving (the game's leave() settles their money there)
+//     dropSay(name, state) -> text                  what the others are told when the seat drops out
+//     closeTable(net) -> true | false               the last person left at the table chose Close the table: make the move
+//                                                   (net.free(fn) moves when it isn't your turn); false: not now (it is
+//                                                   asked again after each move until it can)
 // ═══════════════════════════════════════════════════════════════════════════
 (function () {
   'use strict';
   if (window.TurnNet) return;
-  var COL = 'turnRooms', V = 1, HB = 30000;
+  var COL = 'turnRooms', V = 1, HB = 15000, DROP = 45000;   // (a beat every 15 s; 45 s without one is a dropped device)
   var LS = (function () { try { return window.localStorage; } catch (e) { return null; } })();
   function lsJ(k, d) { try { var v = JSON.parse(LS.getItem(k)); return v == null ? d : v; } catch (e) { return d; } }
   function lsP(k, v) { try { if (v == null) LS.removeItem(k); else LS.setItem(k, JSON.stringify(v)); } catch (e) {} }
@@ -153,8 +177,9 @@
   function seatOf(d, tag) {
     if (!d || !d.seats) return -1;
     var me = dev(), i;
-    for (i = 0; i < d.seats.length; i++) if (d.seats[i] && !d.seats[i].bot && d.seats[i].dev === me) return i;
-    if (tag) for (i = 0; i < d.seats.length; i++) if (d.seats[i] && !d.seats[i].bot && d.seats[i].acct === tag) return i;
+    // (a seat that left while its device was away keeps the device and account on it, so that device can finish leaving)
+    for (i = 0; i < d.seats.length; i++) if (d.seats[i] && (!d.seats[i].bot || d.seats[i].gone) && d.seats[i].dev === me) return i;
+    if (tag) for (i = 0; i < d.seats.length; i++) if (d.seats[i] && (!d.seats[i].bot || d.seats[i].gone) && d.seats[i].acct === tag) return i;
     return -1;
   }
   function humans(d) { return (d.seats || []).filter(function (s) { return s && !s.bot; }); }
@@ -162,16 +187,34 @@
   function freeOf(st, s) { try { return !!(G.free && G.free(st, s)); } catch (e) { return false; } }
   function overOf(st) { try { return G.over(st) || null; } catch (e) { return null; } }
 
+  // ── A device that drops out ──
+  // how many people started the game (tables from before hs: the people's seats, counting those who left)
+  function hsOf(d) { return d && d.hs != null ? d.hs : ((d && d.seats) || []).filter(function (s) { return s && (!s.bot || s.left); }).length; }
+  function ownDrop() { return !!(G && (G.dropped || G.cover)); }
+  // does this table look after a seat whose device dropped out?
+  function dropOn(d) {
+    if (!d || d.status !== 'playing' || !G) return false;
+    var n = hsOf(d);
+    return ownDrop() ? !!G.dropAny || n >= 3 : !!G.bot && n >= 3;
+  }
+  // the moves for a dropped seat when it's their turn: the game's own, or the computer's at a table of 3 or more
+  function coverFn(d) { if (!dropOn(d)) return null; return G.cover || (ownDrop() ? null : G.bot) || null; }
+  function stale(d, i, now) { var h = d && d.hb && d.hb[i]; return !h || (now || Date.now()) - h > DROP; }
+  function covered(d, i) { return !!(d && d.cov && d.cov[i] != null); }
+  function leaveMs(st) { try { return typeof G.dropLeave === 'function' ? +G.dropLeave(st) || 0 : +G.dropLeave || 0; } catch (e) { return 0; } }
+  function mins(ms) { var m = Math.round(ms / 60000); return m === 1 ? 'a minute' : m + ' minutes'; }
+
   // ── The table on screen ──
   var net = {
     get state() { return T.st; }, get seat() { return T.seat; }, get code() { return T.code; }, get mv() { return T.mv; },
-    get seats() { return T.d ? T.d.seats.map(function (s, i) { return { name: s.name, bot: !!s.bot, me: i === T.seat, away: away(i) }; }) : []; },
+    get seats() { return T.d ? T.d.seats.map(function (s, i) { return { name: s.name, bot: !!s.bot, me: i === T.seat, away: away(i), cover: covered(T.d, i) }; }) : []; },
     get result() { return T.d ? T.d.result || null : null; }, get status() { return T.d ? T.d.status : null; },
     myTurn: function () { return T.seat >= 0 && !!T.d && T.d.status === 'playing' && turnOf(T.st).indexOf(T.seat) >= 0; },
     act: function (fn) { return act(fn, T.seat); },
+    free: function (fn) { return act(fn, T.seat, null, true); },   // (a move made when it isn't your turn: the game's fn decides whether it can be)
     again: again, leave: function () { return leave(); }
   };
-  function away(i) { var h = T.d && T.d.hb && T.d.hb[i]; return !h || Date.now() - h > HB * 3; }
+  function away(i) { return stale(T.d, i); }
   function draw(info) {
     paintChips();
     try { G.show(net, info || {}); } catch (e) { console.error('[turnnet] show', e); }
@@ -179,10 +222,10 @@
 
   // ── Moves ──
   // fn(state) -> {state, mv} | null; as: the seat moving (yours, or a computer seat). Shown here at once, then written.
-  function act(fn, as, pre) {
+  function act(fn, as, pre, force) {
     if (!T.d || T.d.status !== 'playing' || T.busy && as === T.seat) return Promise.resolve(false);
     var code = T.code, base = T.seq, prev = T.st, res;
-    if (turnOf(prev).indexOf(as) < 0 && !freeOf(prev, as)) return Promise.resolve(false);
+    if (!force && turnOf(prev).indexOf(as) < 0 && !freeOf(prev, as)) return Promise.resolve(false);
     try { res = pre || fn(clone(prev)); } catch (e) { console.warn(e); return Promise.resolve(false); }
     if (!res || !res.state) return Promise.resolve(false);
     var mine = as === T.seat;
@@ -195,7 +238,7 @@
         if (!fn) throw new Error('stale');
         T.local = -1;   // (built again on the newer table: the server's copy is the one to show)   // a computer move made on an older table: the next look makes it again
         var cur = JSON.parse(d.st);
-        if (turnOf(cur).indexOf(as) < 0 && !freeOf(cur, as)) throw new Error('It’s not your turn any more');
+        if (!force && turnOf(cur).indexOf(as) < 0 && !freeOf(cur, as)) throw new Error('It’s not your turn any more');
         r = fn(clone(cur)); if (!r || !r.state) throw new Error('That move can’t be made now');
       }
       res = r;
@@ -214,27 +257,130 @@
     if (d) { var hb = Object.assign({}, d.hb || {}); if (drive >= 0) hb[drive] = now; p.hb = hb; }
     return p;
   }
-  // computer seats: whoever's looking makes their moves (the one sitting nearest after the last mover goes first)
+  // computer seats: whoever's looking makes their moves (the one sitting nearest after the last mover goes first). A
+  // seat whose device has dropped out is moved for in the same way (coverFn), never by its own device.
   function botCheck() {
     if (T.botT && T.botSeq === T.seq && T.d && T.d.status === 'playing') return;   // (a heartbeat changed nothing: the move already waiting stays on time)
     clearTimeout(T.botT); T.botT = 0; T.botSeq = T.seq;
     var d = T.d;
-    if (!d || d.status !== 'playing' || T.seat < 0 || !G.bot) return;
-    var bots = turnOf(T.st).filter(function (i) { return d.seats[i] && d.seats[i].bot; });
-    if (!bots.length) return;
-    var hs = []; d.seats.forEach(function (s, i) { if (s && !s.bot) hs.push(i); });
+    if (!d || d.status !== 'playing' || T.seat < 0 || (d.seats[T.seat] && d.seats[T.seat].gone)) return;
+    var cf = coverFn(d), now = Date.now();
+    var up = turnOf(T.st), bots = G.bot ? up.filter(function (i) { return d.seats[i] && d.seats[i].bot; }) : [];
+    var covs = cf ? up.filter(function (i) { var x = d.seats[i]; return x && !x.bot && !x.left && i !== T.seat && covered(d, i); }) : [];
+    var todo = bots.map(function (i) { return [i, G.bot]; }).concat(covs.map(function (i) { return [i, cf]; }));
+    if (!todo.length) return;
+    // (the people who are here, in seat order: a dropped seat's device isn't, so nobody waits for it to move first)
+    var hs = []; d.seats.forEach(function (s, i) { if (s && !s.bot && !s.left && (i === T.seat || !covered(d, i) && !stale(d, i, now))) hs.push(i); });
     var rank = d.drive === T.seat ? 0 : 1 + hs.indexOf(T.seat), seq = T.seq;
     T.botT = setTimeout(function () {
       T.botT = 0;
       if (T.seq !== seq || !T.d || T.d.status !== 'playing') return;
-      var s = bots[0];
-      Promise.resolve().then(function () { return G.bot(clone(T.st), s); }).then(function (res) {
+      var k = 0;
+      (function tryOne() {
         if (T.seq !== seq) return;
-        if (!res) { setTimeout(botCheck, 3000); return; }   // (no move this time: look again)
-        // (shown when the server has it, as anyone else's move is)
-        act(null, s, res).then(function (ok) { if (!ok) setTimeout(botCheck, 1500); });
-      }).catch(function (e) { console.warn('[turnnet] computer move', e); setTimeout(botCheck, 3000); });
+        if (k >= todo.length) { setTimeout(botCheck, 3000); return; }   // (no move this time: look again)
+        var s = todo[k][0], fn = todo[k][1]; k++;
+        Promise.resolve().then(function () { return fn(clone(T.st), s); }).then(function (res) {
+          if (T.seq !== seq) return;
+          if (!res || !res.state) { tryOne(); return; }
+          // (shown when the server has it, as anyone else's move is)
+          act(null, s, res).then(function (ok) { if (!ok) setTimeout(botCheck, 1500); });
+        }).catch(function (e) { console.warn('[turnnet] computer move', e); setTimeout(botCheck, 3000); });
+      })();
     }, (G.botMs || 900) + rank * 2500);
+  }
+
+  // Seats whose device has dropped out (no beat for 45 s): marked in cov by whichever person's device notices first
+  // (a transaction, so two devices never both do it), with the game's own dropped() where it has one; and after
+  // dropLeave(state) of it, the seat leaves the table as a person who leaves does.
+  function dropCheck() {
+    var d = T.d, me = T.seat, code = T.code;
+    if (!code || !d || d.status !== 'playing' || me < 0 || document.hidden || T.dropBusy || !dropOn(d)) return;
+    if (d.seats[me] && d.seats[me].gone) return;
+    var now = Date.now(), ms = leaveMs(T.st), need = false;
+    d.seats.forEach(function (s, i) {
+      if (i === me || !s || s.bot || s.left || !stale(d, i, now)) return;
+      if (!covered(d, i) || ms && now - d.cov[i] > ms) need = true;
+    });
+    if (!need) return;
+    T.dropBusy = true;
+    var tag = T.tag;
+    store().tx(code, function (dd) {
+      if (!dd || dd.status !== 'playing' || !dropOn(dd)) return null;
+      var t = Date.now(), cov = Object.assign({}, dd.cov || {}), seats = dd.seats.slice(), st = null, stCh = false, mv = null, sCh = false, ch = false;
+      var mine = seatOf(dd, tag);
+      if (mine < 0) return null;
+      function cur() { if (!st) st = JSON.parse(dd.st); return st; }
+      dd.seats.forEach(function (s, i) {
+        if (i === mine || !s || s.bot || s.left || !stale(dd, i, t)) return;
+        if (cov[i] == null) {
+          cov[i] = t; ch = true;
+          if (G.dropped) {
+            var r = null; try { r = G.dropped(cur(), i); } catch (e) { console.warn('[turnnet] dropped', e); }
+            if (r && r.state) { st = r.state; stCh = true; mv = Object.assign(mv || {}, r.mv || { t: 'drop', s: i }); }
+          }
+          return;
+        }
+        var lm = leaveMs(cur());
+        if (lm && t - cov[i] > lm) {
+          var o = dropOut(cur(), seats, i);
+          if (o) { st = o.st; stCh = true; sCh = true; ch = true; delete cov[i]; mv = Object.assign(mv || {}, { t: 'gone', s: i }); }
+        }
+      });
+      if (!ch) return null;
+      var p = stCh ? patchFor(st, mv, dd.seq + 1, -1, dd) : {};
+      p.cov = cov;
+      if (sCh) p.seats = seats;
+      return p;
+    }).catch(function (e) { console.warn('[turnnet] drop', e); }).then(function () { T.dropBusy = false; });
+  }
+  // the seat leaves the table, as leave() does for a person in the middle of a game (resign, or the computer takes it),
+  // but keeping the device and account on it (gone), so that their own device can find the table and finish leaving
+  function dropOut(st, seats, i) {
+    var x = seats[i], keep = { gone: 1, dev: x.dev };
+    if (x.acct) keep.acct = x.acct;
+    if (G.resign) {
+      var rr = G.resign(st, i), toBot = rr && rr.state && rr.bot;
+      st = rr && rr.state ? rr.state : rr;
+      seats[i] = toBot ? Object.assign({ name: x.name, bot: true, left: true }, keep) : Object.assign({}, x, { left: true, gone: 1 });
+    } else if (G.bot || G.botTakeover) seats[i] = Object.assign({ name: x.name, bot: true, left: true }, keep);
+    else return null;
+    return { st: st };
+  }
+  // What the others are told as seats drop out and come back (from the table as it was and as it is now)
+  function dropNews(a, b) {
+    if (!a || !b || a.status !== 'playing' || b.status !== 'playing' || (a.g || 1) !== (b.g || 1) || !b.seats) return;
+    var ca = a.cov || {}, cb = b.cov || {}, st = T.st;
+    b.seats.forEach(function (s, i) {
+      if (!s) return;
+      var was = ca[i] != null, now = cb[i] != null, sa = a.seats && a.seats[i], nm = s.name;
+      if (!was && now && i !== T.seat) {
+        var say = null; try { say = G.dropSay ? G.dropSay(nm, st) : null; } catch (e) {}
+        Kit.toast(say || nm + '’s device dropped out. The computer plays for ' + nm + ' until ' + nm + ' is back.', 5000);
+      } else if (was && !now) {
+        if (s.gone && !(sa && sa.gone)) {
+          if (i === T.seat) return;
+          Kit.toast(nm + ' was away for ' + mins(leaveMs(st)) + ' and has left the table.', 5000);
+          lastOne(b, nm);
+        } else if (!s.left) Kit.toast(i === T.seat ? 'You’re back at the table.' : nm + ' is back.');
+      }
+    });
+  }
+  // the others have all left: the last person at the table chooses to close it or keep waiting
+  function lastOne(d, nm) {
+    var here = []; d.seats.forEach(function (s, i) { if (s && !s.bot && !s.left) here.push(i); });
+    if (here.length !== 1 || here[0] !== T.seat) return;
+    var key = T.code + ':' + (d.g || 1) + ':' + nm;
+    if (T.lastAsk === key) return; T.lastAsk = key;
+    Kit.sheet({ title: 'You’re the only one at the table', html: '<p class="muted">' + Kit.esc(nm + ' was away for ' + mins(leaveMs(T.st)) + ', so ' + nm + ' has left the table and nobody else is here. You can close the table now, or keep it open.') + '</p>',
+      actions: [{ label: 'Close the table', primary: true, onClick: function () { T.closing = T.code; tryClose(true); } }, { label: 'Keep waiting', cls: 'btn-ghost' }] });
+  }
+  function tryClose(first) {
+    if (!T.closing || T.closing !== T.code || !T.d || T.d.status !== 'playing') { T.closing = null; return; }
+    if (!G.closeTable) { T.closing = null; leave(); return; }
+    var ok = false; try { ok = G.closeTable(net) !== false; } catch (e) { console.warn('[turnnet] close', e); }
+    if (ok) T.closing = null;
+    else if (first) Kit.toast('The table closes when this round is over.');
   }
 
   // ── Following a table ──
@@ -246,10 +392,13 @@
     clearInterval(T.hbT); T.hbT = setInterval(beat, HB);
     clearInterval(T.wdT); T.wdT = setInterval(watchdog, 15000);
   }
-  // A computer seat's move that never came (a dropped update, a stalled timer): look at the table again
+  // A computer seat's move that never came (a dropped update, a stalled timer): look at the table again. And every
+  // 15 s, whether anyone's device has dropped out.
   function watchdog() {
+    dropCheck();
     if (!T.code || !T.d || T.d.status !== 'playing' || T.botT || T.busy || document.hidden) return;
-    if (!turnOf(T.st).some(function (i) { return T.d.seats[i] && T.d.seats[i].bot; })) return;
+    var cf = coverFn(T.d);
+    if (!turnOf(T.st).some(function (i) { var x = T.d.seats[i]; return x && (x.bot || cf && !x.left && i !== T.seat && covered(T.d, i)); })) return;
     if (Date.now() - (T.d.at || 0) < 12000) return;
     poke();
   }
@@ -259,11 +408,27 @@
     store().get(code).then(function (d) { if (T.code !== code) return; clearTimeout(T.botT); T.botT = 0; onDoc(d); }).catch(function () {});
   }
   function stopListen() { if (T.off) { T.off(); T.off = null; } clearInterval(T.hbT); clearInterval(T.wdT); clearTimeout(T.botT); T.botT = 0; }
+  // Here: this seat's hb. A seat that was dropped out comes back (cov cleared, the game's returned()).
   function beat() {
     if (!T.code || T.seat < 0 || document.hidden || !T.d || T.d.status === 'over') return;
     var code = T.code, s = T.seat;
-    store().tx(code, function (d) { if (!d || !d.seats || !d.seats[s]) return null; var hb = Object.assign({}, d.hb || {}); hb[s] = Date.now(); return { hb: hb }; }).catch(function () {});
+    T.lastBeat = Date.now();
+    store().tx(code, function (d) {
+      if (!d || !d.seats || !d.seats[s]) return null;
+      var now = Date.now(), hb = Object.assign({}, d.hb || {}), p = { hb: hb };
+      hb[s] = now;
+      if (d.status === 'playing' && d.cov && d.cov[s] != null && !d.seats[s].left) {
+        var cov = Object.assign({}, d.cov); delete cov[s];
+        if (G.returned) {
+          var r = null; try { r = G.returned(JSON.parse(d.st), s); } catch (e) { console.warn('[turnnet] returned', e); }
+          if (r && r.state) { p = patchFor(r.state, r.mv || { t: 'back', s: s }, d.seq + 1, -1, d); p.hb[s] = now; }
+        }
+        p.cov = cov;
+      }
+      return p;
+    }).catch(function () {});
   }
+  function beatSoon() { if (Date.now() - (T.lastBeat || 0) > 3000) beat(); }
   function onDoc(d) {
     if (!T.code) return;
     if (!d || d.status === 'closed') {
@@ -272,6 +437,7 @@
       paintChips(); try { G.leave(); } catch (e) { console.warn('[turnnet] leave', e); }
       return;
     }
+    var was = T.d;
     T.d = d;
     T.seat = seatOf(d, T.tag);
     if (d.status === 'open') { T.st = null; T.seq = -1; showWait(); return; }
@@ -290,7 +456,21 @@
       if (mineNow && !T.wasMine && !echo && d.by !== dev()) { try { setTimeout(function () { Kit.sfx('turn'); }, 350); Kit.haptic('medium'); } catch (e) {} }   // your turn: the bell
       T.wasMine = mineNow;
     } else paintChips();
+    dropNews(was, d);
+    var mySeat = T.seat >= 0 ? d.seats[T.seat] : null;
+    if (d.status === 'playing' && mySeat && mySeat.gone) {
+      // (this device was away so long that its seat left the table: it finishes leaving now, the game settling up)
+      if (T.goneDone !== T.code) {
+        T.goneDone = T.code; var gc = T.code;
+        Kit.toast('You were away for ' + mins(leaveMs(T.st)) + ', so you’ve left the table.', 5000);
+        setTimeout(function () { if (T.code === gc) leave(); }, 1500);
+      }
+      return;
+    }
+    if (T.seat >= 0 && !document.hidden && d.status === 'playing' && (covered(d, T.seat) || stale(d, T.seat, Date.now() - HB))) beatSoon();   // (you're here: back, or just opened the table)
+    if (T.closing) tryClose(false);
     botCheck();
+    dropCheck();
   }
 
   // ── Opening, joining, starting, leaving ──
@@ -373,7 +553,7 @@
       var o = {}; try { o = JSON.parse(d.opts || '{}'); } catch (e) {}
       var st = G.start(seats.map(function (s) { return { name: s.name, bot: !!s.bot }; }), o);
       var p = patchFor(st, null, (d.seq || 0) + 1, -1, null);
-      p.seats = seats; p.t0 = Date.now(); p.drive = 0;
+      p.seats = seats; p.t0 = Date.now(); p.drive = 0; p.hs = hs.length; p.cov = {};
       var hb = {}; seats.forEach(function (s, i) { if (!s.bot) hb[i] = (d.hb || {})[d.seats.indexOf(s)] || Date.now(); }); p.hb = hb;
       return p;
     }).then(function () { dl('Started ' + G.title + ' at table ' + code); }).catch(function (e) { Kit.toast(errText(e)); });
@@ -386,7 +566,7 @@
       var o = {}; try { o = JSON.parse(d.opts || '{}'); } catch (e) {}
       var last = null; try { last = JSON.parse(d.st); } catch (e) {}
       var st = G.start(d.seats.map(function (s) { return { name: s.name, bot: !!s.bot }; }), o, last);
-      var p = patchFor(st, null, (d.seq || 0) + 1, T.seat, d); p.g = (d.g || 1) + 1; p.t0 = Date.now();
+      var p = patchFor(st, null, (d.seq || 0) + 1, T.seat, d); p.g = (d.g || 1) + 1; p.t0 = Date.now(); p.cov = {};   // (anyone still away is noticed again in the new game)
       return p;
     }).then(function () { return true; }, function (e) { Kit.toast(errText(e)); return false; });
   }
@@ -409,6 +589,8 @@
         return keep ? { seats: seatsO, accts: (d.accts || []).filter(function (a) { return a !== tag; }), at: Date.now() } : { status: 'closed', seats: seatsO, at: Date.now(), by: dev() };
       }
       if (s < 0) return null;
+      if (d.seats[s] && d.seats[s].gone) return { accts: (d.accts || []).filter(function (a) { return a !== tag; }) };   // (it left while away: only the account goes)
+      var cov = null; if (d.cov && d.cov[s] != null) { cov = Object.assign({}, d.cov); delete cov[s]; }
       var st = JSON.parse(d.st), seats2 = d.seats.slice(), others = humans(d).filter(function (x) { return !x.left; }).length - 1, accts2 = (d.accts || []).filter(function (a) { return a !== tag; });
       if (!others) return { status: 'closed', accts: accts2, at: Date.now(), by: dev() };
       if (G.resign) {
@@ -422,13 +604,17 @@
         var win = []; seats2.forEach(function (x, i) { if (i !== s) win.push(i); });
         var pq = patchFor(st, null, d.seq + 1, -1, null);
         pq.status = 'over'; pq.turn = []; pq.result = { win: win, text: d.seats[s].name + ' left the game', left: s }; pq.seats = seats2; pq.accts = accts2;
+        if (cov) pq.cov = cov;
         return pq;
       }
       var pr = patchFor(st, null, d.seq + 1, -1, null); pr.seats = seats2; pr.accts = accts2;
+      if (cov) pr.cov = cov;
       return pr;
     }).catch(function (e) { console.warn('[turnnet] leave', e); });
-    T.d = null; T.seat = -1; T.st = null; closeOv(); paintChips();
+    // (the game's leave() can still read the table as it was, net.state and net.seat, to settle up)
+    T.d = null; closeOv(); paintChips(); T.closing = null;
     if (!quiet) { try { G.leave(); } catch (e) { console.warn('[turnnet] leave', e); } }
+    if (!T.code) { T.seat = -1; T.st = null; }
     return p;
   }
 
@@ -462,7 +648,7 @@
     '.tn-chip .avatar{width:24px;height:24px;font-size:.66rem;flex:none;}' +
     '.tn-chip.up{background:var(--yellow,#f5c542);color:#1d1406;box-shadow:0 0 14px color-mix(in srgb,var(--yellow,#f5c542) 60%,transparent);}' +
     '.tn-chip.me:not(.up){box-shadow:inset 0 0 0 1.5px var(--text-3);}' +
-    '.tn-chip.away:not(.bot){opacity:.55;}.tn-chip.left{opacity:.4;text-decoration:line-through;}' +
+    '.tn-chip.away:not(.bot){opacity:.55;}.tn-chip.cover{opacity:.7;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--text-3) 70%,transparent);}.tn-chip.cover.up{opacity:1;}.tn-chip.left{opacity:.4;text-decoration:line-through;}' +
     '.tn-chip .tn-bot{width:14px;height:14px;opacity:.7;}';
   function css() { if (document.getElementById('tn-css')) return; var s = document.createElement('style'); s.id = 'tn-css'; s.textContent = CSS; document.head.appendChild(s); }
   function av(name, i) { return Kit.avatar && Kit.avatar.el ? Kit.avatar.el(name || '?', null, Kit.color ? Kit.color(i || 0) : null) : E('span', { class: 'avatar', text: String(name || '?').charAt(0) }); }
@@ -604,8 +790,10 @@
       if (box.hidden) return;
       var up = T.d.status === 'playing' ? turnOf(T.st) : [];
       T.d.seats.forEach(function (s, i) {
-        var c = E('span', { class: 'tn-chip' + (up.indexOf(i) >= 0 ? ' up' : '') + (i === T.seat ? ' me' : '') + (s.bot ? ' bot' : '') + (s.left ? ' left' : '') + (!s.bot && away(i) ? ' away' : '') }, [av(s.name, i), E('span', { text: s.name })]);
-        if (s.bot) c.appendChild(E('span', { class: 'tn-bot', html: Kit.icon('bot') }));
+        var cv = !s.bot && !s.left && covered(T.d, i), byBot = cv && !ownDrop();
+        var c = E('span', { class: 'tn-chip' + (up.indexOf(i) >= 0 ? ' up' : '') + (i === T.seat ? ' me' : '') + (s.bot ? ' bot' : '') + (s.left ? ' left' : '') + (!s.bot && away(i) ? ' away' : '') + (cv ? ' cover' : ''),
+          title: cv ? (byBot ? 'The computer plays for ' + s.name + ' until ' + s.name + ' is back' : s.name + '’s device dropped out') : '' }, [av(s.name, i), E('span', { text: s.name })]);
+        if (s.bot || byBot) c.appendChild(E('span', { class: 'tn-bot', html: Kit.icon('bot') }));
         box.appendChild(c);
       });
     });

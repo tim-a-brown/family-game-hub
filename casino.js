@@ -614,6 +614,9 @@ const Casino = (function(){
 // way each seat starts with the same amount (the review's "Everyone starts with") and buys back in for it when it runs out. Everyone bets at the same time (TurnNet's turn holds every seat still to bet); the last bet in
 // settles the round (the spin, the roll, the deal, the race) for every seat at once, and each device plays the result
 // out with the game's own animation. Cash out ends the table for everyone, between rounds.
+// A device that drops out (no beat for 45 s, turnnet.js) sits out with its money as it is, and is dealt back in when it's
+// back; after 10 minutes away its seat leaves the table as a person who leaves does, and its bankroll settles when that
+// device next opens the table. The last person left can close the table (Cash out) or keep waiting.
 //
 //   CasinoNet.wallet()   the Casino object a game uses (var Casino = CasinoNet.wallet() inside the game): the same calls,
 //                        playing from a seat's table money while .use(seat) is set ({bank}), your own money otherwise
@@ -641,7 +644,7 @@ const Casino = (function(){
 var CasinoNet = (function () {
   'use strict';
   var STAKES = [500, 1000, 2500, 5000];
-  var CFG = null, LAST = null;
+  var CFG = null, LAST = null, TBLMOVE = null;
 
   function wallet() {
     var cur = null, w = {};
@@ -760,7 +763,7 @@ var CasinoNet = (function () {
     function moveOn(st, i, m) {
       if (!st || st.phase === 'over' || !m) return null;
       if (m.t === 'end') {
-        if (st.phase !== 'bet' || (cfg.canEnd && !cfg.canEnd(st))) return null;
+        if (st.phase !== 'bet' || (cfg.canEnd && !cfg.canEnd(st) && !m.last)) return null;
         st.phase = 'over'; st.endBy = i;
         return { state: st, mv: { t: 'end', s: i } };
       }
@@ -797,9 +800,40 @@ var CasinoNet = (function () {
         n.forEach(function (x, i) { if (x === hi) win.push(i); });
         return { win: win, text: 'Cashed out after ' + (st.round - 1) + ' ' + (cfg.unit || 'round') + (st.round - 1 === 1 ? '' : 's') };
       },
+      // A device that drops out (TurnNet, after 45 s without a beat): the seat sits out, with no bet and its money as it
+      // is (counted as in, so the round goes ahead without it; a hand already dealt is decided by sitOut), and is dealt
+      // back in when the device is back. After 10 minutes away the seat leaves the table, as below (dropLeave).
+      dropAny: true,
+      dropped: function (st, i) {
+        var s = st.seats[i]; if (!s || s.out || s.away || st.phase === 'over') return null;   // (already sitting out: out of chips, or gone)
+        var r0 = st.round, mv = { t: 'drop', s: i };
+        s.out = true; s.away = 1;
+        if (cfg.sitOut) cfg.sitOut(st, i);
+        if (st.phase === 'bet') { st.ready[i] = true; if (allIn(st)) settle(st); }
+        if (st.round !== r0) mv.settled = r0;
+        return { state: st, mv: mv };
+      },
+      returned: function (st, i) {
+        var s = st.seats[i]; if (!s || !s.away || s.left) return null;
+        s.away = 0;
+        if (st.phase === 'over') return { state: st, mv: { t: 'back', s: i } };
+        if (s.bank < 1 && onT(st, i) < 1) { s.bust = st.round; }   // (nothing to bet with: the offer to buy back in, as for anyone out of chips)
+        else if (st.phase === 'bet') { s.out = false; st.ready[i] = false; }
+        else s.back = true;   // (dealt in from the next round)
+        return { state: st, mv: { t: 'back', s: i } };
+      },
+      dropLeave: 10 * 60000,
+      dropSay: function (nm) { return nm + '’s device dropped out. ' + nm + ' sits out until ' + nm + ' is back.'; },
+      // the last person at the table closes it: the table cashes out, between rounds
+      closeTable: function (net) {
+        var st = net.state, me = net.seat;
+        if (!st || me < 0 || st.phase !== 'bet') return false;
+        net.free(function (t) { return moveOn(t, me, { t: 'end', last: 1 }); });
+        return true;
+      },
       // someone who leaves sits out: their seat stays with its money, and the others play on
       resign: function (st, i) {
-        st.seats[i].out = true; st.seats[i].bust = 0; st.seats[i].back = false;
+        st.seats[i].out = true; st.seats[i].bust = 0; st.seats[i].back = false; st.seats[i].away = 0; st.seats[i].left = 1;
         if (cfg.sitOut) cfg.sitOut(st, i);
         if (st.phase === 'bet') { st.ready[i] = true; if (allIn(st)) settle(st); }
         return { state: st };
@@ -814,6 +848,7 @@ var CasinoNet = (function () {
       },
       leave: function () { var n = LAST; LAST = null; if (n && n.state && n.seat >= 0) bankSettle(n.state, n.seat, n.code, nets(n.state)[n.seat] - (n.state.seats[n.seat].filed || 0), cfg.game); return cfg.leave && cfg.leave.apply(this, arguments); }
     });
+    TBLMOVE = moveOn;
     return { move: moveOn };
   }
 
@@ -841,7 +876,7 @@ var CasinoNet = (function () {
     st.seats.forEach(function (s, i) {
       var isUp = up.indexOf(i) >= 0, inn = !isUp && !s.out && net.state.phase !== 'over' && (net.state.phase === 'bet' ? !!net.state.ready[i] : true);
       var amt = o.amount ? o.amount(i) : s.bank, d = o.delta ? o.delta(i) : null;
-      var c = Kit.el('span', { class: 'czs' + (isUp ? ' up' : '') + (inn ? ' in' : '') + (i === me ? ' me' : '') + (s.out ? ' out' : ''), title: s.out ? s.name + ' left the table' : '' }, [
+      var c = Kit.el('span', { class: 'czs' + (isUp ? ' up' : '') + (inn ? ' in' : '') + (i === me ? ' me' : '') + (s.out ? ' out' : ''), title: s.away ? s.name + '’s device dropped out, so ' + s.name + ' is sitting out' : s.out ? s.name + ' left the table' : '' }, [
         Kit.avatar && Kit.avatar.el ? Kit.avatar.el(s.name, null, Kit.color ? Kit.color(i) : null) : Kit.el('span', { class: 'avatar', text: s.name.charAt(0) }),
         Kit.el('span', { text: s.name }), Kit.el('b', { text: money(amt) })]);
       if (s.bust) c.title = (i === me ? 'You are' : s.name + ' is') + ' out of chips';
@@ -899,5 +934,6 @@ var CasinoNet = (function () {
       choices: STAKES.map(function (v) { return [v, money(v)]; }) };
   }
   return { wallet: wallet, quiet: quiet, table: table, next: next, nets: nets, left: left, turn: turnOf, allIn: allIn,
-    listAnd: listAnd, strip: strip, end: end, closeEnd: closeEnd, once: once, stakeOption: stakeOption, moneyOption: moneyOption, settle: bankSettle, offerFor: offerFor, myBankroll: myBankroll, STAKES: STAKES };
+    listAnd: listAnd, strip: strip, end: end, closeEnd: closeEnd, once: once, stakeOption: stakeOption, moneyOption: moneyOption, settle: bankSettle, offerFor: offerFor, myBankroll: myBankroll, STAKES: STAKES,
+    _move: function (st, i, m) { return TBLMOVE ? TBLMOVE(st, i, m) : null; } };   // (tests: the table's moves)
 })();

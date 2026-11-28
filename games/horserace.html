@@ -2612,7 +2612,7 @@ html.hr-big .tw.low .tw-in .call{font-size:.86rem;top:6px;padding:.3em .8em .3em
   function moveOn(st, seat, m) {
     if (!st || st.phase === 'over') return null;
     if (m.t === 'end') {
-      if (st.phase !== 'bet') return null;
+      if (st.phase !== 'bet' || m.last && st.players.some(function (p, i) { return i !== seat && !p.left && !(p.out && !p.away); })) return null;
       pure(st, function () { refundOpen(); });
       st.phase = 'over'; st.endBy = seat;
       return { state: st, mv: { t: 'end', s: seat } };
@@ -2738,6 +2738,7 @@ html.hr-big .tw.low .tw-in .call{font-size:.86rem;top:6px;padding:.3em .8em .3em
     var sv = load();
     if (sv && !sv.online) { S = sv; if (solo()) moneyFor(S.players[0].name); render(); } else showSetup();
   }
+  window.__hr.move = function (st, seat, m) { return moveOn(st, seat, m); };   // (tests: an online table's moves)
   TurnNet.setup({
     game: 'horserace', title: 'Horse Race', min: 2, max: 6,
     opts: netOpts, start: netStart,
@@ -2749,9 +2750,35 @@ html.hr-big .tw.low .tw-in .call{font-size:.86rem;top:6px;padding:.3em .8em .3em
       st.players.forEach(function (p, i) { if (standing(st, i) === hi) win.push(i); });
       return { win: win, text: 'Richest after ' + st.log.length + ' race' + (st.log.length === 1 ? '' : 's') };
     },
+    // A device that drops out (TurnNet, after 45 s without a beat): the player sits out with no tickets and their money as
+    // it is (counted as in, so the horses go to the gate without them), and is back for the next race once their device
+    // is. After 10 minutes away they leave the table as a person who leaves does.
+    dropAny: true,
+    dropped: function (st, seat) {
+      var p = st.players[seat]; if (!p || p.out || st.phase === 'over') return null;
+      p.out = true; p.away = 1;
+      var mv = { t: 'drop', s: seat };
+      if (st.phase === 'bet' && !st.ready[seat]) { st.ready[seat] = true; if (st.ready.every(function (r, i) { return r || st.players[i].out; })) { mv.settled = st.raceNo; runNet(st); } }
+      return { state: st, mv: mv };
+    },
+    returned: function (st, seat) {
+      var p = st.players[seat]; if (!p || !p.away || p.left) return null;
+      p.away = 0; p.out = false;
+      if (st.phase === 'bet' && st.ready[seat] && !st.tickets.some(function (k) { return k.p === seat; })) st.ready[seat] = p.stack < 1;
+      return { state: st, mv: { t: 'back', s: seat } };
+    },
+    dropLeave: 10 * 60000,
+    dropSay: function (nm) { return nm + '’s device dropped out. ' + nm + ' sits out until ' + nm + ' is back.'; },
+    // the last person at the table closes it, between races
+    closeTable: function (net) {
+      var st = net.state, me = net.seat;
+      if (!st || me < 0 || st.phase !== 'bet') return false;
+      net.free(function (t) { return moveOn(t, me, { t: 'end', last: 1 }); });
+      return true;
+    },
     // someone who leaves: their tickets on this race still run, and they sit out the races after it
     resign: function (st, seat) {
-      st.players[seat].out = true;
+      st.players[seat].out = true; st.players[seat].away = 0; st.players[seat].left = 1;
       if (st.phase === 'bet' && !st.ready[seat]) { st.ready[seat] = true; if (st.ready.every(function (r, i) { return r || st.players[i].out; })) runNet(st); }
       return { state: st };
     },
