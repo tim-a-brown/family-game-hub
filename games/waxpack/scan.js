@@ -218,7 +218,8 @@
       }
     }
     list.forEach(function (c) { c.role = E.roleOf(c.pl, year || 0); c.year = year || 0; });
-    return { cands: list.slice(0, 6), year: year, statYear: statYear, line: line, teams: Object.keys(teamSeen) };
+    var mk = root.WaxDesigns && root.WaxDesigns.fromScan ? root.WaxDesigns.fromScan(text) : '';   // the maker named on the card (Upper Deck, Fleer, ...)
+    return { cands: list.slice(0, 6), year: year, statYear: statYear, line: line, teams: Object.keys(teamSeen), mk: mk };
   }
 
   var S = { read: read, match: match, prep: prep, simd: simd, warm: function () { return getWorker(); }, ready: function () { return !!worker; } };

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wax Pack card designs</title>
+<!-- The art proof for Wax Pack's drawn cards: every maker's design for every year, front and back, at full size and
+     at the sizes the game draws small (a hand card, a lineup chip). ?mk=topps&from=1952&to=1959 narrows it;
+     &w=240 sets the full size. A real player of that year and a real team are on each card. -->
+<link rel="stylesheet" href="cardface.css">
+<style>
+  body { margin: 0; padding: 16px; background: #2b2f36; color: #eee; font: 14px/1.3 system-ui, sans-serif; }
+  h2 { margin: 18px 0 8px; font-size: 18px; }
+  .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
+  .yr { display: flex; flex-direction: column; gap: 6px; padding: 8px; background: #1d2026; border-radius: 10px; }
+  .yr > b { font-size: 13px; }
+  .yr > i { font-style: normal; font-size: 11px; color: #aab; max-width: var(--w); }
+  .pair { display: flex; gap: 8px; align-items: flex-end; }
+  .sm { display: flex; flex-direction: column; gap: 6px; }
+</style>
+</head>
+<body>
+<script src="engine.js"></script>
+<script src="art/index.js"></script>
+<script src="designs.js"></script>
+<script src="logos/index.js"></script>
+<script src="cardface.js"></script>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search), W = +q.get('w') || 240, only = q.get('mk'), from = +q.get('from') || 0, to = +q.get('to') || 9999, back = q.get('back') !== '0';
+  document.documentElement.style.setProperty('--w', W + 'px');
+  fetch('mlb.json').then(function (r) { return r.json(); }).then(function (j) {
+    var E = WaxEngine; E.load(j);
+    var D = WaxDesigns, list = E.db().list;
+    // a regular of that season (a hitter with 400 at-bats, or a pitcher with 150 innings), on a team that played
+    function playerFor(y, i) {
+      var want = i % 3 === 2 ? 'p' : 'h', n = 0;
+      for (var k = 0; k < list.length * 3; k++) {
+        var pl = list[(E.hash(y + ':' + i + ':' + k) % list.length)];
+        var L = E.seasons(pl, want).filter(function (s) { return s.y === y - 1 && (want === 'p' ? s.ipo >= 450 : s.ab >= 400); });
+        if (L.length) return { pid: pl.id, year: y, role: want };
+        if (++n > 40000) break;
+      }
+      return null;
+    }
+    function cardOf(o, mk) {
+      var pl = E.byId(o.pid), s = E.cardSeason(pl, o.role, o.year);
+      return { kind: 'player', pid: pl.id, name: E.name(pl), year: o.year, sy: s ? s.y : o.year, tc: s ? s.t : '', team: s ? E.nick(s.t) : '', role: o.role, pos: o.role === 'p' ? ['P'] : [s && s.pos || 'OF'], mk: mk, line: s };
+    }
+    D.ORDER.forEach(function (mk) {
+      if (only && only.split(',').indexOf(mk) < 0) return;
+      var ys = (D.BR[mk] || []).filter(function (y) { return y >= from && y <= to; }).sort(function (a, b) { return a - b; });
+      if (!ys.length) return;
+      document.body.appendChild(Object.assign(document.createElement('h2'), { textContent: D.MAKERS[mk].name }));
+      var row = document.createElement('div'); row.className = 'row'; document.body.appendChild(row);
+      ys.forEach(function (y, i) {
+        var o = playerFor(y, i); if (!o) return;
+        var c = cardOf(o, mk), d = D.D[mk + ':' + y]; d = Array.isArray(d) ? d[0] : d;
+        var box = document.createElement('div'); box.className = 'yr';
+        var t = document.createElement('b'); t.textContent = y + ' ' + D.MAKERS[mk].name + ' (' + (d.sure || '?') + ')'; box.appendChild(t);
+        var pair = document.createElement('div'); pair.className = 'pair';
+        pair.appendChild(WaxCard.face(c, { size: W }));
+        if (back) pair.appendChild(WaxCard.back(c, { size: Math.max(280, W) }));
+        var sm = document.createElement('div'); sm.className = 'sm'; sm.appendChild(WaxCard.face(c, { size: 92 })); sm.appendChild(WaxCard.face(c, { size: 60 })); pair.appendChild(sm);
+        box.appendChild(pair);
+        if (d.note) { var n = document.createElement('i'); n.textContent = d.note; box.appendChild(n); }
+        row.appendChild(box);
+      });
+    });
+    document.body.dataset.ready = '1';
+  });
+})();
+</script>
+</body>
+</html>
