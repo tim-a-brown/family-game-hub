@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Mind Meld</title>
+<title>Hive Mind</title>
 <link rel="stylesheet" href="../kit.css">
 <script src="../sync.js"></script>
 <script src="../games.js"></script>
@@ -13,6 +13,8 @@
 <script src="../players.js"></script>
 <script src="../online.js"></script>
 <script src="mindmeld-data.js"></script>
+<script src="mindmeld/questions-hm.js"></script>
+<script src="mindmeld-core.js"></script>
 <style>
 body{overflow-x:hidden;}
 #app:not(.stage){max-width:1280px;margin:0 auto;padding:2px 8px calc(var(--safe-b) + 12px);}
@@ -21,42 +23,101 @@ body{overflow-x:hidden;}
 .ta{border-radius:26px;padding:8px;}
 .ta > .felt-in{position:relative;border-radius:19px;padding:12px 12px 16px;display:flex;flex-direction:column;gap:12px;
   min-height:calc(100dvh - var(--bar) - 30px - var(--safe-b));}
-.sb{order:1;}.pcw{order:2;}.st{order:3;}.mid{order:4;}.pad{order:5;}.acts{order:6;}
-.st:empty,.acts:empty{display:none;}
-.ph-write > .mid,.ph-reveal > .mid,.ph-scored > .mid{flex:1;display:flex;flex-direction:column;}
+.hive{order:1;}.pcw{order:2;}.st{order:3;}.mid{order:4;}.pad{order:5;}.acts{order:6;}
+.st:empty,.acts:empty,.pcw:empty,.ph-write > .mid:empty{display:none;}
+.ph-ask > .mid,.ph-write > .mid,.ph-reveal > .mid,.ph-scored > .mid{flex:1;display:flex;flex-direction:column;}
 .mid > :first-child{margin-top:auto;}.mid > :last-child{margin-bottom:auto;}
 .acts{margin-top:auto;}
-
-/* Running scores: every player at once, wrapping (name at one end, points at the other) */
-.sb{display:flex;flex-wrap:wrap;gap:6px;}
-.pl{--c:#ffc83d;position:relative;flex:1 1 auto;display:flex;align-items:center;gap:8px;min-height:40px;padding:4px 12px 4px 4px;border-radius:999px;
-  background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);transition:transform .3s var(--spring),opacity .3s;}
-.pl.me{background:color-mix(in srgb,var(--c) 16%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--c) 80%,transparent);}
-.pl.me .pt{color:var(--lit-ink);}
-.pl.gone{opacity:.4;}
-.pl .av{position:relative;flex:none;display:grid;}
-.pl .nm{font-weight:700;font-size:.88rem;white-space:nowrap;color:#fff;}
-.pl .pt{margin-left:auto;padding-left:8px;font-family:var(--display);font-size:1.22rem;line-height:1;font-variant-numeric:tabular-nums;color:#fff;}
-.pl.lead .pt{text-shadow:0 0 12px rgba(255,255,255,.5);}
-.pl .pt.bump{animation:ta_bump .6s var(--spring);}
-@keyframes ta_bump{40%{transform:scale(1.5);color:#7dffb3;}}
-.pl .mk{position:absolute;right:-5px;bottom:-4px;width:17px;height:17px;border-radius:50%;display:grid;place-items:center;background:#fffdf4;color:#1f2a6b;box-shadow:0 1px 3px rgba(0,0,0,.45);}
-.pl .mk .ico{width:11px;height:11px;}
-.pl .mk.ok{background:#3ddc84;color:#06301a;animation:ta_pop .4s var(--spring);}
-.pl .mk.wr .ico{animation:scrib .7s ease-in-out infinite;}
-@keyframes scrib{25%{transform:translate(-1.5px,1px) rotate(-8deg);}75%{transform:translate(1.5px,-1px) rotate(6deg);}}
-@keyframes ta_pop{from{transform:scale(.3);}}
-.pl .gain{position:absolute;top:-11px;right:-3px;padding:2px 7px;border-radius:999px;background:#3ddc84;color:#06301a;font-weight:800;font-size:.78rem;line-height:1.2;
-  box-shadow:0 2px 6px rgba(0,0,0,.35);animation:gainUp .7s var(--spring) both;animation-delay:var(--gd,0s);}
-.pl .gain.zero{background:#d8d2c4;color:#4b4536;}
-@keyframes gainUp{from{transform:translateY(14px) scale(.4);opacity:0;}}
-.pl.shake{animation:ta_shake .5s;}
 @keyframes ta_shake{20%{transform:translateX(-5px);}40%{transform:translateX(5px);}60%{transform:translateX(-3px);}80%{transform:translateX(3px);}}
-.pl.top{box-shadow:inset 0 0 0 1.5px var(--lit),0 0 16px var(--litg);}
-.sb.many .pl{min-height:32px;padding:2px 10px 2px 2px;gap:6px;}
-.sb.many .pl .avatar.sm{width:24px;height:24px;font-size:.7rem;}
-.sb.many .pl .nm{font-size:.8rem;}
-.sb.many .pl .pt{font-size:1.02rem;}
+@keyframes ta_pop{from{transform:scale(.3);}}
+
+/* ── The hive: its levels as tiers of honeycomb, the top one narrowest, a door under the last one. Each player is a
+   bee in their seat color on the level they are on; a bee pushed past the last level goes out through the door. ── */
+.ta .pcw > .pc{view-transition-name:hm-card;}.ta .pad{view-transition-name:hm-pad;}.ta .acts{view-transition-name:hm-acts;}
+.hive{--bz:30px;--lvh:calc(var(--bz) + 18px);position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:2px 0 0;}
+.hive .lv{--w:100%;position:relative;width:var(--w);min-height:var(--lvh);flex:none;box-sizing:border-box;display:flex;flex-wrap:wrap;justify-content:center;align-content:center;align-items:flex-end;
+  gap:calc(var(--bz) * .42) calc(var(--bz) * .18);padding:calc(var(--bz) * .3) calc(var(--bz) * .8) 3px;border-radius:calc(var(--bz) * .5);
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='49' viewBox='0 0 28 49'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.98-7.5V0h-2v6.35L0 12.69v2.3zm0 18.5L12.98 41v8h-2v-6.85L0 35.81v-2.3zM15 0v7.5L27.99 15H28v-2.31h-.01L17 6.35V0h-2zm0 49v-8l12.99-7.5H28v2.31h-.01L17 42.15V49h-2z' fill='%237a4300' fill-opacity='.26'/%3E%3C/svg%3E") 0 0/calc(var(--bz) * .62) auto,
+    radial-gradient(120% 90% at 50% 0%,#ffd76a,#f2ac2e 55%,#c97a12);
+  box-shadow:inset 0 1.5px 0 rgba(255,250,210,.75),inset 0 -4px 6px rgba(110,55,0,.35),0 3px 0 #8f5409,0 6px 12px rgba(0,0,0,.35);transition:background-color .3s;}
+.hive .lv::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.14),transparent 40%);}
+.hive .lv > b{position:absolute;left:calc(var(--bz) * .2);top:50%;transform:translateY(-50%);min-width:max(17px,calc(var(--bz) * .5));height:max(17px,calc(var(--bz) * .5));padding:0 2px;box-sizing:border-box;border-radius:max(5px,calc(var(--bz) * .14));display:grid;place-items:center;
+  background:linear-gradient(180deg,#b86f0e,#8f5409);box-shadow:inset 0 1px 2px rgba(60,25,0,.7),0 1px 0 rgba(255,235,170,.55);
+  font-family:var(--display);font-weight:800;font-size:max(10px,calc(var(--bz) * .3));line-height:1;color:#ffe7a6;text-shadow:0 -1px 0 rgba(60,25,0,.6);font-variant-numeric:tabular-nums;}
+.hive .lv.last > b{background:linear-gradient(180deg,#c24a12,#8a2a05);color:#fff;}
+.hive .lv.last{background-color:#e08c1e;}
+.hive.drop-on .lv.last{box-shadow:inset 0 1.5px 0 rgba(255,250,210,.75),inset 0 -4px 6px rgba(110,55,0,.35),0 3px 0 #8f5409,0 0 0 2px rgba(255,92,72,.7),0 6px 16px rgba(255,80,40,.35);}
+/* the door out of the hive, with the gate that closes it for a smaller table */
+.hive .door{position:relative;display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-end;gap:1px calc(var(--bz) * .2);min-width:calc(var(--bz) * 3);min-height:calc(var(--bz) * 1.15);
+  margin-top:-2px;padding:4px calc(var(--bz) * .5) 3px;border-radius:calc(var(--bz) * .9) calc(var(--bz) * .9) 6px 6px;
+  background:radial-gradient(80% 110% at 50% 100%,#140a02,#2c1806 70%,#3a2209);box-shadow:inset 0 3px 8px rgba(0,0,0,.7),0 0 0 3px #8f5409,0 0 0 4.5px rgba(255,215,120,.35);}
+.hive .door > i{position:absolute;inset:3px 10px auto;height:calc(100% - 6px);pointer-events:none;
+  background:repeating-linear-gradient(90deg,transparent 0 calc(var(--bz) * .42),rgba(220,170,80,.5) calc(var(--bz) * .42) calc(var(--bz) * .42 + 2px));border-radius:inherit;opacity:.55;}
+.hive .door.has > i{opacity:.18;}
+/* a bee */
+.bee{--c:#ffc83d;position:relative;flex:none;display:flex;flex-direction:column;align-items:center;width:calc(var(--bz) * 1.28);min-width:min-content;z-index:1;}
+.bee .bz{position:relative;width:var(--bz);height:calc(var(--bz) * .8);animation:hover 2.6s ease-in-out infinite;animation-delay:var(--bd,0s);}
+.bee .bz svg{display:block;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 2px 1.5px rgba(70,30,0,.45));}
+@keyframes hover{50%{transform:translateY(-2px);}}
+.bee .tg{margin-top:1px;padding:0 max(4px,calc(var(--tgf,11px) * .38));border-radius:max(5px,calc(var(--tgf,11px) * .4));background:rgba(40,18,0,.58);color:#fff;font-weight:750;font-size:var(--tgf,max(11px,calc(var(--bz) * .36)));line-height:1.3;white-space:nowrap;}
+.bee.me .tg{background:var(--c);color:var(--ink-on,#1b1530);box-shadow:0 0 0 1.5px #fff7d6;}
+.bee.gone{opacity:.45;}
+.bee.gone .bz{animation:none;}
+.bee .mk{position:absolute;right:calc(var(--bz) * -.02);top:calc(var(--bz) * -.18);width:calc(var(--bz) * .48);height:calc(var(--bz) * .48);min-width:13px;min-height:13px;border-radius:50%;display:grid;place-items:center;background:#fffdf4;color:#1f2a6b;box-shadow:0 1px 3px rgba(0,0,0,.45);z-index:2;}
+.bee .mk .ico{width:70%;height:70%;}
+.bee .mk.ok{background:#3ddc84;color:#06301a;animation:ta_pop .4s var(--spring);}
+.bee .mk.wr .ico{animation:scrib .7s ease-in-out infinite;}
+@keyframes scrib{25%{transform:translate(-1.5px,1px) rotate(-8deg);}75%{transform:translate(1.5px,-1px) rotate(6deg);}}
+.bee .cr{position:absolute;left:50%;top:calc(var(--bz) * -.34);width:calc(var(--bz) * .5);height:calc(var(--bz) * .36);margin-left:calc(var(--bz) * -.32);color:#ffd447;z-index:2;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5));}
+.bee .cr .ico{width:100%;height:100%;fill:#ffd447;stroke:#7a4b00;stroke-width:1.5;}
+.bee .gain{position:absolute;left:calc(var(--bz) * -.2);top:calc(var(--bz) * -.32);z-index:3;min-width:calc(var(--bz) * .62);padding:1px 5px;border-radius:999px;background:#3ddc84;color:#06301a;font-family:var(--display);font-weight:800;font-size:max(10px,calc(var(--bz) * .4));line-height:1.15;text-align:center;
+  box-shadow:0 2px 5px rgba(0,0,0,.4);animation:gainUp .7s var(--spring) both;animation-delay:var(--gd,0s);}
+@keyframes gainUp{from{transform:translateY(12px) scale(.4);opacity:0;}}
+.bee.lo .gain{background:#ff7a6b;color:#3b0700;}
+.bee.hi .gain{background:linear-gradient(180deg,#fff3a8,#ffc83d);color:#3a2600;}
+.bee .ar{min-width:13px;min-height:13px;position:absolute;right:calc(var(--bz) * -.18);top:calc(var(--bz) * .12);width:calc(var(--bz) * .52);height:calc(var(--bz) * .52);border-radius:50%;display:grid;place-items:center;z-index:3;animation:arPop .4s var(--spring) both;animation-delay:var(--ad,0s);box-shadow:0 2px 4px rgba(0,0,0,.4);}
+@keyframes arPop{from{transform:scale(.3);opacity:0;}}
+.bee .ar .ico{width:72%;height:72%;stroke-width:3;}
+.bee .ar.dn{background:#ff5c48;color:#fff;}
+.bee .ar.up{background:#ffd447;color:#4a2c00;}
+.bee.outb .bz{animation:none;transform:rotate(-14deg);}
+.bee.outb .tg{background:rgba(255,92,72,.85);}
+.hive.shake{animation:hiveShake .7s cubic-bezier(.36,.07,.19,.97);}
+@keyframes hiveShake{10%,90%{transform:translateX(-1px) rotate(-.3deg);}20%,80%{transform:translateX(3px) rotate(.5deg);}30%,50%,70%{transform:translateX(-5px) rotate(-.8deg);}40%,60%{transform:translateX(5px) rotate(.8deg);}}
+.hive.shake .bee .bz{animation:buzz .12s linear 5;}
+@keyframes buzz{50%{transform:translate(1px,-1px) rotate(4deg);}}
+.hive.crowd{--bz:24px;}
+/* many bees in little room: each bee's initial on a tag over its foot, the bees side by side */
+.hive.ini .bee{width:calc(var(--bz) * 1.18);padding-bottom:calc(var(--tgf,11px) * .35);}
+.hive.ini .lv{padding-top:calc(var(--bz) * .12);padding-bottom:2px;}
+.hive.ini .bee .gain{left:50%;transform:translateX(-50%);top:calc(var(--bz) * -.5);}
+.hive.ini .bee .tg{position:absolute;left:50%;bottom:calc(var(--tgf,11px) * -.1);transform:translateX(-50%);min-width:calc(var(--tgf,11px) * 1.3);text-align:center;padding:0 3px;box-sizing:border-box;}
+
+/* The Queen Bee die: honey-colored, with the number of bees it sends down as pips */
+.qd{flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.qd .face{--ds:46px;position:relative;width:var(--ds);height:var(--ds);border-radius:calc(var(--ds) * .22);display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:calc(var(--ds) * .13);box-sizing:border-box;
+  background:radial-gradient(90% 90% at 30% 22%,#fff3c2,#ffcf4a 55%,#e39b18);box-shadow:inset 0 -3px 0 rgba(140,80,0,.45),inset 0 2px 0 rgba(255,255,255,.7),0 6px 10px rgba(0,0,0,.4);}
+.qd .face i{width:72%;height:72%;margin:auto;border-radius:50%;background:radial-gradient(circle at 35% 30%,#5a3a10,#1d1204);box-shadow:inset 0 1px 1px rgba(255,255,255,.25);visibility:hidden;}
+.qd .face[data-v="1"] i:nth-child(5),.qd .face[data-v="2"] i:nth-child(3),.qd .face[data-v="2"] i:nth-child(7),
+.qd .face[data-v="3"] i:nth-child(3),.qd .face[data-v="3"] i:nth-child(5),.qd .face[data-v="3"] i:nth-child(7){visibility:visible;}
+.qd .face.roll{animation:qdRoll .9s cubic-bezier(.2,.8,.3,1) both;}
+@keyframes qdRoll{0%{transform:translate(-50px,-60px) rotate(-200deg) scale(.6);}55%{transform:translate(6px,4px) rotate(18deg) scale(1.08);}75%{transform:translate(-2px,-6px) rotate(-6deg);}100%{transform:none;}}
+.qd .dn{display:flex;gap:1px;color:#ff7a6b;height:14px;}
+.qd .dn .ico{width:14px;height:14px;stroke-width:3.2;}
+.qd.dim .face{filter:saturate(.3) brightness(.75);}
+
+/* Choosing the card: the two cards held out, a tap on one asks it */
+.offer{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%;}
+.offer .two{display:flex;gap:14px;justify-content:center;width:100%;max-width:820px;}
+.offer .pc{flex:1 1 0;cursor:default;transition:transform .25s var(--spring),box-shadow .25s,opacity .3s;}
+.offer .pc.can{cursor:pointer;}
+.offer .pc.can:hover{transform:translateY(-4px) rotate(0deg);}
+.offer .pc.can:active{transform:scale(.97);}
+.offer .pc:nth-child(2){transform:rotate(1.2deg);}
+.offer .pc.chose{transform:translateY(-10px) scale(1.04) rotate(0deg);box-shadow:0 0 0 3px #ffd447,0 0 26px rgba(255,212,71,.55),0 16px 26px rgba(0,0,0,.45);}
+.offer .pc.left{opacity:0;transform:translateY(30px) scale(.9);}
+.offer.wait .pc{opacity:.92;}
+@media (max-width:560px){ .offer .two{flex-direction:column;align-items:stretch;} .offer .pc:nth-child(2){transform:rotate(.6deg);} }
 
 /* The prompt card, dealt onto the table, and the sand timer beside it */
 .pcw{display:flex;align-items:center;justify-content:center;gap:12px;}
@@ -88,19 +149,6 @@ body{overflow-x:hidden;}
 .st .think i{width:5px;height:5px;border-radius:50%;background:currentColor;animation:th 1s infinite;}
 .st .think i:nth-child(2){animation-delay:.15s;}.st .think i:nth-child(3){animation-delay:.3s;}
 @keyframes th{50%{opacity:.2;transform:translateY(-2px);}}
-
-/* The bowl the folded answers go into */
-.bowl{--k:1;position:relative;margin:4px auto 2px;width:min(calc(280px * var(--k)),82%);height:calc(92px * var(--k));}
-.bowl::before{content:"";position:absolute;left:0;right:0;bottom:2px;border-radius:50%;
-  background:radial-gradient(ellipse at 50% 40%,#5a3b22 0 52%,transparent 53%),radial-gradient(ellipse at 50% 46%,#c08a52,#8d5b30 70%,#5e3a1c);
-  height:calc(70px * var(--k));box-shadow:0 12px 18px rgba(0,0,0,.45),inset 0 -6px 10px rgba(0,0,0,.3);}
-.bowl::after{content:"";position:absolute;left:12%;right:12%;bottom:calc(14px * var(--k));height:calc(36px * var(--k));border-radius:50%;background:radial-gradient(ellipse,rgba(0,0,0,.35),transparent 70%);}
-.fs{position:absolute;left:50%;top:50%;z-index:1;width:calc(42px * var(--k));height:calc(27px * var(--k));margin:calc(-12px * var(--k)) 0 0 calc(-21px * var(--k));border-radius:3px;
-  background:linear-gradient(180deg,#fffdf4 0 48%,#e9dfc5 50%,#f6eedb 52% 100%);box-shadow:0 2px 4px rgba(0,0,0,.4);
-  transform:translate(calc(var(--x) * var(--k) * 1px),calc(var(--y) * var(--k) * 1px)) rotate(var(--r));}
-.fs::before{content:"";position:absolute;left:4px;top:-2px;width:12px;height:6px;border-radius:1px;background:var(--c);opacity:.95;}
-.fs.drop{animation:slipIn .55s var(--spring) both;}
-@keyframes slipIn{from{transform:translate(calc(var(--x) * var(--k) * 1px),calc(var(--y) * var(--k) * 1px - 90px)) rotate(calc(var(--r) + 40deg)) scale(1.3);opacity:0;}}
 
 /* The clipboard and its lined paper: where you write */
 .pad{position:relative;align-self:center;width:100%;max-width:520px;padding:30px 12px 12px;border-radius:16px;
@@ -171,6 +219,9 @@ body{overflow-x:hidden;}
 .stk.all.scored{animation:bumpStk .8s var(--spring) .6s;}
 .stk .n .ico{width:14px;height:14px;margin-right:2px;stroke-width:2.6;}
 .stk.scored .n{animation:ta_pop .45s var(--spring) both;animation-delay:var(--d);}
+.stx.fitted .stk .fr{min-height:0;}
+.mid.scrolly{border-radius:14px;background:rgba(0,0,0,.14);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);}
+.mid.fade{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 34px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 34px),transparent);}
 .stx .none{color:rgba(255,255,255,.7);font-weight:650;padding:20px;text-align:center;}
 .fly{position:fixed;z-index:60;pointer-events:none;margin:0;transition:transform .42s cubic-bezier(.5,0,.25,1);}
 
@@ -185,6 +236,19 @@ body{overflow-x:hidden;}
 .tray .ms .mn i{width:10px;height:10px;border-radius:50%;background:var(--c);}
 .tray .ms .mo{position:absolute;right:6px;top:7px;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:#1f2a6b;color:#fff;}
 .tray .ms .mo .ico{width:12px;height:12px;}
+
+/* The credit under the title in the setup, and at the foot of How to play */
+.hm-credit{margin:-6px auto 2px;max-width:34em;text-align:center;font-size:.78rem;font-weight:600;color:var(--text-3);text-wrap:balance;}
+.k-rules .credit,.credit{margin-top:14px;font-size:.82rem;color:var(--text-3);}
+/* The hive at the end: on the table and on the results card */
+.fin .hive.end{--bz:38px;width:100%;max-width:520px;align-self:center;}
+.fin .endsay{text-align:center;color:#fff;font-weight:700;font-size:1.02rem;line-height:1.3;margin:-4px 0 2px;text-wrap:balance;}
+.fin .row.gone{opacity:.7;}
+.fin .row.gone .sc{color:#ff9b8f;font-size:1rem;}
+.k-win .hive.wpic{--bz:17px;width:min(100%,330px);margin:4px auto 2px;gap:2px;}
+.k-win .hive.wpic .lv{min-height:calc(var(--bz) + 14px);padding-top:4px;padding-bottom:2px;}
+.k-win .hive.wpic .bee .tg{font-size:9px;}
+.k-win .hive.wpic .bee .bz{animation:none;}
 
 /* Buttons on the table */
 .acts{display:flex;gap:10px;justify-content:center;}
@@ -218,54 +282,57 @@ body{overflow-x:hidden;}
   .stx.crowd{--sw:132px;}
   .stx{--tf:1.55rem;}
   .hg svg{width:52px;height:85px;}.hg{width:56px;}
+  .hive{--bz:34px;}
 }
-/* Sideways: what you look at (scores, the card, the bowl) on the left; what you do (your paper, the stacks) on the right */
+/* Sideways: the hive (what you look at) on the left; the card, your paper and the slips (what you do) on the right */
 @media (orientation:landscape) and (min-width:600px){
-  .ta > .felt-in{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);column-gap:18px;row-gap:10px;align-content:stretch;}
-  .ph-write{grid-template-areas:"sb pad" "pc pad" "st pad" "mid pad" "mid acts";grid-template-rows:auto auto auto 1fr auto;}
-  .ph-reveal,.ph-scored{grid-template-areas:"sb mid" "pc mid" "st mid" "x acts";grid-template-rows:auto auto 1fr auto;}
-  .sb{grid-area:sb;align-self:start;}.pcw{grid-area:pc;align-self:start;}.st{grid-area:st;}.mid{grid-area:mid;}.pad{grid-area:pad;align-self:center;}.acts{grid-area:acts;align-self:end;}
-  .ph-write .mid{align-self:center;}
-  .sb.many{gap:4px;}
-  .ph-reveal .mid,.ph-scored .mid{overflow-y:auto;overscroll-behavior:contain;max-height:calc(100dvh - var(--bar) - 150px - var(--safe-b));border-radius:12px;}
-  .ph-reveal .st,.ph-scored .st{align-self:start;justify-content:flex-start;text-align:left;}
+  .ta > .felt-in{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);column-gap:18px;row-gap:10px;align-content:stretch;}
+  .ph-ask{grid-template-areas:"hv mid" "st mid" "x acts";grid-template-rows:1fr auto auto;}
+  .ph-write{grid-template-areas:"hv pc" "hv pad" "st pad" "x acts";grid-template-rows:auto 1fr auto auto;}
+  .ph-reveal,.ph-scored{grid-template-areas:"hv pc" "hv mid" "st acts";grid-template-rows:auto 1fr auto;}
+  .hive{grid-area:hv;align-self:center;}.pcw{grid-area:pc;align-self:start;}.st{grid-area:st;}.mid{grid-area:mid;}.pad{grid-area:pad;align-self:center;}.acts{grid-area:acts;align-self:end;}
+  .ph-reveal .mid,.ph-scored .mid{overflow-y:auto;overscroll-behavior:contain;max-height:none;min-height:0;border-radius:12px;}
+  html:not(.mm-dk) .ta > .felt-in.ph-reveal,html:not(.mm-dk) .ta > .felt-in.ph-scored{height:calc(100dvh - var(--bar) - 30px - var(--safe-b));min-height:0;box-sizing:border-box;grid-template-rows:auto minmax(0,1fr) auto;}
+  .st{align-self:start;}
   .ta > .felt-in.ph-over{display:flex;}
+  .offer .two{flex-direction:column;align-items:stretch;max-width:560px;}
+  .ta > .felt-in.n-mid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+  .ta > .felt-in.n-many{grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);}
 }
 /* Phones sideways: short screens, so everything a little tighter */
 @media (orientation:landscape) and (max-height:500px){
   .ta{padding:6px;border-radius:20px;}
-  .ta > .felt-in{padding:10px 12px 10px;border-radius:15px;min-height:calc(100dvh - var(--bar) - 26px - var(--safe-b));}
+  .ta > .felt-in{padding:10px 12px 10px;border-radius:15px;row-gap:6px;min-height:calc(100dvh - var(--bar) - 26px - var(--safe-b));}
   .pc{padding:8px 12px 10px;}
-  .pc .q{font-size:1.32rem;}
-  .hg svg{width:36px;height:58px;}.hg{width:40px;}
-  .bowl{height:74px;width:min(230px,90%);}
-  .bowl::before{height:56px;}
-  .pad{padding:24px 10px 10px;}
-  .sheet{--lh:34px;}
-  .pad .fold{margin-top:8px;min-height:46px;}
-  .ph-reveal .mid,.ph-scored .mid{max-height:calc(100dvh - var(--bar) - 112px - var(--safe-b));}
-  .stx{--sw:122px;gap:16px 12px;padding-top:12px;}
-  .stx{--tf:1.25rem;}
-  .sb .pl{min-height:34px;padding:2px 10px 2px 2px;}
-  .sb .pl .avatar.sm{width:26px;height:26px;}
-  .sb.many .pl{min-height:26px;gap:5px;padding:1px 8px 1px 1px;}
-  .sb.many .pl .avatar.sm{width:22px;height:22px;font-size:.62rem;}
-  .sb.many .pl .nm{font-size:.74rem;}.sb.many .pl .pt{font-size:.92rem;}
-  .sb.many .pl .mk{width:14px;height:14px;}.sb.many .pl .mk .ico{width:9px;height:9px;}
+  .pc .q{font-size:1.25rem;}
+  .hg svg{width:32px;height:52px;}.hg{width:36px;}
+  .qd .face{--ds:36px;}
+  .pad{padding:22px 10px 10px;}
+  .sheet{--lh:32px;}
+  .pad .fold{margin-top:8px;min-height:44px;}
+  html:not(.mm-dk) .ta > .felt-in.ph-reveal,html:not(.mm-dk) .ta > .felt-in.ph-scored{height:calc(100dvh - var(--bar) - 26px - var(--safe-b));min-height:0;box-sizing:border-box;grid-template-rows:auto minmax(0,1fr) auto;}
+  .ph-reveal .mid,.ph-scored .mid{max-height:none;min-height:0;}
+  .stx{--sw:116px;gap:14px 12px;padding-top:12px;}
+  .stx{--tf:1.2rem;}
+  .hive{--bz:20px;gap:3px;--lvh:calc(var(--bz) + 13px);}
+  .st{line-height:1.2;}
+  .hive.crowd{--bz:19px;}
+  .offer .pc .q{font-size:1.12rem;}
+  .offer .two{gap:8px;}
+  .st{font-size:.84rem;}
 }
 /* iPads: a big table, so big pieces */
 @media (min-width:700px) and (min-height:900px){
-  .sb{gap:8px;}
-  .pl{min-height:50px;gap:10px;padding:5px 16px 5px 5px;}
-  .pl .avatar.sm{width:38px;height:38px;font-size:1rem;}
-  .pl .nm{font-size:1.05rem;}.pl .pt{font-size:1.55rem;}
-  .pl .mk{width:21px;height:21px;}.pl .mk .ico{width:13px;height:13px;}
+  .hive{--bz:44px;gap:6px;}
+  .hive.crowd{--bz:36px;}
+  .qd .face{--ds:62px;}
+  .qd .dn{height:18px;}.qd .dn .ico{width:18px;height:18px;}
   .pc{max-width:760px;padding:16px 22px 20px;border-radius:18px;}
   .pc .k{font-size:.92rem;}.pc .slots i{width:22px;height:15px;}
   .pc .q{font-size:2.8rem;}
+  .offer .pc .q{font-size:2.1rem;}
   .hg svg{width:64px;height:105px;}.hg{width:70px;}.hg b{font-size:1.4rem;}
   .st{font-size:1.1rem;}
-  .bowl{--k:1.6;}
   .pad{max-width:640px;padding:36px 16px 16px;}
   .pad .clip{width:150px;margin-left:-75px;height:38px;}
   .sheet{--lh:56px;--ml:46px;padding-left:56px;}
@@ -281,12 +348,45 @@ body{overflow-x:hidden;}
   .tray .ms .mt{font-size:1.5rem;}.tray .ms{max-width:220px;}
   .acts .btn{min-height:64px;font-size:1.2rem;}
 }
-@media (max-width:370px){ .stx{--sw:122px;gap:16px 10px;--tf:1.22rem;} .stx.crowd{--sw:104px;} }
+/* an iPad on its side: the hive a step smaller than upright, so the paper keeps its room */
+@media (orientation:landscape) and (min-width:900px) and (max-height:899px) and (min-height:501px){
+  .hive{--bz:38px;}
+  .hive.crowd{--bz:30px;}
+  .qd .face{--ds:54px;}
+  .pc .q{font-size:2rem;}
+  .sheet{--lh:46px;}
+}
+/* Upright, once the answers are turned over: the table keeps the screen's height and the stacks scroll inside it, so the
+   hive, the card and the button stay in view; the hive a step smaller while the stacks need the room */
+@media (orientation:portrait){
+  html:not(.mm-dk) .ta > .felt-in.ph-reveal,html:not(.mm-dk) .ta > .felt-in.ph-scored{height:calc(100dvh - var(--bar) - 30px - var(--safe-b));min-height:0;box-sizing:border-box;}
+  .ta > .felt-in.ph-reveal > *,.ta > .felt-in.ph-scored > *{flex-shrink:0;}
+  .ta > .felt-in.ph-reveal > .mid,.ta > .felt-in.ph-scored > .mid{flex:1 1 0;min-height:0;overflow-y:auto;overscroll-behavior:contain;border-radius:12px;}
+  .ph-reveal .hive,.ph-scored .hive{--bz:26px;}
+  .ph-reveal .pc .q,.ph-scored .pc .q{font-size:1.35rem;}
+}
+@media (orientation:portrait) and (min-width:700px){ .ph-reveal .hive,.ph-scored .hive{--bz:34px;} .ph-reveal .pc .q,.ph-scored .pc .q{font-size:2rem;} }
+@media (max-width:370px){ .stx{--sw:122px;gap:16px 10px;--tf:1.22rem;} .stx.crowd{--sw:104px;} .hive{--bz:24px;} .hive.crowd{--bz:20px;} }
+/* A short phone held upright (320 by 568): the hive, the cards and the paper all draw in */
+@media (orientation:portrait) and (max-height:700px){
+  .hive,.ph-reveal .hive,.ph-scored .hive{--bz:18px;--lvh:calc(var(--bz) + 12px);gap:2px;}
+  .hive .door{min-height:20px;}
+  .ta > .felt-in{gap:8px;padding:8px 8px 10px;}
+  .pc{padding:8px 12px 10px;}
+  .pc .q{font-size:1.2rem;}
+  .offer .two{gap:8px;}
+  .offer .pc .q{font-size:1.05rem;}
+  .sheet{--lh:32px;}
+  .pad{padding:22px 10px 10px;}
+  .pad .fold{margin-top:8px;min-height:44px;}
+  .qd .face{--ds:36px;}
+}
 
 /* ── The desk: a large window (deskPlan; html.mm-dk only while it shows). The table takes the window: the card, the
-   bowl, the paper and the slips are sized by --u (1 to 1.7, from the window); the room holds the scores and the cards
-   played so far with what matched on each. 'wide' the room at the left; 'stack' (a squarer or taller window) the
-   table with its scores over the cards so far; 'small' the table alone, fitted to the window. ── */
+   paper and the slips are sized by --u (1 to 1.7, from the window). 'wide': the hive is the hero, as tall as the
+   window in a column of its own at the left (its bees sized from that column, --hbz), with the cards so far under it
+   where there is room; 'stack' (a squarer or taller window): the table with the hive at its head over the cards so
+   far; 'small': the table alone, fitted to the window. ── */
 html.mm-dk body{overflow:hidden;}
 html.mm-dk #app.dk{max-width:none;margin:0;box-sizing:border-box;height:calc(var(--vvh,100dvh) - var(--bar));padding:6px 22px 18px;display:grid;gap:20px;}
 html.mm-dk #app.dk-wide{grid-template-columns:var(--rw) minmax(0,1fr);grid-template-rows:minmax(0,1fr);}
@@ -305,7 +405,15 @@ html.mm-dk .hg svg{width:calc(60px * var(--u));height:calc(98px * var(--u));}
 html.mm-dk .hg{width:calc(66px * var(--u));}
 html.mm-dk .hg b{font-size:1.4rem;}
 html.mm-dk .st{font-size:calc(1.05rem * min(var(--u),1.3));}
-html.mm-dk .bowl{--k:calc(1.5 * var(--u));}
+html.mm-dk .ta .hive{--bz:var(--hbz,calc(34px * var(--u)));}
+html.mm-dk .hive .bee{width:calc(var(--bz) * 1.25);}
+html.mm-dk #app.t-col .ph-write > .mid:empty{display:none;}
+html.mm-dk #app.t-col .ph-write > .pad{margin-block:auto;}
+html.mm-dk .ta .hive.crowd{--bz:calc(var(--hbz,calc(34px * var(--u))) * .84);}
+html.mm-dk .qd .face{--ds:calc(56px * var(--u));}
+html.mm-dk .offer .pc .q{font-size:calc(1.9rem * var(--u));}
+html.mm-dk .offer .two{flex-direction:row;align-items:stretch;max-width:calc(980px * var(--u));gap:calc(20px * var(--u));}
+html.mm-dk .offer .pc{padding:calc(16px * var(--u)) calc(22px * var(--u)) calc(20px * var(--u));}
 html.mm-dk .pad{max-width:calc(620px * var(--u));padding:36px 16px 16px;}
 html.mm-dk .pad .clip{width:150px;margin-left:-75px;height:38px;}
 html.mm-dk .sheet{--lh:calc(52px * var(--u));--ml:46px;padding-left:56px;}
@@ -324,23 +432,18 @@ html.mm-dk .tray{max-width:calc(820px * var(--u));}
 html.mm-dk .tray .ms .mt{font-size:calc(1.45rem * var(--u));}
 html.mm-dk .tray .ms{max-width:calc(220px * var(--u));}
 html.mm-dk .acts .btn{min-height:60px;font-size:1.12rem;}
-html.mm-dk .pl{min-height:50px;gap:10px;padding:5px 16px 5px 5px;}
-html.mm-dk .pl .avatar.sm{width:38px;height:38px;font-size:1rem;}
-html.mm-dk .pl .nm{font-size:1.05rem;}
-html.mm-dk .pl .pt{font-size:1.55rem;}
-html.mm-dk .pl .mk{width:21px;height:21px;}
-html.mm-dk .pl .mk .ico{width:13px;height:13px;}
-html.mm-dk .sb.many .pl{min-height:38px;padding:3px 12px 3px 3px;gap:8px;}
-html.mm-dk .sb.many .pl .avatar.sm{width:30px;height:30px;font-size:.8rem;}
-html.mm-dk .sb.many .pl .nm{font-size:.92rem;}
-html.mm-dk .sb.many .pl .pt{font-size:1.2rem;}
 /* a table wider than tall: what you look at at the left, your paper and the slips at the right */
 html.mm-dk #app.t-row .ta > .felt-in:not(.ph-over){display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);column-gap:calc(26px * var(--u));align-content:stretch;}
-html.mm-dk #app.t-row .ph-write{grid-template-areas:"sb pad" "x pad" "pc pad" "st pad" "mid pad" "mid acts";grid-template-rows:auto minmax(0,.5fr) auto auto minmax(0,1fr) auto;}
-html.mm-dk #app.t-row .ph-reveal,html.mm-dk #app.t-row .ph-scored{grid-template-areas:"sb mid" "pc mid" "st mid" "x acts";grid-template-rows:auto minmax(0,1fr) auto auto;}
+html.mm-dk #app.t-row .ph-ask{grid-template-areas:"hv st" "hv mid" "hv acts";grid-template-rows:auto minmax(0,1fr) auto;}
+html.mm-dk #app.t-row .ph-write{grid-template-areas:"hv pc" "hv st" "hv pad" "hv acts";grid-template-rows:auto auto minmax(0,1fr) auto;}
+html.mm-dk #app.t-row .ph-reveal,html.mm-dk #app.t-row .ph-scored{grid-template-areas:"hv pc" "hv st" "hv mid" "hv acts";grid-template-rows:auto auto minmax(0,1fr) auto;}
+html.mm-dk #app.t-row.nohv .ph-ask{grid-template-areas:"st mid" "x acts";grid-template-rows:minmax(0,1fr) auto;}
+html.mm-dk #app.t-row.nohv .ph-write{grid-template-areas:"pc pad" "st pad" "x acts";grid-template-rows:minmax(0,1fr) auto auto;}
+html.mm-dk #app.t-row.nohv .ph-reveal,html.mm-dk #app.t-row.nohv .ph-scored{grid-template-areas:"pc mid" "st mid" "x acts";grid-template-rows:minmax(0,1fr) auto auto;}
+html.mm-dk #app.t-row.nohv .pcw{align-self:center;}
 html.mm-dk #app.t-row .ph-reveal .pcw,html.mm-dk #app.t-row .ph-scored .pcw{align-self:center;}
 html.mm-dk #app.t-row .ph-reveal .mid,html.mm-dk #app.t-row .ph-scored .mid{align-self:center;max-height:100%;}
-html.mm-dk #app.t-row .sb{grid-area:sb;align-self:start;}
+html.mm-dk #app.t-row .ta .hive{grid-area:hv;align-self:center;}
 html.mm-dk #app.t-row .pcw{grid-area:pc;align-self:start;}
 html.mm-dk #app.t-row .st{grid-area:st;}
 html.mm-dk #app.t-row .mid{grid-area:mid;}
@@ -356,20 +459,17 @@ html.mm-dk #app.t-col .ta > .felt-in:not(.ph-over){overflow-y:auto;overscroll-be
 html.mm-dk #app.t-col .ta > .felt-in > *{flex-shrink:0;}
 html.mm-dk #app.t-col .ph-reveal .mid,html.mm-dk #app.t-col .ph-scored .mid{flex-shrink:1;}
 html.mm-dk #app.dk-small .pc .q{font-size:clamp(1.5rem,5.4vw,2.2rem);}
-html.mm-dk #app.dk-small .bowl{--k:1.2;}
 /* the room */
 .dk-room{min-width:0;min-height:0;display:flex;flex-direction:column;gap:14px;font-size:calc(1rem * var(--dku,1));}
 #app.dk-stack .dk-room{flex-direction:row;max-height:var(--rh);}
 .dk-pn{min-height:0;display:flex;flex-direction:column;border-radius:20px;padding:14px 16px 12px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}
 #app.dk-stack .dk-pn{flex:1 1 0;}
 .dk-pn h4{font-size:1.05em;font-weight:800;color:var(--text);margin:0 0 10px;}
-.dk-room .sb{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;}
-html.mm-dk #app .dk-room .sb{align-self:stretch;}
-.dk-room .sb.two{grid-template-columns:repeat(2,minmax(0,1fr));}
-.dk-room .sb.two .pl .nm{white-space:normal;overflow-wrap:anywhere;font-size:.95rem;}
-.dk-room .dk-pn.sc{overflow-y:auto;overscroll-behavior:contain;}
-.dk-room .sb .pl{flex:none;}
-.dk-room .dk-pn.sc{flex:0 1 auto;}
+/* the hive as the room's hero: its own panel, as large as the column lets it be */
+.dk-pn.hvp{flex:1 1 auto;justify-content:center;overflow:hidden;}
+.dk-pn.hvp .hive{--bz:var(--hbz,48px);gap:calc(var(--hbz,48px) * .12);width:100%;}
+.dk-pn.hvp .hive.crowd{--bz:calc(var(--hbz,48px) * .86);}
+#app.dk-wide .dk-room .dk-pn.lg{flex:0 1 auto;max-height:42%;}
 .dk-log{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:9px;}
 #app.dk-stack .dk-log{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));align-content:start;}
 .dk-rd{padding:10px 12px 11px;border-radius:14px;background:rgba(255,255,255,.04);}
@@ -395,200 +495,61 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
 <script>
 (function () {
   'use strict';
-  var el = Kit.el, esc = Kit.esc, app = document.getElementById('app');
+  // Hive Mind (CLAUDE.md, Hive Mind): the page still says mindmeld in its ids, files, keys and test hooks, so saved games
+  // and history carry on. The rules are games/mindmeld-core.js (HiveCore).
+  var el = Kit.el, esc = Kit.esc, app = document.getElementById('app'), C = window.HiveCore;
   var KEY = 'mindmeld', SAVE = 'mindmeld_state', SEEN = 'mindmeld_seen', NETME = 'mindmeld_net_me';
-  var DATA = window.MINDMELD_PROMPTS || [];
+  // Hive Mind's own cards first (games/mindmeld/questions-hm.js), then the house questions
+  var DATA = (window.HIVEMIND_PROMPTS || []).concat(window.MINDMELD_PROMPTS || []);
+  C.setData(DATA);
+  var CREDIT = 'Hive Mind was designed by Richard Garfield. Hive Mind is published by Calliope Games and used with permission.';
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
   function lsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
-  function rnd(a, b) { return a + Math.random() * (b - a); }
   function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
-  function cap(s) { s = String(s || '').trim(); return s.charAt(0).toUpperCase() + s.slice(1); }
   // "Kathleen M." reads as Kathleen at a crowded table
   function short(n) { n = String(n || ''); var m = n.match(/^(\S+)\s+[A-Za-z]\.?$/); return m ? m[1] : n; }
   function andList(a) { return a.length > 1 ? a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1] : a[0] || ''; }
   function Q(sel) { return app.querySelector(sel); }
   function onStage(on) { app.classList.toggle('stage', !!on); if (on && DK) deskOff(); }
   var coarse = (function () { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
+  var NUM = ['no', 'one', 'two', 'three', 'four', 'five', 'six'];
+  function lvName(l) { return 'level ' + (l + 1); }
+  function darkInk(hex) { var m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '')); if (!m) return true; var n = parseInt(m[1], 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255; return (0.299 * r + 0.587 * g + 0.114 * b) > 150; }
 
-  // ── Matching answers ──────────────────────────────────────────────────────
-  // Two answers are the same when they read the same after: lower case, accents and punctuation gone, a leading
-  // a/an/the dropped, simple plurals made singular (and "-ie" spelled "-y", so cookie and cookies meet), spaces
-  // ignored (hot dog, hotdog), and the card's own list of other ways to say each answer.
-  function sing(w) {
-    if (w.length <= 3 || /\d/.test(w)) return w;
-    if (/ies$/.test(w) && w.length > 4) return w.slice(0, -3) + 'y';
-    if (/ie$/.test(w)) return w.slice(0, -2) + 'y';
-    if (/(ches|shes|sses|xes|zzes)$/.test(w)) return w.slice(0, -2);
-    if (/oes$/.test(w) && w.length > 5) return w.slice(0, -2);
-    if (/(ss|us|is)$/.test(w)) return w;
-    if (/s$/.test(w)) return w.slice(0, -1);
-    return w;
-  }
-  function norm(s) {
-    s = String(s || '').toLowerCase();
-    try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) {}
-    s = s.replace(/&/g, ' and ').replace(/['\u2018\u2019`]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
-    s = s.replace(/^(a|an|the|some)\s+/, '');
-    return s.split(' ').filter(Boolean).map(sing).join(' ');
-  }
-  var aliasCache = {};
-  function aliasMap(pi) {
-    if (aliasCache[pi]) return aliasCache[pi];
-    var m = {}, P = DATA[pi];
-    function put(s, key) { var n = norm(s); if (!n) return; if (!m[n]) m[n] = key; var c = n.replace(/ /g, ''); if (!m[c]) m[c] = key; }
-    if (P) {
-      P.a.forEach(function (r) { var key = norm(r[0]).replace(/ /g, ''); put(r[0], key); });        // every answer is its own first
-      P.a.forEach(function (r) { var key = norm(r[0]).replace(/ /g, ''); r.slice(2).forEach(function (s) { put(s, key); }); });
-    }
-    return (aliasCache[pi] = m);
-  }
-  function keyOf(pi, t) { var n = norm(t), m = aliasMap(pi); if (!n) return ''; return m[n] || m[n.replace(/ /g, '')] || n.replace(/ /g, ''); }
-
-  // ── Computer players ──────────────────────────────────────────────────────
-  // They draw from the card's answers by how often people give them (each robot a little more or less ordinary),
-  // now and then pick something off the wall, and sometimes write it another way ("bbq" for barbecue).
-  function cpuWrite(pi, n, temp) {
-    var P = DATA[pi]; if (!P) return [];
-    var pool = P.a.map(function (r, k) { return { k: k, w: Math.pow(r[1], temp || 1) }; }), out = [];
-    for (var s = 0; s < n && pool.length; s++) {
-      var pick = null;
-      if (Math.random() < 0.1) pick = pool[Math.floor(Math.random() * pool.length)];
-      else {
-        var tot = 0; pool.forEach(function (x) { tot += x.w; });
-        var x = Math.random() * tot; for (var j = 0; j < pool.length; j++) { x -= pool[j].w; if (x <= 0) { pick = pool[j]; break; } }
-        pick = pick || pool[pool.length - 1];
-      }
-      pool.splice(pool.indexOf(pick), 1);
-      var r = P.a[pick.k], alts = r.slice(2), t = r[0];
-      if (alts.length && Math.random() < 0.3) t = alts[Math.floor(Math.random() * alts.length)];
-      out.push(Math.random() < 0.6 ? cap(t) : t);
-    }
-    return out;
-  }
-
-  // ── The prompt cards for a game: ones you haven't seen lately first ──────
-  function pickDeck(n) {
+  // ── The question cards for a game: ones you haven't seen lately first ────
+  function pickDeck(bots) {
     var seen = lsGet(SEEN, []); if (!Array.isArray(seen)) seen = [];
-    var all = DATA.map(function (p, i) { return i; });
-    var fresh = all.filter(function (i) { return seen.indexOf(DATA[i].q) < 0; });
-    if (fresh.length < n) { seen = []; fresh = all; }
-    var deck = shuffle(fresh).slice(0, n);
-    lsSet(SEEN, seen.concat(deck.map(function (i) { return DATA[i].q; })).slice(-200));
-    return deck;
+    var all = DATA.map(function (p, i) { return i; }).filter(function (i) { return !bots || DATA[i].a.length; });   // (robots need a card's answers)
+    var fresh = shuffle(all.filter(function (i) { return seen.indexOf(DATA[i].q) < 0; })), old = shuffle(all.filter(function (i) { return seen.indexOf(DATA[i].q) >= 0; }));
+    return fresh.concat(old);
   }
+  function markSeen(pi) { var seen = lsGet(SEEN, []); if (!Array.isArray(seen)) seen = []; if (DATA[pi]) { seen.push(DATA[pi].q); lsSet(SEEN, seen.slice(-200)); } }
 
-  // ═══ The game ════════════════════════════════════════════════════════════
-  // G = {mode, players:[{name,color,cpu,pid,dev (online: the device),score,temp,gone}], rounds, timer, round, deck:[prompt index], qs, pi,
-  //      phase: write|reveal|scored|over, ans:[[text]|null per player], items:[{p,i,t,g}] (g = which stack),
-  //      pts (this round's points), log:[{q, pts, top:[{t,c}]}], deadline, cpuAt, started}
+  // ═══ The game (the rules: games/mindmeld-core.js) ═══════════════════════
   var G = null;
-  function prompt(g) { return DATA[g.pi] || { q: '', n: 1, a: [] }; }
-  function newGame(cfg) {
-    var g = { v: 1, mode: cfg.mode, rounds: cfg.rounds, timer: cfg.timer, round: 0, log: [], started: Date.now(), sid: 0,
-      players: cfg.players.map(function (p) { return { name: p.name, color: p.color, cpu: !!p.cpu, pid: p.pid, dev: p.dev || undefined, score: 0, temp: p.cpu ? rnd(0.7, 1.15) : 1 }; }),
-      deck: pickDeck(cfg.rounds) };
-    g.qs = g.deck.map(function (i) { return DATA[i].q; });
-    startRound(g);
-    return g;
-  }
-  function startRound(g) {
-    g.round++; g.pi = g.deck[g.round - 1]; g.phase = 'write';
-    g.ans = g.players.map(function () { return null; });
-    g.items = null; g.pts = null;
-    var now = Date.now();
-    g.deadline = g.timer && g.mode !== 'pass' ? now + g.timer * 1000 : 0;
-    // when each robot finishes writing (pass and play: right away, their slips drop in one by one)
-    var hi = g.timer ? Math.max(5000, Math.min(16000, g.timer * 1000 - 5000)) : 16000, k = 0;
-    g.cpuAt = g.players.map(function (p) { return !p.cpu ? 0 : g.mode === 'pass' ? now + 700 + (k++) * 380 : now + rnd(3500, hi); });
-  }
-  function active(g) { var o = []; g.players.forEach(function (p, i) { if (!p.gone) o.push(i); }); return o; }
-  function allIn(g) { return active(g).every(function (i) { return !!g.ans[i]; }); }
-  function humansIn(g) { return active(g).every(function (i) { return g.players[i].cpu || !!g.ans[i]; }); }
-  function buildItems(g) {
-    g.items = [];
-    g.players.forEach(function (p, k) { (g.ans[k] || []).forEach(function (t, i) { if (t) g.items.push({ p: k, i: i, t: t, g: keyOf(g.pi, t) || ('#' + k + '.' + i) }); }); });
-  }
-  // the stacks: matching slips together, the biggest first
-  function groupsOf(items) {
-    var map = {}, list = [];
-    (items || []).forEach(function (it, k) {
-      var s = map[it.g]; if (!s) { s = map[it.g] = { id: it.g, items: [], ps: [], first: k }; list.push(s); }
-      s.items.push(it); if (s.ps.indexOf(it.p) < 0) s.ps.push(it.p);
-    });
-    list.sort(function (a, b) { return b.ps.length - a.ps.length || a.first - b.first; });
-    return list;
-  }
-  // a stack reads as the way most people wrote it (and in capitals if anyone wrote it that way: USA, New York)
-  function label(s) {
-    var c = {}, form = {}, best = null;
-    s.items.forEach(function (it) {
-      var t = it.t.trim(), k = t.toLowerCase(); c[k] = (c[k] || 0) + 1;
-      if (!form[k] || (t.slice(1) !== t.slice(1).toLowerCase() && form[k].slice(1) === form[k].slice(1).toLowerCase())) form[k] = t;
-      if (!best || c[k] > c[best]) best = k;
-    });
-    return best ? cap(form[best]) : '';
-  }
-  // each of your answers scores one point for every other player who wrote it too (once per stack)
-  function roundPts(g) {
-    var pts = g.players.map(function () { return 0; });
-    groupsOf(g.items).forEach(function (s) { s.ps.forEach(function (p) { pts[p] += s.ps.length - 1; }); });
-    return pts;
-  }
+  function prompt(g) { return C.prompt(g); }
+  function newGame(cfg) { return C.newGame(cfg, pickDeck(cfg.players.some(function (p) { return p.cpu; }))); }
   function apply(g, who, a) {
-    if (!g || !a) return false;
-    if (a.t === 'ans') {
-      if (g.phase !== 'write' || who < 0 || !g.players[who] || g.ans[who]) return false;
-      var n = prompt(g).n, list = (Array.isArray(a.a) ? a.a : []).slice(0, n).map(function (s) { return String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, 40); });
-      while (list.length < n) list.push('');
-      g.ans[who] = list;
-      return true;
-    }
-    if (a.t === 'reveal') {
-      if (g.phase !== 'write') return false;
-      g.players.forEach(function (p, k) { if (!g.ans[k]) g.ans[k] = []; });
-      buildItems(g); g.phase = 'reveal'; g.deadline = 0;
-      return true;
-    }
-    if (a.t === 'merge') {
-      if (g.phase !== 'reveal' || !a.a || a.a === a.b) return false;
-      var hit = false; g.items.forEach(function (it) { if (it.g === a.a) { it.g = a.b; hit = true; } });
-      return hit && g.items.some(function (it) { return it.g === a.b; });
-    }
-    if (a.t === 'split') {
-      if (g.phase !== 'reveal') return false;
-      var it = g.items.filter(function (x) { return x.p === a.p && x.i === a.i; })[0];
-      if (!it || g.items.filter(function (x) { return x.g === it.g; }).length < 2) return false;
-      it.g = '#' + it.p + '.' + it.i + '.' + (++g.sid);
-      return true;
-    }
-    if (a.t === 'score') {
-      if (g.phase !== 'reveal') return false;
-      var pts = roundPts(g); g.pts = pts;
-      pts.forEach(function (v, k) { g.players[k].score += v; });
-      g.log.push({ q: prompt(g).q, pts: pts.slice(), top: groupsOf(g.items).filter(function (s) { return s.ps.length > 1; }).slice(0, 3).map(function (s) { return { t: label(s), c: s.ps.length }; }) });
-      g.phase = 'scored';
-      return true;
-    }
-    if (a.t === 'next') {
-      if (g.phase !== 'scored') return false;
-      if (g.round >= g.rounds) g.phase = 'over'; else startRound(g);
-      return true;
-    }
-    return false;
+    var ok = C.apply(g, who, a);
+    if (ok && a.t === 'pick') markSeen(g.pi);
+    return ok;
   }
 
   // ═══ Driving it: moves, robots, the sand timer, saving, undo ══════════════
   var gen = 0, botT = 0, undoStack = [], lastCfg = null, finished = false, lastV = null;
   var pp = { viewer: -1, busy: false, deadline: 0, restore: null };   // pass and play: who has the clipboard
   var draft = [];   // what's on this device's paper right now
-  var ui = { sig: '', sel: null, cardRound: 0, intro: '', scored: '', flash: null, pile: '' };
+  var ui = { sig: '', sel: null, cardRound: 0, intro: '', scored: '', shook: '', flash: null, rolled: '', lastPos: null };
+  // (the cards a save points at are found again by what they say, in case the card list has changed since)
+  function cardText(i) { return DATA[i] ? DATA[i].q : ''; }
   function save() {
     if (!G || G.mode === 'online') return;
     if (G.phase === 'over') { clearSave(); return; }
-    lsSet(SAVE, { G: G, cfg: lastCfg });
-    Kit.resume.set('Round ' + G.round + ' of ' + G.rounds, { keys: [SAVE] });
+    var qx = {}; [G.pi].concat(G.offer || [], G.used || [], G.deck.slice(0, 40)).forEach(function (i) { if (i != null) qx[i] = cardText(i); });
+    lsSet(SAVE, { G: G, cfg: lastCfg, qx: qx });
+    Kit.resume.set('Round ' + G.round, { keys: [SAVE] });
   }
   function clearSave() { lsSet(SAVE, null); Kit.resume.clear(); }
   function hostIdx() { if (!G) return 0; for (var i = 0; i < G.players.length; i++) if (G.players[i].pid === 0) return i; return 0; }
@@ -596,7 +557,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
   function doAct(a) {
     if (net.mode === 'guest') { if (net.peer) net.peer.send({ t: 'a', a: a }, true); return true; }
     if (!G) return false;
-    var who = a.t === 'ans' ? meIdx() : -1;
+    var who = a.t === 'ans' ? meIdx() : a.t === 'pick' ? (G.mode === 'pass' ? -1 : meIdx()) : -1;
     var before = G.mode !== 'online' ? JSON.stringify(G) : null;
     if (!apply(G, who, a)) return false;
     if (before) { undoStack.push(before); if (undoStack.length > 60) undoStack.shift(); }
@@ -613,7 +574,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     if (!G || !undoStack.length) return Kit.toast('Nothing to undo');
     if (G.phase === 'over') return Kit.toast('The game is over');
     var cur = G; G = JSON.parse(undoStack.pop()); gen++; clearTimeout(botT);
-    ui.sel = null; ui.sig = ''; ui.flash = null;
+    ui.sel = null; ui.sig = ''; ui.flash = null; ui.shook = ''; ui.scored = '';
     // taking back what you'd just folded in: it's back on your paper
     var me = G.mode === 'pass' ? -1 : 0;
     if (G.phase === 'write' && cur.phase === 'write') {
@@ -624,25 +585,36 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     if (G.deadline && G.deadline < Date.now() + 5000 && G.phase === 'write') G.deadline = Date.now() + 5000;   // (a few seconds to finish)
     Kit.sfx('whoosh'); Kit.toast('Undone'); changed();
   }
-  // Robots finishing, the sand running out, everyone done: the device running the game moves it along
+  // Robots asking and writing, the sand running out, everyone done: the device running the game moves it along
   function schedule() {
     clearTimeout(botT);
-    if (!G || net.mode === 'guest' || G.phase !== 'write') return;
+    if (!G || net.mode === 'guest') return;
     var g = G, now = Date.now(), my = gen;
-    if (allIn(g)) {
-      botT = setTimeout(function () { if (G === g && my === gen && g.phase === 'write' && allIn(g)) { apply(g, -1, { t: 'reveal' }); changed({ t: 'reveal' }); } }, 1300);
+    if (g.phase === 'ask') {
+      // a computer player (or someone who has left the table) chooses the card after a moment
+      var A = g.players[g.ask];
+      if (A && (A.cpu || A.gone)) botT = setTimeout(function () {
+        if (G !== g || my !== gen || g.phase !== 'ask') return;
+        var c = Math.random() < 0.5 ? 0 : 1; ui.botPick = c; paint({ t: 'think' });
+        setTimeout(function () { if (G === g && my === gen && g.phase === 'ask') { apply(g, -1, { t: 'pick', c: c }); changed({ t: 'pick' }); } }, 700);
+      }, 1500);
+      return;
+    }
+    if (g.phase !== 'write') return;
+    if (C.allIn(g)) {
+      botT = setTimeout(function () { if (G === g && my === gen && g.phase === 'write' && C.allIn(g)) { apply(g, -1, { t: 'reveal' }); changed({ t: 'reveal' }); } }, 1300);
       return;
     }
     // everybody real has written: the robots don't keep you waiting
-    if (humansIn(g)) { var s = 0; g.players.forEach(function (p, k) { if (p.cpu && !g.ans[k] && g.cpuAt[k] > now + 2000) g.cpuAt[k] = now + 500 + (s++) * 450 + Math.random() * 300; }); }
+    if (C.humansIn(g)) { var s = 0; g.players.forEach(function (p, k) { if (p.cpu && !g.ans[k] && g.cpuAt[k] > now + 2000) g.cpuAt[k] = now + 500 + (s++) * 450 + Math.random() * 300; }); }
     var next = Infinity, what = null;
-    g.players.forEach(function (p, k) { if (p.cpu && !p.gone && !g.ans[k] && g.cpuAt[k] < next) { next = g.cpuAt[k]; what = k; } });
+    g.players.forEach(function (p, k) { if (p.cpu && !p.gone && !p.out && !g.ans[k] && g.cpuAt[k] < next) { next = g.cpuAt[k]; what = k; } });
     if (g.deadline && g.deadline <= next) { next = g.deadline; what = 'time'; }
     if (next === Infinity) return;
     botT = setTimeout(function () {
       if (G !== g || my !== gen || g.phase !== 'write') return;
       if (what === 'time') return timeUp(g);
-      apply(g, what, { t: 'ans', a: cpuWrite(g.pi, prompt(g).n, g.players[what].temp) });
+      apply(g, what, { t: 'ans', a: C.cpuWrite(g.pi, prompt(g).n, g.players[what].temp) });
       changed({ t: 'cpu', p: what });
     }, Math.max(0, next - Date.now()));
   }
@@ -652,8 +624,8 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     Kit.sfx('clash', 0.6); Kit.haptic('medium');
     var me = meIdx();
     if (me >= 0 && !g.ans[me] && !g.players[me].cpu) apply(g, me, { t: 'ans', a: draft });
-    g.players.forEach(function (p, k) { if (p.cpu && !p.gone && !g.ans[k]) apply(g, k, { t: 'ans', a: cpuWrite(g.pi, prompt(g).n, p.temp) }); });
-    if (net.mode === 'host' && !allIn(g)) {
+    g.players.forEach(function (p, k) { if (p.cpu && !p.gone && !p.out && !g.ans[k]) apply(g, k, { t: 'ans', a: C.cpuWrite(g.pi, prompt(g).n, p.temp) }); });
+    if (net.mode === 'host' && !C.allIn(g)) {
       // the others' own timers send theirs at zero; a moment's grace, then over
       var my = gen; setTimeout(function () { if (G === g && my === gen && g.phase === 'write') { apply(g, -1, { t: 'reveal' }); changed({ t: 'reveal' }); } }, 2500);
     }
@@ -671,7 +643,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     if (!G || G.mode !== 'pass' || pp.busy || G.phase !== 'write') return;
     if (pp.viewer >= 0 && !G.ans[pp.viewer]) return;
     var need = -1;
-    for (var k = 0; k < G.players.length; k++) { var p = G.players[k]; if (!p.cpu && !p.gone && !G.ans[k]) { need = k; break; } }
+    for (var k = 0; k < G.players.length; k++) { var p = G.players[k]; if (!p.cpu && !p.gone && !p.out && !G.ans[k]) { need = k; break; } }
     if (need < 0) return;
     pp.busy = true;
     var showing = pp.viewer >= 0; pp.viewer = -1;
@@ -685,33 +657,35 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
         draft = pp.restore && pp.restore.k === need ? pp.restore.a : []; pp.restore = null;
         paint();
       });
-    }, showing ? 1000 : 450);
+    }, showing ? 1000 : 1300);
   }
 
   // What one player may see (i = -1: the table only). Nobody sees anyone's answers until they're turned over.
   function viewFor(i) {
     var g = G, P = prompt(g), open = g.phase === 'reveal' || g.phase === 'scored';
-    var V = { mode: g.mode, me: i, round: g.round, rounds: g.rounds, phase: g.phase, timer: g.timer,
+    var V = { hm: 1, mode: g.mode, me: i, round: g.round, phase: g.phase, timer: g.timer, depth: g.depth, ask: g.ask,
       left: g.phase === 'write' && g.deadline ? Math.max(0, g.deadline - Date.now()) : null,
       q: P.q, n: P.n, boss: true, host: g.players[hostIdx()] ? g.players[hostIdx()].name : '',
-      players: g.players.map(function (p, k) { return { name: p.name, color: p.color, cpu: p.cpu, score: p.score, done: !!g.ans[k], gone: !!p.gone, gain: g.phase === 'scored' && g.pts ? g.pts[k] : null }; }),
+      roll: g.roll == null ? null : C.DIE[g.roll],
+      offer: g.phase === 'ask' ? g.offer.map(function (k) { var d = DATA[k] || { q: '', n: 1 }; return { q: d.q, n: d.n }; }) : null,
+      players: g.players.map(function (p, k) { return { name: p.name, color: p.color, cpu: p.cpu, lv: p.lv, out: p.out || 0, done: !!g.ans[k], gone: !!p.gone, gain: g.phase === 'scored' && g.pts ? g.pts[k] : null }; }),
+      shake: g.phase === 'scored' && g.shake ? { n: g.shake.n, mv: g.shake.mv, down: g.shake.down, up: g.shake.up } : null,
       mine: i >= 0 && g.ans[i] ? g.ans[i].slice() : null,
       items: open && g.items ? g.items.map(function (it) { return { p: it.p, i: it.i, t: it.t, g: it.g }; }) : null,
-      log: (g.log || []).map(function (l) { return { q: l.q, top: l.top }; }) };
+      log: (g.log || []).map(function (l) { return { q: l.q, top: l.top, roll: l.roll, mv: l.mv }; }) };
     if (g.phase === 'over') V.done = summary();
     return V;
   }
   function summary() {
-    var g = G, sc = g.players.map(function (p) { return p.score; }), top = Math.max.apply(null, sc.concat([0]));
-    return { players: g.players.map(function (p) { return { name: p.name, score: p.score, cpu: p.cpu, color: p.color }; }),
-      winners: g.players.map(function (p, i) { return i; }).filter(function (i) { return sc[i] === top; }),
-      log: g.log, rounds: g.rounds, mode: g.mode, started: g.started };
+    var g = G, win = C.winners(g);
+    return { players: g.players.map(function (p) { return { name: p.name, score: p.score, cpu: p.cpu, color: p.color, lv: p.lv, out: p.out || 0 }; }),
+      winners: win, depth: g.depth, log: g.log, rounds: g.round, mode: g.mode, started: g.started };
   }
 
   // ═══ Drawing ═════════════════════════════════════════════════════════════
   function render(V, a) {
     if (V.phase === 'write') { var rk = V.round + ''; if (ui.paperRound !== rk) { ui.paperRound = rk; draft = []; } }   // a new card, a clean sheet
-    lastV = V;
+    var prev = lastV; lastV = V;
     if (V.phase === 'over') { renderOver(V); ui.sig = 'over'; return; }
     var sig = [V.phase, V.round, V.me, V.mine ? 1 : 0, V.mode, V.players.length].join('|');
     if (sig !== ui.sig || !Q('.ta')) build(V, a); else update(V, a);
@@ -719,60 +693,228 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
   }
   function build(V, a) {
     if (V.phase !== 'reveal') ui.sel = null;
+    var pos = beePos();
     onStage(false);
     app.innerHTML = '';
-    var felt = el('div', { class: 'felt-in ph-' + V.phase });
-    felt.appendChild(el('div', { class: 'sb' }));
-    felt.appendChild(cardEl(V));
+    var felt = el('div', { class: 'felt-in ph-' + V.phase + (V.players.length > 8 ? ' n-many' : V.players.length > 5 ? ' n-mid' : '') });
+    felt.appendChild(hiveEl(V));
+    felt.appendChild(V.phase === 'ask' ? el('div', { class: 'pcw' }) : cardEl(V));
     felt.appendChild(el('div', { class: 'st' }));
     felt.appendChild(el('div', { class: 'mid' }));
     if (V.phase === 'write') felt.appendChild(padEl(V));
     felt.appendChild(el('div', { class: 'acts' }));
     app.appendChild(el('div', { class: 'ta wood' }, [felt]));
     deskLay(V);
-    update(V, a);
+    update(V, a, pos);
     tickTimer();
     if (V.phase === 'write' && V.me >= 0 && !V.mine && !coarse) { var f = Q('.pad input'); if (f) setTimeout(function () { try { f.focus({ preventScroll: true }); } catch (e) {} }, 650); }
   }
-  function update(V, a) { paintScores(V); paintStatus(V); paintMid(V, a); paintActs(V); if (DK) { var rm = app.querySelector(':scope > .dk-room'); if (rm) fitLog(rm); } }
+  function update(V, a, pos) { paintStatus(V); paintActs(V); paintMid(V, a); paintHive(V, pos); var md = Q('.mid'); if (md && md.querySelector('.stx')) fitStacks(md); if (DK) { var rm = app.querySelector(':scope > .dk-room'); if (rm) fitLog(rm); } }
 
-  // ── Scores ──
-  function paintScores(V) {
-    var box = Q('.sb'); if (!box) return;
-    var first = V.phase === 'scored' && ui.scored !== V.round + '';
-    box.innerHTML = '';
-    box.classList.toggle('many', V.players.length > 8);
-    var top = 0; V.players.forEach(function (p) { if (p.score > top) top = p.score; });
-    // the best of the round gets a glow (when it's one or two of you, not the whole table)
-    var best = V.phase === 'scored' ? Math.max.apply(null, V.players.map(function (p) { return p.gain || 0; })) : 0;
-    if (V.players.filter(function (p) { return best && p.gain === best; }).length > Math.min(2, V.players.length - 1)) best = 0;
+  // ── The hive ──
+  var WIDE = { 4: [100, 97, 92, 84], 5: [100, 98, 94, 88, 80], 6: [100, 98, 95, 90, 84, 77] };   // (the hive narrows toward its door)
+  function hiveEl(V) {
+    var d = V.depth || 6, h = el('div', { class: 'hive' + (V.players.length > 8 ? ' crowd' : ''), 'aria-label': 'The hive' });
+    for (var l = 0; l < d; l++) h.appendChild(el('div', { class: 'lv' + (l === d - 1 ? ' last' : ''), 'data-l': l, style: { '--w': (WIDE[d] || WIDE[6])[l] + '%' } }, [el('b', { text: String(l + 1) })]));
+    h.appendChild(el('div', { class: 'door', 'aria-label': 'The way out of the hive' }, [el('i')]));
+    return h;
+  }
+  var BEE_SVG = '<svg viewBox="0 0 40 32" aria-hidden="true">' +
+    '<ellipse cx="17" cy="9" rx="7.5" ry="6" fill="rgba(240,250,255,.78)" stroke="rgba(60,40,10,.45)" stroke-width="1" transform="rotate(-18 17 9)"/>' +
+    '<ellipse cx="25" cy="8.5" rx="6.5" ry="5.2" fill="rgba(240,250,255,.62)" stroke="rgba(60,40,10,.4)" stroke-width="1" transform="rotate(16 25 8.5)"/>' +
+    '<path d="M33.5 19.5l5 1.2-5 1.6z" fill="#2a1a08"/>' +
+    '<ellipse cx="21" cy="20" rx="13" ry="9" fill="var(--c)" stroke="#2a1a08" stroke-width="1.4"/>' +
+    '<path d="M18 11.4c-1.4 5.6-1.4 11.6 0 17.2M24.5 11.6c1.3 5.5 1.3 11.3 0 16.8" fill="none" stroke="#2a1a08" stroke-width="3.2" stroke-linecap="round"/>' +
+    '<ellipse cx="16" cy="16" rx="5" ry="2.2" fill="rgba(255,255,255,.35)" transform="rotate(-12 16 16)"/>' +
+    '<circle cx="7.5" cy="19" r="6" fill="#2a1a08"/>' +
+    '<circle cx="5.6" cy="17.6" r="1.7" fill="#fff"/><circle cx="5.2" cy="17.8" r=".8" fill="#2a1a08"/>' +
+    '<path d="M6 13.5c-1-2.6-2.7-4-4.6-4.4M9 13.3c.2-2.8 1.3-4.6 3-5.6" fill="none" stroke="#2a1a08" stroke-width="1.2" stroke-linecap="round"/>' +
+    '<circle cx="1.3" cy="9" r="1.2" fill="#2a1a08"/><circle cx="12.2" cy="7.6" r="1.2" fill="#2a1a08"/></svg>';
+  function beeEl(V, p, k) {
+    var b = el('div', { class: 'bee' + (k === V.me ? ' me' : '') + (p.gone ? ' gone' : '') + (p.out ? ' outb' : ''), 'data-p': k,
+      style: { '--c': p.color, '--ink-on': darkInk(p.color) ? '#1b1530' : '#fff', '--bd': (-(k * 0.37) % 2.6).toFixed(2) + 's' },
+      title: p.name, 'aria-label': p.name + (p.out ? ', out of the hive' : ', on ' + lvName(p.lv)) }, [
+      el('span', { class: 'bz', html: BEE_SVG }), el('span', { class: 'tg', text: short(p.name) })]);
+    return b;
+  }
+  // where each bee stands now, before a redraw (so a bee that changes level flies there)
+  function beePos() { var o = {}; app.querySelectorAll('.hive .bee').forEach(function (b) { var r = b.getBoundingClientRect(); if (r.width) o[b.dataset.p] = r; }); return o; }
+  function levelOf(V, p, k) {
+    // the round's points come first; the bees move a moment later (the shake)
+    if (V.phase === 'scored' && V.shake && ui.shook !== V.round + '') { var m = V.shake.mv.filter(function (x) { return x[0] === k; })[0]; if (m) return m[1]; }
+    return p.out ? V.depth : p.lv;
+  }
+  function paintHive(V, pos) {
+    var roots = app.querySelectorAll('.hive'); if (!roots.length) return;
+    var h = roots[0], before = pos || beePos();
+    h.classList.toggle('drop-on', V.phase !== 'ask' && V.phase !== 'over' && V.players.some(function (p) { return !p.out && p.lv === V.depth - 1; }));
+    var scoredNow = V.phase === 'scored' && V.shake && ui.shook !== V.round + '';
+    var lo = scoredNow ? V.shake.down : [], hi = scoredNow ? V.shake.up : [];
+    var first = V.phase === 'scored' && ui.gainShown !== V.round + '';
     V.players.forEach(function (p, k) {
-      var state = V.phase === 'write' && !p.gone ? (p.done ? 'ok' : 'wr') : '';
-      var shown = first && p.gain ? p.score - p.gain : p.score;
-      var pt = el('span', { class: 'pt', text: String(shown) });
-      var chip = el('div', { class: 'pl' + (p.gone ? ' gone' : '') + (k === V.me ? ' me' : '') + (top > 0 && p.score === top ? ' lead' : '') + (best > 0 && p.gain === best ? ' top' : ''), style: { '--c': p.color }, 'data-p': k }, [
-        el('span', { class: 'av' }, [p.cpu ? el('span', { class: 'avatar sm', style: { '--c': p.color }, html: Kit.icon('bot') }) : Kit.avatar.el(p.name, 'sm', p.color),
-          state ? el('span', { class: 'mk ' + state, html: Kit.icon(state === 'ok' ? 'check' : 'pencil') }) : null]),
-        el('span', { class: 'nm', text: short(p.name) }), pt
-      ]);
-      if (V.phase === 'scored' && p.gain != null && !p.gone) chip.appendChild(el('span', { class: 'gain' + (p.gain ? '' : ' zero'), style: { '--gd': (first ? 0.9 + k * 0.06 : 0) + 's' }, text: '+' + p.gain }));
-      box.appendChild(chip);
-      // the points land a moment after the stacks show what they're worth
-      if (first && p.gain) setTimeout(function () { if (!pt.isConnected) return; pt.textContent = String(p.score); pt.classList.add('bump'); if (k < 10) Kit.sfx('chip', 0.5); }, 1250 + k * 90);
+      var b = h.querySelector('.bee[data-p="' + k + '"]');
+      if (!b) { b = beeEl(V, p, k); b.style.viewTransitionName = 'hm-bee' + k; }   // (a turn of the device: each bee glides to its new place)
+      b.classList.toggle('me', k === V.me); b.classList.toggle('gone', !!p.gone); b.classList.toggle('outb', !!p.out && !scoredNow);
+      var L = levelOf(V, p, k), box = L >= V.depth ? h.querySelector('.door') : h.querySelector('.lv[data-l="' + L + '"]');
+      if (box && b.parentNode !== box) box.appendChild(b);
+      // writing, folded in, asking, the round's points, where they are going
+      b.querySelectorAll('.mk,.cr,.gain,.ar').forEach(function (x) { x.remove(); });
+      if (V.phase === 'write' && !p.gone && !p.out) b.appendChild(el('span', { class: 'mk ' + (p.done ? 'ok' : 'wr'), html: Kit.icon(p.done ? 'check' : 'pencil') }));
+      if ((V.phase === 'ask' || V.phase === 'write') && k === V.ask) b.appendChild(el('span', { class: 'cr', html: Kit.icon('crown') }));
+      if (V.phase === 'scored' && p.gain != null && !p.gone && !(p.out && !scoredNow && p.out < V.round)) {
+        b.appendChild(el('span', { class: 'gain', style: { '--gd': (first ? 0.9 + k * 0.05 : 0) + 's' }, text: String(p.gain) }));
+      }
+      b.classList.toggle('lo', scoredNow && lo.indexOf(k) >= 0); b.classList.toggle('hi', scoredNow && hi.indexOf(k) >= 0);
+      if (scoredNow && lo.indexOf(k) >= 0) b.appendChild(el('span', { class: 'ar dn', style: { '--ad': '1.5s' }, html: Kit.icon('down') }));
+      if (scoredNow && hi.indexOf(k) >= 0 && p.lv !== L) b.appendChild(el('span', { class: 'ar up', style: { '--ad': '1.5s' }, html: '<span style="display:grid;transform:rotate(180deg)">' + Kit.icon('down') + '</span>' }));
+    });
+    h.querySelector('.door').classList.toggle('has', !!h.querySelector('.door .bee'));
+    if (first) ui.gainShown = V.round + '';
+    fitHive(V);
+    flipBees(before);
+    if (scoredNow && !ui.shakeT) {
+      var my = gen, rd = V.round + '';
+      ui.shakeT = setTimeout(function () { ui.shakeT = 0; if (my !== gen || !lastV || lastV.round + '' !== rd || lastV.phase !== 'scored') return; shakeHive(lastV); }, 2600);
+    }
+  }
+  // The bees as large as the hive's room allows (they are the game pieces): the room is what the table leaves the hive
+  // (beside the card in a wide table, a share of the height in an upright one, the column at a desk), the bees' size the
+  // largest at which every bee fits on one level, with its name tag 11px or more; the levels then share the room.
+  function fitHive(V) {
+    var h = Q('.hive'); if (!h || h.classList.contains('end')) return;
+    var felt = Q('.ta > .felt-in'), room = h.closest('.dk-pn');
+    var n = V.players.length, d = V.depth || 6, W = h.clientWidth, H;
+    if (!W) return;
+    if (room) H = room.clientHeight - 30;
+    else if (felt) {
+      var cs = getComputedStyle(felt), fr = felt.getBoundingClientRect();
+      // (the room under the felt, its wood and the page's own margin, is measured, so the table ends at the screen's foot)
+      var slack = Math.max(16, document.documentElement.scrollHeight - (fr.bottom + scrollY));
+      var bottom = DK ? fr.bottom : Math.min(fr.bottom, innerHeight - slack);
+      var avail = bottom - fr.top - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom), rg = parseFloat(cs.rowGap) || 0;
+      if (cs.display === 'grid') {
+        var st = Q('.st'), span = DK && app.classList.contains('t-row');
+        H = avail - (span ? 0 : (st && st.offsetHeight ? st.offsetHeight : 0) + 2 * rg);
+      } else if (V.phase === 'write') {
+        var others = 0, seen = 0;
+        Array.prototype.forEach.call(felt.children, function (c) { if (c === h || c.classList.contains('mid') || !c.offsetHeight) return; others += c.offsetHeight; seen++; });
+        H = avail - others - seen * (parseFloat(cs.rowGap) || 0);
+      } else {
+        // (upright, with the cards to choose from or the stacks under it: the hive takes what they leave, between
+        // three tenths and a little over half of the table)
+        var oth = 0, cnt = 0, md = Q('.mid'), sx = md && md.querySelector('.stx');
+        Array.prototype.forEach.call(felt.children, function (c) { if (c === h || c === md || !c.offsetHeight) return; oth += c.offsetHeight; cnt++; });
+        var nat = sx ? +(sx.dataset.nat || sx.scrollHeight) + 8 : md ? md.scrollHeight : 0;
+        H = Math.max(avail * 0.3, Math.min(avail * 0.56, avail - oth - nat - (cnt + 1) * rg));
+      }
+    }
+    if (!H || H < 60) H = 60;
+    var lens = V.players.map(function (p) { return short(p.name).length; });
+    var door = function (bz) { return Math.max(18, bz * 1.1) + 8; };
+    // a level's height for bees of size bz: its rows of bees (the names under them, or with many bees in little room,
+    // each bee's initial on a tag over its foot), then the gaps; every bee on the widest level counts, as at the start
+    function need(bz, ini, list) {
+      var tg = Math.max(11, Math.round(bz * 0.36)), gap = bz * 0.18, avail = W * 0.96 - bz * 1.6, row = 0, rows = 1;
+      list.forEach(function (c) {
+        var w = ini ? bz * 1.18 : Math.max(bz * 1.28, c * tg * 0.62 + tg * 0.9);
+        if (row && row + gap + w > avail) { rows++; row = w; } else row += (row ? gap : 0) + w;
+      });
+      var beeH = ini ? bz * 0.85 + tg * 0.4 : bz * 0.85 + tg * 1.35;
+      return rows * beeH + (rows - 1) * bz * 0.42 + (ini ? bz * 0.12 + 3 : bz * 0.3 + 6);
+    }
+    // (a level is one row of bees tall and grows when more bees crowd onto it: the hive has to hold every bee on one
+    // level, as at the start, and every other level one row; the longest name stands for the one row)
+    var longest = [Math.max.apply(null, lens)];
+    var best = 14, full = 0, one = 0, ini = false, fit = false;
+    [false, true].some(function (mode) {
+      for (var bz = 130; bz >= (mode ? 14 : 20); bz -= 1) {
+        var f = need(bz, mode, lens), o = need(bz, mode, longest);
+        if (f + (d - 1) * o + (d - 1) * 4 + door(bz) <= H) { best = bz; full = f; one = o; ini = mode; fit = true; return true; }
+      }
+      return false;
+    });
+    if (!fit) { best = 14; ini = true; full = need(14, true, lens); one = need(14, true, longest); }
+    h.classList.toggle('ini', ini);
+    h.querySelectorAll('.bee').forEach(function (b) { var t = b.querySelector('.tg'), P = V.players[+b.dataset.p]; if (t && P) t.textContent = ini ? String(P.name || '?').charAt(0).toUpperCase() : short(P.name); });
+    // (the levels share what is left, up to a sixth again of a row, so a level never stands empty and huge)
+    var share = Math.min(one * 1.15, (H - door(best) - (d - 1) * 4 - (full - one)) / d);
+    h.style.setProperty('--bz', best + 'px');
+    h.style.setProperty('--tgf', Math.max(11, Math.round(best * 0.36)) + 'px');
+    h.style.setProperty('--lvh', Math.max(one, share) + 'px');
+    // (the estimate is checked against the hive as drawn: a step smaller until it stands inside its room)
+    for (var guard = 0; guard < 24 && h.offsetHeight > H + 1 && best > 14; guard++) {
+      best--; one = need(best, ini, longest);
+      h.style.setProperty('--bz', best + 'px'); h.style.setProperty('--tgf', Math.max(11, Math.round(best * 0.36)) + 'px'); h.style.setProperty('--lvh', one + 'px');
+    }
+  }
+  // FLIP: a bee that has moved glides from where it was
+  function flipBees(before) {
+    if (!before) return;
+    app.querySelectorAll('.hive .bee').forEach(function (b) {
+      var r0 = before[b.dataset.p]; if (!r0 || !b.animate) return;
+      var r = b.getBoundingClientRect(), dx = r0.left - r.left, dy = r0.top - r.top;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+      var far = Math.abs(dy) > 10;
+      b.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, far ? { transform: 'translate(' + dx * 0.45 + 'px,' + (dy * 0.55 - 26) + 'px) rotate(' + (dy > 0 ? 14 : -10) + 'deg) scale(1.12)', offset: 0.5 } : null, { transform: 'none' }].filter(Boolean),
+        { duration: far ? 900 : 380, easing: 'cubic-bezier(.45,.05,.3,1)' });
     });
   }
+  // The hive shake: the hive rocks, the lowest drop a level, the highest climb one, a bee past the last level goes out
+  function shakeHive(V) {
+    var h = Q('.hive'); if (!h) return;
+    var before = beePos();
+    ui.shook = V.round + '';
+    h.classList.remove('shake'); void h.offsetWidth; h.classList.add('shake');
+    Kit.sfx('shuffle'); Kit.haptic('heavy');
+    setTimeout(function () {
+      if (!lastV || lastV !== V) return;
+      paintHive(V, before);
+      var mv = V.shake.mv, downs = mv.filter(function (m) { return m[2] > m[1]; }).length, ups = mv.length - downs;
+      if (downs) setTimeout(function () { Kit.sfx('bad', 0.5); }, 350);
+      if (ups) setTimeout(function () { Kit.sfx('good', 0.6); }, 550);
+      paintStatus(V); paintActs(V);
+      moments(V);
+    }, 560);
+  }
+  function moments(V) {
+    var out = V.players.map(function (p, k) { return k; }).filter(function (k) { return V.players[k].out === V.round; });
+    var back = V.shake.mv.filter(function (m) { return m[1] === V.depth - 1 && m[2] < m[1]; }).map(function (m) { return m[0]; });
+    var t = 1000;
+    if (out.length) {
+      setTimeout(function () {
+        var nm = out.map(function (k) { return short(V.players[k].name); });
+        Kit.moment({ title: out.length > 1 ? andList(nm) + ' left the hive' : nm[0] + ' left the hive', line: out.length > 1 ? 'They went out through the door, so the game ends here.' : (out[0] === V.me ? 'You' : nm[0]) + ' went out through the door, so the game ends here.', icon: 'logout', tone: 'bad', at: Q('.hive') });
+        Kit.sfx('lose'); Kit.haptic('error');
+      }, t);
+    } else if (back.length) {
+      setTimeout(function () {
+        var nm = back.map(function (k) { return k === V.me ? 'You' : short(V.players[k].name); });
+        Kit.callout(andList(nm) + (nm.length === 1 && nm[0] !== 'You' ? ' climbs' : ' climb') + ' away from the door!', '#ffe08a'); Kit.sfx('sparkle'); Kit.haptic('success');
+      }, t);
+    }
+  }
   // ── The card ──
+  function slotsEl(n) { var s = el('span', { class: 'slots', 'aria-label': n + (n === 1 ? ' answer' : ' answers') }); for (var k = 0; k < n; k++) s.appendChild(el('i')); return s; }
   function cardEl(V) {
-    var slots = el('span', { class: 'slots', 'aria-label': V.n + (V.n === 1 ? ' answer' : ' answers') });
-    for (var k = 0; k < V.n; k++) slots.appendChild(el('i'));
+    var asker = V.players[V.ask];
     var card = el('div', { class: 'pc' + (ui.cardRound !== V.round ? ' deal' : '') }, [
-      el('div', { class: 'k' }, [el('span', { text: 'Round ' + V.round + ' of ' + V.rounds }), slots]),
+      el('div', { class: 'k' }, [el('span', { text: asker ? (V.ask === V.me ? 'You asked' : short(asker.name) + ' asked') : 'Round ' + V.round }), slotsEl(V.n)]),
       el('div', { class: 'q', text: V.q })
     ]);
     if (ui.cardRound !== V.round) { ui.cardRound = V.round; Kit.sfx('deal'); }
     var w = el('div', { class: 'pcw' }, [card]);
+    if (V.roll) w.appendChild(dieEl(V.roll, ui.rolled !== V.round + ''));
+    ui.rolled = V.round + '';
     if (V.timer && V.phase === 'write') w.appendChild(hourglass());
     return w;
+  }
+  // the Queen Bee die: its pips are how many of the lowest scores drop a level after the round
+  function dieEl(v, roll) {
+    var f = el('div', { class: 'face' + (roll ? ' roll' : ''), 'data-v': v }); for (var i = 0; i < 9; i++) f.appendChild(el('i'));
+    var dn = el('span', { class: 'dn' }); for (var j = 0; j < v; j++) dn.innerHTML += Kit.icon('down');
+    var d = el('div', { class: 'qd', title: 'The Queen Bee die', 'aria-label': 'The Queen Bee die shows ' + v + ': the ' + (v === 1 ? 'lowest score drops' : v + ' lowest scores drop') + ' a level' }, [f, dn]);
+    if (roll) { Kit.sfx('roll'); setTimeout(function () { Kit.sfx('dice', 0.6); Kit.haptic('light'); }, 520); }
+    return d;
   }
   function hourglass() {
     var wood = '<rect x="3" y="2" width="38" height="8" rx="3" fill="url(#hgW)"/><rect x="3" y="62" width="38" height="8" rx="3" fill="url(#hgW)"/>' +
@@ -790,57 +932,92 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
       '<line class="sS" x1="22" y1="34" x2="22" y2="62" stroke="#e9c06a" stroke-width="1.4" stroke-dasharray="2 2"/>' +
       glass + wood + '</svg>' }), el('b', { text: '' })]);
   }
-  // ── What's going on ──
+  // ── What's going on, as a sentence on the felt ──
+  function think(box) { box.appendChild(el('span', { class: 'think', html: '<i></i><i></i><i></i>' })); }
+  function canPick(V) { var A = V.players[V.ask]; return !!A && !A.cpu && !A.gone && (V.mode === 'pass' || V.me === V.ask); }
   function paintStatus(V) {
     var box = Q('.st'); if (!box) return;
     box.innerHTML = '';
-    var t = '';
-    if (V.phase === 'write') {
-      var wait = V.players.filter(function (p) { return !p.done && !p.gone; }).map(function (p) { return short(p.name); });
-      var mine = V.mine || (V.mode === 'pass' && V.me < 0);
-      if (mine && wait.length) t = wait.length > 3 ? wait.length + ' still writing' : 'Waiting for ' + andList(wait);
-      else if (!wait.length) t = 'Turning them over';
-      if (t) { box.appendChild(el('span', { text: t })); box.appendChild(el('span', { class: 'think', html: '<i></i><i></i><i></i>' })); }
-      return;
-    }
-    if (V.phase === 'reveal') {
-      if (!V.boss) { box.appendChild(el('span', { text: short(V.host) + ' is checking the matches' })); box.appendChild(el('span', { class: 'think', html: '<i></i><i></i><i></i>' })); return; }
-      var gs = groupsOf(V.items), s = ui.sel ? gs.filter(function (x) { return x.id === ui.sel; })[0] : null;
-      if (gs.length < 2 && !(s && s.items.length > 1)) return;
-      t = !s ? 'Same thing written two ways? Tap both stacks' : s.items.length > 1 ? 'Tap the stack it matches, or a slip to pull it out' : 'Now tap the stack it matches';
+    var t = '', A = V.players[V.ask];
+    if (V.phase === 'ask') {
+      if (canPick(V)) t = V.mode === 'pass' ? short(A.name) + ' asks this round. ' + short(A.name) + ', choose the card to ask.' : 'It’s your turn to ask. Choose the card everyone will answer.';
+      else if (A) { box.appendChild(el('span', { text: short(A.name) + ' is choosing the card' })); think(box); return; }
       box.appendChild(el('span', { text: t }));
       return;
     }
-    if (V.phase === 'scored' && !V.boss) { box.appendChild(el('span', { text: 'Waiting for ' + short(V.host) })); box.appendChild(el('span', { class: 'think', html: '<i></i><i></i><i></i>' })); }
+    if (V.phase === 'write') {
+      var wait = V.players.filter(function (p) { return !p.done && !p.gone && !p.out; }).map(function (p) { return short(p.name); });
+      var mine = V.mine || (V.mode === 'pass' && V.me < 0);
+      if (mine && wait.length) t = wait.length > 3 ? wait.length + ' bees are still writing' : 'Waiting for ' + andList(wait);
+      else if (!wait.length) t = 'Turning the answers over';
+      if (t) { box.appendChild(el('span', { text: t })); think(box); }
+      return;
+    }
+    if (V.phase === 'reveal') {
+      if (!V.boss) { box.appendChild(el('span', { text: short(V.host) + ' is checking the matches' })); think(box); return; }
+      var gs = C.groupsOf(V.items), s = ui.sel ? gs.filter(function (x) { return x.id === ui.sel; })[0] : null;
+      if (gs.length < 2 && !(s && s.items.length > 1)) return;
+      t = !s ? 'Same thing written two ways? Tap both stacks to put them together.' : s.items.length > 1 ? 'Tap the stack it matches, or a slip to pull it out' : 'Now tap the stack it matches';
+      box.appendChild(el('span', { text: t }));
+      return;
+    }
+    if (V.phase === 'scored' && V.shake) {
+      if (ui.shook !== V.round + '') {
+        var dn = V.shake.down, s;
+        if (!dn.length) s = 'The Queen Bee die rolled ' + V.roll + ', but everyone scored the same, so no bee moves.';
+        else if (dn.length > V.shake.n) s = 'The Queen Bee die rolled ' + V.roll + '. ' + andList(dn.map(function (k) { return who(V, k); })) + ' tied at the bottom, so ' + (dn.length === 2 ? 'both' : 'all ' + (NUM[dn.length] || dn.length)) + ' drop a level.';
+        else s = 'The Queen Bee die rolled ' + V.roll + ', so ' + (V.shake.n === 1 ? 'the lowest score drops a level.' : 'the ' + NUM[V.shake.n] + ' lowest scores drop a level.');
+        box.appendChild(el('span', { text: s }));
+        return;
+      }
+      box.appendChild(el('span', { text: shakeSay(V) }));
+      if (!V.boss) { box.appendChild(el('span', { text: 'Waiting for ' + short(V.host) })); think(box); }
+    }
   }
-  // ── The middle of the table: the bowl while writing, the stacks once they're turned over ──
+  function who(V, k) { return k === V.me ? 'You' : short(V.players[k].name); }
+  function shakeSay(V) {
+    var mv = V.shake.mv, dn = [], up = [], out = [];
+    mv.forEach(function (m) { if (m[2] >= V.depth) out.push(who(V, m[0])); else if (m[2] > m[1]) dn.push(who(V, m[0])); else up.push(who(V, m[0])); });
+    var s = [];
+    if (out.length) s.push(andList(out) + (out.length === 1 && out[0] !== 'You' ? ' goes' : ' go') + ' out of the hive.');
+    if (dn.length) s.push(andList(dn) + (dn.length === 1 && dn[0] !== 'You' ? ' drops' : ' drop') + ' a level.');
+    if (up.length) s.push(andList(up) + (up.length === 1 && up[0] !== 'You' ? ' climbs' : ' climb') + ' a level.');
+    if (!s.length) s.push(V.shake.down.length ? 'The top scorers were already at the top, so only the lowest moved.' : 'Everyone scored the same, so no bee moves.');
+    return s.join(' ');
+  }
+  // ── The middle of the table: the two cards to choose from, then the stacks once the answers are turned over ──
   function paintMid(V, a) {
     var box = Q('.mid'); if (!box) return;
-    if (V.phase === 'write') return paintBowl(box, V);
+    if (V.phase === 'ask') return paintOffer(box, V, a);
+    if (V.phase === 'write') { box.innerHTML = ''; return; }
     paintStacks(box, V, a);
   }
-  function slipSpot(k, n) {
-    var ang = k * 2.4, r = Math.sqrt((k + 0.6) / Math.max(n, 1));
-    return { x: Math.round(Math.cos(ang) * r * 78), y: Math.round(Math.sin(ang) * r * 20), r: ((k * 47) % 56) - 28 };
-  }
-  function paintBowl(box, V) {
-    var key = V.round + ':' + V.players.length;
-    if (ui.pile !== key) { ui.pile = key; ui.pileSeen = {}; ui.pileInit = false; }
-    if (!box.querySelector('.bowl')) { box.innerHTML = ''; box.appendChild(el('div', { class: 'bowl', 'aria-label': 'The bowl' })); }
-    var bowl = box.querySelector('.bowl'), drops = 0;
-    V.players.forEach(function (p, k) {
-      var have = bowl.querySelector('.fs[data-p="' + k + '"]');
-      if (p.done && !have) {
-        var s = slipSpot(k, V.players.length), anim = ui.pileInit && !ui.pileSeen[k];
-        ui.pileSeen[k] = 1;
-        bowl.appendChild(el('span', { class: 'fs' + (anim ? ' drop' : ''), 'data-p': k, style: { '--c': p.color, '--x': s.x, '--y': s.y, '--r': s.r + 'deg' } }));
-        if (anim && !drops++) { Kit.sfx('deal', 0.55); Kit.haptic('light'); }
-      } else if (!p.done && have) { have.remove(); delete ui.pileSeen[k]; }
+  function paintOffer(box, V, a) {
+    var can = canPick(V), wrap = el('div', { class: 'offer' + (can ? '' : ' wait') }), two = el('div', { class: 'two' });
+    (V.offer || []).forEach(function (o, c) {
+      var cd = el('div', { class: 'pc' + (can ? ' can' : '') + (a && a.t === 'start' || ui.offerRound !== V.round ? ' deal' : '') + (ui.botPick === c ? ' chose' : ''), style: { 'animation-delay': (c * 0.12) + 's' }, role: can ? 'button' : null, tabindex: can ? '0' : null,
+        'aria-label': can ? 'Ask: ' + o.q : o.q }, [el('div', { class: 'k' }, [el('span', { text: c ? 'Second card' : 'First card' }), slotsEl(o.n)]), el('div', { class: 'q', text: o.q })]);
+      if (can) {
+        var go = function () { choose(c); };
+        cd.addEventListener('click', go);
+        cd.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+      }
+      two.appendChild(cd);
     });
-    ui.pileInit = true;
+    if (ui.offerRound !== V.round) { ui.offerRound = V.round; ui.botPick = null; Kit.sfx('deal'); setTimeout(function () { Kit.sfx('deal', 0.7); }, 140); }
+    wrap.appendChild(two);
+    box.innerHTML = ''; box.appendChild(wrap);
+  }
+  var picking = false;
+  function choose(c) {
+    if (picking) return; picking = true;
+    var cs = app.querySelectorAll('.offer .pc');
+    if (cs[c]) cs[c].classList.add('chose'); if (cs[1 - c]) cs[1 - c].classList.add('left');
+    Kit.sfx('pop'); Kit.haptic('medium');
+    setTimeout(function () { picking = false; doAct({ t: 'pick', c: c, f: ui.forceRoll }); }, 420);
   }
   function paintStacks(box, V, a) {
-    var gs = groupsOf(V.items), nAct = V.players.filter(function (p) { return !p.gone; }).length;
+    var gs = C.groupsOf(V.items);
     var intro = ui.intro !== V.round + '' && V.phase === 'reveal';
     var scoredNow = V.phase === 'scored' && ui.scored !== V.round + '';
     ui.intro = V.round + '';
@@ -849,20 +1026,22 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     box.innerHTML = '';
     var sel = ui.sel ? gs.filter(function (s) { return s.id === ui.sel; })[0] : null;
     if (sel && sel.items.length > 1 && tapOk) box.appendChild(trayEl(V, sel));
+    var nAct = V.players.filter(function (p) { return !p.gone && !p.out; }).length;
     var wrap = el('div', { class: 'stx' + (ui.sel ? ' picking' : '') + (gs.length > 9 ? ' crowd' : '') });
     gs.forEach(function (s, k) {
       var cnt = s.ps.length, all = V.phase === 'scored' && nAct >= 3 && cnt >= nAct;
       var flash = ui.flash && s.items.some(function (it) { return it.p === ui.flash.p && it.i === ui.flash.i; });
       var b = el('div', { class: 'stk ' + (cnt > 1 ? 'm' : 'solo') + (tapOk ? ' tap' : '') + (ui.sel === s.id ? ' sel' : '') + (intro ? ' intro' : '') + (all ? ' all' : '') + (scoredNow ? ' scored' : '') + (ui.bump === s.id ? ' bump' : '') + (flash ? ' pop' : ''),
-        'data-g': s.id, role: tapOk ? 'button' : null, tabindex: tapOk ? '0' : null, 'aria-label': label(s) + ', ' + cnt + (cnt === 1 ? ' player' : ' players'),
+        'data-g': s.id, role: tapOk ? 'button' : null, tabindex: tapOk ? '0' : null, 'aria-label': C.label(s) + ', ' + cnt + (cnt === 1 ? ' player' : ' players'),
         style: { '--d': (Math.min(k, 14) * 0.13) + 's', '--tilt': (((k * 53) % 7) - 3) * 0.6 + 'deg' } });
       for (var j = Math.min(s.items.length - 1, 3); j >= 1; j--) b.appendChild(el('span', { class: 'bk', style: { '--j': j, '--r': (((j * 37 + k * 13) % 9) - 4) + 'deg' } }));
-      var who = el('span', { class: 'who' });
-      s.ps.forEach(function (p) { var P = V.players[p] || {}; who.appendChild(el('i', { style: { '--c': P.color }, title: P.name, text: String(P.name || '?').charAt(0).toUpperCase() })); });
+      var whoEl = el('span', { class: 'who' });
+      s.ps.forEach(function (p) { var P = V.players[p] || {}; whoEl.appendChild(el('i', { style: { '--c': P.color }, title: P.name, text: String(P.name || '?').charAt(0).toUpperCase() })); });
       // (a long word eases down to fit the slip rather than breaking)
-      var lb = label(s), lw = Math.max.apply(null, lb.split(/\s+/).map(function (w) { return w.length; }));
-      b.appendChild(el('div', { class: 'fr' }, [el('span', { class: 'tx' + (lw > 16 ? ' xxl' : lw > 13 ? ' xl' : lw > 10 ? ' lg' : ''), text: lb }), who]));
-      b.appendChild(el('span', { class: 'n', html: V.phase === 'scored' ? (all ? Kit.icon('star') : '') + '+' + (cnt - 1) : String(cnt) }));
+      var lb = C.label(s), lw = Math.max.apply(null, lb.split(/\s+/).map(function (w) { return w.length; }));
+      b.appendChild(el('div', { class: 'fr' }, [el('span', { class: 'tx' + (lw > 16 ? ' xxl' : lw > 13 ? ' xl' : lw > 10 ? ' lg' : ''), text: lb }), whoEl]));
+      // each answer scores 1 for every player who wrote it: the badge is what the stack is worth to each of them
+      b.appendChild(el('span', { class: 'n', html: V.phase === 'scored' ? (all ? Kit.icon('star') : '') + '+' + cnt : String(cnt) }));
       if (tapOk) {
         b.addEventListener('click', function () { tapStack(V, s); });
         b.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tapStack(V, s); } });
@@ -872,8 +1051,29 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     if (!gs.length) wrap.appendChild(el('div', { class: 'none', text: 'Nobody wrote anything this round' }));
     box.appendChild(wrap);
     ui.bump = null; ui.flash = null;
+    fitStacks(box);
     if (intro) introSounds(gs);
     if (scoredNow) { ui.scored = V.round + ''; celebrate(V, gs, nAct); }
+  }
+  // The stacks fit the room the table leaves them: a step smaller at a time (to 62% of their size) until every one shows;
+  // a table with more stacks than that scrolls them inside their own box, fading at the foot until the last one is in view.
+  function fitStacks(box) {
+    var wrap = box.querySelector('.stx'); if (!wrap) return;
+    wrap.style.removeProperty('--sw'); wrap.style.removeProperty('--tf'); wrap.classList.remove('fitted'); box.classList.remove('fade', 'scrolly');
+    var over = function () { return box.scrollHeight > box.clientHeight + 1; };
+    wrap.dataset.nat = wrap.scrollHeight;
+    if (!box.clientHeight || !over()) return;
+    var s0 = wrap.querySelector('.stk'), t0 = wrap.querySelector('.stk .tx'); if (!s0 || !t0) return;
+    var sw = s0.offsetWidth, tf = parseFloat(getComputedStyle(t0).fontSize) / (t0.classList.contains('lg') ? .86 : t0.classList.contains('xl') ? .72 : t0.classList.contains('xxl') ? .6 : 1);
+    wrap.classList.add('fitted');
+    for (var k = 1; k >= 0.62; k -= 0.06) {
+      wrap.style.setProperty('--sw', Math.round(sw * k) + 'px'); wrap.style.setProperty('--tf', (tf * Math.max(k, 0.8)).toFixed(1) + 'px');
+      if (!over()) return;
+    }
+    box.classList.add('scrolly');
+    var edge = function () { box.classList.toggle('fade', box.scrollTop + box.clientHeight < box.scrollHeight - 4); };
+    edge();
+    if (!box._edge) { box._edge = 1; box.addEventListener('scroll', edge, { passive: true }); }
   }
   // turning the slips over: a flip for each stack, a slide as the matching ones come together
   function introSounds(gs) {
@@ -920,22 +1120,12 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     an.onfinish = function () { c.remove(); done(); };
   }
   function cssId(s) { return String(s).replace(/["\\]/g, '\\$&'); }
-  // Big moments: an answer the whole table wrote, and anyone who matched nobody
+  // Big moments: an answer the whole hive wrote, a round where every answer of yours matched everyone
   function celebrate(V, gs, nAct) {
     var all = gs.filter(function (s) { return nAct >= 3 && s.ps.length >= nAct; });
-    var zero = []; V.players.forEach(function (p, k) { if (!p.gone && p.gain === 0) zero.push(k); });
-    var t = 700;
     if (all.length) {
-      setTimeout(function () { Kit.callout((all.length > 1 ? 'Everyone said ' + label(all[0]) + ' and more!' : 'Everyone said ' + label(all[0]) + '!'), '#ffe08a'); Kit.sfx('sparkle'); Kit.haptic('success'); Kit.confetti({ count: 80, colors: ['#ffd447', '#fffdf4', '#3ddc84', '#4da3ff', '#ff5c9a'] }); }, t);
-      t += 1700;
-    } else setTimeout(function () { Kit.sfx('good'); }, t);
-    if (zero.length && zero.length < nAct) {
-      setTimeout(function () {
-        var nm = zero.map(function (k) { return short(V.players[k].name); });
-        Kit.callout(zero.length > 3 ? zero.length + ' players matched nobody' : andList(nm) + ' matched nobody', '#ffb3b3'); Kit.sfx('bad'); Kit.haptic('error');
-        zero.forEach(function (k) { var c = app.querySelector('.pl[data-p="' + k + '"]'); if (c) { c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake'); } });
-      }, t);
-    } else if (zero.length && zero.length === nAct) setTimeout(function () { Kit.callout('No matches at all!', '#ffb3b3'); Kit.sfx('bad'); }, t);
+      setTimeout(function () { Kit.callout((all.length > 1 ? 'The whole hive said ' + C.label(all[0]) + ' and more!' : 'The whole hive said ' + C.label(all[0]) + '!'), '#ffe08a'); Kit.sfx('sparkle'); Kit.haptic('success'); Kit.confetti({ count: 80, colors: ['#ffd447', '#fffdf4', '#f2ac2e', '#3ddc84', '#2a1a08'] }); }, 700);
+    } else setTimeout(function () { Kit.sfx('good'); }, 700);
   }
   // ── Buttons ──
   function paintActs(V) {
@@ -943,16 +1133,20 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     box.innerHTML = '';
     function b(label, icon, fn, cls) { box.appendChild(el('button', { type: 'button', class: 'btn ' + (cls || 'btn-primary'), html: (icon ? Kit.icon(icon) : '') + '<span>' + esc(label) + '</span>', onclick: fn })); }
     if (V.phase === 'reveal' && V.boss) b('Count the points', 'check', function () { ui.sel = null; Kit.sfx('pop'); doAct({ t: 'score' }); }, 'btn-primary ready');
-    if (V.phase === 'scored' && V.boss) b(V.round >= V.rounds ? 'See who won' : 'Next card', V.round >= V.rounds ? 'trophy' : 'right', function () { doAct({ t: 'next' }); });
-    if (V.phase === 'write' && net.mode === 'host' && V.mine && V.players.some(function (p) { return !p.done && !p.gone; }))
-      b('Turn them over now', 'eye', function () { Kit.confirm('Turn the answers over now?', { ok: 'Turn them over', body: 'Anyone still writing misses this card.' }).then(function (ok) { if (ok) doAct({ t: 'reveal' }); }); }, 'btn-soft');
+    if (V.phase === 'scored' && V.boss) {
+      var shook = ui.shook === V.round + '', over = V.players.some(function (p) { return p.out; });
+      if (!shook) b('Shake the hive', 'shuffle', function () { clearTimeout(ui.shakeT); ui.shakeT = 0; shakeHive(lastV); }, 'btn-soft');
+      else b(over ? 'See who won' : 'Next round', over ? 'trophy' : 'right', function () { doAct({ t: 'next' }); });
+    }
+    if (V.phase === 'write' && net.mode === 'host' && V.mine && V.players.some(function (p) { return !p.done && !p.gone && !p.out; }))
+      b('Turn them over now', 'eye', function () { Kit.confirm('Turn the answers over now?', { ok: 'Turn them over', body: 'Anyone still writing misses this card and scores nothing for it.' }).then(function (ok) { if (ok) doAct({ t: 'reveal' }); }); }, 'btn-soft');
   }
 
   // ── The clipboard ──
   function padEl(V) {
-    var writing = V.me >= 0 && !V.mine;
-    var who = V.me >= 0 ? V.players[V.me] : null;
-    var sheet = el('div', { class: 'sheet' }, [el('div', { class: 'hd ink' }, [el('span', { class: 'who', text: who ? short(who.name) : '' })])]);
+    var writing = V.me >= 0 && !V.mine && !(V.players[V.me] && V.players[V.me].out);
+    var whoP = V.me >= 0 ? V.players[V.me] : null;
+    var sheet = el('div', { class: 'sheet' }, [el('div', { class: 'hd ink' }, [el('span', { class: 'who', text: whoP ? short(whoP.name) : '' })])]);
     var inputs = [];
     for (var k = 0; k < V.n; k++) {
       (function (k) {
@@ -977,10 +1171,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     }
     var pad = el('div', { class: 'pad ' + (writing ? 'live' : V.mine ? 'sent' : 'idle') }, [el('div', { class: 'clip' }), sheet]);
     if (V.mine) pad.appendChild(el('span', { class: 'stamp', html: Kit.icon('check') }));
-    if (writing) {
-      var btn = el('button', { type: 'button', class: 'btn btn-primary fold', html: Kit.icon('check') + '<span>Fold it into the bowl</span>', onclick: function () { submit(); } });
-      pad.appendChild(btn);
-    }
+    if (writing) pad.appendChild(el('button', { type: 'button', class: 'btn btn-primary fold', html: Kit.icon('check') + '<span>Hand it in</span>', onclick: function () { submit(); } }));
     function syncFold() { var b2 = pad.querySelector('.fold'); if (b2) b2.classList.toggle('ready', draft.slice(0, V.n).filter(function (s) { return s && s.trim(); }).length >= V.n); }
     setTimeout(syncFold, 0);
     return pad;
@@ -995,22 +1186,22 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     }
     ui.sending = V.round + ':' + V.me;
     try { document.activeElement && document.activeElement.blur && document.activeElement.blur(); } catch (e) {}
-    foldAway();
+    foldAway(V.me);
     Kit.sfx('whoosh'); Kit.haptic('medium');
     var my = gen;
     setTimeout(function () { ui.sending = ''; if (my !== gen && net.mode !== 'guest') return; if (net.mode === 'guest') ui.sent = tag; doAct({ t: 'ans', a: vals }); }, 420);
   }
-  // the paper folds up and drops into the bowl
-  function foldAway() {
-    var s = Q('.pad .sheet'), bowl = Q('.bowl'); if (!s || !bowl) return;
-    var r = s.getBoundingClientRect(), rb = bowl.getBoundingClientRect();
+  // the paper folds up and flies to your bee in the hive
+  function foldAway(me) {
+    var s = Q('.pad .sheet'), bee = Q('.hive .bee[data-p="' + me + '"] .bz') || Q('.hive'); if (!s || !bee) return;
+    var r = s.getBoundingClientRect(), rb = bee.getBoundingClientRect();
     var c = s.cloneNode(true); c.classList.add('flyfold');
     c.style.left = r.left + 'px'; c.style.top = r.top + 'px'; c.style.width = r.width + 'px'; c.style.height = r.height + 'px';
     document.body.appendChild(c);
     s.style.visibility = 'hidden';
-    var dx = rb.left + rb.width / 2 - (r.left + r.width / 2), dy = rb.top + rb.height / 2 - r.top;
+    var dx = rb.left + rb.width / 2 - (r.left + r.width / 2), dy = rb.top + rb.height / 2 - (r.top + r.height * 0.06);
     requestAnimationFrame(function () { requestAnimationFrame(function () {
-      c.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(.12,.06) rotate(18deg)'; c.style.opacity = '.4';
+      c.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(.08,.05) rotate(18deg)'; c.style.opacity = '.3';
     }); });
     setTimeout(function () { c.remove(); }, 600);
   }
@@ -1046,17 +1237,35 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     tmr = setInterval(step, 200); step();
   }
 
-  // ── The end of the game, on the table ──
+  // ── The end of the game, on the table: the hive as it ended, who stayed in, every card ──
+  function finalHive(S, meI) {
+    var V = { phase: 'over', depth: S.depth, me: meI, round: S.rounds, players: S.players.map(function (p) { return { name: p.name, color: p.color, cpu: p.cpu, lv: p.lv, out: p.out }; }) };
+    var h = hiveEl(V);
+    S.players.forEach(function (p, k) {
+      var b = beeEl(V, V.players[k], k), box = p.out ? h.querySelector('.door') : h.querySelector('.lv[data-l="' + p.lv + '"]');
+      if (box) box.appendChild(b);
+    });
+    h.querySelector('.door').classList.toggle('has', S.players.some(function (p) { return p.out; }));
+    return h;
+  }
+  function standings(S) {
+    return S.players.map(function (p, i) { return { p: p, i: i }; }).sort(function (a, b) { return (a.p.out ? 1 : 0) - (b.p.out ? 1 : 0) || a.p.lv - b.p.lv || b.p.score - a.p.score; });
+  }
+  function meOf(S) { if (net.mode) { for (var i = 0; i < S.players.length; i++) if (S.players[i].name === net.myName) return i; return -1; } return S.mode === 'solo' || S.mode === 'cpu' ? 0 : -1; }
   function renderOver(V) {
     var S = V.done; if (!S) return;
     onStage(false);
     app.innerHTML = '';
     var felt = el('div', { class: 'felt-in ph-over' });
-    var fin = el('div', { class: 'fin' }, [el('h2', { text: 'Final scores' })]);
-    S.players.map(function (p, i) { return { p: p, i: i }; }).sort(function (a, b) { return b.p.score - a.p.score; }).forEach(function (x, k) {
-      fin.appendChild(el('div', { class: 'row' }, [el('span', { class: 'pl-n', text: String(k + 1) }),
+    var stay = S.winners.map(function (i) { return short(S.players[i].name); });
+    var fin = el('div', { class: 'fin' }, [el('h2', { text: 'The hive at the end' })]);
+    var hv = finalHive(S, meOf(S)); hv.classList.add('end');
+    fin.appendChild(hv);
+    fin.appendChild(el('p', { class: 'endsay', text: stay.length + (stay.length === 1 ? ' bee stayed in the hive and wins: ' : ' bees stayed in the hive and win: ') + andList(stay) + '.' }));
+    standings(S).forEach(function (x, k) {
+      fin.appendChild(el('div', { class: 'row' + (x.p.out ? ' gone' : '') }, [el('span', { class: 'pl-n', text: x.p.out ? '' : String(x.p.lv + 1) }),
         x.p.cpu ? el('span', { class: 'avatar sm', style: { '--c': x.p.color }, html: Kit.icon('bot') }) : Kit.avatar.el(x.p.name, 'sm', x.p.color),
-        el('span', { class: 'nm', text: x.p.name }), el('span', { class: 'sc', text: String(x.p.score) })]));
+        el('span', { class: 'nm', text: x.p.name }), el('span', { class: 'sc', text: x.p.out ? 'Out of the hive' : 'Level ' + (x.p.lv + 1) })]));
     });
     fin.appendChild(el('div', { class: 'lab', text: 'Every card' }));
     (S.log || []).forEach(function (l, k) {
@@ -1079,20 +1288,25 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
   // ═══ Finishing: history and the results card ═════════════════════════════
   var MODE_NAME = { solo: 'Just me', cpu: 'vs Computer', pass: 'Pass & play', online: 'Online' };
   function recordGame(S) {
-    var hl = [], best = null;
+    var hl = [], best = null, P = S.players;
     (S.log || []).forEach(function (l, k) {
-      var t = (l.top || [])[0];
-      if (t && t.c >= S.players.length && S.players.length >= 3) hl.push('Round ' + (k + 1) + ': everyone said ' + t.t);
+      var t = (l.top || [])[0], on = P.filter(function (p) { return !p.out || p.out > k; }).length;
+      if (t && t.c >= on && on >= 3) hl.push('In round ' + (k + 1) + ' the whole hive wrote ' + t.t + ' for ' + l.q + '.');
+      (l.mv || []).forEach(function (m) { if (P[m[0]] && m[1] === S.depth - 1 && m[2] < m[1]) hl.push(P[m[0]].name + ' climbed away from the door in round ' + (k + 1) + '.'); });
       l.pts.forEach(function (v, i) { if (!best || v > best.v) best = { v: v, i: i, k: k }; });
     });
-    if (best && best.v > 0 && S.players[best.i]) hl.push(S.players[best.i].name + ' scored ' + best.v + ' on one card: ' + S.log[best.k].q);
-    var dt = { rs: (S.log || []).map(function (l) { return { q: String(l.q).slice(0, 90), t: (l.top || []).map(function (x) { return String(x.t).slice(0, 40) + ':' + x.c; }).join('\n') }; }) };
+    P.forEach(function (p) { if (p.out) hl.unshift(p.name + ' went out of the hive in round ' + p.out + '.'); });
+    if (best && best.v > 1 && P[best.i]) hl.push(P[best.i].name + ' scored ' + best.v + ' points on one card: ' + S.log[best.k].q + '.');
+    var dt = { v: 'hm', d: S.depth, lv: P.map(function (p) { return p.out ? -1 : p.lv; }).join(','), pt: P.map(function (p) { return p.score; }).join(','),
+      rs: (S.log || []).map(function (l) { return { q: String(l.q).slice(0, 90), t: (l.top || []).map(function (x) { return String(x.t).slice(0, 40) + ':' + x.c; }).join('\n'), r: l.roll, m: (l.mv || []).map(function (m) { return m.join(':'); }).join(',') }; }) };
+    var W = S.winners.map(function (i) { return P[i].name; });
     Kit.record(KEY, {
       started: S.started, mode: MODE_NAME[S.mode] || '',
-      players: S.players.map(function (p) { return { name: p.name, score: p.score, cpu: p.cpu }; }),
-      winner: S.winners.length === 1 ? S.players[S.winners[0]].name : null,
-      summary: S.winners.length > 1 ? andList(S.winners.map(function (i) { return S.players[i].name; })) + ' tied' : undefined,
-      rounds: { labels: (S.log || []).map(function (l, k) { return String(k + 1); }), scores: (S.log || []).map(function (l) { return l.pts.slice(0, S.players.length); }) },
+      // (where each bee ended, not the points: in Hive Mind the points count round by round, and the game's points are in the detail)
+      players: P.map(function (p) { return { name: p.name, score: p.out ? 'Out' : 'Level ' + (p.lv + 1), cpu: p.cpu }; }),
+      winner: W.length === 1 ? W[0] : null,
+      summary: W.length > 1 ? andList(W) + ' stayed in the hive' : undefined,
+      rounds: { labels: (S.log || []).map(function (l, k) { return String(k + 1); }), scores: (S.log || []).map(function (l) { return l.pts.slice(0, P.length); }) },
       highlights: hl.slice(0, 6), detail: dt
     });
   }
@@ -1104,46 +1318,59 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     showWin(S);
   }
   function showWin(S) {
-    var local = !net.mode && (S.mode === 'solo' || S.mode === 'cpu');
-    var meName = net.mode ? net.myName : local ? S.players[0].name : null;
-    var rank = S.players.map(function (p) { return { name: p.name, score: p.score, color: p.color, cpu: p.cpu }; }).sort(function (a, b) { return b.score - a.score; });
-    var W = S.winners.map(function (i) { return S.players[i]; }), title, lose = false, sub;
-    if (W.length > 1) { title = 'It’s a tie!'; sub = andList(W.map(function (p) { return short(p.name); })) + ' share the win'; lose = local && S.winners.indexOf(0) < 0; }
-    else { var w = W[0]; title = w.name === 'You' || (meName && w.name === meName && (local || net.mode)) ? 'You win!' : w.name + ' wins!'; sub = w.score + ' points after ' + S.rounds + ' rounds'; lose = local && S.winners[0] !== 0; }
+    var me = meOf(S), local = !net.mode && (S.mode === 'solo' || S.mode === 'cpu');
+    var rank = standings(S).map(function (x) { return { name: x.p.name, score: x.p.out ? 'Out' : 'Level ' + (x.p.lv + 1), color: x.p.color, cpu: x.p.cpu, me: x.i === me }; });
+    var out = S.players.map(function (p, i) { return i; }).filter(function (i) { return S.players[i].out; });
+    var won = me >= 0 && S.winners.indexOf(me) >= 0, title, lose = false;
+    var gone = andList(out.map(function (i) { return i === me ? 'You' : short(S.players[i].name); }));
+    if (me >= 0) { title = won ? 'You stayed in the hive!' : 'You left the hive'; lose = !won; }
+    else title = S.winners.length === 1 ? short(S.players[S.winners[0]].name) + ' wins!' : S.winners.length + ' bees win!';
+    var sub = gone + ' went out of the hive in round ' + S.rounds + ' · Everyone still in the hive wins';
     setTimeout(function () {
-      Kit.win({ title: title, sub: sub, rank: rank, lose: lose, icon: lose ? 'meh' : W.length > 1 ? 'users' : 'trophy',
+      Kit.win({ title: title, sub: sub, rank: rank, lose: lose && local, icon: lose ? 'meh' : 'trophy', pic: (function () { var h = finalHive(S, me); h.classList.add('wpic'); return h; })(),
         again: again, againLabel: net.mode ? 'Back to the table' : undefined,
         look: 'Look at every card',
         setup: net.mode ? null : showSetup,
         closeLabel: net.mode ? 'Leave the table' : undefined, onClose: net.mode ? function () { leaveOnline(false); goLobby(); } : undefined });
-    }, 500);
+      if (won) Kit.confetti({ count: 90, colors: ['#ffd447', '#fffdf4', '#f2ac2e', '#2a1a08'] });
+    }, 2600);
   }
   function again() {
     if (net.mode === 'host') { backToTable(); return; }
     if (net.mode === 'guest') { showWait(); return; }
     if (lastCfg) startLocal(lastCfg); else showSetup();
   }
-  function pastGames() { Kit.history(KEY, { title: 'Mind Meld: past games' }); }
+  function pastGames() { Kit.history(KEY, { title: 'Hive Mind: past games' }); }
 
   // ═══ Setup ═══════════════════════════════════════════════════════════════
   var RULES =
-    '<p class="goal">Think like everyone else. Each card asks for one to four answers: write the ones you think the others will write too. Matches score.</p>' +
+    '<p class="goal">Think like the rest of the hive. Each round everyone writes answers to the same question, and an answer scores a point for each player who wrote it. The lowest scores drop down the hive; a bee who drops out of it ends the game, and everyone still in the hive wins.</p>' +
+    '<h3>The hive</h3><ul>' +
+    '<li>Every player is a bee, and every bee starts on the top level of the hive.</li>' +
+    '<li>The hive has six levels. With 3 or 4 players a gate closes it after level 4, and with 5 or 6 players after level 5. With 7 or more, all six levels are open.</li>' +
+    '<li>Under the last open level is the door out of the hive.</li></ul>' +
     '<h3>A round</h3><ul>' +
-    '<li>A card is dealt, like <b>Name 3 things in a junk drawer</b>. The little slips on the card show how many answers it wants.</li>' +
-    '<li>Everyone writes their answers on their own paper, in secret, and folds them into the bowl.</li>' +
+    '<li>Players take turns asking. The asker chooses one of two question cards, like <b>Name 3 things in a junk drawer</b>, and rolls the <b>Queen Bee die</b>. The little slips on the card show how many answers it wants.</li>' +
+    '<li>Everyone writes their answers on their own paper, in secret, and hands it in.</li>' +
     '<li>With the <b>sand timer</b> on, whatever is on your paper when the sand runs out goes in.</li></ul>' +
     '<h3>Turning them over</h3><ul>' +
     '<li>All the answers are turned over and the same answers stack up together. Small differences don\'t matter: <b>Pizzas</b>, <b>a pizza</b> and <b>pizza</b> are one answer.</li>' +
     '<li>The game can\'t always tell, so the table decides. If two stacks mean the same thing (<b>soda</b> and <b>pop</b>), tap one and then the other to put them together.</li>' +
     '<li>If a slip doesn\'t belong in a stack, tap the stack and then tap that slip to pull it out.</li></ul>' +
     '<h3>Scoring</h3><ul>' +
-    '<li>Each of your answers scores <b>1 point for every other player</b> who wrote it too. If four of you wrote pizza, you each get 3.</li>' +
-    '<li>An answer only you wrote scores nothing. Writing the same thing twice only counts once.</li>' +
-    '<li>After the last card, the most points wins. Ties share the win.</li></ul>' +
+    '<li>Each of your answers scores <b>1 point for every player who wrote it</b>, you included. If four of you wrote pizza, you each score 4 for it. An answer only you wrote scores 1.</li>' +
+    '<li>Writing the same thing twice only counts once. Points count for this round only.</li></ul>' +
+    '<h3>The hive shake</h3><ul>' +
+    '<li>The Queen Bee die shows 1, 2 or 3. That many of the round\'s lowest scores drop down a level. With only 3 players in the hive, a 3 counts as 2.</li>' +
+    '<li>Players tied at the cut all drop together, and everyone with the highest score climbs up a level (no higher than the top).</li>' +
+    '<li>If everyone scored the same, no bee moves.</li></ul>' +
+    '<h3>The end</h3><ul>' +
+    '<li>A bee who has to drop from the last level goes out through the door, and the game ends after that shake. <b>Everyone still in the hive wins.</b></li></ul>' +
     '<h3>Ways to play</h3><ul>' +
     '<li><b>Just me</b> or <b>vs Computer</b>: computer players fill the other seats. They write what most people say, but not always.</li>' +
-    '<li><b>Pass and play</b>: one phone. Each person holds the button to see the paper, writes, folds it in, and passes it on. Then everyone looks at the answers together.</li>' +
-    '<li><b>Play online</b>: everyone writes on their own phone at the same time, up to 24 players. The host turns the answers over and fixes the matches.</li></ul>';
+    '<li><b>Pass and play</b>: one phone. Each person holds the button to see the paper, writes, hands it in, and passes the phone on. Then everyone looks at the answers together.</li>' +
+    '<li><b>Play online</b>: everyone writes on their own phone at the same time, up to 12 players. The host turns the answers over and fixes the matches.</li></ul>' +
+    '<p class="credit">' + CREDIT + '</p>';
 
   function showSetup() {
     leaveOnline(false);
@@ -1152,19 +1379,25 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     screen = 'setup'; onStage(true);
     window.scrollTo(0, 0);
     Kit.setup(app, {
-      modes: Kit.modes([{ id: 'solo' }, { id: 'cpu' }, { id: 'pass', kind: 'local' }, { id: 'online', desc: 'Everyone on their own device, up to 24' }]),
+      modes: Kit.modes([{ id: 'solo' }, { id: 'cpu' }, { id: 'pass', kind: 'local' }, { id: 'online', desc: 'Everyone on their own device, up to 12' }]),
       players: { min: 1, max: 12, count: 1, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'pass' ? 'mix' : false; },
-        range: function (m) { return m === 'solo' ? [1, 1] : m === 'cpu' ? [2, 8] : m === 'pass' ? [2, 12] : [1, 1]; } },
+        range: function (m) { return m === 'solo' ? [1, 1] : m === 'cpu' ? [3, 8] : m === 'pass' ? [3, 12] : [1, 1]; } },
       options: [
-        { id: 'rounds', label: 'Rounds', value: '8', choices: [['5', '5'], ['8', '8'], ['12', '12']] },
         { id: 'timer', label: 'Sand timer', value: '0', help: 'How long everyone has to write. When the sand runs out, whatever is on your paper goes in.', choices: [['0', 'Off'], ['60', '60 seconds'], ['90', '90 seconds']] }
       ],
-      start: 'Deal a card',
+      start: 'Into the hive',
       onStart: onStart
     });
+    var hero = app.querySelector('.setup-hero');
+    if (hero && !app.querySelector('.hm-credit')) {
+      hero.parentNode.insertBefore(el('p', { class: 'hm-credit', text: CREDIT }), hero.nextSibling);
+      // (the credit shows only where it doesn't make the setup scroll)
+      var hideC = function () { var c = app.querySelector('.hm-credit'); if (c && document.documentElement.scrollHeight > window.innerHeight + 1) c.style.display = 'none'; };
+      requestAnimationFrame(hideC); setTimeout(hideC, 700);
+    }
   }
   function onStart(cfg) {
-    var opt = { rounds: +cfg.options.rounds || 8, timer: +cfg.options.timer || 0 };
+    var opt = { timer: +cfg.options.timer || 0 };
     if (cfg.mode === 'online') {
       var nm = (cfg.players[0] && cfg.players[0].name) || '';
       if (/^(Player \d+|You)$/.test(nm)) nm = (function () { try { return localStorage.getItem('my_name') || ''; } catch (e) { return ''; } })();
@@ -1174,6 +1407,8 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     var players = cfg.players.map(function (p) { return { name: p.name, color: p.color, cpu: !!p.cpu }; }), mode = cfg.mode;
     // Just me: robots fill the other seats
     if (mode === 'solo') Kit.cpuNames(4, [players[0].name], 8).forEach(function (b, k) { players.push({ name: b, color: Kit.color(k + 1), cpu: true }); });
+    // (Hive Mind needs three bees at least: a computer player makes up the number)
+    if (players.length < 3) Kit.cpuNames(3 - players.length, players.map(function (p) { return p.name; }), 8).forEach(function (b) { players.push({ name: b, color: Kit.color(players.length), cpu: true }); });
     var people = players.filter(function (p) { return !p.cpu; }).length;
     if (mode === 'pass' && people === 1) mode = 'cpu';
     if (mode === 'cpu' && people > 1) mode = 'pass';
@@ -1182,13 +1417,14 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
   function startLocal(cfg) {
     if (!DATA.length) { Kit.toast('Couldn’t load the cards'); return; }
     lastCfg = cfg; finished = false; undoStack = []; gen++; clearTimeout(botT);
-    ui.sig = ''; ui.sel = null; ui.intro = ''; ui.scored = ''; ui.cardRound = 0; ui.pile = '';
+    resetUi();
     draft = []; pp.viewer = -1; pp.busy = false; pp.restore = null;
     G = newGame(cfg); screen = 'game'; ui.paperRound = '';
     Kit.gameStart();
     window.scrollTo(0, 0);
     changed({ t: 'start' });
   }
+  function resetUi() { ui.sig = ''; ui.sel = null; ui.intro = ''; ui.scored = ''; ui.shook = ''; ui.gainShown = ''; ui.cardRound = 0; ui.rolled = ''; ui.offerRound = 0; ui.botPick = null; clearTimeout(ui.shakeT); ui.shakeT = 0; }
   Kit.init({ codeBar: true,
     id: KEY,
     // (pass and play: what one person holds or writes never shows in Keep playing's picture)
@@ -1197,7 +1433,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     undo: function () { undo(); },
     menu: [
       { icon: 'history', label: 'Past games', onClick: pastGames },
-      { icon: 'globe', label: 'Play online', sub: 'Everyone on their own device, up to 24', when: function () { return !net.mode && screen !== 'lobby'; }, onClick: function () { goLobby(); } },
+      { icon: 'globe', label: 'Play online', sub: 'Everyone on their own device, up to 12', when: function () { return !net.mode && screen !== 'lobby'; }, onClick: function () { goLobby(); } },
       { icon: 'logout', label: 'Leave the online game', when: function () { return !!net.mode; }, onClick: function () { leaveOnline(true); } }
     ],
     rules: RULES
@@ -1205,8 +1441,9 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
 
   // ═══ Online ══════════════════════════════════════════════════════════════
   // The host's device runs the game and sends each player only their own view (their own paper, and the answers once
-  // they're turned over). Guests send back what they wrote; the host turns them over, fixes the matches, moves on.
-  var screen = 'setup';
+  // they're turned over). Guests send back the card they chose and what they wrote; the host turns the answers over,
+  // fixes the matches, shakes the hive and moves on. A table of two people gets a computer bee as the third.
+  var screen = 'setup', MAXP = 12;
   var net = { mode: null, table: null, peer: null, roster: [], lobby: null, wait: null, nextPid: 1, view: null, myName: '', hostName: '', cfg: null, myPid: null };
   function netMe() { var m = lsGet(NETME, {}) || {}; var mn = ''; try { mn = localStorage.getItem('my_name') || ''; } catch (e) {} return m.name || mn || (Kit.knownNames && Kit.knownNames()[0]) || ''; }
   function closeLobby() { if (net.lobby) { net.lobby.close(); net.lobby = null; } }
@@ -1215,7 +1452,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     leaveOnline(false); G = null; gen++; clearTimeout(botT); clearInterval(tmr); screen = 'lobby'; lastV = null; ui.sig = ''; onStage(true);
     window.scrollTo(0, 0);
     net.lobby = Online.lobby(app, {
-      game: KEY, title: 'Play Online', intro: 'Everyone writes on their own phone or tablet. Up to 24 players.',
+      game: KEY, title: 'Play Online', intro: 'Everyone writes on their own phone or tablet. Up to 12 players.',
       me: { name: netMe() },
       onName: function (n) { var m = lsGet(NETME, {}) || {}; m.name = n; lsSet(NETME, m); },
       onHost: function (me) { return hostTable(me.name); },
@@ -1227,14 +1464,14 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
   }
   function hostTable(name) {
     closeLobby(); busy('Opening your table…');
-    return Online.host({ game: KEY, name: name, max: 24, min: 2, screen: app }).then(function (table) {
+    return Online.host({ game: KEY, name: name, max: MAXP, min: 2, screen: app }).then(function (table) {
       table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); leaveOnline(false); goLobby(); });
-      if (!net.cfg) net.cfg = { rounds: 8, timer: 0 };
+      if (!net.cfg) net.cfg = { timer: 0 };
       net.mode = 'host'; net.table = table; net.myName = name; net.nextPid = 1;
       net.roster = [{ pid: 0, name: name, host: true }];
       table.on('peer', function (peer) {
-        // a device that comes back takes its own seat again: its name, its color and its points (and, if its old
-        // link hasn't closed yet here, the seat simply moves to the new link)
+        // a device that comes back takes its own seat again: its name, its color and its bee's place in the hive (and,
+        // if its old link hasn't closed yet here, the seat simply moves to the new link)
         var r = net.roster.filter(function (x) { return x.dev && x.dev === peer.id; })[0], back = !!r;
         if (r) { if (r.peer && r.peer !== peer) r.peer._pid = -1; r.peer = peer; }
         else {
@@ -1263,17 +1500,19 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
         sendRoster();
       });
       table.on('msg', function (peer, m) {
-        if (m.t !== 'a' || !G || !m.a || m.a.t !== 'ans') return;   // (guests only write; the host runs the rest)
+        if (m.t !== 'a' || !G || !m.a || (m.a.t !== 'ans' && m.a.t !== 'pick')) return;   // (guests only choose a card and write; the host runs the rest, and rolls the die)
+        delete m.a.f;
         var i = idxOfPid(peer._pid); if (i < 0) return;
-        if (apply(G, i, m.a)) changed({ t: 'ans', p: i });
+        if (apply(G, i, m.a)) changed({ t: m.a.t, p: i });
       });
       showWait();
     }).catch(function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); goLobby(); });
   }
+  // someone who joins once the game is under way comes in as a bee on the level where most of the hive is
   function addPlayer(g, name, pid, dev) {
-    var k = g.players.length;
-    g.players.push({ name: name, color: Kit.color(k), cpu: false, pid: pid, dev: dev || undefined, score: 0, temp: 1 });
-    g.ans.push(g.phase === 'write' ? null : []); g.cpuAt.push(0);
+    var k = g.players.length, lv = C.joinLevel(g);
+    g.players.push({ name: name, color: Kit.color(k), cpu: false, pid: pid, dev: dev || undefined, lv: lv, score: 0, temp: 1 });
+    g.ans.push(g.phase === 'write' || g.phase === 'ask' ? null : []); if (g.cpuAt) g.cpuAt.push(0);
   }
   function idxOfPid(pid) { if (!G) return -1; for (var i = 0; i < G.players.length; i++) if (G.players[i].pid === pid) return i; return -1; }
   function uniqueName(n) { var base = String(n || 'Player').slice(0, 14), k = 2, out = base; while (net.roster.some(function (r) { return r.name.toLowerCase() === out.toLowerCase(); })) out = base + ' ' + k++; return out; }
@@ -1285,18 +1524,20 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     window.scrollTo(0, 0);
     if (net.mode === 'host') {
       net.table.setStatus('open', '');
-      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 24, min: 2, table: net.table, players: waitPlayers(net.roster, 0), onStart: hostStart, onLeave: function () { leaveOnline(false); goLobby(); },
-        note: 'Two or more players. People can join while you play.' });
+      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: MAXP, min: 2, table: net.table, players: waitPlayers(net.roster, 0), onStart: hostStart, onLeave: function () { leaveOnline(false); goLobby(); },
+        note: 'Two or more players: with two, a computer bee joins you. People can join while you play.' });
     } else if (net.mode === 'guest') {
-      net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: 24, min: 2, players: waitPlayers(net.roster, net.myPid), onLeave: function () { leaveOnline(false); goLobby(); } });
+      net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: MAXP, min: 2, players: waitPlayers(net.roster, net.myPid), onLeave: function () { leaveOnline(false); goLobby(); } });
     }
   }
   function hostStart() {
     var n = net.roster.length;
     if (n < 2) { Kit.toast('You need at least 2 players'); return Promise.resolve(); }
     net.wait = null;
-    lastCfg = { mode: 'online', rounds: net.cfg.rounds, timer: net.cfg.timer, players: net.roster.map(function (r, i) { return { name: r.name, color: Kit.color(i), cpu: false, pid: r.pid, dev: r.dev }; }) };
-    G = newGame(lastCfg); screen = 'game'; finished = false; ui.sig = ''; ui.paperRound = ''; ui.intro = ''; ui.scored = ''; ui.cardRound = 0; draft = [];
+    var players = net.roster.map(function (r, i) { return { name: r.name, color: Kit.color(i), cpu: false, pid: r.pid, dev: r.dev }; });
+    if (players.length < 3) Kit.cpuNames(1, players.map(function (p) { return p.name; }), 8).forEach(function (b) { players.push({ name: b, color: Kit.color(players.length), cpu: true, pid: -1 }); });
+    lastCfg = { mode: 'online', timer: net.cfg.timer, players: players };
+    G = newGame(lastCfg); screen = 'game'; finished = false; resetUi(); ui.paperRound = ''; draft = [];
     Kit.gameStart();
     sendRoster();
     changed({ t: 'start' });
@@ -1305,7 +1546,7 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
   function netSync() {
     if (net.mode !== 'host' || !G) return;
     net.roster.forEach(function (r) { if (!r.peer) return; var i = idxOfPid(r.pid); if (i >= 0) r.peer.send({ t: 'v', v: viewFor(i) }, true); });
-    net.table.setStatus(G.phase === 'over' ? 'open' : 'playing', G.phase === 'over' ? '' : 'Card ' + G.round + ' of ' + G.rounds);
+    net.table.setStatus(G.phase === 'over' ? 'open' : 'playing', G.phase === 'over' ? '' : 'Round ' + G.round);
   }
   function backToTable() {
     if (net.mode === 'host' && net.table && !net.table.closed) { G = null; showWait(); net.table.broadcast({ t: 'wait' }, true); sendRoster(); return; }
@@ -1336,7 +1577,9 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     if (m.t === 'wait') { net.view = null; lastV = null; finished = false; showWait(); return; }
     if (m.t === 'v') {
       var V = m.v; V.boss = false;
-      if (screen !== 'game') { net.wait = null; screen = 'game'; ui.sig = ''; ui.paperRound = ''; ui.sent = ''; ui.intro = ''; ui.scored = ''; ui.cardRound = 0; finished = false; draft = []; window.scrollTo(0, 0); Kit.gameStart(); }
+      // (a host on the Mind Meld page of before sends a view this page can't draw)
+      if (!V.hm) { Kit.toast('The host’s copy of the game needs updating'); return; }
+      if (screen !== 'game') { net.wait = null; screen = 'game'; resetUi(); ui.paperRound = ''; ui.sent = ''; finished = false; draft = []; window.scrollTo(0, 0); Kit.gameStart(); }
       // the host's sand timer, on this device's clock
       if (V.left != null) { var dl = Date.now() + V.left; if (!ui.gDl || Math.abs(ui.gDl - dl) > 1500 || (lastV && lastV.round !== V.round)) ui.gDl = dl; } else ui.gDl = 0;
       var prev = lastV;
@@ -1372,12 +1615,13 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     var w = innerWidth, h = innerHeight;
     if (!deskWin(w, h)) return null;
     if (w < 900 && h < 1100) return 'small';
-    return w / Math.max(1, h - 60) >= 1.2 && w >= 1100 ? 'wide' : 'stack';
+    // (the hive gets a column of its own wherever the window is about as wide as tall or wider)
+    return w / Math.max(1, h - 60) >= 1 && w >= 1100 ? 'wide' : 'stack';
   }
   function deskOff() {
     DK = null; document.documentElement.classList.remove('mm-dk');
-    app.classList.remove('dk', 'dk-wide', 'dk-stack', 'dk-small', 't-row', 't-col');
-    ['--u', '--dku', '--rw', '--rh'].forEach(function (k) { app.style.removeProperty(k); });
+    app.classList.remove('dk', 'dk-wide', 'dk-stack', 'dk-small', 't-row', 't-col', 'nohv');
+    ['--u', '--dku', '--rw', '--rh', '--hbz'].forEach(function (k) { app.style.removeProperty(k); });
     var r = app.querySelector(':scope > .dk-room'); if (r) r.remove();
   }
   function deskLay(V) {
@@ -1386,22 +1630,37 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     DK = plan;
     var W = innerWidth, H = innerHeight;
     document.documentElement.classList.add('mm-dk');
-    app.classList.remove('dk-wide', 'dk-stack', 'dk-small', 't-row', 't-col');
+    app.classList.remove('dk-wide', 'dk-stack', 'dk-small', 't-row', 't-col', 'nohv');
     app.classList.add('dk', 'dk-' + plan);
     app.style.setProperty('--u', String(Math.max(1, Math.min(1.7, W / 1300, H / 950)).toFixed(3)));
     app.style.setProperty('--dku', String(Math.max(1, Math.min(1.35, W / 1700, H / 1100)).toFixed(3)));
-    app.style.setProperty('--rw', Math.round(Math.max(320, Math.min(520, W * .24))) + 'px');
-    app.style.setProperty('--rh', Math.round(Math.max(200, Math.min(520, (H - 60) * .3))) + 'px');
     var old = app.querySelector(':scope > .dk-room'); if (old) old.remove();
     var over = V.phase === 'over', log = over ? [] : (V.log || []), room = null;
+    // (a low wide window gives the hive the whole column: the cards so far are on the results at the end)
+    if (plan === 'wide' && H < 760) log = [];
     if (plan === 'wide' && !over) {
+      // the hive is the hero: a column of its own as tall as the window, its bees sized from that column
+      var d = V.depth || 6, rh = H - 80, rw = Math.round(Math.max(380, Math.min(W * 0.42, 1100)));
+      var nb = Math.min(8, V.players.length), hbz = Math.max(40, Math.min(110, (rh * (log.length ? 0.62 : 0.9) - 60) / (d + 0.9) - 22, (rw - 120) / (nb * 1.45 + 1.6)));
+      app.style.setProperty('--rw', rw + 'px'); app.style.setProperty('--hbz', Math.round(hbz) + 'px');
       room = el('aside', { class: 'dk-room' });
-      var sb = ta.querySelector('.sb'); if (sb) sb.classList.toggle('two', V.players.length > 5 && H < 1300); if (sb) room.appendChild(el('section', { class: 'dk-pn sc' }, [el('h4', { text: 'Points so far' }), sb]));
-    } else if (plan === 'stack' && log.length) room = el('aside', { class: 'dk-room' });
+      var hv = ta.querySelector('.hive'); if (hv) { room.appendChild(el('section', { class: 'dk-pn hvp' }, [hv])); app.classList.add('nohv'); }
+    } else {
+      // (the hive at the table's head, its bees as large as a share of the window's height allows)
+      var d2 = V.depth || 6;
+      if (plan === 'stack' && log.length) room = el('aside', { class: 'dk-room' });
+    }
+    app.style.setProperty('--rh', Math.round(Math.max(200, Math.min(520, (H - 60) * .3))) + 'px');
     if (room && log.length) room.appendChild(logPanel(log));
     if (room) { if (plan === 'wide') app.insertBefore(room, ta); else app.appendChild(room); }
     var tw = ta.clientWidth, th = ta.clientHeight;
     app.classList.add(tw >= th * 1.05 && tw >= 760 ? 't-row' : 't-col');
+    if (plan !== 'wide') {
+      // (the hive at the table's head, or beside the rest of the table in a wide one: its bees as large as that room allows)
+      var row = app.classList.contains('t-row'), nb2 = Math.min(8, V.players.length) * 1.45 + 1.6, dd = (V.depth || 6) + 0.9;
+      var hb = row ? Math.min((th * 0.86) / dd - 22, (tw * 0.42 - 60) / nb2) : Math.min((th * (plan === 'small' ? 0.3 : 0.38)) / dd - 22, (tw * 0.8) / nb2);
+      app.style.setProperty('--hbz', Math.round(Math.max(plan === 'small' ? 16 : 28, Math.min(100, hb))) + 'px');
+    }
     if (over) deskFin(ta);
     if (room) fitLog(room);
   }
@@ -1418,21 +1677,22 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
   // (a list longer than its panel gives up its oldest cards whole and says how many)
   function fitLog(room) {
     var box = room.querySelector('.dk-log'); if (!box) return;
-    var gone = 0, more = null;
-    while (box.children.length > 1 && box.scrollHeight > box.clientHeight + 1) {
+    // (it can be fitted again after a redraw: the cards it already gave up are counted on the list)
+    var gone = +(box.dataset.gone || 0), more = box.querySelector('.dk-more');
+    while (box.querySelectorAll('.dk-rd').length > 1 && box.scrollHeight > box.clientHeight + 1) {
       if (more) more.remove();
-      box.lastElementChild.remove(); gone++;
+      var rds = box.querySelectorAll('.dk-rd'); rds[rds.length - 1].remove(); gone++; box.dataset.gone = gone;
       more = el('div', { class: 'dk-more', text: gone === 1 ? 'One earlier card is in the results at the end.' : gone + ' earlier cards are in the results at the end.' });
       box.appendChild(more);
     }
   }
-  // (the end: the final scores and the buttons in one column, every card in the other)
+  // (the end: the hive, who stayed in and the buttons in one column, every card in the other)
   function deskFin(ta) {
     var fin = ta.querySelector('.fin'); if (!fin || fin.classList.contains('dk-fin')) return;
     var a = el('div', { class: 'fa' }), b = el('div', { class: 'fb' });
     Array.prototype.slice.call(fin.children).forEach(function (c) {
       if (c.tagName === 'H2') return;
-      if (c.classList.contains('row') || c.classList.contains('acts')) a.appendChild(c); else b.appendChild(c);
+      if (c.classList.contains('row') || c.classList.contains('acts') || c.classList.contains('hive') || c.classList.contains('endsay')) a.appendChild(c); else b.appendChild(c);
     });
     fin.classList.add('dk-fin'); fin.appendChild(a); fin.appendChild(b);
   }
@@ -1443,17 +1703,18 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
       dkRaf = 0;
       if (!lastV || app.classList.contains('stage') || !app.querySelector(':scope > .ta')) return;
       var plan = deskPlan();
-      if (!plan && !DK) return;
+      // (a phone or tablet turned: the hive and the table glide to the new shape)
       var go = function () { ui.sig = ''; render(lastV); };
-      if (plan !== DK) Kit.glide(go); else go();
+      if (plan !== DK || !plan) Kit.glide(go); else go();
     });
   });
 
   // ═══ Test hooks ══════════════════════════════════════════════════════════
   window.__ta = {
-    state: function () { return G; }, view: function () { return lastV; }, net: net, ui: ui, pp: pp,
-    norm: norm, keyOf: keyOf, cpuWrite: cpuWrite, groupsOf: groupsOf, data: DATA,
+    state: function () { return G; }, view: function () { return lastV; }, net: net, ui: ui, pp: pp, core: C,
+    norm: C.norm, keyOf: C.keyOf, cpuWrite: C.cpuWrite, groupsOf: C.groupsOf, data: DATA,
     act: function (a) { return doAct(a); }, draft: function (a) { draft = a.slice(); }, kick: function () { changed(); },
+    shake: function () { if (lastV && lastV.phase === 'scored') { clearTimeout(ui.shakeT); ui.shakeT = 0; shakeHive(lastV); } },
     host: function (n) { return hostTable(n || 'Tim'); }, join: function (c, n) { return joinTable(c, n || 'Sam'); }, start: function () { return hostStart(); }, lobby: goLobby,
     local: function (cfg) { startLocal(cfg); }, setup: showSetup, submit: submit
   };
@@ -1463,11 +1724,14 @@ html.mm-dk #app.t-col .fin.dk-fin{grid-template-columns:minmax(0,1fr);}
     var saved = lsGet(SAVE, null);
     if (/[?&]online=1/.test(location.search)) { goLobby(); return; }
     if (saved && saved.G && saved.G.players && saved.G.phase && saved.G.phase !== 'over' && saved.G.mode !== 'online') {
-      var g = saved.G, ok = Array.isArray(g.deck) && Array.isArray(g.qs);
+      var g = saved.G, ok = g.v === 2 && g.hm === 1 && Array.isArray(g.deck);
+      // a Mind Meld game from before Hive Mind can't go on under these rules: it's set aside and the setup shows
+      if (!ok) { clearSave(); showSetup(); Kit.toast('Your Mind Meld game was set aside. The game is Hive Mind now.'); return; }
       // the cards are found again by what they say, in case the card list has changed since
-      if (ok) g.deck = g.deck.map(function (i, k) { if (DATA[i] && DATA[i].q === g.qs[k]) return i; for (var j = 0; j < DATA.length; j++) if (DATA[j].q === g.qs[k]) return j; ok = false; return i; });
-      if (ok) {
-        g.pi = g.deck[g.round - 1];
+      var qx = saved.qx || {}, find = function (i) { var t = qx[i]; if (t == null || (DATA[i] && DATA[i].q === t)) return DATA[i] ? i : -1; for (var j = 0; j < DATA.length; j++) if (DATA[j].q === t) return j; return -1; };
+      g.pi = find(g.pi); g.offer = (g.offer || []).map(find); g.used = (g.used || []).map(find).filter(function (i) { return i >= 0; });
+      g.deck = g.deck.map(function (i) { return qx[i] != null ? find(i) : i; }).filter(function (i) { return i >= 0 && i < DATA.length; });
+      if (g.pi >= 0 && g.offer.every(function (i) { return i >= 0; })) {
         G = g; lastCfg = saved.cfg || null; screen = 'game'; pp.viewer = -1;
         changed();
         return;

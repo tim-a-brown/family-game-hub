@@ -315,12 +315,55 @@
     }
     return ui.wrap(out);
   });
-  // ── Mind Meld: every card, the answers people matched on, and who scored what ──
-  // dt: {rs: [{q: the card, t: 'answer:how many wrote it' per line}]}; e.rounds.scores: points per card, per player
+  // ── Hive Mind (the id says mindmeld): the hive as it ended, each bee's level round by round, then every card, the
+  // answers people matched on, and who scored what. Games played as Mind Meld (no dt.v) show their cards alone.
+  // dt: {v: 'hm', d: levels open, lv: 'final level per player, -1 out of the hive', pt: 'points over the game per player', rs: [{q: the card, t: 'answer:how many
+  // wrote it' per line, r: the Queen Bee die, m: 'player:from:to,...' (to = d: out of the hive)}]}; e.rounds.scores: points
+  // per card, per player
+  function hmHive(el, P, ui, d) {
+    var D = +d.d || 6, lv = String(d.lv || '').split(',').map(Number), box = el('div', { class: 'hm-hive' });
+    for (var l = 0; l <= D; l++) {
+      var row = el('div', { class: l < D ? 'hm-lv' : 'hm-door', style: l < D ? { '--w': (100 - l * (24 / D)) + '%' } : null }, l < D ? [el('b', { text: String(l + 1) })] : []);
+      P.forEach(function (n, i) { var v = lv[i]; if (v === l || (l === D && v < 0)) row.appendChild(el('span', { class: 'hm-bee', style: { '--c': ui.color(i) } }, [el('i'), el('em', { text: n })])); });
+      box.appendChild(row);
+    }
+    return box;
+  }
+  function hmClimb(el, P, ui, d, rs) {
+    // each bee's level after every round, as a line falling toward the door
+    var D = +d.d || 6, n = rs.length, W = 300, H = 120, lv = P.map(function () { return 0; }), pts = P.map(function () { return ['0,0']; });
+    rs.forEach(function (r, k) {
+      String(r.m || '').split(',').filter(Boolean).forEach(function (s) { var a = s.split(':').map(Number); if (P[a[0]] != null) lv[a[0]] = a[2]; });
+      P.forEach(function (x, i) { pts[i].push((k + 1) + ',' + Math.min(lv[i], D)); });
+    });
+    var sx = W / Math.max(1, n), sy = H / D, svg = '<svg class="hm-climb" viewBox="-6 -6 ' + (W + 12) + ' ' + (H + 12) + '" preserveAspectRatio="none">';
+    for (var l = 0; l <= D; l++) svg += '<line x1="0" x2="' + W + '" y1="' + l * sy + '" y2="' + l * sy + '" stroke="' + (l === D ? 'rgba(255,92,72,.55)' : 'rgba(255,255,255,.1)') + '" stroke-width="' + (l === D ? 2 : 1) + '"' + (l === D ? ' stroke-dasharray="5 4"' : '') + '/>';
+    P.forEach(function (x, i) {
+      svg += '<polyline fill="none" stroke="' + ui.color(i) + '" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" points="' +
+        pts[i].map(function (p) { var a = p.split(','); return (a[0] * sx) + ',' + (a[1] * sy + (i - P.length / 2) * 1.6); }).join(' ') + '"/>';
+    });
+    return el('div', { class: 'hm-cl', html: svg + '</svg>' });
+  }
+  function hmSay(P, d, r) {
+    var D = +d.d || 6, dn = [], up = [], out = [];
+    String(r.m || '').split(',').filter(Boolean).forEach(function (s) { var a = s.split(':').map(Number), n = P[a[0]]; if (!n) return; if (a[2] >= D) out.push(n); else if (a[2] > a[1]) dn.push(n + ' to level ' + (a[2] + 1)); else up.push(n + ' to level ' + (a[2] + 1)); });
+    function and(a) { return a.length > 1 ? a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1] : a[0]; }
+    var t = 'The Queen Bee die rolled ' + (r.r || 1) + '.';
+    if (out.length) t += ' ' + and(out) + ' went out of the hive.';
+    if (dn.length) t += ' Down: ' + and(dn) + '.';
+    if (up.length) t += ' Up: ' + and(up) + '.';
+    if (!dn.length && !up.length && !out.length) t += ' No bee moved.';
+    return t;
+  }
   R('mindmeld', function (e, ui) {
     var el = ui.el, P = names(e), d = e.dt, rs = d ? arr(d.rs) : [];
     if (!rs.length) return null;
     var sc = e.rounds && e.rounds.scores ? arr(e.rounds.scores) : [];
+    var top = [];
+    if (d.v === 'hm') {
+      top.push(ui.section('The hive at the end', hmHive(el, P, ui, d), { icon: 'trophy' }));
+      top.push(ui.section('Down the hive, round by round', hmClimb(el, P, ui, d, rs), { icon: 'down' }));
+    }
     var list = el('div', { class: 'ta-list' });
     rs.forEach(function (r, i) {
       var tops = String(r.t || '').split('\n').filter(Boolean).map(function (x) { var c = x.lastIndexOf(':'); return { t: x.slice(0, c), c: +x.slice(c + 1) }; });
@@ -329,10 +372,14 @@
         el('div', { class: 'ta-top' }, [el('span', { class: 'ta-n', text: String(i + 1) }), el('b', { text: r.q })]),
         tops.length ? el('div', { class: 'ta-slips' }, tops.map(function (x) { return el('span', { class: 'ta-slip' }, [el('span', { text: x.t }), el('i', { text: String(x.c) })]); }))
           : el('p', { class: 'ta-none', text: 'Nobody matched' }),
-        pts.length ? el('div', { class: 'ta-pts' }, pts.map(function (v, k) { return P[k] ? el('span', { style: { '--c': ui.color(k) } }, [el('em', { text: P[k].charAt(0).toUpperCase() }), el('span', { text: '+' + (v || 0) })]) : null; })) : null
+        pts.length ? el('div', { class: 'ta-pts' }, pts.map(function (v, k) { return P[k] ? el('span', { style: { '--c': ui.color(k) } }, [el('em', { text: P[k].charAt(0).toUpperCase() }), el('span', { text: (d.v === 'hm' ? '' : '+') + (v || 0) })]) : null; })) : null,
+        d.v === 'hm' ? el('p', { class: 'hm-mv', text: hmSay(P, d, r) }) : null
       ]));
     });
-    return ui.wrap([ui.section('Every card', list, { icon: 'cards' })]);
+    var w = ui.wrap(top.concat([ui.section('Every card', list, { icon: 'cards' })]));
+    // (Hive Mind's points count round by round: the kit's running score race would say the wrong thing)
+    if (w && d.v === 'hm') w.setAttribute('data-scores', 'chart sheet');
+    return w;
   });
   HistView.css('hv-ta',
     '.ta-list{display:flex;flex-direction:column;gap:8px;}' +
@@ -343,6 +390,15 @@
     '.ta-slip i{font-style:normal;min-width:20px;height:20px;padding:0 5px;border-radius:10px;display:grid;place-items:center;background:#ffd447;color:#3a2600;font:400 .8rem/1 var(--display);}' +
     '.ta-none{margin:0;color:var(--text-3);font-weight:700;font-size:.82rem;}' +
     '.ta-pts{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:.78rem;font-weight:900;color:var(--text-2);}' +
+    '.hm-mv{margin:0;font-size:.8rem;font-weight:650;line-height:1.35;color:var(--text-2);}' +
+    '.hm-hive{display:flex;flex-direction:column;align-items:center;gap:3px;}' +
+    '.hm-lv{position:relative;width:var(--w);min-height:30px;box-sizing:border-box;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:3px 8px;padding:4px 26px;border-radius:12px;background:radial-gradient(120% 90% at 50% 0%,#ffd76a,#f2ac2e 55%,#c97a12);box-shadow:inset 0 1px 0 rgba(255,250,210,.7),0 2px 0 #8f5409;}' +
+    '.hm-lv > b{position:absolute;left:9px;top:50%;transform:translateY(-50%);font-family:var(--display);font-size:.8rem;color:rgba(90,45,0,.6);}' +
+    '.hm-door{min-width:64px;min-height:26px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:3px 8px;padding:4px 12px;border-radius:18px 18px 6px 6px;background:#2c1806;box-shadow:0 0 0 2px #8f5409;}' +
+    '.hm-bee{display:inline-flex;align-items:center;gap:4px;padding:1px 7px 1px 2px;border-radius:9px;background:rgba(40,18,0,.55);color:#fff;font-size:.74rem;font-weight:800;}' +
+    '.hm-bee i{width:14px;height:10px;border-radius:50%;background:repeating-linear-gradient(90deg,var(--c) 0 3px,#2a1a08 3px 5px);box-shadow:0 0 0 1px #2a1a08;}' +
+    '.hm-bee em{font-style:normal;}' +
+    '.hm-cl svg{display:block;width:100%;height:130px;}' +
     '.ta-pts > span{display:inline-flex;align-items:center;gap:4px;}.ta-pts em{font-style:normal;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:var(--c);color:#1b1530;font-size:.62rem;}');
   HistView.css('hv-wyr',
     '.wy-list{display:flex;flex-direction:column;gap:8px;}' +

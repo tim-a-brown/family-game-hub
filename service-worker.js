@@ -632,6 +632,8 @@ const PRECACHE_URLS = [
   '/games/applestoapples.html',
   '/games/mindmeld.html',
   '/games/mindmeld-data.js',
+  '/games/mindmeld-core.js',
+  '/games/mindmeld/questions-hm.js',
   '/games/anoria.html',
   '/games/anoria/ui.js',
   '/games/anoria/net.js',
