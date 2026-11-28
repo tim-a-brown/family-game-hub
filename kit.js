@@ -80,6 +80,9 @@
   // A demo (games/<page>.html?demo=1): sync.js has already made the page a sandbox (window.__KIT_DEMO); the table stays
   // hidden until the demo has set it, then demo.js and the game's script (games/demos/<page>.js) are loaded and run
   var DEMO = !!window.__KIT_DEMO && !EDIT_DEFAULTS;
+  // A game page the home screen opened in a hidden frame only to give up an online game there (?kquit=1, netQuit
+  // below): it plays no sound, buzzes nothing, takes no picture and leaves Keep playing's list alone
+  var QUIT = /[?&]kquit=1\b/.test(location.search) && window.parent !== window;
   if (DEMO) {
     GO = null; root.classList.add('k-demo', 'k-demo-boot');
     var dmSty = doc.createElement('style'); dmSty.textContent = 'html.k-demo-boot body>:not(.k-demo-ui){visibility:hidden!important;}'; doc.head.appendChild(dmSty);
@@ -394,6 +397,7 @@
   // ── Haptics ───────────────────────────────────────────────────────────────
   var HAPTIC = { light: 8, medium: 16, heavy: 30, success: [12, 60, 18], error: [30, 40, 30], tick: 4 };
   function haptic(kind) {
+    if (QUIT) return;
     // Browsers ignore (and warn about) vibration before the first tap
     if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
     try { if (navigator.vibrate) navigator.vibrate(HAPTIC[kind] || HAPTIC.light); } catch (e) {}
@@ -554,7 +558,7 @@
   function fourColor() { return lsGet('gn_4color', '0') === '1'; }
   function applyFourColor() { try { doc.documentElement.classList.toggle('k-4c', fourColor()); } catch (e) {} }
   applyFourColor();
-  function sfx(name, vol) { if (!soundOn()) return; loadSounds(); try { if (!playSample(name, vol) && !(vol != null && vol < 0.5)) (SFX[name] || SFX.tap)(); } catch (e) {} }
+  function sfx(name, vol) { if (QUIT || !soundOn()) return; loadSounds(); try { if (!playSample(name, vol) && !(vol != null && vol < 0.5)) (SFX[name] || SFX.tap)(); } catch (e) {} }
   // Fetch the recordings early (decoding needs no tap), so the first sound is the real one
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { if (soundOn()) setTimeout(loadSounds, 400); });
   else setTimeout(function () { if (soundOn()) loadSounds(); }, 400);
@@ -1016,7 +1020,7 @@
     // o.id / o.file: an entry for another tile than the page's own game (a console's cartridge: its home tile's id, and
     // the page with the cartridge to open, 'nes.html?play=<id>')
     set: function (label, o) {
-      if (!game) return;
+      if (!game || QUIT) return;
       var id = (o && o.id) || game.id, all = {}; try { all = JSON.parse(lsGet('gn_resume', '{}')) || {}; } catch (e) {}
       var was = all[id] && !all[id].x ? all[id] : null;
       all[id] = { ts: Date.now(), label: label || 'In progress', file: (o && o.file) || pageKey() };
@@ -1028,7 +1032,7 @@
       snapNote(id);
     },
     clear: function (o) {
-      if (!game) return;
+      if (!game || QUIT) return;
       var id = (o && o.id) || game.id, all = {}; try { all = JSON.parse(lsGet('gn_resume', '{}')) || {}; } catch (e) {}
       if (all[id] && !all[id].x) { all[id] = { ts: Date.now(), x: 1 }; lsSet('gn_resume', JSON.stringify(all)); }   // (kept as gone, so your other devices drop it too)
       snapDrop(id);
@@ -1767,7 +1771,7 @@
         r[0].concat(r[1]).forEach(function (x) {
           var d = x.d, h = x.seat === 'host'; if (seen['c' + x.code] || !d.host || !d.guest) return; seen['c' + x.code] = 1;
           var hw = (d.game || 1) % 2 === 1 ? !!d.hw : !d.hw, mine = (hw ? 1 : -1) * (h ? 1 : -1), toMove = (d.moves || []).length % 2 === 0 ? 1 : -1;
-          out.push({ id: 'chess', code: x.code, at: d.at || 0, mine: toMove === mine, vs: knownBy(h ? d.guest : d.host), file: 'chess.html?online=1&room=' + x.code });
+          out.push({ id: 'chess', code: x.code, at: d.at || 0, mine: toMove === mine, vs: knownBy(h ? d.guest : d.host), file: 'chess.html?online=1&room=' + x.code, seat: x.seat });
         });
         r[2].concat(r[3]).forEach(function (x) {
           var d = x.d, me = x.seat === 'host' ? 0 : 1; if (seen['l' + x.code] || !d.host || !d.guest) return; seen['l' + x.code] = 1;
@@ -1775,7 +1779,7 @@
           if (d.status === 'joined') mine = me === 0;
           else if (/"phase":"mull"/.test(d.st || '')) { try { var mu = JSON.parse(d.st).mull || {}; mine = !mu[me] || (open && d.pr.seat === me) || (!open && d.owner === me && (answered || mu[1 - me])); } catch (e) { mine = false; } }
           else mine = open ? d.pr.seat === me : d.owner === me;
-          out.push({ id: 'lorcana', code: x.code, at: d.at || 0, mine: !!mine, vs: knownBy(me === 0 ? d.guest : d.host), file: 'lorcana-play.html?online=1&room=' + x.code });
+          out.push({ id: 'lorcana', code: x.code, at: d.at || 0, mine: !!mine, vs: knownBy(me === 0 ? d.guest : d.host), file: 'lorcana-play.html?online=1&room=' + x.code, seat: me });
         });
         // turnRooms: your move when it's your seat's turn, or the computer's turn and you moved last (it's waiting on
         // your device to make its moves)
@@ -1787,7 +1791,7 @@
           var mine = turn.indexOf(me) >= 0 || (d.drive === me && turn.some(function (i) { return seats[i] && seats[i].bot; }));
           var others = seats.filter(function (st, i) { return i !== me && st && !st.bot; }).map(function (st) { return knownBy(st); });
           var up = turn.map(function (i) { return seats[i]; }).filter(function (st) { return st && !st.bot; })[0];
-          out.push({ id: g.id, code: x.code, at: d.at || 0, mine: !!mine, vs: (mine || !up ? others.join(', ') : knownBy(up)) || 'the computer', file: (g.play || g.id) + '.html?online=1&room=' + x.code });
+          out.push({ id: g.id, code: x.code, at: d.at || 0, mine: !!mine, vs: (mine || !up ? others.join(', ') : knownBy(up)) || 'the computer', file: (g.play || g.id) + '.html?online=1&room=' + x.code, seat: me, tn: 1 });
         });
         out.sort(function (a, b) { return (b.mine - a.mine) || (b.at - a.at); });
         // each table that came back to you goes in Notifications (one line per table, moved up when it's your turn again)
@@ -1798,6 +1802,133 @@
         return out;
       });
     }).catch(function () { return null; });
+  }
+  // ── Giving up an online game (Tim, 2026-11-28: an online game waits for a player who has gone quiet for as long as
+  // it takes, "but even in lorcana, allow an option to surrender by removing the online game from your keep playing
+  // options"). netQuit(x) takes one of netTurns' tables and resolves with what giving it up would do: {body: the
+  // sentence for the question, go(): give it up, drop(): put away whatever was opened to ask}, or {gone: true} when the
+  // table is no longer being played. Chess and Lorcana keep their own tables, so their docs are written here as their
+  // own pages write them; a TurnNet table is given up by the game's own page, opened in a frame nobody sees
+  // (?kquit=1), with TurnNet's own leave(), so the game's rules for a player leaving (the others win, or the computer
+  // takes the seat) are the ones used.
+  function nqAnd(n) { return n.length > 1 ? n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1] : n[0] || ''; }
+  function nqWins(names) { return nqAnd(names) + (names.length > 1 ? ' win.' : ' wins.'); }
+  function netQuit(x) {
+    if (!x || !x.code || !window.FGHSync || !FGHSync.db) return Promise.reject(new Error('Sign in to play online'));
+    if (x.id === 'chess') return quitChess(x);
+    if (x.id === 'lorcana') return quitLorc(x);
+    return quitTurn(x);
+  }
+  function quitChess(x) {
+    return FGHSync.db().then(function (db) {
+      var ref = db.collection('chessRooms').doc(x.code);
+      return ref.get().then(function (sn) {
+        var d = sn.exists ? sn.data() : null, h = x.seat === 'host';
+        if (!d || d.status !== 'playing' || !d.host || !d.guest) return { gone: true };
+        var other = knownBy(h ? d.guest : d.host), moved = (d.moves || []).length > 0;
+        var hw = (d.game || 1) % 2 === 1 ? !!d.hw : !d.hw, mine = (hw ? 1 : -1) * (h ? 1 : -1);
+        return {
+          body: moved ? 'Removing it from Keep playing ends the game, and ' + nqWins([other]) : 'Removing it from Keep playing closes the table. Nobody has moved yet, so nobody wins.',
+          drop: function () {},
+          go: function () {
+            return db.runTransaction(function (t) {
+              return t.get(ref).then(function (s2) {
+                var e = s2.exists ? s2.data() : null; if (!e || e.status !== 'playing') return;
+                var now = Date.now();
+                // (as the game's own Resign writes it, so the other player's page shows "wins by resignation")
+                if ((e.moves || []).length) t.update(ref, { status: 'over', result: { type: 'resign', winner: -mine, by: 'home' }, offer: null, at: now, by: 'home' });
+                else t.update(ref, { status: 'closed', at: now, by: 'home' });
+              });
+            });
+          }
+        };
+      });
+    });
+  }
+  function quitLorc(x) {
+    return FGHSync.db().then(function (db) {
+      var ref = db.collection('lorcanaRooms').doc(x.code);
+      return ref.get().then(function (sn) {
+        var d = sn.exists ? sn.data() : null, me = x.seat === 1 ? 1 : 0;
+        if (!d || ['joined', 'playing'].indexOf(d.status) < 0 || !d.host || !d.guest) return { gone: true };
+        var other = knownBy(me ? d.host : d.guest), dealt = !!d.st;
+        return {
+          body: dealt ? 'Removing it from Keep playing ends the game, and ' + nqWins([other]) : 'Removing it from Keep playing closes the table. The cards haven’t been dealt yet, so nobody wins.',
+          drop: function () {},
+          go: function () {
+            return db.runTransaction(function (t) {
+              return t.get(ref).then(function (s2) {
+                var e = s2.exists ? s2.data() : null; if (!e || ['joined', 'playing'].indexOf(e.status) < 0) return;
+                // (w: who won and how; Lorcana's page shows "Tim gave up the game" and records it: how 'gave')
+                if (e.st) t.update(ref, { status: 'over', w: { pi: 1 - me, how: 'gave', by: me }, at: Date.now(), by: 'home' });
+                else t.update(ref, { status: 'closed', at: Date.now(), by: 'home' });
+              });
+            });
+          }
+        };
+      });
+    });
+  }
+  function quitTurn(x) {
+    return new Promise(function (resolve, reject) {
+      var keep = {};   // (what the game's page notes about this device's tables, put back if the question is cancelled)
+      ['tn_last_' + x.id, 'tn_mine_' + x.id].forEach(function (k) { keep[k] = lsGet(k, null); });
+      var href = x.href || 'games/' + x.file, fr = doc.createElement('iframe'), t0 = Date.now(), done = false, timer = 0;
+      fr.setAttribute('aria-hidden', 'true'); fr.setAttribute('tabindex', '-1'); fr.setAttribute('inert', '');
+      fr.style.cssText = 'position:fixed;left:0;top:0;width:' + innerWidth + 'px;height:' + innerHeight + 'px;border:0;opacity:0;pointer-events:none;z-index:-1;';
+      fr.src = href + (href.indexOf('?') < 0 ? '?' : '&') + 'kquit=1';
+      function drop(restore) {
+        clearTimeout(timer);
+        try { var w = fr.contentWindow; if (w && w.TurnNet && w.TurnNet._t.code) w.TurnNet.away(); } catch (e) {}
+        if (restore) Object.keys(keep).forEach(function (k) { try { if (keep[k] == null) LS.removeItem(k); else LS.setItem(k, keep[k]); } catch (e) {} });
+        try { fr.src = 'about:blank'; } catch (e) {} fr.remove();
+      }
+      function fail(m) { if (done) return; done = true; drop(true); reject(new Error(m)); }
+      (function look() {
+        if (done) return;
+        var w = null, tn = null, T = null;
+        try { w = fr.contentWindow; tn = w && w.TurnNet; T = tn && tn._t; } catch (e) {}
+        if (!T || T.code !== x.code || !T.d || T.seat < 0) {
+          if (Date.now() - t0 > 25000) return fail('That table can’t be reached right now. Try again in a moment.');
+          timer = setTimeout(look, 250); return;
+        }
+        done = true;
+        var d = T.d, me = T.seat;
+        if (d.status !== 'playing') { drop(true); resolve({ gone: true }); return; }
+        // what the game's own Leave says (it asks with Kit.confirm: the question is caught here and answered no)
+        var note = null, item = (tn.menu() || []).filter(function (m) { return /^Leave/.test(m.label || ''); })[0], kc = w.Kit.confirm;
+        w.Kit.confirm = function (t, o) { note = (o && o.body) || ''; return Promise.resolve(false); };
+        try { if (item) item.onClick(); } catch (e) {} finally { w.Kit.confirm = kc; }
+        var others = d.seats.filter(function (s, i) { return i !== me && s && !s.bot && !s.left; }).map(function (s) { return knownBy(s); });
+        var body;
+        if (!others.length) body = 'Removing it from Keep playing closes the table.';
+        else if (!note || note === 'The game ends and the others win.') body = 'Removing it from Keep playing ends the game, and ' + nqWins(others);
+        else if (note === 'The computer takes your seat and the others play on.') body = 'Removing it from Keep playing gives your seat to the computer, and ' + nqAnd(others) + (others.length > 1 ? ' play on.' : ' plays on.');
+        else if (/^The game ends\b/.test(note)) body = 'Removing it from Keep playing ends the game' + note.replace(/^The game ends/, '');
+        else body = 'Removing it from Keep playing takes you out of the game. ' + note;
+        resolve({
+          body: body,
+          drop: function () { drop(true); },
+          go: function () {
+            // (TurnNet's leave says "Tim left the game"; given up from Keep playing, it says "Tim gave up the game")
+            var real = tn._store(), seatName = d.seats[me] && d.seats[me].name;
+            w.__tnStore = Object.assign({}, real, { tx: function (code, fn) {
+              return real.tx(code, function (dd) {
+                var p = fn(dd);
+                if (p && p.result && p.result.left === me && typeof p.result.text === 'string') p.result.text = p.result.text.replace(/ left the game$/, ' gave up the game');
+                return p;
+              });
+            } });
+            return Promise.resolve(tn.leave(true)).then(function () { return real.get(x.code); }).then(function (e) {
+              drop(false);
+              var s = e && e.seats && e.seats[me];
+              if (e && e.status === 'playing' && s && !s.left && !s.bot && s.name === seatName) throw new Error('The table didn’t take the change. Try again in a moment.');
+            }, function (err) { drop(false); throw err; });
+          }
+        });
+      })();
+      doc.body.appendChild(fr);
+    });
   }
   // Notification settings (menu > Notifications): the banner, its sound and buzz, the count on the app's icon
   function nPref(k) { return lsGet(k, '1') !== '0'; }
@@ -2771,14 +2902,14 @@
     opts = o || {};
     if (!IN_SHEET) startFitLock();
     game = findGameSafe(opts.id || pageKey());
-    if (game && !IN_SHEET && !DEMO && !SNAP_MODE) setTimeout(turnWatch, 0);
-    if (game && !IN_SHEET && !DEMO) { if (SNAP_MODE) snapFrame(); else snapFirst(); }
+    if (game && !IN_SHEET && !DEMO && !SNAP_MODE && !QUIT) setTimeout(turnWatch, 0);
+    if (game && !IN_SHEET && !DEMO && !QUIT) { if (SNAP_MODE) snapFrame(); else snapFirst(); }
     if (opts.orient && !IN_SHEET) orientGate(opts.orient, opts.orientTablets);
     var accent = opts.color || (game && game.color) || '#ffc83d';
     root.style.setProperty('--accent', accent);
     root.style.setProperty('--accent-ink', inkFor(accent));
     if (game) { doc.title = game.name; applyTheme(game.id); catHue(game.id); }
-    if (game && !SNAP_MODE && spotifyOn() && spotifyPick(game.id)) spotifyLoad().then(function (Sp) { Sp.gameStart(game.id); }, function () {});
+    if (game && !SNAP_MODE && !QUIT && spotifyOn() && spotifyPick(game.id)) spotifyLoad().then(function (Sp) { Sp.gameStart(game.id); }, function () {});
     // Faint silhouette of the game's mark in the middle of the table
     if (game && window.GameIcon && GameIcon.mark && opts.mark !== false) {
       var mk = GameIcon.mark(game.id);
@@ -7363,7 +7494,7 @@
   }
 
   window.Kit = {
-    netTurns: netTurns, turnsMark: turnsMark, turnBanner: turnBanner, turnBadge: turnBadge, badgeAsk: badgeAsk, notify: notifySheet, notifyStatus: notifyStatus, inbox: inboxSheet, inboxNew: inboxNew,
+    netTurns: netTurns, netQuit: netQuit, turnsMark: turnsMark, turnBanner: turnBanner, turnBadge: turnBadge, badgeAsk: badgeAsk, notify: notifySheet, notifyStatus: notifyStatus, inbox: inboxSheet, inboxNew: inboxNew,
     marquee: marquee, glide: glide, init: init, keepAwake: keepAwake, setup: setup, cashOut: cashOutBtn, fitText: fitText, modes: modes, depth: depth, win: win, winClear: winPeekClear, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout, moment: moment,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, joker: joker, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     defaults: { sheet: defaultsSheet, get: setupSaved }, setupPage: function (g) { return g && g.play && SETUP_PAGES.indexOf(g.play) >= 0 ? g.play : null; }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, sortCat: sortCat, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, playing: playing, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },
