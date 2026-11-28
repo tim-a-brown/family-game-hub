@@ -181,6 +181,7 @@
   // ── The makers' designs (designs.js): a card's layout drawn in boxes, by maker and year ─────────────────────
   function Wd() { return root.WaxDesigns || null; }
   function Wl() { return root.WaxLogos || null; }
+  var SOLID = ['#e2642a', '#2f8a4c', '#c8352b', '#2a64b8', '#d9a520', '#7a4aa0', '#1f8a8a'];
   var FIELDS = ['#d9b45a', '#9fb7a0', '#c97f6b', '#8fa6c4', '#d8c48e', '#b5a3c9', '#e0a96d', '#a7c3a1', '#c9c08d', '#9db4bf'];
   function col(v) {   // a color or a CSS background that may name the team's colors
     if (v == null) return '';
@@ -192,6 +193,7 @@
     if (v === 'two') return 'linear-gradient(180deg,var(--t1) 0 50%,var(--t2) 50% 100%)';
     if (v === 'stripes') return 'linear-gradient(135deg,#fff 0 70%,#c8102e 70% 76%,#fff 76% 80%,#1c3f8a 80% 86%,#fff 86%)';
     if (v === 'pins') return 'repeating-linear-gradient(90deg,#d8d8d8 0 .5cqw,#f4f4f4 .5cqw 4cqw)';
+    if (v === 'solid') return SOLID[hash((c.pid || c.name || '') + (c.year || '')) % SOLID.length];
     if (v === 'field') return FIELDS[hash((c.pid || c.name || '') + (c.year || '')) % FIELDS.length];
     return col(v);
   }
@@ -222,6 +224,7 @@
     if (s.w) st.fontWeight = s.w;
     if (s.it) st.fontStyle = 'italic';
     if (s.up) st.textTransform = 'uppercase';
+    if (s.lo) st.textTransform = 'lowercase';
     if (s.ls) st.letterSpacing = s.ls;
     if (s.rd != null) st.borderRadius = typeof s.rd === 'number' ? s.rd + (s.rd >= 50 ? '%' : 'cqw') : s.rd;
     if (s.sh) st.boxShadow = typeof s.sh === 'string' ? col(s.sh) : '';
@@ -231,13 +234,14 @@
   }
   function place(n, x, y, w, h) { n.style.left = x + 'cqw'; n.style.top = y + 'cqw'; n.style.width = w + 'cqw'; n.style.height = h + 'cqw'; }
   var PFILT = { bw: 'grayscale(1) contrast(1.06)', sep: 'sepia(.75) saturate(.8) contrast(1.02)', tint: 'saturate(.72) sepia(.18) contrast(1.04)', paint: 'saturate(1.18) contrast(.96) brightness(1.03)' };
-  var PSHAPE = { rd: '3cqw', oval: '50%', circle: '50%', arch: '50% 50% 4cqw 4cqw / 32% 32% 4cqw 4cqw', tv: '12cqw / 9cqw' };
+  var PSHAPE = { diamond: '0', rd: '3cqw', oval: '50%', circle: '50%', arch: '50% 50% 4cqw 4cqw / 32% 32% 4cqw 4cqw', tv: '12cqw / 9cqw' };
   function designPic(c, o, p, el) {
     var box = picture(c, o); box.classList.add('wxt-ph');
     place(box, p.r[0], p.r[1], p.r[2], p.r[3]);
     if (p.bg) box.style.background = bgOf(p.bg, c);
     if (PSHAPE[p.s]) box.style.borderRadius = PSHAPE[p.s];
     if (p.s === 'curl') box.style.clipPath = 'polygon(0 0,100% 0,100% 84%,86% 100%,0 100%)';
+    if (p.s === 'diamond') { box.style.clipPath = 'polygon(50% 0,100% 50%,50% 100%,0 50%)'; box.style.boxShadow = 'none'; }
     if (p.b) box.style.boxShadow = col(p.b);
     var im = box.querySelector('img');
     if (im && PFILT[p.f] && !box.classList.contains('own')) im.style.filter = PFILT[p.f];
