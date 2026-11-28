@@ -952,7 +952,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     // aim: each stick (or keys) pushes its target; reversed axes flip the push (online, the guest's target comes from its device)
     for (i = 0; i < 2; i++) {
       var v = stickVec(i), a = aims[i];
-      if (NET.mode && i === 1) continue;
+      if (NET.mode && i === 1) { if (NET.bot && !NET.peer && live) botAim(dt); continue; }
       if (v && live) {
         var V = aimSpeed();
         a.x += (SET.invX ? -1 : 1) * v.x * V * dt;
@@ -975,7 +975,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
       } else for (i = 0; i < 2; i++) {
         G.cool[i] -= dt;
         // online: you fire with FIRE (or the mouse, Space, auto-shoot) as on your own; the guest's device says when it fires
-        var want = NET.mode ? (i === 0 ? input.fire || input.mouse || keys.f || keys.f2 || SET.auto : !!(NET.peer && NET.gf)) : sticks[i].on || SET.auto || (i === 0 ? keys.f || input.mouse : keys.f2);
+        var want = NET.mode ? (i === 0 ? input.fire || input.mouse || keys.f || keys.f2 || SET.auto : (NET.peer ? NET.gf : !!(NET.bot && NET.botF))) : sticks[i].on || SET.auto || (i === 0 ? keys.f || input.mouse : keys.f2);
         if (want && G.cool[i] <= 0) { fireFrom(i, i); G.cool[i] = fireRate(i); }
       }
     }
@@ -1386,7 +1386,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   }
   function endGame() {
     if (G.ended) return; G.ended = true;
-    clearSave(); ufoSoundOff(); MUS.stop(); hostTimer(false); netCardOff();
+    clearSave(); ufoSoundOff(); MUS.stop(); hostTimer(false); netCardOff(); awayOff();
     var net = !!G.net;
     if (net && NET.mode === 'host') {   // the other device shows the same results
       if (NET.peer) NET.peer.send({ t: 'over', w: G.wave, why: G.why || '', pl: G.pl.map(function (p) { return [p.score, p.best, p.wpn || '', p.kills]; }), st: G.stats }, true);
@@ -1915,6 +1915,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     if (!back) { NET.themDev = peer.id; NET.them = peer.name && peer.name.toLowerCase() !== NET.me.toLowerCase() ? peer.name : (peer.name || 'Player') + ' 2'; }
     sendRoster();
     if (back) {   // the same device again: the blue cannon is theirs again
+      awayOff(); NET.bot = false; NET.botF = false;
       sendInit(peer);
       if (G.phase === 'choose') netChoose();
       netStatus(); Kit.toast(NET.them + ' is back'); Kit.sfx('pop');
@@ -1927,7 +1928,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     NET.peer = null; NET.gf = false;
     if (G && G.net && !G.ended && view === 'game') {   // the battle goes on; the blue cannon waits for them
       Kit.toast(NET.them + ' left. If ' + NET.them + ' joins this table again, the blue cannon is theirs again.');
-      if (G.phase === 'choose' && !G.pl[1].wpn && G.pl[0].wpn) showChoice(1);
+      if (G.phase === 'choose' && !G.pl[1].wpn && G.pl[0].wpn) { if (NET.bot) pickWeapon(1, botWeapon()); else showChoice(1); }
+      if (!NET.bot) awayLater();
       netStatus();
       return;
     }
@@ -1947,7 +1949,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     if (need1 && NET.peer) NET.peer.send({ t: 'choose' }, true);
     if (need0) showChoice(0);
     else if (need1 && NET.peer) netCard('Weapon upgrade', 'Waiting for ' + NET.them + ' to pick a weapon.');
-    else if (need1) showChoice(1);
+    else if (need1) { if (NET.bot) pickWeapon(1, botWeapon()); else showChoice(1); }
   }
   function sendRoster() {
     if (NET.peer) NET.peer.send({ t: 'ro', pl: [NET.me, NET.them] }, true);
@@ -1961,6 +1963,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   function hostStart() {
     if (!NET.peer) return;
     if (NET.wait) { NET.wait.close(); NET.wait = null; }
+    awayOff(); NET.bot = false; NET.botF = false;
     startGame({ net: true, players: [{ name: NET.me }, { name: NET.them }] });
     NET.inAt = performance.now(); NET.gf = false; NET.evq = []; NET.bkDirty = false;
     sendInit(NET.peer);
@@ -2009,7 +2012,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   }
   var WAITNOTE = 'Red, on the left cannon, opens the table. Blue, on the right, joins it. You share the base and keep your own scores.';
   function showWait() {
-    leaveGame(); closeLobby(); hostTimer(false); netCardOff();
+    leaveGame(); closeLobby(); hostTimer(false); netCardOff(); awayOff(); NET.bot = false;
     app.className = 'stage'; app.removeAttribute('style');
     if (NET.mode === 'host') {
       NET.table.setStatus('open', '');
@@ -2179,6 +2182,67 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     goLobby();
   }
 
+  // ── A player who hasn't come back ──
+  // The blue cannon waits for its device. After 45 seconds the host can let the computer play it (botAim) or keep
+  // waiting; the card lies over the top of the field and the battle goes on under it. The moment that device joins
+  // again, the cannon is theirs again.
+  var AWAY_ASK = 45000, awayT = 0, awayEl = null;
+  function awayLater() {
+    clearTimeout(awayT); var G0 = G;
+    awayT = setTimeout(function () { awayT = 0; if (G === G0 && G && G.net && !G.ended && NET.mode === 'host' && !NET.peer && NET.themDev && !NET.bot) awayCard(); }, window.__awayAskMs || AWAY_ASK);
+  }
+  function awayOff() { clearTimeout(awayT); awayT = 0; if (awayEl) { var e0 = awayEl; e0.classList.remove('show'); setTimeout(function () { e0.remove(); }, 240); } awayEl = null; }
+  function awayCard() {
+    var name = NET.them, whose = Kit.poss(name) + ' cannon';
+    if (awayEl) awayOff();
+    if (!document.getElementById('aw-css')) document.head.appendChild(el('style', { id: 'aw-css', text:
+      '.aw-ask{position:fixed;left:50%;top:calc(var(--bar,58px) + 8px);z-index:60;width:min(460px,calc(100vw - 32px));box-sizing:border-box;padding:14px 16px 16px;border-radius:20px;' +
+      'background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 60%),var(--toast-bg,rgba(40,43,74,.92));box-shadow:inset 0 1px 0 var(--gold-hi,#ffd76a),0 0 0 1px var(--gl-line,rgba(255,255,255,.12)),0 18px 40px -16px rgba(0,0,0,.7);' +
+      '-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:var(--text,#fff);transform:translate(-50%,-12px);opacity:0;transition:transform .22s ease,opacity .22s ease;}' +
+      '.aw-ask.show{transform:translate(-50%,0);opacity:1;}' +
+      '.aw-ask b{display:block;font-size:17px;font-weight:800;line-height:1.25;}' +
+      '.aw-ask p{margin:4px 0 12px;font-size:14px;line-height:1.35;color:var(--text-2,rgba(255,255,255,.75));}' +
+      '.aw-ask .aw-b{display:flex;flex-wrap:wrap;gap:8px;}' +
+      '.aw-ask .aw-b .btn{flex:1 1 auto;min-height:44px;white-space:normal;}' +
+      '.aw-ask .aw-b .btn-primary{flex-basis:220px;}' +
+      '@media (max-height:520px) and (orientation:landscape){.aw-ask{top:calc(var(--bar,58px) + 4px);padding:10px 14px 12px;width:min(560px,calc(100vw - 32px));}.aw-ask p{margin:2px 0 8px;font-size:13px;}.aw-ask b{font-size:15px;}.aw-ask .aw-b{flex-wrap:nowrap;}.aw-ask .aw-b .btn-primary{flex:1 1 auto;white-space:nowrap;}.aw-ask .aw-b .btn-ghost{flex:0 0 auto;padding-left:18px;padding-right:18px;}}' }));
+    awayEl = el('div', { class: 'aw-ask', role: 'status', 'aria-live': 'polite' }, [
+      el('b', { text: name + ' hasn’t come back' }),
+      el('p', { text: 'The computer can play ' + whose + ' until ' + name + ' joins this table again.' }),
+      el('div', { class: 'aw-b' }, [
+        el('button', { type: 'button', class: 'btn btn-primary', text: 'Let the computer play ' + whose, onclick: function () {
+          awayOff(); if (!G || G.ended || NET.peer) return;
+          NET.bot = true; NET.botF = false; NET.botT = null; Kit.haptic('light'); sPower();
+          pop(WW * 0.72, AIM_BOT - 20, 'COMPUTER', PCOL[1], 1); Kit.toast('The computer is playing ' + whose + ' until ' + name + ' comes back.');
+          if (G.phase === 'choose' && !G.pl[1].wpn && G.pl[0].wpn) pickWeapon(1, botWeapon());
+        } }),
+        el('button', { type: 'button', class: 'btn btn-ghost', text: 'Keep waiting', onclick: function () { awayOff(); } })
+      ])
+    ]);
+    document.body.appendChild(awayEl); Kit.sfx('pop');
+    var e0 = awayEl; requestAnimationFrame(function () { requestAnimationFrame(function () { e0.classList.add('show'); }); });
+  }
+  function botWeapon() { return Math.random() < 0.5 ? 'ring' : 'missile'; }
+  // The computer playing the blue cannon: its sight moves at a person's speed to the most pressing target it can
+  // reach (an invader laser heading for the base, a diving invader, the lowest of the rest, nearer its own side),
+  // a little off now and then, and fires once it is on it
+  function botAim(dt) {
+    var a = aims[1], cx = canX(1), best = null, bs = -1e9, i;
+    function cand(o, x, y, sc) { if (y < AIM_TOP || y > AIM_BOT) return; sc -= Math.abs(x - cx) * 0.15; if (sc > bs) { bs = sc; best = { o: o, x: x, y: y }; } }
+    for (i = 0; i < lasers.length; i++) { var L = lasers[i]; if (!L.dead) cand(L, L.x, L.y + (L.vy || 0) * 0.08, 700 + L.y); }
+    for (i = 0; i < invs.length; i++) { var v = invs[i]; if (!v.dead) cand(v, v.x, v.y, v.y + (v.st === 'dive' ? 400 : v.st === 'fv' ? 150 : 0) + (v.gold ? 60 : 0)); }
+    for (i = 0; i < bombs.length; i++) { var b = bombs[i]; if (!b.dead) cand(b, b.x + b.vx * 0.06, b.y + b.vy * 0.06, 300 + b.y * 0.5); }
+    for (i = 0; i < saucers.length; i++) { var u = saucers[i]; if (!u.dead) cand(u, u.x, u.y, 250 + u.y * 0.5); }
+    if (ufo) cand(ufo, ufo.x, ufo.y, 220);
+    var now = performance.now();
+    if (!NET.botJ || now > NET.botJ.t) NET.botJ = { x: (Math.random() - 0.5) * 8, y: (Math.random() - 0.5) * 6, t: now + 500 + Math.random() * 700 };
+    var tx = best ? best.x + NET.botJ.x : (cx + WW / 2) / 2, ty = best ? best.y + NET.botJ.y : WH * 0.42;
+    var dx = tx - a.x, dy = ty - a.y, d = Math.hypot(dx, dy), mx = aimSpeed() * 0.8 * dt;
+    if (d > mx) { dx *= mx / d; dy *= mx / d; }
+    a.x = clamp(a.x + dx, 12, WW - 12); a.y = clamp(a.y + dy, AIM_TOP, AIM_BOT);
+    NET.botF = !!best && Math.hypot(tx - a.x, ty - a.y) < 18;
+  }
+
   // ── A note over the screen (waiting for the other player) ──
   function netCard(title, sub, btns) {
     if (!ovEl) return;
@@ -2199,7 +2263,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
         .then(function (ok) { if (ok) { leaveOnline(false); showSetup(); } });
       return;
     }
-    hostTimer(false);
+    hostTimer(false); awayOff(); NET.bot = false; NET.botF = false;
     var t = NET.table, p = NET.peer;
     NET.mode = null; NET.table = null; NET.peer = null; NET.wait = null; NET.themDev = null; NET.them = ''; NET.evq = []; NET.stall = false; NET.gf = false;
     if (t) t.close();
