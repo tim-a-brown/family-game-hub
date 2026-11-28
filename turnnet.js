@@ -226,13 +226,25 @@
     get result() { return T.d ? T.d.result || null : null; }, get status() { return T.d ? T.d.status : null; },
     myTurn: function () { return T.seat >= 0 && !!T.d && T.d.status === 'playing' && turnOf(T.st).indexOf(T.seat) >= 0; },
     act: function (fn) { return act(fn, T.seat); },
-    free: function (fn) { return act(fn, T.seat, null, true); },   // (a move made when it isn't your turn: the game's fn decides whether it can be)
+    free: function (fn) { return act(fn, T.seat, null, true); },
+    // (a seat whose device has dropped out: 'cover' the computer plays it, 'out' it sits out, 'auto' it checks or folds;
+    // null otherwise. A game puts Kit.awaySeat(its avatar, net.dropOf(seat)) on that seat's plate)
+    // (i: the seat, or the player's name as the table has it. 'wait': a table that waits for a person who isn't here)
+    dropOf: function (i) {
+      var d = T.d; if (!d || !d.seats || d.status !== 'playing') return null;
+      if (typeof i === 'string') { var nm = i; i = -1; d.seats.forEach(function (x, k) { if (i < 0 && x && !x.bot && x.name === nm) i = k; }); }
+      var s = d.seats[i]; if (!s || s.bot || s.left || i === T.seat) return null;
+      if (covered(d, i)) return ownDrop() ? markOf(T.st, i) : 'cover';
+      return !dropOn(d) && stale(d, i) ? 'wait' : null;
+    },   // (a move made when it isn't your turn: the game's fn decides whether it can be)
     again: again, leave: function () { return leave(); }
   };
   function away(i) { return stale(T.d, i); }
   function draw(info) {
     paintChips();
     try { G.show(net, info || {}); } catch (e) { console.error('[turnnet] show', e); }
+    // (the plates the game has just drawn take the away badges: again once its animations have settled)
+    if (Kit.awaySeat && Kit.awaySeat.refresh && (T.awayAny || T.d && T.d.cov && Object.keys(T.d.cov).length)) { setTimeout(function () { Kit.awaySeat.refresh(net); }, 30); setTimeout(function () { Kit.awaySeat.refresh(net); }, 900); }
   }
 
   // ── Moves ──
@@ -369,29 +381,69 @@
   function dropNews(a, b) {
     if (!a || !b || a.status !== 'playing' || b.status !== 'playing' || (a.g || 1) !== (b.g || 1) || !b.seats) return;
     var ca = a.cov || {}, cb = b.cov || {}, st = T.st;
+    // (each one is a banner from the top with the person's face and what happens to their seat, Kit.awayNote; the bar
+    // keeps the mark while they're away, paintAway)
     b.seats.forEach(function (s, i) {
       if (!s) return;
-      var was = ca[i] != null, now = cb[i] != null, sa = a.seats && a.seats[i], nm = s.name;
+      var was = ca[i] != null, now = cb[i] != null, sa = a.seats && a.seats[i], nm = s.name, col = Kit.color ? Kit.color(i) : null;
       if (!was && now && i !== T.seat) {
         var say = null; try { say = G.dropSay ? G.dropSay(nm, st) : null; } catch (e) {}
-        Kit.toast(say || nm + '’s device dropped out. The computer plays for ' + nm + ' until ' + nm + ' is back.', 5000);
+        say = say || nm + '’s device dropped out. The computer plays for ' + nm + ' until ' + nm + ' is back.';
+        var head = nm + '’s device dropped out';
+        note({ name: nm, color: col, kind: ownDrop() ? markOf(st, i) : 'cover', title: head, line: say.indexOf(head + '. ') === 0 ? say.slice(head.length + 2) : say, say: say });
       } else if (was && !now) {
         if (s.gone && !(sa && sa.gone)) {
           if (i === T.seat) return;
-          Kit.toast(nm + ' was away for ' + mins(leaveMs(st)) + ' and has left the table.', 5000);
+          note({ name: nm, color: col, kind: 'gone', title: nm + ' has left the table', line: nm + ' was away for ' + mins(leaveMs(st)) + '.', say: nm + ' was away for ' + mins(leaveMs(st)) + ' and has left the table.' });
           lastOne(b, nm);
-        } else if (!s.left) Kit.toast(i === T.seat ? 'You’re back at the table.' : nm + ' is back.');
+        } else if (!s.left) {
+          if (i === T.seat) note({ name: nm, color: col, kind: 'me', title: 'You’re back at the table', say: 'You’re back at the table.', ms: 3200 });
+          else note({ name: nm, color: col, kind: 'back', title: nm + ' is back', line: ownDrop() ? nm + ' is dealt back in.' : nm + ' is playing again.', say: nm + ' is back.', ms: 3600 });
+        }
       }
     });
   }
-  // the others have all left: the last person at the table chooses to close it or keep waiting
+  // (Kit.awayNote where the kit has it; a page with an older kit gets the sentence as a toast)
+  function note(x) { if (Kit.awayNote) Kit.awayNote(x); else Kit.toast(x.say, x.ms || 5000); }
+  // what a dropped seat does at a table with its own handling: sits out ('out', the default) or plays itself ('auto')
+  function markOf(st, i) { try { return (G.dropMark && G.dropMark(st, i)) || 'out'; } catch (e) { return 'out'; } }
+  // The mark in the game bar for everyone who is away (Kit.away): the computer playing for them, sitting out, or (a
+  // table that waits for them) simply not here. Drawn with the seats, and every 15 s.
+  function paintAway() {
+    if (!window.Kit || !Kit.away || QUIT) return;
+    var d = T.d, out = [];
+    if (d && d.status === 'playing' && T.seat >= 0 && d.seats) {
+      var up = turnOf(T.st), now = Date.now(), cf = dropOn(d);
+      d.seats.forEach(function (s, i) {
+        if (!s || s.bot || s.left || s.gone || i === T.seat) return;
+        var cv = covered(d, i);
+        if (!cv && !stale(d, i, now)) return;
+        var kind = cv ? (ownDrop() ? markOf(T.st, i) : 'cover') : 'wait', x = { name: s.name, color: Kit.color ? Kit.color(i) : null, kind: kind, up: up.indexOf(i) >= 0 };
+        if (cv) { x.since = d.cov[i]; x.leave = leaveMs(T.st); }
+        if (kind === 'auto' && G.dropSay) { try { x.line = G.dropSay(s.name, T.st); } catch (e) {} }
+        if (!cv && cf) return;   // (a table that covers a dropped seat marks it within moments: nothing until it does)
+        out.push(x);
+      });
+    }
+    T.awayAny = out.length > 0;
+    Kit.away(out);
+    if (Kit.awaySeat && Kit.awaySeat.refresh) Kit.awaySeat.refresh(net);
+  }
+  // the others have all left: the last person at the table chooses to close it or keep playing on their own. The sheet
+  // shows the table: your face, lit, and the people who have left, faded, each with the mark of leaving.
   function lastOne(d, nm) {
     var here = []; d.seats.forEach(function (s, i) { if (s && !s.bot && !s.left) here.push(i); });
     if (here.length !== 1 || here[0] !== T.seat) return;
     var key = T.code + ':' + (d.g || 1) + ':' + nm;
     if (T.lastAsk === key) return; T.lastAsk = key;
-    Kit.sheet({ title: 'You’re the only one at the table', html: '<p class="muted">' + Kit.esc(nm + ' was away for ' + mins(leaveMs(T.st)) + ', so ' + nm + ' has left the table and nobody else is here. You can close the table now, or keep it open.') + '</p>',
-      actions: [{ label: 'Close the table', primary: true, onClick: function () { T.closing = T.code; tryClose(true); } }, { label: 'Keep waiting', cls: 'btn-ghost' }] });
+    var me = d.seats[T.seat], faces = [E('span', { class: 'tn-lo-me' }, [av(me.name, T.seat), E('small', { text: 'You' })])];
+    d.seats.forEach(function (s, i) {
+      if (!s || i === T.seat || !s.left || !(s.gone || s.dev || s.acct)) return;
+      faces.push(E('span', { class: 'tn-lo-gone' }, [Kit.awayFace ? Kit.awayFace({ name: s.name, color: Kit.color(i), kind: 'gone' }, 'lg') : av(s.name, i), E('small', { text: s.name })]));
+    });
+    Kit.sheet({ title: 'You’re the only one at the table', node: E('div', { class: 'tn-lo' }, [E('div', { class: 'tn-lo-faces' }, faces),
+      E('p', { class: 'muted', text: nm + ' was away for ' + mins(leaveMs(T.st)) + ' and has left the table, so nobody else is here. Close the table to end the game, or keep playing on your own.' })]),
+      actions: [{ label: 'Close the table', primary: true, onClick: function () { T.closing = T.code; tryClose(true); } }, { label: 'Keep playing', cls: 'btn-ghost' }] });
   }
   function tryClose(first) {
     if (!T.closing || T.closing !== T.code || !T.d || T.d.status !== 'playing') { T.closing = null; return; }
@@ -413,7 +465,7 @@
   // A computer seat's move that never came (a dropped update, a stalled timer): look at the table again. And every
   // 15 s, whether anyone's device has dropped out.
   function watchdog() {
-    dropCheck();
+    dropCheck(); paintAway();
     if (!T.code || !T.d || T.d.status !== 'playing' || T.botT || T.busy || document.hidden) return;
     var cf = coverFn(T.d);
     if (!turnOf(T.st).some(function (i) { var x = T.d.seats[i]; return x && (x.bot || cf && !x.left && i !== T.seat && covered(T.d, i)); })) return;
@@ -481,7 +533,7 @@
       // (this device was away so long that its seat left the table: it finishes leaving now, the game settling up)
       if (T.goneDone !== T.code) {
         T.goneDone = T.code; var gc = T.code;
-        Kit.toast('You were away for ' + mins(leaveMs(T.st)) + ', so you’ve left the table.', 5000);
+        var gm = d.seats[T.seat]; note({ name: gm.name, color: Kit.color ? Kit.color(T.seat) : null, kind: 'gone', title: 'You’ve left the table', line: 'You were away for ' + mins(leaveMs(T.st)) + '.', say: 'You were away for ' + mins(leaveMs(T.st)) + ', so you’ve left the table.' });
         setTimeout(function () { if (T.code === gc) leave(); }, 1500);
       }
       return;
@@ -490,7 +542,7 @@
     if (T.seat >= 0 && !document.hidden && d.status === 'playing' && (covered(d, T.seat) || stale(d, T.seat, Date.now() - HB))) beatSoon();   // (you're here: back, or just opened the table)
     if (T.closing) tryClose(false);
     botCheck();
-    dropCheck();
+    dropCheck(); paintAway();
   }
 
   // ── Opening, joining, starting, leaving ──
@@ -669,7 +721,12 @@
     '.tn-chip.up{background:var(--yellow,#f5c542);color:#1d1406;box-shadow:0 0 14px color-mix(in srgb,var(--yellow,#f5c542) 60%,transparent);}' +
     '.tn-chip.me:not(.up){box-shadow:inset 0 0 0 1.5px var(--text-3);}' +
     '.tn-chip.away:not(.bot){opacity:.55;}.tn-chip.cover{opacity:.7;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--text-3) 70%,transparent);}.tn-chip.cover.up{opacity:1;}.tn-chip.left{opacity:.4;text-decoration:line-through;}' +
-    '.tn-chip .tn-bot{width:14px;height:14px;opacity:.7;}';
+    '.tn-chip .tn-bot{width:14px;height:14px;opacity:.7;}.tn-chip.cover .avatar{filter:saturate(.3) brightness(.85);}.tn-chip.cover:not(.up) .tn-bot{opacity:1;color:var(--text-2);}' +
+    /* the last one at the table: your face lit, the faces of those who left faded with the mark of leaving */
+    '.tn-lo-faces{display:flex;justify-content:center;flex-wrap:wrap;gap:18px;margin:6px 0 14px;}' +
+    '.tn-lo-faces > span{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:.8rem;font-weight:800;color:var(--text-2);max-width:88px;text-align:center;}' +
+    '.tn-lo-me .avatar{width:52px;height:52px;font-size:1.3rem;box-shadow:0 0 0 2.5px var(--gold-hi,var(--yellow,#f5c542)),0 0 18px color-mix(in srgb,var(--yellow,#f5c542) 40%,transparent);}' +
+    '.tn-lo-me small{color:var(--text);}.tn-lo p{margin:0;line-height:1.4;}';
   function css() { if (document.getElementById('tn-css')) return; var s = document.createElement('style'); s.id = 'tn-css'; s.textContent = CSS; document.head.appendChild(s); }
   function av(name, i) { return Kit.avatar && Kit.avatar.el ? Kit.avatar.el(name || '?', null, Kit.color ? Kit.color(i || 0) : null) : E('span', { class: 'avatar', text: String(name || '?').charAt(0) }); }
   function ov() {
@@ -804,6 +861,7 @@
   var chipsEls = [];
   function chips() { css(); var e = E('div', { class: 'tn-chips' }); chipsEls.push(e); paintChips(); return e; }
   function paintChips() {
+    paintAway();
     chipsEls = chipsEls.filter(function (e) { return e.isConnected || !e._seen; });
     chipsEls.forEach(function (box) {
       box._seen = true; box.innerHTML = ''; box.hidden = !T.d || T.d.status === 'open';

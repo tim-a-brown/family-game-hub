@@ -2683,11 +2683,15 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
     function gone() { netTurns = netTurns.filter(function (n) { return !(n.id === x.n.id && n.code === x.n.code); }); netAt = 0; railSig = ''; renderRail(); }
     Kit.netQuit(x.n).then(function (q) {
       if (q.gone) { off(); gone(); Kit.toast('That game is already over'); return; }
-      return Kit.confirm('Give up this game?', { ok: 'Give up', cancel: 'Cancel', danger: true, body: q.body }).then(function (ok) {
+      // (the game, as Keep playing shows it, and who it's with, over what giving it up does)
+      var vs = String(x.n.vs || '').split(', ').filter(Boolean), withWho = vs.length > 1 ? vs.slice(0, -1).join(', ') + ' and ' + vs[vs.length - 1] : vs[0] || 'the computer';
+      var card = el('div', { class: 'k-gq', style: { '--c': x.g.color } }, [el('span', { class: 'k-gq-ic', html: window.GameIcon ? GameIcon(x.g.id) : '' }),
+        el('span', { class: 'k-gq-t' }, [el('b', { text: x.g.name }), el('small', { text: 'With ' + withWho })])]);
+      return Kit.confirm('Give up this game?', { ok: 'Give up', cancel: 'Keep playing', danger: true, body: q.body, node: card }).then(function (ok) {
         if (!ok) { q.drop(); off(); return; }
         return q.go().then(function () {
           off(); Kit.haptic('success'); gone();
-          Kit.toast('You gave up your game of ' + x.g.name + '. It has ended.');
+          Kit.toast('You gave up your game of ' + x.g.name + '.');
         });
       });
     }).catch(function (e) { off(); Kit.sfx('bad'); Kit.toast((e && e.message) || 'That game couldn’t be given up right now'); });
